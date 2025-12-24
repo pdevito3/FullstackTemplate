@@ -1,0 +1,115 @@
+{
+  "variables": {
+    "apiKey": "super-secret-api-key-for-development-only",
+    "applicationId": "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e",
+    "clientSecret": "super-secret-client-secret-change-in-production",
+    "adminEmail": "admin@example.com",
+    "adminPassword": "password123!",
+    "testUserEmail": "user@example.com",
+    "testUserPassword": "password123!"
+  },
+  "apiKeys": [
+    {
+      "key": "#{apiKey}",
+      "description": "Development API Key - Full Access"
+    }
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "url": "/api/application/#{applicationId}",
+      "body": {
+        "application": {
+          "name": "HelloAspireReact",
+          "oauthConfiguration": {
+            "authorizedRedirectURLs": [
+              "http://localhost:5173/signin-oidc",
+              "https://localhost:5173/signin-oidc",
+              "http://localhost:7130/signin-oidc",
+              "https://localhost:7130/signin-oidc",
+              "http://localhost:7235/signin-oidc",
+              "https://localhost:7235/signin-oidc"
+            ],
+            "authorizedOriginURLs": [
+              "http://localhost:5173",
+              "https://localhost:5173",
+              "http://localhost:7130",
+              "https://localhost:7130",
+              "http://localhost:7235",
+              "https://localhost:7235"
+            ],
+            "clientAuthenticationPolicy": "NotRequiredWhenUsingPKCE",
+            "clientId": "#{applicationId}",
+            "clientSecret": "#{clientSecret}",
+            "enabledGrants": [
+              "authorization_code",
+              "refresh_token"
+            ],
+            "generateRefreshTokens": true,
+            "logoutURL": "http://localhost:5173",
+            "logoutBehavior": "RedirectOnly",
+            "proofKeyForCodeExchangePolicy": "Required",
+            "requireClientAuthentication": false,
+            "requireRegistration": false
+          },
+          "jwtConfiguration": {
+            "enabled": true,
+            "timeToLiveInSeconds": 3600
+          },
+          "registrationConfiguration": {
+            "enabled": true,
+            "type": "basic"
+          },
+          "roles": [
+            {
+              "name": "admin",
+              "description": "Administrator role",
+              "isDefault": false,
+              "isSuperRole": true
+            },
+            {
+              "name": "user",
+              "description": "Standard user role",
+              "isDefault": true,
+              "isSuperRole": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration",
+      "body": {
+        "user": {
+          "email": "#{adminEmail}",
+          "password": "#{adminPassword}",
+          "data": {
+            "displayName": "Admin User"
+          }
+        },
+        "registration": {
+          "applicationId": "#{applicationId}",
+          "roles": ["admin", "user"]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "url": "/api/user/registration",
+      "body": {
+        "user": {
+          "email": "#{testUserEmail}",
+          "password": "#{testUserPassword}",
+          "data": {
+            "displayName": "Test User"
+          }
+        },
+        "registration": {
+          "applicationId": "#{applicationId}",
+          "roles": ["user"]
+        }
+      }
+    }
+  ]
+}

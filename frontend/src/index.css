@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* CSS Custom Properties for theming - these change based on color scheme */
+:root {
+  /* Dark mode (default) */
+  --bg-gradient-start: #1a1a2e;
+  --bg-gradient-end: #16213e;
+  --card-bg: rgba(30, 30, 46, 0.95);
+  --card-hover-shadow: rgba(0, 0, 0, 0.3);
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #cbd5e0;
+  --accent-start: #7c92f5;
+  --accent-end: #8b5ecf;
+  --weather-card-bg: rgba(45, 45, 60, 0.8);
+  --weather-card-border: rgba(255, 255, 255, 0.1);
+  --section-title: #f7fafc;
+  --date-color: #cbd5e0;
+  --summary-color: #f7fafc;
+  --temp-unit: #e2e8f0;
+  --divider: #4a5568;
+  --error-bg: rgba(220, 38, 38, 0.1);
+  --error-border: #ef4444;
+  --error-text: #fca5a5;
+  --skeleton-1: rgba(255, 255, 255, 0.05);
+  --skeleton-2: rgba(255, 255, 255, 0.1);
+  --focus-ring: #a78bfa;
+
+  /* Base typography */
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light mode overrides */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-gradient-start: #f0f4ff;
+    --bg-gradient-end: #e0e7ff;
+    --card-bg: rgba(255, 255, 255, 0.98);
+    --card-hover-shadow: rgba(0, 0, 0, 0.15);
+    --text-primary: #1a202c;
+    --text-secondary: #2d3748;
+    --text-tertiary: #4a5568;
+    --accent-start: #5b6fd8;
+    --accent-end: #6b46a3;
+    --weather-card-bg: rgba(255, 255, 255, 0.9);
+    --weather-card-border: rgba(102, 126, 234, 0.15);
+    --section-title: #1a202c;
+    --date-color: #2d3748;
+    --summary-color: #1a202c;
+    --temp-unit: #4a5568;
+    --divider: #cbd5e0;
+    --error-bg: #fee;
+    --error-border: #dc2626;
+    --error-text: #991b1b;
+    --skeleton-1: #f0f0f0;
+    --skeleton-2: #e0e0e0;
+    --focus-ring: #5b21b6;
+  }
+}
+
+/* Register custom theme colors that reference CSS variables */
+@theme {
+  --color-bg-gradient-start: var(--bg-gradient-start);
+  --color-bg-gradient-end: var(--bg-gradient-end);
+  --color-card-bg: var(--card-bg);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent-start: var(--accent-start);
+  --color-accent-end: var(--accent-end);
+  --color-weather-card-bg: var(--weather-card-bg);
+  --color-weather-card-border: var(--weather-card-border);
+  --color-section-title: var(--section-title);
+  --color-date: var(--date-color);
+  --color-summary: var(--summary-color);
+  --color-temp-unit: var(--temp-unit);
+  --color-divider: var(--divider);
+  --color-error-bg: var(--error-bg);
+  --color-error-border: var(--error-border);
+  --color-error-text: var(--error-text);
+  --color-skeleton-1: var(--skeleton-1);
+  --color-skeleton-2: var(--skeleton-2);
+  --color-focus: var(--focus-ring);
+
+  /* Animations */
+  --animate-fade-in-down: fade-in-down 0.6s ease-out;
+  --animate-fade-in-up: fade-in-up 0.6s ease-out;
+  --animate-slide-in: slide-in 0.3s ease-out;
+  --animate-shimmer: shimmer 1.5s infinite;
+
+  @keyframes fade-in-down {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+}
+
+#root {
+  @apply w-full min-h-screen flex flex-col overflow-x-hidden;
+}
+
+/* Accessibility utilities */
+.visually-hidden {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap;
+  clip: rect(0, 0, 0, 0);
+  border-width: 0;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card {
+    @apply border-2 border-current;
+  }
+
+  .weather-card {
+    @apply border border-current;
+  }
+}
+
+/* GitHub icon styling */
+.github-icon {
+  filter: brightness(0) invert(1);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+@media (prefers-color-scheme: light) {
+  .github-icon {
+    filter: brightness(0) invert(0);
+    opacity: 0.7;
+  }
+
+  .github-link:hover .github-icon {
+    opacity: 1;
+  }
+}

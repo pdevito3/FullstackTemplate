@@ -1,7 +1,7 @@
+namespace FullstackTemplate.Server.Resources;
+
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-
-namespace FullstackTemplate.Server;
 
 /// <summary>
 /// Centralized telemetry for easy access to tracing and metrics.

@@ -1,7 +1,7 @@
+namespace FullstackTemplate.Server.Resources.Extensions;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-
-namespace FullstackTemplate.Server;
 
 /// <summary>
 /// Extension methods for configuring API authentication.

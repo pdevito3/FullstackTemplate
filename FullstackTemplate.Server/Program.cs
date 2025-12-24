@@ -2,7 +2,8 @@ using System.Diagnostics;
 using System.Security.Claims;
 using Asp.Versioning;
 using FullstackTemplate.Server;
-using FullstackTemplate.Server.ServiceExtensions;
+using FullstackTemplate.Server.Resources;
+using FullstackTemplate.Server.Resources.Extensions;
 using Serilog;
 using Serilog.Events;
 

@@ -1,6 +1,6 @@
-using System.Reflection;
+namespace FullstackTemplate.Server.Resources.Extensions;
 
-namespace FullstackTemplate.Server.ServiceExtensions;
+using System.Reflection;
 
 /// <summary>
 /// Marker interface for singleton lifetime (overrides default scoped).

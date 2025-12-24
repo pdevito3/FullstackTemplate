@@ -1,10 +1,10 @@
+namespace FullstackTemplate.Server.Resources.Extensions;
+
 using System.Reflection;
 using Microsoft.AspNetCore.Builder;
-using AppTelemetry = FullstackTemplate.Server.Telemetry;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -12,9 +12,7 @@ using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
-namespace Microsoft.Extensions.Hosting;
-
-public static class Extensions
+public static class HostExtensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
@@ -36,7 +34,7 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         var serviceName = builder.Environment.ApplicationName;
         var serviceVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0";
@@ -54,7 +52,7 @@ public static class Extensions
             .WithMetrics(metrics =>
             {
                 metrics
-                    .AddMeter(AppTelemetry.Meter.Name)
+                    .AddMeter(Telemetry.Meter.Name)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
@@ -62,7 +60,7 @@ public static class Extensions
             .WithTracing(tracing =>
             {
                 tracing
-                    .AddSource(AppTelemetry.Source.Name)
+                    .AddSource(Telemetry.Source.Name)
                     .AddSource(serviceName)
                     .AddAspNetCoreInstrumentation(opts =>
                     {
@@ -79,7 +77,7 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder ConfigureSerilogOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder ConfigureSerilogOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
@@ -133,7 +131,7 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);

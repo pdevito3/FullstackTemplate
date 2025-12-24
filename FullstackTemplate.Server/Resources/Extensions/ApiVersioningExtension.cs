@@ -1,7 +1,7 @@
+namespace FullstackTemplate.Server.Resources.Extensions;
+
 using Asp.Versioning;
 using Asp.Versioning.Builder;
-
-namespace FullstackTemplate.Server;
 
 public static class ApiVersioningExtension
 {

@@ -12,6 +12,8 @@
     <PackageVersion Include="Duende.BFF" Version="4.0.1" />
     <PackageVersion Include="Duende.BFF.Yarp" Version="4.0.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <!-- Dependency Injection -->
+    <PackageVersion Include="Scrutor" Version="7.0.0" />
     <!-- Microsoft Extensions -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.1.0" />

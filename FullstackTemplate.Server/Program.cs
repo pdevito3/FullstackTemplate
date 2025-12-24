@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Claims;
 using Asp.Versioning;
 using FullstackTemplate.Server;
+using FullstackTemplate.Server.ServiceExtensions;
 using Serilog;
 using Serilog.Events;
 
@@ -29,6 +30,7 @@ try
 
     builder.AddServiceDefaults();
     builder.Services.AddProblemDetails();
+    builder.Services.AddApplicationServices();
     builder.Services.AddApiVersioningExtension();
     builder.Services.AddOpenApi();
     builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);

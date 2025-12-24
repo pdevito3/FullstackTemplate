@@ -92,7 +92,9 @@ try
         ?? builder.Configuration["services:server:http:0"]
         ?? "https://localhost:5001";
 
-    app.MapRemoteBffApiEndpoint("/api", new Uri(serverUrl))
+    // BFF strips the local path prefix when forwarding, so include /api in the remote URL
+    var apiBaseUrl = new Uri(new Uri(serverUrl.TrimEnd('/') + "/"), "api");
+    app.MapRemoteBffApiEndpoint("/api", apiBaseUrl)
         .WithAccessToken(RequiredTokenType.UserOrNone);
 
     app.MapDefaultEndpoints();

@@ -6,6 +6,8 @@
     <!-- Aspire -->
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.1.0" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
+    <!-- API Versioning -->
+    <PackageVersion Include="Asp.Versioning.Http" Version="8.1.0" />
     <!-- Authentication -->
     <PackageVersion Include="Duende.BFF" Version="4.0.1" />
     <PackageVersion Include="Duende.BFF.Yarp" Version="4.0.1" />

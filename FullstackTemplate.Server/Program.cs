@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using Asp.Versioning;
 using FullstackTemplate.Server;
 using Serilog;
 using Serilog.Events;
@@ -28,6 +29,7 @@ try
 
     builder.AddServiceDefaults();
     builder.Services.AddProblemDetails();
+    builder.Services.AddApiVersioningExtension();
     builder.Services.AddOpenApi();
     builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 
@@ -69,9 +71,15 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
+    // API Versioning
+    var apiVersionSet = app.GetApiVersionSet();
+
     string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
 
-    app.MapGet("/weatherforecast", () =>
+    var api = app.MapGroup("api/v{version:apiVersion}")
+        .WithApiVersionSet(apiVersionSet);
+
+    api.MapGet("/weather", () =>
     {
         using var activity = Telemetry.Source.StartActivity("GenerateWeatherForecast");
         var sw = Stopwatch.StartNew();
@@ -86,14 +94,15 @@ try
             .ToArray();
 
         activity?.SetTag("forecast.count", forecast.Length);
-        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/weatherforecast"));
-        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/weatherforecast"));
+        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather"));
+        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather"));
 
         return forecast;
     })
-    .WithName("GetWeatherForecast");
+    .WithName("GetWeatherForecast")
+    .MapToApiVersion(new ApiVersion(1, 0));
 
-    app.MapGet("/weatherforecast/secure", (ClaimsPrincipal user) =>
+    api.MapGet("/weather/secure", (ClaimsPrincipal user) =>
     {
         using var activity = Telemetry.Source.StartActivity("GenerateSecureWeatherForecast");
         var sw = Stopwatch.StartNew();
@@ -112,13 +121,14 @@ try
             .ToArray();
 
         activity?.SetTag("forecast.count", forecast.Length);
-        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/weatherforecast/secure"));
-        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/weatherforecast/secure"));
+        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather/secure"));
+        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather/secure"));
 
         return forecast;
     })
     .RequireAuthorization()
-    .WithName("GetSecureWeatherForecast");
+    .WithName("GetSecureWeatherForecast")
+    .MapToApiVersion(new ApiVersion(1, 0));
 
     app.MapDefaultEndpoints();
 

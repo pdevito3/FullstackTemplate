@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageId>FullstackTemplate.Aspire.React</PackageId>
+    <Title>Fullstack Aspire React Template</Title>
+    <Authors>Paul</Authors>
+    <Description>A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, or Duende Demo)</Description>
+    <PackageTags>dotnet-new;templates;aspire;react;bff;authentication;keycloak;fusionauth</PackageTags>
+    <PackageProjectUrl>https://github.com/yourusername/FullstackTemplate</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include=".template.config\**\*" />
+    <Content Include="FullstackTemplate.sln" />
+    <Content Include="FullstackTemplate.AppHost\**\*" Exclude="**\bin\**;**\obj\**" />
+    <Content Include="FullstackTemplate.Bff\**\*" Exclude="**\bin\**;**\obj\**" />
+    <Content Include="FullstackTemplate.Server\**\*" Exclude="**\bin\**;**\obj\**" />
+    <Content Include="frontend\**\*" Exclude="frontend\node_modules\**;frontend\dist\**;frontend\obj\**" />
+    <Content Include=".gitignore" />
+    <Content Include="AGENTS.md" />
+    <Content Include="README.md" Condition="Exists('README.md')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+  </ItemGroup>
+
+</Project>

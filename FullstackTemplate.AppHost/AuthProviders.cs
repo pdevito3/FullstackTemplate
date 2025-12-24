@@ -139,6 +139,7 @@ public static class AuthProviderExtensions
 /// </summary>
 public static class AuthProviders
 {
+//#if (UseDuendeDemo)
     /// <summary>
     /// Creates a configuration for the Duende Demo identity server.
     /// This is a public demo server useful for testing.
@@ -155,7 +156,9 @@ public static class AuthProviders
         RoleClaimType = "role",
         AuthResource = null
     };
+//#endif
 
+//#if (UseFusionAuth)
     /// <summary>
     /// Creates a configuration for FusionAuth running locally in Docker.
     /// Sets up PostgreSQL database and FusionAuth container with Kickstart auto-provisioning.
@@ -206,7 +209,9 @@ public static class AuthProviders
             AuthResource = fusionAuth
         };
     }
+//#endif
 
+//#if (UseKeycloak)
     /// <summary>
     /// Creates a configuration for Keycloak running locally in Docker.
     /// Uses dev mode with embedded H2 database and realm import for auto-provisioning.
@@ -240,4 +245,5 @@ public static class AuthProviders
             AuthorityPathSuffix = $"/realms/{realmName}"
         };
     }
+//#endif
 }

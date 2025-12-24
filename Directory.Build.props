@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Define LOCAL_DEV for local development/testing -->
+    <!-- This is excluded from the template output -->
+    <DefineConstants>$(DefineConstants);LOCAL_DEV</DefineConstants>
+  </PropertyGroup>
+</Project>

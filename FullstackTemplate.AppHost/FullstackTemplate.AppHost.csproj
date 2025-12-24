@@ -15,12 +15,24 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.1.0" />
+    <!--#if (UseFusionAuth) -->
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
+    <!--#endif -->
   </ItemGroup>
 
+  <!--#if (UseFusionAuth) -->
   <ItemGroup>
     <Content Include="fusionauth\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <!--#endif -->
+
+  <!--#if (UseKeycloak) -->
+  <ItemGroup>
+    <Content Include="keycloak\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <!--#endif -->
 </Project>

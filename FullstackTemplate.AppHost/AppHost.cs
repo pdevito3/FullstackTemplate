@@ -5,11 +5,21 @@ var builder = DistributedApplication.CreateBuilder(args);
 // ============================================================================
 // Authentication Provider Selection
 // ============================================================================
-// Switch providers by commenting/uncommenting one line:
 
+#if LOCAL_DEV
+// For local development, uncomment ONE provider to test:
 // var authProvider = AuthProviders.FusionAuth(builder);
+// var authProvider = AuthProviders.Keycloak(builder);
+var authProvider = AuthProviders.DuendeDemo();
+#else
+//#if (UseFusionAuth)
+var authProvider = AuthProviders.FusionAuth(builder);
+//#elseif (UseKeycloak)
 var authProvider = AuthProviders.Keycloak(builder);
-// var authProvider = AuthProviders.DuendeDemo();
+//#else
+var authProvider = AuthProviders.DuendeDemo();
+//#endif
+#endif
 
 // ============================================================================
 // Application Services

@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Paul",
+  "classifications": ["Web", "Aspire", "React", "BFF", "Authentication"],
+  "identity": "FullstackTemplate.Aspire.React",
+  "name": "Fullstack Aspire React Template",
+  "shortName": "fullstack-aspire",
+  "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, or Duende Demo)",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sourceName": "FullstackTemplate",
+  "preferNameDirectory": true,
+  "symbols": {
+    "AuthProvider": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "Keycloak",
+      "description": "The authentication provider to use",
+      "choices": [
+        {
+          "choice": "Keycloak",
+          "description": "Keycloak identity server running in Docker (dev mode)"
+        },
+        {
+          "choice": "FusionAuth",
+          "description": "FusionAuth identity server running in Docker with PostgreSQL"
+        },
+        {
+          "choice": "DuendeDemo",
+          "description": "Duende Demo identity server (external, for testing)"
+        }
+      ]
+    },
+    "UseKeycloak": {
+      "type": "computed",
+      "value": "(AuthProvider == \"Keycloak\")"
+    },
+    "UseFusionAuth": {
+      "type": "computed",
+      "value": "(AuthProvider == \"FusionAuth\")"
+    },
+    "UseDuendeDemo": {
+      "type": "computed",
+      "value": "(AuthProvider == \"DuendeDemo\")"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!UseFusionAuth)",
+          "exclude": ["**/fusionauth/**"]
+        },
+        {
+          "condition": "(!UseKeycloak)",
+          "exclude": ["**/keycloak/**"]
+        },
+        {
+          "exclude": [
+            "**/bin/**",
+            "**/obj/**",
+            "**/node_modules/**",
+            "**/.idea/**",
+            "**/dist/**",
+            "**/*.user",
+            ".mcp.json",
+            ".vscode/mcp.json",
+            ".playwright-mcp/**",
+            "template.csproj",
+            "*.nupkg",
+            ".claude/**",
+            "Directory.Build.props"
+          ]
+        }
+      ]
+    }
+  ],
+  "guids": [
+    "4C10ED0E-4114-4F21-832A-F472C56A6832",
+    "25764901-65B5-45EB-9CB6-218DC5E8AB61",
+    "2A054968-1B72-4793-A5B7-0E90A402929E",
+    "91F0EF7F-B090-4652-97BA-FBDAF7770878",
+    "FE5A6A90-5221-41C8-B1BF-897F4E67C506",
+    "4c914da6-509c-4fa2-ab1a-eb4125a15857"
+  ],
+  "primaryOutputs": [
+    {
+      "path": "FullstackTemplate.sln"
+    }
+  ]
+}

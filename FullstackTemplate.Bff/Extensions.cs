@@ -7,6 +7,8 @@ using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -21,6 +23,7 @@ public static class Extensions
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
+        builder.ConfigureSerilogOpenTelemetry();
 
         builder.AddDefaultHealthChecks();
 
@@ -46,11 +49,8 @@ public static class Extensions
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        builder.Logging.AddOpenTelemetry(logging =>
-        {
-            logging.IncludeFormattedMessage = true;
-            logging.IncludeScopes = true;
-        });
+        // Note: We no longer add OpenTelemetry logging here since Serilog handles logging
+        // and sends logs to OTLP endpoint via Serilog.Sinks.OpenTelemetry
 
         builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
@@ -74,6 +74,39 @@ public static class Extensions
             });
 
         builder.AddOpenTelemetryExporters();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures Serilog to send logs to OTLP endpoint when available.
+    /// This integrates Serilog logging with Aspire's OpenTelemetry dashboard.
+    /// </summary>
+    public static TBuilder ConfigureSerilogOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            // Add OTLP sink to Serilog for Aspire dashboard integration
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(builder.Configuration)
+                .Enrich.FromLogContext()
+                .Enrich.WithMachineName()
+                .Enrich.WithThreadId()
+                .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
+                .WriteTo.Console()
+                .WriteTo.OpenTelemetry(options =>
+                {
+                    options.Endpoint = otlpEndpoint;
+                    options.Protocol = OtlpProtocol.Grpc;
+                    options.ResourceAttributes = new Dictionary<string, object>
+                    {
+                        ["service.name"] = builder.Environment.ApplicationName
+                    };
+                })
+                .CreateLogger();
+        }
 
         return builder;
     }

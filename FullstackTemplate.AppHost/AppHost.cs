@@ -1,61 +1,82 @@
 using FullstackTemplate.AppHost;
+using Serilog;
+using Serilog.Events;
 
-var builder = DistributedApplication.CreateBuilder(args);
+// Bootstrap logger to catch startup errors before host is built
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Override("Aspire.Hosting.Dcp", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// ============================================================================
-// Authentication Provider Selection
-// ============================================================================
+try
+{
+    Log.Information("Starting FullstackTemplate.AppHost");
+
+    var builder = DistributedApplication.CreateBuilder(args);
+
+    builder.Services.AddSerilog((_, lc) => lc
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithThreadId()
+        .Enrich.WithProperty("Application", "FullstackTemplate.AppHost"));
 
 #if LOCAL_DEV
-// For local development, uncomment ONE provider to test:
-// var authProvider = AuthProviders.FusionAuth(builder);
-// var authProvider = AuthProviders.Keycloak(builder);
-var authProvider = AuthProviders.DuendeDemo();
+    // var authProvider = AuthProviders.FusionAuth(builder);
+    // var authProvider = AuthProviders.Keycloak(builder);
+    var authProvider = AuthProviders.DuendeDemo();
 #else
-//#if (UseFusionAuth)
-var authProvider = AuthProviders.FusionAuth(builder);
-//#elseif (UseKeycloak)
-var authProvider = AuthProviders.Keycloak(builder);
-//#else
-var authProvider = AuthProviders.DuendeDemo();
-//#endif
+    //#if (UseFusionAuth)
+    var authProvider = AuthProviders.FusionAuth(builder);
+    //#elseif (UseKeycloak)
+    var authProvider = AuthProviders.Keycloak(builder);
+    //#else
+    var authProvider = AuthProviders.DuendeDemo();
+    //#endif
 #endif
 
-// ============================================================================
-// Application Services
-// ============================================================================
+    var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
+        .WithServerAuth(authProvider)
+        .WithHttpHealthCheck("/health")
+        .WithExternalHttpEndpoints();
 
-var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
-    .WithServerAuth(authProvider)
-    .WithHttpHealthCheck("/health")
-    .WithExternalHttpEndpoints();
+    var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
+        .WithEndpoint("http", endpoint =>
+        {
+            endpoint.Port = 5173;
+            endpoint.IsProxied = false;
+        })
+        .WithPnpm();
 
-var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
-    .WithEndpoint("http", endpoint =>
+    var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
+        .WithBffAuth(authProvider)
+        .WithReference(server)
+        .WithReference(webfrontend)
+        .WaitFor(server)
+        .WithHttpHealthCheck("/health")
+        .WithExternalHttpEndpoints();
+
+    if (authProvider.AuthResource is not null)
     {
-        endpoint.Port = 5173;
-        endpoint.IsProxied = false;
-    })
-    .WithPnpm();
+        server.WaitFor(authProvider.AuthResource);
+        bff.WaitFor(authProvider.AuthResource);
+    }
 
-var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
-    .WithBffAuth(authProvider)
-    .WithReference(server)
-    .WithReference(webfrontend)
-    .WaitFor(server)
-    .WithHttpHealthCheck("/health")
-    .WithExternalHttpEndpoints();
+    webfrontend
+        .WithReference(bff)
+        .WaitFor(bff);
 
-if (authProvider.AuthResource is not null)
-{
-    server.WaitFor(authProvider.AuthResource);
-    bff.WaitFor(authProvider.AuthResource);
+    server.PublishWithContainerFiles(webfrontend, "wwwroot");
+
+    builder.Build().Run();
 }
-
-webfrontend
-    .WithReference(bff)
-    .WaitFor(bff);
-
-server.PublishWithContainerFiles(webfrontend, "wwwroot");
-
-builder.Build().Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "AppHost terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using FullstackTemplate.Server;
 using Serilog;
@@ -72,6 +73,9 @@ try
 
     app.MapGet("/weatherforecast", () =>
     {
+        using var activity = Telemetry.Source.StartActivity("GenerateWeatherForecast");
+        var sw = Stopwatch.StartNew();
+
         var forecast = Enumerable.Range(1, 5).Select(index =>
             new WeatherForecast
             (
@@ -80,13 +84,23 @@ try
                 summaries[Random.Shared.Next(summaries.Length)]
             ))
             .ToArray();
+
+        activity?.SetTag("forecast.count", forecast.Length);
+        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/weatherforecast"));
+        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/weatherforecast"));
+
         return forecast;
     })
     .WithName("GetWeatherForecast");
 
     app.MapGet("/weatherforecast/secure", (ClaimsPrincipal user) =>
     {
+        using var activity = Telemetry.Source.StartActivity("GenerateSecureWeatherForecast");
+        var sw = Stopwatch.StartNew();
+
         var userName = user.Identity?.Name ?? user.FindFirstValue("sub") ?? "Unknown";
+        activity?.SetTag("user.name", userName);
+
         var forecast = Enumerable.Range(1, 5).Select(index =>
             new SecureWeatherForecast
             (
@@ -96,6 +110,11 @@ try
                 userName
             ))
             .ToArray();
+
+        activity?.SetTag("forecast.count", forecast.Length);
+        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/weatherforecast/secure"));
+        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/weatherforecast/secure"));
+
         return forecast;
     })
     .RequireAuthorization()

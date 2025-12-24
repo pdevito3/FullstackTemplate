@@ -1,20 +1,19 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Builder;
+using AppTelemetry = FullstackTemplate.Server.Telemetry;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
 namespace Microsoft.Extensions.Hosting;
 
-// Adds common Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
-// This project should be referenced by each service project in your solution.
-// To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
 public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
@@ -24,53 +23,55 @@ public static class Extensions
     {
         builder.ConfigureOpenTelemetry();
         builder.ConfigureSerilogOpenTelemetry();
-
         builder.AddDefaultHealthChecks();
 
         builder.Services.AddServiceDiscovery();
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Turn on resilience by default
             http.AddStandardResilienceHandler();
-
-            // Turn on service discovery by default
             http.AddServiceDiscovery();
         });
-
-        // Uncomment the following to restrict the allowed schemes for service discovery.
-        // builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-        // {
-        //     options.AllowedSchemes = ["https"];
-        // });
 
         return builder;
     }
 
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        // Note: We no longer add OpenTelemetry logging here since Serilog handles logging
-        // and sends logs to OTLP endpoint via Serilog.Sinks.OpenTelemetry
+        var serviceName = builder.Environment.ApplicationName;
+        var serviceVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0";
 
         builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource
+                .AddService(
+                    serviceName: serviceName,
+                    serviceVersion: serviceVersion,
+                    serviceInstanceId: Environment.MachineName)
+                .AddAttributes([
+                    new("deployment.environment", builder.Environment.EnvironmentName),
+                    new("host.name", Environment.MachineName)
+                ]))
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
+                metrics
+                    .AddMeter(AppTelemetry.Meter.Name)
+                    .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
-                    .AddAspNetCoreInstrumentation(tracing =>
-                        // Exclude health check requests from tracing
-                        tracing.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(HealthEndpointPath)
-                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
-                    )
-                    // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
-                    //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
+                tracing
+                    .AddSource(AppTelemetry.Source.Name)
+                    .AddSource(serviceName)
+                    .AddAspNetCoreInstrumentation(opts =>
+                    {
+                        opts.Filter = ctx =>
+                            !ctx.Request.Path.StartsWithSegments(HealthEndpointPath) &&
+                            !ctx.Request.Path.StartsWithSegments(AlivenessEndpointPath);
+                        opts.RecordException = true;
+                    })
+                    .AddHttpClientInstrumentation(opts => opts.RecordException = true);
             });
 
         builder.AddOpenTelemetryExporters();
@@ -78,17 +79,12 @@ public static class Extensions
         return builder;
     }
 
-    /// <summary>
-    /// Configures Serilog to send logs to OTLP endpoint when available.
-    /// This integrates Serilog logging with Aspire's OpenTelemetry dashboard.
-    /// </summary>
     public static TBuilder ConfigureSerilogOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            // Add OTLP sink to Serilog for Aspire dashboard integration
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(builder.Configuration)
                 .Enrich.FromLogContext()
@@ -113,19 +109,26 @@ public static class Extensions
 
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
-        if (useOtlpExporter)
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
+            // Local dev / Aspire: OTLP endpoint is set automatically
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
-        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
-        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-        //{
-        //    builder.Services.AddOpenTelemetry()
-        //       .UseAzureMonitor();
-        //}
+        // Production exporters - uncomment and configure as needed:
+        // Azure Monitor: requires Azure.Monitor.OpenTelemetry.AspNetCore package
+        // if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+        // {
+        //     builder.Services.AddOpenTelemetry().UseAzureMonitor();
+        // }
+
+        // AWS X-Ray: requires AWS.Distro.OpenTelemetry.AspNetCore package
+        // builder.Services.AddOpenTelemetry().UseXRayExporter();
+
+        // Jaeger: requires OpenTelemetry.Exporter.Jaeger package
+        // builder.Services.AddOpenTelemetry().WithTracing(t => t.AddJaegerExporter());
 
         return builder;
     }
@@ -133,7 +136,6 @@ public static class Extensions
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.Services.AddHealthChecks()
-            // Add a default liveness check to ensure app is responsive
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
 
         return builder;
@@ -141,14 +143,9 @@ public static class Extensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        // Adding health checks endpoints to applications in non-development environments has security implications.
-        // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.
         if (app.Environment.IsDevelopment())
         {
-            // All health checks must pass for app to be considered ready to accept traffic after starting
             app.MapHealthChecks(HealthEndpointPath);
-
-            // Only health checks tagged with the "live" tag must pass for app to be considered alive
             app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
             {
                 Predicate = r => r.Tags.Contains("live")

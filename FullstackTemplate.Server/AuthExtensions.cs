@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-namespace HelloAspireReact.Server;
+namespace FullstackTemplate.Server;
 
 /// <summary>
 /// Extension methods for configuring API authentication.

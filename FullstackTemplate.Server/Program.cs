@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using HelloAspireReact.Server;
+using FullstackTemplate.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 

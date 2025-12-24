@@ -20,7 +20,7 @@
       "url": "/api/application/#{applicationId}",
       "body": {
         "application": {
-          "name": "HelloAspireReact",
+          "name": "FullstackTemplate",
           "oauthConfiguration": {
             "authorizedRedirectURLs": [
               "http://localhost:5173/signin-oidc",

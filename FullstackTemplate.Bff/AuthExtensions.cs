@@ -2,7 +2,7 @@ using Duende.Bff;
 using Duende.Bff.AccessTokenManagement;
 using Duende.Bff.Yarp;
 
-namespace HelloAspireReact.Bff;
+namespace FullstackTemplate.Bff;
 
 /// <summary>
 /// Extension methods for configuring BFF authentication.

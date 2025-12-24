@@ -1,7 +1,7 @@
 {
   "id": "aspire",
   "realm": "aspire",
-  "displayName": "HelloAspireReact",
+  "displayName": "FullstackTemplate",
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": true,
@@ -41,7 +41,7 @@
   "clients": [
     {
       "clientId": "aspire-app",
-      "name": "HelloAspireReact Application",
+      "name": "FullstackTemplate Application",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "super-secret-client-secret-change-in-production",

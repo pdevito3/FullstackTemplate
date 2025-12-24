@@ -1,4 +1,4 @@
-using HelloAspireReact.AppHost;
+using FullstackTemplate.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -15,7 +15,7 @@ var authProvider = AuthProviders.Keycloak(builder);
 // Application Services
 // ============================================================================
 
-var server = builder.AddProject<Projects.HelloAspireReact_Server>("server")
+var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
     .WithServerAuth(authProvider)
     .WithHttpHealthCheck("/health")
     .WithExternalHttpEndpoints();
@@ -28,7 +28,7 @@ var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
     })
     .WithPnpm();
 
-var bff = builder.AddProject<Projects.HelloAspireReact_Bff>("bff")
+var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
     .WithBffAuth(authProvider)
     .WithReference(server)
     .WithReference(webfrontend)

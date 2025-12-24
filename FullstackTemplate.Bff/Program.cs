@@ -1,7 +1,7 @@
 using Duende.Bff;
 using Duende.Bff.AccessTokenManagement;
 using Duende.Bff.Yarp;
-using HelloAspireReact.Bff;
+using FullstackTemplate.Bff;
 
 var builder = WebApplication.CreateBuilder(args);
 

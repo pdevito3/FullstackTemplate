@@ -1,0 +1,6 @@
+@FullstackTemplate.Bff_HostAddress = http://localhost:5264
+
+GET {{FullstackTemplate.Bff_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

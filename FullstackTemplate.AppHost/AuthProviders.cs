@@ -1,7 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
-namespace HelloAspireReact.AppHost;
+namespace FullstackTemplate.AppHost;
 
 /// <summary>
 /// Configuration for an authentication provider.

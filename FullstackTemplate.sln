@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.0.0
 MinimumVisualStudioVersion = 17.8.0.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HelloAspireReact.AppHost", "HelloAspireReact.AppHost\HelloAspireReact.AppHost.csproj", "{25764901-65B5-45EB-9CB6-218DC5E8AB61}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FullstackTemplate.AppHost", "FullstackTemplate.AppHost\FullstackTemplate.AppHost.csproj", "{25764901-65B5-45EB-9CB6-218DC5E8AB61}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HelloAspireReact.Server", "HelloAspireReact.Server\HelloAspireReact.Server.csproj", "{2A054968-1B72-4793-A5B7-0E90A402929E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FullstackTemplate.Server", "FullstackTemplate.Server\FullstackTemplate.Server.csproj", "{2A054968-1B72-4793-A5B7-0E90A402929E}"
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "frontend", "frontend\frontend.esproj", "{91F0EF7F-B090-4652-97BA-FBDAF7770878}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloAspireReact.Bff", "HelloAspireReact.Bff\HelloAspireReact.Bff.csproj", "{FE5A6A90-5221-41C8-B1BF-897F4E67C506}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullstackTemplate.Bff", "FullstackTemplate.Bff\FullstackTemplate.Bff.csproj", "{FE5A6A90-5221-41C8-B1BF-897F4E67C506}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HelloAspireReact.Server\HelloAspireReact.Server.csproj" />
-    <ProjectReference Include="..\HelloAspireReact.Bff\HelloAspireReact.Bff.csproj" />
+    <ProjectReference Include="..\FullstackTemplate.Server\FullstackTemplate.Server.csproj" />
+    <ProjectReference Include="..\FullstackTemplate.Bff\FullstackTemplate.Bff.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -36,7 +36,9 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddApplicationServices();
+    builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
     builder.Services.AddApiVersioningExtension();
+    builder.Services.AddControllers();
     builder.Services.AddOpenApi();
     builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 
@@ -86,6 +88,8 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+
+    app.MapControllers();
 
     // API Versioning
     var apiVersionSet = app.GetApiVersionSet();

@@ -31,6 +31,7 @@ try
 
     builder.AddServiceDefaults();
     builder.Services.AddProblemDetails();
+    builder.Services.AddHttpContextAccessor();
     builder.Services.AddApplicationServices();
     builder.Services.AddApiVersioningExtension();
     builder.Services.AddOpenApi();

@@ -30,9 +30,12 @@ public class TestFixture : IAsyncLifetime
             .WithImage("postgres:16-alpine")
             .Build();
         await _dbContainer.StartAsync();
+        
+        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = _dbContainer.GetConnectionString();
 
-        // Configure connection string
-        builder.Configuration["ConnectionStrings:FullstackTemplateDb"] = _dbContainer.GetConnectionString();
+        // Configure auth for testing (these values are not used since auth is mocked)
+        builder.Configuration["Auth:Authority"] = "https://localhost";
+        builder.Configuration["Auth:Audience"] = "test-api";
 
         // Configure services
         builder.ConfigureServices();

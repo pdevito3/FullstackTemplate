@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 
 using Databases;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 public static class DeleteUser
 {
@@ -11,7 +12,15 @@ public static class DeleteUser
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
-            var user = await dbContext.Users.GetById(request.Id, cancellationToken);
+            var user = await dbContext.Users
+                .Include(u => u.UserPermissions)
+                .GetById(request.Id, cancellationToken);
+
+            // Remove permissions first (due to PropertyAccessMode.Field)
+            foreach (var permission in user.UserPermissions.ToList())
+            {
+                dbContext.UserPermissions.Remove(permission);
+            }
 
             dbContext.Users.Remove(user);
             await dbContext.SaveChangesAsync(cancellationToken);

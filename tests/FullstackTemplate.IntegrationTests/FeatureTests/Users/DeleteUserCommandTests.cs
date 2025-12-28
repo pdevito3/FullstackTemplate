@@ -12,18 +12,19 @@ public class DeleteUserCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUser = new FakeUserBuilder().Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        var fakeUserDto = new FakeUserForCreationDto().Generate();
+        var createCommand = new AddUser.Command(fakeUserDto);
+        var createdUser = await testingServiceScope.SendAsync(createCommand);
 
         // Act
-        var command = new DeleteUser.Command(fakeUser.Id);
+        var command = new DeleteUser.Command(createdUser.Id);
         await testingServiceScope.SendAsync(command);
 
         // Assert - User should be soft deleted
         var userInDb = await testingServiceScope.ExecuteDbContextAsync(db =>
             db.Users
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(u => u.Id == fakeUser.Id));
+                .FirstOrDefaultAsync(u => u.Id == createdUser.Id));
 
         userInDb.ShouldNotBeNull();
         userInDb.IsDeleted.ShouldBeTrue();
@@ -34,16 +35,17 @@ public class DeleteUserCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUser = new FakeUserBuilder().Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        var fakeUserDto = new FakeUserForCreationDto().Generate();
+        var createCommand = new AddUser.Command(fakeUserDto);
+        var createdUser = await testingServiceScope.SendAsync(createCommand);
 
         // Act
-        var deleteCommand = new DeleteUser.Command(fakeUser.Id);
+        var deleteCommand = new DeleteUser.Command(createdUser.Id);
         await testingServiceScope.SendAsync(deleteCommand);
 
         // Assert - User should not be found without IgnoreQueryFilters
         var userInDb = await testingServiceScope.ExecuteDbContextAsync(db =>
-            db.Users.FirstOrDefaultAsync(u => u.Id == fakeUser.Id));
+            db.Users.FirstOrDefaultAsync(u => u.Id == createdUser.Id));
 
         userInDb.ShouldBeNull();
     }

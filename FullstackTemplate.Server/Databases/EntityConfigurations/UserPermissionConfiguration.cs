@@ -13,14 +13,12 @@ public sealed class UserPermissionConfiguration : IEntityTypeConfiguration<UserP
         builder.Property(e => e.UserId)
             .IsRequired();
 
-        builder.OwnsOne(e => e.Permission, permission =>
+        builder.ComplexProperty(e => e.Permission, permission =>
         {
             permission.Property(p => p.Value)
                 .HasColumnName("permission")
                 .HasMaxLength(100)
                 .IsRequired();
-
-            permission.HasIndex(p => p.Value);
         });
 
         builder.HasIndex(e => e.UserId);

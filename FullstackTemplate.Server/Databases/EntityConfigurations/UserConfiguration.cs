@@ -26,14 +26,14 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(100);
 
-        builder.OwnsOne(e => e.Email, email =>
+        builder.ComplexProperty(e => e.Email, email =>
         {
             email.Property(e => e.Value)
                 .HasColumnName("email")
                 .HasMaxLength(320);
         });
 
-        builder.OwnsOne(e => e.Role, role =>
+        builder.ComplexProperty(e => e.Role, role =>
         {
             role.Property(r => r.Value)
                 .HasColumnName("role")

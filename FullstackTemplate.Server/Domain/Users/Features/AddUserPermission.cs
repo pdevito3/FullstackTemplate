@@ -18,8 +18,19 @@ public static class AddUserPermission
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 
+            var existingPermissionIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
+
             var permission = Permission.Of(request.Permission);
             user.AddPermission(permission);
+
+            // Explicitly track new permissions (needed due to PropertyAccessMode.Field)
+            foreach (var userPermission in user.UserPermissions)
+            {
+                if (!existingPermissionIds.Contains(userPermission.Id))
+                {
+                    dbContext.UserPermissions.Add(userPermission);
+                }
+            }
 
             await dbContext.SaveChangesAsync(cancellationToken);
 

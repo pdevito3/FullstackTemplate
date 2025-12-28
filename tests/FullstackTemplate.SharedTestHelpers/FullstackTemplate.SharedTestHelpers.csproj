@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AutoBogusLifesupport" />
+        <PackageReference Include="Bogus" />
+        <PackageReference Include="NSubstitute" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\FullstackTemplate.Server\FullstackTemplate.Server.csproj" />
+    </ItemGroup>
+
+</Project>

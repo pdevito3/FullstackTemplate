@@ -141,7 +141,9 @@ public static class HostExtensions
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
+        // Map health endpoints in Development and Testing environments
+        if (app.Environment.IsDevelopment() ||
+            app.Environment.EnvironmentName.Contains("Testing", StringComparison.OrdinalIgnoreCase))
         {
             app.MapHealthChecks(HealthEndpointPath);
             app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions

@@ -32,23 +32,7 @@ try
         .Enrich.WithProperty("Application", "FullstackTemplate.Server"));
 
     builder.AddServiceDefaults();
-    builder.Services.AddSingleton(TimeProvider.System);
-    builder.Services.AddProblemDetails();
-    builder.Services.AddHttpContextAccessor();
-    builder.Services.AddApplicationServices();
-    builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-    builder.Services.AddApiVersioningExtension();
-    builder.Services.AddControllers();
-    builder.Services.AddOpenApi();
-    builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
-
-    builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
-    {
-        var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
-        options.UseNpgsql(connectionString)
-            .UseSnakeCaseNamingConvention();
-    });
-    builder.EnrichNpgsqlDbContext<AppDbContext>();
+    builder.ConfigureServices();
     builder.Services.AddHostedService<MigrationHostedService<AppDbContext>>();
 
     var app = builder.Build();

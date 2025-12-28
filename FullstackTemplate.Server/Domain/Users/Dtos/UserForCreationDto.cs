@@ -7,4 +7,5 @@ public sealed record UserForCreationDto
     public string Identifier { get; init; } = default!;
     public string Email { get; init; } = default!;
     public string Username { get; init; } = default!;
+    public string Role { get; init; } = default!;
 }

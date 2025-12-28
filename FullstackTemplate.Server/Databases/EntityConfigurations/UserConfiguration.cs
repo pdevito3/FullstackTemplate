@@ -33,6 +33,22 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
                 .HasMaxLength(320);
         });
 
+        builder.OwnsOne(e => e.Role, role =>
+        {
+            role.Property(r => r.Value)
+                .HasColumnName("role")
+                .HasMaxLength(50)
+                .IsRequired();
+        });
+
+        builder.HasMany(e => e.UserPermissions)
+            .WithOne()
+            .HasForeignKey(up => up.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(e => e.UserPermissions)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Indexes
         builder.HasIndex(e => e.Identifier)
             .IsUnique();

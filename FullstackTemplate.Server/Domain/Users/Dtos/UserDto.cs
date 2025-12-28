@@ -9,4 +9,6 @@ public sealed record UserDto
     public string Identifier { get; init; } = default!;
     public string Email { get; init; } = default!;
     public string Username { get; init; } = default!;
+    public string Role { get; init; } = default!;
+    public IReadOnlyList<string> Permissions { get; init; } = [];
 }

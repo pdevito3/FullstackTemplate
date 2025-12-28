@@ -13,8 +13,9 @@ public class AppDbContext(
     IMediator mediator) : DbContext(options)
 {
     
-    #region DbSet Region 
+    #region DbSet Region
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

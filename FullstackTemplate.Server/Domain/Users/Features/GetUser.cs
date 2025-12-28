@@ -4,6 +4,7 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 public static class GetUser
 {
@@ -13,7 +14,9 @@ public static class GetUser
     {
         public async Task<UserDto> Handle(Query request, CancellationToken cancellationToken)
         {
-            var user = await dbContext.Users.GetById(request.Id, cancellationToken);
+            var user = await dbContext.Users
+                .Include(u => u.UserPermissions)
+                .GetById(request.Id, cancellationToken);
             return user.ToUserDto();
         }
     }

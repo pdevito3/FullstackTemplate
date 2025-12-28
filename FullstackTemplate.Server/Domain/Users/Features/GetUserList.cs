@@ -18,7 +18,9 @@ public static class GetUserList
         {
             var queryKitConfig = new CustomQueryKitConfiguration();
 
-            var query = dbContext.Users.AsNoTracking();
+            IQueryable<User> query = dbContext.Users
+                .AsNoTracking()
+                .Include(u => u.UserPermissions);
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyQueryKitFilter(request.Parameters.Filters, queryKitConfig);

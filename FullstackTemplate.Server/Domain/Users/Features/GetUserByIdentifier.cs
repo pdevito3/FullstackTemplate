@@ -16,6 +16,7 @@ public static class GetUserByIdentifier
         {
             var user = await dbContext.Users
                 .AsNoTracking()
+                .Include(u => u.UserPermissions)
                 .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken);
 
             return user?.ToUserDto();

@@ -111,4 +111,55 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         await mediator.Send(command);
         return NoContent();
     }
+
+    /// <summary>
+    /// Updates a User's role. This resets all permissions to the new role's defaults.
+    /// </summary>
+    [Authorize]
+    [HttpPut("{id:guid}/role", Name = "UpdateUserRole")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserDto>> UpdateUserRole(
+        Guid id,
+        [FromBody] UpdateUserRoleDto dto)
+    {
+        var command = new UpdateUserRole.Command(id, dto.Role);
+        var result = await mediator.Send(command);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Adds a permission to a User.
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id:guid}/permissions", Name = "AddUserPermission")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserDto>> AddUserPermission(
+        Guid id,
+        [FromBody] UserPermissionDto dto)
+    {
+        var command = new AddUserPermission.Command(id, dto.Permission);
+        var result = await mediator.Send(command);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Removes a permission from a User.
+    /// </summary>
+    [Authorize]
+    [HttpDelete("{id:guid}/permissions/{permission}", Name = "RemoveUserPermission")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<UserDto>> RemoveUserPermission(
+        Guid id,
+        string permission)
+    {
+        var command = new RemoveUserPermission.Command(id, permission);
+        var result = await mediator.Send(command);
+        return Ok(result);
+    }
 }

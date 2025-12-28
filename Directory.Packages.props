@@ -6,6 +6,14 @@
     <!-- Aspire -->
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.1.0" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.1.0" />
+    <!-- Entity Framework -->
+    <PackageVersion Include="EFCore.NamingConventions" Version="10.0.0-rc.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <!-- Distributed Locking -->
+    <PackageVersion Include="DistributedLock.Postgres" Version="1.2.1" />
     <!-- API Versioning -->
     <PackageVersion Include="Asp.Versioning.Http" Version="8.1.0" />
     <!-- Authentication -->

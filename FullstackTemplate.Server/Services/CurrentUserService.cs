@@ -16,7 +16,7 @@ public interface ICurrentUserService
     /// <summary>
     /// The unique identifier for the user (from "sub" claim - OIDC standard).
     /// </summary>
-    string? UserId { get; }
+    string? UserIdentifier { get; }
 
     /// <summary>
     /// The user's email address.
@@ -85,7 +85,7 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
 {
     public ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
 
-    public string? UserId => User?.FindFirstValue(ClaimTypes.NameIdentifier)
+    public string? UserIdentifier => User?.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? User?.FindFirstValue("sub");
 
     public string? Email => User?.FindFirstValue(ClaimTypes.Email)
@@ -108,7 +108,7 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
         ?? User?.FindFirstValue("clientId")
         ?? User?.FindFirstValue("azp"); // Keycloak uses "azp" for authorized party
 
-    public bool IsMachine => ClientId != null && UserId == null;
+    public bool IsMachine => ClientId != null && UserIdentifier == null;
 
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
 

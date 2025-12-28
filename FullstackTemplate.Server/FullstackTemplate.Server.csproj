@@ -8,7 +8,14 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="DistributedLock.Postgres" />
+    <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="QueryKit" />
     <PackageReference Include="Scrutor" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />

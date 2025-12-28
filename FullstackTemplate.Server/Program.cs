@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using Asp.Versioning;
+using Microsoft.EntityFrameworkCore;
 using FullstackTemplate.Server;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Extensions;
 using Serilog;
@@ -30,12 +32,22 @@ try
         .Enrich.WithProperty("Application", "FullstackTemplate.Server"));
 
     builder.AddServiceDefaults();
+    builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddProblemDetails();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddApplicationServices();
     builder.Services.AddApiVersioningExtension();
     builder.Services.AddOpenApi();
     builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
+
+    builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+    {
+        var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+        options.UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention();
+    });
+    builder.EnrichNpgsqlDbContext<AppDbContext>();
+    builder.Services.AddHostedService<MigrationHostedService<AppDbContext>>();
 
     var app = builder.Build();
 

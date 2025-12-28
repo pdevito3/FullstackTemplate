@@ -237,9 +237,7 @@ public static class Add[EntityName]
 {
     public sealed record Command([EntityName]ForCreationDto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -247,7 +245,7 @@ public static class Add[EntityName]
             var entity = [EntityName].Create(forCreation);
 
             await dbContext.[EntityName]s.AddAsync(entity, cancellationToken);
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }
@@ -268,9 +266,7 @@ public static class Update[EntityName]
 {
     public sealed record Command(Guid Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -279,7 +275,7 @@ public static class Update[EntityName]
             var forUpdate = request.Dto.To[EntityName]ForUpdate();
             entity.Update(forUpdate);
 
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }
@@ -298,16 +294,14 @@ public static class Delete[EntityName]
 {
     public sealed record Command(Guid Id) : IRequest;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command>
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
             var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
 
             dbContext.[EntityName]s.Remove(entity);
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 }
@@ -569,17 +563,6 @@ public interface IDomainEvent : INotification
 }
 ```
 
-### IUnitOfWork Interface
-
-```csharp
-namespace FullstackTemplate.Server.Databases;
-
-public interface IUnitOfWork
-{
-    Task CommitChanges(CancellationToken cancellationToken = default);
-}
-```
-
 ### PagedList
 
 ```csharp
@@ -753,9 +736,7 @@ public static class [Action][EntityName]
 {
     public sealed record Command(Guid Id) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -763,7 +744,7 @@ public static class [Action][EntityName]
 
             entity.[Action]();  // Call domain method
 
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }
@@ -786,9 +767,7 @@ public static class [Action][EntityName]
 {
     public sealed record Command(Guid Id, [Action][EntityName]Dto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -796,7 +775,7 @@ public static class [Action][EntityName]
 
             entity.[Action](request.Dto.Parameter1, request.Dto.Parameter2);
 
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }

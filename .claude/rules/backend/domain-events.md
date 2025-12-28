@@ -12,50 +12,50 @@ Domain/
     └── DomainEvents/
         ├── [EntityName]Created.cs
         ├── [EntityName]Updated.cs
-        ├── [EntityName]Deleted.cs
         └── [BusinessEvent].cs     # Domain-specific events
 ```
 
+Note: We do not create domain events for deletion operations. Soft deletes are handled via DbContext interception.
+
 ## Domain Event Structure
 
+### Base DomainEvent Record
+
+The base `DomainEvent` is a simple abstract record inheriting from `INotification`:
+
+```csharp
+namespace FullstackTemplate.Server.Domain;
+
+using MediatR;
+
+public abstract record DomainEvent : INotification;
+```
+
 ### Basic Event Template
+
+Domain events are sealed records extending `DomainEvent`:
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName]Created : IDomainEvent
-{
-    public required [EntityName] [EntityName] { get; init; }
-}
+public sealed record [EntityName]Created([EntityName] [EntityName]) : DomainEvent;
 
-public sealed record [EntityName]Updated : IDomainEvent
-{
-    public required Guid Id { get; init; }
-}
-
-public sealed record [EntityName]Deleted : IDomainEvent
-{
-    public required Guid Id { get; init; }
-}
+public sealed record [EntityName]Updated(Guid Id) : DomainEvent;
 ```
 
 ### Business-Specific Events
 
 ```csharp
-public sealed record OrderSubmitted : IDomainEvent
-{
-    public required Guid OrderId { get; init; }
-    public required Guid CustomerId { get; init; }
-    public required decimal TotalAmount { get; init; }
-}
+public sealed record OrderSubmitted(
+    Guid OrderId,
+    Guid CustomerId,
+    decimal TotalAmount) : DomainEvent;
 
-public sealed record PaymentReceived : IDomainEvent
-{
-    public required Guid OrderId { get; init; }
-    public required Guid PaymentId { get; init; }
-    public required decimal Amount { get; init; }
-    public required DateTimeOffset ReceivedAt { get; init; }
-}
+public sealed record PaymentReceived(
+    Guid OrderId,
+    Guid PaymentId,
+    decimal Amount,
+    DateTimeOffset ReceivedAt) : DomainEvent;
 ```
 
 ## Queuing Domain Events
@@ -74,7 +74,7 @@ public class Order : BaseEntity
             // ... property assignments
         };
 
-        order.QueueDomainEvent(new OrderCreated { Order = order });
+        order.QueueDomainEvent(new OrderCreated(order));
 
         return order;
     }
@@ -85,12 +85,7 @@ public class Order : BaseEntity
 
         Status = OrderStatus.Submitted();
 
-        QueueDomainEvent(new OrderSubmitted
-        {
-            OrderId = Id,
-            CustomerId = CustomerId,
-            TotalAmount = CalculateTotal()
-        });
+        QueueDomainEvent(new OrderSubmitted(Id, CustomerId, CalculateTotal()));
 
         return this;
     }
@@ -102,12 +97,7 @@ public class Order : BaseEntity
         Status = OrderStatus.Cancelled();
         CancellationReason = reason;
 
-        QueueDomainEvent(new OrderCancelled
-        {
-            OrderId = Id,
-            Reason = reason,
-            CancelledAt = DateTimeOffset.UtcNow
-        });
+        QueueDomainEvent(new OrderCancelled(Id, reason, DateTimeOffset.UtcNow));
 
         return this;
     }
@@ -121,12 +111,12 @@ The `BaseEntity` class provides infrastructure for domain events:
 ```csharp
 public abstract class BaseEntity
 {
-    private readonly List<IDomainEvent> _domainEvents = [];
+    private readonly List<DomainEvent> _domainEvents = [];
 
     [NotMapped]
-    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
-    public void QueueDomainEvent(IDomainEvent domainEvent)
+    public void QueueDomainEvent(DomainEvent domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }
@@ -206,55 +196,64 @@ public sealed class StartFulfillmentHandler : INotificationHandler<OrderSubmitte
 
 ## Event Dispatch
 
-Domain events are dispatched after successful persistence via the Unit of Work.
-
-### Unit of Work Integration
+Domain events are automatically dispatched by `AppDbContext.SaveChangesAsync()`. The DbContext collects all domain events from tracked entities, saves changes, and then publishes each event via MediatR.
 
 ```csharp
-public sealed class UnitOfWork : IUnitOfWork
+public class AppDbContext : DbContext
 {
-    private readonly AppDbContext _dbContext;
     private readonly IMediator _mediator;
 
-    public async Task CommitChanges(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // Collect domain events before saving
-        var domainEvents = _dbContext.ChangeTracker
-            .Entries<BaseEntity>()
-            .SelectMany(e => e.Entity.DomainEvents)
-            .ToList();
+        var result = await base.SaveChangesAsync(cancellationToken);
+        await DispatchDomainEvents();
+        return result;
+    }
 
-        // Save changes
-        await _dbContext.SaveChangesAsync(cancellationToken);
+    private async Task DispatchDomainEvents()
+    {
+        var domainEventEntities = ChangeTracker.Entries<BaseEntity>()
+            .Select(po => po.Entity)
+            .Where(po => po.DomainEvents.Any())
+            .ToArray();
 
-        // Dispatch events after successful save
-        foreach (var domainEvent in domainEvents)
+        foreach (var entity in domainEventEntities)
         {
-            await _mediator.Publish(domainEvent, cancellationToken);
-        }
-
-        // Clear events from entities
-        foreach (var entry in _dbContext.ChangeTracker.Entries<BaseEntity>())
-        {
-            entry.Entity.ClearDomainEvents();
+            var events = entity.DomainEvents.ToArray();
+            entity.ClearDomainEvents();
+            foreach (var domainEvent in events)
+                await _mediator.Publish(domainEvent);
         }
     }
 }
 ```
 
-## Key Principles
-
-### 1. Events Are Immutable Records
-
-Use sealed records for immutability:
+This means handlers simply call `SaveChangesAsync()` and events are dispatched automatically:
 
 ```csharp
-public sealed record OrderShipped : IDomainEvent
+public async Task<OrderDto> Handle(Command request, CancellationToken ct)
 {
-    public required Guid OrderId { get; init; }
-    public required string TrackingNumber { get; init; }
-    public required DateTimeOffset ShippedAt { get; init; }
+    var order = await dbContext.Orders.GetById(request.Id, ct);
+
+    order.Submit();  // Queues domain event
+
+    await dbContext.SaveChangesAsync(ct);  // Events dispatched automatically
+
+    return order.ToOrderDto();
 }
+```
+
+## Key Principles
+
+### 1. Events Are Sealed Records
+
+Use sealed records extending `DomainEvent`:
+
+```csharp
+public sealed record OrderShipped(
+    Guid OrderId,
+    string TrackingNumber,
+    DateTimeOffset ShippedAt) : DomainEvent;
 ```
 
 ### 2. Events Describe What Happened
@@ -280,19 +279,14 @@ Include all necessary information in the event:
 
 ```csharp
 // Good - self-contained
-public sealed record OrderSubmitted : IDomainEvent
-{
-    public required Guid OrderId { get; init; }
-    public required Guid CustomerId { get; init; }
-    public required decimal TotalAmount { get; init; }
-    public required int ItemCount { get; init; }
-}
+public sealed record OrderSubmitted(
+    Guid OrderId,
+    Guid CustomerId,
+    decimal TotalAmount,
+    int ItemCount) : DomainEvent;
 
 // Avoid - requiring database lookups in handlers
-public sealed record OrderSubmitted : IDomainEvent
-{
-    public required Guid OrderId { get; init; }  // Handlers must query for details
-}
+public sealed record OrderSubmitted(Guid OrderId) : DomainEvent;  // Handlers must query for details
 ```
 
 ### 4. Queue Events at State Changes
@@ -332,17 +326,15 @@ public sealed class SendEmailHandler : INotificationHandler<OrderSubmitted>
 }
 ```
 
-### 6. Use Required Properties
+### 6. Use Primary Constructor Parameters
 
-Ensure all event properties are initialized:
+Record primary constructors ensure all properties are initialized:
 
 ```csharp
-public sealed record CustomerRegistered : IDomainEvent
-{
-    public required Guid CustomerId { get; init; }
-    public required string Email { get; init; }
-    public required DateTimeOffset RegisteredAt { get; init; }
-}
+public sealed record CustomerRegistered(
+    Guid CustomerId,
+    string Email,
+    DateTimeOffset RegisteredAt) : DomainEvent;
 ```
 
 ## Common Event Patterns
@@ -352,10 +344,7 @@ public sealed record CustomerRegistered : IDomainEvent
 For new entity creation, include the full entity:
 
 ```csharp
-public sealed record CustomerCreated : IDomainEvent
-{
-    public required Customer Customer { get; init; }
-}
+public sealed record CustomerCreated(Customer Customer) : DomainEvent;
 ```
 
 ### Updated Event with Changed Fields
@@ -364,31 +353,13 @@ For updates, include only what's needed:
 
 ```csharp
 // Simple - just the ID
-public sealed record CustomerUpdated : IDomainEvent
-{
-    public required Guid Id { get; init; }
-}
+public sealed record CustomerUpdated(Guid Id) : DomainEvent;
 
 // Detailed - include changed fields
-public sealed record CustomerAddressUpdated : IDomainEvent
-{
-    public required Guid CustomerId { get; init; }
-    public required Address OldAddress { get; init; }
-    public required Address NewAddress { get; init; }
-}
-```
-
-### Deleted Event
-
-For soft deletes:
-
-```csharp
-public sealed record CustomerDeleted : IDomainEvent
-{
-    public required Guid Id { get; init; }
-    public required string DeletedBy { get; init; }
-    public required DateTimeOffset DeletedAt { get; init; }
-}
+public sealed record CustomerAddressUpdated(
+    Guid CustomerId,
+    Address OldAddress,
+    Address NewAddress) : DomainEvent;
 ```
 
 ### Business Action Events
@@ -396,42 +367,40 @@ public sealed record CustomerDeleted : IDomainEvent
 For domain-specific operations:
 
 ```csharp
-public sealed record SubscriptionRenewed : IDomainEvent
-{
-    public required Guid SubscriptionId { get; init; }
-    public required Guid CustomerId { get; init; }
-    public required DateOnly NewExpirationDate { get; init; }
-    public required decimal AmountCharged { get; init; }
-}
+public sealed record SubscriptionRenewed(
+    Guid SubscriptionId,
+    Guid CustomerId,
+    DateOnly NewExpirationDate,
+    decimal AmountCharged) : DomainEvent;
 
-public sealed record InventoryReplenished : IDomainEvent
-{
-    public required Guid ProductId { get; init; }
-    public required int QuantityAdded { get; init; }
-    public required int NewTotalQuantity { get; init; }
-}
+public sealed record InventoryReplenished(
+    Guid ProductId,
+    int QuantityAdded,
+    int NewTotalQuantity) : DomainEvent;
 ```
 
 ## Anti-Patterns to Avoid
 
-### Don't Dispatch Events Before Persistence
+### Don't Dispatch Events Manually
+
+Events are automatically dispatched by `SaveChangesAsync()`. Don't dispatch them manually:
 
 ```csharp
-// Bad - event dispatched before save
+// Bad - manual event dispatch
 public async Task Handle(Command request, CancellationToken ct)
 {
     var order = Order.Create(...);
-    await _mediator.Publish(new OrderCreated { Order = order });  // Too early!
-    await _dbContext.Orders.AddAsync(order);
-    await _unitOfWork.CommitChanges(ct);  // What if this fails?
+    await mediator.Publish(new OrderCreated(order));  // Don't do this!
+    await dbContext.Orders.AddAsync(order);
+    await dbContext.SaveChangesAsync(ct);
 }
 
-// Good - events queued and dispatched by UnitOfWork
+// Good - let SaveChangesAsync dispatch events automatically
 public async Task Handle(Command request, CancellationToken ct)
 {
     var order = Order.Create(...);  // Queues OrderCreated event
-    await _dbContext.Orders.AddAsync(order);
-    await _unitOfWork.CommitChanges(ct);  // Dispatches events after save
+    await dbContext.Orders.AddAsync(order);
+    await dbContext.SaveChangesAsync(ct);  // Events dispatched automatically
 }
 ```
 
@@ -441,17 +410,17 @@ public async Task Handle(Command request, CancellationToken ct)
 // Bad - event created in handler
 public async Task Handle(Command request, CancellationToken ct)
 {
-    var order = await _dbContext.Orders.GetById(request.Id);
+    var order = await dbContext.Orders.GetById(request.Id);
     order.Status = OrderStatus.Submitted();  // Direct property mutation!
-    await _mediator.Publish(new OrderSubmitted { ... });  // Event not from entity
+    await mediator.Publish(new OrderSubmitted(...));  // Event not from entity
 }
 
 // Good - entity creates its own events
 public async Task Handle(Command request, CancellationToken ct)
 {
-    var order = await _dbContext.Orders.GetById(request.Id);
+    var order = await dbContext.Orders.GetById(request.Id);
     order.Submit();  // Entity queues OrderSubmitted event
-    await _unitOfWork.CommitChanges(ct);
+    await dbContext.SaveChangesAsync(ct);
 }
 ```
 
@@ -476,7 +445,7 @@ public Order Submit()
         throw new ValidationException("Order must have items");
 
     Status = OrderStatus.Submitted();
-    QueueDomainEvent(new OrderSubmitted { ... });
+    QueueDomainEvent(new OrderSubmitted(Id, CustomerId, CalculateTotal()));
     return this;
 }
 ```

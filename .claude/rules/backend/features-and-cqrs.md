@@ -31,9 +31,7 @@ public static class Add[EntityName]
 {
     public sealed record Command([EntityName]ForCreationDto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -41,7 +39,7 @@ public static class Add[EntityName]
             var entity = [EntityName].Create(forCreation);
 
             await dbContext.[EntityName]s.AddAsync(entity, cancellationToken);
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }
@@ -56,9 +54,7 @@ public static class Update[EntityName]
 {
     public sealed record Command(Guid Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -67,7 +63,7 @@ public static class Update[EntityName]
             var forUpdate = request.Dto.To[EntityName]ForUpdate();
             entity.Update(forUpdate);
 
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }
@@ -82,16 +78,14 @@ public static class Delete[EntityName]
 {
     public sealed record Command(Guid Id) : IRequest;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command>
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
             var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
 
             dbContext.[EntityName]s.Remove(entity); // Soft delete via DbContext
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 }
@@ -106,9 +100,7 @@ public static class Submit[EntityName]
 {
     public sealed record Command(Guid Id) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(
-        AppDbContext dbContext,
-        IUnitOfWork unitOfWork) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
@@ -116,7 +108,7 @@ public static class Submit[EntityName]
 
             entity.Submit(); // Business logic encapsulated in domain entity
 
-            await unitOfWork.CommitChanges(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return entity.To[EntityName]Dto();
         }
@@ -221,7 +213,6 @@ Use primary constructors for cleaner DI:
 ```csharp
 public sealed class Handler(
     AppDbContext dbContext,
-    IUnitOfWork unitOfWork,
     ICurrentUserService currentUser) : IRequestHandler<Command, Response>
 ```
 
@@ -233,13 +224,13 @@ Pass cancellation tokens through to async operations:
 public async Task<Response> Handle(Command request, CancellationToken cancellationToken)
 {
     await dbContext.Entities.AddAsync(entity, cancellationToken);
-    await unitOfWork.CommitChanges(cancellationToken);
+    await dbContext.SaveChangesAsync(cancellationToken);
 }
 ```
 
-### 7. Commands Commit Changes, Queries Don't
+### 7. Commands Save Changes, Queries Don't
 
-- **Commands**: Always call `unitOfWork.CommitChanges()` at the end
+- **Commands**: Always call `dbContext.SaveChangesAsync()` at the end
 - **Queries**: Never modify data, use `AsNoTracking()` for performance
 
 ### 8. Map at Boundaries
@@ -293,7 +284,7 @@ public async Task<OrderDto> Handle(Command request, CancellationToken ct)
         throw new ValidationException("Cannot submit non-draft order");
     order.Status = OrderStatus.Submitted;
 
-    await unitOfWork.CommitChanges(ct);
+    await dbContext.SaveChangesAsync(ct);
     return order.ToOrderDto();
 }
 
@@ -304,19 +295,9 @@ public async Task<OrderDto> Handle(Command request, CancellationToken ct)
 
     order.Submit(); // Business logic encapsulated
 
-    await unitOfWork.CommitChanges(ct);
+    await dbContext.SaveChangesAsync(ct);
     return order.ToOrderDto();
 }
-```
-
-### Don't Skip Unit of Work
-
-```csharp
-// Bad - using SaveChangesAsync directly
-await dbContext.SaveChangesAsync(cancellationToken);
-
-// Good - using unit of work pattern
-await unitOfWork.CommitChanges(cancellationToken);
 ```
 
 ### Don't Return Domain Entities

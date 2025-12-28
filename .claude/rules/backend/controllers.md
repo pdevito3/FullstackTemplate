@@ -4,16 +4,16 @@ Guidelines for creating thin API controllers that delegate to MediatR handlers.
 
 ## Directory Structure
 
-Controllers are organized by API version:
+Controllers are organized within each domain entity folder by API version:
 
 ```
-Controllers/
-├── v1/
-│   ├── [EntityName]Controller.cs
-│   ├── OrdersController.cs
-│   └── CustomersController.cs
-└── v2/
-    └── [EntityName]Controller.cs    # New version when breaking changes needed
+Domain/
+└── [EntityName]/
+    └── Controllers/
+        ├── v1/
+        │   └── [EntityName]sController.cs
+        └── v2/
+            └── [EntityName]sController.cs    # New version when breaking changes needed
 ```
 
 ## Controller Structure
@@ -21,7 +21,7 @@ Controllers/
 ### Basic Controller Template
 
 ```csharp
-namespace FullstackTemplate.Server.Controllers.v1;
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Controllers.v1;
 
 [ApiController]
 [Route("api/v{v:apiVersion}/[controller]")]
@@ -54,7 +54,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
         var query = new Get[EntityName]List.Query(parameters);
         var result = await mediator.Send(query);
 
-        Response.AddPaginationHeader(result.Pagination);
+        Response.AddPaginationHeader(result);
 
         return Ok(result);
     }
@@ -240,7 +240,7 @@ public async Task<ActionResult<IEnumerable<ProductDto>>> GetPublicProducts() { .
 
 ## Pagination Headers
 
-For list endpoints, add pagination metadata to response headers:
+For list endpoints, add pagination metadata to response headers. The `PagedList<T>` class contains all pagination information:
 
 ```csharp
 [HttpGet]
@@ -250,7 +250,7 @@ public async Task<ActionResult<PagedList<CustomerDto>>> GetCustomerList(
     var query = new GetCustomerList.Query(parameters);
     var result = await mediator.Send(query);
 
-    Response.AddPaginationHeader(result.Pagination);
+    Response.AddPaginationHeader(result);
 
     return Ok(result);
 }
@@ -309,7 +309,7 @@ Create a new API version when:
 
 ```csharp
 // v1 - original implementation
-namespace FullstackTemplate.Server.Controllers.v1;
+namespace FullstackTemplate.Server.Domain.Customers.Controllers.v1;
 
 [ApiController]
 [Route("api/v{v:apiVersion}/[controller]")]
@@ -320,7 +320,7 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
 }
 
 // v2 - breaking changes
-namespace FullstackTemplate.Server.Controllers.v2;
+namespace FullstackTemplate.Server.Domain.Customers.Controllers.v2;
 
 [ApiController]
 [Route("api/v{v:apiVersion}/[controller]")]

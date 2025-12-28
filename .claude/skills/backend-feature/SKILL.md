@@ -272,9 +272,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    {
        public sealed record Command(Guid Id) : IRequest<OrderDto>;
 
-       public sealed class Handler(
-           AppDbContext dbContext,
-           IUnitOfWork unitOfWork) : IRequestHandler<Command, OrderDto>
+       public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, OrderDto>
        {
            public async Task<OrderDto> Handle(Command request, CancellationToken ct)
            {
@@ -282,7 +280,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
                order.Submit();
 
-               await unitOfWork.CommitChanges(ct);
+               await dbContext.SaveChangesAsync(ct);
 
                return order.ToOrderDto();
            }

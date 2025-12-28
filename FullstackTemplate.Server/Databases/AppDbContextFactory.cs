@@ -11,7 +11,8 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Database=fullstacktemplate");
+        optionsBuilder.UseNpgsql("Host=localhost;Database=fullstacktemplate")
+            .UseSnakeCaseNamingConvention();
 
         return new AppDbContext(
             optionsBuilder.Options,

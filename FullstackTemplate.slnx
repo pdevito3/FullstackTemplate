@@ -1,0 +1,19 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/tests/">
+    <Project Path="tests/FullstackTemplate.FunctionalTests/FullstackTemplate.FunctionalTests.csproj" />
+    <Project Path="tests/FullstackTemplate.IntegrationTests/FullstackTemplate.IntegrationTests.csproj" />
+    <Project Path="tests/FullstackTemplate.SharedTestHelpers/FullstackTemplate.SharedTestHelpers.csproj" />
+    <Project Path="tests/FullstackTemplate.UnitTests/FullstackTemplate.UnitTests.csproj" />
+  </Folder>
+  <Project Path="frontend/frontend.esproj">
+    <Build Solution="*|Any CPU" />
+  </Project>
+  <Project Path="FullstackTemplate.AppHost/FullstackTemplate.AppHost.csproj" />
+  <Project Path="FullstackTemplate.Bff/FullstackTemplate.Bff.csproj" />
+  <Project Path="FullstackTemplate.Server/FullstackTemplate.Server.csproj" />
+</Solution>

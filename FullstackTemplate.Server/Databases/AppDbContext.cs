@@ -14,6 +14,7 @@ public class AppDbContext(
 {
     
     #region DbSet Region 
+    public DbSet<User> Users => Set<User>();
     #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

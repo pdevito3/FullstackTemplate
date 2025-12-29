@@ -68,6 +68,7 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
+        app.UseSwaggerExtension(builder.Configuration);
     }
 
     app.UseAuthentication();

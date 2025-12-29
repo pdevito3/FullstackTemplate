@@ -60,6 +60,8 @@ public static class AuthProviderExtensions
         AuthProviderConfig authProvider) where T : IResourceWithEnvironment
     {
         resource
+            .WithEnvironment("Auth__ClientId", authProvider.ClientId)
+            .WithEnvironment("Auth__ClientSecret", authProvider.ClientSecret)
             .WithEnvironment("Auth__Audience", authProvider.Audience)
             .WithEnvironment("Auth__RequireHttpsMetadata", authProvider.RequireHttpsMetadata.ToString())
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)

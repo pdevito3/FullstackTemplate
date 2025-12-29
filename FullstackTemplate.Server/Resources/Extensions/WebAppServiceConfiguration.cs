@@ -14,7 +14,7 @@ public static class WebAppServiceConfiguration
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
         builder.Services.AddApiVersioningExtension();
         builder.Services.AddControllers();
-        builder.Services.AddOpenApi();
+        builder.Services.AddSwaggerExtension(builder.Configuration);
         builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>

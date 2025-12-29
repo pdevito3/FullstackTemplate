@@ -25,8 +25,8 @@ public static class AuthExtensions
             ?? throw new InvalidOperationException("Auth:ClientId configuration is required.");
         var authClientSecret = configuration["Auth:ClientSecret"]
             ?? throw new InvalidOperationException("Auth:ClientSecret configuration is required.");
+        var authAudience = configuration["Auth:Audience"];
 
-        // These have defaults for backwards compatibility
         var requireHttpsMetadata = configuration.GetValue("Auth:RequireHttpsMetadata", !environment.IsDevelopment());
         var nameClaimType = configuration["Auth:NameClaimType"] ?? "name";
         var roleClaimType = configuration["Auth:RoleClaimType"] ?? "role";
@@ -57,6 +57,12 @@ public static class AuthExtensions
                 options.Scope.Add("profile");
                 options.Scope.Add("email");
                 options.Scope.Add("offline_access");
+
+                // Request the API audience scope to get access tokens with correct audience claim
+                if (!string.IsNullOrEmpty(authAudience))
+                {
+                    options.Scope.Add(authAudience);
+                }
 
                 options.TokenValidationParameters = new()
                 {

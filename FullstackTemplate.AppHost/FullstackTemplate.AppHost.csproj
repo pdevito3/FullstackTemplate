@@ -15,12 +15,10 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.JavaScript" />
-    <!--#if (UseFusionAuth) -->
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Enrichers.Environment" />
     <PackageReference Include="Serilog.Enrichers.Thread" />
-    <!--#endif -->
   </ItemGroup>
 
   <!--#if (UseFusionAuth) -->

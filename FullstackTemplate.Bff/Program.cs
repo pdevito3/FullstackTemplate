@@ -64,22 +64,6 @@ try
 
     app.UseSerilogRequestLogging(options =>
     {
-        options.GetLevel = (httpContext, elapsed, ex) =>
-        {
-            if (ex != null)
-                return LogEventLevel.Error;
-
-            if (httpContext.Response.StatusCode >= 500)
-                return LogEventLevel.Error;
-
-            // Health checks are noisy, suppress them
-            if (httpContext.Request.Path.StartsWithSegments("/health") ||
-                httpContext.Request.Path.StartsWithSegments("/alive"))
-                return LogEventLevel.Verbose;
-
-            return LogEventLevel.Information;
-        };
-
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);

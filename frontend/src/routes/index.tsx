@@ -234,7 +234,7 @@ function Index() {
                       <p className="text-lg font-medium text-summary min-h-6 m-0">{forecast.summary}</p>
                       {'requestedBy' in forecast && (
                         <p className="text-xs text-green-400 m-0">
-                          Requested by: {forecast.requestedBy}
+                          Requested by: {String(forecast.requestedBy)}
                         </p>
                       )}
                       <div

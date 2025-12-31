@@ -96,12 +96,19 @@ try
 
     app.MapDefaultEndpoints();
 
+    // In development, redirect to Vite dev server; in production, serve SPA from wwwroot
     var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
-        ?? builder.Configuration["services:webfrontend:http:0"]
-        ?? Environment.GetEnvironmentVariable("FRONTEND_URL")
-        ?? "http://localhost:5173";
+                      ?? builder.Configuration["services:webfrontend:http:0"];
 
-    app.MapGet("/", () => Results.Redirect(frontendUrl));
+    if (!string.IsNullOrEmpty(frontendUrl))
+    {
+        app.MapGet("/", () => Results.Redirect(frontendUrl));
+    }
+    else
+    {
+        // SPA fallback for client-side routing in production
+        app.MapFallbackToFile("index.html");
+    }
 
     app.Run();
 }

@@ -55,6 +55,12 @@ public class FakeUserBuilder
         return this;
     }
 
+    public FakeUserBuilder WithTenantId(Guid tenantId)
+    {
+        _creationData = _creationData with { TenantId = tenantId };
+        return this;
+    }
+
     public User Build()
     {
         return User.Create(_creationData);

@@ -8,6 +8,7 @@ public sealed class FakeUserForCreationDto : AutoFaker<UserForCreationDto>
 {
     public FakeUserForCreationDto()
     {
+        RuleFor(x => x.TenantId, _ => TestContext.DefaultTenantId);
         RuleFor(x => x.FirstName, f => f.Person.FirstName);
         RuleFor(x => x.LastName, f => f.Person.LastName);
         RuleFor(x => x.Identifier, f => f.Random.Guid().ToString());

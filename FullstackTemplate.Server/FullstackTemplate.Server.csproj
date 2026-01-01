@@ -23,6 +23,7 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="Riok.Mapperly" />
     <PackageReference Include="Ardalis.SmartEnum" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Swashbuckle.AspNetCore" />

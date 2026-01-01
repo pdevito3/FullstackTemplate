@@ -162,4 +162,23 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(command);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Creates a new Tenant and User together in a single transaction.
+    /// Use this to onboard a new organization with its first admin user.
+    /// </summary>
+    [Authorize]
+    [HttpPost("initiate", Name = "InitiateUserAndTenant")]
+    [ProducesResponseType(typeof(InitiateUserAndTenantResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<InitiateUserAndTenantResponseDto>> InitiateUserAndTenant(
+        [FromBody] InitiateUserAndTenantDto dto)
+    {
+        var command = new InitiateUserAndTenant.Command(dto);
+        var result = await mediator.Send(command);
+
+        return CreatedAtRoute("GetUser",
+            new { id = result.User.Id },
+            result);
+    }
 }

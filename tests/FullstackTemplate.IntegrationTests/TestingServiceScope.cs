@@ -2,7 +2,11 @@ namespace FullstackTemplate.IntegrationTests;
 
 using Bogus;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -15,7 +19,8 @@ public class TestingServiceScope
     {
         _scope = TestFixture.BaseScopeFactory.CreateScope();
 
-        // Set up default authenticated user
+        // Set up ICurrentUserService mock to use the default user's identifier
+        // The real ITenantIdProvider will look up this user and return their tenant
         SetUserWithDefaults();
     }
 
@@ -25,7 +30,8 @@ public class TestingServiceScope
     }
 
     /// <summary>
-    /// Sets up a default authenticated user with basic claims using fake data.
+    /// Sets up ICurrentUserService mock with the default user's identifier.
+    /// The real ITenantIdProvider will look up this user to get their tenant.
     /// </summary>
     public void SetUserWithDefaults(
         string? identifier = null,
@@ -36,7 +42,10 @@ public class TestingServiceScope
         var faker = new Faker();
         var currentUserService = GetService<ICurrentUserService>();
 
-        currentUserService.UserIdentifier.Returns(identifier ?? Guid.NewGuid().ToString());
+        // Use the default user's identifier so ITenantIdProvider can look them up
+        var userIdentifier = identifier ?? TestFixture.DefaultUser.Identifier;
+
+        currentUserService.UserIdentifier.Returns(userIdentifier);
         currentUserService.Email.Returns(email ?? faker.Internet.Email());
         currentUserService.FirstName.Returns(firstName ?? faker.Person.FirstName);
         currentUserService.LastName.Returns(lastName ?? faker.Person.LastName);
@@ -66,6 +75,7 @@ public class TestingServiceScope
     public void SetUserUnauthenticated()
     {
         var currentUserService = GetService<ICurrentUserService>();
+
         currentUserService.IsAuthenticated.Returns(false);
         currentUserService.UserIdentifier.Returns((string?)null);
     }
@@ -80,6 +90,32 @@ public class TestingServiceScope
         currentUserService.ClientId.Returns(clientId);
         currentUserService.UserIdentifier.Returns((string?)null);
         currentUserService.IsAuthenticated.Returns(true);
+    }
+
+    /// <summary>
+    /// Creates a new tenant and user in the database, then sets the current user to that user.
+    /// Use this when you need to test with a different tenant than the default.
+    /// </summary>
+    public async Task<Tenant> SetupTenantAsync(string? name = null)
+    {
+        var tenant = new FakeTenantBuilder()
+            .WithName(name ?? new Faker().Company.CompanyName())
+            .Build();
+
+        await InsertAsync(tenant);
+
+        // Create a user in this tenant so ITenantIdProvider can look them up
+        var user = new FakeUserBuilder()
+            .WithTenantId(tenant.Id)
+            .WithIdentifier($"tenant-user-{Guid.NewGuid()}")
+            .Build();
+
+        await InsertAsync(user);
+
+        // Update ICurrentUserService to use this user's identifier
+        SetUserWithDefaults(identifier: user.Identifier);
+
+        return tenant;
     }
 
     public async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)

@@ -12,10 +12,28 @@ namespace FullstackTemplate.Server.Databases.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "tenants",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    created_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<string>(type: "text", nullable: true),
+                    last_modified_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_modified_by = table.Column<string>(type: "text", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tenants", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     first_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     last_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     identifier = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
@@ -31,6 +49,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_users", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_users_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -58,6 +82,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "ix_tenants_name",
+                table: "tenants",
+                column: "name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_permissions_user_id",
                 table: "user_permissions",
                 column: "user_id");
@@ -67,6 +97,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 table: "users",
                 column: "identifier",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_users_tenant_id",
+                table: "users",
+                column: "tenant_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_users_username",
@@ -82,6 +117,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             migrationBuilder.DropTable(
                 name: "users");
+
+            migrationBuilder.DropTable(
+                name: "tenants");
         }
     }
 }

@@ -4,8 +4,9 @@ using EmailAddresses;
 using DomainEvents;
 using Models;
 
-public class User : BaseEntity
+public class User : BaseEntity, ITenantable
 {
+    public Guid TenantId { get; private set; }
     public string FirstName { get; private set; } = default!;
     public string LastName { get; private set; } = default!;
     public string Identifier { get; private set; } = default!;
@@ -22,6 +23,7 @@ public class User : BaseEntity
     {
         var user = new User
         {
+            TenantId = userForCreation.TenantId,
             FirstName = userForCreation.FirstName,
             LastName = userForCreation.LastName,
             Identifier = userForCreation.Identifier,
@@ -120,6 +122,7 @@ public class User : BaseEntity
 
     private static void ValidateUser(User user)
     {
+        Exceptions.ValidationException.ThrowWhenEmpty(user.TenantId, "Please provide a tenant.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "Please provide a first name.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "Please provide a last name.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "Please provide an identifier.");

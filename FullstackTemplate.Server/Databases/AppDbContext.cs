@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases;
 
 using Domain;
+using Domain.Tenants;
 using Domain.Users;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,13 +11,31 @@ public class AppDbContext(
     DbContextOptions<AppDbContext> options,
     TimeProvider timeProvider,
     ICurrentUserService currentUserService,
+    ITenantIdProvider tenantIdProvider,
     IMediator mediator) : DbContext(options)
 {
-    
     #region DbSet Region
+    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     #endregion
+
+    /// <summary>
+    /// The current user's tenant ID for query filtering.
+    /// Returns null to allow access to all tenants (e.g., for system operations or unauthenticated requests).
+    /// </summary>
+    public Guid? CurrentTenantId
+    {
+        get
+        {
+            var userIdentifier = currentUserService.UserIdentifier;
+            if (userIdentifier == null)
+                return null;
+
+            // FusionCache handles caching internally, so this is fast on subsequent calls
+            return tenantIdProvider.GetTenantIdAsync(userIdentifier).GetAwaiter().GetResult();
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,6 +44,7 @@ public class AppDbContext(
         // Automatically discovers and applies all IEntityTypeConfiguration<T> implementations in the assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         modelBuilder.FilterSoftDeletedRecords();
+        modelBuilder.FilterByTenant(this);
     }
 
     public override int SaveChanges()

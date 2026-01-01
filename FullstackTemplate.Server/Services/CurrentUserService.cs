@@ -81,7 +81,8 @@ public interface ICurrentUserService
     IReadOnlyList<string> GetClaimValues(string claimType);
 }
 
-public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
+public sealed class CurrentUserService(
+    IHttpContextAccessor httpContextAccessor) : ICurrentUserService
 {
     public ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
 

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases.EntityConfigurations;
 
+using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -25,6 +26,14 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(e => e.Username)
             .IsRequired()
             .HasMaxLength(100);
+
+        builder.Property(e => e.TenantId)
+            .IsRequired();
+
+        builder.HasOne<Tenant>()
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.ComplexProperty(e => e.Email, email =>
         {
@@ -54,5 +63,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsUnique();
 
         builder.HasIndex(e => e.Username);
+
+        builder.HasIndex(e => e.TenantId);
     }
 }

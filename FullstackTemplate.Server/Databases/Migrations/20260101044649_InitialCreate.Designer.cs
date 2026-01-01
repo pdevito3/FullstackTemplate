@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FullstackTemplate.Server.Databases.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251228171609_InitialCreate")]
+    [Migration("20260101044649_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -25,6 +25,49 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Tenants.Tenant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenants");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenants_name");
+
+                    b.ToTable("tenants", (string)null);
+                });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>
                 {
@@ -71,6 +114,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("last_name");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -105,6 +152,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.HasIndex("Identifier")
                         .IsUnique()
                         .HasDatabaseName("ix_users_identifier");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_users_tenant_id");
 
                     b.HasIndex("Username")
                         .HasDatabaseName("ix_users_username");
@@ -161,6 +211,16 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasDatabaseName("ix_user_permissions_user_id");
 
                     b.ToTable("user_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_users_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserPermission", b =>

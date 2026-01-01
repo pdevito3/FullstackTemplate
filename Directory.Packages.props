@@ -27,6 +27,8 @@
     <PackageVersion Include="MediatR" Version="12.5.0" />
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />
     <PackageVersion Include="Ardalis.SmartEnum" Version="8.2.0" />
+    <!-- Caching -->
+    <PackageVersion Include="ZiggyCreatures.FusionCache" Version="2.5.0" />
     <!-- Microsoft Extensions -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.1.0" />

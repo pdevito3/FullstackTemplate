@@ -58,8 +58,42 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Autocomplete } from '@/components/ui/autocomplete'
-import { MultiSelect } from '@/components/ui/multi-select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectIcon,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectSeparator,
+} from '@/components/ui/select'
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxPopup,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxEmpty,
+} from '@/components/ui/combobox'
+import {
+  Autocomplete,
+  AutocompleteInput,
+  AutocompletePortal,
+  AutocompletePositioner,
+  AutocompletePopup,
+  AutocompleteList,
+  AutocompleteItem,
+  AutocompleteEmpty,
+  useAutocompleteFilter,
+} from '@/components/ui/autocomplete'
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select'
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -74,27 +108,53 @@ export const Route = createFileRoute('/components')({
   component: ComponentsPage,
 })
 
+interface Framework {
+  value: string
+  label: string
+}
+
+const frameworks: Framework[] = [
+  { value: 'react', label: 'React' },
+  { value: 'vue', label: 'Vue' },
+  { value: 'angular', label: 'Angular' },
+  { value: 'svelte', label: 'Svelte' },
+  { value: 'solid', label: 'Solid' },
+  { value: 'qwik', label: 'Qwik' },
+  { value: 'preact', label: 'Preact' },
+]
+
+const languages: MultiSelectOption[] = [
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'go', label: 'Go' },
+  { value: 'java', label: 'Java' },
+  { value: 'csharp', label: 'C#' },
+]
+
+const countries = [
+  { value: 'us', label: 'United States' },
+  { value: 'uk', label: 'United Kingdom' },
+  { value: 'ca', label: 'Canada' },
+  { value: 'au', label: 'Australia' },
+  { value: 'de', label: 'Germany' },
+  { value: 'fr', label: 'France' },
+  { value: 'jp', label: 'Japan' },
+]
+
 function ComponentsPage() {
   const [date, setDate] = useState<DateValue>(today(getLocalTimeZone()))
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false)
+  const [selectedFramework, setSelectedFramework] = useState<Framework | null>(null)
+  const [selectedLanguages, setSelectedLanguages] = useState<MultiSelectOption[]>([])
+  const [comboboxValue, setComboboxValue] = useState<Framework | null>(null)
   const [autocompleteValue, setAutocompleteValue] = useState('')
-  const [multiSelectValue, setMultiSelectValue] = useState<string[]>([])
+  const { contains } = useAutocompleteFilter({ sensitivity: 'base' })
 
-  const autocompleteOptions = [
-    { value: 'react', label: 'React' },
-    { value: 'vue', label: 'Vue' },
-    { value: 'angular', label: 'Angular' },
-    { value: 'svelte', label: 'Svelte' },
-    { value: 'solid', label: 'Solid' },
-  ]
-
-  const multiSelectOptions = [
-    { value: 'typescript', label: 'TypeScript' },
-    { value: 'javascript', label: 'JavaScript' },
-    { value: 'python', label: 'Python' },
-    { value: 'rust', label: 'Rust' },
-    { value: 'go', label: 'Go' },
-  ]
+  const filteredCountries = countries.filter((country) =>
+    contains(country.label, autocompleteValue)
+  )
 
   const tableData = [
     { id: 1, name: 'John Doe', email: 'john@example.com', status: 'Active' },
@@ -110,7 +170,7 @@ function ComponentsPage() {
           <div className="mb-10">
             <h1 className="text-4xl font-bold mb-2">Component Library</h1>
             <p className="text-text-secondary text-lg">
-              shadcn/ui components with sky accent theme and Nunito Sans font
+              Base UI components with sky accent theme and Nunito Sans font
             </p>
           </div>
 
@@ -193,30 +253,138 @@ function ComponentsPage() {
             </Card>
           </section>
 
-          {/* Autocomplete & Multi-Select */}
+          {/* Select, Combobox & Autocomplete */}
           <section className="mb-10">
-            <h2 className="text-2xl font-semibold mb-4">Autocomplete & Multi-Select</h2>
+            <h2 className="text-2xl font-semibold mb-4">Select, Combobox & Autocomplete</h2>
             <Card>
               <CardContent className="pt-6">
                 <div className="grid gap-6 max-w-sm">
+                  {/* Select */}
                   <div className="space-y-2">
-                    <Label>Autocomplete (Single Select)</Label>
+                    <Label>Select (Dropdown)</Label>
+                    <Select
+                      value={selectedFramework}
+                      onValueChange={setSelectedFramework}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a framework..." />
+                        <SelectIcon />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectGroupLabel>Popular Frameworks</SelectGroupLabel>
+                          {frameworks.slice(0, 4).map((framework) => (
+                            <SelectItem key={framework.value} value={framework}>
+                              <SelectItemText>{framework.label}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                        <SelectSeparator />
+                        <SelectGroup>
+                          <SelectGroupLabel>Other Frameworks</SelectGroupLabel>
+                          {frameworks.slice(4).map((framework) => (
+                            <SelectItem key={framework.value} value={framework}>
+                              <SelectItemText>{framework.label}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {selectedFramework && (
+                      <p className="text-sm text-muted-foreground">
+                        Selected: {selectedFramework.label}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Combobox (single select with search) */}
+                  <div className="space-y-2">
+                    <Label>Combobox (Searchable Single Select)</Label>
+                    <Combobox
+                      items={frameworks}
+                      value={comboboxValue}
+                      onValueChange={setComboboxValue}
+                      itemToStringValue={(item) => item?.label ?? ''}
+                    >
+                      <ComboboxInput
+                        placeholder="Search frameworks..."
+                        className="w-full"
+                      />
+                      <ComboboxPortal>
+                        <ComboboxPositioner sideOffset={4}>
+                          <ComboboxPopup>
+                            <ComboboxEmpty>No framework found.</ComboboxEmpty>
+                            <ComboboxList>
+                              {(framework: Framework) => (
+                                <ComboboxItem key={framework.value} value={framework}>
+                                  <span className="flex-1">{framework.label}</span>
+                                  <ComboboxItemIndicator />
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </ComboboxPopup>
+                        </ComboboxPositioner>
+                      </ComboboxPortal>
+                    </Combobox>
+                    {comboboxValue && (
+                      <p className="text-sm text-muted-foreground">
+                        Selected: {comboboxValue.label}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Autocomplete (free-form text with suggestions) */}
+                  <div className="space-y-2">
+                    <Label>Autocomplete (Free-form with Suggestions)</Label>
                     <Autocomplete
-                      options={autocompleteOptions}
+                      items={filteredCountries}
                       value={autocompleteValue}
                       onValueChange={setAutocompleteValue}
-                      placeholder="Select a framework..."
-                      searchPlaceholder="Search frameworks..."
-                    />
+                      itemToStringValue={(item) => item?.label ?? ''}
+                      openOnInputClick
+                    >
+                      <AutocompleteInput
+                        placeholder="Type a country..."
+                        className="w-full"
+                      />
+                      <AutocompletePortal>
+                        <AutocompletePositioner sideOffset={4}>
+                          <AutocompletePopup>
+                            <AutocompleteEmpty>No countries found.</AutocompleteEmpty>
+                            <AutocompleteList>
+                              {(country: typeof countries[number]) => (
+                                <AutocompleteItem key={country.value} value={country}>
+                                  {country.label}
+                                </AutocompleteItem>
+                              )}
+                            </AutocompleteList>
+                          </AutocompletePopup>
+                        </AutocompletePositioner>
+                      </AutocompletePortal>
+                    </Autocomplete>
+                    {autocompleteValue && (
+                      <p className="text-sm text-muted-foreground">
+                        Value: {autocompleteValue}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Multi-Select */}
                   <div className="space-y-2">
-                    <Label>Multi-Select</Label>
+                    <Label>Multi-Select (Multiple with Chips)</Label>
                     <MultiSelect
-                      options={multiSelectOptions}
-                      selected={multiSelectValue}
-                      onChange={setMultiSelectValue}
+                      options={languages}
+                      value={selectedLanguages}
+                      onValueChange={setSelectedLanguages}
                       placeholder="Select languages..."
                     />
+                    {selectedLanguages.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Selected: {selectedLanguages.map(l => l.label).join(', ')}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>

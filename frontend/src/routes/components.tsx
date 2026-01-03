@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { today, getLocalTimeZone, type DateValue } from '@internationalized/date'
-import { Bell, Calendar as CalendarIcon, ChevronsUpDown, Mail, Plus, Settings, User } from 'lucide-react'
+import { Notification03Icon, Calendar03Icon, ArrowUpDownIcon, Mail01Icon, Add01Icon, Settings01Icon, UserIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -155,7 +156,7 @@ function ComponentsPage() {
                   <Button size="sm">Small</Button>
                   <Button size="default">Default</Button>
                   <Button size="lg">Large</Button>
-                  <Button size="icon"><Plus className="h-4 w-4" /></Button>
+                  <Button size="icon"><HugeiconsIcon icon={Add01Icon} className="h-4 w-4" /></Button>
                 </div>
               </CardContent>
             </Card>
@@ -338,22 +339,22 @@ function ComponentsPage() {
                 <div className="flex flex-wrap gap-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button variant="outline" />}>
-                      <Settings className="mr-2 h-4 w-4" />
+                      <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
                       Options
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       <DropdownMenuLabel>My Account</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
-                        <User className="mr-2 h-4 w-4" />
+                        <HugeiconsIcon icon={UserIcon} className="mr-2 h-4 w-4" />
                         Profile
                       </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <Mail className="mr-2 h-4 w-4" />
+                        <HugeiconsIcon icon={Mail01Icon} className="mr-2 h-4 w-4" />
                         Messages
                       </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <Settings className="mr-2 h-4 w-4" />
+                        <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
                         Settings
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -361,7 +362,7 @@ function ComponentsPage() {
 
                   <Popover>
                     <PopoverTrigger render={<Button variant="outline" />}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <HugeiconsIcon icon={Calendar03Icon} className="mr-2 h-4 w-4" />
                       Pick a date
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-3" align="start">
@@ -374,7 +375,7 @@ function ComponentsPage() {
 
                   <Tooltip>
                     <TooltipTrigger render={<Button variant="outline" size="icon" />}>
-                      <Bell className="h-4 w-4" />
+                      <HugeiconsIcon icon={Notification03Icon} className="h-4 w-4" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>You have 3 notifications</p>
@@ -396,7 +397,7 @@ function ComponentsPage() {
                       @peduarte starred 3 repositories
                     </h4>
                     <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
-                      <ChevronsUpDown className="h-4 w-4" />
+                      <HugeiconsIcon icon={ArrowUpDownIcon} className="h-4 w-4" />
                       <span className="sr-only">Toggle</span>
                     </CollapsibleTrigger>
                   </div>

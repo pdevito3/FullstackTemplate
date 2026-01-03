@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Cloud, Lock, Unlock, LogIn, LogOut } from 'lucide-react'
+import { RotateClockwiseIcon, CloudIcon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 import { useWeatherForecast, useSecureWeatherForecast, useAuth, useAuthActions } from '../api/hooks'
 import { Button } from '@/components/ui/button'
@@ -78,13 +79,13 @@ function Index() {
                   Welcome, <span className="font-medium">{auth.username}</span>
                 </span>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <HugeiconsIcon icon={Logout01Icon} className="w-4 h-4 mr-2" />
                   Logout
                 </Button>
               </>
             ) : (
               <Button onClick={handleLogin}>
-                <LogIn className="w-4 h-4 mr-2" />
+                <HugeiconsIcon icon={Login01Icon} className="w-4 h-4 mr-2" />
                 Login
               </Button>
             )}
@@ -104,9 +105,9 @@ function Index() {
                     onClick={() => setShowSecure(!showSecure)}
                   >
                     {showSecure ? (
-                      <Lock className="w-4 h-4 mr-2" />
+                      <HugeiconsIcon icon={SquareLock02Icon} className="w-4 h-4 mr-2" />
                     ) : (
-                      <Unlock className="w-4 h-4 mr-2" />
+                      <HugeiconsIcon icon={SquareUnlock02Icon} className="w-4 h-4 mr-2" />
                     )}
                     {showSecure ? 'Secure API' : 'Public API'}
                   </Button>
@@ -139,7 +140,8 @@ function Index() {
                       onClick={handleRefresh}
                       disabled={isCurrentlyFetching}
                     >
-                      <RefreshCw
+                      <HugeiconsIcon
+                        icon={RotateClockwiseIcon}
                         className={`w-4 h-4 mr-2 ${isCurrentlyFetching ? 'animate-spin' : ''}`}
                       />
                       Refresh
@@ -153,7 +155,7 @@ function Index() {
             {/* Status indicator */}
             {isSecureData && (
               <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
-                <Lock className="w-4 h-4" />
+                <HugeiconsIcon icon={SquareLock02Icon} className="w-4 h-4" />
                 Showing authenticated data
               </div>
             )}
@@ -203,7 +205,7 @@ function Index() {
         {/* Empty State */}
         {!isLoading && !currentError && displayData.length === 0 && (
           <div className="text-center py-12">
-            <Cloud className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <HugeiconsIcon icon={CloudIcon} className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No weather data available</p>
             <Button variant="outline" className="mt-4" onClick={handleRefresh}>
               Try Again
@@ -239,13 +241,13 @@ function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCard
             </p>
             <CardTitle className="mt-1">{forecast.summary}</CardTitle>
           </div>
-          <Cloud className="w-6 h-6 text-muted-foreground" />
+          <HugeiconsIcon icon={CloudIcon} className="w-6 h-6 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>
         {'requestedBy' in forecast && (
           <Badge variant="secondary" className="mb-3 text-green-600">
-            <Lock className="w-3 h-3 mr-1" />
+            <HugeiconsIcon icon={SquareLock02Icon} className="w-3 h-3 mr-1" />
             {String(forecast.requestedBy)}
           </Badge>
         )}

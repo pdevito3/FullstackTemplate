@@ -1,5 +1,6 @@
 import type { Row } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontalCircle01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +36,7 @@ function DataTableRowActions<TData>({
           />
         }
       >
-        <MoreHorizontal className="h-4 w-4" />
+        <HugeiconsIcon icon={MoreHorizontalCircle01Icon} className="h-4 w-4" />
         <span className="sr-only">Open menu</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">

@@ -1,5 +1,6 @@
 import type { Table } from "@tanstack/react-table"
-import { Settings2 } from "lucide-react"
+import { Settings01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -29,7 +30,7 @@ function DataTableViewOptions<TData>({
           />
         }
       >
-        <Settings2 className="mr-2 h-4 w-4" />
+        <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
         View
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">

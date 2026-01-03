@@ -1,5 +1,6 @@
 import * as React from "react"
-import { X, Check, ChevronsUpDown } from "lucide-react"
+import { Cancel01Icon, Tick02Icon, ArrowUpDownIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -111,7 +112,7 @@ function MultiSelect({
                       handleUnselect(selected[index])
                     }}
                   >
-                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                    <HugeiconsIcon icon={Cancel01Icon} className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                   </button>
                 </Badge>
               ))}
@@ -123,7 +124,7 @@ function MultiSelect({
             </Badge>
           )}
         </div>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        <HugeiconsIcon icon={ArrowUpDownIcon} className="h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command>
@@ -147,7 +148,7 @@ function MultiSelect({
                           : "opacity-50 [&_svg]:invisible"
                       )}
                     >
-                      <Check className="h-4 w-4" />
+                      <HugeiconsIcon icon={Tick02Icon} className="h-4 w-4" />
                     </div>
                     {option.label}
                   </CommandItem>

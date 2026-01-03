@@ -105,6 +105,114 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate()
 }
 
+// ============================================================================
+// Quick Select Feature - Preset date shortcuts
+// ============================================================================
+
+// Helper to get a preset date relative to today
+function getPresetDate(daysOffset: number): CalendarDate {
+  return today(getLocalTimeZone()).add({ days: daysOffset })
+}
+
+// Helper to get week range (Sunday-based)
+function getWeekRange(weeksOffset: number): { start: CalendarDate; end: CalendarDate } {
+  const todayDate = today(getLocalTimeZone())
+  const targetWeekStart = todayDate.add({ weeks: weeksOffset })
+  const dayOfWeek = targetWeekStart.toDate(getLocalTimeZone()).getDay()
+  const weekStart = targetWeekStart.subtract({ days: dayOfWeek })
+  const weekEnd = weekStart.add({ days: 6 })
+  return { start: weekStart, end: weekEnd }
+}
+
+// Helper to get month range
+function getMonthRange(monthsOffset: number): { start: CalendarDate; end: CalendarDate } {
+  const todayDate = today(getLocalTimeZone())
+  const targetMonth = todayDate.add({ months: monthsOffset })
+  const monthStart = new CalendarDate(targetMonth.year, targetMonth.month, 1)
+  const monthEnd = monthStart.add({ months: 1 }).subtract({ days: 1 })
+  return { start: monthStart, end: monthEnd }
+}
+
+// Helper to get year range
+function getYearRange(yearsOffset: number): { start: CalendarDate; end: CalendarDate } {
+  const todayDate = today(getLocalTimeZone())
+  const targetYear = todayDate.year + yearsOffset
+  const yearStart = new CalendarDate(targetYear, 1, 1)
+  const yearEnd = new CalendarDate(targetYear, 12, 31)
+  return { start: yearStart, end: yearEnd }
+}
+
+// Single date quick select presets
+const singleDatePresets = [
+  { label: "Today", getDate: () => getPresetDate(0) },
+  { label: "Tomorrow", getDate: () => getPresetDate(1) },
+  { label: "Yesterday", getDate: () => getPresetDate(-1) },
+] as const
+
+// Date range quick select presets
+const dateRangePresets = [
+  { label: "This Week", getRange: () => getWeekRange(0) },
+  { label: "Last Week", getRange: () => getWeekRange(-1) },
+  { label: "Next Week", getRange: () => getWeekRange(1) },
+  { label: "This Month", getRange: () => getMonthRange(0) },
+  { label: "Last Month", getRange: () => getMonthRange(-1) },
+  { label: "Next Month", getRange: () => getMonthRange(1) },
+  { label: "This Year", getRange: () => getYearRange(0) },
+  { label: "Last Year", getRange: () => getYearRange(-1) },
+] as const
+
+// Quick selects panel for single date calendar
+interface QuickSelectsPanelProps {
+  onSelect: (date: CalendarDate) => void
+}
+
+function QuickSelectsPanel({ onSelect }: QuickSelectsPanelProps) {
+  return (
+    <div className="flex flex-col gap-1 border-r pr-3 mr-3">
+      <div className="text-xs font-medium text-muted-foreground mb-1">Quick Select</div>
+      {singleDatePresets.map((preset) => (
+        <button
+          key={preset.label}
+          type="button"
+          onClick={() => onSelect(preset.getDate())}
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "justify-start h-7 text-xs font-normal"
+          )}
+        >
+          {preset.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Quick selects panel for range calendar
+interface QuickSelectsRangePanelProps {
+  onSelect: (range: { start: CalendarDate; end: CalendarDate }) => void
+}
+
+function QuickSelectsRangePanel({ onSelect }: QuickSelectsRangePanelProps) {
+  return (
+    <div className="flex flex-col gap-1 border-r pr-3 mr-3">
+      <div className="text-xs font-medium text-muted-foreground mb-1">Quick Select</div>
+      {dateRangePresets.map((preset) => (
+        <button
+          key={preset.label}
+          type="button"
+          onClick={() => onSelect(preset.getRange())}
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "justify-start h-7 text-xs font-normal"
+          )}
+        >
+          {preset.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // Month Picker Grid - 4x3 grid of months
 function MonthPickerGrid() {
   const zoomContext = useContext(CalendarZoomContext)
@@ -497,78 +605,102 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
 interface JollyCalendarProps<T extends AriaDateValue>
   extends AriaCalendarProps<T> {
   errorMessage?: string
+  showQuickSelects?: boolean
 }
 
 function JollyCalendar<T extends AriaDateValue>({
   errorMessage,
   className,
+  showQuickSelects,
+  onChange,
   ...props
 }: JollyCalendarProps<T>) {
+  const handleQuickSelect = (date: CalendarDate) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onChange?.(date as any)
+  }
+
   return (
-    <Calendar
-      className={composeRenderProps(className, (className) =>
-        cn("w-fit", className)
-      )}
-      {...props}
-    >
-      <CalendarZoomProvider>
-        <CalendarHeadingZoomable />
-        <CalendarContent>
-          <CalendarGrid>
-            <CalendarGridHeader>
-              {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
-            </CalendarGridHeader>
-            <CalendarGridBody>
-              {(date) => <CalendarCell date={date} />}
-            </CalendarGridBody>
-          </CalendarGrid>
-        </CalendarContent>
-      </CalendarZoomProvider>
-      {errorMessage && (
-        <Text className="text-sm text-destructive" slot="errorMessage">
-          {errorMessage}
-        </Text>
-      )}
-    </Calendar>
+    <div className={cn("flex", showQuickSelects && "gap-0")}>
+      {showQuickSelects && <QuickSelectsPanel onSelect={handleQuickSelect} />}
+      <Calendar
+        className={composeRenderProps(className, (className) =>
+          cn("w-fit", className)
+        )}
+        onChange={onChange}
+        {...props}
+      >
+        <CalendarZoomProvider>
+          <CalendarHeadingZoomable />
+          <CalendarContent>
+            <CalendarGrid>
+              <CalendarGridHeader>
+                {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
+              </CalendarGridHeader>
+              <CalendarGridBody>
+                {(date) => <CalendarCell date={date} />}
+              </CalendarGridBody>
+            </CalendarGrid>
+          </CalendarContent>
+        </CalendarZoomProvider>
+        {errorMessage && (
+          <Text className="text-sm text-destructive" slot="errorMessage">
+            {errorMessage}
+          </Text>
+        )}
+      </Calendar>
+    </div>
   )
 }
 
 interface JollyRangeCalendarProps<T extends AriaDateValue>
   extends AriaRangeCalendarProps<T> {
   errorMessage?: string
+  showQuickSelects?: boolean
 }
 
 function JollyRangeCalendar<T extends AriaDateValue>({
   errorMessage,
   className,
+  showQuickSelects,
+  onChange,
   ...props
 }: JollyRangeCalendarProps<T>) {
+  const handleQuickSelect = (range: { start: CalendarDate; end: CalendarDate }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onChange?.({ start: range.start, end: range.end } as any)
+  }
+
   return (
-    <RangeCalendar
-      className={composeRenderProps(className, (className) =>
-        cn("w-fit", className)
-      )}
-      {...props}
-    >
-      <CalendarZoomProvider>
-        <CalendarHeadingZoomable />
-        <CalendarContent>
-          <CalendarGrid>
-            <CalendarGridHeader>
-              {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
-            </CalendarGridHeader>
-            <CalendarGridBody>
-              {(date) => <CalendarCell date={date} />}
-            </CalendarGridBody>
-          </CalendarGrid>
-        </CalendarContent>
-      </CalendarZoomProvider>
-      {errorMessage && (
-        <Text slot="errorMessage" className="text-sm text-destructive">
-          {errorMessage}
-        </Text>
-      )}
-    </RangeCalendar>
+    <div className={cn("flex", showQuickSelects && "gap-0")}>
+      {showQuickSelects && <QuickSelectsRangePanel onSelect={handleQuickSelect} />}
+      <RangeCalendar
+        className={composeRenderProps(className, (className) =>
+          cn("w-fit", className)
+        )}
+        onChange={onChange}
+        {...props}
+      >
+        <CalendarZoomProvider>
+          <CalendarHeadingZoomable />
+          <CalendarContent>
+            <CalendarGrid>
+              <CalendarGridHeader>
+                {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
+              </CalendarGridHeader>
+              <CalendarGridBody>
+                {(date) => <CalendarCell date={date} />}
+              </CalendarGridBody>
+            </CalendarGrid>
+          </CalendarContent>
+        </CalendarZoomProvider>
+        {errorMessage && (
+          <Text slot="errorMessage" className="text-sm text-destructive">
+            {errorMessage}
+          </Text>
+        )}
+      </RangeCalendar>
+    </div>
   )
 }
 

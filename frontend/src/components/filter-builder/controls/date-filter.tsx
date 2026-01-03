@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import {
   CalendarDate,
   getLocalTimeZone,
-  today,
 } from '@internationalized/date'
 import type { RangeValue, DateValue as AriaDateValue } from 'react-aria-components'
 import { Button } from '@/components/ui/button'
@@ -35,38 +34,6 @@ function jsDateToCalendarDate(date: Date): CalendarDate {
 // Helper to convert CalendarDate to JS Date
 function calendarDateToJsDate(date: CalendarDate): Date {
   return date.toDate(getLocalTimeZone())
-}
-
-// Helper for date presets
-function getPresetDate(daysOffset: number): CalendarDate {
-  const todayDate = today(getLocalTimeZone())
-  return todayDate.add({ days: daysOffset })
-}
-
-function getWeekRange(weeksOffset: number): { start: CalendarDate; end: CalendarDate } {
-  const todayDate = today(getLocalTimeZone())
-  const targetWeekStart = todayDate.add({ weeks: weeksOffset })
-  // Find start of week (Sunday)
-  const dayOfWeek = targetWeekStart.toDate(getLocalTimeZone()).getDay()
-  const weekStart = targetWeekStart.subtract({ days: dayOfWeek })
-  const weekEnd = weekStart.add({ days: 6 })
-  return { start: weekStart, end: weekEnd }
-}
-
-function getMonthRange(monthsOffset: number): { start: CalendarDate; end: CalendarDate } {
-  const todayDate = today(getLocalTimeZone())
-  const targetMonth = todayDate.add({ months: monthsOffset })
-  const monthStart = new CalendarDate(targetMonth.year, targetMonth.month, 1)
-  const monthEnd = monthStart.add({ months: 1 }).subtract({ days: 1 })
-  return { start: monthStart, end: monthEnd }
-}
-
-function getYearRange(yearsOffset: number): { start: CalendarDate; end: CalendarDate } {
-  const todayDate = today(getLocalTimeZone())
-  const targetYear = todayDate.year + yearsOffset
-  const yearStart = new CalendarDate(targetYear, 1, 1)
-  const yearEnd = new CalendarDate(targetYear, 12, 31)
-  return { start: yearStart, end: yearEnd }
 }
 
 // Helper to extract time string from Date
@@ -133,18 +100,6 @@ export function DateFilter({
     initialDateValue?.endDate ? getTimeString(initialDateValue.endDate) : '23:59'
   )
 
-  const handlePreset = (preset: () => CalendarDate | { start: CalendarDate; end: CalendarDate }) => {
-    const result = preset()
-    if (result instanceof CalendarDate) {
-      setDate(result)
-    } else if ('start' in result) {
-      setDateRange({ start: result.start, end: result.end })
-      if (mode !== 'between') {
-        setMode('between')
-      }
-    }
-  }
-
   const handleSubmit = () => {
     if (mode === 'between' && !dateRange?.start) return
     if (mode !== 'between' && !date) return
@@ -200,32 +155,10 @@ export function DateFilter({
     { value: 'between', label: 'Between' },
   ]
 
-  // Presets for single dates (on, before, after)
-  const singleDatePresets = [
-    { label: 'Today', action: () => getPresetDate(0) },
-    { label: 'Tomorrow', action: () => getPresetDate(1) },
-    { label: 'Yesterday', action: () => getPresetDate(-1) },
-  ]
-
-  // Presets for date ranges (between)
-  const dateRangePresets = [
-    { label: 'This Week', action: () => getWeekRange(0) },
-    { label: 'Last Week', action: () => getWeekRange(-1) },
-    { label: 'Next Week', action: () => getWeekRange(1) },
-    { label: 'This Month', action: () => getMonthRange(0) },
-    { label: 'Last Month', action: () => getMonthRange(-1) },
-    { label: 'Next Month', action: () => getMonthRange(1) },
-    { label: 'This Year', action: () => getYearRange(0) },
-    { label: 'Last Year', action: () => getYearRange(-1) },
-  ]
-
-  const currentPresets =
-    mode === 'between' ? dateRangePresets : singleDatePresets
-
   const isValid = mode === 'between' ? dateRange?.start : date
 
   return (
-    <div className="w-80 p-3 space-y-3">
+    <div className="p-3 space-y-3">
       {/* Mode selector */}
       <div className="flex gap-1 flex-wrap">
         {modes.map((m) => (
@@ -251,37 +184,19 @@ export function DateFilter({
         </Label>
       </Checkbox>
 
-      {/* Quick presets */}
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground">
-          Quick Select
-        </div>
-        <div className="grid grid-cols-3 gap-1">
-          {currentPresets.map((preset) => (
-            <Button
-              key={preset.label}
-              variant="outline"
-              size="xs"
-              onClick={() => handlePreset(preset.action)}
-              className="text-xs h-7"
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Calendar */}
+      {/* Calendar with integrated quick selects */}
       <div className="flex justify-center">
         {mode === 'between' ? (
           <JollyRangeCalendar
             value={dateRange}
             onChange={setDateRange}
+            showQuickSelects
           />
         ) : (
           <JollyCalendar
             value={date}
             onChange={setDate}
+            showQuickSelects
           />
         )}
       </div>

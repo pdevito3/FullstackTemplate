@@ -1,35 +1,59 @@
-import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { ThemeToggle } from '@/components/theme-toggle'
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
+import { Separator } from '@/components/ui/separator'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb'
 
 export const Route = createRootRoute({
   component: RootComponent,
 })
 
+const routeNames: Record<string, string> = {
+  '/': 'Home',
+  '/about': 'About',
+  '/components': 'Components',
+}
+
 function RootComponent() {
+  const routerState = useRouterState()
+  const currentPath = routerState.location.pathname
+  const pageName = routeNames[currentPath] ?? 'Page'
+
   return (
-    <>
-      <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-6">
-          <Link
-            to="/"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground [&.active]:font-semibold"
-          >
-            Home
-          </Link>
-          <Link
-            to="/about"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground [&.active]:font-semibold"
-          >
-            About
-          </Link>
-          <div className="ml-auto">
-            <ThemeToggle />
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{pageName}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Outlet />
         </div>
-      </nav>
-      <Outlet />
+      </SidebarInset>
       <TanStackRouterDevtools />
-    </>
+    </SidebarProvider>
   )
 }

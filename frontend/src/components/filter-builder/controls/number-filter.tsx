@@ -73,10 +73,7 @@ export function NumberFilter({
                 key={op.symbol}
                 onClick={() => setOperator(op.symbol)}
               >
-                <div className="flex flex-col">
-                  <span>{op.label}</span>
-                  <span className="text-xs text-muted-foreground">{op.description}</span>
-                </div>
+                {op.label}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

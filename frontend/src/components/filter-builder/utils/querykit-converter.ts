@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
 import { LogicalOperators } from './operators'
@@ -104,21 +105,47 @@ function convertMultiSelectFilter(
 }
 
 /**
+ * Get timezone offset string in ±HH:mm format
+ */
+function getTimezoneOffset(date: Date): string {
+  const offset = -date.getTimezoneOffset()
+  const sign = offset >= 0 ? '+' : '-'
+  const hours = Math.floor(Math.abs(offset) / 60).toString().padStart(2, '0')
+  const minutes = (Math.abs(offset) % 60).toString().padStart(2, '0')
+  return `${sign}${hours}:${minutes}`
+}
+
+/**
  * Convert a date filter to QueryKit string
  */
 function convertDateFilter(propertyKey: string, _operator: string, value: DateValue): string {
   const { mode, startDate, endDate, exclude, dateType = 'date' } = value
 
-  // Format dates as ISO 8601 strings
-  // Date-only: YYYY-MM-DD
-  // DateTime: YYYY-MM-DDTHH:mm:ss (local) or with Z for UTC
+  // Format dates as ISO 8601 strings based on dateType:
+  // - date: YYYY-MM-DD
+  // - datetime: YYYY-MM-DDTHH:mm:ss (local, no timezone)
+  // - datetimeUtc: YYYY-MM-DDTHH:mm:ssZ (UTC)
+  // - datetimeOffset: YYYY-MM-DDTHH:mm:ss±HH:mm (with timezone offset)
   const formatDateValue = (date: Date): string => {
-    if (dateType === 'datetime') {
-      // ISO 8601 datetime format: 2022-07-01T00:00:03
-      return format(date, "yyyy-MM-dd'T'HH:mm:ss")
+    switch (dateType) {
+      case 'datetime':
+        // ISO 8601 local datetime: 2022-07-01T00:00:03
+        return format(date, "yyyy-MM-dd'T'HH:mm:ss")
+
+      case 'datetimeUtc':
+        // ISO 8601 UTC datetime: 2022-07-01T00:00:03Z
+        // Convert local time to UTC
+        return formatInTimeZone(date, 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'")
+
+      case 'datetimeOffset':
+        // ISO 8601 datetime with offset: 2022-07-01T00:00:03+01:00
+        return format(date, "yyyy-MM-dd'T'HH:mm:ss") + getTimezoneOffset(date)
+
+      case 'date':
+      default:
+        // ISO 8601 date-only: 2022-07-01
+        return format(date, 'yyyy-MM-dd')
     }
-    // Date-only format: 2022-07-01
-    return format(date, 'yyyy-MM-dd')
   }
 
   switch (mode) {

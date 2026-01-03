@@ -103,9 +103,21 @@ function FilterDemoPage() {
     },
     {
       propertyKey: 'scheduledAt',
-      propertyLabel: 'Scheduled At',
+      propertyLabel: 'Scheduled At (Local)',
       controlType: 'date',
-      dateType: 'datetime', // DateTime filter with time picker
+      dateType: 'datetime', // Local datetime: 2022-07-01T00:00:03
+    },
+    {
+      propertyKey: 'publishedAt',
+      propertyLabel: 'Published At (UTC)',
+      controlType: 'date',
+      dateType: 'datetimeUtc', // UTC datetime: 2022-07-01T00:00:03Z
+    },
+    {
+      propertyKey: 'lastLoginAt',
+      propertyLabel: 'Last Login (Offset)',
+      controlType: 'date',
+      dateType: 'datetimeOffset', // Datetime with offset: 2022-07-01T00:00:03+01:00
     },
     {
       propertyKey: 'comments',

@@ -21,7 +21,12 @@ export type OperatorType =
 
 export type LogicalOperator = 'AND' | 'OR'
 
-export type DateType = 'date' | 'datetime'
+// Date format types for QueryKit:
+// - 'date': Date only (2022-07-01)
+// - 'datetime': Local datetime without timezone (2022-07-01T00:00:03)
+// - 'datetimeUtc': DateTime with UTC indicator (2022-07-01T00:00:03Z)
+// - 'datetimeOffset': DateTime with timezone offset (2022-07-01T00:00:03+01:00)
+export type DateType = 'date' | 'datetime' | 'datetimeUtc' | 'datetimeOffset'
 
 export interface DateValue {
   mode: 'before' | 'after' | 'between' | 'on' | 'excluding'

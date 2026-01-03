@@ -92,7 +92,8 @@ export function DateFilter({
   dateType = 'date',
 }: DateFilterProps) {
   const initialDateValue = initialFilter?.value as DateValue | undefined
-  const isDateTime = dateType === 'datetime'
+  // Show time inputs for any datetime variant
+  const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
 
   // Convert initial values to CalendarDate
   const initialCalendarDate = useMemo(() => {
@@ -171,7 +172,7 @@ export function DateFilter({
             startDate: startDateValue,
             endDate: endDateValue,
             exclude: exclude || undefined,
-            dateType: isDateTime ? 'datetime' : 'date',
+            dateType: dateType,
           }
         : {
             mode: (exclude ? 'excluding' : mode) as
@@ -180,7 +181,7 @@ export function DateFilter({
               | 'on'
               | 'excluding',
             startDate: startDateValue,
-            dateType: isDateTime ? 'datetime' : 'date',
+            dateType: dateType,
           }
 
     onSubmit({

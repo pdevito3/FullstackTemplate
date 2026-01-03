@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as FilterDemoRouteImport } from './routes/filter-demo'
 import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const FilterDemoRoute = FilterDemoRouteImport.update({
+  id: '/filter-demo',
+  path: '/filter-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComponentsRoute = ComponentsRouteImport.update({
   id: '/components',
   path: '/components',
@@ -33,34 +39,45 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/components': typeof ComponentsRoute
+  '/filter-demo': typeof FilterDemoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/components': typeof ComponentsRoute
+  '/filter-demo': typeof FilterDemoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/components': typeof ComponentsRoute
+  '/filter-demo': typeof FilterDemoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/components'
+  fullPaths: '/' | '/about' | '/components' | '/filter-demo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/components'
-  id: '__root__' | '/' | '/about' | '/components'
+  to: '/' | '/about' | '/components' | '/filter-demo'
+  id: '__root__' | '/' | '/about' | '/components' | '/filter-demo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ComponentsRoute: typeof ComponentsRoute
+  FilterDemoRoute: typeof FilterDemoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/filter-demo': {
+      id: '/filter-demo'
+      path: '/filter-demo'
+      fullPath: '/filter-demo'
+      preLoaderRoute: typeof FilterDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/components': {
       id: '/components'
       path: '/components'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ComponentsRoute: ComponentsRoute,
+  FilterDemoRoute: FilterDemoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

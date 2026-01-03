@@ -48,15 +48,10 @@ const demoItems = [
     title: "Components",
     url: "/components",
   },
-  // Add more demo routes here
-  // {
-  //   title: "Examples",
-  //   url: "/examples",
-  // },
-  // {
-  //   title: "Playground",
-  //   url: "/playground",
-  // },
+  {
+    title: "Filter Builder",
+    url: "/filter-demo",
+  },
 ]
 
 export function AppSidebar() {

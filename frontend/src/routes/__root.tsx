@@ -22,6 +22,7 @@ const routeNames: Record<string, string> = {
   '/': 'Home',
   '/about': 'About',
   '/components': 'Components',
+  '/filter-demo': 'Filter Builder',
 }
 
 function RootComponent() {

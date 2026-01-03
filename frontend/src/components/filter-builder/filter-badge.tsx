@@ -45,6 +45,12 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
         <HugeiconsIcon icon={TextFontIcon} className="size-3 text-muted-foreground ml-1" />
       )}
 
+      {filter.controlType === 'multiselect' && filter.matchAll && (
+        <span className="text-[10px] font-medium text-muted-foreground ml-1 bg-muted px-1 rounded">
+          ALL
+        </span>
+      )}
+
       <Button
         variant="ghost"
         size="icon-xs"

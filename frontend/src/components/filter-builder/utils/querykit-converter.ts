@@ -54,14 +54,14 @@ function convertGroup(group: FilterGroup): string {
  * Convert a single filter to QueryKit string
  */
 function convertFilter(filter: Filter): string {
-  const { propertyKey, operator, value, controlType } = filter
+  const { propertyKey, operator, value, controlType, matchAll } = filter
 
   switch (controlType) {
     case 'text':
       return convertTextFilter(propertyKey, operator, value as string)
 
     case 'multiselect':
-      return convertMultiSelectFilter(propertyKey, operator, value as string[])
+      return convertMultiSelectFilter(propertyKey, operator, value as string[], matchAll)
 
     case 'date':
       return convertDateFilter(propertyKey, operator, value as DateValue)
@@ -92,7 +92,8 @@ function convertTextFilter(propertyKey: string, operator: string, value: string)
 function convertMultiSelectFilter(
   propertyKey: string,
   operator: string,
-  value: string[]
+  value: string[],
+  matchAll?: boolean
 ): string {
   if (value.length === 0) {
     return ''
@@ -101,7 +102,10 @@ function convertMultiSelectFilter(
   // Format array values
   const formattedValues = value.map((v) => (v.includes(' ') ? `"${v}"` : v)).join(', ')
 
-  return `${propertyKey} ${operator} [${formattedValues}]`
+  // Add % prefix to operator for "all must match" semantics
+  const finalOperator = matchAll ? `%${operator}` : operator
+
+  return `${propertyKey} ${finalOperator} [${formattedValues}]`
 }
 
 /**

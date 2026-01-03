@@ -69,14 +69,14 @@ function FilterDemoPage() {
       propertyKey: 'firstName',
       propertyLabel: 'First Name',
       controlType: 'text',
-      operators: ['==', '!=', '@=', '!@=', '_=', '!_=', '_-=', '!_-='],
+      operators: ['==', '!=', '@=', '!@=', '_=', '!_=', '_-=', '!_-=', '~~', '!~'],
       defaultOperator: '==',
     },
     {
       propertyKey: 'lastName',
       propertyLabel: 'Last Name',
       controlType: 'text',
-      operators: ['==', '!=', '@=', '!@=', '_=', '!_=', '_-=', '!_-='],
+      operators: ['==', '!=', '@=', '!@=', '_=', '!_=', '_-=', '!_-=', '~~', '!~'],
       defaultOperator: '==',
     },
     {
@@ -85,6 +85,21 @@ function FilterDemoPage() {
       controlType: 'text',
       operators: ['==', '!=', '@=', '!@=', '_=', '!_=', '_-=', '!_-='],
       defaultOperator: '@=',
+    },
+    // Nested property examples - demonstrates dot notation for related entities
+    {
+      propertyKey: 'author.name',
+      propertyLabel: 'Author Name',
+      controlType: 'text',
+      operators: ['==', '!=', '@=', '!@='],
+      defaultOperator: '@=',
+    },
+    {
+      propertyKey: 'author.address.city',
+      propertyLabel: 'Author City',
+      controlType: 'text',
+      operators: ['==', '!=', '@=', '!@='],
+      defaultOperator: '==',
     },
     {
       propertyKey: 'createdAt',
@@ -119,6 +134,8 @@ function FilterDemoPage() {
       controlType: 'date',
       dateType: 'datetimeOffset', // Datetime with offset: 2022-07-01T00:00:03+01:00
     },
+    // Collection count operators - filter by number of items in a collection
+    // e.g., "comments #>= 5" finds items with 5+ comments
     {
       propertyKey: 'comments',
       propertyLabel: 'Comment Count',
@@ -126,6 +143,14 @@ function FilterDemoPage() {
       operators: ['#==', '#!=', '#>', '#<', '#>=', '#<='],
       defaultOperator: '#>=',
     },
+    {
+      propertyKey: 'attachments',
+      propertyLabel: 'Attachment Count',
+      controlType: 'number',
+      operators: ['#==', '#!=', '#>', '#<', '#>=', '#<='],
+      defaultOperator: '#>',
+    },
+    // Regular number comparison operators
     {
       propertyKey: 'priority',
       propertyLabel: 'Priority',
@@ -270,23 +295,40 @@ function FilterDemoPage() {
           Test the dynamic filter component with various property types,
           operators, and nested grouping.
         </p>
-        <Card className="mt-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-4">
-            <h3 className="font-semibold mb-2">How to Use Grouping:</h3>
-            <ul className="text-sm space-y-1 list-disc list-inside">
-              <li>Add multiple filters using the "Add Filter" button</li>
-              <li>Click "Group Filters" to enter grouping mode</li>
-              <li>Use checkboxes to select 2 or more filters</li>
-              <li>Click "Group Selected" to group the filters</li>
-              <li>Groups can be nested up to 3 levels deep</li>
-              <li>Each group has its own AND/OR operator</li>
-              <li>Click "Ungroup" to move filters back to parent level</li>
-              <li>
-                Try the "Complex Nested Query" preset to see grouping in action
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 mt-4 md:grid-cols-2">
+          <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-4">
+              <h3 className="font-semibold mb-2">How to Use Grouping:</h3>
+              <ul className="text-sm space-y-1 list-disc list-inside">
+                <li>Add multiple filters using the "Add Filter" button</li>
+                <li>Click "Group Filters" to enter grouping mode</li>
+                <li>Use checkboxes to select 2 or more filters</li>
+                <li>Click "Group Selected" to group the filters</li>
+                <li>Groups can be nested up to 3 levels deep</li>
+                <li>Each group has its own AND/OR operator</li>
+                <li>Click "Ungroup" to move filters back to parent level</li>
+                <li>
+                  Try the "Complex Nested Query" preset to see grouping in action
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+          <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+            <CardContent className="pt-4">
+              <h3 className="font-semibold mb-2">QueryKit Features Demonstrated:</h3>
+              <ul className="text-sm space-y-1 list-disc list-inside">
+                <li><strong>Text:</strong> equals, contains, starts/ends with, sounds like</li>
+                <li><strong>Case sensitivity:</strong> Toggle via checkbox (adds * suffix)</li>
+                <li><strong>Multiselect:</strong> in (^^), has (^$), match all (% prefix)</li>
+                <li><strong>Dates:</strong> on, before, after, between (with exclusion)</li>
+                <li><strong>DateTime formats:</strong> date, local, UTC (Z), offset (±HH:mm)</li>
+                <li><strong>Numbers:</strong> comparison and collection count (#) operators</li>
+                <li><strong>Nested properties:</strong> dot notation (author.address.city)</li>
+                <li><strong>Logical:</strong> AND (&&) / OR (||) with grouping</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Card>

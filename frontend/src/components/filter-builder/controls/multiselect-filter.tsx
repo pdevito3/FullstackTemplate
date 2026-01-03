@@ -37,6 +37,7 @@ export function MultiSelectFilter({
   const [operator, setOperator] = useState<OperatorType>(
     initialFilter?.operator || Operators.IN
   )
+  const [matchAll, setMatchAll] = useState(initialFilter?.matchAll || false)
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options
@@ -93,6 +94,7 @@ export function MultiSelectFilter({
       operator,
       value: selected,
       selectedLabels,
+      matchAll: matchAll || undefined,
     } as Omit<Filter, 'id'>)
   }
 
@@ -117,6 +119,14 @@ export function MultiSelectFilter({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Match all toggle */}
+      <Checkbox
+        isSelected={matchAll}
+        onChange={setMatchAll}
+      >
+        <span className="text-sm">All must match</span>
+      </Checkbox>
 
       {/* Search input */}
       <Input

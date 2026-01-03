@@ -45,6 +45,7 @@ export interface Filter {
   value: string | string[] | number | boolean | DateValue
   caseSensitive?: boolean // For text operators
   selectedLabels?: string[] // For multiselect: display labels (separate from values used in QueryKit)
+  matchAll?: boolean // For collection operators: when true, adds % prefix (all items must match)
 }
 
 export interface FilterGroup {

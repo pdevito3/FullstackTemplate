@@ -8,8 +8,9 @@ import type { RangeValue, DateValue as AriaDateValue } from 'react-aria-componen
 import { Button } from '@/components/ui/button'
 import { JollyCalendar, JollyRangeCalendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { DateValue, Filter } from '../types'
+import type { DateType, DateValue, Filter } from '../types'
 import { Operators } from '../utils/operators'
 
 interface DateFilterProps {
@@ -17,6 +18,7 @@ interface DateFilterProps {
   propertyLabel: string
   onSubmit: (filter: Omit<Filter, 'id'>) => void
   initialFilter?: Filter
+  dateType?: DateType // 'date' for date-only, 'datetime' for date+time
 }
 
 type DateMode = 'before' | 'after' | 'between' | 'on'
@@ -67,13 +69,30 @@ function getYearRange(yearsOffset: number): { start: CalendarDate; end: Calendar
   return { start: yearStart, end: yearEnd }
 }
 
+// Helper to extract time string from Date
+function getTimeString(date: Date): string {
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+// Helper to apply time to a date
+function applyTimeToDate(date: Date, timeStr: string): Date {
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  const result = new Date(date)
+  result.setHours(hours || 0, minutes || 0, 0, 0)
+  return result
+}
+
 export function DateFilter({
   propertyKey,
   propertyLabel,
   onSubmit,
   initialFilter,
+  dateType = 'date',
 }: DateFilterProps) {
   const initialDateValue = initialFilter?.value as DateValue | undefined
+  const isDateTime = dateType === 'datetime'
 
   // Convert initial values to CalendarDate
   const initialCalendarDate = useMemo(() => {
@@ -105,6 +124,13 @@ export function DateFilter({
       ? true
       : initialDateValue?.exclude || false
   )
+  // Time state for datetime mode
+  const [startTime, setStartTime] = useState<string>(
+    initialDateValue?.startDate ? getTimeString(initialDateValue.startDate) : '00:00'
+  )
+  const [endTime, setEndTime] = useState<string>(
+    initialDateValue?.endDate ? getTimeString(initialDateValue.endDate) : '23:59'
+  )
 
   const handlePreset = (preset: () => CalendarDate | { start: CalendarDate; end: CalendarDate }) => {
     const result = preset()
@@ -122,13 +148,30 @@ export function DateFilter({
     if (mode === 'between' && !dateRange?.start) return
     if (mode !== 'between' && !date) return
 
+    // Get base dates from calendar
+    let startDateValue = mode === 'between'
+      ? calendarDateToJsDate(dateRange!.start as CalendarDate)
+      : calendarDateToJsDate(date!)
+    let endDateValue = mode === 'between' && dateRange?.end
+      ? calendarDateToJsDate(dateRange.end as CalendarDate)
+      : undefined
+
+    // Apply times if in datetime mode
+    if (isDateTime) {
+      startDateValue = applyTimeToDate(startDateValue, startTime)
+      if (endDateValue) {
+        endDateValue = applyTimeToDate(endDateValue, endTime)
+      }
+    }
+
     const dateValue: DateValue =
       mode === 'between'
         ? {
             mode: 'between',
-            startDate: calendarDateToJsDate(dateRange!.start as CalendarDate),
-            endDate: dateRange?.end ? calendarDateToJsDate(dateRange.end as CalendarDate) : undefined,
+            startDate: startDateValue,
+            endDate: endDateValue,
             exclude: exclude || undefined,
+            dateType: isDateTime ? 'datetime' : 'date',
           }
         : {
             mode: (exclude ? 'excluding' : mode) as
@@ -136,7 +179,8 @@ export function DateFilter({
               | 'after'
               | 'on'
               | 'excluding',
-            startDate: calendarDateToJsDate(date!),
+            startDate: startDateValue,
+            dateType: isDateTime ? 'datetime' : 'date',
           }
 
     onSubmit({
@@ -240,6 +284,46 @@ export function DateFilter({
           />
         )}
       </div>
+
+      {/* Time inputs for datetime mode */}
+      {isDateTime && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">
+            Time
+          </div>
+          <div className="flex gap-2 items-center">
+            {mode === 'between' ? (
+              <>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground">Start</Label>
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground">End</Label>
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+              </>
+            ) : (
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="h-8"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Submit button */}
       <Button onClick={handleSubmit} disabled={!isValid} className="w-full">

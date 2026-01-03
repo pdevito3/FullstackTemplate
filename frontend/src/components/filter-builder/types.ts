@@ -21,11 +21,14 @@ export type OperatorType =
 
 export type LogicalOperator = 'AND' | 'OR'
 
+export type DateType = 'date' | 'datetime'
+
 export interface DateValue {
   mode: 'before' | 'after' | 'between' | 'on' | 'excluding'
   startDate: Date
   endDate?: Date // Only for 'between' mode
   exclude?: boolean // When true with 'between' mode, becomes OR logic (outside range)
+  dateType?: DateType // 'date' for date-only, 'datetime' for date+time (defaults to 'date')
 }
 
 export interface Filter {
@@ -64,6 +67,7 @@ export interface FilterConfig {
   operators?: OperatorType[] // Allowed operators for this property (defaults to all for the type)
   options?: FilterOption[] // For multiselect control type
   defaultOperator?: OperatorType // Default operator when adding a filter
+  dateType?: DateType // For date control: 'date' for date-only, 'datetime' for date+time (defaults to 'date')
 }
 
 export interface FilterPreset {

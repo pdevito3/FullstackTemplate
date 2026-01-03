@@ -73,6 +73,7 @@ export function FilterEditModal({
             propertyLabel={filter.propertyLabel}
             onSubmit={handleSubmit}
             initialFilter={filter}
+            dateType={filterConfig?.dateType}
           />
         )}
 

@@ -102,6 +102,12 @@ function FilterDemoPage() {
       controlType: 'date',
     },
     {
+      propertyKey: 'scheduledAt',
+      propertyLabel: 'Scheduled At',
+      controlType: 'date',
+      dateType: 'datetime', // DateTime filter with time picker
+    },
+    {
       propertyKey: 'comments',
       propertyLabel: 'Comment Count',
       controlType: 'number',

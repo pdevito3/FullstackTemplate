@@ -107,34 +107,44 @@ function convertMultiSelectFilter(
  * Convert a date filter to QueryKit string
  */
 function convertDateFilter(propertyKey: string, _operator: string, value: DateValue): string {
-  const { mode, startDate, endDate, exclude } = value
+  const { mode, startDate, endDate, exclude, dateType = 'date' } = value
 
-  // Format dates as ISO 8601 strings (YYYY-MM-DD)
-  const formatDate = (date: Date) => format(date, 'yyyy-MM-dd')
+  // Format dates as ISO 8601 strings
+  // Date-only: YYYY-MM-DD
+  // DateTime: YYYY-MM-DDTHH:mm:ss (local) or with Z for UTC
+  const formatDateValue = (date: Date): string => {
+    if (dateType === 'datetime') {
+      // ISO 8601 datetime format: 2022-07-01T00:00:03
+      return format(date, "yyyy-MM-dd'T'HH:mm:ss")
+    }
+    // Date-only format: 2022-07-01
+    return format(date, 'yyyy-MM-dd')
+  }
 
   switch (mode) {
     case 'before':
-      return `${propertyKey} < "${formatDate(startDate)}"`
+      return `${propertyKey} < "${formatDateValue(startDate)}"`
 
     case 'after':
-      return `${propertyKey} > "${formatDate(startDate)}"`
+      return `${propertyKey} > "${formatDateValue(startDate)}"`
 
     case 'on':
-      return `${propertyKey} == "${formatDate(startDate)}"`
+      return `${propertyKey} == "${formatDateValue(startDate)}"`
 
     case 'excluding':
-      return `${propertyKey} != "${formatDate(startDate)}"`
+      return `${propertyKey} != "${formatDateValue(startDate)}"`
 
     case 'between':
       if (!endDate) {
-        return `${propertyKey} >= "${formatDate(startDate)}"`
+        // Single date still uses parentheses for consistency
+        return `(${propertyKey} >= "${formatDateValue(startDate)}")`
       }
       // If exclude is true, use OR logic (dates outside the range)
       if (exclude) {
-        return `(${propertyKey} < "${formatDate(startDate)}" || ${propertyKey} > "${formatDate(endDate)}")`
+        return `(${propertyKey} < "${formatDateValue(startDate)}" || ${propertyKey} > "${formatDateValue(endDate)}")`
       }
       // Normal between uses AND logic (dates inside the range) - always wrap in parentheses for proper precedence
-      return `(${propertyKey} >= "${formatDate(startDate)}" && ${propertyKey} <= "${formatDate(endDate)}")`
+      return `(${propertyKey} >= "${formatDateValue(startDate)}" && ${propertyKey} <= "${formatDateValue(endDate)}")`
 
     default:
       return ''

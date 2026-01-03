@@ -225,6 +225,7 @@ function PropertyMenuItem({
             propertyKey={config.propertyKey}
             propertyLabel={config.propertyLabel}
             onSubmit={onFilterSubmit}
+            dateType={config.dateType}
           />
         )}
         {config.controlType === 'number' && (

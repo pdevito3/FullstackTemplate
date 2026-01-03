@@ -8,25 +8,23 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-8 py-3 flex gap-6 max-md:px-4">
+      <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex gap-6">
           <Link
             to="/"
-            className="text-text-secondary font-medium text-sm transition-colors hover:text-text-primary [&.active]:text-white [&.active]:font-semibold"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground [&.active]:font-semibold"
           >
             Home
           </Link>
           <Link
             to="/about"
-            className="text-text-secondary font-medium text-sm transition-colors hover:text-text-primary [&.active]:text-white [&.active]:font-semibold"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground [&.active]:font-semibold"
           >
             About
           </Link>
         </div>
       </nav>
-      <div className="pt-12">
-        <Outlet />
-      </div>
+      <Outlet />
       <TanStackRouterDevtools />
     </>
   )

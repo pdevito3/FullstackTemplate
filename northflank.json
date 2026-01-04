@@ -18,10 +18,11 @@
     "AUTH_AUDIENCE": "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"
 //#endif
 //#if (UseKeycloak)
-    "AUTH_AUTHORITY": "TODO: Insert your Keycloak authority URL here (e.g., https://your-keycloak.com/realms/aspire)",
+    "KEYCLOAK_BASE_URL": "TODO: See post-deployment setup - set to https://keycloak--{project-name}.{region}.northflank.app",
     "AUTH_CLIENT_ID": "aspire-app",
     "AUTH_CLIENT_SECRET": "super-secret-client-secret-change-in-production",
-    "AUTH_AUDIENCE": "aspire-app"
+    "AUTH_AUDIENCE": "aspire-app",
+    "KEYCLOAK_ADMIN_PASSWORD": "change-me-in-production"
 //#endif
 //#if (UseAuthentik)
     "AUTHENTIK_BASE_URL": "TODO: See post-deployment setup - set to https://authentik-server--{project-name}.{region}.northflank.app",
@@ -72,6 +73,24 @@
                   "externalAccessEnabled": false
                 }
               },
+//#if (UseKeycloak)
+              {
+                "kind": "Addon",
+                "ref": "postgres-keycloak",
+                "spec": {
+                  "name": "postgres-keycloak",
+                  "type": "postgresql",
+                  "version": "16",
+                  "billing": {
+                    "replicas": 1,
+                    "storage": 4096,
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "tlsEnabled": true,
+                  "externalAccessEnabled": false
+                }
+              },
+//#endif
 //#if (UseAuthentik)
               {
                 "kind": "Addon",
@@ -133,7 +152,7 @@
                       "Auth__RevokeRefreshTokenOnLogout": "false",
 //#endif
 //#if (UseKeycloak)
-                      "Auth__Authority": "${args.AUTH_AUTHORITY}",
+                      "Auth__Authority": "${args.KEYCLOAK_BASE_URL}/realms/aspire",
                       "Auth__RequireHttpsMetadata": "true",
                       "Auth__NameClaimType": "email",
                       "Auth__RoleClaimType": "roles",
@@ -222,11 +241,63 @@
                     "restricted": true,
                     "nfObjects": [
                       {
-                        "id": "${refs.authentik-server.id}",
+                        "id": "${refs.authentik.id}",
                         "type": "service"
                       },
                       {
                         "id": "${refs.authentik-worker.id}",
+                        "type": "service"
+                      }
+                    ],
+                    "tags": []
+                  }
+                }
+              },
+//#endif
+//#if (UseKeycloak)
+              {
+                "kind": "SecretGroup",
+                "ref": "keycloak-secrets",
+                "spec": {
+                  "name": "keycloak-secrets",
+                  "secretType": "environment-arguments",
+                  "priority": 10,
+                  "secrets": {
+                    "variables": {},
+                    "files": {}
+                  },
+                  "addonDependencies": [
+                    {
+                      "addonId": "${refs.postgres-keycloak.id}",
+                      "keys": [
+                        {
+                          "keyName": "POSTGRES_HOST",
+                          "aliases": ["KC_DB_URL_HOST"]
+                        },
+                        {
+                          "keyName": "POSTGRES_PORT",
+                          "aliases": ["KC_DB_URL_PORT"]
+                        },
+                        {
+                          "keyName": "POSTGRES_DATABASE",
+                          "aliases": ["KC_DB_URL_DATABASE"]
+                        },
+                        {
+                          "keyName": "POSTGRES_USERNAME",
+                          "aliases": ["KC_DB_USERNAME"]
+                        },
+                        {
+                          "keyName": "POSTGRES_PASSWORD",
+                          "aliases": ["KC_DB_PASSWORD"]
+                        }
+                      ]
+                    }
+                  ],
+                  "restrictions": {
+                    "restricted": true,
+                    "nfObjects": [
+                      {
+                        "id": "${refs.keycloak.id}",
                         "type": "service"
                       }
                     ],
@@ -378,12 +449,72 @@
                   }
                 }
               }
+//#if (UseKeycloak)
+              ,{
+                "kind": "DeploymentService",
+                "ref": "keycloak",
+                "spec": {
+                  "name": "keycloak",
+                  "billing": {
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      },
+                      "shmSize": 64
+                    },
+                    "external": {
+                      "imagePath": "quay.io/keycloak/keycloak:26.0"
+                    },
+                    "cmdOverride": "start --optimized --hostname-strict=false --http-enabled=true --proxy-headers=xforwarded"
+                  },
+                  "ports": [
+                    {
+                      "name": "http",
+                      "internalPort": 8080,
+                      "protocol": "HTTP",
+                      "public": true,
+                      "domains": [],
+                      "security": {
+                        "policies": [],
+                        "credentials": []
+                      },
+                      "disableNfDomain": false
+                    }
+                  ],
+                  "healthChecks": [
+                    {
+                      "type": "livenessProbe",
+                      "protocol": "HTTP",
+                      "path": "/health/live",
+                      "port": 8080,
+                      "initialDelaySeconds": 30,
+                      "periodSeconds": 30,
+                      "timeoutSeconds": 10,
+                      "failureThreshold": 5
+                    }
+                  ],
+                  "runtimeEnvironment": {
+                    "KC_DB": "postgres",
+                    "KC_PROXY_HEADERS": "xforwarded",
+                    "KC_HTTP_ENABLED": "true",
+                    "KC_HEALTH_ENABLED": "true",
+                    "KEYCLOAK_ADMIN": "admin",
+                    "KEYCLOAK_ADMIN_PASSWORD": "${args.KEYCLOAK_ADMIN_PASSWORD}"
+                  },
+                  "runtimeFiles": {}
+                }
+              }
+//#endif
 //#if (UseAuthentik)
               ,{
                 "kind": "DeploymentService",
-                "ref": "authentik-server",
+                "ref": "authentik",
                 "spec": {
-                  "name": "authentik-server",
+                  "name": "authentik",
                   "billing": {
                     "deploymentPlan": "nf-compute-20"
                   },

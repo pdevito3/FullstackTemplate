@@ -470,6 +470,34 @@ From AGENTS.md:
 
 The `northflank.json` file provides Infrastructure-as-Code for deploying to Northflank.
 
+### Keycloak Post-Deployment Setup
+
+When using Keycloak as the auth provider (`--AuthProvider Keycloak`), the Northflank template deploys:
+- PostgreSQL for Keycloak
+- Keycloak Server (public)
+
+**After first deployment:**
+
+1. Get the Keycloak server URL from Northflank dashboard (e.g., `https://keycloak--myproject.us-central.northflank.app`)
+
+2. Update `KEYCLOAK_BASE_URL` argument in Northflank with this URL
+
+3. Access Keycloak admin at `{KEYCLOAK_BASE_URL}/admin/`
+
+4. Login with admin credentials (`admin` / value of `KEYCLOAK_ADMIN_PASSWORD`)
+
+5. Create a realm named `aspire`
+
+6. Create a Client:
+   - Client ID: `aspire-app`
+   - Client authentication: ON
+   - Valid redirect URIs: `https://{your-bff-url}/signin-oidc`
+   - Copy the client secret and update `AUTH_CLIENT_SECRET` argument
+
+7. Create roles (`admin`, `user`) and users as needed
+
+8. Configure role mappings for users
+
 ### Authentik Post-Deployment Setup
 
 When using Authentik as the auth provider (`--AuthProvider Authentik`), the Northflank template deploys:

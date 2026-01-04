@@ -28,7 +28,11 @@ public static class WebAppServiceConfiguration
 
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
-            var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+            // use this to account for malformed DATABASE_URL from Northflank. Please remove it if you don't need it
+            var connectionString = ConnectionStringHelper
+                .ConvertPostgresUri(builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName));
+            // var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+            
             options.UseNpgsql(connectionString)
                 .UseSnakeCaseNamingConvention();
         });

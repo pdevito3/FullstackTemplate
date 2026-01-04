@@ -20,8 +20,11 @@ public class MigrationHostedService<TDbContext>(
         {
             _logger.Information("Applying migrations for {DbContext}", typeof(TDbContext).Name);
 
-            var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
-
+            // use this to account for malformed DATABASE_URL from Northflank. Please remove it if you don't need it
+            var connectionString = ConnectionStringHelper
+                .ConvertPostgresUri(configuration.GetConnectionString(DatabaseConsts.DatabaseName));
+            // var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+            
             if (string.IsNullOrEmpty(connectionString))
             {
                 _logger.Warning(

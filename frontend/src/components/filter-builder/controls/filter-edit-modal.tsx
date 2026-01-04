@@ -1,9 +1,9 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from '@/components/ui/responsive-dialog'
 import type { Filter, FilterConfig } from '../types'
 import { BooleanFilter } from './boolean-filter'
 import { DateFilter } from './date-filter'
@@ -52,11 +52,11 @@ export function FilterEditModal({
   )
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-auto max-w-fit">
-        <DialogHeader>
-          <DialogTitle>Edit {filter.propertyLabel} Filter</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={isOpen} onOpenChange={onClose}>
+      <ResponsiveDialogContent className="md:w-auto md:max-w-fit">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Edit {filter.propertyLabel} Filter</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
 
         {filter.controlType === 'boolean' && (
           <BooleanFilter
@@ -97,7 +97,7 @@ export function FilterEditModal({
             allowedOperators={filterConfig.operators}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   )
 }

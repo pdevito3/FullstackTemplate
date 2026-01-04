@@ -5,12 +5,12 @@ import { Command as CommandPrimitive } from "cmdk"
 
 import { cn } from "@/lib/utils"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog"
 import {
   InputGroup,
   InputGroupAddon,
@@ -41,7 +41,7 @@ function CommandDialog({
   className,
   showCloseButton = false,
   ...props
-}: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
+}: Omit<React.ComponentProps<typeof ResponsiveDialog>, "children"> & {
   title?: string
   description?: string
   className?: string
@@ -49,18 +49,18 @@ function CommandDialog({
   children: React.ReactNode
 }) {
   return (
-    <Dialog {...props}>
-      <DialogHeader className="sr-only">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
-      <DialogContent
+    <ResponsiveDialog {...props}>
+      <ResponsiveDialogHeader className="sr-only">
+        <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
+      <ResponsiveDialogContent
         className={cn("rounded-xl! overflow-hidden p-0", className)}
         showCloseButton={showCloseButton}
       >
         {children}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   )
 }
 

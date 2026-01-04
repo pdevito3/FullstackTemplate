@@ -1,198 +1,166 @@
+"use client"
+
 import * as React from "react"
-import { useMediaQuery } from "@/hooks/use-media-query"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Cancel01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
-interface ResponsiveDialogProps {
-  children: React.ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
+function ResponsiveDialog({ ...props }: DialogPrimitive.Root.Props) {
+  return <DialogPrimitive.Root data-slot="responsive-dialog" {...props} />
 }
 
-interface ResponsiveDialogContentProps {
-  children: React.ReactNode
-  className?: string
+function ResponsiveDialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
+  return <DialogPrimitive.Trigger data-slot="responsive-dialog-trigger" {...props} />
 }
 
-interface ResponsiveDialogHeaderProps {
-  children: React.ReactNode
-  className?: string
+function ResponsiveDialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
+  return <DialogPrimitive.Portal data-slot="responsive-dialog-portal" {...props} />
 }
 
-interface ResponsiveDialogFooterProps {
-  children: React.ReactNode
-  className?: string
+function ResponsiveDialogClose({ ...props }: DialogPrimitive.Close.Props) {
+  return <DialogPrimitive.Close data-slot="responsive-dialog-close" {...props} />
 }
 
-interface ResponsiveDialogTitleProps {
-  children: React.ReactNode
-  className?: string
-}
-
-interface ResponsiveDialogDescriptionProps {
-  children: React.ReactNode
-  className?: string
-}
-
-interface ResponsiveDialogTriggerProps {
-  children: React.ReactNode
-  render?: React.ReactElement
-}
-
-interface ResponsiveDialogCloseProps {
-  children: React.ReactNode
-  render?: React.ReactElement
-}
-
-const ResponsiveDialogContext = React.createContext<{ isDesktop: boolean }>({
-  isDesktop: true,
-})
-
-function ResponsiveDialog({
-  children,
-  open,
-  onOpenChange,
-}: ResponsiveDialogProps) {
-  const isDesktop = useMediaQuery("(min-width: 768px)")
-
-  if (isDesktop) {
-    return (
-      <ResponsiveDialogContext.Provider value={{ isDesktop }}>
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          {children}
-        </Dialog>
-      </ResponsiveDialogContext.Provider>
-    )
-  }
-
+function ResponsiveDialogOverlay({
+  className,
+  ...props
+}: DialogPrimitive.Backdrop.Props) {
   return (
-    <ResponsiveDialogContext.Provider value={{ isDesktop }}>
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        {children}
-      </Drawer>
-    </ResponsiveDialogContext.Provider>
+    <DialogPrimitive.Backdrop
+      data-slot="responsive-dialog-overlay"
+      className={cn(
+        "fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 duration-200",
+        className
+      )}
+      {...props}
+    />
   )
 }
 
-function ResponsiveDialogTrigger({
-  children,
-  render,
-}: ResponsiveDialogTriggerProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogTrigger render={render}>{children}</DialogTrigger>
-  }
-
-  // Drawer uses vaul which uses asChild pattern
-  return <DrawerTrigger asChild={!!render}>{render ? React.cloneElement(render, {}, children) : children}</DrawerTrigger>
-}
-
 function ResponsiveDialogContent({
-  children,
   className,
-}: ResponsiveDialogContentProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogContent className={className}>{children}</DialogContent>
-  }
-
-  return <DrawerContent className={className}>{children}</DrawerContent>
+  children,
+  showCloseButton = true,
+  ...props
+}: DialogPrimitive.Popup.Props & {
+  showCloseButton?: boolean
+}) {
+  return (
+    <ResponsiveDialogPortal>
+      <ResponsiveDialogOverlay />
+      <DialogPrimitive.Popup
+        data-slot="responsive-dialog-content"
+        className={cn(
+          "bg-background text-sm outline-none z-50 fixed w-full",
+          "ring-1 ring-foreground/10",
+          // Mobile: bottom sheet
+          "bottom-0 left-0 right-0 max-h-[85vh] rounded-t-xl",
+          "data-[open]:animate-in data-[closed]:animate-out",
+          "data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom",
+          // Desktop: centered modal
+          "md:bottom-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2",
+          "md:max-w-md md:max-h-[calc(100vh-4rem)] md:rounded-xl",
+          "md:data-[closed]:slide-out-to-bottom-0 md:data-[open]:slide-in-from-bottom-0",
+          "md:data-[closed]:fade-out-0 md:data-[open]:fade-in-0",
+          "md:data-[closed]:zoom-out-95 md:data-[open]:zoom-in-95",
+          "duration-200",
+          className
+        )}
+        {...props}
+      >
+        {/* Drag handle for mobile */}
+        <div className="mx-auto mt-3 h-1 w-12 shrink-0 rounded-full bg-muted md:hidden" />
+        <div className="overflow-y-auto p-4 md:p-4">
+          {children}
+        </div>
+        {showCloseButton && (
+          <DialogPrimitive.Close
+            data-slot="responsive-dialog-close"
+            render={
+              <Button
+                variant="ghost"
+                className="absolute top-2 right-2 md:top-2 md:right-2"
+                size="icon-sm"
+              />
+            }
+          >
+            <HugeiconsIcon icon={Cancel01Icon} />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Popup>
+    </ResponsiveDialogPortal>
+  )
 }
 
-function ResponsiveDialogHeader({
-  children,
-  className,
-}: ResponsiveDialogHeaderProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogHeader className={className}>{children}</DialogHeader>
-  }
-
-  return <DrawerHeader className={cn("text-left", className)}>{children}</DrawerHeader>
+function ResponsiveDialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="responsive-dialog-header"
+      className={cn("flex flex-col gap-2 text-center md:text-left", className)}
+      {...props}
+    />
+  )
 }
 
 function ResponsiveDialogFooter({
-  children,
   className,
-}: ResponsiveDialogFooterProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogFooter className={className}>{children}</DialogFooter>
-  }
-
-  return <DrawerFooter className={cn("pt-2", className)}>{children}</DrawerFooter>
+  children,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="responsive-dialog-footer"
+      className={cn(
+        "flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
 }
 
-function ResponsiveDialogTitle({
-  children,
-  className,
-}: ResponsiveDialogTitleProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogTitle className={className}>{children}</DialogTitle>
-  }
-
-  return <DrawerTitle className={className}>{children}</DrawerTitle>
+function ResponsiveDialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+  return (
+    <DialogPrimitive.Title
+      data-slot="responsive-dialog-title"
+      className={cn("text-base font-semibold leading-none md:text-sm md:font-medium", className)}
+      {...props}
+    />
+  )
 }
 
 function ResponsiveDialogDescription({
-  children,
   className,
-}: ResponsiveDialogDescriptionProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogDescription className={className}>{children}</DialogDescription>
-  }
-
-  return <DrawerDescription className={className}>{children}</DrawerDescription>
-}
-
-function ResponsiveDialogClose({
-  children,
-  render,
-}: ResponsiveDialogCloseProps) {
-  const { isDesktop } = React.useContext(ResponsiveDialogContext)
-
-  if (isDesktop) {
-    return <DialogClose render={render}>{children}</DialogClose>
-  }
-
-  // Drawer uses vaul which uses asChild pattern
-  return <DrawerClose asChild={!!render}>{render ? React.cloneElement(render, {}, children) : children}</DrawerClose>
+  ...props
+}: DialogPrimitive.Description.Props) {
+  return (
+    <DialogPrimitive.Description
+      data-slot="responsive-dialog-description"
+      className={cn(
+        "text-muted-foreground text-sm",
+        "*:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
 export {
   ResponsiveDialog,
   ResponsiveDialogTrigger,
+  ResponsiveDialogPortal,
+  ResponsiveDialogOverlay,
+  ResponsiveDialogClose,
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
   ResponsiveDialogFooter,
   ResponsiveDialogTitle,
   ResponsiveDialogDescription,
-  ResponsiveDialogClose,
 }

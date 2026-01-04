@@ -14,15 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -432,31 +423,31 @@ function ComponentsPage() {
             </div>
           </section>
 
-          {/* Dialogs & Sheets */}
+          {/* Dialog & Sheet */}
           <section className="mb-10">
-            <h2 className="text-2xl font-semibold mb-4">Dialogs & Sheets</h2>
+            <h2 className="text-2xl font-semibold mb-4">Dialog & Sheet</h2>
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-wrap gap-4">
-                  <Dialog>
-                    <DialogTrigger render={<Button variant="outline" />}>
+                  <ResponsiveDialog>
+                    <ResponsiveDialogTrigger render={<Button variant="outline" />}>
                       Open Dialog
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Dialog Title</DialogTitle>
-                        <DialogDescription>
-                          This is a dialog description. Make changes here.
-                        </DialogDescription>
-                      </DialogHeader>
+                    </ResponsiveDialogTrigger>
+                    <ResponsiveDialogContent>
+                      <ResponsiveDialogHeader>
+                        <ResponsiveDialogTitle>Dialog Title</ResponsiveDialogTitle>
+                        <ResponsiveDialogDescription>
+                          Centered on desktop, slides up from bottom on mobile.
+                        </ResponsiveDialogDescription>
+                      </ResponsiveDialogHeader>
                       <div className="py-4">
-                        <p>Dialog content goes here.</p>
+                        <p>Try resizing your window while this is open!</p>
                       </div>
-                      <DialogFooter>
-                        <Button>Save changes</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                      <ResponsiveDialogFooter>
+                        <Button>Continue</Button>
+                      </ResponsiveDialogFooter>
+                    </ResponsiveDialogContent>
+                  </ResponsiveDialog>
 
                   <Sheet>
                     <SheetTrigger render={<Button variant="outline" />}>
@@ -474,26 +465,6 @@ function ComponentsPage() {
                       </div>
                     </SheetContent>
                   </Sheet>
-
-                  <ResponsiveDialog>
-                    <ResponsiveDialogTrigger render={<Button variant="outline" />}>
-                      Responsive Dialog
-                    </ResponsiveDialogTrigger>
-                    <ResponsiveDialogContent>
-                      <ResponsiveDialogHeader>
-                        <ResponsiveDialogTitle>Responsive Dialog</ResponsiveDialogTitle>
-                        <ResponsiveDialogDescription>
-                          This shows as a dialog on desktop and drawer on mobile.
-                        </ResponsiveDialogDescription>
-                      </ResponsiveDialogHeader>
-                      <div className="py-4">
-                        <p>Try resizing your window!</p>
-                      </div>
-                      <ResponsiveDialogFooter>
-                        <Button>Continue</Button>
-                      </ResponsiveDialogFooter>
-                    </ResponsiveDialogContent>
-                  </ResponsiveDialog>
                 </div>
               </CardContent>
             </Card>

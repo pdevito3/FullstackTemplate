@@ -40,9 +40,7 @@ try
     //#endif
 #endif
 
-    var postgres = builder.AddPostgres("postgres")
-        .WithPgAdmin();
-
+    var postgres = builder.AddPostgres("postgres");
     var appDb = postgres.AddDatabase("appdb");
 
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
@@ -51,6 +49,7 @@ try
         .WithServerAuth(authProvider)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints();
+    postgres.WithParentRelationship(server);
 
     var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
         .WithEndpoint("http", endpoint =>
@@ -66,7 +65,8 @@ try
         .WithReference(webfrontend)
         .WaitFor(server)
         .WithHttpHealthCheck("/health")
-        .WithExternalHttpEndpoints();
+        .WithExternalHttpEndpoints()
+        .WithParentRelationship(webfrontend);
 
     if (authProvider.AuthResource is not null)
     {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Production-ready .NET Aspire template with React frontend using the Backend-For-Frontend (BFF) pattern. Supports three authentication providers: Keycloak, FusionAuth, or Duende Demo.
+Production-ready .NET Aspire application with React frontend using the Backend-For-Frontend (BFF) pattern. Features multi-tenancy, CQRS architecture, and configurable authentication (Keycloak, FusionAuth, or Duende Demo).
 
 ## Running the Application
 
@@ -45,18 +45,18 @@ pnpm lint     # ESLint
     │ Server  │◄────────►│   BFF   │◄───────►│ Frontend │
     │  (API)  │  (JWT)   │ (OIDC)  │ (REST)  │  (React) │
     └─────────┘          └─────────┘         └──────────┘
-                              │
-                       ┌──────────────┐
-                       │Auth Provider │
-                       └──────────────┘
+         │                    │
+    ┌─────────┐        ┌──────────────┐
+    │PostgreSQL│       │Auth Provider │
+    └─────────┘        └──────────────┘
 ```
 
 ### Projects
 
 - **FullstackTemplate.AppHost** - Aspire orchestration, defines all resources
-- **FullstackTemplate.Server** - Backend API (.NET 10, JWT auth, API versioning)
+- **FullstackTemplate.Server** - Backend API (.NET 10, JWT auth, CQRS, multi-tenant)
 - **FullstackTemplate.Bff** - BFF proxy (Duende BFF + YARP, OIDC auth)
-- **frontend** - React SPA (React 19, TanStack Router, React Query, Tailwind)
+- **frontend** - React SPA (React 19, TanStack Router, React Query, Tailwind v4)
 
 ### Authentication Flow
 
@@ -68,15 +68,35 @@ pnpm lint     # ESLint
 6. React app calls `/bff/user` to get claims
 7. API calls go through BFF at `/api/v1/*`
 
-### Backend Patterns
+## Backend Patterns
 
-- **Dependency Injection**: Scrutor with marker interfaces (`ISingletonService`, `ITransientService`)
-- **Domain Design**: `BaseEntity` (audit fields, soft delete), `ValueObject` (immutable types)
-- **API Versioning**: `Asp.Versioning.Http`, endpoints use `MapToApiVersion()`
-- **Observability**: OpenTelemetry + Serilog throughout
-- **Error Handling**: RFC 7807 Problem Details
+### Domain Structure
 
-## Service Registration
+Each domain entity follows this folder structure:
+
+```
+Server/Domain/
+└── [EntityName]s/
+    ├── [EntityName].cs              # Domain entity
+    ├── Controllers/v1/              # API controllers
+    ├── Dtos/                        # DTOs (read/write)
+    ├── Features/                    # CQRS commands/queries
+    ├── Mappings/                    # Mapperly mappers
+    ├── Models/                      # Internal models
+    └── DomainEvents/                # Domain events
+```
+
+### Key Backend Concepts
+
+- **Rich Domain Entities**: Private setters, factory methods, encapsulated business logic
+- **CQRS with MediatR**: Commands for writes, Queries for reads
+- **Vertical Slice Architecture**: Each feature is self-contained
+- **Mapperly**: Compile-time source generation for DTO mapping
+- **QueryKit**: Filtering and sorting for list endpoints
+- **Value Objects**: `EmailAddress`, `UserRole`, etc. with SmartEnum
+- **Domain Events**: Queued in entities, dispatched on SaveChanges
+
+### Service Registration
 
 Automatic DI registration using marker interfaces:
 
@@ -96,6 +116,34 @@ public class MyTransientService : IMyTransientService, ITransientService { }
 
 Services are auto-registered by calling `builder.Services.AddApplicationServices()` in Program.cs.
 
+## Multi-Tenancy
+
+The application supports multi-tenant data isolation:
+
+### How It Works
+
+1. **ITenantable Interface**: Entities implement `ITenantable` to include `TenantId`
+2. **Query Filters**: `AppDbContext` applies automatic tenant filtering
+3. **TenantIdProvider**: Resolves current tenant from user claims (cached with FusionCache)
+4. **Automatic Assignment**: New entities get TenantId set automatically
+
+### Making an Entity Multi-Tenant
+
+```csharp
+public class MyEntity : BaseEntity, ITenantable
+{
+    public Guid TenantId { get; set; }
+    // ... other properties
+}
+```
+
+### Tenant Resolution
+
+The `ITenantIdProvider` service:
+- Looks up tenant by user identifier
+- Caches results for 30 minutes with FusionCache
+- Provides fail-safe caching for 2 hours
+
 ## API Versioning
 
 Location: `Server/Resources/Extensions/ApiVersioningExtension.cs`
@@ -107,16 +155,14 @@ URL segment versioning at `/api/v{version}/...`:
 builder.Services.AddApiVersioningExtension();
 var apiVersionSet = app.GetApiVersionSet();
 
-// Map endpoints to version
-var api = app.MapGroup("api/v{version:apiVersion}")
-    .WithApiVersionSet(apiVersionSet);
+// Controller-based (recommended)
+[Route("api/v{v:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+public sealed class CustomersController : ControllerBase { }
 
+// Minimal API endpoints
 api.MapGet("/weather", () => { ... })
     .MapToApiVersion(new ApiVersion(1, 0));
-
-// Or use controller attributes
-[Route("api/v{v:apiVersion}/weather")]
-[ApiVersion("1.0")]
 ```
 
 To add a new version, update `GetApiVersionSet()` with `.HasApiVersion(new ApiVersion(2, 0))`.
@@ -162,12 +208,223 @@ Unhandled exceptions automatically return structured JSON:
 }
 ```
 
-The global exception handler is enabled with `app.UseExceptionHandler()`.
+## Frontend Patterns
 
-### Frontend Patterns
+### Project Structure
 
-- **API Client**: `/frontend/src/api/client.ts` (Axios with BFF integration)
-- TODO other
+```
+frontend/src/
+├── api/                    # API client and React Query hooks
+│   ├── client.ts          # Axios instance with BFF config
+│   └── hooks.ts           # useAuth, useWeatherForecast, etc.
+├── components/
+│   ├── ui/                # 40+ reusable UI components
+│   ├── filter-builder/    # Advanced filter component
+│   ├── app-sidebar.tsx    # Main navigation sidebar
+│   ├── theme-provider.tsx # Theme context
+│   └── theme-toggle.tsx   # Light/dark/system toggle
+├── routes/                 # TanStack Router file-based routes
+├── hooks/                  # Custom React hooks
+├── lib/                    # Utilities (cn, etc.)
+└── main.tsx               # App entry point
+```
+
+### API Client
+
+Location: `frontend/src/api/client.ts`
+
+Axios configured for BFF integration:
+
+```typescript
+import { apiClient } from '@/api/client'
+
+// All requests include credentials and CSRF header
+const response = await apiClient.get('/api/v1/users')
+
+// Or use the typed API functions
+import { weatherApi, authApi } from '@/api/client'
+
+const forecasts = await weatherApi.getForecasts()
+const user = await authApi.getUser()
+```
+
+Key configuration:
+- `withCredentials: true` - Sends cookies cross-origin
+- `X-CSRF: 1` header - CSRF protection for BFF
+
+### React Query Hooks
+
+Location: `frontend/src/api/hooks.ts`
+
+```typescript
+// Fetch weather data
+const { data, isLoading, error } = useWeatherForecast()
+
+// Auth state (parsed from BFF claims)
+const { isLoggedIn, username, logoutUrl } = useAuth()
+
+// Auth actions
+const { login, logout } = useAuthActions()
+```
+
+### Routing (TanStack Router)
+
+File-based routing in `frontend/src/routes/`:
+
+```typescript
+// routes/users.tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/users')({
+  component: UsersPage,
+})
+
+function UsersPage() {
+  return <div>Users</div>
+}
+```
+
+Navigation:
+```typescript
+import { Link, useNavigate } from '@tanstack/react-router'
+
+<Link to="/users">Users</Link>
+
+const navigate = useNavigate()
+navigate({ to: '/users/$id', params: { id: '123' } })
+```
+
+### Theme System
+
+Location: `frontend/src/components/theme-provider.tsx`
+
+```typescript
+import { useTheme } from '@/components/theme-provider'
+
+function MyComponent() {
+  const { theme, setTheme } = useTheme()
+  // theme: 'light' | 'dark' | 'system'
+}
+```
+
+Theme persists to localStorage and respects system preference.
+
+### UI Components
+
+Location: `frontend/src/components/ui/`
+
+40+ components based on shadcn/ui and Base UI:
+
+| Category | Components |
+|----------|------------|
+| **Forms** | Input, Select, Combobox, Autocomplete, MultiSelect, Checkbox, DatePicker |
+| **Layout** | Card, Dialog, Sheet, Drawer, Popover, Tooltip, Collapsible |
+| **Data** | Table, DataTable, Avatar, Badge |
+| **Navigation** | Breadcrumb, Sidebar, DropdownMenu |
+
+Usage:
+```typescript
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
+```
+
+### Filter Builder
+
+Location: `frontend/src/components/filter-builder/`
+
+Advanced filter component that generates QueryKit-compatible filter strings:
+
+```typescript
+import { FilterBuilder } from '@/components/filter-builder/filter-builder'
+import { toQueryKitString } from '@/components/filter-builder/utils/querykit-converter'
+
+const filterConfig = [
+  { propertyKey: 'firstName', propertyLabel: 'First Name', controlType: 'text' },
+  { propertyKey: 'status', propertyLabel: 'Status', controlType: 'multiselect',
+    options: [{ value: 'active', label: 'Active' }] },
+  { propertyKey: 'createdAt', propertyLabel: 'Created', controlType: 'date' },
+]
+
+<FilterBuilder
+  filterOptions={filterConfig}
+  onChange={(state) => {
+    const queryString = toQueryKitString(state)
+    // queryString: "firstName == John && status ^^ [active]"
+  }}
+/>
+```
+
+Supports: text, number, date, boolean, multiselect with AND/OR grouping.
+
+### Forms (React Hook Form + Zod)
+
+```typescript
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+const schema = z.object({
+  name: z.string().min(1, 'Required'),
+  email: z.string().email(),
+})
+
+function MyForm() {
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', email: '' },
+  })
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <Input {...form.register('name')} />
+      <Input {...form.register('email')} />
+      <Button type="submit">Submit</Button>
+    </form>
+  )
+}
+```
+
+## Database Patterns
+
+### AppDbContext Features
+
+Location: `Server/Databases/AppDbContext.cs`
+
+- **Soft Delete**: Entities with `IsDeleted` are filtered automatically
+- **Audit Fields**: `CreatedOn`, `CreatedBy`, `LastModifiedOn`, `LastModifiedBy` auto-populated
+- **Tenant Filtering**: Multi-tenant queries filtered by TenantId
+- **Domain Events**: Dispatched after SaveChanges via MediatR
+
+### Entity Configuration
+
+Location: `Server/Databases/EntityConfigurations/`
+
+```csharp
+public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
+{
+    public void Configure(EntityTypeBuilder<Customer> builder)
+    {
+        builder.Property(e => e.Name).HasMaxLength(200).IsRequired();
+
+        // Value object configuration
+        builder.OwnsOne(e => e.Email, email =>
+        {
+            email.Property(e => e.Value).HasColumnName("email").HasMaxLength(320);
+        });
+    }
+}
+```
+
+### Migrations
+
+```bash
+# Add a migration
+dotnet ef migrations add MyMigration --project FullstackTemplate.Server
+
+# Apply migrations (auto-runs on startup in development)
+dotnet ef database update --project FullstackTemplate.Server
+```
 
 ## Working with Aspire
 
@@ -181,14 +438,21 @@ From AGENTS.md:
 6. The Aspire workload is obsolete - never attempt to install it
 7. Avoid persistent containers early in development to prevent state issues
 
-## Test Users For Auth 
+## Test Users
+
+### Keycloak / FusionAuth
 
 | Email | Password | Roles |
 |-------|----------|-------|
 | admin@example.com | password123! | admin, user |
 | user@example.com | password123! | user |
 
-Duende demo uses `bob/bob` or `alice/alice` for username/password
+### Duende Demo
+
+| Username | Password |
+|----------|----------|
+| bob | bob |
+| alice | alice |
 
 ## Key Configuration
 
@@ -200,3 +464,31 @@ Duende demo uses `bob/bob` or `alice/alice` for username/password
 
 - **Aspire MCP**: Resource management, logs, traces, integrations
 - **Playwright MCP**: Browser automation for functional testing
+
+## Adding a New Feature
+
+For detailed patterns, see `.claude/rules/backend/`:
+
+1. **Create Domain Entity** (`working-with-domain-entities.md`)
+   - Rich entity with private setters, factory methods
+   - Value objects for complex properties
+
+2. **Add Entity Configuration** (`entity-configurations.md`)
+   - Configure in `Databases/EntityConfigurations/`
+   - Run migration
+
+3. **Create DTOs and Mappings** (`dtos-and-mappings.md`)
+   - Read DTOs, Creation DTOs, Update DTOs
+   - Mapperly mapper
+
+4. **Implement Features** (`features-and-cqrs.md`)
+   - Add/Get/Update/Delete commands and queries
+   - FluentValidation for request validation
+
+5. **Add Controller** (`controllers.md`)
+   - Thin controller delegating to MediatR
+   - Proper route attributes and versioning
+
+6. **Add Domain Events** (`domain-events.md`)
+   - Queue events in entity methods
+   - Create handlers for side effects

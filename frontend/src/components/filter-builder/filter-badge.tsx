@@ -17,7 +17,7 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
   const displayValue = filter.controlType === 'multiselect' && filter.selectedLabels
     ? filter.selectedLabels
     : filter.value
-  const formattedValue = formatFilterValue(displayValue, filter.controlType)
+  const formattedValue = formatFilterValue(displayValue)
   // A filter is case-sensitive if:
   // 1. The caseSensitive flag is explicitly true, OR
   // 2. The operator doesn't end with * (which indicates case-insensitive)
@@ -70,8 +70,7 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
  * Format filter value for display in badge
  */
 function formatFilterValue(
-  value: string | string[] | number | boolean | DateValue,
-  _controlType: string
+  value: string | string[] | number | boolean | DateValue
 ): string {
   if (Array.isArray(value)) {
     if (value.length === 0) return 'None'

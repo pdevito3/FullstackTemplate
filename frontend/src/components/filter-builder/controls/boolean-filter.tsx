@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Filter } from '../types'
 import { Operators } from '../utils/operators'
@@ -7,21 +6,15 @@ interface BooleanFilterProps {
   propertyKey: string
   propertyLabel: string
   onSubmit: (filter: Omit<Filter, 'id'>) => void
-  initialFilter?: Filter
+  initialFilter?: Filter // Used by edit modal, but not needed for boolean (click = submit)
 }
 
 export function BooleanFilter({
   propertyKey,
   propertyLabel,
   onSubmit,
-  initialFilter,
 }: BooleanFilterProps) {
-  const [_value, setValue] = useState<boolean>(
-    (initialFilter?.value as boolean) ?? true
-  )
-
   const handleSubmit = (selectedValue: boolean) => {
-    setValue(selectedValue)
     onSubmit({
       propertyKey,
       propertyLabel,

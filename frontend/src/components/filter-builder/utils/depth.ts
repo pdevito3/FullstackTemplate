@@ -136,12 +136,10 @@ export function canAddToGroup(
  * Check if creating a new group from selected filters would exceed max depth
  * @param state - Current filter state
  * @param filterIds - IDs of filters to group
- * @param _parentGroupId - ID of parent group (null = root level)
  */
 export function canCreateGroup(
   state: FilterState,
-  filterIds: string[],
-  _parentGroupId: string | null = null
+  filterIds: string[]
 ): { canCreate: boolean; reason?: string } {
   if (filterIds.length < 2) {
     return { canCreate: false, reason: 'Need at least 2 filters to create a group' }

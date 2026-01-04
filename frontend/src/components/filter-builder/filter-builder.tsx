@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { FolderAddIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
@@ -46,21 +46,28 @@ export function FilterBuilder({
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [isGroupingMode, setIsGroupingMode] = useState(false)
 
-  // Notify parent of state changes
-  useEffect(() => {
-    onChange?.(state)
-  }, [state, onChange])
+  // Wrapper that updates state and notifies parent directly (no useEffect needed)
+  const updateState = useCallback(
+    (updater: (prev: FilterState) => FilterState) => {
+      setState((prev) => {
+        const next = updater(prev)
+        onChange?.(next)
+        return next
+      })
+    },
+    [onChange]
+  )
 
   const handleAddFilter = (filter: Omit<Filter, 'id'>) => {
     const newFilter: Filter = {
       ...filter,
       id: crypto.randomUUID(),
     }
-    setState((prev) => addFilter(prev, newFilter))
+    updateState((prev) => addFilter(prev, newFilter))
   }
 
   const handleRemoveFilter = (filterId: string) => {
-    setState((prev) => removeFilter(prev, filterId))
+    updateState((prev) => removeFilter(prev, filterId))
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.delete(filterId)
@@ -69,15 +76,15 @@ export function FilterBuilder({
   }
 
   const handleToggleLogicalOperator = () => {
-    setState((prev) => toggleRootLogicalOperator(prev))
+    updateState((prev) => toggleRootLogicalOperator(prev))
   }
 
   const handleToggleGroupOperator = (groupId: string) => {
-    setState((prev) => toggleGroupLogicalOperator(prev, groupId))
+    updateState((prev) => toggleGroupLogicalOperator(prev, groupId))
   }
 
   const handleUngroup = (groupId: string) => {
-    setState((prev) => ungroupFilters(prev, groupId))
+    updateState((prev) => ungroupFilters(prev, groupId))
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.delete(groupId)
@@ -93,7 +100,7 @@ export function FilterBuilder({
   const handleUpdateFilter = (updatedFilter: Omit<Filter, 'id'>) => {
     if (!editingFilter) return
 
-    setState((prev) => updateFilter(prev, editingFilter.id, updatedFilter))
+    updateState((prev) => updateFilter(prev, editingFilter.id, updatedFilter))
     setEditModalOpen(false)
     setEditingFilter(null)
   }
@@ -120,10 +127,10 @@ export function FilterBuilder({
   }
 
   const handleClearAll = () => {
-    setState({
+    updateState(() => ({
       filters: [],
       rootLogicalOperator: LogicalOperators.AND,
-    })
+    }))
     setSelectedIds(new Set())
   }
 
@@ -136,7 +143,7 @@ export function FilterBuilder({
       return
     }
 
-    setState((prev) => createGroupFromSelected(prev, ids, LogicalOperators.AND))
+    updateState((prev) => createGroupFromSelected(prev, ids, LogicalOperators.AND))
     setSelectedIds(new Set())
     setIsGroupingMode(false)
   }
@@ -269,7 +276,7 @@ export function FilterBuilder({
               variant="outline"
               size="sm"
               onClick={() => {
-                setState(preset.filter)
+                updateState(() => preset.filter)
                 setSelectedIds(new Set())
               }}
             >

@@ -1,36 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { weatherApi, authApi, type BffClaim } from './client'
+import { apiClient } from '@/lib/api-client'
+import type { AuthState, BffClaim } from '../types'
+import { AuthKeys } from './auth.keys'
 
 /**
- * Hook for fetching public weather forecast data
+ * Fetch user claims from BFF
  */
-export function useWeatherForecast() {
-  return useQuery({
-    queryKey: ['weather'],
-    queryFn: weatherApi.getForecasts,
-  })
-}
-
-/**
- * Hook for fetching secure weather forecast data (requires authentication)
- */
-export function useSecureWeatherForecast(enabled: boolean = true) {
-  return useQuery({
-    queryKey: ['weather', 'secure'],
-    queryFn: weatherApi.getSecureForecasts,
-    enabled,
-    retry: false, // Don't retry on 401
-  })
-}
-
-/**
- * Parsed auth state from BFF claims
- */
-export interface AuthState {
-  isLoggedIn: boolean
-  isLoading: boolean
-  username: string | null
-  logoutUrl: string | null
+export async function getUser(): Promise<BffClaim[]> {
+  const response = await apiClient.get<BffClaim[]>('/bff/user')
+  return response.data
 }
 
 /**
@@ -94,8 +72,8 @@ function parseAuthClaims(claims: BffClaim[]): Omit<AuthState, 'isLoading'> {
  */
 export function useAuth(): AuthState {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['auth', 'user'],
-    queryFn: authApi.getUser,
+    queryKey: AuthKeys.user(),
+    queryFn: getUser,
     retry: false, // Don't retry on 401/403
     staleTime: 5 * 60 * 1000, // Consider auth data fresh for 5 minutes
   })
@@ -123,11 +101,3 @@ export function useAuth(): AuthState {
     isLoading: false,
   }
 }
-
-/**
- * Auth action helpers
- */
-export const useAuthActions = () => ({
-  login: authApi.login,
-  logout: authApi.logout,
-})

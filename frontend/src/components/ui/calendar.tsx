@@ -75,12 +75,13 @@ function CalendarZoomProvider({ children }: CalendarZoomProviderProps) {
   )
 
   // Sync viewYear when calendar's focused date changes
+  const focusedYear = state?.focusedDate?.year
   useEffect(() => {
-    if (state?.focusedDate) {
-      setViewYear(state.focusedDate.year)
-      setViewDecadeStart(Math.floor(state.focusedDate.year / 12) * 12)
+    if (focusedYear !== undefined) {
+      setViewYear(focusedYear)
+      setViewDecadeStart(Math.floor(focusedYear / 12) * 12)
     }
-  }, [state?.focusedDate?.year])
+  }, [focusedYear])
 
   const contextValue = useMemo(
     () => ({
@@ -273,11 +274,13 @@ function YearPickerGrid() {
   const zoomContext = useContext(CalendarZoomContext)
   const state = useCalendarState()
 
-  if (!zoomContext || !state) return null
-
+  // useMemo must be called before any early returns (Rules of Hooks)
+  const viewDecadeStart = zoomContext?.viewDecadeStart ?? 0
   const years = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => zoomContext.viewDecadeStart + i)
-  }, [zoomContext.viewDecadeStart])
+    return Array.from({ length: 12 }, (_, i) => viewDecadeStart + i)
+  }, [viewDecadeStart])
+
+  if (!zoomContext || !state) return null
 
   const handleYearSelect = (year: number) => {
     zoomContext.setViewYear(year)

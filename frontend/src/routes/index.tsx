@@ -4,7 +4,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { RotateClockwiseIcon, CloudIcon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
-import { useWeatherForecast, useSecureWeatherForecast, useAuth, useAuthActions } from '../api/hooks'
+import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
+import { useSecureWeatherForecast } from '@/domain/weather/apis/get-secure-weather'
+import { WeatherKeys } from '@/domain/weather/apis/weather.keys'
+import { useAuth } from '@/domain/auth/apis/get-user'
+import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -37,7 +41,7 @@ function Index() {
   } = useSecureWeatherForecast(showSecure && auth.isLoggedIn)
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['weather'] })
+    queryClient.invalidateQueries({ queryKey: WeatherKeys.all })
   }
 
   const isCurrentlyFetching = showSecure && auth.isLoggedIn ? secureFetching : isFetching

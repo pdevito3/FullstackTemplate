@@ -242,9 +242,93 @@ public static class AuthProviders
             RequireHttpsMetadata = false,
             NameClaimType = "email",
             RoleClaimType = "roles",
-            RevokeRefreshTokenOnLogout = true, // Keycloak supports token revocation
+            RevokeRefreshTokenOnLogout = true,
             AuthResource = keycloak,
             AuthorityPathSuffix = $"/realms/{realmName}"
+        };
+    }
+//#endif
+
+//#if (UseAuthentik)
+    /// <summary>
+    /// Creates a configuration for Authentik running locally in Docker.
+    /// Sets up PostgreSQL, Redis, server, and worker containers with blueprint auto-provisioning.
+    /// </summary>
+    public static AuthProviderConfig Authentik(IDistributedApplicationBuilder builder)
+    {
+        const string appSlug = "aspire-app";
+        const string clientId = "aspire-app";
+
+        var authentikSecretKey = builder.AddParameter("authentik-secret-key", secret: true);
+
+        // PostgreSQL database for Authentik
+        var authentikDbPassword = builder.AddParameter("authentik-db-password", secret: true);
+        var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword)
+            .WithDataVolume("authentik-postgres-data");
+        var authentikDb = authentikPostgres.AddDatabase("authentik-db");
+
+        var postgresEndpoint = authentikPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
+
+        // Redis for Authentik
+        var redis = builder.AddContainer("authentik-redis", "redis", "alpine")
+            .WithArgs("--save", "60", "1", "--loglevel", "warning");
+
+        var redisEndpoint = redis.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
+
+        // Authentik Worker (must start before server to apply blueprints)
+        var worker = builder.AddContainer("authentik-worker", "ghcr.io/goauthentik/server", "2024.12")
+            .WithReference(authentikDb)
+            .WithEnvironment("AUTHENTIK_SECRET_KEY", authentikSecretKey)
+            .WithEnvironment(context =>
+            {
+                context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__HOST"] = postgresEndpoint.Property(EndpointProperty.Host);
+                context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__PORT"] = postgresEndpoint.Property(EndpointProperty.Port);
+                context.EnvironmentVariables["AUTHENTIK_REDIS__HOST"] = redisEndpoint.Property(EndpointProperty.Host);
+            })
+            .WithEnvironment("AUTHENTIK_POSTGRESQL__USER", "postgres")
+            .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
+            .WithEnvironment("AUTHENTIK_POSTGRESQL__PASSWORD", authentikDbPassword)
+            .WithEnvironment("AUTHENTIK_BOOTSTRAP_PASSWORD", "password123!")
+            .WithEnvironment("AUTHENTIK_BOOTSTRAP_EMAIL", "akadmin@example.com")
+            .WithBindMount("./authentik", "/blueprints/custom", isReadOnly: true)
+            .WithArgs("worker")
+            .WaitFor(authentikDb)
+            .WaitFor(redis);
+
+        // Authentik Server (parent resource for dashboard grouping)
+        var server = builder.AddContainer("authentik", "ghcr.io/goauthentik/server", "2024.12")
+            .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "http")
+            .WithReference(authentikDb)
+            .WithEnvironment("AUTHENTIK_SECRET_KEY", authentikSecretKey)
+            .WithEnvironment(context =>
+            {
+                context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__HOST"] = postgresEndpoint.Property(EndpointProperty.Host);
+                context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__PORT"] = postgresEndpoint.Property(EndpointProperty.Port);
+                context.EnvironmentVariables["AUTHENTIK_REDIS__HOST"] = redisEndpoint.Property(EndpointProperty.Host);
+            })
+            .WithEnvironment("AUTHENTIK_POSTGRESQL__USER", "postgres")
+            .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
+            .WithEnvironment("AUTHENTIK_POSTGRESQL__PASSWORD", authentikDbPassword)
+            .WithArgs("server")
+            .WaitFor(worker);
+
+        // Group all Authentik resources under the server in the dashboard
+        authentikPostgres.WithParentRelationship(server);
+        redis.WithParentRelationship(server);
+        worker.WithParentRelationship(server);
+
+        return new AuthProviderConfig
+        {
+            ProviderName = "Authentik",
+            ClientId = clientId,
+            ClientSecret = "super-secret-client-secret-change-in-production",
+            Audience = clientId,
+            RequireHttpsMetadata = false,
+            NameClaimType = "email",
+            RoleClaimType = "roles",
+            RevokeRefreshTokenOnLogout = true,
+            AuthResource = server,
+            AuthorityPathSuffix = $"/application/o/{appSlug}/"
         };
     }
 //#endif

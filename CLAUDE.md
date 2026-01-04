@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Production-ready .NET Aspire application with React frontend using the Backend-For-Frontend (BFF) pattern. Features multi-tenancy, CQRS architecture, and configurable authentication (Keycloak, FusionAuth, or Duende Demo).
+Production-ready .NET Aspire application with React frontend using the Backend-For-Frontend (BFF) pattern. Features multi-tenancy, CQRS architecture, and configurable authentication (Keycloak, FusionAuth, Authentik, or Duende Demo).
 
 ## Running the Application
 
@@ -440,12 +440,18 @@ From AGENTS.md:
 
 ## Test Users
 
-### Keycloak / FusionAuth
+### Keycloak / FusionAuth / Authentik
 
 | Email | Password | Roles |
 |-------|----------|-------|
 | admin@example.com | password123! | admin, user |
 | user@example.com | password123! | user |
+
+### Authentik Admin
+
+| Email | Password |
+|-------|----------|
+| akadmin@example.com | password123! |
 
 ### Duende Demo
 
@@ -459,6 +465,46 @@ From AGENTS.md:
 - **Centralized Package Management**: All NuGet versions in `Directory.Packages.props`
 - **Frontend Package Manager**: pnpm (not npm)
 - **Docker**: Use `docker compose` with a space (not `docker-compose`)
+
+## Northflank Deployment
+
+The `northflank.json` file provides Infrastructure-as-Code for deploying to Northflank.
+
+### Authentik Post-Deployment Setup
+
+When using Authentik as the auth provider (`--AuthProvider Authentik`), the Northflank template deploys:
+- PostgreSQL for Authentik
+- Redis for Authentik
+- Authentik Server (public)
+- Authentik Worker
+
+**After first deployment:**
+
+1. Get the Authentik server URL from Northflank dashboard (e.g., `https://authentik-server--myproject.us-central.northflank.app`)
+
+2. Update `AUTHENTIK_BASE_URL` argument in Northflank with this URL
+
+3. Access Authentik admin at `{AUTHENTIK_BASE_URL}/if/admin/`
+
+4. Login with bootstrap credentials (default: `akadmin` / value of `AUTHENTIK_BOOTSTRAP_PASSWORD`)
+
+5. Configure OAuth2 Provider:
+   - Go to Applications → Providers → Create
+   - Type: OAuth2/OpenID Provider
+   - Name: FullstackTemplate Provider
+   - Authorization flow: default-provider-authorization-implicit-consent
+   - Client ID: `aspire-app`
+   - Client Secret: (match `AUTH_CLIENT_SECRET` argument)
+   - Redirect URIs: `https://{your-bff-url}/signin-oidc`
+   - Scopes: openid, email, profile, offline_access
+
+6. Create Application:
+   - Go to Applications → Applications → Create
+   - Name: FullstackTemplate
+   - Slug: `aspire-app`
+   - Provider: Select the provider created above
+
+7. Create groups (`admin`, `user`) and users as needed
 
 ## MCP Tools Available
 

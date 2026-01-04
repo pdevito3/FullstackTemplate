@@ -36,4 +36,12 @@
     </Content>
   </ItemGroup>
   <!--#endif -->
+
+  <!--#if (UseAuthentik) -->
+  <ItemGroup>
+    <Content Include="authentik\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <!--#endif -->
 </Project>

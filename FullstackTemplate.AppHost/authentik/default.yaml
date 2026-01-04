@@ -1,0 +1,124 @@
+version: 1
+metadata:
+  name: fullstack-template-setup
+  labels:
+    blueprints.goauthentik.io/description: Auto-provisioning for FullstackTemplate
+entries:
+  # Custom scope mapping for roles claim (maps groups to roles)
+  - model: authentik_providers_oauth2.scopemapping
+    id: roles-scope-mapping
+    state: present
+    identifiers:
+      managed: goauthentik.io/providers/oauth2/scope-roles
+    attrs:
+      name: "roles"
+      scope_name: "roles"
+      description: "Map user groups to roles claim"
+      expression: |
+        return {
+            "roles": [group.name for group in request.user.ak_groups.all()],
+        }
+
+  # OAuth2/OIDC Provider
+  - model: authentik_providers_oauth2.oauth2provider
+    id: oauth2-provider
+    state: present
+    identifiers:
+      name: FullstackTemplate Provider
+    attrs:
+      name: FullstackTemplate Provider
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      client_type: confidential
+      client_id: aspire-app
+      client_secret: super-secret-client-secret-change-in-production
+      redirect_uris:
+        - matching_mode: "strict"
+          url: "http://localhost:5173/signin-oidc"
+        - matching_mode: "strict"
+          url: "https://localhost:5173/signin-oidc"
+        - matching_mode: "strict"
+          url: "http://localhost:7130/signin-oidc"
+        - matching_mode: "strict"
+          url: "https://localhost:7130/signin-oidc"
+        - matching_mode: "strict"
+          url: "http://localhost:7235/signin-oidc"
+        - matching_mode: "strict"
+          url: "https://localhost:7235/signin-oidc"
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      access_code_validity: minutes=1
+      access_token_validity: hours=1
+      refresh_token_validity: days=30
+      include_claims_in_id_token: true
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-offline_access]]
+        - !KeyOf roles-scope-mapping
+      sub_mode: user_email
+
+  # Application
+  - model: authentik_core.application
+    state: present
+    identifiers:
+      slug: aspire-app
+    attrs:
+      name: FullstackTemplate
+      slug: aspire-app
+      provider: !KeyOf oauth2-provider
+      policy_engine_mode: any
+      meta_launch_url: http://localhost:5173
+
+  # Admin group
+  - model: authentik_core.group
+    id: admin-group
+    state: present
+    identifiers:
+      name: admin
+    attrs:
+      name: admin
+      is_superuser: false
+
+  # User group
+  - model: authentik_core.group
+    id: user-group
+    state: present
+    identifiers:
+      name: user
+    attrs:
+      name: user
+      is_superuser: false
+
+  # Admin user
+  - model: authentik_core.user
+    id: admin-user
+    state: present
+    identifiers:
+      username: admin@example.com
+    attrs:
+      username: admin@example.com
+      name: Admin User
+      email: admin@example.com
+      is_active: true
+      path: users
+      password: password123!
+      groups:
+        - !KeyOf admin-group
+        - !KeyOf user-group
+
+  # Regular user
+  - model: authentik_core.user
+    id: regular-user
+    state: present
+    identifiers:
+      username: user@example.com
+    attrs:
+      username: user@example.com
+      name: Test User
+      email: user@example.com
+      is_active: true
+      path: users
+      password: password123!
+      groups:
+        - !KeyOf user-group

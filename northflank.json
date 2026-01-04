@@ -23,6 +23,14 @@
     "AUTH_CLIENT_SECRET": "super-secret-client-secret-change-in-production",
     "AUTH_AUDIENCE": "aspire-app"
 //#endif
+//#if (UseAuthentik)
+    "AUTHENTIK_BASE_URL": "TODO: See post-deployment setup - set to https://authentik-server--{project-name}.{region}.northflank.app",
+    "AUTH_CLIENT_ID": "aspire-app",
+    "AUTH_CLIENT_SECRET": "super-secret-client-secret-change-in-production",
+    "AUTH_AUDIENCE": "aspire-app",
+    "AUTHENTIK_BOOTSTRAP_PASSWORD": "change-me-in-production",
+    "AUTHENTIK_BOOTSTRAP_EMAIL": "admin@example.com"
+//#endif
   },
   "spec": {
     "kind": "Workflow",
@@ -64,6 +72,40 @@
                   "externalAccessEnabled": false
                 }
               },
+//#if (UseAuthentik)
+              {
+                "kind": "Addon",
+                "ref": "postgres-authentik",
+                "spec": {
+                  "name": "postgres-authentik",
+                  "type": "postgresql",
+                  "version": "16",
+                  "billing": {
+                    "replicas": 1,
+                    "storage": 4096,
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "tlsEnabled": true,
+                  "externalAccessEnabled": false
+                }
+              },
+              {
+                "kind": "Addon",
+                "ref": "redis-authentik",
+                "spec": {
+                  "name": "redis-authentik",
+                  "type": "redis",
+                  "version": "7.2",
+                  "billing": {
+                    "replicas": 1,
+                    "storage": 1024,
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "tlsEnabled": true,
+                  "externalAccessEnabled": false
+                }
+              },
+//#endif
               {
                 "kind": "SecretGroup",
                 "ref": "secrets",
@@ -73,24 +115,33 @@
                   "priority": 10,
                   "secrets": {
                     "variables": {
-                      "Auth__Authority": "${args.AUTH_AUTHORITY}",
                       "Auth__ClientId": "${args.AUTH_CLIENT_ID}",
                       "Auth__ClientSecret": "${args.AUTH_CLIENT_SECRET}",
                       "Auth__Audience": "${args.AUTH_AUDIENCE}",
 //#if (UseDuendeDemo)
+                      "Auth__Authority": "${args.AUTH_AUTHORITY}",
                       "Auth__RequireHttpsMetadata": "true",
                       "Auth__NameClaimType": "name",
                       "Auth__RoleClaimType": "role",
                       "Auth__RevokeRefreshTokenOnLogout": "true",
 //#endif
 //#if (UseFusionAuth)
-                      "Auth__RequireHttpsMetadata": "false",
+                      "Auth__Authority": "${args.AUTH_AUTHORITY}",
+                      "Auth__RequireHttpsMetadata": "true",
                       "Auth__NameClaimType": "email",
                       "Auth__RoleClaimType": "roles",
                       "Auth__RevokeRefreshTokenOnLogout": "false",
 //#endif
 //#if (UseKeycloak)
-                      "Auth__RequireHttpsMetadata": "false",
+                      "Auth__Authority": "${args.AUTH_AUTHORITY}",
+                      "Auth__RequireHttpsMetadata": "true",
+                      "Auth__NameClaimType": "email",
+                      "Auth__RoleClaimType": "roles",
+                      "Auth__RevokeRefreshTokenOnLogout": "true",
+//#endif
+//#if (UseAuthentik)
+                      "Auth__Authority": "${args.AUTHENTIK_BASE_URL}/application/o/aspire-app/",
+                      "Auth__RequireHttpsMetadata": "true",
                       "Auth__NameClaimType": "email",
                       "Auth__RoleClaimType": "roles",
                       "Auth__RevokeRefreshTokenOnLogout": "true",
@@ -119,6 +170,71 @@
                   }
                 }
               },
+//#if (UseAuthentik)
+              {
+                "kind": "SecretGroup",
+                "ref": "authentik-secrets",
+                "spec": {
+                  "name": "authentik-secrets",
+                  "secretType": "environment-arguments",
+                  "priority": 10,
+                  "secrets": {
+                    "variables": {},
+                    "files": {}
+                  },
+                  "addonDependencies": [
+                    {
+                      "addonId": "${refs.postgres-authentik.id}",
+                      "keys": [
+                        {
+                          "keyName": "POSTGRES_HOST",
+                          "aliases": ["AUTHENTIK_POSTGRESQL__HOST"]
+                        },
+                        {
+                          "keyName": "POSTGRES_PORT",
+                          "aliases": ["AUTHENTIK_POSTGRESQL__PORT"]
+                        },
+                        {
+                          "keyName": "POSTGRES_DATABASE",
+                          "aliases": ["AUTHENTIK_POSTGRESQL__NAME"]
+                        },
+                        {
+                          "keyName": "POSTGRES_USERNAME",
+                          "aliases": ["AUTHENTIK_POSTGRESQL__USER"]
+                        },
+                        {
+                          "keyName": "POSTGRES_PASSWORD",
+                          "aliases": ["AUTHENTIK_POSTGRESQL__PASSWORD"]
+                        }
+                      ]
+                    },
+                    {
+                      "addonId": "${refs.redis-authentik.id}",
+                      "keys": [
+                        {
+                          "keyName": "REDIS_MASTER_URL",
+                          "aliases": ["AUTHENTIK_REDIS__URL"]
+                        }
+                      ]
+                    }
+                  ],
+                  "restrictions": {
+                    "restricted": true,
+                    "nfObjects": [
+                      {
+                        "id": "${refs.authentik-server.id}",
+                        "type": "service"
+                      },
+                      {
+                        "id": "${refs.authentik-worker.id}",
+                        "type": "service"
+                      }
+                    ],
+                    "tags": []
+                  }
+                }
+              },
+//#endif
               {
                 "kind": "CombinedService",
                 "ref": "server",
@@ -262,6 +378,91 @@
                   }
                 }
               }
+//#if (UseAuthentik)
+              ,{
+                "kind": "DeploymentService",
+                "ref": "authentik-server",
+                "spec": {
+                  "name": "authentik-server",
+                  "billing": {
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      },
+                      "shmSize": 64
+                    },
+                    "external": {
+                      "imagePath": "ghcr.io/goauthentik/server:2024.12"
+                    }
+                  },
+                  "ports": [
+                    {
+                      "name": "http",
+                      "internalPort": 9000,
+                      "protocol": "HTTP",
+                      "public": true,
+                      "domains": [],
+                      "security": {
+                        "policies": [],
+                        "credentials": []
+                      },
+                      "disableNfDomain": false
+                    }
+                  ],
+                  "healthChecks": [
+                    {
+                      "type": "livenessProbe",
+                      "protocol": "HTTP",
+                      "path": "/-/health/live/",
+                      "port": 9000,
+                      "initialDelaySeconds": 30,
+                      "periodSeconds": 30,
+                      "timeoutSeconds": 10,
+                      "failureThreshold": 5
+                    }
+                  ],
+                  "runtimeEnvironment": {
+                    "AUTHENTIK_BOOTSTRAP_PASSWORD": "${args.AUTHENTIK_BOOTSTRAP_PASSWORD}",
+                    "AUTHENTIK_BOOTSTRAP_EMAIL": "${args.AUTHENTIK_BOOTSTRAP_EMAIL}",
+                    "AUTHENTIK_SECRET_KEY": "${args.AUTH_CLIENT_SECRET}",
+                    "AUTHENTIK_ERROR_REPORTING__ENABLED": "false"
+                  },
+                  "runtimeFiles": {}
+                }
+              },
+              {
+                "kind": "DeploymentService",
+                "ref": "authentik-worker",
+                "spec": {
+                  "name": "authentik-worker",
+                  "billing": {
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      },
+                      "shmSize": 64
+                    },
+                    "external": {
+                      "imagePath": "ghcr.io/goauthentik/server:2024.12"
+                    },
+                    "cmdOverride": "worker"
+                  },
+                  "runtimeEnvironment": {
+                    "AUTHENTIK_SECRET_KEY": "${args.AUTH_CLIENT_SECRET}",
+                    "AUTHENTIK_ERROR_REPORTING__ENABLED": "false"
+                  },
+                  "runtimeFiles": {}
+                }
+              }
+//#endif
             ]
           }
         }

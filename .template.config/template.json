@@ -5,7 +5,7 @@
   "identity": "FullstackTemplate",
   "name": "Fullstack Aspire React Template",
   "shortName": "fullstack-aspire",
-  "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, or Duende Demo)",
+  "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, Authentik, or Duende Demo)",
   "tags": {
     "language": "C#",
     "type": "solution"
@@ -29,6 +29,10 @@
           "description": "FusionAuth identity server running in Docker with PostgreSQL"
         },
         {
+          "choice": "Authentik",
+          "description": "Authentik identity server running in Docker with PostgreSQL and Redis"
+        },
+        {
           "choice": "DuendeDemo",
           "description": "Duende Demo identity server (external, for testing)"
         }
@@ -41,6 +45,10 @@
     "UseFusionAuth": {
       "type": "computed",
       "value": "(AuthProvider == \"FusionAuth\")"
+    },
+    "UseAuthentik": {
+      "type": "computed",
+      "value": "(AuthProvider == \"Authentik\")"
     },
     "UseDuendeDemo": {
       "type": "computed",
@@ -57,6 +65,10 @@
         {
           "condition": "(!UseKeycloak)",
           "exclude": ["**/keycloak/**"]
+        },
+        {
+          "condition": "(!UseAuthentik)",
+          "exclude": ["**/authentik/**"]
         },
         {
           "exclude": [

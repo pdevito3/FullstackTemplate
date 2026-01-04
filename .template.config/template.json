@@ -16,7 +16,7 @@
     "AuthProvider": {
       "type": "parameter",
       "datatype": "choice",
-      "defaultValue": "Keycloak",
+      "defaultValue": "DuendeDemo",
       "description": "The authentication provider to use",
       "choices": [
         {

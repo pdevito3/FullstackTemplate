@@ -184,19 +184,21 @@ export function DateFilter({
         </Label>
       </Checkbox>
 
-      {/* Calendar with integrated quick selects */}
+      {/* Calendar with integrated quick selects and date input */}
       <div className="flex justify-center">
         {mode === 'between' ? (
           <JollyRangeCalendar
             value={dateRange}
             onChange={setDateRange}
             showQuickSelects
+            showDateInput
           />
         ) : (
           <JollyCalendar
             value={date}
             onChange={setDate}
             showQuickSelects
+            showDateInput
           />
         )}
       </div>

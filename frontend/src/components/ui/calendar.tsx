@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useMemo, useEffect } from "react"
+import { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react"
 import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -31,6 +31,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { DateField, DateInput } from "@/components/ui/datefield"
 
 const Calendar = AriaCalendar
 
@@ -606,49 +607,102 @@ interface JollyCalendarProps<T extends AriaDateValue>
   extends AriaCalendarProps<T> {
   errorMessage?: string
   showQuickSelects?: boolean
+  showDateInput?: boolean
 }
 
 function JollyCalendar<T extends AriaDateValue>({
   errorMessage,
   className,
   showQuickSelects,
+  showDateInput,
   onChange,
+  value,
   ...props
 }: JollyCalendarProps<T>) {
-  const handleQuickSelect = (date: CalendarDate) => {
+  // Track focused value to navigate calendar view when quick select is used
+  // Initialize with today if no value to avoid uncontrolled-to-controlled warning
+  const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
+    if (value) {
+      const calDate = value as CalendarDate
+      return new CalendarDate(calDate.year, calDate.month, calDate.day)
+    }
+    return today(getLocalTimeZone())
+  })
+
+  // Sync focusedValue when value changes externally
+  useEffect(() => {
+    if (value) {
+      const calDate = value as CalendarDate
+      setFocusedValue(new CalendarDate(calDate.year, calDate.month, calDate.day))
+    }
+  }, [value])
+
+  const handleQuickSelect = useCallback((date: CalendarDate) => {
+    // Update focused value to navigate calendar view to selected date
+    setFocusedValue(date)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onChange?.(date as any)
-  }
+  }, [onChange])
+
+  const handleDateInputChange = useCallback((newValue: AriaDateValue | null) => {
+    if (newValue) {
+      const calDate = newValue as CalendarDate
+      setFocusedValue(calDate)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onChange?.(calDate as any)
+    }
+  }, [onChange])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCalendarChange = useCallback((newValue: any) => {
+    const calDate = newValue as CalendarDate
+    setFocusedValue(calDate)
+    onChange?.(newValue)
+  }, [onChange])
 
   return (
-    <div className={cn("flex", showQuickSelects && "gap-0")}>
-      {showQuickSelects && <QuickSelectsPanel onSelect={handleQuickSelect} />}
-      <Calendar
-        className={composeRenderProps(className, (className) =>
-          cn("w-fit", className)
-        )}
-        onChange={onChange}
-        {...props}
-      >
-        <CalendarZoomProvider>
-          <CalendarHeadingZoomable />
-          <CalendarContent>
-            <CalendarGrid>
-              <CalendarGridHeader>
-                {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
-              </CalendarGridHeader>
-              <CalendarGridBody>
-                {(date) => <CalendarCell date={date} />}
-              </CalendarGridBody>
-            </CalendarGrid>
-          </CalendarContent>
-        </CalendarZoomProvider>
-        {errorMessage && (
-          <Text className="text-sm text-destructive" slot="errorMessage">
-            {errorMessage}
-          </Text>
-        )}
-      </Calendar>
+    <div className="flex flex-col gap-2">
+      {showDateInput && (
+        <DateField
+          value={value ? (value as AriaDateValue) : null}
+          onChange={handleDateInputChange}
+          aria-label="Date"
+        >
+          <DateInput className="h-9" />
+        </DateField>
+      )}
+      <div className={cn("flex", showQuickSelects && "gap-0")}>
+        {showQuickSelects && <QuickSelectsPanel onSelect={handleQuickSelect} />}
+        <Calendar
+          className={composeRenderProps(className, (className) =>
+            cn("w-fit", className)
+          )}
+          value={value}
+          onChange={handleCalendarChange}
+          focusedValue={focusedValue}
+          onFocusChange={setFocusedValue}
+          {...props}
+        >
+          <CalendarZoomProvider>
+            <CalendarHeadingZoomable />
+            <CalendarContent>
+              <CalendarGrid>
+                <CalendarGridHeader>
+                  {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
+                </CalendarGridHeader>
+                <CalendarGridBody>
+                  {(date) => <CalendarCell date={date} />}
+                </CalendarGridBody>
+              </CalendarGrid>
+            </CalendarContent>
+          </CalendarZoomProvider>
+          {errorMessage && (
+            <Text className="text-sm text-destructive" slot="errorMessage">
+              {errorMessage}
+            </Text>
+          )}
+        </Calendar>
+      </div>
     </div>
   )
 }
@@ -657,49 +711,123 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
   extends AriaRangeCalendarProps<T> {
   errorMessage?: string
   showQuickSelects?: boolean
+  showDateInput?: boolean
 }
 
 function JollyRangeCalendar<T extends AriaDateValue>({
   errorMessage,
   className,
   showQuickSelects,
+  showDateInput,
   onChange,
+  value,
   ...props
 }: JollyRangeCalendarProps<T>) {
-  const handleQuickSelect = (range: { start: CalendarDate; end: CalendarDate }) => {
+  // Track focused value to navigate calendar view when quick select is used
+  // Initialize with today if no value to avoid uncontrolled-to-controlled warning
+  const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
+    if (value?.start) {
+      const start = value.start as CalendarDate
+      return new CalendarDate(start.year, start.month, start.day)
+    }
+    return today(getLocalTimeZone())
+  })
+
+  // Sync focusedValue when value changes externally
+  useEffect(() => {
+    if (value?.start) {
+      const start = value.start as CalendarDate
+      setFocusedValue(new CalendarDate(start.year, start.month, start.day))
+    }
+  }, [value?.start])
+
+  const handleQuickSelect = useCallback((range: { start: CalendarDate; end: CalendarDate }) => {
+    // Update focused value to navigate calendar view to selected range start
+    setFocusedValue(range.start)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onChange?.({ start: range.start, end: range.end } as any)
-  }
+  }, [onChange])
+
+  const handleStartDateChange = useCallback((newValue: AriaDateValue | null) => {
+    if (newValue && value) {
+      const calDate = newValue as CalendarDate
+      setFocusedValue(calDate)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onChange?.({ start: calDate, end: value.end } as any)
+    }
+  }, [onChange, value])
+
+  const handleEndDateChange = useCallback((newValue: AriaDateValue | null) => {
+    if (newValue && value) {
+      const calDate = newValue as CalendarDate
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onChange?.({ start: value.start, end: calDate } as any)
+    }
+  }, [onChange, value])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCalendarChange = useCallback((newValue: any) => {
+    if (newValue?.start) {
+      setFocusedValue(newValue.start)
+    }
+    onChange?.(newValue)
+  }, [onChange])
 
   return (
-    <div className={cn("flex", showQuickSelects && "gap-0")}>
-      {showQuickSelects && <QuickSelectsRangePanel onSelect={handleQuickSelect} />}
-      <RangeCalendar
-        className={composeRenderProps(className, (className) =>
-          cn("w-fit", className)
-        )}
-        onChange={onChange}
-        {...props}
-      >
-        <CalendarZoomProvider>
-          <CalendarHeadingZoomable />
-          <CalendarContent>
-            <CalendarGrid>
-              <CalendarGridHeader>
-                {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
-              </CalendarGridHeader>
-              <CalendarGridBody>
-                {(date) => <CalendarCell date={date} />}
-              </CalendarGridBody>
-            </CalendarGrid>
-          </CalendarContent>
-        </CalendarZoomProvider>
-        {errorMessage && (
-          <Text slot="errorMessage" className="text-sm text-destructive">
-            {errorMessage}
-          </Text>
-        )}
-      </RangeCalendar>
+    <div className="flex flex-col gap-2">
+      {showDateInput && (
+        <div className="flex gap-2 items-center">
+          <DateField
+            value={value?.start ? (value.start as AriaDateValue) : null}
+            onChange={handleStartDateChange}
+            aria-label="Start date"
+            className="flex-1"
+          >
+            <DateInput className="h-9" />
+          </DateField>
+          <span className="text-muted-foreground text-sm">to</span>
+          <DateField
+            value={value?.end ? (value.end as AriaDateValue) : null}
+            onChange={handleEndDateChange}
+            aria-label="End date"
+            className="flex-1"
+          >
+            <DateInput className="h-9" />
+          </DateField>
+        </div>
+      )}
+      <div className={cn("flex", showQuickSelects && "gap-0")}>
+        {showQuickSelects && <QuickSelectsRangePanel onSelect={handleQuickSelect} />}
+        <RangeCalendar
+          className={composeRenderProps(className, (className) =>
+            cn("w-fit", className)
+          )}
+          value={value}
+          onChange={handleCalendarChange}
+          focusedValue={focusedValue}
+          onFocusChange={setFocusedValue}
+          {...props}
+        >
+          <CalendarZoomProvider>
+            <CalendarHeadingZoomable />
+            <CalendarContent>
+              <CalendarGrid>
+                <CalendarGridHeader>
+                  {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
+                </CalendarGridHeader>
+                <CalendarGridBody>
+                  {(date) => <CalendarCell date={date} />}
+                </CalendarGridBody>
+              </CalendarGrid>
+            </CalendarContent>
+          </CalendarZoomProvider>
+          {errorMessage && (
+            <Text slot="errorMessage" className="text-sm text-destructive">
+              {errorMessage}
+            </Text>
+          )}
+        </RangeCalendar>
+      </div>
     </div>
   )
 }

@@ -158,7 +158,7 @@ export function DateFilter({
   const isValid = mode === 'between' ? dateRange?.start : date
 
   return (
-    <div className="p-3 space-y-3">
+    <div className="flex flex-col gap-3 p-3">
       {/* Mode selector */}
       <div className="flex gap-1 flex-wrap">
         {modes.map((m) => (
@@ -205,7 +205,7 @@ export function DateFilter({
 
       {/* Time inputs for datetime mode */}
       {isDateTime && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <div className="text-xs font-medium text-muted-foreground">
             Time
           </div>

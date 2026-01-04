@@ -114,8 +114,8 @@ export function TextFilterModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-2">
             <Label>Operator</Label>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -137,7 +137,7 @@ export function TextFilterModal({
             </DropdownMenu>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="value">Value</Label>
             <Input
               ref={inputRef}

@@ -99,9 +99,9 @@ export function MultiSelectFilter({
   }
 
   return (
-    <div className="w-64 space-y-2 p-2">
+    <div className="flex flex-col gap-2 w-64 p-2">
       {/* Operator selector */}
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <label className="text-xs font-medium">Operator</label>
         <DropdownMenu>
           <DropdownMenuTrigger

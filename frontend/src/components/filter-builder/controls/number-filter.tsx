@@ -57,8 +57,8 @@ export function NumberFilter({
   const isValid = value.trim() !== '' && !isNaN(parseFloat(value))
 
   return (
-    <div className="w-64 p-3 space-y-3">
-      <div className="space-y-2">
+    <div className="flex flex-col gap-3 w-64 p-3">
+      <div className="flex flex-col gap-2">
         <Label>Operator</Label>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -80,7 +80,7 @@ export function NumberFilter({
         </DropdownMenu>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <Label htmlFor="value">Value</Label>
         <Input
           id="value"

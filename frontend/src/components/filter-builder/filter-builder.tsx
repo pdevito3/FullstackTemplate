@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { FolderAddIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
@@ -8,24 +8,12 @@ import { FilterEditModal } from './controls/filter-edit-modal'
 import { FilterBadge } from './filter-badge'
 import { FilterGroup } from './filter-group'
 import { FilterPropertyMenu } from './filter-property-menu'
-import type {
-  Filter,
-  FilterBuilderProps,
-  FilterState,
-} from './types'
+import type { Filter, FilterBuilderProps } from './types'
 import { isFilter } from './types'
 import { canCreateGroup } from './utils/depth'
-import {
-  addFilter,
-  createGroupFromSelected,
-  removeFilter,
-  toggleGroupLogicalOperator,
-  toggleRootLogicalOperator,
-  ungroupFilters,
-  updateFilter,
-} from './utils/filter-state'
 import { toQueryKitString } from './utils/querykit-converter'
 import { LogicalOperators } from './utils/operators'
+import { useFilterBuilderReducer } from './use-filter-builder-reducer'
 
 export function FilterBuilder({
   filterOptions,
@@ -34,40 +22,23 @@ export function FilterBuilder({
   initialState,
   className,
 }: FilterBuilderProps) {
-  const [state, setState] = useState<FilterState>(
-    initialState || {
-      filters: [],
-      rootLogicalOperator: LogicalOperators.AND,
-    }
-  )
+  const { state, actions } = useFilterBuilderReducer({ initialState, onChange })
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editingFilter, setEditingFilter] = useState<Filter | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [isGroupingMode, setIsGroupingMode] = useState(false)
 
-  // Wrapper that updates state and notifies parent directly (no useEffect needed)
-  const updateState = useCallback(
-    (updater: (prev: FilterState) => FilterState) => {
-      setState((prev) => {
-        const next = updater(prev)
-        onChange?.(next)
-        return next
-      })
-    },
-    [onChange]
-  )
-
   const handleAddFilter = (filter: Omit<Filter, 'id'>) => {
     const newFilter: Filter = {
       ...filter,
       id: crypto.randomUUID(),
     }
-    updateState((prev) => addFilter(prev, newFilter))
+    actions.addFilter(newFilter)
   }
 
   const handleRemoveFilter = (filterId: string) => {
-    updateState((prev) => removeFilter(prev, filterId))
+    actions.removeFilter(filterId)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.delete(filterId)
@@ -76,15 +47,15 @@ export function FilterBuilder({
   }
 
   const handleToggleLogicalOperator = () => {
-    updateState((prev) => toggleRootLogicalOperator(prev))
+    actions.toggleRootOperator()
   }
 
   const handleToggleGroupOperator = (groupId: string) => {
-    updateState((prev) => toggleGroupLogicalOperator(prev, groupId))
+    actions.toggleGroupOperator(groupId)
   }
 
   const handleUngroup = (groupId: string) => {
-    updateState((prev) => ungroupFilters(prev, groupId))
+    actions.ungroup(groupId)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       next.delete(groupId)
@@ -100,7 +71,7 @@ export function FilterBuilder({
   const handleUpdateFilter = (updatedFilter: Omit<Filter, 'id'>) => {
     if (!editingFilter) return
 
-    updateState((prev) => updateFilter(prev, editingFilter.id, updatedFilter))
+    actions.updateFilter(editingFilter.id, updatedFilter)
     setEditModalOpen(false)
     setEditingFilter(null)
   }
@@ -127,10 +98,7 @@ export function FilterBuilder({
   }
 
   const handleClearAll = () => {
-    updateState(() => ({
-      filters: [],
-      rootLogicalOperator: LogicalOperators.AND,
-    }))
+    actions.clearAll()
     setSelectedIds(new Set())
   }
 
@@ -143,7 +111,7 @@ export function FilterBuilder({
       return
     }
 
-    updateState((prev) => createGroupFromSelected(prev, ids, LogicalOperators.AND))
+    actions.createGroup(ids, LogicalOperators.AND)
     setSelectedIds(new Set())
     setIsGroupingMode(false)
   }
@@ -276,7 +244,7 @@ export function FilterBuilder({
               variant="outline"
               size="sm"
               onClick={() => {
-                updateState(() => preset.filter)
+                actions.applyPreset(preset.filter)
                 setSelectedIds(new Set())
               }}
             >

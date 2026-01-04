@@ -329,7 +329,7 @@ export function getOperatorsForControlType(controlType: ControlType): OperatorMe
 export function getDefaultOperator(controlType: ControlType): OperatorType {
   switch (controlType) {
     case 'text':
-      return Operators.CONTAINS // Contains (case-sensitive by default)
+      return Operators.CONTAINS
     case 'multiselect':
       return Operators.IN
     case 'date':

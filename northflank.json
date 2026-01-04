@@ -1,0 +1,283 @@
+{
+  "apiVersion": "v1.2",
+  "arguments": {
+    "PROJECT_NAME": "fullstack-template",
+    "PROJECT_REGION": "us-central",
+    "GIT_REPO": "TODO: Insert your git repo URL here",
+    "GIT_BRANCH": "main",
+//#if (UseDuendeDemo)
+    "AUTH_AUTHORITY": "https://demo.duendesoftware.com",
+    "AUTH_CLIENT_ID": "interactive.confidential",
+    "AUTH_CLIENT_SECRET": "secret",
+    "AUTH_AUDIENCE": "api"
+//#endif
+//#if (UseFusionAuth)
+    "AUTH_AUTHORITY": "TODO: Insert your FusionAuth authority URL here",
+    "AUTH_CLIENT_ID": "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e",
+    "AUTH_CLIENT_SECRET": "super-secret-client-secret-change-in-production",
+    "AUTH_AUDIENCE": "e9fdb985-9173-4e01-9d73-ac2d60d1dc8e"
+//#endif
+//#if (UseKeycloak)
+    "AUTH_AUTHORITY": "TODO: Insert your Keycloak authority URL here (e.g., https://your-keycloak.com/realms/aspire)",
+    "AUTH_CLIENT_ID": "aspire-app",
+    "AUTH_CLIENT_SECRET": "super-secret-client-secret-change-in-production",
+    "AUTH_AUDIENCE": "aspire-app"
+//#endif
+  },
+  "spec": {
+    "kind": "Workflow",
+    "spec": {
+      "type": "sequential",
+      "steps": [
+        {
+          "kind": "Project",
+          "ref": "project",
+          "spec": {
+            "name": "${args.PROJECT_NAME}",
+            "region": "${args.PROJECT_REGION}",
+            "networking": {
+              "allowedIngressProjects": []
+            }
+          }
+        },
+        {
+          "kind": "Workflow",
+          "spec": {
+            "type": "sequential",
+            "context": {
+              "projectId": "${refs.project.id}"
+            },
+            "steps": [
+              {
+                "kind": "Addon",
+                "ref": "postgres",
+                "spec": {
+                  "name": "postgres",
+                  "type": "postgresql",
+                  "version": "17",
+                  "billing": {
+                    "replicas": 1,
+                    "storage": 4096,
+                    "deploymentPlan": "nf-compute-20"
+                  },
+                  "tlsEnabled": true,
+                  "externalAccessEnabled": false
+                }
+              },
+              {
+                "kind": "SecretGroup",
+                "ref": "secrets",
+                "spec": {
+                  "name": "app-secrets",
+                  "secretType": "environment-arguments",
+                  "priority": 10,
+                  "secrets": {
+                    "variables": {
+                      "Auth__Authority": "${args.AUTH_AUTHORITY}",
+                      "Auth__ClientId": "${args.AUTH_CLIENT_ID}",
+                      "Auth__ClientSecret": "${args.AUTH_CLIENT_SECRET}",
+                      "Auth__Audience": "${args.AUTH_AUDIENCE}",
+//#if (UseDuendeDemo)
+                      "Auth__RequireHttpsMetadata": "true",
+                      "Auth__NameClaimType": "name",
+                      "Auth__RoleClaimType": "role",
+                      "Auth__RevokeRefreshTokenOnLogout": "true",
+//#endif
+//#if (UseFusionAuth)
+                      "Auth__RequireHttpsMetadata": "false",
+                      "Auth__NameClaimType": "email",
+                      "Auth__RoleClaimType": "roles",
+                      "Auth__RevokeRefreshTokenOnLogout": "false",
+//#endif
+//#if (UseKeycloak)
+                      "Auth__RequireHttpsMetadata": "false",
+                      "Auth__NameClaimType": "email",
+                      "Auth__RoleClaimType": "roles",
+                      "Auth__RevokeRefreshTokenOnLogout": "true",
+//#endif
+                      "ASPNETCORE_ENVIRONMENT": "Production"
+                    },
+                    "files": {}
+                  },
+                  "addonDependencies": [
+                    {
+                      "addonId": "${refs.postgres.id}",
+                      "keys": [
+                        {
+                          "keyName": "POSTGRES_URI",
+                          "aliases": [
+                            "ConnectionStrings__appdb"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "restrictions": {
+                    "restricted": false,
+                    "nfObjects": [],
+                    "tags": []
+                  }
+                }
+              },
+              {
+                "kind": "CombinedService",
+                "ref": "server",
+                "spec": {
+                  "name": "server",
+                  "billing": {
+                    "deploymentPlan": "nf-compute-10",
+                    "buildPlan": "nf-compute-400-16"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      },
+                      "shmSize": 64
+                    },
+                    "docker": {
+                      "configType": "default"
+                    }
+                  },
+                  "vcsData": {
+                    "projectType": "github",
+                    "projectUrl": "${args.GIT_REPO}",
+                    "projectBranch": "${args.GIT_BRANCH}"
+                  },
+                  "buildSettings": {
+                    "dockerfile": {
+                      "buildEngine": "kaniko",
+                      "dockerFilePath": "/FullstackTemplate.Server/Dockerfile",
+                      "dockerWorkDir": "/"
+                    }
+                  },
+                  "ports": [
+                    {
+                      "name": "http",
+                      "internalPort": 8080,
+                      "protocol": "HTTP",
+                      "public": false,
+                      "security": {
+                        "credentials": [],
+                        "policies": [],
+                        "sso": {}
+                      }
+                    }
+                  ],
+                  "healthChecks": [
+                    {
+                      "type": "livenessProbe",
+                      "protocol": "HTTP",
+                      "path": "/health",
+                      "port": 8080,
+                      "initialDelaySeconds": 10,
+                      "periodSeconds": 30,
+                      "timeoutSeconds": 5,
+                      "failureThreshold": 3
+                    }
+                  ],
+                  "runtimeEnvironment": {},
+                  "runtimeFiles": {},
+                  "buildArguments": {},
+                  "buildFiles": {},
+                  "disabledCI": false,
+                  "buildConfiguration": {
+                    "pathIgnoreRules": [],
+                    "isAllowList": false,
+                    "ciIgnoreFlagsEnabled": false
+                  }
+                }
+              },
+              {
+                "kind": "CombinedService",
+                "ref": "bff",
+                "spec": {
+                  "name": "bff",
+                  "billing": {
+                    "deploymentPlan": "nf-compute-10",
+                    "buildPlan": "nf-compute-400-16"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 1024
+                      },
+                      "shmSize": 64
+                    },
+                    "docker": {
+                      "configType": "default"
+                    }
+                  },
+                  "vcsData": {
+                    "projectType": "github",
+                    "projectUrl": "${args.GIT_REPO}",
+                    "projectBranch": "${args.GIT_BRANCH}"
+                  },
+                  "buildSettings": {
+                    "dockerfile": {
+                      "buildEngine": "kaniko",
+                      "dockerFilePath": "/FullstackTemplate.Bff/Dockerfile",
+                      "dockerWorkDir": "/"
+                    }
+                  },
+                  "ports": [
+                    {
+                      "name": "http",
+                      "internalPort": 8080,
+                      "protocol": "HTTP",
+                      "public": true,
+                      "domains": [],
+                      "security": {
+                        "policies": [],
+                        "credentials": []
+                      },
+                      "disableNfDomain": false
+                    }
+                  ],
+                  "healthChecks": [
+                    {
+                      "type": "livenessProbe",
+                      "protocol": "HTTP",
+                      "path": "/health",
+                      "port": 8080,
+                      "initialDelaySeconds": 10,
+                      "periodSeconds": 30,
+                      "timeoutSeconds": 5,
+                      "failureThreshold": 3
+                    }
+                  ],
+                  "runtimeEnvironment": {
+                    "services__server__http__0": "http://server:8080"
+                  },
+                  "runtimeFiles": {},
+                  "buildArguments": {},
+                  "buildFiles": {},
+                  "disabledCI": false,
+                  "buildConfiguration": {
+                    "pathIgnoreRules": [],
+                    "isAllowList": false,
+                    "ciIgnoreFlagsEnabled": false
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "options": {
+    "autorun": false,
+    "concurrencyPolicy": "allow"
+  },
+  "gitops": {
+    "repoUrl": "TODO: Insert your git repo URL here",
+    "vcsService": "github",
+    "accountLogin": "TODO: Insert your GitHub account login here",
+    "branch": "main",
+    "filePath": "/northflank.json"
+  },
+  "$schema": "https://api.northflank.com/v1/schemas/template"
+}

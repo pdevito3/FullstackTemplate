@@ -26,6 +26,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "motion": "^12.23.26",
     "react": "^19.2.1",
     "react-aria-components": "^1.14.0",
     "react-dom": "^19.2.1",

@@ -2,7 +2,7 @@
   "$schema": "http://json.schemastore.org/template",
   "author": "Paul",
   "classifications": ["Web", "Aspire", "React", "BFF", "Authentication"],
-  "identity": "FullstackTemplate.Aspire.React",
+  "identity": "FullstackTemplate",
   "name": "Fullstack Aspire React Template",
   "shortName": "fullstack-aspire",
   "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, or Duende Demo)",

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Notifications } from '@/components/notifications'
 import './index.css'
 
 // Import the generated route tree
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
+        <Notifications />
       </QueryClientProvider>
     </ThemeProvider>
   </StrictMode>,

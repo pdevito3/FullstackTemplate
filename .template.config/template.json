@@ -59,6 +59,7 @@
         },
         {
           "exclude": [
+            ".git/**",
             "**/bin/**",
             "**/obj/**",
             "**/node_modules/**",

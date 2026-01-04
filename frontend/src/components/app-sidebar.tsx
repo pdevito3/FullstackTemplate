@@ -106,7 +106,7 @@ export function AppSidebar() {
                     <span>Demos</span>
                     <HugeiconsIcon
                       icon={ArrowRight01Icon}
-                      className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90"
+                      className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90"
                     />
                   </CollapsibleTrigger>
                   <CollapsibleContent>

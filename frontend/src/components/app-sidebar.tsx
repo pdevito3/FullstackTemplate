@@ -114,7 +114,7 @@ export function AppSidebar() {
                       {demoItems.map((item) => {
                         const isActive = currentPath === item.url
                         return (
-                          <SidebarMenuSubItem key={item.title}>
+                          <SidebarMenuSubItem key={item.title} isActive={isActive}>
                             <SidebarMenuSubButton
                               render={<Link to={item.url} />}
                               isActive={isActive}

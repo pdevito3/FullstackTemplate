@@ -1,5 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Extensions;
 
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerUI;
@@ -14,6 +16,7 @@ public static class SwaggerExtension
 
     /// <summary>
     /// Adds OpenAPI document generation with optional OAuth2 security and XML documentation.
+    /// Uses OIDC discovery to automatically determine authorization and token endpoints.
     /// </summary>
     public static IServiceCollection AddSwaggerExtension(
         this IServiceCollection services,
@@ -39,6 +42,13 @@ public static class SwaggerExtension
             }
         }
 
+        // Discover OAuth endpoints from OIDC configuration
+        OidcEndpoints? oidcEndpoints = null;
+        if (hasOAuthConfig)
+        {
+            oidcEndpoints = DiscoverOidcEndpoints(authAuthority!);
+        }
+
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -50,7 +60,7 @@ public static class SwaggerExtension
                     Description = "API documentation for the FullstackTemplate application"
                 };
 
-                if (hasOAuthConfig)
+                if (hasOAuthConfig && oidcEndpoints != null)
                 {
                     document.Components ??= new OpenApiComponents();
                     document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
@@ -63,8 +73,8 @@ public static class SwaggerExtension
                         {
                             AuthorizationCode = new OpenApiOAuthFlow
                             {
-                                AuthorizationUrl = new Uri($"{authAuthority}/connect/authorize"),
-                                TokenUrl = new Uri($"{authAuthority}/connect/token"),
+                                AuthorizationUrl = new Uri(oidcEndpoints.AuthorizationEndpoint),
+                                TokenUrl = new Uri(oidcEndpoints.TokenEndpoint),
                                 Scopes = scopesConfig
                             }
                         }
@@ -117,6 +127,51 @@ public static class SwaggerExtension
 
         return services;
     }
+
+    /// <summary>
+    /// Discovers OIDC endpoints from the provider's .well-known/openid-configuration.
+    /// </summary>
+    private static OidcEndpoints? DiscoverOidcEndpoints(string authority)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+            var discoveryUrl = authority.TrimEnd('/') + "/.well-known/openid-configuration";
+            var response = httpClient.GetAsync(discoveryUrl).GetAwaiter().GetResult();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Warning: Failed to fetch OIDC discovery document from {discoveryUrl}. " +
+                    $"Status: {response.StatusCode}. Swagger OAuth may not work correctly.");
+                return null;
+            }
+
+            var json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var authEndpoint = root.GetProperty("authorization_endpoint").GetString();
+            var tokenEndpoint = root.GetProperty("token_endpoint").GetString();
+
+            if (string.IsNullOrEmpty(authEndpoint) || string.IsNullOrEmpty(tokenEndpoint))
+            {
+                Console.WriteLine("Warning: OIDC discovery document missing required endpoints.");
+                return null;
+            }
+
+            return new OidcEndpoints(authEndpoint, tokenEndpoint);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to discover OIDC endpoints: {ex.Message}. " +
+                "Swagger OAuth may not work correctly.");
+            return null;
+        }
+    }
+
+    private sealed record OidcEndpoints(string AuthorizationEndpoint, string TokenEndpoint);
 
     /// <summary>
     /// Configures and enables Swagger UI middleware with optional OAuth2 authentication.

@@ -475,6 +475,9 @@ The `northflank.json` file provides Infrastructure-as-Code for deploying to Nort
 When using Keycloak as the auth provider (`--AuthProvider Keycloak`), the Northflank template deploys:
 - PostgreSQL for Keycloak
 - Keycloak Server (public)
+- keycloak-config service (applies realm configuration automatically)
+
+**Configuration is automated** via `keycloak-config-cli`. The realm, client, roles, and (optionally) test users are provisioned from version-controlled configuration in `infra/keycloak/`.
 
 **After first deployment:**
 
@@ -482,21 +485,28 @@ When using Keycloak as the auth provider (`--AuthProvider Keycloak`), the Northf
 
 2. Update `KEYCLOAK_BASE_URL` argument in Northflank with this URL
 
-3. Access Keycloak admin at `{KEYCLOAK_BASE_URL}/admin/`
+3. Build and run the `keycloak-config` service in Northflank - it will:
+   - Wait for Keycloak to be healthy
+   - Create the `aspire` realm with all settings
+   - Configure the `aspire-app` client with proper redirect URIs
+   - Create `admin` and `user` roles
+   - (If `KC_INCLUDE_TEST_USERS=true`) Create test users
 
-4. Login with admin credentials (`admin` / value of `KEYCLOAK_ADMIN_PASSWORD`)
+4. After configuration is applied, scale the `keycloak-config` service to 0 instances to save resources
 
-5. Create a realm named `aspire`
+**Environment-specific configuration:**
 
-6. Create a Client:
-   - Client ID: `aspire-app`
-   - Client authentication: ON
-   - Valid redirect URIs: `https://{your-bff-url}/signin-oidc`
-   - Copy the client secret and update `AUTH_CLIENT_SECRET` argument
+| Environment | `KC_INCLUDE_TEST_USERS` | Notes |
+|-------------|-------------------------|-------|
+| UAT / Dev   | `true`                  | Includes test users (admin@example.com, user@example.com) |
+| Production  | `false`                 | No test users created |
 
-7. Create roles (`admin`, `user`) and users as needed
+**Making configuration changes:**
 
-8. Configure role mappings for users
+1. Edit files in `infra/keycloak/` (see `infra/keycloak/README.md`)
+2. Commit and push
+3. Rebuild and restart the `keycloak-config` service in Northflank
+4. Scale back to 0 instances after changes are applied
 
 ### Authentik Post-Deployment Setup
 

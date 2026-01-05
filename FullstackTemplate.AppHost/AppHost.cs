@@ -25,9 +25,9 @@ try
 
 #if LOCAL_DEV
     // var authProvider = AuthProviders.FusionAuth(builder);
-    // var authProvider = AuthProviders.Keycloak(builder);
+    var authProvider = AuthProviders.Keycloak(builder);
     // var authProvider = AuthProviders.DuendeDemo();
-    var authProvider = AuthProviders.Authentik(builder);
+    // var authProvider = AuthProviders.Authentik(builder);
 #else
     //#if (UseFusionAuth)
     var authProvider = AuthProviders.FusionAuth(builder);

@@ -22,7 +22,8 @@
     "AUTH_CLIENT_ID": "aspire-app",
     "AUTH_CLIENT_SECRET": "super-secret-client-secret-change-in-production",
     "AUTH_AUDIENCE": "aspire-app",
-    "KEYCLOAK_ADMIN_PASSWORD": "change-me-in-production"
+    "KEYCLOAK_ADMIN_PASSWORD": "change-me-in-production",
+    "KC_INCLUDE_TEST_USERS": "true"
 //#endif
 //#if (UseAuthentik)
     "AUTHENTIK_BASE_URL": "TODO: See post-deployment setup - set to https://authentik-server--{project-name}.{region}.northflank.app",
@@ -506,6 +507,59 @@
                     "KEYCLOAK_ADMIN_PASSWORD": "${args.KEYCLOAK_ADMIN_PASSWORD}"
                   },
                   "runtimeFiles": {}
+                }
+              },
+              {
+                "kind": "CombinedService",
+                "ref": "keycloak-config",
+                "spec": {
+                  "name": "keycloak-config",
+                  "billing": {
+                    "deploymentPlan": "nf-compute-10",
+                    "buildPlan": "nf-compute-100-2"
+                  },
+                  "deployment": {
+                    "instances": 1,
+                    "storage": {
+                      "ephemeralStorage": {
+                        "storageSize": 512
+                      },
+                      "shmSize": 64
+                    },
+                    "docker": {
+                      "configType": "default"
+                    }
+                  },
+                  "vcsData": {
+                    "projectType": "github",
+                    "projectUrl": "${args.GIT_REPO}",
+                    "projectBranch": "${args.GIT_BRANCH}"
+                  },
+                  "buildSettings": {
+                    "dockerfile": {
+                      "buildEngine": "kaniko",
+                      "dockerFilePath": "/infra/keycloak/Dockerfile",
+                      "dockerWorkDir": "/infra/keycloak"
+                    }
+                  },
+                  "ports": [],
+                  "runtimeEnvironment": {
+                    "KEYCLOAK_URL": "http://keycloak:8080",
+                    "KEYCLOAK_ADMIN": "admin",
+                    "KEYCLOAK_ADMIN_PASSWORD": "${args.KEYCLOAK_ADMIN_PASSWORD}",
+                    "KC_CLIENT_SECRET": "${args.AUTH_CLIENT_SECRET}",
+                    "KC_BFF_URL": "https://bff--${args.PROJECT_NAME}.${args.PROJECT_REGION}.northflank.app",
+                    "KC_INCLUDE_TEST_USERS": "${args.KC_INCLUDE_TEST_USERS}"
+                  },
+                  "runtimeFiles": {},
+                  "buildArguments": {},
+                  "buildFiles": {},
+                  "disabledCI": true,
+                  "buildConfiguration": {
+                    "pathIgnoreRules": [],
+                    "isAllowList": false,
+                    "ciIgnoreFlagsEnabled": false
+                  }
                 }
               }
 //#endif

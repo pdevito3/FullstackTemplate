@@ -1,15 +1,14 @@
 {
-  "id": "aspire",
   "realm": "aspire",
   "displayName": "FullstackTemplate",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
-  "bruteForceProtected": false,
+  "bruteForceProtected": true,
   "accessTokenLifespan": 3600,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
@@ -44,30 +43,13 @@
       "name": "FullstackTemplate Application",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "super-secret-client-secret-change-in-production",
+      "secret": "$(env:KC_CLIENT_SECRET)",
       "redirectUris": [
-        "http://localhost:5173/*",
-        "https://localhost:5173/*",
-        "http://localhost:5566/*",
-        "https://localhost:5566/*",
-        "http://localhost:7130/*",
-        "https://localhost:7130/*",
-        "http://localhost:7235/*",
-        "https://localhost:7235/*",
-        "http://localhost:7554/*",
-        "https://localhost:7554/*"
+        "$(env:KC_BFF_URL)/signin-oidc",
+        "$(env:KC_BFF_URL)/*"
       ],
       "webOrigins": [
-        "http://localhost:5173",
-        "https://localhost:5173",
-        "http://localhost:5566",
-        "https://localhost:5566",
-        "http://localhost:7130",
-        "https://localhost:7130",
-        "http://localhost:7235",
-        "https://localhost:7235",
-        "http://localhost:7554",
-        "https://localhost:7554"
+        "$(env:KC_BFF_URL)"
       ],
       "publicClient": false,
       "protocol": "openid-connect",
@@ -79,7 +61,7 @@
       "fullScopeAllowed": true,
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "+",
+        "post.logout.redirect.uris": "$(env:KC_BFF_URL)/*",
         "oauth2.device.authorization.grant.enabled": "false",
         "oidc.ciba.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
@@ -363,39 +345,5 @@
   ],
   "defaultOptionalClientScopes": [
     "offline_access"
-  ],
-  "users": [
-    {
-      "username": "admin@example.com",
-      "email": "admin@example.com",
-      "emailVerified": true,
-      "enabled": true,
-      "firstName": "Admin",
-      "lastName": "User",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "password123!",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["admin", "user", "default-roles-aspire"]
-    },
-    {
-      "username": "user@example.com",
-      "email": "user@example.com",
-      "emailVerified": true,
-      "enabled": true,
-      "firstName": "Test",
-      "lastName": "User",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "password123!",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["user", "default-roles-aspire"]
-    }
   ]
 }

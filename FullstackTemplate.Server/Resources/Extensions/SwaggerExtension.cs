@@ -24,6 +24,7 @@ public static class SwaggerExtension
     {
         var authAuthority = configuration["Auth:Authority"];
         var authAudience = configuration["Auth:Audience"];
+        var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
         var hasOAuthConfig = !string.IsNullOrEmpty(authAuthority);
 
         var scopesConfig = configuration.GetSection("Auth:Scopes").Get<Dictionary<string, string>>();
@@ -35,8 +36,9 @@ public static class SwaggerExtension
                 { "profile", "User profile information" }
             };
 
-            // Many OAuth providers require the audience as a scope to get API access tokens
-            if (!string.IsNullOrEmpty(authAudience))
+            // Some OAuth providers (like Keycloak) require the audience as a scope to get API access tokens
+            // Others (like FusionAuth) don't support custom scopes
+            if (useAudienceAsScope && !string.IsNullOrEmpty(authAudience))
             {
                 scopesConfig[authAudience] = "API access scope";
             }
@@ -184,6 +186,7 @@ public static class SwaggerExtension
         var authAudience = configuration["Auth:Audience"];
         var authClientId = configuration["Auth:ClientId"];
         var authClientSecret = configuration["Auth:ClientSecret"];
+        var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
         var hasOAuthConfig = !string.IsNullOrEmpty(authAuthority);
         var swaggerClientId = configuration["Swagger:ClientId"] ?? authClientId;
         var swaggerClientSecret = configuration["Swagger:ClientSecret"] ?? authClientSecret;
@@ -206,7 +209,7 @@ public static class SwaggerExtension
                 }
 
                 var scopesToSelect = new List<string> { "openid", "profile" };
-                if (!string.IsNullOrEmpty(authAudience))
+                if (useAudienceAsScope && !string.IsNullOrEmpty(authAudience))
                 {
                     scopesToSelect.Add(authAudience);
                 }

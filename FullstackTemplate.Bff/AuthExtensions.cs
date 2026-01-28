@@ -32,6 +32,7 @@ public static class AuthExtensions
         var nameClaimType = configuration["Auth:NameClaimType"] ?? "name";
         var roleClaimType = configuration["Auth:RoleClaimType"] ?? "role";
         var revokeRefreshTokenOnLogout = configuration.GetValue("Auth:RevokeRefreshTokenOnLogout", true);
+        var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
         var refreshBeforeExpirationSeconds = configuration.GetValue("Auth:RefreshBeforeExpirationSeconds", 120);
 
         services.AddOpenIdConnectAccessTokenManagement(options =>
@@ -66,7 +67,8 @@ public static class AuthExtensions
                 options.Scope.Add("offline_access");
 
                 // Request the API audience scope to get access tokens with correct audience claim
-                if (!string.IsNullOrEmpty(authAudience))
+                // Some providers (like Keycloak) require this; others (like FusionAuth) don't support custom scopes
+                if (useAudienceAsScope && !string.IsNullOrEmpty(authAudience))
                 {
                     options.Scope.Add(authAudience);
                 }

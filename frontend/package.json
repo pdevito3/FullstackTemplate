@@ -7,7 +7,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:keycloak": "IDP=keycloak playwright test",
+    "test:e2e:fusionauth": "IDP=fusionauth playwright test",
+    "test:e2e:authentik": "IDP=authentik playwright test",
+    "test:e2e:duende": "IDP=duende playwright test"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
@@ -39,6 +46,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-plugin": "^1.142.0",
     "@types/node": "^24.10.1",

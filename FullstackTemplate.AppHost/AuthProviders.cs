@@ -35,6 +35,14 @@ public sealed record AuthProviderConfig
     public bool RevokeRefreshTokenOnLogout { get; init; } = true;
 
     /// <summary>
+    /// Whether to include the Audience as an OAuth scope.
+    /// Some providers (like Keycloak) require the audience as a scope to get proper access tokens.
+    /// FusionAuth doesn't support custom scopes and will reject unknown scopes.
+    /// Default is true for compatibility with most providers.
+    /// </summary>
+    public bool UseAudienceAsScope { get; init; } = true;
+
+    /// <summary>
     /// Path suffix to append to the container endpoint for the authority URL.
     /// Used by providers like Keycloak that include the realm in the authority path.
     /// Example: "/realms/aspire" for Keycloak.
@@ -65,7 +73,8 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__Audience", authProvider.Audience)
             .WithEnvironment("Auth__RequireHttpsMetadata", authProvider.RequireHttpsMetadata.ToString())
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)
-            .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType);
+            .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
+            .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString());
 
         // Apply authority - either static URL or container endpoint
         if (authProvider.Authority is not null)
@@ -107,7 +116,8 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RequireHttpsMetadata", authProvider.RequireHttpsMetadata.ToString())
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
-            .WithEnvironment("Auth__RevokeRefreshTokenOnLogout", authProvider.RevokeRefreshTokenOnLogout.ToString());
+            .WithEnvironment("Auth__RevokeRefreshTokenOnLogout", authProvider.RevokeRefreshTokenOnLogout.ToString())
+            .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString());
 
         // Apply authority - either static URL or container endpoint
         if (authProvider.Authority is not null)
@@ -208,6 +218,7 @@ public static class AuthProviders
             NameClaimType = "email",
             RoleClaimType = "roles",
             RevokeRefreshTokenOnLogout = false, // FusionAuth doesn't expose revocation in OIDC discovery
+            UseAudienceAsScope = false, // FusionAuth doesn't support custom scopes
             AuthResource = fusionAuth
         };
     }

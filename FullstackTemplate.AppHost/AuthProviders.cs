@@ -206,7 +206,9 @@ public static class AuthProviders
             .WithEnvironment("FUSIONAUTH_APP_SILENT_MODE", "true")
             .WithEnvironment("SEARCH_TYPE", "database")
             .WithBindMount("./fusionauth", "/usr/local/fusionauth/kickstart", isReadOnly: true)
-            .WaitFor(fusionAuthDb);
+            .WaitFor(fusionAuthDb)
+            // Health check ensures FusionAuth is ready before server starts
+            .WithHttpHealthCheck("/api/status");
 
         return new AuthProviderConfig
         {
@@ -227,22 +229,47 @@ public static class AuthProviders
 //#if (UseKeycloak)
     /// <summary>
     /// Creates a configuration for Keycloak running locally in Docker.
-    /// Uses dev mode with embedded H2 database and realm import for auto-provisioning.
+    /// Uses PostgreSQL database with data volume for persistence and realm import for auto-provisioning.
     /// </summary>
     public static AuthProviderConfig Keycloak(IDistributedApplicationBuilder builder)
     {
         const string realmName = "aspire";
         const string clientId = "aspire-app";
 
-        // Keycloak in dev mode with embedded H2 database
+        // PostgreSQL database for Keycloak
+        var keycloakDbPassword = builder.AddParameter("keycloak-db-password", secret: true);
+        var keycloakPostgres = builder.AddPostgres("keycloak-postgres", password: keycloakDbPassword)
+            .WithDataVolume("keycloak-postgres-data");
+        var keycloakDb = keycloakPostgres.AddDatabase("keycloak-db");
+
+        // Get the postgres endpoint for container-to-container communication
+        var postgresEndpoint = keycloakPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
+
+        // Keycloak Identity Provider container with PostgreSQL
         var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0")
             .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
+            .WithReference(keycloakDb)
             .WithEnvironment("KEYCLOAK_ADMIN", "admin")
             .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
+            .WithEnvironment("KC_DB", "postgres")
+            .WithEnvironment("KC_DB_USERNAME", "postgres")
+            .WithEnvironment("KC_DB_PASSWORD", keycloakDbPassword)
+            .WithEnvironment(context =>
+            {
+                context.EnvironmentVariables["KC_DB_URL_HOST"] = postgresEndpoint.Property(EndpointProperty.Host);
+                context.EnvironmentVariables["KC_DB_URL_PORT"] = postgresEndpoint.Property(EndpointProperty.Port);
+            })
+            .WithEnvironment("KC_DB_URL_DATABASE", "keycloak-db")
             .WithBindMount("./keycloak", "/opt/keycloak/data/import", isReadOnly: true)
-            .WithArgs("start-dev", "--import-realm");
+            .WithArgs("start-dev", "--import-realm")
+            .WaitFor(keycloakDb)
+            // Use realm endpoint for health check since management port isn't exposed in dev mode
+            .WithHttpHealthCheck($"/realms/{realmName}");
+
+        // Group Keycloak resources under the main container in the dashboard
+        keycloakPostgres.WithParentRelationship(keycloak);
 
         return new AuthProviderConfig
         {
@@ -280,9 +307,10 @@ public static class AuthProviders
 
         var postgresEndpoint = authentikPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
 
-        // Redis for Authentik
+        // Redis for Authentik with data persistence
         var redis = builder.AddContainer("authentik-redis", "redis", "alpine")
-            .WithArgs("--save", "60", "1", "--loglevel", "warning");
+            .WithArgs("--save", "60", "1", "--loglevel", "warning")
+            .WithVolume("authentik-redis-data", "/data");
 
         var redisEndpoint = redis.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
 
@@ -321,7 +349,10 @@ public static class AuthProviders
             .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
             .WithEnvironment("AUTHENTIK_POSTGRESQL__PASSWORD", authentikDbPassword)
             .WithArgs("server")
-            .WaitFor(worker);
+            .WaitFor(worker)
+            // Health check ensures Authentik OAuth provider is ready before server starts
+            // Using OIDC discovery endpoint instead of /-/health/live/ which only checks if server is up
+            .WithHttpHealthCheck($"/application/o/{appSlug}/.well-known/openid-configuration");
 
         // Group all Authentik resources under the server in the dashboard
         authentikPostgres.WithParentRelationship(server);

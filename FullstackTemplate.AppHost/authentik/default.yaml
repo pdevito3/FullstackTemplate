@@ -45,6 +45,11 @@ entries:
           url: "http://localhost:7235/signin-oidc"
         - matching_mode: "strict"
           url: "https://localhost:7235/signin-oidc"
+        # Swagger OAuth redirect for API testing
+        - matching_mode: "strict"
+          url: "http://localhost:7554/swagger/oauth2-redirect.html"
+        - matching_mode: "strict"
+          url: "https://localhost:7554/swagger/oauth2-redirect.html"
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       access_code_validity: minutes=1
       access_token_validity: hours=1

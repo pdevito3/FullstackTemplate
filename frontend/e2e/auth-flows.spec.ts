@@ -117,12 +117,23 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
   }
 
   // Handle consent page if needed
+  // Note: The popup may close immediately after successful OAuth callback,
+  // so we need to handle the case where the page is no longer available
   if (idp.hasConsentPage && idp.consentSelector) {
-    await page.waitForTimeout(2000) // Wait for consent page to load
-    // Only click if the consent button is visible
-    const consentButton = page.locator(idp.consentSelector)
-    if (await consentButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await consentButton.click()
+    try {
+      // Check if page is still open before waiting
+      if (page.isClosed()) return
+
+      await page.waitForTimeout(2000) // Wait for consent page to load
+
+      // Only click if the consent button is visible
+      const consentButton = page.locator(idp.consentSelector)
+      if (await consentButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await consentButton.click()
+      }
+    } catch {
+      // Page was closed - OAuth flow completed successfully without needing consent
+      return
     }
   }
 }

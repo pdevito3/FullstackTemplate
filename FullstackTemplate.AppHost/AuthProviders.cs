@@ -260,7 +260,9 @@ public static class AuthProviders
             })
             .WithBindMount("./keycloak", "/opt/keycloak/data/import", isReadOnly: true)
             .WithArgs("start-dev", "--import-realm")
-            .WaitFor(keycloakDb);
+            .WaitFor(keycloakDb)
+            // Health check ensures Keycloak and the realm are ready before server starts
+            .WithHttpHealthCheck($"/realms/{realmName}/.well-known/openid-configuration");
         
         keycloakPostgres.WithParentRelationship(keycloak);
 

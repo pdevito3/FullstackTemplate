@@ -41,7 +41,7 @@ try
 #endif
 
     var postgres = builder.AddPostgres("postgres")
-        .WithDataVolume("app-db-volume");
+        .WithDataVolume($"{Config.VolumePrefix}-db-volume");
     var appDb = postgres.AddDatabase("appdb");
 
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")

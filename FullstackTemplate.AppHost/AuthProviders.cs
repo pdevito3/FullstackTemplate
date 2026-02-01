@@ -180,7 +180,7 @@ public static class AuthProviders
         // PostgreSQL database for FusionAuth
         var fusionAuthDbPassword = builder.AddParameter("fusionauth-db-password", secret: true);
         var fusionAuthPostgres = builder.AddPostgres("fusionauth-postgres", password: fusionAuthDbPassword)
-            .WithDataVolume("fusionauth-postgres-data");
+            .WithDataVolume($"{Config.VolumePrefix}-fusionauth-postgres-data");
         var fusionAuthDb = fusionAuthPostgres.AddDatabase("fusionauth-db");
 
         // Get the postgres endpoint for container-to-container communication
@@ -235,40 +235,33 @@ public static class AuthProviders
     {
         const string realmName = "aspire";
         const string clientId = "aspire-app";
-
-        // PostgreSQL database for Keycloak
-        var keycloakDbPassword = builder.AddParameter("keycloak-db-password", secret: true);
-        var keycloakPostgres = builder.AddPostgres("keycloak-postgres", password: keycloakDbPassword)
-            .WithDataVolume("keycloak-postgres-data");
-        var keycloakDb = keycloakPostgres.AddDatabase("keycloak-db");
-
-        // Get the postgres endpoint for container-to-container communication
-        var postgresEndpoint = keycloakPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
-
-        // Keycloak Identity Provider container with PostgreSQL
+        
+        var keycloakPostgres = builder.AddPostgres("keycloak-postgres")
+            .WithDataVolume($"{Config.VolumePrefix}-keycloak-postgres-data");
+        var keycloakDb = keycloakPostgres.AddDatabase("keycloakdb");
+        
         var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0")
-            .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
             .WithReference(keycloakDb)
+            .WaitFor(keycloakDb)
+            .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
             .WithEnvironment("KEYCLOAK_ADMIN", "admin")
             .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
             .WithEnvironment("KC_DB", "postgres")
-            .WithEnvironment("KC_DB_USERNAME", "postgres")
-            .WithEnvironment("KC_DB_PASSWORD", keycloakDbPassword)
             .WithEnvironment(context =>
             {
-                context.EnvironmentVariables["KC_DB_URL_HOST"] = postgresEndpoint.Property(EndpointProperty.Host);
-                context.EnvironmentVariables["KC_DB_URL_PORT"] = postgresEndpoint.Property(EndpointProperty.Port);
+                // Configure Keycloak to connect to PostgreSQL
+                var pgResource = keycloakDb.Resource.Parent;
+                context.EnvironmentVariables["KC_DB_URL"] = ReferenceExpression.Create(
+                    $"jdbc:postgresql://{pgResource.PrimaryEndpoint.Property(EndpointProperty.Host)}:{pgResource.PrimaryEndpoint.Property(EndpointProperty.Port)}/{keycloakDb.Resource.DatabaseName}");
+                context.EnvironmentVariables["KC_DB_USERNAME"] = pgResource.UserNameReference;
+                context.EnvironmentVariables["KC_DB_PASSWORD"] = pgResource.PasswordParameter;
             })
-            .WithEnvironment("KC_DB_URL_DATABASE", "keycloak-db")
             .WithBindMount("./keycloak", "/opt/keycloak/data/import", isReadOnly: true)
             .WithArgs("start-dev", "--import-realm")
-            .WaitFor(keycloakDb)
-            // Use realm endpoint for health check since management port isn't exposed in dev mode
-            .WithHttpHealthCheck($"/realms/{realmName}");
-
-        // Group Keycloak resources under the main container in the dashboard
+            .WaitFor(keycloakDb);
+        
         keycloakPostgres.WithParentRelationship(keycloak);
 
         return new AuthProviderConfig
@@ -302,7 +295,7 @@ public static class AuthProviders
         // PostgreSQL database for Authentik
         var authentikDbPassword = builder.AddParameter("authentik-db-password", secret: true);
         var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword)
-            .WithDataVolume("authentik-postgres-data");
+            .WithDataVolume($"{Config.VolumePrefix}-authentik-postgres-data");
         var authentikDb = authentikPostgres.AddDatabase("authentik-db");
 
         var postgresEndpoint = authentikPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);

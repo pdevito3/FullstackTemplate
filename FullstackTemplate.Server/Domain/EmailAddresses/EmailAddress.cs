@@ -2,7 +2,7 @@ namespace FullstackTemplate.Server.Domain.EmailAddresses;
 
 using FluentValidation;
 
-public sealed class EmailAddress : ValueObject
+public sealed partial class EmailAddress : ValueObject
 {
     public string Value { get; private set; }
     

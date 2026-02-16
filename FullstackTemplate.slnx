@@ -16,4 +16,5 @@
   <Project Path="FullstackTemplate.AppHost/FullstackTemplate.AppHost.csproj" />
   <Project Path="FullstackTemplate.Bff/FullstackTemplate.Bff.csproj" />
   <Project Path="FullstackTemplate.Server/FullstackTemplate.Server.csproj" />
+  <Project Path="FullstackTemplate.SourceGenerators/FullstackTemplate.SourceGenerators.csproj" />
 </Solution>

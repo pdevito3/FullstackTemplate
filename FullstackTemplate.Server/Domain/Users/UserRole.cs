@@ -3,7 +3,7 @@ namespace FullstackTemplate.Server.Domain.Users;
 using Ardalis.SmartEnum;
 using Exceptions;
 
-public class UserRole : ValueObject
+public partial class UserRole : ValueObject
 {
     private UserRoleEnum _role = null!;
 

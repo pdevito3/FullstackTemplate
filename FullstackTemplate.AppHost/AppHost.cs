@@ -64,7 +64,6 @@ try
         .WithBffAuth(authProvider)
         .WithReference(server)
         .WithReference(webfrontend)
-        .WaitFor(server)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
         .WithParentRelationship(webfrontend);
@@ -75,9 +74,7 @@ try
         bff.WaitFor(authProvider.AuthResource);
     }
 
-    webfrontend
-        .WithReference(bff)
-        .WaitFor(bff);
+    webfrontend.WithReference(bff);
 
     server.PublishWithContainerFiles(webfrontend, "wwwroot");
 

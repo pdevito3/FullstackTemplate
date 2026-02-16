@@ -3,7 +3,7 @@ namespace FullstackTemplate.Server.Domain.Users;
 using Ardalis.SmartEnum;
 using Exceptions;
 
-public class Permission : ValueObject
+public partial class Permission : ValueObject
 {
     private PermissionEnum _permission = null!;
 

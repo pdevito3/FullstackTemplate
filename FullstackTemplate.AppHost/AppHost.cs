@@ -68,12 +68,6 @@ try
         .WithExternalHttpEndpoints()
         .WithParentRelationship(webfrontend);
 
-    if (authProvider.AuthResource is not null)
-    {
-        server.WaitFor(authProvider.AuthResource);
-        bff.WaitFor(authProvider.AuthResource);
-    }
-
     webfrontend.WithReference(bff);
 
     server.PublishWithContainerFiles(webfrontend, "wwwroot");

@@ -19,6 +19,7 @@ public static class GetTenantList
             var queryKitConfig = new CustomQueryKitConfiguration();
 
             IQueryable<Tenant> query = dbContext.Tenants
+                .TagWithOperationCallSite("tenants.list")
                 .AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))

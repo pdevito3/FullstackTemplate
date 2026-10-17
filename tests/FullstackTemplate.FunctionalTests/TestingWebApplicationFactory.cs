@@ -1,5 +1,6 @@
 namespace FullstackTemplate.FunctionalTests;
 
+using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Hosting;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Trace;
 using Testcontainers.PostgreSql;
 using WebMotions.Fake.Authentication.JwtBearer;
 
@@ -16,6 +18,11 @@ public class TestingWebApplicationFactoryCollection : ICollectionFixture<Testing
 public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private PostgreSqlContainer _dbContainer = null!;
+
+    /// <summary>
+    /// Every span the server exports, in stop order. Read it through <see cref="TestBase.ExportedSpans"/>.
+    /// </summary>
+    public List<Activity> ExportedActivities { get; } = [];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -37,6 +44,9 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
 
             // Add migration hosted service
             services.AddHostedService<MigrationHostedService<AppDbContext>>();
+
+            // Capture the exported spans so tests can make assertions on the real trace pipeline
+            services.AddOpenTelemetry().WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities));
         });
     }
 
@@ -48,7 +58,7 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
         await _dbContainer.StartAsync();
 
         Environment.SetEnvironmentVariable(
-            "ConnectionStrings__FullstackTemplateDb",
+            $"ConnectionStrings__{DatabaseConsts.DatabaseName}",
             _dbContainer.GetConnectionString());
 
         // Auth configuration required by AddJwtBearerAuthentication

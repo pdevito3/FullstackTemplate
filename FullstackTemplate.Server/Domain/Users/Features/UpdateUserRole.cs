@@ -15,6 +15,7 @@ public static class UpdateUserRole
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
             var user = await dbContext.Users
+                .TagWithOperationCallSite("users.update_role.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 

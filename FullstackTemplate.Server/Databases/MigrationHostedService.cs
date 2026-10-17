@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using Medallion.Threading.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Resources;
 using Serilog;
 
 public class MigrationHostedService<TDbContext>(
@@ -16,6 +17,12 @@ public class MigrationHostedService<TDbContext>(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // Startup has no request to hang this work on. Without a root, each migration query exports as
+        // its own rootless trace. With one, the whole run is a single trace named after what it does.
+        using var trace = Telemetry.TraceRoot(
+            [("app.db_context", typeof(TDbContext).Name)],
+            "database.migrate");
+
         try
         {
             _logger.Information("Applying migrations for {DbContext}", typeof(TDbContext).Name);
@@ -50,6 +57,7 @@ public class MigrationHostedService<TDbContext>(
         }
         catch (Exception ex) when (ex is SocketException or NpgsqlException)
         {
+            Telemetry.RecordError(trace.Activity, ex);
             _logger.Error(
                 ex,
                 "Could not connect to the database -- please check the connection string and make sure the database is running");
@@ -57,6 +65,7 @@ public class MigrationHostedService<TDbContext>(
         }
         catch (Exception ex)
         {
+            Telemetry.RecordError(trace.Activity, ex);
             _logger.Error(ex, "An error occurred while applying the database migrations.");
             throw;
         }

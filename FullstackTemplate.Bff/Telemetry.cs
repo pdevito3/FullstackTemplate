@@ -56,4 +56,26 @@ public static class Telemetry
         activity?.AddException(ex);
         Errors.Add(1, new KeyValuePair<string, object?>("exception.type", ex.GetType().Name));
     }
+
+    /// <summary>
+    /// Captures the current trace context for a hop that headers cannot cover. Both values are null
+    /// when no activity is current, and <see cref="TryParseTraceContext"/> then reports false.
+    /// </summary>
+    public static TraceContext CaptureCurrentTraceContext() =>
+        new(Activity.Current?.Id, Activity.Current?.TraceStateString);
+
+    /// <summary>
+    /// Parses a captured <see cref="TraceContext"/> back into an <see cref="ActivityContext"/>.
+    /// Returns false for a null, empty, or malformed context, so a caller that receives no context
+    /// keeps working with an untraced parent.
+    /// </summary>
+    public static bool TryParseTraceContext(TraceContext? traceContext, out ActivityContext activityContext)
+    {
+        activityContext = default;
+        if (traceContext is null || string.IsNullOrWhiteSpace(traceContext.TraceParent))
+            return false;
+
+        return ActivityContext.TryParse(
+            traceContext.TraceParent, traceContext.TraceState, isRemote: true, out activityContext);
+    }
 }

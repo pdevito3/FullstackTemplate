@@ -15,6 +15,7 @@ public static class AddUserPermission
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
             var user = await dbContext.Users
+                .TagWithOperationCallSite("users.add_permission.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 

@@ -13,7 +13,9 @@ public static class UpdateUser
     {
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
-            var user = await dbContext.Users.GetById(request.Id, cancellationToken);
+            var user = await dbContext.Users
+                .TagWithOperationCallSite("users.update.load")
+                .GetById(request.Id, cancellationToken);
 
             var forUpdate = request.Dto.ToUserForUpdate();
             user.Update(forUpdate);

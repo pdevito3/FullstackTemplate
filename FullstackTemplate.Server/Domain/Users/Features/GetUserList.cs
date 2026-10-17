@@ -19,6 +19,7 @@ public static class GetUserList
             var queryKitConfig = new CustomQueryKitConfiguration();
 
             IQueryable<User> query = dbContext.Users
+                .TagWithOperationCallSite("users.list")
                 .AsNoTracking()
                 .Include(u => u.UserPermissions);
 

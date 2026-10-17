@@ -13,7 +13,9 @@ public static class UpdateTenant
     {
         public async Task<TenantDto> Handle(Command request, CancellationToken cancellationToken)
         {
-            var tenant = await dbContext.Tenants.GetById(request.Id, cancellationToken);
+            var tenant = await dbContext.Tenants
+                .TagWithOperationCallSite("tenants.update.load")
+                .GetById(request.Id, cancellationToken);
 
             var forUpdate = request.Dto.ToTenantForUpdate();
             tenant.Update(forUpdate);

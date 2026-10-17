@@ -15,6 +15,7 @@ public static class GetUserByIdentifier
         public async Task<UserDto?> Handle(Query request, CancellationToken cancellationToken)
         {
             var user = await dbContext.Users
+                .TagWithOperationCallSite("users.get_by_identifier")
                 .AsNoTracking()
                 .Include(u => u.UserPermissions)
                 .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken);

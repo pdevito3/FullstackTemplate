@@ -11,7 +11,9 @@ public static class DeleteTenant
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
-            var tenant = await dbContext.Tenants.GetById(request.Id, cancellationToken);
+            var tenant = await dbContext.Tenants
+                .TagWithOperationCallSite("tenants.delete.load")
+                .GetById(request.Id, cancellationToken);
 
             dbContext.Tenants.Remove(tenant);
             await dbContext.SaveChangesAsync(cancellationToken);

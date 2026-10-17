@@ -1,5 +1,6 @@
 namespace FullstackTemplate.FunctionalTests;
 
+using System.Diagnostics;
 using System.Net.Http.Json;
 using AutoBogus;
 using FullstackTemplate.Server.Databases;
@@ -36,6 +37,15 @@ public class TestBase : IDisposable
         FactoryClient.Dispose();
         _factory.DisposeAsync().GetAwaiter().GetResult();
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// A snapshot of the spans that the server exported for this test.
+    /// </summary>
+    protected IReadOnlyList<Activity> ExportedSpans()
+    {
+        lock (_factory.ExportedActivities)
+            return _factory.ExportedActivities.ToList();
     }
 
     public static async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)

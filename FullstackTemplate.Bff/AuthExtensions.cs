@@ -78,6 +78,21 @@ public static class AuthExtensions
                     NameClaimType = nameClaimType,
                     RoleClaimType = roleClaimType
                 };
+
+                // Connect the login and callback traces across the identity provider redirect.
+                var onRedirectToIdentityProvider = options.Events.OnRedirectToIdentityProvider;
+                options.Events.OnRedirectToIdentityProvider = context =>
+                {
+                    LoginTraceLink.Capture(context.Properties);
+                    return onRedirectToIdentityProvider(context);
+                };
+
+                var onTicketReceived = options.Events.OnTicketReceived;
+                options.Events.OnTicketReceived = context =>
+                {
+                    LoginTraceLink.LinkCurrentActivity(context.Properties);
+                    return onTicketReceived(context);
+                };
             })
             .ConfigureCookies(options =>
             {

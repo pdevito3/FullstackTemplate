@@ -54,6 +54,7 @@ public sealed class TenantIdProvider(
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         return await dbContext.Users
+            .TagWithOperationCallSite("users.tenant_id_lookup")
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Where(u => u.Identifier == userIdentifier)
             .Select(u => (Guid?)u.TenantId)

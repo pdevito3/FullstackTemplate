@@ -13,6 +13,7 @@ public static class DeleteUser
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
             var user = await dbContext.Users
+                .TagWithOperationCallSite("users.delete.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 

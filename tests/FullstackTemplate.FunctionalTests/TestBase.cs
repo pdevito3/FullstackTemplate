@@ -5,7 +5,8 @@ using FullstackTemplate.Server.Databases;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
-[Collection(nameof(TestBase))]
+// No [Collection] attribute: all tests run in parallel on the assembly fixture
+// (see AssemblyFixtureRegistration.cs).
 public class TestBase : IDisposable
 {
     private static TestingWebApplicationFactory Factory => TestingWebApplicationFactory.Instance;

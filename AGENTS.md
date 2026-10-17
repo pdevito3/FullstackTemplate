@@ -62,7 +62,7 @@ This command starts the Aspire dashboard, the server, the BFF, the Vite dev serv
 
 ```bash
 dotnet build FullstackTemplate.slnx
-dotnet test FullstackTemplate.slnx
+dotnet test --solution FullstackTemplate.slnx
 
 cd frontend
 pnpm install

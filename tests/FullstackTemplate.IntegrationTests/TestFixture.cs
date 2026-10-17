@@ -1,5 +1,6 @@
 namespace FullstackTemplate.IntegrationTests;
 
+using AutoBogus;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
@@ -12,10 +13,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using Testcontainers.PostgreSql;
-
-[CollectionDefinition(nameof(TestFixture))]
-public class TestFixtureCollection : ICollectionFixture<TestFixture> { }
 
 public class TestFixture : IAsyncLifetime
 {
@@ -23,22 +20,22 @@ public class TestFixture : IAsyncLifetime
     public static TestSeed Seed = null!;
     public static Tenant DefaultTenant => Seed.Tenant;
     public static User DefaultUser => Seed.User;
-    private PostgreSqlContainer _dbContainer = null!;
+    private readonly PostgresTestDatabase _database = new();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
+        ConfigureAutoFaker();
+
+        // Tests never reload configuration. A file watcher on appsettings can hang on macOS when the system is busy.
+        Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = TestingConsts.IntegrationTestingEnvName
         });
 
-        // Start PostgreSQL container
-        _dbContainer = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
-            .Build();
-        await _dbContainer.StartAsync();
-        
-        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = _dbContainer.GetConnectionString();
+        await _database.StartAsync();
+        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = _database.ConnectionString;
 
         // Configure auth for testing (these values are not used since auth is mocked)
         builder.Configuration["Auth:Authority"] = "https://localhost";
@@ -49,8 +46,10 @@ public class TestFixture : IAsyncLifetime
 
         var services = builder.Services;
 
-        // Mock ICurrentUserService for simplified user management in tests
-        services.ReplaceServiceWithSingletonMock<ICurrentUserService>();
+        // Mock ICurrentUserService for simplified user management in tests.
+        // The mock is scoped, so each TestingServiceScope has its own current user.
+        // This lets tests run in parallel.
+        services.ReplaceServiceWithScopedMock<ICurrentUserService>();
 
         var provider = services.BuildServiceProvider();
         BaseScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
@@ -71,15 +70,26 @@ public class TestFixture : IAsyncLifetime
         TestContext.DefaultTenantId = Seed.Tenant.Id;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        await _dbContainer.DisposeAsync();
+        await _database.DisposeAsync();
+    }
+
+    private static void ConfigureAutoFaker()
+    {
+        AutoFaker.Configure(builder =>
+        {
+            builder.WithDateTimeKind(DateTimeKind.Utc)
+                .WithRecursiveDepth(3)
+                .WithTreeDepth(1)
+                .WithRepeatCount(1);
+        });
     }
 }
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection ReplaceServiceWithSingletonMock<TService>(this IServiceCollection services)
+    public static IServiceCollection ReplaceServiceWithScopedMock<TService>(this IServiceCollection services)
         where TService : class
     {
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TService));
@@ -88,7 +98,7 @@ public static class ServiceCollectionExtensions
             services.Remove(descriptor);
         }
 
-        services.AddSingleton(_ => Substitute.For<TService>());
+        services.AddScoped(_ => Substitute.For<TService>());
         return services;
     }
 }

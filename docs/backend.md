@@ -112,3 +112,7 @@ The server applies migrations at startup, with a Postgres advisory lock.
 | `tests/FullstackTemplate.SharedTestHelpers` | Fakes and builders for all test projects |
 
 The functional tests share one `TestingWebApplicationFactory`. Each test gets its own `FactoryClient`.
+
+All tests in a project run in parallel on one assembly fixture. Each test must create its own data and must not depend on rows from other tests. If a test reads state of the whole app, such as all exported spans, put it in a collection with `DisableParallelization = true`.
+
+Local runs reuse one Postgres container and create a new database for each run. If the `CI` variable is set, each run gets a new container.

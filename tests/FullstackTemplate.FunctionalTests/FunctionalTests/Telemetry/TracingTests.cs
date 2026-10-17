@@ -2,11 +2,13 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Telemetry;
 
 using System.Diagnostics;
 using FullstackTemplate.Server.Domain.Tenants.Features;
-using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Telemetry = FullstackTemplate.Server.Resources.Telemetry;
 
+// These tests count the spans of the whole app, so no other test can run at the same time.
+[Collection(nameof(TracingTests))]
 public class TracingTests : TestBase
 {
     private const string NpgsqlSource = "Npgsql";
@@ -28,7 +30,7 @@ public class TracingTests : TestBase
     public async Task feature_slice_span_parents_the_tagged_query_span()
     {
         // Arrange
-        var tenant = new FakeTenantBuilder().Build();
+        TestGraph.Start(out _).AddTenant(out var tenant);
         await AddAsync(tenant);
 
         // Act
@@ -89,3 +91,6 @@ public class TracingTests : TestBase
         ExportedSpans().ShouldNotContain(a => a.TraceId == filtered.TraceId);
     }
 }
+
+[CollectionDefinition(nameof(TracingTests), DisableParallelization = true)]
+public class TracingTestsCollection;

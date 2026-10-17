@@ -10,22 +10,18 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Trace;
-using Testcontainers.PostgreSql;
 using WebMotions.Fake.Authentication.JwtBearer;
 
-[CollectionDefinition(nameof(TestBase))]
-public class TestingWebApplicationFactoryCollection : ICollectionFixture<TestingWebApplicationFactory> { }
-
 /// <summary>
-/// One app and one database for the whole test collection. Starting them once per test made each
+/// One app and one database for the whole test assembly. Starting them once per test made each
 /// test pay for a new container and a new migration run.
 /// </summary>
 public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private PostgreSqlContainer _dbContainer = null!;
+    private readonly PostgresTestDatabase _database = new();
 
     /// <summary>
-    /// The running factory for the collection. Set when the fixture starts.
+    /// The running factory for the assembly. Set when the fixture starts.
     /// </summary>
     public static TestingWebApplicationFactory Instance { get; private set; } = null!;
 
@@ -60,16 +56,16 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
         });
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
-        _dbContainer = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
-            .Build();
-        await _dbContainer.StartAsync();
+        // Tests never reload configuration. A file watcher on appsettings can hang on macOS when the system is busy.
+        Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+
+        await _database.StartAsync();
 
         Environment.SetEnvironmentVariable(
             $"ConnectionStrings__{DatabaseConsts.DatabaseName}",
-            _dbContainer.GetConnectionString());
+            _database.ConnectionString);
 
         // Auth configuration required by AddJwtBearerAuthentication
         Environment.SetEnvironmentVariable("Auth__Authority", "https://localhost");
@@ -91,9 +87,9 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
         Instance = this;
     }
 
-    public new async Task DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        await _dbContainer.DisposeAsync();
+        await _database.DisposeAsync();
     }
 }

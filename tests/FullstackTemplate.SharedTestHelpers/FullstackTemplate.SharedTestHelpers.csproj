@@ -11,6 +11,7 @@
         <PackageReference Include="AutoBogusLifesupport" />
         <PackageReference Include="Bogus" />
         <PackageReference Include="NSubstitute" />
+        <PackageReference Include="Testcontainers.PostgreSql" />
     </ItemGroup>
 
     <ItemGroup>

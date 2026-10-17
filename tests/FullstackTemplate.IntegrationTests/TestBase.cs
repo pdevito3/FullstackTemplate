@@ -1,23 +1,5 @@
 namespace FullstackTemplate.IntegrationTests;
 
-using AutoBogus;
-
-[Collection(nameof(TestFixture))]
-public class TestBase : IDisposable
-{
-    public TestBase()
-    {
-        AutoFaker.Configure(builder =>
-        {
-            builder.WithDateTimeKind(DateTimeKind.Utc)
-                .WithRecursiveDepth(3)
-                .WithTreeDepth(1)
-                .WithRepeatCount(1);
-        });
-    }
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
-    }
-}
+// No [Collection] attribute: each test class is its own collection, so the classes run in
+// parallel on the assembly fixture (see AssemblyFixtureRegistration.cs).
+public class TestBase;

@@ -1,5 +1,4 @@
 /.build/
-/global.json
 QueryBaseline.cs
 
 ## Ignore Visual Studio temporary files, build results, and

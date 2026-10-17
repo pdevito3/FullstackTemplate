@@ -5,7 +5,8 @@ using Exceptions;
 using MediatR;
 
 /// <summary>
-/// Wraps every MediatR request in a span named after its feature slice, so a trace reads
+/// Wraps every MediatR request in a span named after its feature slice, and records its duration in
+/// <see cref="Telemetry.RequestDuration"/>. A trace then reads
 /// <c>GET api/v1/users/{id}</c> → <c>GetUser.Query</c> → the tagged database spans underneath it.
 /// Without this the handler is invisible and a slow request shows only its transport span and its
 /// queries, with nothing naming the work in between.
@@ -30,6 +31,8 @@ public sealed class RequestTracingBehavior<TRequest, TResponse> : IPipelineBehav
     {
         using var activity = Telemetry.Source.StartActivity(RequestName);
         activity?.SetTag("app.request.name", RequestName);
+        var startedAt = Stopwatch.GetTimestamp();
+        string? errorType = null;
 
         try
         {
@@ -37,14 +40,22 @@ public sealed class RequestTracingBehavior<TRequest, TResponse> : IPipelineBehav
         }
         catch (Exception exception)
         {
-            activity?.SetTag("error.type", exception.GetType().FullName);
+            errorType = exception.GetType().FullName;
+            activity?.SetTag("error.type", errorType);
 
             // A client error (validation, not found) is an expected outcome, so it is tagged but not
             // marked failed. Marking it Error would color a normal 4xx as a server fault in the trace.
             if (!DomainProblemDetails.IsClientError(exception))
-                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                Telemetry.RecordError(activity, exception);
 
             throw;
+        }
+        finally
+        {
+            TagList tags = new() { { "app.request.name", RequestName } };
+            if (errorType is not null)
+                tags.Add("error.type", errorType);
+            Telemetry.RequestDuration.Record(Stopwatch.GetElapsedTime(startedAt).TotalSeconds, tags);
         }
     }
 }

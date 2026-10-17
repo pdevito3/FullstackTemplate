@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +32,7 @@ try
 
     app.UseSerilogRequestLogging(options =>
     {
+        options.GetLevel = HostExtensions.RequestLogLevel;
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
@@ -69,8 +69,7 @@ try
 
     api.MapGet("/weather", () =>
     {
-        using var activity = Telemetry.Source.StartActivity("GenerateWeatherForecast");
-        var sw = Stopwatch.StartNew();
+        using var activity = Telemetry.Trace([], "GenerateWeatherForecast");
 
         var forecast = Enumerable.Range(1, 5).Select(index =>
             new WeatherForecast
@@ -82,8 +81,6 @@ try
             .ToArray();
 
         activity?.SetTag("forecast.count", forecast.Length);
-        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather"));
-        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather"));
 
         return forecast;
     })
@@ -92,11 +89,9 @@ try
 
     api.MapGet("/weather/secure", (ClaimsPrincipal user) =>
     {
-        using var activity = Telemetry.Source.StartActivity("GenerateSecureWeatherForecast");
-        var sw = Stopwatch.StartNew();
+        using var activity = Telemetry.Trace([], "GenerateSecureWeatherForecast");
 
         var userName = user.Identity?.Name ?? user.FindFirstValue("sub") ?? "Unknown";
-        activity?.SetTag("user.name", userName);
 
         var forecast = Enumerable.Range(1, 5).Select(index =>
             new SecureWeatherForecast
@@ -109,8 +104,6 @@ try
             .ToArray();
 
         activity?.SetTag("forecast.count", forecast.Length);
-        Telemetry.Requests.Add(1, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather/secure"));
-        Telemetry.RequestDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("endpoint", "/api/v1/weather/secure"));
 
         return forecast;
     })

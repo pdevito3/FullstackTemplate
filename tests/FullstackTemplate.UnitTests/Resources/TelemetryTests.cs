@@ -82,6 +82,56 @@ public class TelemetryTests : IDisposable
     }
 
     [Fact]
+    public void trace_starts_a_child_of_the_caller_with_the_call_site()
+    {
+        // Arrange
+        using var caller = _callerSource.StartActivity("caller").ShouldNotBeNull();
+
+        // Act
+        using var span = Telemetry.Trace([("app.test", "value")], "work.step");
+
+        // Assert
+        span.ShouldNotBeNull();
+        span.DisplayName.ShouldBe("work.step");
+        span.Kind.ShouldBe(ActivityKind.Internal);
+        span.ParentSpanId.ShouldBe(caller.SpanId);
+        span.TraceId.ShouldBe(caller.TraceId);
+        span.GetTagItem("app.test").ShouldBe("value");
+        span.GetTagItem("code.function").ShouldBe(nameof(trace_starts_a_child_of_the_caller_with_the_call_site));
+        (span.GetTagItem("code.file.path") as string).ShouldNotBeNull().ShouldEndWith("TelemetryTests.cs");
+        span.GetTagItem("code.line.number").ShouldBeOfType<int>().ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public void add_event_adds_an_event_with_the_call_site_to_the_current_activity()
+    {
+        // Arrange
+        using var caller = _callerSource.StartActivity("caller").ShouldNotBeNull();
+
+        // Act
+        Telemetry.AddEvent([("app.test", "value")], "lock.acquired");
+
+        // Assert
+        var activityEvent = caller.Events.ShouldHaveSingleItem();
+        activityEvent.Name.ShouldBe("lock.acquired");
+        var tags = activityEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value);
+        tags["app.test"].ShouldBe("value");
+        tags["code.function"].ShouldBe(nameof(add_event_adds_an_event_with_the_call_site_to_the_current_activity));
+        (tags["code.file.path"] as string).ShouldNotBeNull().ShouldEndWith("TelemetryTests.cs");
+        tags["code.line.number"].ShouldBeOfType<int>().ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public void add_event_without_an_activity_does_nothing()
+    {
+        // Arrange
+        Activity.Current = null;
+
+        // Act and assert
+        Should.NotThrow(() => Telemetry.AddEvent([], "lock.acquired"));
+    }
+
+    [Fact]
     public void trace_context_round_trips_the_current_activity()
     {
         // Arrange

@@ -4,6 +4,8 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
+using Resources;
+using Serilog;
 using Tenants;
 using Tenants.Mappings;
 using Tenants.Models;
@@ -15,6 +17,8 @@ public static class InitiateUserAndTenant
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, InitiateUserAndTenantResponseDto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<InitiateUserAndTenantResponseDto> Handle(Command request, CancellationToken cancellationToken)
         {
             // Create tenant first
@@ -38,6 +42,10 @@ public static class InitiateUserAndTenant
 
             // Single transaction - both saved together
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            // A new tenant is a business event that someone reads later, so it is a log, not only a span.
+            // Ids only: the names and the email in the request are personal data.
+            _logger.Here().Information("Created tenant {TenantId} for new user {UserId}", tenant.Id, user.Id);
 
             return new InitiateUserAndTenantResponseDto
             {

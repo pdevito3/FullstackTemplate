@@ -10,12 +10,23 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using Serilog.Events;
 using Serilog.Sinks.OpenTelemetry;
 
 public static class HostExtensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+
+    // Meters that the instrumentation packages do not add. Polly reports the retries and circuit breaks
+    // of the standard resilience handler. The auth meters are new in .NET 10.
+    private static readonly string[] FrameworkMeters =
+    [
+        "Polly",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.AspNetCore.Authentication",
+        "Microsoft.AspNetCore.Authorization",
+    ];
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -37,22 +48,14 @@ public static class HostExtensions
     private static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         var serviceName = builder.Environment.ApplicationName;
-        var serviceVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0";
 
         builder.Services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource
-                .AddService(
-                    serviceName: serviceName,
-                    serviceVersion: serviceVersion,
-                    serviceInstanceId: Environment.MachineName)
-                .AddAttributes([
-                    new("deployment.environment", builder.Environment.EnvironmentName),
-                    new("host.name", Environment.MachineName)
-                ]))
+            .ConfigureResource(resource => resource.AddAttributes(ResourceAttributes(builder)))
             .WithMetrics(metrics =>
             {
                 metrics
                     .AddMeter(Telemetry.Meter.Name)
+                    .AddMeter(FrameworkMeters)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
@@ -64,9 +67,7 @@ public static class HostExtensions
                     .AddSource(serviceName)
                     .AddAspNetCoreInstrumentation(opts =>
                     {
-                        opts.Filter = ctx =>
-                            !ctx.Request.Path.StartsWithSegments(HealthEndpointPath) &&
-                            !ctx.Request.Path.StartsWithSegments(AlivenessEndpointPath);
+                        opts.Filter = ctx => !IsHealthProbe(ctx.Request.Path);
                         opts.RecordException = true;
                     })
                     .AddHttpClientInstrumentation(opts => opts.RecordException = true);
@@ -103,15 +104,26 @@ public static class HostExtensions
                 {
                     options.Endpoint = otlpEndpoint;
                     options.Protocol = OtlpProtocol.Grpc;
-                    options.ResourceAttributes = new Dictionary<string, object>
-                    {
-                        ["service.name"] = builder.Environment.ApplicationName
-                    };
+                    options.ResourceAttributes = ResourceAttributes(builder);
                 });
         });
 
         return builder;
     }
+
+    /// <summary>
+    /// The resource attributes for traces, metrics, and logs. Serilog exports logs on its own, not
+    /// through the OpenTelemetry SDK, so both read this one source. Then a filter on version or
+    /// environment finds all three signals.
+    /// </summary>
+    private static Dictionary<string, object> ResourceAttributes(IHostApplicationBuilder builder) => new()
+    {
+        ["service.name"] = builder.Environment.ApplicationName,
+        ["service.version"] = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0",
+        ["service.instance.id"] = Environment.MachineName,
+        ["deployment.environment"] = builder.Environment.EnvironmentName,
+        ["host.name"] = Environment.MachineName,
+    };
 
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -146,6 +158,25 @@ public static class HostExtensions
 
         return builder;
     }
+
+    /// <summary>
+    /// True for the health and aliveness probes. The orchestrator calls them every few seconds, so
+    /// their spans and request logs are noise.
+    /// </summary>
+    public static bool IsHealthProbe(PathString path) =>
+        path.StartsWithSegments(HealthEndpointPath) || path.StartsWithSegments(AlivenessEndpointPath);
+
+    /// <summary>
+    /// The request log level: Error for a failure, Verbose for a health probe, and Information for
+    /// all other requests. Verbose is below the minimum level, so a healthy probe writes no log.
+    /// </summary>
+    public static LogEventLevel RequestLogLevel(HttpContext httpContext, double _, Exception? exception) =>
+        (exception, httpContext.Response.StatusCode) switch
+        {
+            (not null, _) or (_, > 499) => LogEventLevel.Error,
+            _ when IsHealthProbe(httpContext.Request.Path) => LogEventLevel.Verbose,
+            _ => LogEventLevel.Information,
+        };
 
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {

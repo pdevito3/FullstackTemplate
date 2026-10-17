@@ -37,7 +37,7 @@ Read the doc for an area before you change code in that area.
 | Doc | Content |
 |-----|---------|
 | [docs/backend.md](docs/backend.md) | Domain structure, new features, DI, API versioning, error responses, database, tests |
-| [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `TraceRoot`, `TraceContext`, named queries |
+| [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
@@ -57,7 +57,7 @@ This command starts the Aspire dashboard, the server, the BFF, the Vite dev serv
 
 1. Before you make changes, run `aspire run` and make sure that all resources are healthy.
 2. If you change `AppHost.cs`, restart the app. Other code changes hot-reload.
-3. If a resource fails, read its logs and traces with the Aspire MCP tools before you change code.
+3. If a resource fails, read its logs and traces before you change code. The `aspire-telemetry` skill gives the commands.
 4. To run C# in the live server (inspect DI or data, send a MediatR request, patch a method), use the `csharprepl` skill.
 
 ## Build and test

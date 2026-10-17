@@ -56,6 +56,7 @@ try
 
     app.UseSerilogRequestLogging(options =>
     {
+        options.GetLevel = Extensions.RequestLogLevel;
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);

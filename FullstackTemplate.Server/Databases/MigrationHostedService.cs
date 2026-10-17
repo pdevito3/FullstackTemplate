@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Resources;
 using Serilog;
+using Serilog.Core;
 
 public class MigrationHostedService<TDbContext>(
     IServiceScopeFactory scopeFactory,
@@ -13,7 +14,9 @@ public class MigrationHostedService<TDbContext>(
     : IHostedService
     where TDbContext : DbContext
 {
-    private readonly ILogger _logger = Log.ForContext<MigrationHostedService<TDbContext>>();
+    // ForContext<T> names a generic type with its assembly-qualified arguments, which fills a console line.
+    private readonly ILogger _logger = Log.ForContext(
+        Constants.SourceContextPropertyName, $"{typeof(MigrationHostedService<>).Namespace}.MigrationHostedService");
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -25,7 +28,7 @@ public class MigrationHostedService<TDbContext>(
 
         try
         {
-            _logger.Information("Applying migrations for {DbContext}", typeof(TDbContext).Name);
+            _logger.Here().Information("Applying migrations for {DbContext}", typeof(TDbContext).Name);
 
             // use this to account for malformed DATABASE_URL from Northflank. Please remove it if you don't need it
             var connectionString = ConnectionStringHelper
@@ -34,7 +37,7 @@ public class MigrationHostedService<TDbContext>(
             
             if (string.IsNullOrEmpty(connectionString))
             {
-                _logger.Warning(
+                _logger.Here().Warning(
                     "No connection string found for {DatabaseName}. Skipping migrations",
                     DatabaseConsts.DatabaseName);
                 return;
@@ -46,19 +49,22 @@ public class MigrationHostedService<TDbContext>(
 
             await using (await distributedLock.AcquireAsync(cancellationToken: cancellationToken))
             {
-                _logger.Information("Starting database migration...");
+                // Another instance can hold the lock for a full migration run. The event shows where
+                // the wait ended, so the span separates time spent waiting from time spent migrating.
+                Telemetry.AddEvent([], "migration.lock_acquired");
+                _logger.Here().Information("Starting database migration...");
 
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var context = scope.ServiceProvider.GetRequiredService<TDbContext>();
                 await context.Database.MigrateAsync(cancellationToken);
             }
 
-            _logger.Information("Migrations complete for {DbContext}", typeof(TDbContext).Name);
+            _logger.Here().Information("Migrations complete for {DbContext}", typeof(TDbContext).Name);
         }
         catch (Exception ex) when (ex is SocketException or NpgsqlException)
         {
             Telemetry.RecordError(trace.Activity, ex);
-            _logger.Error(
+            _logger.Here().Error(
                 ex,
                 "Could not connect to the database -- please check the connection string and make sure the database is running");
             throw;
@@ -66,7 +72,7 @@ public class MigrationHostedService<TDbContext>(
         catch (Exception ex)
         {
             Telemetry.RecordError(trace.Activity, ex);
-            _logger.Error(ex, "An error occurred while applying the database migrations.");
+            _logger.Here().Error(ex, "An error occurred while applying the database migrations.");
             throw;
         }
     }

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using WebMotions.Fake.Authentication.JwtBearer;
 
@@ -29,6 +30,11 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
     /// Every span the server exports, in stop order. Read it through <see cref="TestBase.ExportedSpans"/>.
     /// </summary>
     public List<Activity> ExportedActivities { get; } = [];
+
+    /// <summary>
+    /// Every metric snapshot the server exports. Call <c>MeterProvider.ForceFlush</c> to export now.
+    /// </summary>
+    public List<MetricSnapshot> ExportedMetrics { get; } = [];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -52,7 +58,9 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
             services.AddHostedService<MigrationHostedService<AppDbContext>>();
 
             // Capture the exported spans so tests can make assertions on the real trace pipeline
-            services.AddOpenTelemetry().WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities));
+            services.AddOpenTelemetry()
+                .WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities))
+                .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics));
         });
     }
 

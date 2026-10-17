@@ -20,15 +20,7 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Services.AddSerilog((services, lc) => lc
-        .ReadFrom.Configuration(builder.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .Enrich.WithMachineName()
-        .Enrich.WithThreadId()
-        .Enrich.WithProperty("Application", "FullstackTemplate.Bff"));
-
-    builder.AddServiceDefaults();
+    builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.Services.AddProblemDetails();
 
     builder.Services.AddCors(options =>

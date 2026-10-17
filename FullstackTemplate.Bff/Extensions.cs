@@ -22,7 +22,7 @@ public static class Extensions
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
-        builder.ConfigureSerilogOpenTelemetry();
+        builder.ConfigureSerilog();
         builder.AddDefaultHealthChecks();
 
         builder.Services.AddServiceDiscovery();
@@ -79,20 +79,29 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder ConfigureSerilogOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    /// <summary>
+    /// Registers Serilog as the logging provider. Console output comes from configuration, and logs go
+    /// to OTLP (the Aspire dashboard) when an endpoint is configured.
+    /// </summary>
+    /// <remarks>
+    /// The OTLP sink must live inside this one <c>AddSerilog</c> callback. A logger assigned to
+    /// <c>Log.Logger</c> elsewhere is replaced when the host resolves Serilog, so its sinks never run.
+    /// </remarks>
+    public static TBuilder ConfigureSerilog<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        builder.Services.AddSerilog((services, lc) =>
         {
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(builder.Configuration)
+            lc.ReadFrom.Configuration(builder.Configuration)
+                .ReadFrom.Services(services)
                 .Enrich.FromLogContext()
                 .Enrich.WithMachineName()
                 .Enrich.WithThreadId()
-                .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
-                .WriteTo.Console()
-                .WriteTo.OpenTelemetry(options =>
+                .Enrich.WithProperty("Application", builder.Environment.ApplicationName);
+
+            if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+                lc.WriteTo.OpenTelemetry(options =>
                 {
                     options.Endpoint = otlpEndpoint;
                     options.Protocol = OtlpProtocol.Grpc;
@@ -100,9 +109,8 @@ public static class Extensions
                     {
                         ["service.name"] = builder.Environment.ApplicationName
                     };
-                })
-                .CreateLogger();
-        }
+                });
+        });
 
         return builder;
     }

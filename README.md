@@ -47,7 +47,8 @@ MyProject/
 ├── MyProject.Bff/         # BFF proxy (Duende BFF + YARP)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
 ├── tests/                 # Test projects
-└── CLAUDE.md              # Development guide & patterns
+├── docs/                  # Development guides (backend, telemetry, auth, ...)
+└── AGENTS.md              # Agent guide & index of docs
 ```
 
 ### Backend Features
@@ -131,7 +132,7 @@ This starts:
 After creating your project:
 
 1. **Run the app** to see everything working
-2. **Read `CLAUDE.md`** for development patterns and guides
+2. **Read `AGENTS.md` and `docs/`** for development patterns and guides
 3. **Add your first entity** using the patterns in `.claude/rules/`
 4. **Build your features** with the included CQRS patterns
 
@@ -139,7 +140,8 @@ After creating your project:
 
 This template includes comprehensive Claude Code integration:
 
-- **`CLAUDE.md`** - Main development guide with architecture and patterns
+- **`AGENTS.md`** - Main agent guide with the architecture and an index of `docs/`
+- **`docs/`** - Guides for the backend, telemetry, multi-tenancy, auth, frontend, and deployment
 - **`.claude/rules/`** - Detailed guides for backend patterns:
   - `controllers.md` - API controller patterns
   - `features-and-cqrs.md` - CQRS command/query patterns

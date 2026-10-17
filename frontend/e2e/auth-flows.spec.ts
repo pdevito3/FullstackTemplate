@@ -7,7 +7,7 @@ import { test, expect, Page } from '@playwright/test'
  * 1. Swagger OAuth authorization and secure API access
  * 2. React UI login, secure weather API access, and logout
  *
- * Test users (from CLAUDE.md):
+ * Test users (from docs/authentication.md):
  * - Keycloak/FusionAuth/Authentik: admin@example.com / password123!
  * - Duende Demo: bob / bob
  *

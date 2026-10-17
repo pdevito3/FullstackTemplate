@@ -27,7 +27,7 @@ peaklims-spa/
 ├── tailwind.config.js      # Tailwind CSS configuration
 ├── components.json         # UI components configuration
 ├── index.html              # Entry HTML file
-└── CLAUDE.md               # AI assistant guidelines
+└── AGENTS.md               # AI assistant guidelines
 
 ```
 
@@ -137,7 +137,7 @@ src/
 - `postcss.config.js` - PostCSS configuration
 
 ### Documentation
-- `CLAUDE.md` - AI assistant project-specific instructions
+- `AGENTS.md` - AI assistant project-specific instructions
 - `README.md` - Project documentation
 - `CONTRIBUTING.md` - Contribution guidelines
 

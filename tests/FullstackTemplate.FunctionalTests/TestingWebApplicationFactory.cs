@@ -1,6 +1,7 @@
 namespace FullstackTemplate.FunctionalTests;
 
 using System.Diagnostics;
+using AutoBogus;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Hosting;
@@ -15,9 +16,18 @@ using WebMotions.Fake.Authentication.JwtBearer;
 [CollectionDefinition(nameof(TestBase))]
 public class TestingWebApplicationFactoryCollection : ICollectionFixture<TestingWebApplicationFactory> { }
 
+/// <summary>
+/// One app and one database for the whole test collection. Starting them once per test made each
+/// test pay for a new container and a new migration run.
+/// </summary>
 public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private PostgreSqlContainer _dbContainer = null!;
+
+    /// <summary>
+    /// The running factory for the collection. Set when the fixture starts.
+    /// </summary>
+    public static TestingWebApplicationFactory Instance { get; private set; } = null!;
 
     /// <summary>
     /// Every span the server exports, in stop order. Read it through <see cref="TestBase.ExportedSpans"/>.
@@ -67,6 +77,18 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
 
         // Disable Aspire health checks that require database connectivity during startup
         Environment.SetEnvironmentVariable("Aspire__Npgsql__EntityFrameworkCore__PostgreSQL__DisableHealthChecks", "true");
+
+        AutoFaker.Configure(builder =>
+        {
+            builder.WithDateTimeKind(DateTimeKind.Utc)
+                .WithRecursiveDepth(3)
+                .WithTreeDepth(1)
+                .WithRepeatCount(1);
+        });
+
+        // Start the host now, so startup work such as migrations is done before the first test
+        _ = Services;
+        Instance = this;
     }
 
     public new async Task DisposeAsync()

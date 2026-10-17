@@ -15,11 +15,11 @@ public class TracingTests : TestBase
     public void startup_migration_exports_one_root_with_the_database_work_under_it()
     {
         // Assert
-        var root = ExportedSpans().Where(a => a.DisplayName == "database.migrate").ShouldHaveSingleItem();
+        var root = AllExportedSpans().Where(a => a.DisplayName == "database.migrate").ShouldHaveSingleItem();
         root.ParentSpanId.ShouldBe(default);
         root.GetTagItem("app.db_context").ShouldBe("AppDbContext");
 
-        ExportedSpans()
+        AllExportedSpans()
             .Where(a => a.Source.Name == NpgsqlSource && a.TraceId == root.TraceId)
             .ShouldNotBeEmpty();
     }

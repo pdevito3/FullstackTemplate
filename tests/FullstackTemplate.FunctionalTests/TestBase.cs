@@ -1,56 +1,58 @@
 namespace FullstackTemplate.FunctionalTests;
 
 using System.Diagnostics;
-using System.Net.Http.Json;
-using AutoBogus;
 using FullstackTemplate.Server.Databases;
 using MediatR;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 [Collection(nameof(TestBase))]
 public class TestBase : IDisposable
 {
-    private readonly TestingWebApplicationFactory _factory;
-    private static IServiceScopeFactory _scopeFactory = null!;
-    protected static HttpClient FactoryClient { get; private set; } = null!;
+    private static TestingWebApplicationFactory Factory => TestingWebApplicationFactory.Instance;
+    private static IServiceScopeFactory ScopeFactory => Factory.Services.GetRequiredService<IServiceScopeFactory>();
+
+    private readonly int _firstSpanIndex;
+
+    /// <summary>
+    /// A new client for each test, so a header that one test sets (for example a bearer token)
+    /// does not leak into the next test.
+    /// </summary>
+    protected HttpClient FactoryClient { get; }
 
     public TestBase()
     {
-        _factory = new TestingWebApplicationFactory();
-        _factory.InitializeAsync().GetAwaiter().GetResult();
-
-        _scopeFactory = _factory.Services.GetRequiredService<IServiceScopeFactory>();
-        FactoryClient = _factory.CreateClient(new WebApplicationFactoryClientOptions());
-
-        AutoFaker.Configure(builder =>
-        {
-            builder.WithDateTimeKind(DateTimeKind.Utc)
-                .WithRecursiveDepth(3)
-                .WithTreeDepth(1)
-                .WithRepeatCount(1);
-        });
+        FactoryClient = Factory.CreateClient();
+        lock (Factory.ExportedActivities)
+            _firstSpanIndex = Factory.ExportedActivities.Count;
     }
 
     public void Dispose()
     {
         FactoryClient.Dispose();
-        _factory.DisposeAsync().GetAwaiter().GetResult();
         GC.SuppressFinalize(this);
     }
 
     /// <summary>
-    /// A snapshot of the spans that the server exported for this test.
+    /// A snapshot of the spans that the server exported since this test started.
     /// </summary>
     protected IReadOnlyList<Activity> ExportedSpans()
     {
-        lock (_factory.ExportedActivities)
-            return _factory.ExportedActivities.ToList();
+        lock (Factory.ExportedActivities)
+            return Factory.ExportedActivities.Skip(_firstSpanIndex).ToList();
+    }
+
+    /// <summary>
+    /// A snapshot of every span that the server exported, including the spans from startup.
+    /// </summary>
+    protected static IReadOnlyList<Activity> AllExportedSpans()
+    {
+        lock (Factory.ExportedActivities)
+            return Factory.ExportedActivities.ToList();
     }
 
     public static async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = ScopeFactory.CreateScope();
         var mediator = scope.ServiceProvider.GetRequiredService<ISender>();
         return await mediator.Send(request);
     }
@@ -58,14 +60,14 @@ public class TestBase : IDisposable
     public static async Task<TEntity?> FindAsync<TEntity>(params object[] keyValues)
         where TEntity : class
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = ScopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.FindAsync<TEntity>(keyValues);
     }
 
     public static async Task AddAsync<TEntity>(TEntity entity) where TEntity : class
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = ScopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -73,13 +75,13 @@ public class TestBase : IDisposable
 
     public static async Task ExecuteScopeAsync(Func<IServiceProvider, Task> action)
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = ScopeFactory.CreateScope();
         await action(scope.ServiceProvider);
     }
 
     public static async Task<T> ExecuteScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = ScopeFactory.CreateScope();
         return await action(scope.ServiceProvider);
     }
 

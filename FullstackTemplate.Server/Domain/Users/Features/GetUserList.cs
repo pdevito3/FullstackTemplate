@@ -20,14 +20,15 @@ public static class GetUserList
 
             IQueryable<User> query = dbContext.Users
                 .TagWithOperationCallSite("users.list")
-                .AsNoTracking()
-                .Include(u => u.UserPermissions);
+                .AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyQueryKitFilter(request.Parameters.Filters, queryKitConfig);
 
-            if (!string.IsNullOrWhiteSpace(request.Parameters.SortOrder))
-                query = query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
+            // Paging needs a fixed order, or a row can show on two pages or on none
+            query = string.IsNullOrWhiteSpace(request.Parameters.SortOrder)
+                ? query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id)
+                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
 
             var dtos = query.ToUserDtoQueryable();
 

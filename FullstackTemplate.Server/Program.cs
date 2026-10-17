@@ -113,8 +113,6 @@ try
 
     app.MapDefaultEndpoints();
 
-    app.UseFileServer();
-
     app.Run();
 }
 catch (Exception ex)

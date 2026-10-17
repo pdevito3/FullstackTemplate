@@ -70,7 +70,8 @@ try
 
     webfrontend.WithReference(bff);
 
-    server.PublishWithContainerFiles(webfrontend, "wwwroot");
+    // The BFF serves the SPA in production. The server is an internal API only.
+    bff.PublishWithContainerFiles(webfrontend, "wwwroot");
 
     builder.Build().Run();
 }

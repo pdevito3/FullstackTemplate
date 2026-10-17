@@ -66,13 +66,21 @@ try
 
     app.UseExceptionHandler();
 
+    // In development the Vite dev server serves the SPA. Otherwise the SPA build is in wwwroot.
+    var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
+                      ?? builder.Configuration["services:webfrontend:http:0"];
+
+    // The SPA fallback skips paths with a file extension, so the JS and CSS bundles need this
+    if (string.IsNullOrEmpty(frontendUrl))
+    {
+        app.UseStaticFiles();
+    }
+
     app.UseCors();
     app.UseAuthentication();
     app.UseRouting();
     app.UseBff();
     app.UseAuthorization();
-
-    app.MapBffManagementEndpoints();
 
     app.MapGet("/local-api/hello", () => new { message = "Hello from BFF!", timestamp = DateTime.UtcNow })
         .AsBffApiEndpoint();
@@ -87,10 +95,6 @@ try
         .WithAccessToken(RequiredTokenType.UserOrNone);
 
     app.MapDefaultEndpoints();
-
-    // In development, redirect to Vite dev server; in production, serve SPA from wwwroot
-    var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
-                      ?? builder.Configuration["services:webfrontend:http:0"];
 
     if (!string.IsNullOrEmpty(frontendUrl))
     {

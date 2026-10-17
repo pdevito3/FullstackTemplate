@@ -1,7 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Users.Features;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
 
 public class GetUserByIdentifierQueryTests : TestBase
@@ -12,11 +12,9 @@ public class GetUserByIdentifierQueryTests : TestBase
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         var uniqueIdentifier = $"idp-{Guid.NewGuid()}";
-        var fakeUser = new FakeUserBuilder()
-            .WithIdentifier(uniqueIdentifier)
-            .WithFirstName("IdentifierTest")
-            .Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser, u => { u.Identifier = uniqueIdentifier; u.FirstName = "IdentifierTest"; })
+            .BuildAsync();
 
         // Act
         var query = new GetUserByIdentifier.Query(uniqueIdentifier);
@@ -49,11 +47,9 @@ public class GetUserByIdentifierQueryTests : TestBase
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         var uniqueIdentifier = $"admin-idp-{Guid.NewGuid()}";
-        var fakeUser = new FakeUserBuilder()
-            .WithIdentifier(uniqueIdentifier)
-            .WithAdminRole()
-            .Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser, u => { u.Identifier = uniqueIdentifier; u.Role = "Admin"; })
+            .BuildAsync();
 
         // Act
         var query = new GetUserByIdentifier.Query(uniqueIdentifier);
@@ -72,10 +68,9 @@ public class GetUserByIdentifierQueryTests : TestBase
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         var originalIdentifier = $"CaseSensitive-{Guid.NewGuid()}";
-        var fakeUser = new FakeUserBuilder()
-            .WithIdentifier(originalIdentifier)
-            .Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser, u => u.Identifier = originalIdentifier)
+            .BuildAsync();
 
         // Act - Query with different case
         var lowercaseQuery = new GetUserByIdentifier.Query(originalIdentifier.ToLower());
@@ -98,11 +93,9 @@ public class GetUserByIdentifierQueryTests : TestBase
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         var uniqueIdentifier = $"soft-delete-{Guid.NewGuid()}";
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Identifier, _ => uniqueIdentifier)
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Identifier = uniqueIdentifier)
+            .BuildAsync();
 
         // Soft delete the user
         var deleteCommand = new DeleteUser.Command(createdUser.Id);
@@ -124,15 +117,12 @@ public class GetUserByIdentifierQueryTests : TestBase
         var targetIdentifier = $"target-{Guid.NewGuid()}";
         var otherIdentifier = $"other-{Guid.NewGuid()}";
 
-        var targetUser = new FakeUserBuilder()
-            .WithIdentifier(targetIdentifier)
-            .WithFirstName("TargetUser")
-            .Build();
-        var otherUser = new FakeUserBuilder()
-            .WithIdentifier(otherIdentifier)
-            .WithFirstName("OtherUser")
-            .Build();
-        await testingServiceScope.InsertAsync(targetUser, otherUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUsers(out var users,
+                u => { u.Identifier = targetIdentifier; u.FirstName = "TargetUser"; },
+                u => { u.Identifier = otherIdentifier; u.FirstName = "OtherUser"; })
+            .BuildAsync();
+        var targetUser = users[0];
 
         // Act
         var query = new GetUserByIdentifier.Query(targetIdentifier);

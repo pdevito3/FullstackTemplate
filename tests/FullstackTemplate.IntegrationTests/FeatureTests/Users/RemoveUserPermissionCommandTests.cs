@@ -3,7 +3,7 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -12,16 +12,14 @@ public class RemoveUserPermissionCommandTests : TestBase
     [Fact]
     public async Task can_remove_permission_from_user()
     {
-        // Arrange - Create admin user via command
+        // Arrange - Create admin user
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Verify permission exists first
-        createdUser.Permissions.ShouldContain("do_something_special");
+        createdUser.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
 
         // Act
         var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
@@ -36,11 +34,9 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act
         var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
@@ -62,11 +58,9 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange - User role has no permissions
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act - Try to remove a permission that doesn't exist
         var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
@@ -95,9 +89,9 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto().Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser)
+            .BuildAsync();
 
         // Act & Assert
         var command = new RemoveUserPermission.Command(createdUser.Id, "invalid_permission");
@@ -110,11 +104,9 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act
         var removeCommand = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
@@ -133,11 +125,9 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act
         var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
@@ -152,11 +142,9 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act - Add permission
         var addCommand = new AddUserPermission.Command(createdUser.Id, "do_something_special");

@@ -1,7 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Users.Features;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
 
 public class GetUserQueryTests : TestBase
@@ -11,11 +11,9 @@ public class GetUserQueryTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUser = new FakeUserBuilder()
-            .WithFirstName("John")
-            .WithLastName("Doe")
-            .Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser, u => { u.FirstName = "John"; u.LastName = "Doe"; })
+            .BuildAsync();
 
         // Act
         var query = new GetUser.Query(fakeUser.Id);
@@ -33,10 +31,9 @@ public class GetUserQueryTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUser = new FakeUserBuilder()
-            .WithAdminRole()
-            .Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act
         var query = new GetUser.Query(fakeUser.Id);

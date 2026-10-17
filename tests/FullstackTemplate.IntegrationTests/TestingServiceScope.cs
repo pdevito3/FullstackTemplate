@@ -5,8 +5,8 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Services;
-using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -93,24 +93,25 @@ public class TestingServiceScope
     }
 
     /// <summary>
+    /// Starts a scenario on the seed tenant. <c>BuildAsync</c> saves the new entities in one save
+    /// and clears the change tracker, so the code under test loads them fresh.
+    /// </summary>
+    public GraphBuilder<TestSeed, Tenant[]> StartGraph(out TestSeed seed)
+    {
+        seed = TestFixture.Seed;
+        return TestGraph.Start(seed, GetService<AppDbContext>().AsGraphStore());
+    }
+
+    /// <summary>
     /// Creates a new tenant and user in the database, then sets the current user to that user.
     /// Use this when you need to test with a different tenant than the default.
     /// </summary>
     public async Task<Tenant> SetupTenantAsync(string? name = null)
     {
-        var tenant = new FakeTenantBuilder()
-            .WithName(name ?? new Faker().Company.CompanyName())
-            .Build();
-
-        await InsertAsync(tenant);
-
-        // Create a user in this tenant so ITenantIdProvider can look them up
-        var user = new FakeUserBuilder()
-            .WithTenantId(tenant.Id)
-            .WithIdentifier($"tenant-user-{Guid.NewGuid()}")
-            .Build();
-
-        await InsertAsync(user);
+        await StartGraph(out _)
+            .AddTenant(out var tenant, t => t.Name = name)
+            .AddUser(out var user)
+            .BuildAsync();
 
         // Update ICurrentUserService to use this user's identifier
         SetUserWithDefaults(identifier: user.Identifier);

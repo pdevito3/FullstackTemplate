@@ -72,6 +72,7 @@
         },
         {
           "exclude": [
+            ".git",
             ".git/**",
             ".vs/**",
             "**/bin/**",
@@ -88,7 +89,8 @@
             ".playwright-mcp/**",
             "template.csproj",
             "*.nupkg",
-            ".claude/**",
+            ".claude/worktrees/**",
+            ".claude/settings.local.json",
             "Directory.Build.props"
           ]
         }

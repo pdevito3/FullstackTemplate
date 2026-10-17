@@ -3,7 +3,7 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -14,11 +14,9 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act
         var command = new UpdateUserRole.Command(createdUser.Id, "Admin");
@@ -34,11 +32,9 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act
         var command = new UpdateUserRole.Command(createdUser.Id, "Admin");
@@ -60,11 +56,9 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act
         var command = new UpdateUserRole.Command(createdUser.Id, "User");
@@ -80,14 +74,12 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Verify admin has permissions before role change
-        createdUser.Permissions.ShouldNotBeEmpty();
+        createdUser.UserPermissions.ShouldNotBeEmpty();
 
         // Act
         var command = new UpdateUserRole.Command(createdUser.Id, "User");
@@ -109,11 +101,9 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange - Create admin
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act - Change to admin again (simulating permission reset)
         var command = new UpdateUserRole.Command(createdUser.Id, "Admin");
@@ -142,9 +132,9 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto().Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser)
+            .BuildAsync();
 
         // Act & Assert
         var command = new UpdateUserRole.Command(createdUser.Id, "InvalidRole");
@@ -157,11 +147,9 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange - Create admin user and remove permission
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Remove permission via command
         await testingServiceScope.SendAsync(

@@ -3,7 +3,7 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -12,13 +12,11 @@ public class AddUserPermissionCommandTests : TestBase
     [Fact]
     public async Task can_add_permission_to_user()
     {
-        // Arrange - Use AddUser command to create user (avoids EF tracking issues)
+        // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act
         var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
@@ -34,11 +32,9 @@ public class AddUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act
         var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
@@ -59,11 +55,9 @@ public class AddUserPermissionCommandTests : TestBase
     {
         // Arrange - Admin already has do_something_special by default
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "Admin")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
 
         // Act - Add the same permission again
         var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
@@ -99,9 +93,9 @@ public class AddUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto().Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser)
+            .BuildAsync();
 
         // Act & Assert
         var command = new AddUserPermission.Command(createdUser.Id, "invalid_permission");
@@ -114,11 +108,9 @@ public class AddUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act
         var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
@@ -134,11 +126,9 @@ public class AddUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto()
-            .RuleFor(x => x.Role, _ => "User")
-            .Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
 
         // Act
         var addCommand = new AddUserPermission.Command(createdUser.Id, "do_something_special");

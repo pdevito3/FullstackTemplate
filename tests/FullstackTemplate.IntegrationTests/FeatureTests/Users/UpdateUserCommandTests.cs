@@ -1,6 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Users.Features;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -12,8 +13,9 @@ public class UpdateUserCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUser = new FakeUserBuilder().Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser)
+            .BuildAsync();
 
         var updateDto = new FakeUserForUpdateDto()
             .RuleFor(x => x.FirstName, _ => "UpdatedFirst")
@@ -40,8 +42,9 @@ public class UpdateUserCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUser = new FakeUserBuilder().Build();
-        await testingServiceScope.InsertAsync(fakeUser);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser)
+            .BuildAsync();
 
         var updateDto = new FakeUserForUpdateDto()
             .RuleFor(x => x.Email, _ => "newemail@example.com")

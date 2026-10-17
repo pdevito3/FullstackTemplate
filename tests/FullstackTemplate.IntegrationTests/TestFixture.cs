@@ -1,14 +1,12 @@
 namespace FullstackTemplate.IntegrationTests;
 
-using Bogus;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Extensions;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers;
-using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -22,8 +20,9 @@ public class TestFixtureCollection : ICollectionFixture<TestFixture> { }
 public class TestFixture : IAsyncLifetime
 {
     public static IServiceScopeFactory BaseScopeFactory = null!;
-    public static Tenant DefaultTenant = null!;
-    public static User DefaultUser = null!;
+    public static TestSeed Seed = null!;
+    public static Tenant DefaultTenant => Seed.Tenant;
+    public static User DefaultUser => Seed.User;
     private PostgreSqlContainer _dbContainer = null!;
 
     public async Task InitializeAsync()
@@ -61,22 +60,15 @@ public class TestFixture : IAsyncLifetime
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await dbContext.Database.MigrateAsync();
 
-        // Create the default tenant once for all tests
-        DefaultTenant = new FakeTenantBuilder()
-            .WithName(new Faker().Company.CompanyName())
-            .Build();
-        dbContext.Tenants.Add(DefaultTenant);
+        // Create the seed once for all tests. The seed user is the current user,
+        // so ITenantIdProvider resolves the seed tenant.
+        Seed = TestSeed.Generate();
+        dbContext.Tenants.Add(Seed.Tenant);
+        dbContext.Users.Add(Seed.User);
         await dbContext.SaveChangesAsync();
 
-        // Set TestContext so fakers use this tenant by default
-        TestContext.DefaultTenantId = DefaultTenant.Id;
-
-        // Create a default user so ITenantIdProvider can look them up
-        DefaultUser = new FakeUserBuilder()
-            .WithIdentifier($"test-user-{Guid.NewGuid()}")
-            .Build();
-        dbContext.Users.Add(DefaultUser);
-        await dbContext.SaveChangesAsync();
+        // Set TestContext so the DTO fakers use the seed tenant by default
+        TestContext.DefaultTenantId = Seed.Tenant.Id;
     }
 
     public async Task DisposeAsync()

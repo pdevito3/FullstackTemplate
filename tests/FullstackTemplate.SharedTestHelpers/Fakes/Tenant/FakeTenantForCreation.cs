@@ -7,6 +7,6 @@ public sealed class FakeTenantForCreation : AutoFaker<TenantForCreation>
 {
     public FakeTenantForCreation()
     {
-        RuleFor(x => x.Name, f => f.Company.CompanyName());
+        RuleFor(x => x.Name, TenantRules.Name);
     }
 }

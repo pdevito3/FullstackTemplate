@@ -1,7 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Users.Features;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -12,9 +12,9 @@ public class DeleteUserCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto().Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser)
+            .BuildAsync();
 
         // Act
         var command = new DeleteUser.Command(createdUser.Id);
@@ -35,9 +35,9 @@ public class DeleteUserCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var fakeUserDto = new FakeUserForCreationDto().Generate();
-        var createCommand = new AddUser.Command(fakeUserDto);
-        var createdUser = await testingServiceScope.SendAsync(createCommand);
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser)
+            .BuildAsync();
 
         // Act
         var deleteCommand = new DeleteUser.Command(createdUser.Id);

@@ -28,6 +28,8 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+# The frontend.esproj build on macOS makes a directory with a literal backslash in its name
+[Oo]bj\\*
 [Ll]og/
 
 # Visual Studio 2015 cache/options directory

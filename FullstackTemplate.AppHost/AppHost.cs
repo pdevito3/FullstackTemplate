@@ -41,6 +41,7 @@ try
 #endif
 
     var postgres = builder.AddPostgres("postgres")
+        .WithImageTag(Config.PostgresImageTag)
         .WithDataVolume($"{Config.VolumePrefix}-db-volume");
     var appDb = postgres.AddDatabase("appdb");
 

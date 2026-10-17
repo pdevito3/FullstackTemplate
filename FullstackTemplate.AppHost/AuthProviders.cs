@@ -180,6 +180,7 @@ public static class AuthProviders
         // PostgreSQL database for FusionAuth
         var fusionAuthDbPassword = builder.AddParameter("fusionauth-db-password", secret: true);
         var fusionAuthPostgres = builder.AddPostgres("fusionauth-postgres", password: fusionAuthDbPassword)
+            .WithImageTag(Config.PostgresImageTag)
             .WithDataVolume($"{Config.VolumePrefix}-fusionauth-postgres-data");
         var fusionAuthDb = fusionAuthPostgres.AddDatabase("fusionauth-db");
 
@@ -237,6 +238,7 @@ public static class AuthProviders
         const string clientId = "aspire-app";
         
         var keycloakPostgres = builder.AddPostgres("keycloak-postgres")
+            .WithImageTag(Config.PostgresImageTag)
             .WithDataVolume($"{Config.VolumePrefix}-keycloak-postgres-data");
         var keycloakDb = keycloakPostgres.AddDatabase("keycloakdb");
         
@@ -297,6 +299,7 @@ public static class AuthProviders
         // PostgreSQL database for Authentik
         var authentikDbPassword = builder.AddParameter("authentik-db-password", secret: true);
         var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword)
+            .WithImageTag(Config.PostgresImageTag)
             .WithDataVolume($"{Config.VolumePrefix}-authentik-postgres-data");
         var authentikDb = authentikPostgres.AddDatabase("authentik-db");
 

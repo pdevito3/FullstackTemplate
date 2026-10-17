@@ -70,7 +70,7 @@ To add a version, add `.HasApiVersion(new ApiVersion(2, 0))` in `GetApiVersionSe
 
 ## Error responses
 
-All error responses use RFC 7807 problem details. `Exceptions/DomainExceptionHandler.cs` maps the domain exceptions:
+All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetails.cs` maps the domain exceptions:
 
 | Exception | Status |
 |-----------|--------|

@@ -11,8 +11,7 @@ public static class WebAppServiceConfiguration
     public static void ConfigureServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton(TimeProvider.System);
-        builder.Services.AddExceptionHandler<DomainExceptionHandler>();
-        builder.Services.AddProblemDetails();
+        builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = DomainProblemDetails.Customize);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddFusionCache()
             .WithDefaultEntryOptions(options =>

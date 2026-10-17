@@ -50,7 +50,7 @@ The shared metrics are:
 
 `RequestTracingBehavior` wraps each MediatR request in a span. The span name is the feature class plus the request type, for example `GetUser.Query`. You do not have to add code to a new slice to get this span.
 
-The behavior tags an exception type as `error.type`. A client error does not mark the span as failed. A client error is an exception that `DomainExceptionHandler` maps to a 4xx response (`ValidationException`, `FluentValidation.ValidationException`, and `NotFoundException`). All other exceptions mark the span with the `Error` status.
+The behavior tags an exception type as `error.type`. A client error does not mark the span as failed. A client error is an exception that `DomainProblemDetails` maps to a 4xx response (`ValidationException`, `FluentValidation.ValidationException`, and `NotFoundException`). All other exceptions mark the span with the `Error` status.
 
 ## Named queries
 

@@ -41,7 +41,7 @@ public sealed class RequestTracingBehavior<TRequest, TResponse> : IPipelineBehav
 
             // A client error (validation, not found) is an expected outcome, so it is tagged but not
             // marked failed. Marking it Error would color a normal 4xx as a server fault in the trace.
-            if (!DomainExceptionHandler.IsClientError(exception))
+            if (!DomainProblemDetails.IsClientError(exception))
                 activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
             throw;

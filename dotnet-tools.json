@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "csharprepl": {
+      "version": "0.9.2",
+      "commands": [
+        "csharprepl"
+      ],
+      "rollForward": false
+    }
+  }
+}

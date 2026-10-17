@@ -50,7 +50,8 @@ try
         .WaitFor(appDb)
         .WithServerAuth(authProvider)
         .WithHttpHealthCheck("/health")
-        .WithExternalHttpEndpoints();
+        .WithExternalHttpEndpoints()
+        .WithCSharpRepl();
     postgres.WithParentRelationship(server);
 
     var webfrontend = builder.AddViteApp("webfrontend", "../frontend")

@@ -42,6 +42,7 @@ Read the doc for an area before you change code in that area.
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
 | [docs/deployment-northflank.md](docs/deployment-northflank.md) | Northflank deployment and auth provider setup |
+| [docs/csharp-repl.md](docs/csharp-repl.md) | CSharpRepl in the running server: the hook wiring and the Development-only guards |
 
 The detailed pattern rules are in `.claude/rules/backend/` and `.claude/rules/frontend/`. Obey them when you write code.
 
@@ -57,10 +58,12 @@ This command starts the Aspire dashboard, the server, the BFF, the Vite dev serv
 1. Before you make changes, run `aspire run` and make sure that all resources are healthy.
 2. If you change `AppHost.cs`, restart the app. Other code changes hot-reload.
 3. If a resource fails, read its logs and traces with the Aspire MCP tools before you change code.
+4. To run C# in the live server (inspect DI or data, send a MediatR request, patch a method), use the `csharprepl` skill.
 
 ## Build and test
 
 ```bash
+dotnet tool restore
 dotnet build FullstackTemplate.slnx
 dotnet test --solution FullstackTemplate.slnx
 

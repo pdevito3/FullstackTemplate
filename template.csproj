@@ -23,6 +23,7 @@
   <ItemGroup>
     <Content Include=".template.config\**\*" />
     <Content Include="FullstackTemplate.sln" />
+    <Content Include="dotnet-tools.json" />
     <Content Include="FullstackTemplate.AppHost\**\*" Exclude="**\bin\**;**\obj\**" />
     <Content Include="FullstackTemplate.Bff\**\*" Exclude="**\bin\**;**\obj\**" />
     <Content Include="FullstackTemplate.Server\**\*" Exclude="**\bin\**;**\obj\**" />

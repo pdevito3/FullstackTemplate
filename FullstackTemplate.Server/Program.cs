@@ -23,6 +23,7 @@ try
     Log.Information("Starting FullstackTemplate.Server");
 
     var builder = WebApplication.CreateBuilder(args);
+    CSharpReplGuard.ThrowIfLoadedOutsideDevelopment(builder.Environment);
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.ConfigureServices();

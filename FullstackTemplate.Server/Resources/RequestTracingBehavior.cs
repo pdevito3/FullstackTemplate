@@ -1,8 +1,8 @@
 namespace FullstackTemplate.Server.Resources;
 
 using System.Diagnostics;
+using Exceptions;
 using MediatR;
-using ValidationException = Exceptions.ValidationException;
 
 /// <summary>
 /// Wraps every MediatR request in a span named after its feature slice, so a trace reads
@@ -39,9 +39,9 @@ public sealed class RequestTracingBehavior<TRequest, TResponse> : IPipelineBehav
         {
             activity?.SetTag("error.type", exception.GetType().FullName);
 
-            // A validation error is the caller's fault and an expected outcome, so it is tagged but not
-            // marked failed. Marking it Error would color a normal 400 as a server fault in the trace.
-            if (exception is not (ValidationException or FluentValidation.ValidationException))
+            // A client error (validation, not found) is an expected outcome, so it is tagged but not
+            // marked failed. Marking it Error would color a normal 4xx as a server fault in the trace.
+            if (!DomainExceptionHandler.IsClientError(exception))
                 activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
             throw;

@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
 using Databases;
+using Exceptions;
 using Microsoft.EntityFrameworkCore;
 using ZiggyCreatures.Caching.Fusion;
 
@@ -10,6 +11,7 @@ public static class WebAppServiceConfiguration
     public static void ConfigureServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddExceptionHandler<DomainExceptionHandler>();
         builder.Services.AddProblemDetails();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddFusionCache()

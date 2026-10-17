@@ -15,6 +15,12 @@ public static class ApiRoutes
         public static string Delete(Guid id) => $"{Base}/users/{id}";
     }
 
+    public static class Tenants
+    {
+        public static string Create => $"{Base}/tenants";
+        public static string GetRecord(Guid id) => $"{Base}/tenants/{id}";
+    }
+
     public static class Weather
     {
         public static string Get => $"{Base}/weather";

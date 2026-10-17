@@ -70,6 +70,25 @@ public class RequestTracingBehaviorTests : IDisposable
     }
 
     [Fact]
+    public async Task not_found_error_is_tagged_but_not_marked_failed()
+    {
+        // Arrange
+        using var test = _testSource.StartActivity("test").ShouldNotBeNull();
+        var behavior = new RequestTracingBehavior<GetTenant.Query, string>();
+
+        // Act
+        await Should.ThrowAsync<NotFoundException>(() => behavior.Handle(
+            new GetTenant.Query(Guid.NewGuid()),
+            _ => throw new NotFoundException("Tenant was not found."),
+            CancellationToken.None));
+
+        // Assert
+        var span = SingleSpan(test, "GetTenant.Query");
+        span.GetTagItem("error.type").ShouldBe(typeof(NotFoundException).FullName);
+        span.Status.ShouldBe(ActivityStatusCode.Unset);
+    }
+
+    [Fact]
     public async Task unexpected_error_marks_the_span_failed()
     {
         // Arrange

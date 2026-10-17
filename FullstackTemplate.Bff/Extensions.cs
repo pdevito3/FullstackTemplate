@@ -19,6 +19,10 @@ public static class Extensions
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
 
+    // The OIDC handler answers these paths in middleware, so no route names their spans. Without a
+    // name they export as a bare "GET", and the login callback is hard to find among other requests.
+    private static readonly string[] OidcCallbackPaths = ["/signin-oidc", "/signout-callback-oidc", "/signout-oidc"];
+
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
@@ -70,6 +74,14 @@ public static class Extensions
                             !ctx.Request.Path.StartsWithSegments(HealthEndpointPath) &&
                             !ctx.Request.Path.StartsWithSegments(AlivenessEndpointPath);
                         opts.RecordException = true;
+                        opts.EnrichWithHttpRequest = (activity, request) =>
+                        {
+                            if (OidcCallbackPaths.Contains(request.Path.Value))
+                            {
+                                activity.DisplayName = $"{request.Method} {request.Path.Value}";
+                                activity.SetTag("http.route", request.Path.Value);
+                            }
+                        };
                     })
                     .AddHttpClientInstrumentation(opts => opts.RecordException = true);
             });

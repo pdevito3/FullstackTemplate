@@ -103,13 +103,18 @@ components/
 └── [component].tsx       # Other shared components
 ```
 
-### 4. **Services Directory** (`/src/services/`)
-Core application services:
+### 4. **API Contract** (`/src/api/generated/`) and **API Client** (`/src/lib/`)
+Kubb generates the API contract from the OpenAPI document of the Server. Do not edit the generated files. See `docs/frontend.md`.
 
 ```
-services/
-├── api-client.tsx        # Axios instances and interceptors
-└── auth.tsx              # Authentication service
+api/generated/
+├── [tag]/clients/        # One Axios client function for each endpoint
+├── [tag]/types/          # Request and response types
+├── [tag]/zod/            # Zod schemas
+└── models/               # Shared DTO types and Zod schemas
+lib/
+├── api-client.ts         # Axios instance and interceptors for the generated clients
+└── problem-details.ts    # ProblemDetailsError
 ```
 
 ### 5. **Other Important Directories**
@@ -165,7 +170,8 @@ import { Patient } from "@/domain/patients/types"
 
 - `/src/main.tsx` - Application entry point
 - `/src/routeTree.gen.ts` - Auto-generated route tree (DO NOT EDIT)
-- `/src/services/api-client.tsx` - API configuration and interceptors
+- `/src/lib/api-client.ts` - API configuration and interceptors
+- `/src/api/generated/` - Generated API contract (DO NOT EDIT)
 - `/src/services/auth.tsx` - Authentication hooks and utilities
 - `/src/lib/site-config.ts` - Site-wide configuration
 - `/src/components/ui/*` - Base UI component library

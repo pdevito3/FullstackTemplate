@@ -79,6 +79,6 @@ public class TenantErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
-        problem.Errors.ShouldContainKey("Name");
+        problem.Errors.ShouldContainKey("name");
     }
 }

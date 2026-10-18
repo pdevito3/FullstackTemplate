@@ -49,17 +49,19 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 
 ## Add a user to a tenant
 
-The request to add a user names the tenant. These rules stop a caller from joining a tenant that is not theirs:
+These rules stop a caller from joining a tenant that is not theirs:
 
-- `POST /api/v1/users` adds a user only to a tenant in the scope of the caller. A caller with `TenantScope.NoTenant` cannot add a user. Other requests get 403.
+- `POST /api/v1/users` needs an admin (see [backend.md](backend.md#admin-requests)). The server puts the new user in the tenant of the caller. The request body does not need a tenant.
+- A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
+- If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must have `TenantScope.AllTenants`. Other requests get 403.
-- If a user already has the identifier, `initiate` returns 422. A user belongs to one tenant only.
+- If a user already has the identifier, `POST /api/v1/users` and `initiate` return 422. A user belongs to one tenant only.
 
 ## Tenant endpoints
 
 The tenant filter also applies to `Tenant`, so the `/api/v1/tenants` endpoints obey the scope:
 
-- A user can get, update, and delete only their own tenant. For other tenants, the endpoints return 404.
+- A user can get only their own tenant. An admin can update and delete only their own tenant. For other tenants, the endpoints return 404. A user who is not an admin gets 403 for an update or a delete.
 - The list shows only the tenant of the caller. A caller with `TenantScope.NoTenant` gets an empty list.
 - Only a caller with `TenantScope.AllTenants` can add a tenant with `POST /api/v1/tenants`. Other requests get 403. A user starts their own tenant with `POST /api/v1/users/initiate`.
 

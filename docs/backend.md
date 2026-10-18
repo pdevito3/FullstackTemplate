@@ -77,9 +77,18 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetai
 | `ValidationException`, `FluentValidation.ValidationException` | 422. `detail` has the message. `errors` has the messages for each named property |
 | `NotFoundException` | 404 |
 | `ForbiddenAccessException` | 403. `detail` has the message |
+| `DbUpdateException` from a unique index (Postgres `23505`) | 422. `detail` does not show the constraint or the values |
 | Any other exception | 500 |
 
 Do not catch these exceptions in a controller. Throw them from the entity or the handler.
+
+Before you add a row with a unique value, check for the value in the handler and throw a `ValidationException` on the property. The check gives a clear message. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 422.
+
+## Admin requests
+
+A request that manages the users or the settings of a tenant implements `IRequireTenantAdmin` on its command. `TenantAdminBehavior` runs before the handler. It returns 403 if the current user is not an `Admin` in their tenant. A caller with `TenantScope.AllTenants` (an allow-listed machine client, or work with no HTTP request) passes.
+
+These commands need an admin: `AddUser`, `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission`, `UpdateTenant`, and `DeleteTenant`.
 
 ## Database
 

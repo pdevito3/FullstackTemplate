@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 using Shouldly;
 
-// Each test checks one rule that a document transformer sets
+// Each test checks one rule of the document
 public class OpenApiDocumentTests
 {
     private const string ValidationProblemRef = "#/components/schemas/ValidationProblemDetails";
@@ -59,6 +59,22 @@ public class OpenApiDocumentTests
         contents.ShouldNotBeEmpty();
         foreach (var (name, content) in contents)
             content.Select(c => c.Key).ShouldBe(["application/json"], name);
+    }
+
+    // The keys of the errors of the problem are camelCase, so the parameter names must be camelCase too
+    [Fact]
+    public async Task parameter_names_are_camel_case()
+    {
+        var root = await LoadDocumentAsync();
+
+        var parameters = Operations(root)
+            .SelectMany(o => (o.Operation["parameters"]?.AsArray() ?? [])
+                .Select(p => (Operation: o.Name, Name: p!["name"]!.GetValue<string>())))
+            .ToList();
+
+        parameters.ShouldNotBeEmpty();
+        foreach (var (operation, name) in parameters)
+            char.IsLower(name[0]).ShouldBeTrue($"{operation} {name}");
     }
 
     [Fact]

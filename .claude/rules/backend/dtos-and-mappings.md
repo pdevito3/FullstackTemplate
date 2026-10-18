@@ -73,14 +73,17 @@ public sealed record [EntityName]ForUpdateDto
 
 ### 4. Parameters DTO (Query String)
 
-Used for filtering, sorting, and pagination on list endpoints.
+Used for filtering, sorting, and pagination on list endpoints. Give each query parameter a camelCase name with `[FromQuery(Name = ...)]`, the same as the keys of the errors of the problem. `BasePaginationParameters` names `pageNumber` and `pageSize`.
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
 public sealed class [EntityName]ParametersDto : BasePaginationParameters
 {
+    [FromQuery(Name = "filters")]
     public string? Filters { get; set; }
+
+    [FromQuery(Name = "sortOrder")]
     public string? SortOrder { get; set; }
 }
 ```

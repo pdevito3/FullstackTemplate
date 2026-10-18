@@ -105,7 +105,7 @@ const tenant: TenantDto = await getTenant({ path: { id }, signal })
 import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
 import { parsePagination } from '@/lib/pagination'
 
-const result = await getTenantList({ query: { PageNumber: 1, PageSize: 10 }, signal })
+const result = await getTenantList({ query: { pageNumber: 1, pageSize: 10 }, signal })
 const tenants = result.data
 const pagination = parsePagination(result)
 ```

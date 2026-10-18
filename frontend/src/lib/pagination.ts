@@ -11,7 +11,7 @@ const paginationHeader = 'x-pagination'
  *
  * @example
  * ```typescript
- * const result = await getTenantList({ query: { PageNumber: 1, PageSize: 10 }, signal })
+ * const result = await getTenantList({ query: { pageNumber: 1, pageSize: 10 }, signal })
  * const tenants = result.data
  * const pagination = parsePagination(result)
  * ```

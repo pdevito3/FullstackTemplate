@@ -7,20 +7,20 @@ import type { TenantDto } from '../../models/types/tenant-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetTenantListQuery = {
-    Filters?: string;
-    SortOrder?: string;
+    filters?: string;
+    sortOrder?: string;
     /**
      * @description
      * Format: `int32`
      * @type integer | undefined
     */
-    PageNumber?: number;
+    pageNumber?: number;
     /**
      * @description
      * Format: `int32`
      * @type integer | undefined
     */
-    PageSize?: number;
+    pageSize?: number;
 };
 
 export type GetTenantListStatus200 = TenantDto[];

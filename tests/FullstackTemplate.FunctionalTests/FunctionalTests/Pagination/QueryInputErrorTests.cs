@@ -22,6 +22,9 @@ public class QueryInputErrorTests : TestBase
         { "filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\"" },
         { "filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}" },
         { "sortOrder", "Unknown desc,," },
+        // Model binding gives these, so the key comes from the name of the query parameter
+        { "pageNumber", "abc" },
+        { "pageSize", "abc" },
     };
 
     [Theory]

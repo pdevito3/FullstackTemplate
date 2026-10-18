@@ -7,20 +7,20 @@ import type { UserDto } from '../../models/types/user-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetUserListQuery = {
-    Filters?: string;
-    SortOrder?: string;
+    filters?: string;
+    sortOrder?: string;
     /**
      * @description
      * Format: `int32`
      * @type integer | undefined
     */
-    PageNumber?: number;
+    pageNumber?: number;
     /**
      * @description
      * Format: `int32`
      * @type integer | undefined
     */
-    PageSize?: number;
+    pageSize?: number;
 };
 
 export type GetUserListStatus200 = UserDto[];

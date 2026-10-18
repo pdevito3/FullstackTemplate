@@ -292,21 +292,21 @@
         "operationId": "GetUserList",
         "parameters": [
           {
-            "name": "Filters",
+            "name": "filters",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "SortOrder",
+            "name": "sortOrder",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "PageNumber",
+            "name": "pageNumber",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -314,7 +314,7 @@
             }
           },
           {
-            "name": "PageSize",
+            "name": "pageSize",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -927,21 +927,21 @@
         "operationId": "GetTenantList",
         "parameters": [
           {
-            "name": "Filters",
+            "name": "filters",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "SortOrder",
+            "name": "sortOrder",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "PageNumber",
+            "name": "pageNumber",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -949,7 +949,7 @@
             }
           },
           {
-            "name": "PageSize",
+            "name": "pageSize",
             "in": "query",
             "schema": {
               "type": "integer",

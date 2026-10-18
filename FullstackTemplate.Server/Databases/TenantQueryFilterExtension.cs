@@ -5,12 +5,14 @@ using Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Resources;
+using Services;
 
 public static class TenantQueryFilterExtension
 {
     /// <summary>
     /// Applies tenant filtering to all entities implementing ITenantable.
-    /// Filter logic: CurrentTenantId == null (allow all) OR entity.TenantId == CurrentTenantId
+    /// Filter logic: scope.IncludesAllTenants OR (scope.TenantId != null AND entity.TenantId == scope.TenantId).
+    /// For <see cref="TenantScope.NoTenant"/> both sides are false, so the filter matches no rows.
     /// </summary>
     public static void FilterByTenant(this ModelBuilder modelBuilder, AppDbContext context)
     {
@@ -43,20 +45,7 @@ public static class TenantQueryFilterExtension
         // e.TenantId
         var tenantIdProperty = Expression.Property(parameter, nameof(ITenantable.TenantId));
 
-        // context.CurrentTenantId
-        var contextExpr = Expression.Constant(context);
-        var currentTenantIdExpr = Expression.Property(contextExpr, nameof(AppDbContext.CurrentTenantId));
-
-        // Build: context.CurrentTenantId == null || e.TenantId == context.CurrentTenantId.Value
-        var nullCheck = Expression.Equal(
-            currentTenantIdExpr,
-            Expression.Constant(null, typeof(Guid?)));
-
-        var tenantIdAsNullable = Expression.Convert(tenantIdProperty, typeof(Guid?));
-        var tenantMatch = Expression.Equal(tenantIdAsNullable, currentTenantIdExpr);
-
-        var filterBody = Expression.OrElse(nullCheck, tenantMatch);
-        return Expression.Lambda(filterBody, parameter);
+        return Expression.Lambda(BuildFilterBody(tenantIdProperty, context), parameter);
     }
 
     private static LambdaExpression BuildNavigationFilter(Type entityType, LambdaExpression pathExpr, AppDbContext context)
@@ -69,19 +58,20 @@ public static class TenantQueryFilterExtension
             parameter,
             pathExpr.Body);
 
-        // context.CurrentTenantId
-        var contextExpr = Expression.Constant(context);
-        var currentTenantIdExpr = Expression.Property(contextExpr, nameof(AppDbContext.CurrentTenantId));
+        return Expression.Lambda(BuildFilterBody(navigationBody, context), parameter);
+    }
 
-        // Build: context.CurrentTenantId == null || navigation.TenantId == context.CurrentTenantId
-        var nullCheck = Expression.Equal(
-            currentTenantIdExpr,
-            Expression.Constant(null, typeof(Guid?)));
+    private static Expression BuildFilterBody(Expression entityTenantId, AppDbContext context)
+    {
+        // context.CurrentTenantScope. EF Core reads it again for each query.
+        var scopeExpr = Expression.Property(Expression.Constant(context), nameof(AppDbContext.CurrentTenantScope));
+        var includesAllTenants = Expression.Property(scopeExpr, nameof(TenantScope.IncludesAllTenants));
+        var scopeTenantId = Expression.Property(scopeExpr, nameof(TenantScope.TenantId));
 
-        var tenantIdAsNullable = Expression.Convert(navigationBody, typeof(Guid?));
-        var tenantMatch = Expression.Equal(tenantIdAsNullable, currentTenantIdExpr);
+        // Build: scope.IncludesAllTenants || (scope.TenantId != null && tenantId == scope.TenantId)
+        var hasTenant = Expression.NotEqual(scopeTenantId, Expression.Constant(null, typeof(Guid?)));
+        var tenantMatch = Expression.Equal(Expression.Convert(entityTenantId, typeof(Guid?)), scopeTenantId);
 
-        var filterBody = Expression.OrElse(nullCheck, tenantMatch);
-        return Expression.Lambda(filterBody, parameter);
+        return Expression.OrElse(includesAllTenants, Expression.AndAlso(hasTenant, tenantMatch));
     }
 }

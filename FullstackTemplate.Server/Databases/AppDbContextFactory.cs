@@ -18,7 +18,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             optionsBuilder.Options,
             TimeProvider.System,
             new DesignTimeCurrentUserService(),
-            new DesignTimeTenantIdProvider(),
+            new DesignTimeTenantScopeProvider(),
             new DesignTimeMediator());
     }
 
@@ -40,13 +40,9 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         public IReadOnlyList<string> GetClaimValues(string claimType) => [];
     }
 
-    private sealed class DesignTimeTenantIdProvider : ITenantIdProvider
+    private sealed class DesignTimeTenantScopeProvider : ITenantScopeProvider
     {
-        public Task<Guid?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default)
-            => Task.FromResult<Guid?>(null);
-
-        public Task InvalidateCacheAsync(string userIdentifier, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public TenantScope GetCurrentScope() => TenantScope.AllTenants;
     }
 
     private sealed class DesignTimeMediator : IMediator

@@ -77,7 +77,7 @@ Rules for submissions:
 
 ## Tenants and users
 
-With no user, `AppDbContext.CurrentTenantId` is `null` and the tenant filter is off. `Send` then sees the rows of all tenants. To see the data as one tenant, use `SendAs` with the `Identifier` of a user in that tenant. If no user has this `Identifier`, `SendAs` stops with `No user has the identifier`.
+With no user, `AppDbContext.CurrentTenantScope` is `TenantScope.AllTenants`. `Send` then sees the rows of all tenants. To see the data as one tenant, use `SendAs` with the `Identifier` of a user in that tenant. If no user has this `Identifier`, `SendAs` stops with `No user has the identifier`.
 
 ```bash
 NO_COLOR=1 dotnet csharprepl connect <pid> --streamPipedInput <<'EOF'

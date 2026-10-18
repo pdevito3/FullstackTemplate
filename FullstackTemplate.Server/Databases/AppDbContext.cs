@@ -11,7 +11,7 @@ public class AppDbContext(
     DbContextOptions<AppDbContext> options,
     TimeProvider timeProvider,
     ICurrentUserService currentUserService,
-    ITenantIdProvider tenantIdProvider,
+    ITenantScopeProvider tenantScopeProvider,
     IMediator mediator) : DbContext(options)
 {
     #region DbSet Region
@@ -21,27 +21,9 @@ public class AppDbContext(
     #endregion
 
     /// <summary>
-    /// A tenant ID that no tenant has. The tenant filter matches no rows for it.
+    /// The tenants whose rows the current request can see. The tenant query filter reads it for each query.
     /// </summary>
-    private static readonly Guid NoTenant = Guid.Empty;
-
-    /// <summary>
-    /// The current user's tenant ID for query filtering.
-    /// Returns null to allow access to all tenants, for requests with no user (system operations, machine clients).
-    /// A user with no user record belongs to no tenant, so the filter matches no rows for this user.
-    /// </summary>
-    public Guid? CurrentTenantId
-    {
-        get
-        {
-            var userIdentifier = currentUserService.UserIdentifier;
-            if (userIdentifier == null)
-                return null;
-
-            // FusionCache handles caching internally, so this is fast on subsequent calls
-            return tenantIdProvider.GetTenantIdAsync(userIdentifier).GetAwaiter().GetResult() ?? NoTenant;
-        }
-    }
+    public TenantScope CurrentTenantScope => tenantScopeProvider.GetCurrentScope();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

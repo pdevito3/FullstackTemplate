@@ -11,7 +11,7 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Services;
 
 // Sends a MediatR request in a new DI scope, as a request with no user.
-// Without a user, AppDbContext.CurrentTenantId is null and the tenant filter is off.
+// Without a user, AppDbContext.CurrentTenantScope is AllTenants, so the tenant filter shows the rows of all tenants.
 async Task<T> Send<T>(IRequest<T> request)
 {
     using var scope = Get<IServiceScopeFactory>().CreateScope();

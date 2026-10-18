@@ -40,6 +40,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
+      # The build and the generate step write the files again for each supported version.
+      # The files of a removed version then show in the diff as deleted files.
+      - name: Delete the committed contract files
+        run: rm -rf FullstackTemplate.Server/openapi/*.json frontend/src/api/generated*
+
       - name: Build the Server (writes the OpenAPI document)
         run: dotnet build FullstackTemplate.Server/FullstackTemplate.Server.csproj --configuration Debug
 

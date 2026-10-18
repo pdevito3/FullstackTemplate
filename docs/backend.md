@@ -92,6 +92,8 @@ To add version 2:
 4. Build the Server. The Debug build writes the v2 document to `openapi/FullstackTemplate.Server_v2.json`.
 5. Run `pnpm generate:api`. `frontend/kubb.config.ts` reads each document in `openapi/`, and writes the v2 contract to `src/api/generated-v2`. `frontend/src/lib/api-client.ts` connects the client of each generated folder to `apiClient`.
 
+To remove a version, remove it from `SupportedVersions`. Then delete its document in `openapi/` and its `src/api/generated-vN` folder. The build does not delete a document. If you keep the document, the `api-contract` job of the `CI` workflow fails.
+
 ## Error responses
 
 All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetails.cs` maps the domain exceptions:

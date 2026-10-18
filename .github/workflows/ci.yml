@@ -1,8 +1,8 @@
-name: API contract
+name: CI
 
-# Fails when the committed OpenAPI document or the generated frontend contract is not current.
+# The api-contract job fails when the committed OpenAPI document or the generated frontend contract is not current.
 # To correct a failure, build the Server, run `pnpm generate:api` in frontend/, and commit the result.
-# Also builds and lints the frontend against the contract, and runs the .NET tests.
+# The job also builds, lints, and tests the frontend against the contract. The test job runs the .NET tests.
 
 on:
   pull_request:
@@ -15,8 +15,6 @@ permissions:
 jobs:
   api-contract:
     runs-on: ubuntu-latest
-    env:
-      KUBB_DISABLE_TELEMETRY: 1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:

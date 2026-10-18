@@ -86,7 +86,7 @@ To change the contract after a change to the Server API:
 2. Run `pnpm generate:api` in `frontend/`.
 3. Commit the OpenAPI document and the generated files together.
 
-If a generated file has a merge conflict, do not merge it by hand. Accept either side, then do steps 1 and 2 again. The `API contract` CI workflow fails when the committed files are not current. See [ADR 0001](adr/0001-commit-generated-api-contract.md).
+If a generated file has a merge conflict, do not merge it by hand. Accept either side, then do steps 1 and 2 again. The `api-contract` job of the `CI` workflow fails when the committed files are not current. See [ADR 0001](adr/0001-commit-generated-api-contract.md).
 
 Do not edit the generated files. ESLint ignores them, but `tsc` compiles them.
 

@@ -6,4 +6,4 @@ The frontend API contract comes from Kubb, and Kubb reads the OpenAPI document o
 
 - Kubb writes one file for each endpoint in each output kind (client, types, Zod). Two branches that change different endpoints change different files, so they seldom have a merge conflict.
 - If a generated file has a conflict, regenerate it. Do not merge it by hand.
-- The `API contract` CI workflow builds the Server, runs `pnpm generate:api`, and fails on a diff. Thus the committed files cannot drift from the Server code.
+- The `api-contract` job of the `CI` workflow builds the Server, runs `pnpm generate:api`, and fails on a diff. Thus the committed files cannot drift from the Server code.

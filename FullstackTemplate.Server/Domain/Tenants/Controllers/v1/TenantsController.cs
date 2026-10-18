@@ -53,6 +53,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<TenantDto>> AddTenant(
         [FromBody] TenantForCreationDto dto)
     {
@@ -72,6 +73,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<TenantDto>> UpdateTenant(
         Guid id,
         [FromBody] TenantForUpdateDto dto)
@@ -88,6 +90,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [HttpDelete("{id:guid}", Name = "DeleteTenant")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult> DeleteTenant(Guid id)
     {
         var command = new DeleteTenant.Command(id);

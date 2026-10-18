@@ -5,6 +5,7 @@
 
 import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const deleteTenantPathIdSchema = z.uuid()
 
@@ -12,6 +13,8 @@ export const deleteTenantStatus204Schema = z.unknown()
 
 export const deleteTenantStatus404Schema = problemDetailsSchema
 
+export const deleteTenantStatus422Schema = validationProblemDetailsSchema
+
 export const deleteTenantResponseSchema = deleteTenantStatus204Schema
 
-export const deleteTenantErrorSchema = deleteTenantStatus404Schema
+export const deleteTenantErrorSchema = z.union([deleteTenantStatus404Schema, deleteTenantStatus422Schema])

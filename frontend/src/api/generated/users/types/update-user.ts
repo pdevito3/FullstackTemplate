@@ -23,6 +23,8 @@ export type UpdateUserStatus400 = ValidationProblemDetails;
 
 export type UpdateUserStatus404 = ProblemDetails;
 
+export type UpdateUserStatus422 = ValidationProblemDetails;
+
 export type UpdateUserBody = UserForUpdateDto;
 
 export type UpdateUserOptions = {
@@ -36,6 +38,7 @@ export type UpdateUserResponses = {
     "200": UpdateUserStatus200;
     "400": UpdateUserStatus400;
     "404": UpdateUserStatus404;
+    "422": UpdateUserStatus422;
 };
 
 /**

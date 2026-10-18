@@ -23,6 +23,8 @@ export type RemoveUserPermissionStatus400 = ValidationProblemDetails;
 
 export type RemoveUserPermissionStatus404 = ProblemDetails;
 
+export type RemoveUserPermissionStatus422 = ValidationProblemDetails;
+
 export type RemoveUserPermissionOptions = {
     body?: never;
     path: RemoveUserPermissionPath;
@@ -34,6 +36,7 @@ export type RemoveUserPermissionResponses = {
     "200": RemoveUserPermissionStatus200;
     "400": RemoveUserPermissionStatus400;
     "404": RemoveUserPermissionStatus404;
+    "422": RemoveUserPermissionStatus422;
 };
 
 /**

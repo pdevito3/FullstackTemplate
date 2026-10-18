@@ -1,0 +1,2 @@
+# Kubb generates these files from the OpenAPI document. GitHub collapses them in diffs.
+frontend/src/api/generated/** linguist-generated=true

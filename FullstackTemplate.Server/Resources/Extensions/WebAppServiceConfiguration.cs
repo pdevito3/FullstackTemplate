@@ -1,9 +1,12 @@
 namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using Databases;
 using Domain.Users;
 using Exceptions;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Services;
 using ZiggyCreatures.Caching.Fusion;
@@ -35,7 +38,17 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(TenantAdminBehavior<,>));
         });
         builder.Services.AddApiVersioningExtension();
-        builder.Services.AddControllers();
+        // JSON only, so each operation in the OpenAPI document has one media type.
+        builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add(new ProducesAttribute("application/json"));
+                var jsonInput = options.InputFormatters.OfType<SystemTextJsonInputFormatter>().Single();
+                jsonInput.SupportedMediaTypes.Clear();
+                jsonInput.SupportedMediaTypes.Add("application/json");
+            })
+            .AddJsonOptions(options => options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.Strict);
+        // The web default also reads numbers from strings, so the OpenAPI document typed each number as a number or a string.
+        builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
         builder.Services.AddSwaggerExtension(builder.Configuration);
         builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 

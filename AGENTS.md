@@ -81,7 +81,8 @@ pnpm lint
 - Use `docker compose` with a space. Do not use `docker-compose`.
 - Do not install the Aspire workload. It is obsolete.
 - Do not use persistent containers early in development. They keep state between restarts.
-- Do not edit generated files, such as `frontend/src/routeTree.gen.ts` and the EF migration snapshots.
+- Do not edit generated files, such as `frontend/src/routeTree.gen.ts`, `frontend/src/api/generated/`, `FullstackTemplate.Server/openapi/`, and the EF migration snapshots.
+- If you change the Server API, build the Server, then run `pnpm generate:api` in `frontend/`. Commit the result.
 
 ## Aspire
 

@@ -39,6 +39,20 @@ Do these steps in sequence. Each step has a rule file in `.claude/rules/backend/
 5. Add the controller (`controllers.md`).
 6. Add the domain events and their handlers (`domain-events.md`).
 7. Tag each EF query with `TagWithOperationCallSite` (see [telemetry.md](telemetry.md)).
+8. Build the Server, then run `pnpm generate:api` in `frontend/` (see [OpenAPI document](#openapi-document)).
+
+## OpenAPI document
+
+`Microsoft.AspNetCore.OpenApi` makes the OpenAPI document. Swagger UI shows it at `/swagger`. A Debug build also writes it to `openapi/FullstackTemplate.Server.json`. The frontend generates its API contract from this file (see [frontend.md](frontend.md#api-contract)).
+
+The build starts the host without an auth provider or a database. `Resources/OpenApiBuildTime.cs` gives the host placeholder auth values for this run. If startup code needs an external system, skip it when `OpenApiBuildTime.IsActive` is true.
+
+The document transformers in `Resources/Extensions/` set these rules:
+
+- Each endpoint must have a name (`Name =` on the HTTP attribute, or `.WithName`). If an endpoint has no name, the build fails.
+- A property that is not nullable is required.
+- A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema.
+- Requests and responses use only `application/json`. Numbers use strict JSON number handling, so the document types them only as numbers.
 
 ## Service registration
 

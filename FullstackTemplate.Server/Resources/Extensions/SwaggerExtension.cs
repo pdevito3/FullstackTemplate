@@ -44,9 +44,10 @@ public static class SwaggerExtension
             }
         }
 
-        // Discover OAuth endpoints from OIDC configuration
+        // Discover OAuth endpoints from OIDC configuration.
+        // No auth provider runs during the build-time document generation, so it skips discovery.
         OidcEndpoints? oidcEndpoints = null;
-        if (hasOAuthConfig)
+        if (hasOAuthConfig && !OpenApiBuildTime.IsActive)
         {
             oidcEndpoints = DiscoverOidcEndpoints(authAuthority!);
         }
@@ -115,16 +116,10 @@ public static class SwaggerExtension
 
                 return Task.CompletedTask;
             });
-        });
 
-        services.AddSwaggerGen(options =>
-        {
-            var xmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
-            var xmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, xmlFile);
-            if (File.Exists(xmlPath))
-            {
-                options.IncludeXmlComments(xmlPath);
-            }
+            options.AddSchemaTransformer<RequireNonNullablePropertiesTransformer>();
+            options.AddOperationTransformer<PaginationHeaderTransformer>();
+            options.AddDocumentTransformer<RequireOperationIdTransformer>();
         });
 
         return services;
@@ -190,8 +185,6 @@ public static class SwaggerExtension
         var hasOAuthConfig = !string.IsNullOrEmpty(authAuthority);
         var swaggerClientId = configuration["Swagger:ClientId"] ?? authClientId;
         var swaggerClientSecret = configuration["Swagger:ClientSecret"] ?? authClientSecret;
-
-        app.UseSwagger();
 
         app.UseSwaggerUI(options =>
         {

@@ -11,6 +11,12 @@
     <StartupHookSupport Condition="'$(Configuration)' != 'Debug'">false</StartupHookSupport>
   </PropertyGroup>
 
+  <!-- A Debug build writes the OpenAPI document to openapi/. The frontend generates its API contract from this file. -->
+  <PropertyGroup>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocuments Condition="'$(Configuration)' != 'Debug'">false</OpenApiGenerateDocuments>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\FullstackTemplate.SourceGenerators\FullstackTemplate.SourceGenerators.csproj"
                       OutputItemType="Analyzer"
@@ -35,7 +41,11 @@
     <PackageReference Include="ZiggyCreatures.FusionCache" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
     <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />

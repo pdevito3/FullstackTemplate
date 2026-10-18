@@ -12,7 +12,6 @@
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <!-- Distributed Locking -->
     <PackageVersion Include="DistributedLock.Postgres" Version="1.2.1" />
@@ -61,7 +60,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.20.0" />
     <PackageVersion Include="WebMotions.Fake.Authentication.JwtBearer" Version="9.0.0" />
-    <!-- Transitive pins: patched versions of vulnerable packages that other packages bring in -->
+    <!-- Transitive pins: versions of packages that other packages bring in -->
+    <!-- Npgsql.EntityFrameworkCore.PostgreSQL and EFCore.NamingConventions: keep Relational at the EF Core version.
+         Without the pin, projects that reference the server get 10.0.12 from
+         Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore, because EF Core Design is private there. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
     <!-- Aspire.Hosting and StreamJsonRpc: GHSA-qhrr-8q5h-9q3h -->
     <PackageVersion Include="MessagePack" Version="2.5.303" />
     <!-- Microsoft.EntityFrameworkCore.Design (through MSBuild): GHSA-2fmv-rv2c-59x7, GHSA-846f-f764-76mx -->

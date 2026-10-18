@@ -347,7 +347,7 @@ function FilterDemoPage() {
         </p>
         <div className="grid gap-4 mt-4 md:grid-cols-2">
           <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-4">
+            <CardContent>
               <h3 className="font-semibold mb-2">How to Use Grouping:</h3>
               <ul className="text-sm space-y-1 list-disc list-inside">
                 <li>Add multiple filters using the "Add Filter" button</li>
@@ -364,7 +364,7 @@ function FilterDemoPage() {
             </CardContent>
           </Card>
           <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-            <CardContent className="pt-4">
+            <CardContent>
               <h3 className="font-semibold mb-2">QueryKit Features Demonstrated:</h3>
               <ul className="text-sm space-y-1 list-disc list-inside">
                 <li><strong>Text:</strong> equals, contains, starts/ends with, sounds like</li>

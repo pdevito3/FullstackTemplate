@@ -169,7 +169,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Breadcrumb</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <Breadcrumb>
                   <BreadcrumbList>
                     <BreadcrumbItem>
@@ -193,7 +193,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Buttons</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex flex-wrap gap-4">
                   <Button>Default</Button>
                   <Button variant="secondary">Secondary</Button>
@@ -217,7 +217,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Badges</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex flex-wrap gap-4">
                   <Badge>Default</Badge>
                   <Badge variant="secondary">Secondary</Badge>
@@ -232,7 +232,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Form Inputs</h2>
             <Card>
-              <CardContent className="pt-6 space-y-6">
+              <CardContent className="space-y-6">
                 <div className="grid gap-4 max-w-sm">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -248,7 +248,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Select, Combobox & Autocomplete</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="grid gap-6 max-w-sm">
                   {/* Select */}
                   <div className="space-y-2">
@@ -427,7 +427,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Dialog & Sheet</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex flex-wrap gap-4">
                   <ResponsiveDialog>
                     <ResponsiveDialogTrigger render={<Button variant="outline" />}>
@@ -474,7 +474,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Dropdown Menu & Popover</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex flex-wrap gap-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button variant="outline" />}>
@@ -529,7 +529,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Collapsible</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <Collapsible open={isCollapsibleOpen} onOpenChange={setIsCollapsibleOpen}>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold">
@@ -560,7 +560,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Table</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -591,7 +591,7 @@ function ComponentsPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-4">Skeleton</h2>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex items-center space-x-4">
                   <Skeleton className="h-12 w-12 rounded-full" />
                   <div className="space-y-2">

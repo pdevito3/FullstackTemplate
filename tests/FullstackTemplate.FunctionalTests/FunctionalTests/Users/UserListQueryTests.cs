@@ -45,24 +45,27 @@ public class UserListQueryTests : TestBase
         users.ShouldHaveSingleItem().Id.ShouldBe(target.Id);
     }
 
+    // The first user has the values that sort first, so an ascending sort returns the first user first.
     [Theory]
-    [InlineData("FirstName")]
-    [InlineData("LastName desc")]
-    [InlineData("FullName")]
-    [InlineData("Email desc")]
-    [InlineData("Username")]
-    [InlineData("Role")]
-    public async Task sort_on_a_dto_field_returns_the_users(string sortOrder)
+    [InlineData("FirstName", true)]
+    [InlineData("LastName desc", false)]
+    [InlineData("FullName", true)]
+    [InlineData("Email desc", false)]
+    [InlineData("Username", true)]
+    [InlineData("Role", true)]
+    public async Task sort_on_a_dto_field_returns_the_users_in_order(string sortOrder, bool targetFirst)
     {
         // Arrange
-        await ArrangeTwoUsersAsync();
+        var target = await ArrangeTwoUsersAsync();
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?sortOrder={Uri.EscapeDataString(sortOrder)}");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull().Count.ShouldBe(2);
+        var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
+        users.Count.ShouldBe(2);
+        (users[0].Id == target.Id).ShouldBe(targetFirst);
     }
 
     // The DTO does not show these fields, so a caller must not filter or sort on them.
@@ -90,16 +93,29 @@ public class UserListQueryTests : TestBase
 
     // Makes a new tenant with two users, signs in as the second user, and returns the first user.
     // The first user is an admin and the second is not, so a filter on the role matches only the first user.
+    // The values of the first user start with "a" and the values of the second user start with "b",
+    // so each sort on a text field has one correct order in each collation.
     private async Task<User> ArrangeTwoUsersAsync()
     {
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
         await InsertAsync(tenant);
-        var target = User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate());
+        var target = User.Create(FakeUserInTenant(tenant.Id, "a").Generate());
         target.UpdateRole(UserRole.Admin());
-        var caller = User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate());
+        var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate());
         caller.UpdateRole(UserRole.User());
         await InsertAsync(target, caller);
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = caller.Identifier });
         return target;
+    }
+
+    private static FakeUserForCreation FakeUserInTenant(Guid tenantId, string prefix)
+    {
+        var faker = new FakeUserForCreation();
+        faker.RuleFor(u => u.TenantId, tenantId)
+            .RuleFor(u => u.FirstName, f => prefix + UserRules.FirstName(f))
+            .RuleFor(u => u.LastName, f => prefix + UserRules.LastName(f))
+            .RuleFor(u => u.Email, f => prefix + UserRules.Email(f))
+            .RuleFor(u => u.Username, f => prefix + UserRules.Username(f));
+        return faker;
     }
 }

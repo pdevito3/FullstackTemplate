@@ -27,7 +27,7 @@ public class PaginationHeaderTests : TestBase
     };
 
     [Fact]
-    public async Task list_endpoint_sends_pagination_header_with_the_expected_shape()
+    public async Task user_list_endpoint_sends_pagination_header_with_the_expected_shape()
     {
         // Arrange
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
@@ -42,6 +42,31 @@ public class PaginationHeaderTests : TestBase
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageNumber=1&pageSize=1");
 
         // Assert
+        ShouldHavePaginationHeaderForFirstOfTwoPages(result);
+    }
+
+    [Fact]
+    public async Task tenant_list_endpoint_sends_pagination_header_with_the_expected_shape()
+    {
+        // Arrange
+        // The tenant list is not tenant scoped, so a filter on a unique name keeps out the tenants of other tests
+        var marker = Guid.NewGuid().ToString("N");
+        var tenants = Enumerable.Range(0, 2)
+            .Select(i => Tenant.Create(new FakeTenantForCreation().RuleFor(t => t.Name, _ => $"Tenant {marker} {i}").Generate()))
+            .ToArray();
+        await InsertAsync(tenants);
+        FactoryClient.SetFakeBearerToken("user");
+        var filters = Uri.EscapeDataString($"Name @= \"{marker}\"");
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageNumber=1&pageSize=1&filters={filters}");
+
+        // Assert
+        ShouldHavePaginationHeaderForFirstOfTwoPages(result);
+    }
+
+    private static void ShouldHavePaginationHeaderForFirstOfTwoPages(HttpResponseMessage result)
+    {
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
         result.Headers.TryGetValues("X-Pagination", out var values).ShouldBeTrue();
         using var header = JsonDocument.Parse(values.ShouldHaveSingleItem());

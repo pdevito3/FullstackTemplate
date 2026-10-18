@@ -65,6 +65,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(e => e.Username);
 
-        builder.HasIndex(e => e.TenantId);
+        // The default sort of the user list. TenantId comes first, so this index also serves each query on the tenant alone.
+        builder.HasIndex(e => new { e.TenantId, e.LastName, e.FirstName, e.Id });
     }
 }

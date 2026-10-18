@@ -135,7 +135,7 @@ A command can also implement `IAllowSelf`. Then the user that the command is abo
 
 Entity configurations are in `Databases/EntityConfigurations/`. Database names use snake case.
 
-A paged list query must have a fixed sort order. Without one, a row can show on two pages or on no page. When the caller gives no sort, sort by a natural key and then by `Id`. See `GetUserList.cs` for an example.
+A paged list query must have a fixed sort order. Without one, a row can show on two pages or on no page. When the caller gives no sort, sort by a natural key and then by `Id`. After a custom sort, also sort by `Id`. Add an index on the default sort, so that the database can read the page in order. See `GetUserList.cs` and `UserConfiguration.cs` for an example.
 
 ### Migrations
 

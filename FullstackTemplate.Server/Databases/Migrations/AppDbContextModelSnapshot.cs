@@ -18,7 +18,7 @@ namespace FullstackTemplate.Server.Databases.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -150,11 +150,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_users_identifier");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_users_tenant_id");
-
                     b.HasIndex("Username")
                         .HasDatabaseName("ix_users_username");
+
+                    b.HasIndex("TenantId", "LastName", "FirstName", "Id")
+                        .HasDatabaseName("ix_users_tenant_id_last_name_first_name_id");
 
                     b.ToTable("users", (string)null);
                 });

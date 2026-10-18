@@ -16,7 +16,10 @@ const paginationHeader = 'x-pagination'
  * ```
  */
 export function parsePagination(result: { response: Pick<AxiosResponse, 'headers'> }): PaginationMetadata {
-  const header: unknown = result.response.headers[paginationHeader]
+  // A header name is case-insensitive, but a property lookup on the headers is not.
+  const header: unknown = Object.entries(result.response.headers).find(
+    ([name]) => name.toLowerCase() === paginationHeader,
+  )?.[1]
   if (typeof header !== 'string') {
     throw new Error(`The response has no ${paginationHeader} header.`)
   }

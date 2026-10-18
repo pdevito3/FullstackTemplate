@@ -16,6 +16,7 @@ public static class ApiRoutes
         public static string Put(Guid id) => $"{Base}/users/{id}";
         public static string Delete(Guid id) => $"{Base}/users/{id}";
         public static string Role(Guid id) => $"{Base}/users/{id}/role";
+        public static string Permissions(Guid id) => $"{Base}/users/{id}/permissions";
     }
 
     public static class Tenants

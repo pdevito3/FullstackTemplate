@@ -111,6 +111,27 @@ public class UserErrorResponseTests : TestBase
     }
 
     [Fact]
+    public async Task unknown_permission_returns_validation_problem_keyed_by_the_field()
+    {
+        // Arrange
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = "Admin");
+        await InsertAsync(tenant);
+        await InsertAsync(user);
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Permissions(user.Id), new { permission = "NotAPermission" });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("permission");
+    }
+
+    [Fact]
     public async Task unknown_identifier_returns_not_found_problem()
     {
         // Arrange

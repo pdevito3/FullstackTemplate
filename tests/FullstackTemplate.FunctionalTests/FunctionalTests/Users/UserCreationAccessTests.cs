@@ -214,7 +214,7 @@ public class UserCreationAccessTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
-        problem.Errors.ShouldContainKey(nameof(UserForCreationDto.TenantId));
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("tenantId");
     }
 
     [Fact]

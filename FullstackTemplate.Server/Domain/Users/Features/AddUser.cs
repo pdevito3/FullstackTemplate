@@ -13,6 +13,9 @@ public static class AddUser
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
     {
+        // The key in the errors of the problem is the name of the request field
+        private const string TenantIdField = "tenantId";
+
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
@@ -46,7 +49,7 @@ public static class AddUser
                 if (scope.TenantId is { } ownTenantId)
                     return ownTenantId;
                 if (scope.IncludesAllTenants)
-                    throw new ValidationException(nameof(UserForCreationDto.TenantId), "Please provide a tenant.");
+                    throw new ValidationException(TenantIdField, "Please provide a tenant.");
                 throw new ForbiddenAccessException("You can add a user only to your own tenant.");
             }
 
@@ -58,7 +61,7 @@ public static class AddUser
                 .TagWithOperationCallSite("users.add.tenant_exists")
                 .AnyAsync(t => t.Id == tenantId, cancellationToken);
             if (!tenantExists)
-                throw new ValidationException(nameof(UserForCreationDto.TenantId), "The tenant does not exist.");
+                throw new ValidationException(TenantIdField, "The tenant does not exist.");
 
             return tenantId;
         }

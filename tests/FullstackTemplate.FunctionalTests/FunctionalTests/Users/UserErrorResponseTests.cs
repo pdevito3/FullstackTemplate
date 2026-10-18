@@ -60,6 +60,31 @@ public class UserErrorResponseTests : TestBase
     }
 
     [Fact]
+    public async Task invalid_email_returns_validation_problem_keyed_by_the_field()
+    {
+        // Arrange
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = "Admin");
+        await InsertAsync(tenant);
+        await InsertAsync(user);
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        var dto = new FakeUserForCreationDto()
+            .RuleFor(x => x.Email, _ => "not-an-email")
+            .Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("Please provide a valid email.");
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("email");
+        problem.Errors["email"].ShouldBe(["Please provide a valid email."]);
+    }
+
+    [Fact]
     public async Task unknown_identifier_returns_not_found_problem()
     {
         // Arrange

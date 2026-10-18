@@ -27,6 +27,7 @@ try
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.ConfigureServices();
     builder.Services.AddHostedService<MigrationHostedService<AppDbContext>>();
+    OpenApiBuildTime.RemoveHostedServices(builder.Services);
 
     var app = builder.Build();
 

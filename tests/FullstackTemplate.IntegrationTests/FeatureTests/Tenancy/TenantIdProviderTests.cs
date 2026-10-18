@@ -4,7 +4,9 @@ using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Internal;
 using Shouldly;
 using ZiggyCreatures.Caching.Fusion;
 
@@ -34,6 +36,39 @@ public class TenantIdProviderTests : TestBase
         // Assert
         cached.ShouldBeNull();
         fresh.ShouldBe(user.TenantId);
+    }
+
+    [Fact]
+    public async Task missing_user_expires_after_30_seconds_with_no_fail_safe()
+    {
+        // Arrange
+        // The memory cache removes an entry at the end of its physical duration. With fail-safe on, that is
+        // the 2 hour fail-safe maximum. With fail-safe off, it is the entry duration. A manual clock makes the
+        // memory cache see the time pass.
+        var clock = new ManualClock(DateTimeOffset.UtcNow);
+        using var memoryCache = new MemoryCache(new MemoryCacheOptions { Clock = clock });
+        using var cache = new FusionCache(new FusionCacheOptions(), memoryCache);
+        var provider = new TenantIdProvider(cache, TestFixture.BaseScopeFactory);
+        var testingServiceScope = new TestingServiceScope();
+        var identifier = $"later-{Guid.NewGuid()}";
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var user)
+            .BuildAsync();
+        (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
+
+        // A direct write raises no domain event, so nothing removes the cached miss.
+        await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
+            "UPDATE users SET identifier = {0} WHERE id = {1}", identifier, user.Id));
+
+        // Act
+        clock.Advance(TimeSpan.FromSeconds(29));
+        var beforeExpiry = await provider.GetTenantIdAsync(identifier);
+        clock.Advance(TimeSpan.FromSeconds(2));
+        var afterExpiry = await provider.GetTenantIdAsync(identifier);
+
+        // Assert
+        beforeExpiry.ShouldBeNull();
+        afterExpiry.ShouldBe(user.TenantId);
     }
 
     [Fact]
@@ -124,5 +159,12 @@ public class TenantIdProviderTests : TestBase
                 scope.Dispose();
             }
         }
+    }
+
+    private sealed class ManualClock(DateTimeOffset now) : ISystemClock
+    {
+        public DateTimeOffset UtcNow { get; private set; } = now;
+
+        public void Advance(TimeSpan time) => UtcNow += time;
     }
 }

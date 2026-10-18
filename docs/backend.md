@@ -52,7 +52,7 @@ The document transformers in `Resources/Extensions/` set these rules:
 - Each endpoint must have a name (`Name =` on the HTTP attribute, or `.WithName`). If an endpoint has no name, the build fails.
 - A property that is not nullable is required.
 - A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema.
-- Requests and success responses use only `application/json`. Error responses with a `ProblemDetails` body use only `application/problem+json`, as the Server sends them. Numbers use strict JSON number handling, so the document types them only as numbers.
+- Requests and success responses use only `application/json`. Error responses with a `ProblemDetails` body use only `application/problem+json`, as the Server sends them. The document types numbers only as numbers. The Server still accepts the lenient forms (`text/json` and `application/*+json` request bodies, and numbers in JSON strings), but the contract states only the canonical form.
 
 ## Service registration
 

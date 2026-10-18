@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
 /// <summary>
-/// Keeps one media type for each response, so the generated frontend contract has one type for each response.
-/// The generator lists each output formatter (text/plain, application/json, text/json) for a controller response.
-/// A <see cref="ProblemDetails"/> body is sent as application/problem+json, and each other body as application/json.
+/// Keeps one media type for each request body and each response, so the generated frontend contract has one type
+/// for each. The generator lists each input formatter (application/json, text/json, application/*+json) and each
+/// output formatter (text/plain, application/json, text/json) for a controller. The Server still accepts the other
+/// JSON media types, but the contract states only application/json for a request body. A response with a
+/// <see cref="ProblemDetails"/> body is sent as application/problem+json, and each other body as application/json.
 /// </summary>
 public sealed class JsonContentTypeTransformer : IOpenApiOperationTransformer
 {
@@ -19,6 +21,10 @@ public sealed class JsonContentTypeTransformer : IOpenApiOperationTransformer
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
     {
+        if (operation.RequestBody is OpenApiRequestBody { Content: not null } requestBody
+            && requestBody.Content.TryGetValue(JsonMediaType, out var requestMediaType))
+            requestBody.Content = new Dictionary<string, OpenApiMediaType> { [JsonMediaType] = requestMediaType };
+
         if (operation.Responses is null)
             return Task.CompletedTask;
 

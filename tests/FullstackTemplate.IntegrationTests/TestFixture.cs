@@ -16,6 +16,11 @@ using NSubstitute;
 
 public class TestFixture : IAsyncLifetime
 {
+    /// <summary>
+    /// The one machine client that the test configuration lets see and manage all tenants.
+    /// </summary>
+    public const string TrustedMachineClientId = "trusted-machine";
+
     public static IServiceScopeFactory BaseScopeFactory = null!;
     public static TestSeed Seed = null!;
     public static Tenant DefaultTenant => Seed.Tenant;
@@ -40,6 +45,7 @@ public class TestFixture : IAsyncLifetime
         // Configure auth for testing (these values are not used since auth is mocked)
         builder.Configuration["Auth:Authority"] = "https://localhost";
         builder.Configuration["Auth:Audience"] = "test-api";
+        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.AllTenantClientIds)}:0"] = TrustedMachineClientId;
 
         // Configure services
         builder.ConfigureServices();

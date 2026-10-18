@@ -1,5 +1,6 @@
 namespace FullstackTemplate.IntegrationTests;
 
+using System.Security.Claims;
 using Bogus;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
@@ -13,6 +14,8 @@ using NSubstitute;
 
 public class TestingServiceScope
 {
+    private const string AuthenticationType = "TestAuth";
+
     private readonly IServiceScope _scope;
 
     public TestingServiceScope()
@@ -45,7 +48,10 @@ public class TestingServiceScope
         // Use the default user's identifier so ITenantIdProvider can look them up
         var userIdentifier = identifier ?? TestFixture.DefaultUser.Identifier;
 
+        currentUserService.User.Returns(new ClaimsPrincipal(
+            new ClaimsIdentity([new Claim("sub", userIdentifier)], AuthenticationType)));
         currentUserService.UserIdentifier.Returns(userIdentifier);
+        currentUserService.ClientId.Returns((string?)null);
         currentUserService.Email.Returns(email ?? faker.Internet.Email());
         currentUserService.FirstName.Returns(firstName ?? faker.Person.FirstName);
         currentUserService.LastName.Returns(lastName ?? faker.Person.LastName);
@@ -70,22 +76,28 @@ public class TestingServiceScope
     }
 
     /// <summary>
-    /// Sets up an unauthenticated user.
+    /// Sets up an anonymous HTTP request: a principal with an unauthenticated identity and no claims.
     /// </summary>
     public void SetUserUnauthenticated()
     {
         var currentUserService = GetService<ICurrentUserService>();
 
+        currentUserService.User.Returns(new ClaimsPrincipal(new ClaimsIdentity()));
         currentUserService.IsAuthenticated.Returns(false);
         currentUserService.UserIdentifier.Returns((string?)null);
+        currentUserService.ClientId.Returns((string?)null);
+        currentUserService.IsMachine.Returns(false);
     }
 
     /// <summary>
-    /// Sets up a machine-to-machine client.
+    /// Sets up a machine-to-machine client: an authenticated principal with a "client_id" claim and no "sub".
     /// </summary>
     public void SetMachineClient(string clientId)
     {
         var currentUserService = GetService<ICurrentUserService>();
+
+        currentUserService.User.Returns(new ClaimsPrincipal(
+            new ClaimsIdentity([new Claim("client_id", clientId)], AuthenticationType)));
         currentUserService.IsMachine.Returns(true);
         currentUserService.ClientId.Returns(clientId);
         currentUserService.UserIdentifier.Returns((string?)null);

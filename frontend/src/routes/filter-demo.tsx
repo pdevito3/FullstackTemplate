@@ -1,16 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import {
-  FilterBuilder,
-  toQueryKitString,
-  Operators,
-  LogicalOperators,
-} from '@/components/filter-builder'
+import { FilterBuilder } from '@/components/filter-builder/filter-builder'
 import type {
   FilterConfig,
   FilterPreset,
   FilterState,
-} from '@/components/filter-builder'
+} from '@/components/filter-builder/types'
+import { LogicalOperators, Operators } from '@/components/filter-builder/utils/operators'
+import { toQueryKitString } from '@/components/filter-builder/utils/querykit-converter'
 import {
   Card,
   CardContent,

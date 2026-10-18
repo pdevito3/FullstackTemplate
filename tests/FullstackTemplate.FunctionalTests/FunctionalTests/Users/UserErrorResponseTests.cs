@@ -58,4 +58,20 @@ public class UserErrorResponseTests : TestBase
         problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
         problem.Detail.ShouldBe("Please provide a valid email.");
     }
+
+    [Fact]
+    public async Task unknown_identifier_returns_not_found_problem()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier($"unknown-{Guid.NewGuid()}"));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status404NotFound);
+    }
 }

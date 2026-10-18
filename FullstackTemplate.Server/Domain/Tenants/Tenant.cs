@@ -36,7 +36,7 @@ public class Tenant : BaseEntity
 
     private static void ValidateTenant(Tenant tenant)
     {
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(tenant.Name, "Please provide a tenant name.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(tenant.Name, "name", "Please provide a tenant name.");
     }
 
     protected Tenant() : base(IdPrefix) { } // For EF Core

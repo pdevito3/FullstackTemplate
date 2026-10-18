@@ -69,11 +69,11 @@ public class [EntityName] : BaseEntity
 
     private static void Validate[EntityName]([EntityName] entity)
     {
-        ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "Please provide a name.");
+        ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "name", "Please provide a name.");
 
         // Check the prefix of each ID foreign key, as User checks its TenantId.
-        // ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "Please provide a tenant.");
-        // ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "Please provide a valid tenant ID.");
+        // ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "tenantId", "Please provide a tenant.");
+        // ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
     }
 
     // Business methods

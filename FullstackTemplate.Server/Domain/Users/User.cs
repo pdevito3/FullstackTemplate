@@ -127,13 +127,13 @@ public class User : BaseEntity, ITenantable
 
     private static void ValidateUser(User user)
     {
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.TenantId, "Please provide a tenant.");
-        Exceptions.ValidationException.Must(EntityId.IsValid(user.TenantId, Tenants.Tenant.IdPrefix), "Please provide a valid tenant ID.");
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "Please provide a first name.");
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "Please provide a last name.");
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "Please provide an identifier.");
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Username, "Please provide a username.");
-        Exceptions.ValidationException.ThrowWhenNull(user.Role, "Please provide a role.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.TenantId, "tenantId", "Please provide a tenant.");
+        Exceptions.ValidationException.Must(EntityId.IsValid(user.TenantId, Tenants.Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "firstName", "Please provide a first name.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "lastName", "Please provide a last name.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "identifier", "Please provide an identifier.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Username, "username", "Please provide a username.");
+        Exceptions.ValidationException.ThrowWhenNull(user.Role, "role", "Please provide a role.");
     }
 
     protected User() : base(IdPrefix) { } // For EF Core

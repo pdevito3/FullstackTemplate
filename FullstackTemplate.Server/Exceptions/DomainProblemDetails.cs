@@ -29,6 +29,16 @@ public static class DomainProblemDetails
         exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
 
     /// <summary>
+    /// The request field of each unique index. The problem names the field, not the index, because the index name shows the schema.
+    /// A unit test makes sure that each unique index in the model has an entry.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> UniqueIndexFields = new Dictionary<string, string>
+    {
+        ["ix_tenants_name"] = "name",
+        ["ix_users_identifier"] = "identifier",
+    };
+
+    /// <summary>
     /// True when the exception is an expected outcome of a bad request, not a server fault.
     /// </summary>
     public static bool IsClientError(Exception exception) =>
@@ -71,7 +81,9 @@ public static class DomainProblemDetails
             case { } ex when IsUniqueViolation(ex):
                 problem.Title = "The request conflicts with a record that exists.";
                 problem.Detail = "A record with this value already exists.";
-                problem.Extensions["errors"] = new Dictionary<string, string[]>();
+                problem.Extensions["errors"] = UniqueViolationField(ex) is { } field
+                    ? new Dictionary<string, string[]> { [field] = [problem.Detail] }
+                    : new Dictionary<string, string[]>();
                 break;
             case QueryInputException ex:
                 problem.Title = "One or more validation errors occurred.";
@@ -80,4 +92,8 @@ public static class DomainProblemDetails
                 break;
         }
     }
+    private static string? UniqueViolationField(Exception exception) =>
+        exception.InnerException is PostgresException { ConstraintName: { } index } && UniqueIndexFields.TryGetValue(index, out var field)
+            ? field
+            : null;
 }

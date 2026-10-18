@@ -1,8 +1,11 @@
 namespace FullstackTemplate.UnitTests.Exceptions;
 
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 using QueryKit.Exceptions;
 using Shouldly;
@@ -67,6 +70,45 @@ public class DomainProblemDetailsTests
     }
 
     [Fact]
+    public void unique_violation_problem_has_the_message_under_the_field_of_the_index()
+    {
+        // Arrange
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            Exception = SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"),
+            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
+        };
+
+        // Act
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
+        error.Key.ShouldBe("identifier");
+        error.Value.ShouldBe(["A record with this value already exists."]);
+    }
+
+    [Fact]
+    public void each_unique_index_in_the_model_has_a_field()
+    {
+        // Arrange
+        using var dbContext = new AppDbContextFactory().CreateDbContext([]);
+        var model = dbContext.GetService<IDesignTimeModel>().Model;
+
+        // Act
+        var uniqueIndexes = model.GetEntityTypes()
+            .SelectMany(e => e.GetIndexes())
+            .Where(i => i.IsUnique)
+            .Select(i => i.GetDatabaseName())
+            .ToList();
+
+        // Assert
+        uniqueIndexes.ShouldNotBeEmpty();
+        uniqueIndexes.Where(i => !DomainProblemDetails.UniqueIndexFields.ContainsKey(i!)).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void other_database_failure_is_a_server_error()
     {
         // Arrange
@@ -104,8 +146,8 @@ public class DomainProblemDetailsTests
         status.ShouldBe(expected);
     }
 
-    private static DbUpdateException SaveFailure(string sqlState)
+    private static DbUpdateException SaveFailure(string sqlState, string? constraintName = null)
         => new("An error occurred while saving the entity changes.",
             new PostgresException("duplicate key value violates unique constraint \"ix_users_identifier\"",
-                "ERROR", "ERROR", sqlState));
+                "ERROR", "ERROR", sqlState, constraintName: constraintName));
 }

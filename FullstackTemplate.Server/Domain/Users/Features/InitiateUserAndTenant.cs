@@ -6,6 +6,7 @@ using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Resources;
 using Serilog;
 using Services;
@@ -24,6 +25,9 @@ public static class InitiateUserAndTenant
         ITenantScopeProvider tenantScopeProvider)
         : IRequestHandler<Command, InitiateUserAndTenantResponseDto>
     {
+        private const string TenantNameField = "tenantName";
+        private const string TenantNameTaken = "A tenant with this name already exists.";
+
         private readonly ILogger _logger = Log.ForContext<Handler>();
 
         public async Task<InitiateUserAndTenantResponseDto> Handle(Command request, CancellationToken cancellationToken)
@@ -37,9 +41,25 @@ public static class InitiateUserAndTenant
             if (identifierInUse)
                 throw new ConflictException("identifier", "A user with this identifier already exists.");
 
+            // Ignore all filters: the unique index on Name also covers deleted tenants.
+            var tenantNameInUse = await dbContext.Tenants
+                .IgnoreQueryFilters()
+                .AnyAsync(t => t.Name == request.Dto.TenantName, cancellationToken);
+            if (tenantNameInUse)
+                throw new ConflictException(TenantNameField, TenantNameTaken);
+
             // Create tenant first
             var tenantForCreation = new TenantForCreation { Name = request.Dto.TenantName };
-            var tenant = Tenant.Create(tenantForCreation);
+            Tenant tenant;
+            try
+            {
+                tenant = Tenant.Create(tenantForCreation);
+            }
+            // The tenant names the field name, but this request names it tenantName
+            catch (ValidationException exception) when (exception.Property == "name")
+            {
+                throw new ValidationException(TenantNameField, exception.Message);
+            }
             await dbContext.Tenants.AddAsync(tenant, cancellationToken);
 
             // Create user with tenant reference
@@ -57,7 +77,16 @@ public static class InitiateUserAndTenant
             await dbContext.Users.AddAsync(user, cancellationToken);
 
             // Single transaction - both saved together
-            await dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            // Two requests can pass the check at the same time. Then the index stops the second save.
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                       { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "ix_tenants_name" })
+            {
+                throw new ConflictException(TenantNameField, TenantNameTaken);
+            }
 
             // A new tenant is a business event that someone reads later, so it is a log, not only a span.
             // Ids only: the names and the email in the request are personal data.

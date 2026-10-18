@@ -47,6 +47,7 @@ public class TenantErrorResponseTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
         problem.Detail.ShouldBe("Please provide a tenant name.");
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 
     [Fact]

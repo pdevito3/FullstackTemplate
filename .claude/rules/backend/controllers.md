@@ -48,6 +48,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "Get[EntityName]List")]
     [ProducesResponseType(typeof(PagedList<[EntityName]Dto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<[EntityName]Dto>>> Get[EntityName]List(
         [FromQuery] [EntityName]ParametersDto parameters)
     {

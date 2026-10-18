@@ -14,6 +14,8 @@ export type InitiateUserAndTenantStatus400 = ValidationProblemDetails;
 
 export type InitiateUserAndTenantStatus403 = ProblemDetails;
 
+export type InitiateUserAndTenantStatus422 = ValidationProblemDetails;
+
 export type InitiateUserAndTenantBody = InitiateUserAndTenantDto;
 
 export type InitiateUserAndTenantOptions = {
@@ -27,6 +29,7 @@ export type InitiateUserAndTenantResponses = {
     "201": InitiateUserAndTenantStatus201;
     "400": InitiateUserAndTenantStatus400;
     "403": InitiateUserAndTenantStatus403;
+    "422": InitiateUserAndTenantStatus422;
 };
 
 /**

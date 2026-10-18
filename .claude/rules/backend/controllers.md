@@ -66,6 +66,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [HttpPost(Name = "Add[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<[EntityName]Dto>> Add[EntityName](
         [FromBody] [EntityName]ForCreationDto dto)
     {
@@ -85,6 +86,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<[EntityName]Dto>> Update[EntityName](
         Guid id,
         [FromBody] [EntityName]ForUpdateDto dto)
@@ -101,6 +103,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [HttpDelete("{id:guid}", Name = "Delete[EntityName]")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult> Delete[EntityName](Guid id)
     {
         var command = new Delete[EntityName].Command(id);
@@ -201,13 +204,17 @@ public async Task<ActionResult<CustomerDto>> AddCustomer(CustomerForCreationDto 
 /// <returns>The created customer.</returns>
 /// <response code="201">Returns the newly created customer.</response>
 /// <response code="400">If the request data is invalid.</response>
+/// <response code="422">If the request breaks a business rule.</response>
 [HttpPost]
 [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status201Created)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<CustomerDto>> AddCustomer(CustomerForCreationDto dto)
 ```
 
 A 400 comes from model binding or model validation, and its body is a `ValidationProblemDetails` with an `errors` field. Declare that type on each 400, so that the OpenAPI document states the real shape.
+
+A 422 comes from a domain rule (`ValidationException`) or a FluentValidation rule (`FluentValidation.ValidationException`). `Exceptions/DomainProblemDetails.cs` maps both to 422 with an `errors` field, so the body also has the `ValidationProblemDetails` shape. Declare the 422 on each write action (POST, PUT, PATCH, and DELETE), also when the action has no request body. A domain rule can fail in any write.
 
 ### 7. Use Appropriate Authorization
 
@@ -271,6 +278,7 @@ For domain-specific operations beyond CRUD:
 [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<OrderDto>> SubmitOrder(Guid id)
 {
     var command = new SubmitOrder.Command(id);
@@ -286,6 +294,7 @@ public async Task<ActionResult<OrderDto>> SubmitOrder(Guid id)
 [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<OrderDto>> CancelOrder(
     Guid id,
     [FromBody] CancelOrderDto dto)

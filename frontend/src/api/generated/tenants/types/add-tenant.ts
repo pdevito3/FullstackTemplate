@@ -14,6 +14,8 @@ export type AddTenantStatus400 = ValidationProblemDetails;
 
 export type AddTenantStatus403 = ProblemDetails;
 
+export type AddTenantStatus422 = ValidationProblemDetails;
+
 export type AddTenantBody = TenantForCreationDto;
 
 export type AddTenantOptions = {
@@ -27,6 +29,7 @@ export type AddTenantResponses = {
     "201": AddTenantStatus201;
     "400": AddTenantStatus400;
     "403": AddTenantStatus403;
+    "422": AddTenantStatus422;
 };
 
 /**

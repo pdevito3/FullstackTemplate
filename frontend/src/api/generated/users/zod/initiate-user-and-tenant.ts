@@ -15,8 +15,10 @@ export const initiateUserAndTenantStatus400Schema = validationProblemDetailsSche
 
 export const initiateUserAndTenantStatus403Schema = problemDetailsSchema
 
+export const initiateUserAndTenantStatus422Schema = validationProblemDetailsSchema
+
 export const initiateUserAndTenantResponseSchema = initiateUserAndTenantStatus201Schema
 
-export const initiateUserAndTenantErrorSchema = z.union([initiateUserAndTenantStatus400Schema, initiateUserAndTenantStatus403Schema])
+export const initiateUserAndTenantErrorSchema = z.union([initiateUserAndTenantStatus400Schema, initiateUserAndTenantStatus403Schema, initiateUserAndTenantStatus422Schema])
 
 export const initiateUserAndTenantBodySchema = initiateUserAndTenantDtoSchema

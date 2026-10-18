@@ -4,6 +4,7 @@
 */
 
 import type { ProblemDetails } from '../../models/types/problem-details'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type DeleteTenantPath = {
     /**
@@ -18,6 +19,8 @@ export type DeleteTenantStatus204 = unknown;
 
 export type DeleteTenantStatus404 = ProblemDetails;
 
+export type DeleteTenantStatus422 = ValidationProblemDetails;
+
 export type DeleteTenantOptions = {
     body?: never;
     path: DeleteTenantPath;
@@ -28,6 +31,7 @@ export type DeleteTenantOptions = {
 export type DeleteTenantResponses = {
     "204": DeleteTenantStatus204;
     "404": DeleteTenantStatus404;
+    "422": DeleteTenantStatus422;
 };
 
 /**

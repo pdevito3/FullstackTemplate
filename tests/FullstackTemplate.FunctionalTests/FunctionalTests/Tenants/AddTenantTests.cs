@@ -12,7 +12,11 @@ public class AddTenantTests : TestBase
     public async Task text_json_body_is_accepted()
     {
         // Arrange
-        FactoryClient.SetFakeBearerToken("user");
+        // Only a caller with all-tenant access can add a tenant
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
         using var content = new StringContent($"{{ \"name\": \"Tenant {Guid.NewGuid()}\" }}", Encoding.UTF8, "text/json");
 
         // Act

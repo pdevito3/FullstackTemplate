@@ -49,13 +49,17 @@ public class PaginationHeaderTests : TestBase
     public async Task tenant_list_endpoint_sends_pagination_header_with_the_expected_shape()
     {
         // Arrange
-        // The tenant list is not tenant scoped, so a filter on a unique name keeps out the tenants of other tests
+        // A user sees only their own tenant, so a list of two tenants needs a caller with all-tenant access.
+        // That caller sees the tenants of other tests too, so a filter on a unique name keeps them out.
         var marker = Guid.NewGuid().ToString("N");
         var tenants = Enumerable.Range(0, 2)
             .Select(i => Tenant.Create(new FakeTenantForCreation().RuleFor(t => t.Name, _ => $"Tenant {marker} {i}").Generate()))
             .ToArray();
         await InsertAsync(tenants);
-        FactoryClient.SetFakeBearerToken("user");
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
         var filters = Uri.EscapeDataString($"Name @= \"{marker}\"");
 
         // Act

@@ -192,7 +192,7 @@ Use value objects to encompass common domain concepts with behavior and validati
 ```csharp
 public sealed class Email : ValueObject
 {
-    public string Value { get; private set; }
+    public string? Value { get; private set; }
     
     public Email(string value)
     {
@@ -206,7 +206,7 @@ public sealed class Email : ValueObject
     }
     
     public static Email Of(string value) => new Email(value);
-    public static implicit operator string(Email value) => value.Value;
+    public static implicit operator string?(Email value) => value.Value;
 
     private Email() { } // EF Core
     
@@ -214,7 +214,11 @@ public sealed class Email : ValueObject
     {
         public EmailValidator()
         {
-            RuleFor(email => email).EmailAddress();
+            // The key in the errors of the problem is the name of the request field
+            RuleFor(email => email)
+                .EmailAddress()
+                .OverridePropertyName("email")
+                .WithMessage("Please provide a valid email.");
         }
     }
 }

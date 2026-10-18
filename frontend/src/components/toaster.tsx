@@ -1,21 +1,21 @@
-import { Toaster } from 'react-hot-toast'
+import { Toaster as HotToaster } from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { CheckmarkCircle02Icon, AlertCircleIcon, InformationCircleIcon, Alert02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 /**
- * Toast notification component styled with the app's theme.
- * Place this component once at the root of your app (e.g., in main.tsx).
+ * The container that shows the toast notifications, styled with the theme of the app.
+ * main.tsx renders it once, at the root of the app.
  *
- * Usage:
+ * To show a toast, call `Notification` from '@/components/notification':
  *   Notification.success('Operation completed!')
  *   Notification.error('Something went wrong')
  *   Notification.info('Here is some information')
  *   Notification.warning('Please be careful')
  */
-export function Notifications() {
+export function Toaster() {
   return (
-    <Toaster
+    <HotToaster
       position="top-center"
       gutter={8}
       containerClassName=""

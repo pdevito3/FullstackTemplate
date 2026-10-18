@@ -297,7 +297,8 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    [HttpPost("{id:guid}/submit", Name = "SubmitOrder")]
    [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
    [ProducesResponseType(StatusCodes.Status404NotFound)]
-   [ProducesResponseType(StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+   [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
    public async Task<ActionResult<OrderDto>> SubmitOrder(Guid id)
    {
        var command = new SubmitOrder.Command(id);

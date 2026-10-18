@@ -1,15 +1,27 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 
 import { defineConfig } from 'kubb/config'
 import { pluginAxios } from '@kubb/plugin-axios'
 import { pluginTs } from '@kubb/plugin-ts'
 import { pluginZod } from '@kubb/plugin-zod'
 
-// One entry for each OpenAPI document that the Server writes. A Debug build of the Server writes one document for each API version.
-// Kubb empties each output folder before it generates, so each entry needs its own folder, not a folder inside another entry's folder.
-const documents = [
-  { input: '../FullstackTemplate.Server/openapi/FullstackTemplate.Server.json', output: './src/api/generated' },
-]
+// A Debug build of the Server writes one OpenAPI document for each API version:
+// FullstackTemplate.Server.json for v1, FullstackTemplate.Server_v2.json for v2, and more.
+const openApiFolder = '../FullstackTemplate.Server/openapi'
+
+// Kubb empties each output folder before it generates, so each document needs its own folder, not a folder inside another folder.
+// lib/api-client.ts connects the client of each src/api/generated* folder to apiClient.
+function outputFor(file: string) {
+  if (file === 'FullstackTemplate.Server.json') return './src/api/generated'
+  const version = /^FullstackTemplate\.Server_v(\d+)\.json$/.exec(file)?.[1]
+  if (!version) throw new Error(`${openApiFolder}/${file} is not an OpenAPI document that kubb.config.ts knows.`)
+  return `./src/api/generated-v${version}`
+}
+
+const documents = readdirSync(openApiFolder)
+  .filter((file) => file.endsWith('.json'))
+  .sort()
+  .map((file) => ({ input: `${openApiFolder}/${file}`, output: outputFor(file) }))
 
 const kebabCase = (name: string) =>
   name

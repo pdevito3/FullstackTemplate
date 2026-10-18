@@ -5,7 +5,7 @@ import {
   type ProblemDetails,
 } from './problem-details'
 import { Notification } from '@/components/notification'
-import { client } from '@/api/generated/.kubb/client'
+import type { client as KubbClient } from '@/api/generated/.kubb/client'
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -111,4 +111,8 @@ apiClient.interceptors.response.use(
 )
 
 // The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
-client.setConfig({ transport: apiClient })
+// Each API version has its own generated folder (src/api/generated, src/api/generated-v2), and each folder has its own client.
+const kubbClients = import.meta.glob<{ client: typeof KubbClient }>('/src/api/generated*/.kubb/client.ts', { eager: true })
+for (const { client } of Object.values(kubbClients)) {
+  client.setConfig({ transport: apiClient })
+}

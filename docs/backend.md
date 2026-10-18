@@ -90,9 +90,7 @@ To add version 2:
 2. Add a `Controllers/v2/` controller with `[ApiVersion("2.0")]`. Keep the v1 controller for the clients that use v1.
 3. For a minimal API endpoint, add `.MapToApiVersion(new ApiVersion(2, 0))`.
 4. Build the Server. The Debug build writes the v2 document to `openapi/FullstackTemplate.Server_v2.json`.
-5. Add an entry for this file to `documents` in `frontend/kubb.config.ts`, with the output folder `./src/api/generated-v2`. Do not put this folder inside `src/api/generated`, because Kubb empties each output folder before it generates.
-6. In `frontend/src/lib/api-client.ts`, call `setConfig({ transport: apiClient })` on the `client` of `src/api/generated-v2/.kubb/client`.
-7. Run `pnpm generate:api`.
+5. Run `pnpm generate:api`. `frontend/kubb.config.ts` reads each document in `openapi/`, and writes the v2 contract to `src/api/generated-v2`. `frontend/src/lib/api-client.ts` connects the client of each generated folder to `apiClient`.
 
 ## Error responses
 

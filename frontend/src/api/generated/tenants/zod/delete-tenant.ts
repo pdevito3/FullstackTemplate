@@ -13,10 +13,12 @@ export const deleteTenantStatus204Schema = z.unknown()
 
 export const deleteTenantStatus401Schema = z.unknown()
 
+export const deleteTenantStatus403Schema = problemDetailsSchema
+
 export const deleteTenantStatus404Schema = problemDetailsSchema
 
 export const deleteTenantStatus422Schema = validationProblemDetailsSchema
 
 export const deleteTenantResponseSchema = deleteTenantStatus204Schema
 
-export const deleteTenantErrorSchema = z.union([deleteTenantStatus401Schema, deleteTenantStatus404Schema, deleteTenantStatus422Schema])
+export const deleteTenantErrorSchema = z.union([deleteTenantStatus401Schema, deleteTenantStatus403Schema, deleteTenantStatus404Schema, deleteTenantStatus422Schema])

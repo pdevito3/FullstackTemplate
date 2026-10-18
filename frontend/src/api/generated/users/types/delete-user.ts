@@ -19,6 +19,8 @@ export type DeleteUserStatus204 = unknown;
 
 export type DeleteUserStatus401 = unknown;
 
+export type DeleteUserStatus403 = ProblemDetails;
+
 export type DeleteUserStatus404 = ProblemDetails;
 
 export type DeleteUserStatus422 = ValidationProblemDetails;
@@ -33,6 +35,7 @@ export type DeleteUserOptions = {
 export type DeleteUserResponses = {
     "204": DeleteUserStatus204;
     "401": DeleteUserStatus401;
+    "403": DeleteUserStatus403;
     "404": DeleteUserStatus404;
     "422": DeleteUserStatus422;
 };

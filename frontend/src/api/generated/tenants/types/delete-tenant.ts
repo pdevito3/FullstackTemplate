@@ -19,6 +19,8 @@ export type DeleteTenantStatus204 = unknown;
 
 export type DeleteTenantStatus401 = unknown;
 
+export type DeleteTenantStatus403 = ProblemDetails;
+
 export type DeleteTenantStatus404 = ProblemDetails;
 
 export type DeleteTenantStatus422 = ValidationProblemDetails;
@@ -33,6 +35,7 @@ export type DeleteTenantOptions = {
 export type DeleteTenantResponses = {
     "204": DeleteTenantStatus204;
     "401": DeleteTenantStatus401;
+    "403": DeleteTenantStatus403;
     "404": DeleteTenantStatus404;
     "422": DeleteTenantStatus422;
 };

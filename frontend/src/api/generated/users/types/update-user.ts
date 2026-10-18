@@ -23,6 +23,8 @@ export type UpdateUserStatus400 = ValidationProblemDetails;
 
 export type UpdateUserStatus401 = unknown;
 
+export type UpdateUserStatus403 = ProblemDetails;
+
 export type UpdateUserStatus404 = ProblemDetails;
 
 export type UpdateUserStatus422 = ValidationProblemDetails;
@@ -40,6 +42,7 @@ export type UpdateUserResponses = {
     "200": UpdateUserStatus200;
     "400": UpdateUserStatus400;
     "401": UpdateUserStatus401;
+    "403": UpdateUserStatus403;
     "404": UpdateUserStatus404;
     "422": UpdateUserStatus422;
 };

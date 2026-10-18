@@ -9,16 +9,18 @@ using Services;
 /// <summary>
 /// Stops a request that has <see cref="IRequireTenantAdmin"/> with a 403 when the caller is not an admin.
 /// The tenant filter still applies in the handler, so an admin can change only their own tenant.
+/// A caller that can manage all tenants (an allow-listed machine client or a system scope) also passes.
 /// </summary>
 public sealed class TenantAdminBehavior<TRequest, TResponse>(
     AppDbContext dbContext,
-    ICurrentUserService currentUserService) : IPipelineBehavior<TRequest, TResponse>
+    ICurrentUserService currentUserService,
+    ITenantScopeProvider tenantScopeProvider) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequireTenantAdmin
 {
     public async Task<TResponse> Handle(
         TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        if (!dbContext.CurrentTenantScope.IncludesAllTenants && !await CallerIsAdminAsync(cancellationToken))
+        if (!tenantScopeProvider.CanManageAllTenants() && !await CallerIsAdminAsync(cancellationToken))
             throw new ForbiddenAccessException("Only an admin can do this.");
 
         return await next(cancellationToken);

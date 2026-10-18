@@ -86,7 +86,7 @@ Before you add a row with a unique value, check for the value in the handler and
 
 ## Admin requests
 
-A request that manages the users or the settings of a tenant implements `IRequireTenantAdmin` on its command. `TenantAdminBehavior` runs before the handler. It returns 403 if the current user is not an `Admin` in their tenant. A caller with `TenantScope.AllTenants` (an allow-listed machine client, or work with no HTTP request) passes.
+A request that manages the users or the settings of a tenant implements `IRequireTenantAdmin` on its command. `TenantAdminBehavior` runs before the handler. It returns 403 if the current user is not an `Admin` in their tenant. A caller that can manage all tenants passes: an allow-listed machine client, or system work in a system scope. See [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability).
 
 These commands need an admin: `AddUser`, `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission`, `UpdateTenant`, and `DeleteTenant`.
 

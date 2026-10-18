@@ -2,6 +2,8 @@ namespace FullstackTemplate.UnitTests.Domain.Tenants;
 
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants.Features;
+using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Services;
@@ -58,6 +60,18 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
         var act = () => handler.Handle(
             new InitiateUserAndTenant.Command(new FakeInitiateUserAndTenantDto().Generate()),
             CancellationToken.None);
+
+        await act.ShouldThrowAsync<ForbiddenAccessException>();
+    }
+
+    [Fact]
+    public async Task caller_that_sees_all_tenants_without_the_capability_does_not_pass_the_admin_check()
+    {
+        var behavior = new TenantAdminBehavior<AddUser.Command, UserDto>(
+            _dbContext, _currentUserService, _tenantScopeProvider);
+
+        var act = () => behavior.Handle(new AddUser.Command(new FakeUserForCreationDto().Generate()),
+            _ => Task.FromResult(new UserDto()), CancellationToken.None);
 
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }

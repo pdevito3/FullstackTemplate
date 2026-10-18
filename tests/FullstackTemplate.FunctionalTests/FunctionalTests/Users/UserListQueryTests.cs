@@ -23,6 +23,8 @@ public class UserListQueryTests : TestBase
     [InlineData("Identifier == \"{identifier}\"")]
     [InlineData("Id == \"{id}\"")]
     [InlineData("Role == \"{role}\"")]
+    [InlineData("Permissions ^$ \"{permission}\"")]
+    [InlineData("Permissions == \"{permission}\"")]
     public async Task filter_on_a_dto_field_returns_the_matching_user(string filterTemplate)
     {
         // Arrange
@@ -34,7 +36,8 @@ public class UserListQueryTests : TestBase
             .Replace("{username}", target.Username)
             .Replace("{identifier}", target.Identifier)
             .Replace("{id}", target.Id.ToString())
-            .Replace("{role}", target.Role.Value);
+            .Replace("{role}", target.Role.Value)
+            .Replace("{permission}", Permission.DoSomethingSpecial().Value);
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?filters={Uri.EscapeDataString(filters)}");
@@ -123,7 +126,8 @@ public class UserListQueryTests : TestBase
     }
 
     // Makes a new tenant with two users, signs in as the second user, and returns the first user.
-    // The first user is an admin and the second is not, so a filter on the role matches only the first user.
+    // The first user is an admin with a permission, and the second user is not an admin and has no permission.
+    // So a filter on the role or on the permissions matches only the first user.
     // The values of the first user start with "a" and the values of the second user start with "b",
     // so each sort on a text field has one correct order in each collation.
     private async Task<User> ArrangeTwoUsersAsync()
@@ -132,6 +136,7 @@ public class UserListQueryTests : TestBase
         await InsertAsync(tenant);
         var target = User.Create(FakeUserInTenant(tenant.Id, "a").Generate());
         target.UpdateRole(UserRole.Admin());
+        target.AddPermission(Permission.DoSomethingSpecial());
         var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate());
         caller.UpdateRole(UserRole.User());
         await InsertAsync(target, caller);

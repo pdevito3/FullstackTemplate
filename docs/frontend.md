@@ -46,6 +46,20 @@ frontend/src/
 
 The generated API clients send each request through `apiClient`. `main.tsx` imports `lib/api-client.ts` to connect them before the first request. Use `apiClient` directly only for endpoints that are not in the OpenAPI document, such as `/bff/user`.
 
+A generated client has two error modes. The `throwOnError` option selects the mode:
+
+- `throwOnError: true` (the default): a non-2xx response goes through the `apiClient` error interceptor. The client shows the toast and throws the `ProblemDetailsError`.
+- `throwOnError: false`: Kubb sets `validateStatus: () => true`, so axios accepts all statuses. The interceptor does not run. There is no toast and no `ProblemDetailsError`. The client returns the full result. Read `result.status`, and read `result.error` for a non-2xx body.
+
+In both modes, a network error or a cancel still rejects the promise.
+
+```typescript
+const result = await getTenant({ path: { id }, throwOnError: false, signal })
+if (result.status === 404) {
+  // Show the not found state. result.error has the problem details body.
+}
+```
+
 ## API contract
 
 Kubb generates the API contract from the OpenAPI document of the Server. The configuration is in `kubb.config.ts`. The output is in `src/api/generated/`, with one file for each endpoint:

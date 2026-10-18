@@ -23,8 +23,7 @@ public static partial class UserMapper
 
     public static partial UserForUpdate ToUserForUpdate(this UserForUpdateDto dto);
 
-    // A user always has an email, because User validation rejects a blank email.
-    private static string MapEmail(EmailAddress email) => email.Value!;
+    private static string MapEmail(EmailAddress email) => email.Value;
     private static string MapRole(UserRole role) => role.Value;
     private static IReadOnlyList<string> MapUserPermissionsToPermissions(IReadOnlyCollection<UserPermission> permissions)
         => permissions.Select(p => p.Permission.Value).ToList();

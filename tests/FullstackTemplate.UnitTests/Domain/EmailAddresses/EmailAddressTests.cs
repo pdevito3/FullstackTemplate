@@ -26,18 +26,17 @@ public class EmailAddressTests
         EmailAddress.Of("user@subdomain.domain.com").Value.ShouldBe("user@subdomain.domain.com");
     }
 
-    [Fact]
-    public void null_or_whitespace_email_returns_null_value()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void blank_email_throws_domain_validation_exception(string? value)
     {
         // Arrange & Act
-        var nullEmail = EmailAddress.Of(null!);
-        var emptyEmail = EmailAddress.Of("");
-        var whitespaceEmail = EmailAddress.Of("   ");
+        var act = () => EmailAddress.Of(value!);
 
         // Assert
-        nullEmail.Value.ShouldBeNull();
-        emptyEmail.Value.ShouldBeNull();
-        whitespaceEmail.Value.ShouldBeNull();
+        act.ShouldThrow<FullstackTemplate.Server.Exceptions.ValidationException>().Message.ShouldBe("Please provide a valid email.");
     }
 
     [Fact]
@@ -56,7 +55,7 @@ public class EmailAddressTests
         var email = EmailAddress.Of("test@example.com");
 
         // Act
-        string? emailString = email;
+        string emailString = email;
 
         // Assert
         emailString.ShouldBe("test@example.com");

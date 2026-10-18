@@ -1,6 +1,7 @@
 {
   "name": "FullstackTemplate-frontend",
   "private": true,
+  "packageManager": "pnpm@10.34.7",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -69,5 +70,10 @@
     "vite": "^7.2.6",
     "vite-plugin-svgr": "^4.5.0",
     "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

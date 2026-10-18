@@ -1,6 +1,7 @@
 import type { AxiosResponse } from 'axios'
 
 import type { PaginationMetadata } from '@/api/generated/models/types/pagination-metadata'
+import { paginationMetadataSchema } from '@/api/generated/models/zod/pagination-metadata'
 
 const paginationHeader = 'x-pagination'
 
@@ -23,5 +24,6 @@ export function parsePagination(result: { response: Pick<AxiosResponse, 'headers
   if (typeof header !== 'string') {
     throw new Error(`The response has no ${paginationHeader} header.`)
   }
-  return JSON.parse(header) as PaginationMetadata
+  // The schema rejects a header that does not have the shape of the contract, so a caller does not read a wrong type.
+  return paginationMetadataSchema.parse(JSON.parse(header))
 }

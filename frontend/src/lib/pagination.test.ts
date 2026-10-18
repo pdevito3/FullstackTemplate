@@ -1,5 +1,6 @@
 import { AxiosHeaders } from 'axios'
 import { describe, expect, it } from 'vitest'
+import { ZodError } from 'zod'
 
 import type { PaginationMetadata } from '@/api/generated/models/types/pagination-metadata'
 import { parsePagination } from '@/lib/pagination'
@@ -50,6 +51,12 @@ describe('parsePagination', () => {
     const headers = new AxiosHeaders()
 
     expect(() => parsePagination(resultWith(headers))).toThrow('The response has no x-pagination header.')
+  })
+
+  it('throws when the header does not match the contract', () => {
+    const headers = AxiosHeaders.from(`x-pagination: ${JSON.stringify({ ...metadata, totalCount: '42' })}`)
+
+    expect(() => parsePagination(resultWith(headers))).toThrow(ZodError)
   })
 
   it('throws when the header is not valid JSON', () => {

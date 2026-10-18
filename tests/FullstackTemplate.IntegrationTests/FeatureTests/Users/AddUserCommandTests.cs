@@ -31,6 +31,7 @@ public class AddUserCommandTests : TestBase
         userInDb.Email.Value.ShouldBe(fakeUserDto.Email);
         userInDb.Username.ShouldBe(fakeUserDto.Username);
         userInDb.Identifier.ShouldBe(fakeUserDto.Identifier);
+        userInDb.TenantId.ShouldBe(TestFixture.DefaultTenant.Id);
     }
 
     [Fact]

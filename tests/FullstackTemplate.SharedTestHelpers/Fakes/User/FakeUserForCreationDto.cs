@@ -7,7 +7,8 @@ public sealed class FakeUserForCreationDto : AutoFaker<UserForCreationDto>
 {
     public FakeUserForCreationDto()
     {
-        RuleFor(x => x.TenantId, _ => TestContext.DefaultTenantId);
+        // A user adds to their own tenant, so the default request names no tenant.
+        RuleFor(x => x.TenantId, _ => null);
         RuleFor(x => x.FirstName, UserRules.FirstName);
         RuleFor(x => x.LastName, UserRules.LastName);
         RuleFor(x => x.Identifier, UserRules.Identifier);

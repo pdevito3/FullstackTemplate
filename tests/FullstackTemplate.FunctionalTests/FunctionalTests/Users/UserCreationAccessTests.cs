@@ -4,7 +4,8 @@ using System.Net;
 using System.Net.Http.Json;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
+using FullstackTemplate.Server.Domain.Users.Dtos;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ public class UserCreationAccessTests : TestBase
     public async Task user_with_no_user_record_cannot_add_themselves_to_a_tenant()
     {
         // Arrange
-        var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
+        TestGraph.Start(out _).AddTenant(out var tenant);
         await InsertAsync(tenant);
         var identifier = $"outsider-{Guid.NewGuid()}";
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = identifier });
@@ -34,12 +35,12 @@ public class UserCreationAccessTests : TestBase
     }
 
     [Fact]
-    public async Task user_cannot_add_a_user_to_another_tenant()
+    public async Task admin_cannot_add_a_user_to_another_tenant()
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
-        var (otherTenant, _) = await AddTenantWithUserAsync();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        var (_, admin) = await AddTenantWithUserAsync("Admin");
+        var (otherTenant, _) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
         var dto = new FakeUserForCreationDto().RuleFor(x => x.TenantId, _ => otherTenant.Id).Generate();
 
         // Act
@@ -50,18 +51,20 @@ public class UserCreationAccessTests : TestBase
     }
 
     [Fact]
-    public async Task user_can_add_a_user_to_their_own_tenant()
+    public async Task admin_adds_a_user_to_their_own_tenant()
     {
         // Arrange
-        var (tenant, user) = await AddTenantWithUserAsync();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
-        var dto = new FakeUserForCreationDto().RuleFor(x => x.TenantId, _ => tenant.Id).Generate();
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        var dto = new FakeUserForCreationDto().Generate();
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var user = (await result.Content.ReadFromJsonAsync<UserDto>()).ShouldNotBeNull();
+        user.TenantId.ShouldBe(tenant.Id);
     }
 
     [Fact]
@@ -106,6 +109,53 @@ public class UserCreationAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 
+    [Fact]
+    public async Task trusted_machine_client_can_add_a_user_to_a_tenant_that_it_names()
+    {
+        // Arrange
+        var (tenant, _) = await AddTenantWithUserAsync("Admin");
+        SignInAsTrustedMachineClient();
+        var dto = new FakeUserForCreationDto().RuleFor(x => x.TenantId, _ => tenant.Id).Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var user = (await result.Content.ReadFromJsonAsync<UserDto>()).ShouldNotBeNull();
+        user.TenantId.ShouldBe(tenant.Id);
+    }
+
+    [Fact]
+    public async Task trusted_machine_client_must_name_a_tenant_to_add_a_user()
+    {
+        // Arrange
+        SignInAsTrustedMachineClient();
+        var dto = new FakeUserForCreationDto().Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors.ShouldContainKey(nameof(UserForCreationDto.TenantId));
+    }
+
+    [Fact]
+    public async Task trusted_machine_client_can_start_a_tenant_for_another_identifier()
+    {
+        // Arrange
+        SignInAsTrustedMachineClient();
+        var dto = new FakeInitiateUserAndTenantDto().Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
     private static async Task ShouldBeForbiddenAsync(HttpResponseMessage result, string detail)
     {
         result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -115,10 +165,20 @@ public class UserCreationAccessTests : TestBase
         problem.Detail.ShouldBe(detail);
     }
 
-    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync()
+    private void SignInAs(User user)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+
+    private void SignInAsTrustedMachineClient()
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+
+    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role)
     {
-        var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
-        var user = User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate());
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = role);
         await InsertAsync(tenant);
         await InsertAsync(user);
         return (tenant, user);

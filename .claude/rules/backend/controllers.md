@@ -53,9 +53,6 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     {
         var query = new Get[EntityName]List.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result);
-
         return Ok(result);
     }
 
@@ -249,18 +246,17 @@ public async Task<ActionResult<IEnumerable<ProductDto>>> GetPublicProducts() { .
 
 ## Pagination Headers
 
-For list endpoints, add pagination metadata to response headers. The `PagedList<T>` class contains all pagination information:
+A list endpoint returns a `PagedList<T>`. `PaginationHeaderFilter` adds the page data to the `X-Pagination` response header for each `PagedList<T>` result. Do not add the header in the controller.
+
+The name of a list endpoint must end in `List`. The frontend client of such an endpoint returns the full response, so that the caller can read the header. If a `PagedList<T>` endpoint has a different name, or another endpoint has a name that ends in `List`, the Debug build fails.
 
 ```csharp
-[HttpGet]
+[HttpGet(Name = "GetCustomerList")]
 public async Task<ActionResult<PagedList<CustomerDto>>> GetCustomerList(
     [FromQuery] CustomerParametersDto parameters)
 {
     var query = new GetCustomerList.Query(parameters);
     var result = await mediator.Send(query);
-
-    Response.AddPaginationHeader(result);
-
     return Ok(result);
 }
 ```

@@ -413,9 +413,6 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     {
         var query = new Get[EntityName]List.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result.Pagination);
-
         return Ok(result);
     }
 

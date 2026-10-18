@@ -65,7 +65,6 @@ public class TenantErrorResponseTests : TestBase
         problem.Errors.ShouldNotBeEmpty();
     }
 
-    // No handler checks for a duplicate tenant name, so the unique index stops the save
     [Fact]
     public async Task duplicate_tenant_name_returns_conflict_problem()
     {
@@ -85,7 +84,7 @@ public class TenantErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status409Conflict);
-        problem.Detail.ShouldBe("A record with this value already exists.");
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 
     [Fact]

@@ -87,7 +87,7 @@ public class TenantLookupCacheTests : TestBase
         // Arrange
         await StartGraph()
             .AddTenant(out var tenant)
-            .AddUsers(out var users, 2)
+            .AddUsers(out var users, u => u.Role = "Admin", _ => { })
             .BuildAsync();
         var (admin, removed) = (users[0], users[1]);
         SignInAs(removed);

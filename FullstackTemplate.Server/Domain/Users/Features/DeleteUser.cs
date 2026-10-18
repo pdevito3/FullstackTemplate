@@ -7,7 +7,7 @@ using Services;
 
 public static class DeleteUser
 {
-    public sealed record Command(Guid Id) : IRequest;
+    public sealed record Command(Guid Id) : IRequest, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext, ITenantIdProvider tenantIdProvider) : IRequestHandler<Command>
     {

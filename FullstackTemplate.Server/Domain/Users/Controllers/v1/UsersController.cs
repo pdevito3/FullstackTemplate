@@ -88,6 +88,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPut("{id:guid}", Name = "UpdateUser")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -105,6 +106,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpDelete("{id:guid}", Name = "DeleteUser")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteUser(Guid id)

@@ -23,9 +23,9 @@ public class PagedList<T> : List<T>, IPagedList
     public int PageNumber { get; private set; }
     public int TotalPages { get; private set; }
     public int PageSize { get; private set; }
-    public int CurrentPageSize { get; set; }
-    public int CurrentStartIndex { get; set; }
-    public int CurrentEndIndex { get; set; }
+    public int CurrentPageSize { get; private set; }
+    public int CurrentStartIndex { get; private set; }
+    public int CurrentEndIndex { get; private set; }
     public int TotalCount { get; private set; }
 
     public bool HasPrevious => PageNumber > 1;

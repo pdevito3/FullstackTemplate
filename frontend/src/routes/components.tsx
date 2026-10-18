@@ -82,8 +82,8 @@ import {
   AutocompleteList,
   AutocompleteItem,
   AutocompleteEmpty,
-  useAutocompleteFilter,
 } from '@/components/ui/autocomplete'
+import { useAutocompleteFilter } from '@/components/ui/use-autocomplete-filter'
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select'
 import {
   ResponsiveDialog,

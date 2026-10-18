@@ -266,9 +266,6 @@ function ComboboxClearButton({
   )
 }
 
-// Hook for filtering - re-export from Base UI
-const useComboboxFilter = ComboboxPrimitive.useFilter
-
 // Convenience component that combines common parts
 function ComboboxContent({
   className,
@@ -310,5 +307,4 @@ export {
   ComboboxValue,
   ComboboxClearButton,
   ComboboxContent,
-  useComboboxFilter,
 }

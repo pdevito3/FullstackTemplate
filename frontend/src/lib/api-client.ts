@@ -4,7 +4,7 @@ import {
   isProblemDetails,
   type ProblemDetails,
 } from './problem-details'
-import { Notification } from '@/components/notifications'
+import { Notification } from '@/components/notification'
 
 /**
  * Extended Axios config with Problem Details handling options

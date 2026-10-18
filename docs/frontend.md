@@ -24,7 +24,8 @@ frontend/src/
 │   ├── ui/                # Shared UI components (shadcn/ui and Base UI)
 │   ├── filter-builder/    # QueryKit filter component
 │   ├── app-sidebar.tsx    # Main navigation
-│   ├── theme-provider.tsx # Theme context
+│   ├── theme-context.ts   # Theme context and useTheme
+│   ├── theme-provider.tsx # Theme provider
 │   └── theme-toggle.tsx   # Light, dark, and system toggle
 ├── routes/                 # TanStack Router file routes
 ├── hooks/                  # Shared React hooks
@@ -76,7 +77,7 @@ export const Route = createFileRoute('/users')({
 
 ## Theme
 
-`useTheme()` from `@/components/theme-provider` returns `theme` and `setTheme`. The values are `'light'`, `'dark'`, and `'system'`. The theme persists in localStorage.
+`useTheme()` from `@/components/theme-context` returns `theme` and `setTheme`. The values are `'light'`, `'dark'`, and `'system'`. The theme persists in localStorage.
 
 ## Filter builder
 

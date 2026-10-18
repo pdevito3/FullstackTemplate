@@ -107,7 +107,7 @@
   ],
   "primaryOutputs": [
     {
-      "path": "FullstackTemplate.sln"
+      "path": "FullstackTemplate.slnx"
     }
   ],
   "postActions": [

@@ -118,6 +118,8 @@ try
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    // A startup failure, such as a CSharpReplGuard stop, must not look like a clean exit to Aspire or CI.
+    Environment.ExitCode = 1;
 }
 finally
 {

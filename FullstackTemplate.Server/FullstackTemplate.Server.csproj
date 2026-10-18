@@ -6,8 +6,9 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
-    <!-- Release builds ignore DOTNET_STARTUP_HOOKS, so CSharpRepl cannot attach to a deployed server. -->
-    <StartupHookSupport Condition="'$(Configuration)' == 'Release'">false</StartupHookSupport>
+    <!-- Only Debug builds load DOTNET_STARTUP_HOOKS, so CSharpRepl cannot attach to a deployed server.
+         Every other configuration (Release, or a custom one such as Staging) turns startup hooks off. -->
+    <StartupHookSupport Condition="'$(Configuration)' != 'Debug'">false</StartupHookSupport>
   </PropertyGroup>
 
   <ItemGroup>

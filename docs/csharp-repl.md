@@ -14,22 +14,23 @@ CSharpRepl loads into the server as a .NET startup hook. The hook opens a local 
 |------|------|--------------|
 | Tool version | `dotnet-tools.json` | Pins `csharprepl` as a local .NET tool |
 | AppHost | `FullstackTemplate.AppHost/CSharpRepl.cs` | `WithCSharpRepl()` sets `DOTNET_STARTUP_HOOKS` and `ASPNETCORE_HOSTINGSTARTUPASSEMBLIES` on the `server` resource |
-| Release builds | `FullstackTemplate.Server/FullstackTemplate.Server.csproj` | `StartupHookSupport` is `false` for the `Release` configuration |
+| Non-Debug builds | `FullstackTemplate.Server/FullstackTemplate.Server.csproj` | `StartupHookSupport` is `false` for every configuration except `Debug` |
 | Server guard | `FullstackTemplate.Server/Resources/CSharpReplGuard.cs` | Stops the server if the hook is loaded outside `Development` |
+| Build test | `tests/FullstackTemplate.UnitTests/Resources/StartupHookSupportTests.cs` | Fails if a non-Debug build turns startup hooks on |
 
-`WithCSharpRepl()` runs `dotnet tool run csharprepl connect init` to get the path of the hook. If the tool is not installed, the AppHost logs a warning and starts the server without the hook.
+When the `server` resource starts, `WithCSharpRepl()` runs `dotnet tool run csharprepl connect init`. It sets each variable that this command exports on the server. If the tool is not installed, the AppHost logs a warning and starts the server without the hook.
 
 Only the `server` resource gets the hook. The `dotnet run` process that starts the server inherits the variables, so `connect list` also shows a `dotnet` row.
 
 ## Development only
 
-Three guards keep CSharpRepl out of a deployed environment:
+Three guards keep CSharpRepl out of a deployed environment. The first two keep the hook from loading. The third detects a loaded hook and stops the server.
 
 1. **The AppHost.** `WithCSharpRepl()` adds the hook only in run mode (`aspire run`) and only in the `Development` environment. `aspire publish` and `aspire deploy` get no hook variables.
-2. **Release builds.** `StartupHookSupport=false` writes `"System.StartupHookProvider.IsSupported": false` to `FullstackTemplate.Server.runtimeconfig.json`. The runtime then ignores `DOTNET_STARTUP_HOOKS`. `FullstackTemplate.Server/Dockerfile` publishes with `-c Release`, so the deployed server cannot load the hook, even if the variable is set.
-3. **The server.** `CSharpReplGuard` runs at startup. If the hook assembly is loaded and the environment is not `Development`, the server stops with this error: `The CSharpRepl startup hook is loaded in the 'Production' environment.`
+2. **Non-Debug builds.** For every configuration except `Debug` (for example `Release`, or a custom `Staging`), `StartupHookSupport=false` writes `"System.StartupHookProvider.IsSupported": false` to `FullstackTemplate.Server.runtimeconfig.json`. The runtime then ignores `DOTNET_STARTUP_HOOKS`. `FullstackTemplate.Server/Dockerfile` publishes with `-c Release`, so the deployed server cannot load the hook, even if the variable is set. A unit test builds the server in `Release` and in a custom configuration, and fails if this setting is not `false`.
+3. **The server.** The runtime runs a startup hook before `Main`, so this guard cannot keep the hook out. `CSharpReplGuard` runs at the start of `Main`. If the hook assembly is loaded and the environment is not `Development`, the server stops with exit code 1 and this error: `The CSharpRepl startup hook is loaded in the 'Production' environment.`
 
-The `Release` setting also turns off all other startup hooks, for example the hot reload agent. `Release` builds do not use hot reload.
+The non-Debug setting also turns off all other startup hooks, for example the hot reload agent. Only `Debug` builds use hot reload.
 
 ## Connection security
 
@@ -62,6 +63,12 @@ The hook listens on a Unix domain socket in `$TMPDIR/csharprepl-connector/`. The
    dotnet csharprepl connect <pid>
    ```
 
+5. Make sure that the connection works. The command prints `"Development"`.
+
+   ```bash
+   NO_COLOR=1 dotnet csharprepl connect <pid> --eval 'Get<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>().EnvironmentName'
+   ```
+
 In the session, `Get<T>()` resolves a service from the root provider. To use the helpers that the skill uses (`Send`, `SendAs`, and `InScope`), load the prelude first:
 
 ```bash
@@ -80,8 +87,9 @@ Then restart the AppHost. The hook path contains the tool version, and the AppHo
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| The AppHost log shows `CSharpRepl is disabled.` | The tool is not installed. | Run `dotnet tool restore`. Then restart the AppHost. |
+| The AppHost log shows `CSharpRepl is disabled.` | The tool is not installed, or `connect init` failed. | Run `dotnet tool restore`. Then restart the AppHost. If the error stays, read the output in the log message. |
 | `connect list` shows no `FullstackTemplate.Server` row | The server is not running, or it started without the hook. | Make sure that the `server` resource is running. Then read the AppHost log. |
 | `Connection refused` | The server process stopped or restarted. | Run `connect list` again and use the new process ID. |
 | `Cannot resolve scoped service ... from root provider` | `Get<T>()` uses the root provider. | Load the prelude and use `InScope` or `Send`. |
+| `SendAs` fails with `No user has the identifier` | No user record has this `sub`. | Use the `Identifier` of a user in the tenant. |
 | A patch stays active after the session | Patches live in the server process. | Run `#revert all`, or restart the server. |

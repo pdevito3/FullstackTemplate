@@ -17,6 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\FullstackTemplate.AppHost\FullstackTemplate.AppHost.csproj" />
         <ProjectReference Include="..\..\FullstackTemplate.Server\FullstackTemplate.Server.csproj" />
         <ProjectReference Include="..\FullstackTemplate.SharedTestHelpers\FullstackTemplate.SharedTestHelpers.csproj" />
     </ItemGroup>

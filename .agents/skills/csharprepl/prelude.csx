@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Services;
 
 // Sends a MediatR request in a new DI scope, as a request with no user.
 // Without a user, AppDbContext.CurrentTenantId is null and the tenant filter is off.
@@ -18,8 +19,15 @@ async Task<T> Send<T>(IRequest<T> request)
 }
 
 // Sends a MediatR request as the user with this "sub" claim. The tenant filter uses this user's tenant.
+// A "sub" with no user record stops here, because the server shows no tenant data to this user.
 async Task<T> SendAs<T>(string sub, IRequest<T> request)
 {
+    using (var lookupScope = Get<IServiceScopeFactory>().CreateScope())
+    {
+        if (await lookupScope.ServiceProvider.GetRequiredService<ITenantIdProvider>().GetTenantIdAsync(sub) is null)
+            throw new InvalidOperationException($"No user has the identifier '{sub}'. Use the Identifier of a user in the tenant.");
+    }
+
     var accessor = Get<IHttpContextAccessor>();
     accessor.HttpContext = new DefaultHttpContext
     {

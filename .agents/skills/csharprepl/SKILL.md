@@ -73,11 +73,11 @@ Rules for submissions:
 | `SendAs("<sub>", request)` | Sends a MediatR request as the user with this `sub` claim. |
 | `InScope<TService, TResult>(service => ...)` | Runs code against one scoped service. |
 
-`Send` goes through the full MediatR pipeline: validators, `RequestTracingBehavior`, the handler, and the domain events. Commands write to the development database.
+`Send` goes through the full MediatR pipeline: `RequestTracingBehavior`, the handler, and the domain events. Commands write to the development database.
 
 ## Tenants and users
 
-With no user, `AppDbContext.CurrentTenantId` is `null` and the tenant filter is off. `Send` then sees the rows of all tenants. To see the data as one tenant, use `SendAs` with the `Identifier` of a user in that tenant.
+With no user, `AppDbContext.CurrentTenantId` is `null` and the tenant filter is off. `Send` then sees the rows of all tenants. To see the data as one tenant, use `SendAs` with the `Identifier` of a user in that tenant. If no user has this `Identifier`, `SendAs` stops with `No user has the identifier`.
 
 ```bash
 NO_COLOR=1 dotnet csharprepl connect <pid> --streamPipedInput <<'EOF'

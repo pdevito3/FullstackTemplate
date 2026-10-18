@@ -21,16 +21,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include=".template.config\**\*" />
-    <Content Include="FullstackTemplate.sln" />
-    <Content Include="dotnet-tools.json" />
-    <Content Include="FullstackTemplate.AppHost\**\*" Exclude="**\bin\**;**\obj\**" />
-    <Content Include="FullstackTemplate.Bff\**\*" Exclude="**\bin\**;**\obj\**" />
-    <Content Include="FullstackTemplate.Server\**\*" Exclude="**\bin\**;**\obj\**" />
-    <Content Include="frontend\**\*" Exclude="frontend\node_modules\**;frontend\dist\**;frontend\obj\**" />
-    <Content Include=".gitignore" />
-    <Content Include="AGENTS.md" />
-    <Content Include="README.md" Condition="Exists('README.md')" />
+    <!-- Pack the whole repository. .template.config/template.json excludes the files that a new project does not get. -->
+    <!-- .claude/skills is a symlink. A package cannot hold a symlink, so the package has a copy of .agents/skills there. -->
+    <Content Include="**\*" Exclude="**\bin\**;**\obj\**;**\node_modules\**;**\dist\**;**\TestResults\**;**\.DS_Store;**\*.user;.git\**;.idea\**;.claude\worktrees\**;.playwright-mcp\**;nupkg\**;FullstackTemplate.sln;template.csproj" />
   </ItemGroup>
 
   <ItemGroup>

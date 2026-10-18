@@ -9,7 +9,8 @@ using Serilog;
 /// </summary>
 public static class CSharpRepl
 {
-    private const string StartupHookExport = "export DOTNET_STARTUP_HOOKS=";
+    private const string ExportPrefix = "export ";
+    private const string StartupHooksVariable = "DOTNET_STARTUP_HOOKS";
 
     /// <summary>
     /// Adds the CSharpRepl startup hook to the project. Only in run mode with the Development
@@ -21,18 +22,36 @@ public static class CSharpRepl
         if (!builder.ExecutionContext.IsRunMode || !builder.Environment.IsDevelopment())
             return project;
 
-        var hookPath = ResolveStartupHook(builder.AppHostDirectory);
-        if (hookPath is null)
-            return project;
+        // The callback runs when the resource starts, so `connect init` does not delay the AppHost startup.
+        // The callback runs again on each restart of the resource. Lazy keeps the lookup to one run.
+        var hookVariables = new Lazy<Task<IReadOnlyDictionary<string, string>>>(
+            () => ResolveHookVariablesAsync(builder.AppHostDirectory));
 
-        return project
-            .WithEnvironment("DOTNET_STARTUP_HOOKS", hookPath)
-            .WithEnvironment("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", "CSharpRepl.InjectedHook");
+        return project.WithEnvironment(async context =>
+        {
+            foreach (var (name, value) in await hookVariables.Value)
+                context.EnvironmentVariables[name] = value;
+        });
     }
 
-    // `csharprepl connect init` prints the hook path as a shell export. The tool is pinned in dotnet-tools.json.
-    private static string? ResolveStartupHook(string workingDirectory)
+    /// <summary>
+    /// Reads the <c>export NAME="value"</c> lines that <c>csharprepl connect init --shell bash</c> prints.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> ParseExports(string output)
     {
+        return output
+            .Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(ExportPrefix, StringComparison.Ordinal))
+            .Select(line => line[ExportPrefix.Length..].Split('=', 2))
+            .Where(parts => parts.Length == 2 && parts[0].Length > 0)
+            .ToDictionary(parts => parts[0], parts => parts[1].Trim('"'));
+    }
+
+    // `csharprepl connect init` prints the hook variables as shell exports. The tool is pinned in dotnet-tools.json.
+    private static async Task<IReadOnlyDictionary<string, string>> ResolveHookVariablesAsync(string workingDirectory)
+    {
+        var none = new Dictionary<string, string>();
         try
         {
             using var process = Process.Start(new ProcessStartInfo
@@ -48,33 +67,39 @@ public static class CSharpRepl
 
             var stdout = process.StandardOutput.ReadToEndAsync();
             var stderr = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(TimeSpan.FromSeconds(30)))
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
             {
                 process.Kill(entireProcessTree: true);
                 Log.Warning("CSharpRepl is disabled: `csharprepl connect init` did not finish in 30 seconds");
-                return null;
+                return none;
             }
 
-            var hookPath = stdout.Result
-                .Split('\n')
-                .Select(line => line.Trim())
-                .Where(line => line.StartsWith(StartupHookExport, StringComparison.Ordinal))
-                .Select(line => line[StartupHookExport.Length..].Trim('"'))
-                .FirstOrDefault();
+            var output = $"{await stdout}{await stderr}".Trim();
+            var variables = ParseExports(await stdout);
 
-            if (process.ExitCode != 0 || hookPath is null || !File.Exists(hookPath))
+            if (process.ExitCode != 0 || !variables.TryGetValue(StartupHooksVariable, out var hookPath))
             {
-                Log.Warning("CSharpRepl is disabled. Run `dotnet tool restore` to install it. Output: {Output}",
-                    $"{stdout.Result}{stderr.Result}".Trim());
-                return null;
+                Log.Warning("CSharpRepl is disabled. Run `dotnet tool restore` to install it. Output: {Output}", output);
+                return none;
             }
 
-            return hookPath;
+            if (!File.Exists(hookPath))
+            {
+                Log.Warning("CSharpRepl is disabled: the startup hook {HookPath} does not exist. Output: {Output}", hookPath, output);
+                return none;
+            }
+
+            return variables;
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "CSharpRepl is disabled. Run `dotnet tool restore` to install it");
-            return null;
+            Log.Warning(ex, "CSharpRepl is disabled: `csharprepl connect init` failed");
+            return none;
         }
     }
 }

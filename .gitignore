@@ -303,3 +303,6 @@ __pycache__/
 #ENV
 .env
 
+
+# Playwright MCP screenshots and snapshots
+.playwright-mcp/

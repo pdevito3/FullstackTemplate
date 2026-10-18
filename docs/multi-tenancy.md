@@ -22,3 +22,13 @@ public class MyEntity : BaseEntity, ITenantable
 ## Tenant lookup
 
 `ITenantIdProvider` finds the tenant from the user identifier. FusionCache keeps the result for 30 minutes. If the database is not available, the fail-safe cache keeps the last result for a maximum of 2 hours.
+
+The filter depends on the current user:
+
+| Current user | Rows that the filter shows |
+|--------------|----------------------------|
+| No user (system work, machine client) | The rows of all tenants |
+| A user with a user record | The rows of this user's tenant |
+| A signed-in user with no user record | No rows |
+
+The provider does not cache a missing user. A user who gets a user record later sees their tenant on the next request.

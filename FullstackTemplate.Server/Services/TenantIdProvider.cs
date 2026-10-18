@@ -41,9 +41,22 @@ public sealed class TenantIdProvider(
     {
         var cacheKey = GetCacheKey(userIdentifier);
 
-        return await cache.GetOrSetAsync(
+        return await cache.GetOrSetAsync<Guid?>(
             cacheKey,
-            async ct => await LookupTenantIdAsync(userIdentifier, ct),
+            async (ctx, ct) =>
+            {
+                var tenantId = await LookupTenantIdAsync(userIdentifier, ct);
+
+                // Do not cache a missing user. Nothing invalidates this key when the user is added later,
+                // so a cached null keeps a new user out of their tenant for the full duration.
+                if (tenantId is null)
+                {
+                    ctx.Options.SkipMemoryCacheWrite = true;
+                    ctx.Options.SkipDistributedCacheWrite = true;
+                }
+
+                return tenantId;
+            },
             CacheOptions,
             cancellationToken);
     }

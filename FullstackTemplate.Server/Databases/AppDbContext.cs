@@ -21,8 +21,14 @@ public class AppDbContext(
     #endregion
 
     /// <summary>
+    /// A tenant ID that no tenant has. The tenant filter matches no rows for it.
+    /// </summary>
+    private static readonly Guid NoTenant = Guid.Empty;
+
+    /// <summary>
     /// The current user's tenant ID for query filtering.
-    /// Returns null to allow access to all tenants (e.g., for system operations or unauthenticated requests).
+    /// Returns null to allow access to all tenants, for requests with no user (system operations, machine clients).
+    /// A user with no user record belongs to no tenant, so the filter matches no rows for this user.
     /// </summary>
     public Guid? CurrentTenantId
     {
@@ -33,7 +39,7 @@ public class AppDbContext(
                 return null;
 
             // FusionCache handles caching internally, so this is fast on subsequent calls
-            return tenantIdProvider.GetTenantIdAsync(userIdentifier).GetAwaiter().GetResult();
+            return tenantIdProvider.GetTenantIdAsync(userIdentifier).GetAwaiter().GetResult() ?? NoTenant;
         }
     }
 

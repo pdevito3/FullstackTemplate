@@ -8,9 +8,9 @@ using MediatR;
 public static class UpdateUser
 {
     // A user can update their own record. The role is not in the DTO, so this cannot make a user an admin.
-    public sealed record Command(Guid Id, UserForUpdateDto Dto) : IRequest<UserDto>, IRequireTenantAdmin, IAllowSelf
+    public sealed record Command(string Id, UserForUpdateDto Dto) : IRequest<UserDto>, IRequireTenantAdmin, IAllowSelf
     {
-        public Guid SelfUserId => Id;
+        public string SelfUserId => Id;
     }
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>

@@ -6,6 +6,6 @@
 import * as z from 'zod'
 
 export const tenantDtoSchema = z.object({
-  id: z.uuid(),
+  id: z.string(),
   name: z.string(),
 })

@@ -9,11 +9,6 @@ import type { TenantForUpdateDto } from '../../models/types/tenant-for-update-dt
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type UpdateTenantPath = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
 };
 

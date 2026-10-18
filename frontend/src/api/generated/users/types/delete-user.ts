@@ -7,11 +7,6 @@ import type { ProblemDetails } from '../../models/types/problem-details'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type DeleteUserPath = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
 };
 

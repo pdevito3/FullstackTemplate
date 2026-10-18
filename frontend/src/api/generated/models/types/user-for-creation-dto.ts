@@ -6,8 +6,6 @@
 export type UserForCreationDto = {
     /**
      * @description Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.\nA user always adds to their own tenant. If a user sends a tenant, it must be their own tenant.
-     *
-     * Format: `uuid`
      * @type string | undefined
     */
     tenantId?: string | null;

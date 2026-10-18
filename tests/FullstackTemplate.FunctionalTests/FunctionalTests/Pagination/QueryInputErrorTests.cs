@@ -16,7 +16,6 @@ public class QueryInputErrorTests : TestBase
     {
         { "filters", "Name @= " },
         { "filters", "Unknown == \"x\"" },
-        { "filters", "Id == \"notaguid\"" },
         // TenantDto does not show CreatedBy, so the filter cannot use it
         { "filters", "CreatedBy == \"x\"" },
         { "filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\"" },

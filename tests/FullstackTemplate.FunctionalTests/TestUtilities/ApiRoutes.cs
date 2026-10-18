@@ -9,23 +9,24 @@ public static class ApiRoutes
     public static class Users
     {
         public static string GetList => $"{Base}/users";
-        public static string GetRecord(Guid id) => $"{Base}/users/{id}";
+        public static string GetRecord(string id) => $"{Base}/users/{id}";
         public static string GetByIdentifier(string identifier) => $"{Base}/users/by-identifier/{identifier}";
         public static string Create => $"{Base}/users";
         public static string Initiate => $"{Base}/users/initiate";
-        public static string Put(Guid id) => $"{Base}/users/{id}";
-        public static string Delete(Guid id) => $"{Base}/users/{id}";
-        public static string Role(Guid id) => $"{Base}/users/{id}/role";
-        public static string Permissions(Guid id) => $"{Base}/users/{id}/permissions";
+        public static string Put(string id) => $"{Base}/users/{id}";
+        public static string Delete(string id) => $"{Base}/users/{id}";
+        public static string UpdateRole(string id) => $"{Base}/users/{id}/role";
+        public static string AddPermission(string id) => $"{Base}/users/{id}/permissions";
+        public static string RemovePermission(string id, string permission) => $"{Base}/users/{id}/permissions/{permission}";
     }
 
     public static class Tenants
     {
         public static string GetList => $"{Base}/tenants";
         public static string Create => $"{Base}/tenants";
-        public static string GetRecord(Guid id) => $"{Base}/tenants/{id}";
-        public static string Put(Guid id) => $"{Base}/tenants/{id}";
-        public static string Delete(Guid id) => $"{Base}/tenants/{id}";
+        public static string GetRecord(string id) => $"{Base}/tenants/{id}";
+        public static string Put(string id) => $"{Base}/tenants/{id}";
+        public static string Delete(string id) => $"{Base}/tenants/{id}";
     }
 
     public static class Weather

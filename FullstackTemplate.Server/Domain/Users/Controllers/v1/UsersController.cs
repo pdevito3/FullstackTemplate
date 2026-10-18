@@ -17,10 +17,10 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// Gets a single User by ID.
     /// </summary>
     [Authorize]
-    [HttpGet("{id:guid}", Name = "GetUser")]
+    [HttpGet("{id}", Name = "GetUser")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<UserDto>> GetUser(Guid id)
+    public async Task<ActionResult<UserDto>> GetUser(string id)
     {
         var query = new GetUser.Query(id);
         var result = await mediator.Send(query);
@@ -85,14 +85,14 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// Updates an existing User.
     /// </summary>
     [Authorize]
-    [HttpPut("{id:guid}", Name = "UpdateUser")]
+    [HttpPut("{id}", Name = "UpdateUser")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> UpdateUser(
-        Guid id,
+        string id,
         [FromBody] UserForUpdateDto dto)
     {
         var command = new UpdateUser.Command(id, dto);
@@ -104,12 +104,12 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// Deletes a User.
     /// </summary>
     [Authorize]
-    [HttpDelete("{id:guid}", Name = "DeleteUser")]
+    [HttpDelete("{id}", Name = "DeleteUser")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult> DeleteUser(Guid id)
+    public async Task<ActionResult> DeleteUser(string id)
     {
         var command = new DeleteUser.Command(id);
         await mediator.Send(command);
@@ -120,14 +120,14 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// Updates a User's role. This resets all permissions to the new role's defaults.
     /// </summary>
     [Authorize]
-    [HttpPut("{id:guid}/role", Name = "UpdateUserRole")]
+    [HttpPut("{id}/role", Name = "UpdateUserRole")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> UpdateUserRole(
-        Guid id,
+        string id,
         [FromBody] UpdateUserRoleDto dto)
     {
         var command = new UpdateUserRole.Command(id, dto.Role);
@@ -139,14 +139,14 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// Adds a permission to a User.
     /// </summary>
     [Authorize]
-    [HttpPost("{id:guid}/permissions", Name = "AddUserPermission")]
+    [HttpPost("{id}/permissions", Name = "AddUserPermission")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> AddUserPermission(
-        Guid id,
+        string id,
         [FromBody] UserPermissionDto dto)
     {
         var command = new AddUserPermission.Command(id, dto.Permission);
@@ -158,13 +158,13 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// Removes a permission from a User.
     /// </summary>
     [Authorize]
-    [HttpDelete("{id:guid}/permissions/{permission}", Name = "RemoveUserPermission")]
+    [HttpDelete("{id}/permissions/{permission}", Name = "RemoveUserPermission")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> RemoveUserPermission(
-        Guid id,
+        string id,
         string permission)
     {
         var command = new RemoveUserPermission.Command(id, permission);

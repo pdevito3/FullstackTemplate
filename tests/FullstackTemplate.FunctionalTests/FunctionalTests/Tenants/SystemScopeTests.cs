@@ -1,6 +1,7 @@
 namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Exceptions;
@@ -67,6 +68,6 @@ public class SystemScopeTests : TestBase
 
         // Assert
         found.ShouldBeTrue();
-        added.Id.ShouldNotBe(Guid.Empty);
+        EntityId.IsValid(added.Id, Tenant.IdPrefix).ShouldBeTrue();
     }
 }

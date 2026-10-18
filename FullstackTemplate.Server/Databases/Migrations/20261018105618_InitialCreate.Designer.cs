@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FullstackTemplate.Server.Databases.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260101044649_InitialCreate")]
+    [Migration("20261018105618_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -21,17 +21,18 @@ namespace FullstackTemplate.Server.Databases.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Tenants.Tenant", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
@@ -71,10 +72,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
@@ -114,9 +116,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("last_name");
 
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -164,10 +169,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserPermission", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text")
@@ -189,9 +195,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_on");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("user_id")
+                        .UseCollation("C");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Users.UserPermission.Permission#Permission", b1 =>
                         {

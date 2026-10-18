@@ -7,7 +7,7 @@ import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const deleteTenantPathIdSchema = z.uuid()
+export const deleteTenantPathIdSchema = z.string()
 
 export const deleteTenantStatus204Schema = z.unknown()
 

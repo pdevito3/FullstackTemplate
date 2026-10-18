@@ -10,7 +10,7 @@ using Users;
 
 public static class UpdateTenant
 {
-    public sealed record Command(Guid Id, TenantForUpdateDto Dto) : IRequest<TenantDto>, IRequireTenantAdmin;
+    public sealed record Command(string Id, TenantForUpdateDto Dto) : IRequest<TenantDto>, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, TenantDto>
     {

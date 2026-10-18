@@ -4,17 +4,7 @@
 */
 
 export type UserDto = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     tenantId: string;
     firstName: string;
     lastName: string;

@@ -21,7 +21,7 @@ public class TenantScopeFilterTests : TestBase
         // so the test writes the row directly. The replica role turns off the foreign key trigger.
         await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
             "SET session_replication_role = replica; UPDATE users SET tenant_id = {0} WHERE id = {1}; SET session_replication_role = origin;",
-            Guid.Empty, user.Id));
+            string.Empty, user.Id));
 
         try
         {

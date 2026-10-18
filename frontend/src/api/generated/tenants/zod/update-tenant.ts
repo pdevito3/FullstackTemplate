@@ -9,7 +9,7 @@ import { tenantDtoSchema } from '../../models/zod/tenant-dto'
 import { tenantForUpdateDtoSchema } from '../../models/zod/tenant-for-update-dto'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const updateTenantPathIdSchema = z.uuid()
+export const updateTenantPathIdSchema = z.string()
 
 export const updateTenantStatus200Schema = tenantDtoSchema
 

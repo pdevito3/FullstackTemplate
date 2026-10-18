@@ -21,8 +21,7 @@ Domain/
     ├── [EntityName].cs                 # Rich domain entity
     ├── DomainEvents/
     │   ├── [EntityName]Created.cs
-    │   ├── [EntityName]Updated.cs
-    │   └── [EntityName]Deleted.cs
+    │   └── [EntityName]Updated.cs
     ├── Dtos/
     │   ├── [EntityName]Dto.cs
     │   ├── [EntityName]ForCreationDto.cs
@@ -48,6 +47,10 @@ Controllers/
 └── v1/
     └── [EntityName]sController.cs
 ```
+
+Each entity needs `public const string IdPrefix` with 1 to 17 lower-case ASCII letters. The prefix must be unique. Each constructor must call `base(IdPrefix)` with the IdPrefix of its own type. An entity must derive from `BaseEntity`, or from an abstract base class that has no IdPrefix, never from another entity. The build fails when an entity breaks one of these rules (FSTID001-005).
+
+An abstract base entity has no IdPrefix. Its constructor must take the prefix as a parameter and give that parameter to `BaseEntity`, for example `protected AuditedEntity(string idPrefix) : base(idPrefix) { }`. The prefix parameter must have the name `idPrefix`. Each concrete entity then calls `base(IdPrefix)` with its own IdPrefix. The build fails when the abstract constructor gives `BaseEntity` a different value, or when the abstract class has no constructor (FSTID004). It also fails when an entity derives from an abstract class that has an IdPrefix (FSTID005).
 
 ## Scenario 2: New Property on Existing Entity
 
@@ -117,7 +120,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - See: `.claude/rules/backend/working-with-domain-entities.md`
 
 3. **Generate Domain Events**
-   - Created, Updated, Deleted events
+   - Created and Updated events (no deleted event, because deletes are soft)
    - Additional business-specific events as needed
    - See: `.claude/rules/backend/domain-events.md`
 
@@ -245,11 +248,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
        Status = OrderStatus.Submitted();
 
-       QueueDomainEvent(new OrderSubmitted
-       {
-           OrderId = Id,
-           SubmittedAt = DateTimeOffset.UtcNow
-       });
+       QueueDomainEvent(new OrderSubmitted(Id, DateTimeOffset.UtcNow));
 
        return this;
    }
@@ -258,11 +257,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 3. **Create Domain Event (if needed)**
    ```csharp
    // DomainEvents/OrderSubmitted.cs
-   public sealed record OrderSubmitted : IDomainEvent
-   {
-       public required Guid OrderId { get; init; }
-       public required DateTimeOffset SubmittedAt { get; init; }
-   }
+   public sealed record OrderSubmitted(string OrderId, DateTimeOffset SubmittedAt) : DomainEvent;
    ```
 
 4. **Create Feature (Command or Query)**
@@ -270,7 +265,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    // Features/SubmitOrder.cs
    public static class SubmitOrder
    {
-       public sealed record Command(Guid Id) : IRequest<OrderDto>;
+       public sealed record Command(string Id) : IRequest<OrderDto>;
 
        public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, OrderDto>
        {
@@ -294,12 +289,12 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    /// Submits an order for processing.
    /// </summary>
    [Authorize]
-   [HttpPost("{id:guid}/submit", Name = "SubmitOrder")]
+   [HttpPost("{id}/submit", Name = "SubmitOrder")]
    [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
    [ProducesResponseType(StatusCodes.Status404NotFound)]
    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-   public async Task<ActionResult<OrderDto>> SubmitOrder(Guid id)
+   public async Task<ActionResult<OrderDto>> SubmitOrder(string id)
    {
        var command = new SubmitOrder.Command(id);
        var result = await mediator.Send(command);
@@ -370,6 +365,8 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Review generated entity for business logic completeness
 - [ ] Add DbSet to `AppDbContext.cs`
 - [ ] Verify entity configuration is in `Databases/EntityConfigurations/` and properly applied
+- [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
+- [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
 - [ ] Install MediatR if not already present
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
@@ -385,6 +382,8 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] DTOs updated (Dto, ForCreationDto, ForUpdateDto as needed)
 - [ ] Mapper updated (custom mapping for value objects)
 - [ ] Entity configuration updated (constraints, value object mapping)
+- [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
+- [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`
 

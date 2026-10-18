@@ -7,11 +7,6 @@ import type { ProblemDetails } from '../../models/types/problem-details'
 import type { TenantDto } from '../../models/types/tenant-dto'
 
 export type GetTenantPath = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
 };
 

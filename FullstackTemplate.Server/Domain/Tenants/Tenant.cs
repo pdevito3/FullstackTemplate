@@ -5,6 +5,8 @@ using Models;
 
 public class Tenant : BaseEntity
 {
+    public const string IdPrefix = "ten";
+
     public string Name { get; private set; } = default!;
 
     public static Tenant Create(TenantForCreation tenantForCreation)
@@ -13,6 +15,8 @@ public class Tenant : BaseEntity
         {
             Name = tenantForCreation.Name
         };
+        if (tenantForCreation.Id is not null)
+            tenant.SetId(tenantForCreation.Id);
 
         ValidateTenant(tenant);
         tenant.QueueDomainEvent(new TenantCreated(tenant));
@@ -35,5 +39,5 @@ public class Tenant : BaseEntity
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(tenant.Name, "Please provide a tenant name.");
     }
 
-    protected Tenant() { } // For EF Core
+    protected Tenant() : base(IdPrefix) { } // For EF Core
 }

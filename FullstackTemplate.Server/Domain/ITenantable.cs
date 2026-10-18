@@ -6,5 +6,5 @@ namespace FullstackTemplate.Server.Domain;
 /// </summary>
 public interface ITenantable
 {
-    Guid TenantId { get; }
+    string TenantId { get; }
 }

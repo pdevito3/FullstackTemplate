@@ -1,5 +1,7 @@
 namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -17,7 +19,7 @@ public class TenantErrorResponseTests : TestBase
         FactoryClient.SetFakeBearerToken("user");
 
         // Act
-        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Tenants.GetRecord(Guid.NewGuid()));
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Tenants.GetRecord(EntityId.New(Tenant.IdPrefix)));
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);

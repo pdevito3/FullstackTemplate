@@ -7,11 +7,6 @@ import type { ProblemDetails } from '../../models/types/problem-details'
 import type { UserDto } from '../../models/types/user-dto'
 
 export type GetUserPath = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
 };
 

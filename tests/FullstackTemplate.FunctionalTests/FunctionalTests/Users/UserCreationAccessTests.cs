@@ -51,13 +51,15 @@ public class UserCreationAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "You can add a user only to your own tenant.");
     }
 
-    [Fact]
-    public async Task admin_adds_a_user_to_their_own_tenant()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task admin_adds_a_user_to_their_own_tenant(string? requestedTenantId)
     {
         // Arrange
         var (tenant, admin) = await AddTenantWithUserAsync("Admin");
         SignInAs(admin);
-        var dto = new FakeUserForCreationDto().Generate();
+        var dto = new FakeUserForCreationDto().RuleFor(x => x.TenantId, _ => requestedTenantId).Generate();
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
@@ -137,7 +139,7 @@ public class UserCreationAccessTests : TestBase
         SignInAs(member);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Role(member.Id), new { role = "Admin" });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
 
         // Assert
         await ShouldBeForbiddenAsync(result, "Only an admin can do this.");

@@ -27,6 +27,7 @@ FullstackTemplate.Server/Domain/
 - **QueryKit** does the filters and sorts for list endpoints. They run on the DTO projection, so a caller can query only the fields that the contract shows. `CustomQueryKitConfiguration` limits the length and the nesting depth of a filter.
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
 - **Domain events** queue in the entity. `SaveChangesAsync` dispatches them.
+- **Prefixed string IDs**: each entity has a `public const string IdPrefix`, for example `usr`. `EntityId.New` makes IDs like `usr_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f` (the prefix and a UUIDv7). The build gives an error when an entity has no prefix, an invalid prefix, or a prefix that another entity uses. It also gives an error when a constructor does not call `base(IdPrefix)` with the prefix of its own type, or when an entity derives from another entity. A UUIDv7 ID shows the creation time to the millisecond. Thus, if you hide the `CreatedOn` field, the creation time is not secret.
 
 ## Add a new feature
 
@@ -142,8 +143,8 @@ A paged list query must have a fixed sort order. Without one, a row can show on 
 ### Migrations
 
 ```bash
-dotnet ef migrations add MyMigration --project FullstackTemplate.Server
-dotnet ef database update --project FullstackTemplate.Server
+dotnet ef migrations add MyMigration --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations
+dotnet ef database update --project FullstackTemplate.Server --startup-project FullstackTemplate.Server
 ```
 
 The server applies migrations at startup, with a Postgres advisory lock.

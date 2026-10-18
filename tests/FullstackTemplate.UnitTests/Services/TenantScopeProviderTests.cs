@@ -1,5 +1,7 @@
 namespace FullstackTemplate.UnitTests.Services;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
 using System.Security.Claims;
 using FullstackTemplate.Server.Services;
 using Microsoft.AspNetCore.Http;
@@ -53,7 +55,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Fact]
     public void user_with_a_user_record_gets_their_tenant()
     {
-        var tenantId = Guid.NewGuid();
+        var tenantId = EntityId.New(Tenant.IdPrefix);
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns(tenantId);
         SetCaller(new Claim("sub", "user-1"));
 
@@ -63,7 +65,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Fact]
     public void user_with_no_user_record_gets_no_tenant()
     {
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns((Guid?)null);
+        _tenantIdProvider.GetTenantIdAsync("user-1").Returns((string?)null);
         SetCaller(new Claim("sub", "user-1"));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
@@ -104,7 +106,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Fact]
     public void user_with_a_user_record_cannot_manage_all_tenants()
     {
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(Guid.NewGuid());
+        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(EntityId.New(Tenant.IdPrefix));
         SetCaller(new Claim("sub", "user-1"));
 
         _sut.CanManageAllTenants().ShouldBeFalse();

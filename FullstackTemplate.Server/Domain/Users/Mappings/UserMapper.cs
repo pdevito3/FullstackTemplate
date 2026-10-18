@@ -22,7 +22,8 @@ public static partial class UserMapper
 
     // The handler decides the tenant from the caller's scope. The tenant in the DTO is only a request.
     [MapperIgnoreSource(nameof(UserForCreationDto.TenantId))]
-    public static partial UserForCreation ToUserForCreation(this UserForCreationDto dto, Guid tenantId);
+    [MapperIgnoreTarget(nameof(UserForCreation.Id))]
+    public static partial UserForCreation ToUserForCreation(this UserForCreationDto dto, string tenantId);
 
     public static partial UserForUpdate ToUserForUpdate(this UserForUpdateDto dto);
 

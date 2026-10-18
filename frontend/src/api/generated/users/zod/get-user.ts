@@ -7,7 +7,7 @@ import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { userDtoSchema } from '../../models/zod/user-dto'
 
-export const getUserPathIdSchema = z.uuid()
+export const getUserPathIdSchema = z.string()
 
 export const getUserStatus200Schema = userDtoSchema
 

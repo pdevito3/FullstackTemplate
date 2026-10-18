@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class RemoveUserPermission
 {
-    public sealed record Command(Guid Id, string Permission) : IRequest<UserDto>, IRequireTenantAdmin;
+    public sealed record Command(string Id, string Permission) : IRequest<UserDto>, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
     {

@@ -32,10 +32,10 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     /// Gets a single [EntityName] by ID.
     /// </summary>
     [Authorize]
-    [HttpGet("{id:guid}", Name = "Get[EntityName]")]
+    [HttpGet("{id}", Name = "Get[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<[EntityName]Dto>> Get[EntityName](Guid id)
+    public async Task<ActionResult<[EntityName]Dto>> Get[EntityName](string id)
     {
         var query = new Get[EntityName].Query(id);
         var result = await mediator.Send(query);
@@ -80,13 +80,13 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     /// Updates an existing [EntityName].
     /// </summary>
     [Authorize]
-    [HttpPut("{id:guid}", Name = "Update[EntityName]")]
+    [HttpPut("{id}", Name = "Update[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<[EntityName]Dto>> Update[EntityName](
-        Guid id,
+        string id,
         [FromBody] [EntityName]ForUpdateDto dto)
     {
         var command = new Update[EntityName].Command(id, dto);
@@ -98,11 +98,11 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     /// Deletes a [EntityName].
     /// </summary>
     [Authorize]
-    [HttpDelete("{id:guid}", Name = "Delete[EntityName]")]
+    [HttpDelete("{id}", Name = "Delete[EntityName]")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult> Delete[EntityName](Guid id)
+    public async Task<ActionResult> Delete[EntityName](string id)
     {
         var command = new Delete[EntityName].Command(id);
         await mediator.Send(command);
@@ -122,7 +122,7 @@ Controllers should only:
 
 ```csharp
 // Good - thin controller
-public async Task<ActionResult<OrderDto>> GetOrder(Guid id)
+public async Task<ActionResult<OrderDto>> GetOrder(string id)
 {
     var query = new GetOrder.Query(id);
     var result = await mediator.Send(query);
@@ -130,7 +130,7 @@ public async Task<ActionResult<OrderDto>> GetOrder(Guid id)
 }
 
 // Bad - business logic in controller
-public async Task<ActionResult<OrderDto>> GetOrder(Guid id)
+public async Task<ActionResult<OrderDto>> GetOrder(string id)
 {
     var order = await dbContext.Orders.FindAsync(id);
     if (order == null) return NotFound();
@@ -171,18 +171,19 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
 Add type constraints to route parameters:
 
 ```csharp
-[HttpGet("{id:guid}")]           // GUID constraint
 [HttpGet("{code:alpha}")]        // Alphabetic only
 [HttpGet("{page:int:min(1)}")]   // Integer with minimum
 ```
+
+A route with an entity ID, such as `{id}`, has no route constraint. The ID is an opaque string. When the ID is malformed, no entity has it, so the request gets 404 Not Found.
 
 ### 5. Named Routes for CreatedAtRoute
 
 Always name routes for use with `CreatedAtRoute`:
 
 ```csharp
-[HttpGet("{id:guid}", Name = "GetCustomer")]
-public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id) { ... }
+[HttpGet("{id}", Name = "GetCustomer")]
+public async Task<ActionResult<CustomerDto>> GetCustomer(string id) { ... }
 
 [HttpPost(Name = "AddCustomer")]
 public async Task<ActionResult<CustomerDto>> AddCustomer(CustomerForCreationDto dto)
@@ -222,12 +223,12 @@ A 409 comes from a duplicate unique value (`ConflictException`, or a unique inde
 // Require authentication for all actions
 [Authorize]
 [HttpGet]
-public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id) { ... }
+public async Task<ActionResult<CustomerDto>> GetCustomer(string id) { ... }
 
 // Require specific role
 [Authorize(Roles = "Admin")]
-[HttpDelete("{id:guid}")]
-public async Task<ActionResult> DeleteCustomer(Guid id) { ... }
+[HttpDelete("{id}")]
+public async Task<ActionResult> DeleteCustomer(string id) { ... }
 
 // Allow anonymous access
 [AllowAnonymous]
@@ -273,12 +274,12 @@ For domain-specific operations beyond CRUD:
 /// Submits an order for processing.
 /// </summary>
 [Authorize]
-[HttpPost("{id:guid}/submit", Name = "SubmitOrder")]
+[HttpPost("{id}/submit", Name = "SubmitOrder")]
 [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-public async Task<ActionResult<OrderDto>> SubmitOrder(Guid id)
+public async Task<ActionResult<OrderDto>> SubmitOrder(string id)
 {
     var command = new SubmitOrder.Command(id);
     var result = await mediator.Send(command);
@@ -289,13 +290,13 @@ public async Task<ActionResult<OrderDto>> SubmitOrder(Guid id)
 /// Cancels an order.
 /// </summary>
 [Authorize]
-[HttpPost("{id:guid}/cancel", Name = "CancelOrder")]
+[HttpPost("{id}/cancel", Name = "CancelOrder")]
 [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<OrderDto>> CancelOrder(
-    Guid id,
+    string id,
     [FromBody] CancelOrderDto dto)
 {
     var command = new CancelOrder.Command(id, dto.Reason);
@@ -357,7 +358,7 @@ public static readonly ApiVersion[] SupportedVersions = [new ApiVersion(1, 0), n
 // Bad - direct data access
 public sealed class CustomersController(AppDbContext dbContext) : ControllerBase
 {
-    public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id)
+    public async Task<ActionResult<CustomerDto>> GetCustomer(string id)
     {
         var customer = await dbContext.Customers.FindAsync(id);
         return Ok(customer.ToDto());
@@ -367,7 +368,7 @@ public sealed class CustomersController(AppDbContext dbContext) : ControllerBase
 // Good - delegate to MediatR
 public sealed class CustomersController(IMediator mediator) : ControllerBase
 {
-    public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id)
+    public async Task<ActionResult<CustomerDto>> GetCustomer(string id)
     {
         var query = new GetCustomer.Query(id);
         var result = await mediator.Send(query);
@@ -380,7 +381,7 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
 
 ```csharp
 // Bad - manual exception handling
-public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id)
+public async Task<ActionResult<CustomerDto>> GetCustomer(string id)
 {
     try
     {
@@ -394,7 +395,7 @@ public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id)
 }
 
 // Good - let global exception handler do it
-public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id)
+public async Task<ActionResult<CustomerDto>> GetCustomer(string id)
 {
     var query = new GetCustomer.Query(id);
     var result = await mediator.Send(query);
@@ -406,8 +407,8 @@ public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id)
 
 ```csharp
 // Bad - exposing domain entity
-public async Task<ActionResult<Customer>> GetCustomer(Guid id) { ... }
+public async Task<ActionResult<Customer>> GetCustomer(string id) { ... }
 
 // Good - return DTO
-public async Task<ActionResult<CustomerDto>> GetCustomer(Guid id) { ... }
+public async Task<ActionResult<CustomerDto>> GetCustomer(string id) { ... }
 ```

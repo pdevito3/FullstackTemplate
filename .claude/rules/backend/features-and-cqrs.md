@@ -52,7 +52,7 @@ public static class Add[EntityName]
 ```csharp
 public static class Update[EntityName]
 {
-    public sealed record Command(Guid Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
@@ -76,7 +76,7 @@ public static class Update[EntityName]
 ```csharp
 public static class Delete[EntityName]
 {
-    public sealed record Command(Guid Id) : IRequest;
+    public sealed record Command(string Id) : IRequest;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command>
     {
@@ -98,7 +98,7 @@ For domain-specific operations beyond CRUD:
 ```csharp
 public static class Submit[EntityName]
 {
-    public sealed record Command(Guid Id) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
@@ -125,7 +125,7 @@ Queries are read-only operations that never modify state.
 ```csharp
 public static class Get[EntityName]
 {
-    public sealed record Query(Guid Id) : IRequest<[EntityName]Dto>;
+    public sealed record Query(string Id) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, [EntityName]Dto>
     {
@@ -203,7 +203,7 @@ The outer static class groups related request/handler pairs and provides namespa
 Use `sealed record` for immutability and value-based equality:
 
 ```csharp
-public sealed record Command(Guid Id, UpdateDto Dto) : IRequest<ResponseDto>;
+public sealed record Command(string Id, UpdateDto Dto) : IRequest<ResponseDto>;
 ```
 
 ### 4. Sealed Classes for Handlers
@@ -312,8 +312,8 @@ public async Task<OrderDto> Handle(Command request, CancellationToken ct)
 
 ```csharp
 // Bad - exposing domain entity
-public sealed record Query(Guid Id) : IRequest<Order>;
+public sealed record Query(string Id) : IRequest<Order>;
 
 // Good - return DTO
-public sealed record Query(Guid Id) : IRequest<OrderDto>;
+public sealed record Query(string Id) : IRequest<OrderDto>;
 ```

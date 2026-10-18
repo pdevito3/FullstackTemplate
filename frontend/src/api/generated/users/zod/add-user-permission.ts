@@ -9,7 +9,7 @@ import { userDtoSchema } from '../../models/zod/user-dto'
 import { userPermissionDtoSchema } from '../../models/zod/user-permission-dto'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const addUserPermissionPathIdSchema = z.uuid()
+export const addUserPermissionPathIdSchema = z.string()
 
 export const addUserPermissionStatus200Schema = userDtoSchema
 

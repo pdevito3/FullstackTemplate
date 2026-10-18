@@ -68,8 +68,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -111,8 +110,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -194,8 +192,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -454,8 +451,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -539,8 +535,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -624,8 +619,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           },
           {
@@ -771,8 +765,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -814,8 +807,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -907,8 +899,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -1291,8 +1282,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "name": {
             "type": "string"
@@ -1348,12 +1338,10 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "tenantId": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "firstName": {
             "type": "string"
@@ -1400,8 +1388,7 @@
               "null",
               "string"
             ],
-            "description": "Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.\nA user always adds to their own tenant. If a user sends a tenant, it must be their own tenant.",
-            "format": "uuid"
+            "description": "Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.\nA user always adds to their own tenant. If a user sends a tenant, it must be their own tenant."
           },
           "firstName": {
             "type": "string"

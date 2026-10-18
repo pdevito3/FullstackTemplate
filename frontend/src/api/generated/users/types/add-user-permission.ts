@@ -9,11 +9,6 @@ import type { UserPermissionDto } from '../../models/types/user-permission-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type AddUserPermissionPath = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
 };
 

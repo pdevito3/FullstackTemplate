@@ -16,6 +16,8 @@ using FullstackTemplate.SharedTestHelpers.Fakes.User;
 /// <remarks>
 /// <see cref="GraphGraftAttribute"/> generates <c>AddTenant</c>, <c>AddTenants</c>, <c>AddUser</c>, and
 /// <c>AddUsers</c> in <c>BlueprintsGrafts</c>. Child methods compile only after their parent type.
+/// Each factory passes the input <c>Id</c> to the creation model. The input <c>Id</c> is null by default, so the entity
+/// makes the ID. Set it to give a fixed ID. The domain factory rejects an ID with the wrong prefix.
 /// </remarks>
 [GraphGraft]
 public static class Blueprints
@@ -25,7 +27,11 @@ public static class Blueprints
     public static readonly InputBlueprint<TestSeed, TenantInput, Tenant> Tenant = Blueprint
         .FromInput<TestSeed, TenantInput, Tenant>(
             () => new(),
-            (input, _) => Server.Domain.Tenants.Tenant.Create(new TenantForCreation { Name = input.Name! }))
+            (input, _) => Server.Domain.Tenants.Tenant.Create(new TenantForCreation
+            {
+                Id = input.Id,
+                Name = input.Name!,
+            }))
         .Derive(i => i.Name, (_, _) => TenantRules.Name(Faker));
 
     /// <summary>A user is a child of a tenant. The tenant id comes from the parent, never from the test.</summary>
@@ -34,6 +40,7 @@ public static class Blueprints
             () => new(),
             (tenant, input, _) => Server.Domain.Users.User.Create(new UserForCreation
             {
+                Id = input.Id,
                 TenantId = tenant.Id,
                 FirstName = input.FirstName!,
                 LastName = input.LastName!,

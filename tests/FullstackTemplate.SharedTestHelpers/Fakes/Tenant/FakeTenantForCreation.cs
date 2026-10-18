@@ -7,6 +7,8 @@ public sealed class FakeTenantForCreation : AutoFaker<TenantForCreation>
 {
     public FakeTenantForCreation()
     {
+        // A null ID makes the domain factory generate a new ID.
+        RuleFor(x => x.Id, _ => null);
         RuleFor(x => x.Name, TenantRules.Name);
     }
 }

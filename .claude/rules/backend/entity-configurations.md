@@ -21,6 +21,7 @@ Databases/
 ```csharp
 namespace FullstackTemplate.Server.Databases.EntityConfigurations;
 
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.[EntityName]s;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -34,6 +35,9 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
 
         // Primary key (inherited from BaseEntity, but can be explicit)
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id)
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
 
         // Property configurations
         builder.Property(e => e.Name)
@@ -107,6 +111,11 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
     public void Configure(EntityTypeBuilder<Order> builder)
     {
+        // Foreign keys are string IDs, like the primary key
+        builder.Property(e => e.CustomerId)
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
+
         // One-to-many relationship
         builder.HasOne(e => e.Customer)
             .WithMany(c => c.Orders)
@@ -304,6 +313,7 @@ When creating a new entity configuration:
 
 - [ ] Create sealed class implementing `IEntityTypeConfiguration<T>`
 - [ ] Configure primary key (if not inherited)
+- [ ] Give `Id` and each ID foreign key `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Set max lengths for all string properties
 - [ ] Configure value objects with `OwnsOne`
 - [ ] Set up relationships with explicit foreign keys

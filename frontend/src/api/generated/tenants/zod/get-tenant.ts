@@ -7,7 +7,7 @@ import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { tenantDtoSchema } from '../../models/zod/tenant-dto'
 
-export const getTenantPathIdSchema = z.uuid()
+export const getTenantPathIdSchema = z.string()
 
 export const getTenantStatus200Schema = tenantDtoSchema
 

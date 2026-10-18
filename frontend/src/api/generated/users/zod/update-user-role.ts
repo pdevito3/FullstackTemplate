@@ -9,7 +9,7 @@ import { updateUserRoleDtoSchema } from '../../models/zod/update-user-role-dto'
 import { userDtoSchema } from '../../models/zod/user-dto'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const updateUserRolePathIdSchema = z.uuid()
+export const updateUserRolePathIdSchema = z.string()
 
 export const updateUserRoleStatus200Schema = userDtoSchema
 

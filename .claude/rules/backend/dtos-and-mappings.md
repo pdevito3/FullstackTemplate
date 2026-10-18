@@ -32,7 +32,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
 public sealed record [EntityName]Dto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
     public string Email { get; init; } = default!;
     public string Status { get; init; } = default!;
@@ -94,11 +94,15 @@ Models are internal contracts used by domain entity methods. They bridge DTOs to
 
 ### Creation Model
 
+The `Id` on a creation model is intentional. It lets the test entity graph give an entity a fixed ID. `Create` must call `SetId` before it adds child rows, because each child copies the parent ID. A `ForCreationDto` must never have an `Id`, and the mapper keeps `[MapperIgnoreTarget]` on `Id`.
+
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Models;
 
 public sealed record [EntityName]ForCreation
 {
+    /// <summary>A fixed ID with the prefix of the entity. When it is null, the entity makes a new ID.</summary>
+    public string? Id { get; init; }
     public string Name { get; init; } = default!;
     public string Email { get; init; } = default!;
     public string? Description { get; init; }
@@ -137,7 +141,8 @@ public static partial class [EntityName]Mapper
     public static partial IQueryable<[EntityName]Dto> To[EntityName]DtoQueryable(
         this IQueryable<[EntityName]> queryable);
 
-    // DTO to internal model
+    // DTO to internal model. The API caller cannot set the ID.
+    [MapperIgnoreTarget(nameof([EntityName]ForCreation.Id))]
     public static partial [EntityName]ForCreation To[EntityName]ForCreation(
         this [EntityName]ForCreationDto dto);
 
@@ -201,7 +206,7 @@ Records provide immutability and value-based equality:
 ```csharp
 public sealed record CustomerDto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
 }
 ```
@@ -245,7 +250,7 @@ Prefer flat structures over nested objects for API responses:
 // Preferred - flat structure
 public sealed record OrderDto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = default!;
     public string CustomerName { get; init; } = default!;
     public string CustomerEmail { get; init; } = default!;
 }
@@ -253,7 +258,7 @@ public sealed record OrderDto
 // Use nested only when semantically appropriate
 public sealed record OrderDto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = default!;
     public CustomerSummaryDto Customer { get; init; } = default!;
     public IReadOnlyList<LineItemDto> LineItems { get; init; } = [];
 }
@@ -328,11 +333,11 @@ CustomerDto returned to controller
 ```csharp
 // Bad - exposing domain entity
 [HttpGet("{id}")]
-public async Task<Customer> GetCustomer(Guid id) { ... }
+public async Task<Customer> GetCustomer(string id) { ... }
 
 // Good - return DTO
 [HttpGet("{id}")]
-public async Task<CustomerDto> GetCustomer(Guid id) { ... }
+public async Task<CustomerDto> GetCustomer(string id) { ... }
 ```
 
 ### Don't Mix Read/Write DTOs
@@ -373,7 +378,7 @@ public sealed record UserDto
 // Good - only public data
 public sealed record UserDto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = default!;
     public string Email { get; init; }
     public string DisplayName { get; init; }
 }

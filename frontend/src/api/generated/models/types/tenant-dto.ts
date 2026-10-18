@@ -4,11 +4,6 @@
 */
 
 export type TenantDto = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
     name: string;
 };

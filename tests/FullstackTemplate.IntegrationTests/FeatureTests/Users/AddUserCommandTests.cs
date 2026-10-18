@@ -1,5 +1,8 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
@@ -118,6 +121,48 @@ public class AddUserCommandTests : TestBase
     }
 
     [Fact]
+    public async Task cannot_add_user_to_an_unknown_tenant()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        testingServiceScope.SetMachineClient(TestFixture.TrustedMachineClientId);
+        var fakeUserDto = new FakeUserForCreationDto()
+            .RuleFor(x => x.TenantId, _ => EntityId.New(Tenant.IdPrefix))
+            .Generate();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<ValidationException>();
+        exception.Message.ShouldContain("The tenant does not exist.");
+        await ShouldHaveNoUserAsync(testingServiceScope, fakeUserDto.Identifier);
+    }
+
+    [Fact]
+    public async Task cannot_add_user_to_a_soft_deleted_tenant()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        testingServiceScope.SetMachineClient(TestFixture.TrustedMachineClientId);
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .BuildAsync();
+        await testingServiceScope.SendAsync(new DeleteTenant.Command(tenant.Id));
+        var fakeUserDto = new FakeUserForCreationDto()
+            .RuleFor(x => x.TenantId, _ => tenant.Id)
+            .Generate();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<ValidationException>();
+        exception.Message.ShouldContain("The tenant does not exist.");
+        await ShouldHaveNoUserAsync(testingServiceScope, fakeUserDto.Identifier);
+    }
+
+    [Fact]
     public async Task queues_domain_event_on_create()
     {
         // Arrange
@@ -130,6 +175,13 @@ public class AddUserCommandTests : TestBase
 
         // Assert
         userReturned.ShouldNotBeNull();
-        userReturned.Id.ShouldNotBe(Guid.Empty);
+        userReturned.Id.ShouldStartWith($"{User.IdPrefix}_");
+    }
+
+    private static async Task ShouldHaveNoUserAsync(TestingServiceScope testingServiceScope, string identifier)
+    {
+        var userExists = await testingServiceScope.ExecuteDbContextAsync(db =>
+            db.Users.IgnoreQueryFilters().AnyAsync(u => u.Identifier == identifier));
+        userExists.ShouldBeFalse();
     }
 }

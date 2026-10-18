@@ -14,10 +14,32 @@ The server keeps the data of each tenant separate.
 ```csharp
 public class MyEntity : BaseEntity, ITenantable
 {
-    public Guid TenantId { get; set; }
+    public const string IdPrefix = "myent";
+
+    public string TenantId { get; private set; } = default!;
     // ... other properties
+
+    protected MyEntity() : base(IdPrefix) { } // For EF Core
 }
 ```
+
+In the entity configuration, give `TenantId` the same length and collation as an ID, and relate it to `Tenant`:
+
+```csharp
+builder.Property(e => e.TenantId)
+    .IsRequired()
+    .HasMaxLength(EntityId.MaxLength)
+    .UseCollation(EntityId.Collation);
+
+builder.HasOne<Tenant>()
+    .WithMany()
+    .HasForeignKey(e => e.TenantId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+builder.HasIndex(e => e.TenantId);
+```
+
+The foreign key to `tenants.id` must have the same collation as `tenants.id`.
 
 ## Tenant lookup
 
@@ -80,7 +102,7 @@ The scope tells which rows a caller sees. It does not tell what a caller can do.
 
 These rules stop a caller from joining a tenant that is not theirs:
 
-- `POST /api/v1/users` needs an admin (see [backend.md](backend.md#admin-requests)). The server puts the new user in the tenant of the caller. The request body does not need a tenant.
+- `POST /api/v1/users` needs an admin (see [backend.md](backend.md#admin-requests)). The server puts the new user in the tenant of the caller. The request body does not need a tenant. A `tenantId` that is empty or has only spaces is the same as no `tenantId`.
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must be able to manage all tenants. Other requests get 403.

@@ -6,11 +6,17 @@ namespace FullstackTemplate.SharedTestHelpers.EntityGraphs;
 
 public sealed class TenantInput
 {
+    /// <summary>A <c>ten_</c> ID. Null by default, so the entity makes the ID. Set it to give a fixed ID.</summary>
+    public string? Id { get; set; }
+
     public string? Name { get; set; }
 }
 
 public sealed class UserInput
 {
+    /// <summary>A <c>usr_</c> ID. Null by default, so the entity makes the ID. Set it to give a fixed ID.</summary>
+    public string? Id { get; set; }
+
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Identifier { get; set; }

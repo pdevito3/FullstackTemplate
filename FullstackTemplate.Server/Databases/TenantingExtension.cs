@@ -19,7 +19,7 @@ public static class TenantingExtension
     /// <returns>The entity type builder for method chaining.</returns>
     public static EntityTypeBuilder<TEntity> ApplyTenanting<TEntity>(
         this EntityTypeBuilder<TEntity> builder,
-        Expression<Func<TEntity, Guid>> tenantIdPath)
+        Expression<Func<TEntity, string>> tenantIdPath)
         where TEntity : class
     {
         // Store the expression as metadata for the query filter to use

@@ -17,10 +17,10 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     /// Gets a single Tenant by ID.
     /// </summary>
     [Authorize]
-    [HttpGet("{id:guid}", Name = "GetTenant")]
+    [HttpGet("{id}", Name = "GetTenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TenantDto>> GetTenant(Guid id)
+    public async Task<ActionResult<TenantDto>> GetTenant(string id)
     {
         var query = new GetTenant.Query(id);
         var result = await mediator.Send(query);
@@ -67,7 +67,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     /// Updates an existing Tenant.
     /// </summary>
     [Authorize]
-    [HttpPut("{id:guid}", Name = "UpdateTenant")]
+    [HttpPut("{id}", Name = "UpdateTenant")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -75,7 +75,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TenantDto>> UpdateTenant(
-        Guid id,
+        string id,
         [FromBody] TenantForUpdateDto dto)
     {
         var command = new UpdateTenant.Command(id, dto);
@@ -87,12 +87,12 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     /// Deletes a Tenant.
     /// </summary>
     [Authorize]
-    [HttpDelete("{id:guid}", Name = "DeleteTenant")]
+    [HttpDelete("{id}", Name = "DeleteTenant")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult> DeleteTenant(Guid id)
+    public async Task<ActionResult> DeleteTenant(string id)
     {
         var command = new DeleteTenant.Command(id);
         await mediator.Send(command);

@@ -9,11 +9,6 @@ import type { UserDto } from '../../models/types/user-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type UpdateUserRolePath = {
-    /**
-     * @description
-     * Format: `uuid`
-     * @type string
-    */
     id: string;
 };
 

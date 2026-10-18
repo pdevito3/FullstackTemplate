@@ -88,7 +88,7 @@ public class Accession : BaseEntity
             testOrder.MarkAsReadyForTesting();
         }
 
-        QueueDomainEvent(new AccessionUpdated(){ Id = Id });
+        QueueDomainEvent(new AccessionUpdated(Id));
         return this;
     }
 }
@@ -98,13 +98,22 @@ public class Accession : BaseEntity
 
 Use static factory methods instead of constructors for entity creation to encapsulate creation logic.
 
+Each entity gives `BaseEntity` a short `IdPrefix`. `BaseEntity` makes the ID as `{prefix}_{uuidv7}`, for example `pat_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f`. IDs are strings, not `Guid` values.
+
+The creation model has an `Id` for tests. For the rules, see [Creation Model](dtos-and-mappings.md#creation-model).
+
 **Pattern:**
 ```csharp
 public class Patient : BaseEntity
 {
+    public const string IdPrefix = "pat";
+
     public static Patient Create(PatientForCreation patientForCreation)
     {
         var newPatient = new Patient();
+        // A test can give a fixed ID. Set it before you add child rows, because each child copies the parent ID.
+        if (patientForCreation.Id is not null)
+            newPatient.SetId(patientForCreation.Id);
 
         newPatient.FirstName = patientForCreation.FirstName;
         newPatient.LastName = patientForCreation.LastName;
@@ -115,12 +124,12 @@ public class Patient : BaseEntity
         newPatient.Ethnicity = Ethnicity.Of(patientForCreation.Ethnicity);
 
         ValidatePatient(newPatient);
-        newPatient.QueueDomainEvent(new PatientCreated(){ Patient = newPatient });
+        newPatient.QueueDomainEvent(new PatientCreated(newPatient));
 
         return newPatient;
     }
 
-    protected Patient() { } // For EF + Mocking
+    protected Patient() : base(IdPrefix) { } // For EF + Mocking
 }
 ```
 
@@ -146,7 +155,7 @@ public class Accession : BaseEntity
 
         var testOrder = TestOrder.Create(test);
         _testOrders.Add(testOrder);
-        QueueDomainEvent(new AccessionUpdated(){ Id = Id });
+        QueueDomainEvent(new AccessionUpdated(Id));
         return testOrder;
     }
 }
@@ -335,7 +344,7 @@ public class Patient : BaseEntity
         var newPatient = new Patient();
         // ... creation logic
 
-        newPatient.QueueDomainEvent(new PatientCreated(){ Patient = newPatient });
+        newPatient.QueueDomainEvent(new PatientCreated(newPatient));
         return newPatient;
     }
 
@@ -343,7 +352,7 @@ public class Patient : BaseEntity
     {
         // ... update logic
 
-        QueueDomainEvent(new PatientUpdated(){ Id = Id });
+        QueueDomainEvent(new PatientUpdated(Id));
         return this;
     }
 }
@@ -365,14 +374,14 @@ public class Sample : BaseEntity
                 $"A {container.Type} container is used to store {container.UsedFor.Value} samples, not {Type.Value}.");
 
         Container = container;
-        QueueDomainEvent(new SampleUpdated(){ Id = Id });
+        QueueDomainEvent(new SampleUpdated(Id));
         return this;
     }
 
     public Sample Reject()
     {
         Status = SampleStatus.Rejected();
-        QueueDomainEvent(new SampleUpdated(){ Id = Id });
+        QueueDomainEvent(new SampleUpdated(Id));
         return this;
     }
 }
@@ -391,7 +400,8 @@ private static void ValidatePatient(Patient patient)
     ValidationException.ThrowWhenNullOrWhitespace(patient.Sex, "Please provide a sex.");
     ValidationException.MustNot(patient.Lifespan.Age == null && patient.Lifespan.DateOfBirth == null,
         "Please provide a valid age and birth date.");
-    ValidationException.ThrowWhenEmpty(patient.OrganizationId, "Please provide an organization id.");
+    ValidationException.ThrowWhenNullOrWhitespace(patient.OrganizationId, "Please provide an organization id.");
+    ValidationException.Must(EntityId.IsValid(patient.OrganizationId, Organization.IdPrefix), "Please provide a valid organization ID.");
 }
 ```
 
@@ -458,7 +468,7 @@ When adding a new property to an existing entity:
    {
        // existing updates...
        NewProperty = forUpdate.NewProperty;
-       QueueDomainEvent(new PatientUpdated { Id = Id });
+       QueueDomainEvent(new PatientUpdated(Id));
        return this;
    }
    ```
@@ -484,7 +494,7 @@ When adding new business operations to an existing entity:
        Status = OrderStatus.Submitted();
        SubmittedAt = DateTimeOffset.UtcNow;
 
-       QueueDomainEvent(new OrderSubmitted { OrderId = Id });
+       QueueDomainEvent(new OrderSubmitted(Id));
 
        return this;
    }
@@ -492,10 +502,7 @@ When adding new business operations to an existing entity:
 
 2. **Add corresponding domain event:**
    ```csharp
-   public sealed record OrderSubmitted : IDomainEvent
-   {
-       public required Guid OrderId { get; init; }
-   }
+   public sealed record OrderSubmitted(string OrderId) : DomainEvent;
    ```
 
 3. **Add guard method if needed:**
@@ -526,7 +533,7 @@ public LineItem AddLineItem(Product product, int quantity)
     var lineItem = LineItem.Create(product, quantity, this);
     _lineItems.Add(lineItem);
 
-    QueueDomainEvent(new OrderUpdated { Id = Id });
+    QueueDomainEvent(new OrderUpdated(Id));
 
     return lineItem;
 }
@@ -538,7 +545,7 @@ public void RemoveLineItem(LineItem lineItem)
 
     _lineItems.Remove(lineItem);
 
-    QueueDomainEvent(new OrderUpdated { Id = Id });
+    QueueDomainEvent(new OrderUpdated(Id));
 }
 ```
 

@@ -99,7 +99,8 @@ These features are in `Core/`. Use them in `Blueprints.cs`, in `TestGraph.cs`, o
 | Transient | `bp.AsTransient()`, or `.Transient()` after an `AddX` call. The entities are built but `BuildAsync` does not save them. |
 | Aggregate | Implement `IGraphAggregate.GetEntities()` on a wrapper type. `BuildAsync` saves the parts in order, not the wrapper. |
 | Plain blueprint | `Blueprint.For` and `Blueprint.ChildOf` customize the entity directly. Use them only for types with settable properties. Domain entities have private setters, so use `FromInput` and `ChildFromInput` for them. |
-| Options | `GraphOptions<TestSeed>` has `SeedEntities`, `Default<TBase, TProp>`, `BeforeSave`, `AfterSave`, and `TimePrecision`. The options freeze at `EntityGraph.Start`. |
+| IDs | The entity makes its ID when the input `Id` is null. Set the input `Id` to give a fixed ID. In a customizer, `ctx.NewId(Order.IdPrefix)` makes a prefixed ID, because `TestGraph` sets `Ids(EntityId.New)`. |
+| Options | `GraphOptions<TestSeed>` has `SeedEntities`, `Default<TBase, TProp>`, `BeforeSave`, `AfterSave`, `TimePrecision`, and `Ids`. The options freeze at `EntityGraph.Start`. |
 | Store | `dbContext.AsGraphStore()` makes a `DbContextStore`. It adds all rows, saves once, and clears the change tracker. |
 
 `TestGraph` selects the seed tenant and the seed user with `SeedEntities`, so they can be parents for `Under`. A `BeforeSave` hook in `TestGraph` takes them out of the save, because `TestFixture` saves the seed once per run.
@@ -140,11 +141,14 @@ Do these steps after the entity, its creation model, and its EF configuration ex
    ```csharp
    public sealed class OrderInput
    {
+       public string? Id { get; set; }
        public string? Number { get; set; }
    }
    ```
 
-4. In `Blueprints.cs`, add a blueprint. If the entity has no parent, use `Blueprint.FromInput`. If the entity belongs to a parent, use `Blueprint.ChildFromInput` and take the parent key from the parent. Add one `Derive` per input property.
+   A test can set `Id` in a customizer. The ID must have the prefix of the entity.
+
+4. In `Blueprints.cs`, add a blueprint. If the entity has no parent, use `Blueprint.FromInput`. If the entity belongs to a parent, use `Blueprint.ChildFromInput` and take the parent key from the parent. Add one `Derive` per input property, except `Id`. Pass `Id = input.Id` to the creation model. The input `Id` is null by default, so the entity makes the ID.
 
    ```csharp
    public static readonly ChildInputBlueprint<TestSeed, Tenant, OrderInput, Order> Order = Blueprint
@@ -152,11 +156,14 @@ Do these steps after the entity, its creation model, and its EF configuration ex
            () => new(),
            (tenant, input, _) => Server.Domain.Orders.Order.Create(new OrderForCreation
            {
+               Id = input.Id,
                TenantId = tenant.Id,
                Number = input.Number!,
            }))
        .Derive(i => i.Number, (_, _) => OrderRules.Number(Faker));
    ```
+
+   The creation model needs a `string? Id` property. Its domain factory keeps the generated ID, or sets the given ID with `if (forCreation.Id is not null) entity.SetId(forCreation.Id);`. If the entity has child rows that copy its ID, the factory must create the children after it sets its ID. Make the shape faker set `Id` to null.
 
 5. Build the solution. The generator makes `AddOrder` and `AddOrders` from the field name. A child method compiles only after its parent type, so `AddOrder` compiles only after a `Tenant[]` anchor.
 

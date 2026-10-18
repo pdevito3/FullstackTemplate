@@ -6,7 +6,7 @@ public sealed record UserForCreationDto
     /// Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.
     /// A user always adds to their own tenant. If a user sends a tenant, it must be their own tenant.
     /// </summary>
-    public Guid? TenantId { get; init; }
+    public string? TenantId { get; init; }
     public string FirstName { get; init; } = default!;
     public string LastName { get; init; } = default!;
     public string Identifier { get; init; } = default!;

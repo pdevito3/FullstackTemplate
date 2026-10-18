@@ -2,6 +2,7 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Users;
 
 using System.Net;
 using System.Net.Http.Json;
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
@@ -78,18 +79,18 @@ public class UserListQueryTests : TestBase
         // Arrange
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
         await InsertAsync(tenant);
-        User UserNamed(string lastName, string firstName) => User.Create(FakeUserInTenant(tenant.Id, "")
+        // The ID columns use the "C" collation, so PostgreSQL sorts the IDs in ordinal order
+        var ids = new[] { EntityId.New(User.IdPrefix), EntityId.New(User.IdPrefix), EntityId.New(User.IdPrefix) }
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        User UserNamed(string id, string lastName, string firstName) => User.Create(FakeUserInTenant(tenant.Id, "")
+            .RuleFor(u => u.Id, id)
             .RuleFor(u => u.LastName, lastName)
             .RuleFor(u => u.FirstName, firstName)
             .Generate());
-        var third = UserNamed("b", "a");
-        var second = UserNamed("a", "b");
-        var first = UserNamed("a", "a");
-        // PostgreSQL sorts a uuid in the order of its text form
-        var ids = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() }.OrderBy(id => id.ToString(), StringComparer.Ordinal).ToArray();
-        third.OverrideId(ids[0]);
-        second.OverrideId(ids[1]);
-        first.OverrideId(ids[2]);
+        var third = UserNamed(ids[0], "b", "a");
+        var second = UserNamed(ids[1], "a", "b");
+        var first = UserNamed(ids[2], "a", "a");
         await InsertAsync(third, second, first);
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = third.Identifier });
 
@@ -100,6 +101,22 @@ public class UserListQueryTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
         var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
         users.Select(u => u.Id).ShouldBe([first.Id, second.Id, third.Id]);
+    }
+
+    // The count of a list is a number, so a value that is not a number cannot convert
+    [Fact]
+    public async Task filter_value_that_does_not_convert_returns_bad_request()
+    {
+        // Arrange
+        await ArrangeTwoUsersAsync();
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?filters={Uri.EscapeDataString("Permissions #== \"abc\"")}");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("filters");
     }
 
     // The DTO does not show these fields, so a caller must not filter or sort on them.
@@ -144,7 +161,7 @@ public class UserListQueryTests : TestBase
         return target;
     }
 
-    private static FakeUserForCreation FakeUserInTenant(Guid tenantId, string prefix)
+    private static FakeUserForCreation FakeUserInTenant(string tenantId, string prefix)
     {
         var faker = new FakeUserForCreation();
         faker.RuleFor(u => u.TenantId, tenantId)

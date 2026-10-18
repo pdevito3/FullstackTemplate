@@ -6,8 +6,8 @@
 import * as z from 'zod'
 
 export const userDtoSchema = z.object({
-  id: z.uuid(),
-  tenantId: z.uuid(),
+  id: z.string(),
+  tenantId: z.string(),
   firstName: z.string(),
   lastName: z.string(),
   fullName: z.string(),

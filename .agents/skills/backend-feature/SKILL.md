@@ -159,6 +159,10 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Add DbSet to AppDbContext
    - Ensure `ApplyConfigurationsFromAssembly` is called in OnModelCreating
 
+10. **Generate the API Contract**
+   - Build the Server, then run `pnpm generate:api` in `frontend/`
+   - Commit the generated files with the change. Do not edit them by hand
+
 ---
 
 ## Process: New Property
@@ -230,6 +234,10 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    ```bash
    dotnet ef migrations add Add[PropertyName]To[EntityName]
    ```
+
+10. **Generate the API Contract**
+   - Build the Server, then run `pnpm generate:api` in `frontend/`
+   - Commit the generated files with the change. Do not edit them by hand
 
 ---
 
@@ -306,6 +314,10 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Request DTO if the action needs input parameters
    - Custom response DTO if different from standard entity DTO
 
+7. **Generate the API Contract**
+   - Build the Server, then run `pnpm generate:api` in `frontend/`
+   - Commit the generated files with the change. Do not edit them by hand
+
 ---
 
 ## Important Guidelines
@@ -373,6 +385,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Add any needed FluentValidation validators
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
+- [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
 
 ### New Property Checklist
 - [ ] Property added with private setter in entity
@@ -386,6 +399,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`
+- [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
 
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
@@ -394,6 +408,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Controller endpoint added with proper attributes
 - [ ] Additional DTOs created if needed
 - [ ] Run `dotnet build` to verify compilation
+- [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
 
 ## Reference Files
 

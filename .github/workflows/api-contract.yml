@@ -56,7 +56,7 @@ jobs:
       - name: Fail on a contract diff
         run: |
           git add --intent-to-add --all
-          git diff --exit-code --stat -- FullstackTemplate.Server/openapi frontend/src/api/generated
+          git diff --exit-code --stat -- FullstackTemplate.Server/openapi ':(glob)frontend/src/api/generated*/**'
 
       - name: Build the frontend
         working-directory: frontend

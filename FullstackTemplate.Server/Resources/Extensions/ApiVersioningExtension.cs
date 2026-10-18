@@ -6,8 +6,11 @@ using Asp.Versioning.Builder;
 
 public static class ApiVersioningExtension
 {
+    // The version that a request without a version gets. Keep it when you add a version, so that these clients do not change.
+    public static readonly ApiVersion DefaultVersion = new(1, 0);
+
     // Add a version here to serve it. Each version gets its own OpenAPI document and Swagger UI entry.
-    public static readonly ApiVersion[] SupportedVersions = [new ApiVersion(1, 0)];
+    public static readonly ApiVersion[] SupportedVersions = [DefaultVersion];
 
     // The group name format gives "v1" for 1.0 and "v2" for 2.0, and the OpenAPI document of a version has this name
     private const string GroupNameFormat = "'v'VVV";
@@ -18,7 +21,7 @@ public static class ApiVersioningExtension
     {
         return services.AddApiVersioning(options =>
         {
-            options.DefaultApiVersion = SupportedVersions[0];
+            options.DefaultApiVersion = DefaultVersion;
             options.ReportApiVersions = true;
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         })

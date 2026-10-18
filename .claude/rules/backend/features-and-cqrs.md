@@ -162,7 +162,7 @@ public static class Get[EntityName]List
             // Paging needs a fixed order, or a row can show on two pages or on none
             query = string.IsNullOrWhiteSpace(request.Parameters.SortOrder)
                 ? query.OrderBy(e => e.Name).ThenBy(e => e.Id)
-                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
+                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig).ThenBy(e => e.Id);
 
             return await PagedList<[EntityName]Dto>.CreateAsync(
                 query,

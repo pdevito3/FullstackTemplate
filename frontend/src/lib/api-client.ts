@@ -5,18 +5,24 @@ import {
   type ProblemDetails,
 } from './problem-details'
 import { Notification } from '@/components/notifications'
+import { client } from '@/api/generated/.kubb/client'
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * If true, suppresses automatic error toast notifications.
+     * Use this when you want to handle errors manually in your component.
+     * A generated client takes it through `options`, for example `getTenant({ path, options: { suppressErrorToast: true } })`.
+     * @default false
+     */
+    suppressErrorToast?: boolean
+  }
+}
 
 /**
  * Extended Axios config with Problem Details handling options
  */
-export interface ApiClientRequestConfig extends AxiosRequestConfig {
-  /**
-   * If true, suppresses automatic error toast notifications.
-   * Use this when you want to handle errors manually in your component.
-   * @default false
-   */
-  suppressErrorToast?: boolean
-}
+export type ApiClientRequestConfig = AxiosRequestConfig
 
 /**
  * Axios instance configured for BFF API calls with CSRF protection and credentials.
@@ -87,8 +93,8 @@ apiClient.interceptors.response.use(
     const config = error.config as ApiClientRequestConfig | undefined
     const suppressToast = config?.suppressErrorToast ?? false
 
-    if (!axios.isAxiosError(error)) {
-      // Not an Axios error, re-throw as-is
+    // A cancel (for example, TanStack Query aborts an old query) is not an error to show.
+    if (!axios.isAxiosError(error) || axios.isCancel(error)) {
       return Promise.reject(error)
     }
 
@@ -108,6 +114,9 @@ apiClient.interceptors.response.use(
     return Promise.reject(processedError)
   }
 )
+
+// The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
+client.setConfig({ transport: apiClient })
 
 /**
  * Generic fetch function for custom API calls

@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { RotateClockwiseIcon, CloudIcon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
+import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
+import type { WeatherForecast } from '@/api/generated/models/types/weather-forecast'
 import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
 import { useSecureWeatherForecast } from '@/domain/weather/apis/get-secure-weather'
 import { WeatherKeys } from '@/domain/weather/apis/weather.keys'
@@ -222,13 +224,7 @@ function Index() {
 }
 
 interface WeatherCardProps {
-  forecast: {
-    date: string
-    temperatureC: number
-    temperatureF: number
-    summary: string
-    requestedBy?: string
-  }
+  forecast: WeatherForecast | SecureWeatherForecast
   useCelsius: boolean
   isSecure: boolean
   formatDate: (date: string) => string

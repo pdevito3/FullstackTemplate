@@ -7,7 +7,8 @@ import { AuthKeys } from './auth.keys'
  * Fetch user claims from BFF
  */
 export async function getUser(): Promise<BffClaim[]> {
-  const response = await apiClient.get<BffClaim[]>('/bff/user')
+  // A 401 means that the user is not logged in. This is not an error to show.
+  const response = await apiClient.get<BffClaim[]>('/bff/user', { suppressErrorToast: true })
   return response.data
 }
 

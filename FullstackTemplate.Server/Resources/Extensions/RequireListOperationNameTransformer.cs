@@ -46,7 +46,7 @@ public sealed class RequireListOperationNameTransformer : IOpenApiDocumentTransf
             errors.Add(
                 $"These endpoints have a name that ends in '{ListSuffix}', but they do not send the {PaginationMetadata.HeaderName} header: "
                 + string.Join(", ", listsWithoutPaging)
-                + $". The frontend client of such an endpoint returns the full response instead of the body. Return a PagedList<T> and call Response.AddPaginationHeader, or give the endpoint a name that does not end in '{ListSuffix}'.");
+                + $". The frontend client of such an endpoint returns the full response instead of the body. Return a PagedList<T>, so that PaginationHeaderFilter adds the header, or give the endpoint a name that does not end in '{ListSuffix}'.");
 
         if (errors.Count > 0)
             throw new InvalidOperationException(string.Join(" ", errors));

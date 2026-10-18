@@ -35,7 +35,7 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(TenantAdminBehavior<,>));
         });
         builder.Services.AddApiVersioningExtension();
-        builder.Services.AddControllers();
+        builder.Services.AddControllers(options => options.Filters.Add<PaginationHeaderFilter>());
         builder.Services.AddSwaggerExtension(builder.Configuration);
         builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 

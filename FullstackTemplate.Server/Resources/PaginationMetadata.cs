@@ -17,7 +17,7 @@ public sealed record PaginationMetadata
     public bool HasPrevious { get; init; }
     public bool HasNext { get; init; }
 
-    public static PaginationMetadata From<T>(PagedList<T> pagedList) => new()
+    public static PaginationMetadata From(IPagedList pagedList) => new()
     {
         TotalCount = pagedList.TotalCount,
         PageSize = pagedList.PageSize,

@@ -2,7 +2,23 @@ namespace FullstackTemplate.Server.Resources;
 
 using Microsoft.EntityFrameworkCore;
 
-public class PagedList<T> : List<T>
+/// <summary>
+/// The page data of a <see cref="PagedList{T}"/>, without its item type.
+/// </summary>
+public interface IPagedList
+{
+    int PageNumber { get; }
+    int TotalPages { get; }
+    int PageSize { get; }
+    int CurrentPageSize { get; }
+    int CurrentStartIndex { get; }
+    int CurrentEndIndex { get; }
+    int TotalCount { get; }
+    bool HasPrevious { get; }
+    bool HasNext { get; }
+}
+
+public class PagedList<T> : List<T>, IPagedList
 {
     public int PageNumber { get; private set; }
     public int TotalPages { get; private set; }

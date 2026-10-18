@@ -40,9 +40,6 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     {
         var query = new GetTenantList.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result);
-
         return Ok(result);
     }
 

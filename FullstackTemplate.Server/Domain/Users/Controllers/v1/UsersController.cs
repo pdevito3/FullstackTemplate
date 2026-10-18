@@ -58,9 +58,6 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     {
         var query = new GetUserList.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result);
-
         return Ok(result);
     }
 

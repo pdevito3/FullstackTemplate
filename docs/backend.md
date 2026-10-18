@@ -51,7 +51,7 @@ The document transformers in `Resources/Extensions/` set these rules:
 
 - Each endpoint must have a name (`Name =` on the HTTP attribute, or `.WithName`). If an endpoint has no name, the Debug build fails.
 - A property that is not nullable is required.
-- A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema. `PaginationHeaderFilter` sets this header on each `PagedList<T>` result.
+- A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema. `PaginationHeaderFilter` sets this header on each `PagedList<T>` result. This filter is an MVC result filter, so it runs only for controller actions. A minimal API endpoint that returns a `PagedList<T>` must set the header itself.
 - An endpoint that returns a `PagedList<T>` must have a name that ends in `List`. Other endpoints must not have a name that ends in `List`. If not, the Debug build fails. The frontend list clients use this name to return the full response.
 - An endpoint that requires authentication documents a 401 with no body. An endpoint with `[AllowAnonymous]` or no authorization metadata gets no 401. Authorization has no roles or policies, so it cannot return 403. Declare a 403 with `ProducesResponseType` on each action that throws `ForbiddenAccessException`.
 - Requests and success responses use only `application/json`. Error responses with a `ProblemDetails` body use only `application/problem+json`, as the Server sends them. The document types numbers only as numbers. The Server still accepts the lenient forms (`text/json` and `application/*+json` request bodies, and numbers in JSON strings), but the contract states only the canonical form.

@@ -6,7 +6,9 @@ using Models;
 
 public class User : BaseEntity, ITenantable
 {
-    public Guid TenantId { get; private set; }
+    public const string IdPrefix = "usr";
+
+    public string TenantId { get; private set; } = default!;
     public string FirstName { get; private set; } = default!;
     public string LastName { get; private set; } = default!;
     public string Identifier { get; private set; } = default!;
@@ -31,6 +33,9 @@ public class User : BaseEntity, ITenantable
             Username = userForCreation.Username,
             Role = UserRole.Of(userForCreation.Role)
         };
+        // Set the ID before the permissions, because each permission copies the user ID.
+        if (userForCreation.Id is not null)
+            user.SetId(userForCreation.Id);
 
         user.ResetPermissionsToDefault();
 
@@ -122,7 +127,8 @@ public class User : BaseEntity, ITenantable
 
     private static void ValidateUser(User user)
     {
-        Exceptions.ValidationException.ThrowWhenEmpty(user.TenantId, "Please provide a tenant.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.TenantId, "Please provide a tenant.");
+        Exceptions.ValidationException.Must(EntityId.IsValid(user.TenantId, Tenants.Tenant.IdPrefix), "Please provide a valid tenant ID.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "Please provide a first name.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "Please provide a last name.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "Please provide an identifier.");
@@ -130,5 +136,5 @@ public class User : BaseEntity, ITenantable
         Exceptions.ValidationException.ThrowWhenNull(user.Role, "Please provide a role.");
     }
 
-    protected User() { } // For EF Core
+    protected User() : base(IdPrefix) { } // For EF Core
 }

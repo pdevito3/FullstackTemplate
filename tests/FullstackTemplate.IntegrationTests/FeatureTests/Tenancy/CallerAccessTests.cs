@@ -1,5 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
@@ -124,6 +126,6 @@ public class CallerAccessTests : TestBase
         // Assert
         userFound.ShouldBeTrue();
         tenantFound.ShouldBeTrue();
-        added.Id.ShouldNotBe(Guid.Empty);
+        EntityId.IsValid(added.Id, Tenant.IdPrefix).ShouldBeTrue();
     }
 }

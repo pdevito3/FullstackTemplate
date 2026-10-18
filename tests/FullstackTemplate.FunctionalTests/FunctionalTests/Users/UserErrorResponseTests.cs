@@ -2,6 +2,9 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Users;
 
 using System.Net;
 using System.Net.Http.Json;
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
@@ -57,5 +60,35 @@ public class UserErrorResponseTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
         problem.Detail.ShouldBe("Please provide a valid email.");
+    }
+
+    public static TheoryData<string> BadTenantIds => new()
+    {
+        "ten_doesnotexist",
+        "ten_" + new string('a', 76),
+        EntityId.New(User.IdPrefix),
+    };
+
+    [Theory]
+    [MemberData(nameof(BadTenantIds))]
+    public async Task bad_or_unknown_tenant_id_returns_validation_problem(string tenantId)
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+        var dto = new FakeUserForCreationDto().RuleFor(x => x.TenantId, _ => tenantId).Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
+        problem.Detail.ShouldBe("The tenant does not exist.");
+        problem.Errors.ShouldContainKey(nameof(UserForCreationDto.TenantId));
     }
 }

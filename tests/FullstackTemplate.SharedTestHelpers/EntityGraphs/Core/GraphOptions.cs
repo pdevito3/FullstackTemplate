@@ -15,6 +15,8 @@ public sealed class GraphOptions<TSeed>
     internal List<Func<GraphSaveContext<TSeed>, CancellationToken, ValueTask>> AfterHooks { get; } =
     [];
     internal TimeSpan Precision { get; private set; } = TimeSpan.FromTicks(10);
+    // The core has no Server references, so it has no default ID format. Call Ids to set one.
+    internal Func<string, string>? NewId { get; private set; }
 
     /// <summary>Selects baseline rows to persist before created entities.</summary>
     /// <remarks>Evaluated and snapshotted once at EntityGraph.Start. Directly selected references qualify as session-owned parents for Under. Aggregate parts are expanded only for persistence and are not automatically tracked as parents. Null selected entries are rejected.</remarks>
@@ -68,6 +70,13 @@ public sealed class GraphOptions<TSeed>
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(precision, TimeSpan.Zero);
         return Change(() => Precision = precision);
+    }
+
+    /// <summary>Sets the ID generator that <c>ctx.NewId</c> uses. A session has no default generator.</summary>
+    public GraphOptions<TSeed> Ids(Func<string, string> newId)
+    {
+        ArgumentNullException.ThrowIfNull(newId);
+        return Change(() => NewId = newId);
     }
 
     internal void Freeze()

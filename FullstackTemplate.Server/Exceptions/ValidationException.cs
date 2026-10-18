@@ -37,12 +37,6 @@ public class ValidationException : Exception
             throw new ValidationException(message);
     }
 
-    public static void ThrowWhenEmpty(Guid value, string message)
-    {
-        if (value == Guid.Empty)
-            throw new ValidationException(message);
-    }
-
     public static void Must(bool condition, string message)
     {
         if (!condition)

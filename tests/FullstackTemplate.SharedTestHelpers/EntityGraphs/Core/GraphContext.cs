@@ -28,6 +28,15 @@ public class GraphContext<TSeed>
     /// <summary>Returns a time after the rounded current time.</summary>
     public DateTimeOffset FromNow(TimeSpan duration) => Now + duration;
 
+    /// <summary>Creates an ID with the generator from <c>GraphOptions.Ids</c>. Throws if the session has no generator.</summary>
+    public string NewId(string prefix)
+    {
+        ArgumentNullException.ThrowIfNull(prefix);
+        var newId = Session.Options.NewId
+            ?? throw new InvalidOperationException("The session has no ID generator. Call GraphOptions.Ids to set one.");
+        return newId(prefix);
+    }
+
     /// <summary>Advances a sequence immediately, skipping only values already reserved when called.</summary>
     /// <remarks>Next does not preserve a later customizer override or reserve explicit values across the current step. For override preservation and whole-step explicit-value reservation, use Blueprint.Derive(property, sequence) (or its child/input equivalent). A factory calling Next runs before those reservations and may consume a value that a later customizer explicitly sets.</remarks>
     public TValue Next<TValue>(Sequence<TValue> sequence)

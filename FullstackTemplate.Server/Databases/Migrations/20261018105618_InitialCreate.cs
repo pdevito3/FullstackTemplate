@@ -15,7 +15,7 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 name: "tenants",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, collation: "C"),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     created_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -32,8 +32,8 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 name: "users",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, collation: "C"),
+                    tenant_id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, collation: "C"),
                     first_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     last_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     identifier = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
@@ -61,8 +61,8 @@ namespace FullstackTemplate.Server.Databases.Migrations
                 name: "user_permissions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, collation: "C"),
+                    user_id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, collation: "C"),
                     permission = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     created_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),

@@ -8,7 +8,7 @@ public static class QueryableExtensions
 {
     public static async Task<TEntity?> GetByIdOrDefault<TEntity>(
         this DbSet<TEntity> dbSet,
-        Guid id,
+        string id,
         CancellationToken cancellationToken = default)
         where TEntity : BaseEntity
     {
@@ -17,7 +17,7 @@ public static class QueryableExtensions
 
     public static async Task<TEntity?> GetByIdOrDefault<TEntity>(
         this IQueryable<TEntity> query,
-        Guid id,
+        string id,
         CancellationToken cancellationToken = default)
         where TEntity : BaseEntity
     {
@@ -26,7 +26,7 @@ public static class QueryableExtensions
 
     public static async Task<TEntity> GetById<TEntity>(
         this DbSet<TEntity> dbSet,
-        Guid id,
+        string id,
         CancellationToken cancellationToken = default)
         where TEntity : BaseEntity
     {
@@ -37,7 +37,7 @@ public static class QueryableExtensions
 
     public static async Task<TEntity> GetById<TEntity>(
         this IQueryable<TEntity> query,
-        Guid id,
+        string id,
         CancellationToken cancellationToken = default)
         where TEntity : BaseEntity
     {

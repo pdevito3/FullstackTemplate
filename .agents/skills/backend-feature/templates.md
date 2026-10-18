@@ -11,12 +11,19 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s;
 
 using FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 using FullstackTemplate.Server.Domain.[EntityName]s.Models;
+using FullstackTemplate.Server.Exceptions;
 
 public class [EntityName] : BaseEntity
 {
+    // A short, unique type prefix. The ID is "[prefix]_{uuidv7}".
+    public const string IdPrefix = "[prefix]";
+
     // Properties with private setters
     public string Name { get; private set; } = default!;
     public string? Description { get; private set; }
+
+    // ID foreign keys
+    // public string TenantId { get; private set; } = default!;
 
     // Value object properties
     // public EmailAddress Email { get; private set; } = default!;
@@ -36,8 +43,12 @@ public class [EntityName] : BaseEntity
             Name = forCreation.Name,
             Description = forCreation.Description,
         };
+        // A test can give a fixed ID. Set it before you add child rows, so that they get the final ID.
+        if (forCreation.Id is not null)
+            entity.SetId(forCreation.Id);
 
-        entity.QueueDomainEvent(new [EntityName]Created { [EntityName] = entity });
+        Validate[EntityName](entity);
+        entity.QueueDomainEvent(new [EntityName]Created(entity));
 
         return entity;
     }
@@ -50,9 +61,19 @@ public class [EntityName] : BaseEntity
         Name = forUpdate.Name;
         Description = forUpdate.Description;
 
-        QueueDomainEvent(new [EntityName]Updated { Id = Id });
+        Validate[EntityName](this);
+        QueueDomainEvent(new [EntityName]Updated(Id));
 
         return this;
+    }
+
+    private static void Validate[EntityName]([EntityName] entity)
+    {
+        ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "Please provide a name.");
+
+        // Check the prefix of each ID foreign key, as User checks its TenantId.
+        // ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "Please provide a tenant.");
+        // ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "Please provide a valid tenant ID.");
     }
 
     // Business methods
@@ -60,7 +81,7 @@ public class [EntityName] : BaseEntity
     // {
     //     GuardIfInFinalState("Cannot submit");
     //     Status = [EntityName]Status.Submitted();
-    //     QueueDomainEvent(new [EntityName]Submitted { Id = Id });
+    //     QueueDomainEvent(new [EntityName]Submitted(Id));
     //     return this;
     // }
 
@@ -71,8 +92,8 @@ public class [EntityName] : BaseEntity
     //         throw new ValidationException(nameof([EntityName]), message);
     // }
 
-    // Private constructor for EF Core
-    private [EntityName]() { }
+    // Constructor for EF Core. It gives BaseEntity the ID prefix.
+    protected [EntityName]() : base(IdPrefix) { }
 }
 ```
 
@@ -83,10 +104,7 @@ public class [EntityName] : BaseEntity
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName]Created : IDomainEvent
-{
-    public required [EntityName] [EntityName] { get; init; }
-}
+public sealed record [EntityName]Created([EntityName] [EntityName]) : DomainEvent;
 ```
 
 **File:** `Domain/[EntityName]s/DomainEvents/[EntityName]Updated.cs`
@@ -94,22 +112,10 @@ public sealed record [EntityName]Created : IDomainEvent
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName]Updated : IDomainEvent
-{
-    public required Guid Id { get; init; }
-}
+public sealed record [EntityName]Updated(string Id) : DomainEvent;
 ```
 
-**File:** `Domain/[EntityName]s/DomainEvents/[EntityName]Deleted.cs`
-
-```csharp
-namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
-
-public sealed record [EntityName]Deleted : IDomainEvent
-{
-    public required Guid Id { get; init; }
-}
-```
+Do not add a deleted event. The context does soft deletes, and no handler needs the event.
 
 ## 3. DTOs
 
@@ -120,7 +126,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
 public sealed record [EntityName]Dto
 {
-    public Guid Id { get; init; }
+    public string Id { get; init; } = default!;
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
     public DateTimeOffset CreatedOn { get; init; }
@@ -175,6 +181,8 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Models;
 
 public sealed record [EntityName]ForCreation
 {
+    /// <summary>A fixed ID with the prefix of the entity. When it is null, the entity makes a new ID.</summary>
+    public string? Id { get; init; }
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
 }
@@ -206,11 +214,15 @@ using Riok.Mapperly.Abstractions;
 [Mapper]
 public static partial class [EntityName]Mapper
 {
+    [MapperIgnoreSource(nameof([EntityName].IsDeleted))]
+    [MapperIgnoreSource(nameof([EntityName].DomainEvents))]
     public static partial [EntityName]Dto To[EntityName]Dto(this [EntityName] entity);
 
     public static partial IQueryable<[EntityName]Dto> To[EntityName]DtoQueryable(
         this IQueryable<[EntityName]> queryable);
 
+    // The API does not take an ID. Only tests set a fixed ID on the model.
+    [MapperIgnoreTarget(nameof([EntityName]ForCreation.Id))]
     public static partial [EntityName]ForCreation To[EntityName]ForCreation(
         this [EntityName]ForCreationDto dto);
 
@@ -264,7 +276,7 @@ using MediatR;
 
 public static class Update[EntityName]
 {
-    public sealed record Command(Guid Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
@@ -292,7 +304,7 @@ using MediatR;
 
 public static class Delete[EntityName]
 {
-    public sealed record Command(Guid Id) : IRequest;
+    public sealed record Command(string Id) : IRequest;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command>
     {
@@ -318,7 +330,7 @@ using MediatR;
 
 public static class Get[EntityName]
 {
-    public sealed record Query(Guid Id) : IRequest<[EntityName]Dto>;
+    public sealed record Query(string Id) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, [EntityName]Dto>
     {
@@ -392,10 +404,10 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     /// Gets a single [EntityName] by ID.
     /// </summary>
     [Authorize]
-    [HttpGet("{id:guid}", Name = "Get[EntityName]")]
+    [HttpGet("{id}", Name = "Get[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<[EntityName]Dto>> Get[EntityName](Guid id)
+    public async Task<ActionResult<[EntityName]Dto>> Get[EntityName](string id)
     {
         var query = new Get[EntityName].Query(id);
         var result = await mediator.Send(query);
@@ -441,12 +453,12 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     /// Updates an existing [EntityName].
     /// </summary>
     [Authorize]
-    [HttpPut("{id:guid}", Name = "Update[EntityName]")]
+    [HttpPut("{id}", Name = "Update[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<[EntityName]Dto>> Update[EntityName](
-        Guid id,
+        string id,
         [FromBody] [EntityName]ForUpdateDto dto)
     {
         var command = new Update[EntityName].Command(id, dto);
@@ -458,10 +470,10 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     /// Deletes a [EntityName].
     /// </summary>
     [Authorize]
-    [HttpDelete("{id:guid}", Name = "Delete[EntityName]")]
+    [HttpDelete("{id}", Name = "Delete[EntityName]")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete[EntityName](Guid id)
+    public async Task<ActionResult> Delete[EntityName](string id)
     {
         var command = new Delete[EntityName].Command(id);
         await mediator.Send(command);
@@ -477,6 +489,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
 ```csharp
 namespace FullstackTemplate.Server.Databases.EntityConfigurations;
 
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.[EntityName]s;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -486,6 +499,20 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
     public void Configure(EntityTypeBuilder<[EntityName]> builder)
     {
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id)
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
+
+        // Each ID foreign key gets the same length and collation as the ID that it points to.
+        // builder.Property(e => e.TenantId)
+        //     .IsRequired()
+        //     .HasMaxLength(EntityId.MaxLength)
+        //     .UseCollation(EntityId.Collation);
+        //
+        // builder.HasOne<Tenant>()
+        //     .WithMany()
+        //     .HasForeignKey(e => e.TenantId)
+        //     .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.Name)
             .IsRequired()
@@ -551,16 +578,14 @@ Ensure these packages are installed:
 
 ## Supporting Infrastructure
 
-### IDomainEvent Interface
+### DomainEvent Base Record
 
 ```csharp
 namespace FullstackTemplate.Server.Domain;
 
 using MediatR;
 
-public interface IDomainEvent : INotification
-{
-}
+public abstract record DomainEvent : INotification;
 ```
 
 ### PagedList
@@ -624,7 +649,7 @@ public [EntityName] Update([EntityName]ForUpdate forUpdate)
     PhoneNumber = forUpdate.PhoneNumber;
     Email = EmailAddress.Of(forUpdate.Email);
 
-    QueueDomainEvent(new [EntityName]Updated { Id = Id });
+    QueueDomainEvent(new [EntityName]Updated(Id));
     return this;
 }
 ```
@@ -734,7 +759,7 @@ using MediatR;
 
 public static class [Action][EntityName]
 {
-    public sealed record Command(Guid Id) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
@@ -765,7 +790,7 @@ using MediatR;
 
 public static class [Action][EntityName]
 {
-    public sealed record Command(Guid Id, [Action][EntityName]Dto Dto) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id, [Action][EntityName]Dto Dto) : IRequest<[EntityName]Dto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
     {
@@ -790,12 +815,20 @@ public static class [Action][EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName][Action] : IDomainEvent
-{
-    public required Guid [EntityName]Id { get; init; }
-    public required DateTimeOffset [Action]At { get; init; }
-    // Add any other relevant data
-}
+public sealed record [EntityName][Action](
+    string [EntityName]Id,
+    DateTimeOffset [Action]At) : DomainEvent; // Add any other relevant data
+```
+
+If the action takes a reason, put the reason in the event. The event must be self-contained.
+
+```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
+
+public sealed record [EntityName][Action](
+    string [EntityName]Id,
+    string Reason,
+    DateTimeOffset [Action]At) : DomainEvent;
 ```
 
 ### Domain Method Template
@@ -816,11 +849,7 @@ public [EntityName] [Action]()
     [Action]At = DateTimeOffset.UtcNow;
 
     // Queue domain event
-    QueueDomainEvent(new [EntityName][Action]
-    {
-        [EntityName]Id = Id,
-        [Action]At = DateTimeOffset.UtcNow
-    });
+    QueueDomainEvent(new [EntityName][Action](Id, [Action]At));
 
     return this;
 }
@@ -835,11 +864,7 @@ public [EntityName] [Action](string reason)
     Status = [EntityName]Status.[NewStatus]();
     [Action]Reason = reason;
 
-    QueueDomainEvent(new [EntityName][Action]
-    {
-        [EntityName]Id = Id,
-        Reason = reason
-    });
+    QueueDomainEvent(new [EntityName][Action](Id, reason, DateTimeOffset.UtcNow));
 
     return this;
 }
@@ -854,11 +879,11 @@ public [EntityName] [Action](string reason)
 /// [Description of the action].
 /// </summary>
 [Authorize]
-[HttpPost("{id:guid}/[action-route]", Name = "[Action][EntityName]")]
+[HttpPost("{id}/[action-route]", Name = "[Action][EntityName]")]
 [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
-public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](Guid id)
+public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](string id)
 {
     var command = new [Action][EntityName].Command(id);
     var result = await mediator.Send(command);
@@ -869,12 +894,12 @@ public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](Guid id)
 /// [Description of the action] with parameters.
 /// </summary>
 [Authorize]
-[HttpPost("{id:guid}/[action-route]", Name = "[Action][EntityName]")]
+[HttpPost("{id}/[action-route]", Name = "[Action][EntityName]")]
 [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
 public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](
-    Guid id,
+    string id,
     [FromBody] [Action][EntityName]Dto dto)
 {
     var command = new [Action][EntityName].Command(id, dto);
@@ -901,7 +926,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class Get[EntityName]sBy[Criteria]
 {
-    public sealed record Query(Guid [Criteria]Id) : IRequest<IReadOnlyList<[EntityName]Dto>>;
+    public sealed record Query(string [Criteria]Id) : IRequest<IReadOnlyList<[EntityName]Dto>>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, IReadOnlyList<[EntityName]Dto>>
     {
@@ -928,9 +953,9 @@ public static class Get[EntityName]sBy[Criteria]
 /// Gets all [EntityName]s for a specific [Criteria].
 /// </summary>
 [Authorize]
-[HttpGet("by-[criteria]/{[criteria]Id:guid}", Name = "Get[EntityName]sBy[Criteria]")]
+[HttpGet("by-[criteria]/{[criteria]Id}", Name = "Get[EntityName]sBy[Criteria]")]
 [ProducesResponseType(typeof(IReadOnlyList<[EntityName]Dto>), StatusCodes.Status200OK)]
-public async Task<ActionResult<IReadOnlyList<[EntityName]Dto>>> Get[EntityName]sBy[Criteria](Guid [criteria]Id)
+public async Task<ActionResult<IReadOnlyList<[EntityName]Dto>>> Get[EntityName]sBy[Criteria](string [criteria]Id)
 {
     var query = new Get[EntityName]sBy[Criteria].Query([criteria]Id);
     var result = await mediator.Send(query);

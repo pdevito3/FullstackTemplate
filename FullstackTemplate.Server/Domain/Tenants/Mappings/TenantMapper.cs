@@ -17,6 +17,7 @@ public static partial class TenantMapper
 
     public static partial IQueryable<TenantDto> ToTenantDtoQueryable(this IQueryable<Tenant> queryable);
 
+    [MapperIgnoreTarget(nameof(TenantForCreation.Id))]
     public static partial TenantForCreation ToTenantForCreation(this TenantForCreationDto dto);
 
     public static partial TenantForUpdate ToTenantForUpdate(this TenantForUpdateDto dto);

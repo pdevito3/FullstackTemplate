@@ -2,7 +2,9 @@ namespace FullstackTemplate.Server.Domain.Users;
 
 public class UserPermission : BaseEntity
 {
-    public Guid UserId { get; private set; }
+    public const string IdPrefix = "uperm";
+
+    public string UserId { get; private set; } = default!;
     public Permission Permission { get; private set; } = default!;
 
     public static UserPermission Create(User user, Permission permission)
@@ -14,5 +16,5 @@ public class UserPermission : BaseEntity
         };
     }
 
-    protected UserPermission() { } // EF Core
+    protected UserPermission() : base(IdPrefix) { } // EF Core
 }

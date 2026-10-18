@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases.EntityConfigurations;
 
+using Domain;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
     public void Configure(EntityTypeBuilder<User> builder)
     {
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id)
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
 
         builder.Property(e => e.FirstName)
             .IsRequired()
@@ -28,7 +32,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(100);
 
         builder.Property(e => e.TenantId)
-            .IsRequired();
+            .IsRequired()
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
 
         builder.HasOne<Tenant>()
             .WithMany()

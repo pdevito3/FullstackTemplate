@@ -1,5 +1,6 @@
 namespace FullstackTemplate.SharedTestHelpers.EntityGraphs;
 
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 
@@ -12,8 +13,10 @@ public static class TestGraph
     /// <summary>
     /// The seed rows are owned, so they can be parents for <c>Under</c>. The test fixture inserts the seed
     /// once per run, so the save hook takes the seed rows out and a build saves only the rows that the test adds.
+    /// The graph makes IDs with <see cref="EntityId.New"/>, the same generator as the domain.
     /// </summary>
     private static readonly GraphOptions<TestSeed> Options = new GraphOptions<TestSeed>()
+        .Ids(EntityId.New)
         .SeedEntities(seed => [seed.Tenant, seed.User])
         .BeforeSave((ctx, _) =>
         {

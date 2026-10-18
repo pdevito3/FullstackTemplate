@@ -7,7 +7,7 @@ using MediatR;
 
 public static class GetTenant
 {
-    public sealed record Query(Guid Id) : IRequest<TenantDto>;
+    public sealed record Query(string Id) : IRequest<TenantDto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, TenantDto>
     {

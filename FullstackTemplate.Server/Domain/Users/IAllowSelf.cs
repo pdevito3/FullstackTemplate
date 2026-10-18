@@ -7,5 +7,5 @@ namespace FullstackTemplate.Server.Domain.Users;
 /// </summary>
 public interface IAllowSelf
 {
-    Guid SelfUserId { get; }
+    string SelfUserId { get; }
 }

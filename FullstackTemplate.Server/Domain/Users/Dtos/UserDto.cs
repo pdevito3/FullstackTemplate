@@ -2,8 +2,8 @@ namespace FullstackTemplate.Server.Domain.Users.Dtos;
 
 public sealed record UserDto
 {
-    public Guid Id { get; init; }
-    public Guid TenantId { get; init; }
+    public string Id { get; init; } = default!;
+    public string TenantId { get; init; } = default!;
     public string FirstName { get; init; } = default!;
     public string LastName { get; init; } = default!;
     public string FullName { get; init; } = default!;

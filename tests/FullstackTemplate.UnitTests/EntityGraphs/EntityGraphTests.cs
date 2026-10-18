@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.EntityGraphs;
 
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
@@ -72,6 +73,47 @@ public class EntityGraphTests
         // Assert
         users.Select(u => u.Id).Distinct().Count().ShouldBe(3);
         users.Select(u => u.Identifier).Distinct().Count().ShouldBe(3);
+    }
+
+    [Fact]
+    public void blueprints_give_each_entity_an_id_with_its_prefix()
+    {
+        // Act
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user);
+
+        // Assert
+        tenant.Id.ShouldStartWith($"{Tenant.IdPrefix}_");
+        user.Id.ShouldStartWith($"{User.IdPrefix}_");
+        user.UserPermissions.ShouldAllBe(p => p.UserId == user.Id);
+    }
+
+    [Fact]
+    public void customizer_can_set_the_id()
+    {
+        // Act
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant, t => t.Id = "ten_fixed")
+            .AddUser(out var user, u => { u.Id = "usr_fixed"; u.Role = "Admin"; });
+
+        // Assert
+        tenant.Id.ShouldBe("ten_fixed");
+        user.Id.ShouldBe("usr_fixed");
+        user.TenantId.ShouldBe("ten_fixed");
+        user.UserPermissions.ShouldNotBeEmpty();
+        user.UserPermissions.ShouldAllBe(p => p.UserId == "usr_fixed");
+    }
+
+    [Fact]
+    public void customizer_id_must_have_the_entity_prefix()
+    {
+        // Act
+        var act = () => TestGraph.Start(out _)
+            .AddUser(out _, u => u.Id = "ten_wrong");
+
+        // Assert
+        Should.Throw<ValidationException>(act);
     }
 
     [Fact]

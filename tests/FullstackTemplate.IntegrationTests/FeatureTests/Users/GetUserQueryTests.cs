@@ -1,5 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
@@ -50,7 +52,7 @@ public class GetUserQueryTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var nonExistentId = Guid.NewGuid();
+        var nonExistentId = EntityId.New(User.IdPrefix);
 
         // Act & Assert
         var query = new GetUser.Query(nonExistentId);

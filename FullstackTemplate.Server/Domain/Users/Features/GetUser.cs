@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class GetUser
 {
-    public sealed record Query(Guid Id) : IRequest<UserDto>;
+    public sealed record Query(string Id) : IRequest<UserDto>;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, UserDto>
     {

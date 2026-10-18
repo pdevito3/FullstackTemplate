@@ -39,10 +39,10 @@ public static class AddUser
 
         // A user adds to their own tenant. A caller that sees all tenants has no tenant of its own,
         // so it must name the tenant.
-        private async Task<Guid> ResolveTenantIdAsync(Guid? requestedTenantId, CancellationToken cancellationToken)
+        private async Task<string> ResolveTenantIdAsync(string? requestedTenantId, CancellationToken cancellationToken)
         {
             var scope = dbContext.CurrentTenantScope;
-            if (requestedTenantId is not { } tenantId)
+            if (string.IsNullOrWhiteSpace(requestedTenantId))
             {
                 if (scope.TenantId is { } ownTenantId)
                     return ownTenantId;
@@ -51,17 +51,17 @@ public static class AddUser
                 throw new ForbiddenAccessException("You can add a user only to your own tenant.");
             }
 
-            if (!scope.Includes(tenantId))
+            if (!scope.Includes(requestedTenantId))
                 throw new ForbiddenAccessException("You can add a user only to your own tenant.");
 
             // The tenant filter and the soft delete filter apply, so a deleted tenant does not exist here.
             var tenantExists = await dbContext.Tenants
                 .TagWithOperationCallSite("users.add.tenant_exists")
-                .AnyAsync(t => t.Id == tenantId, cancellationToken);
+                .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
             if (!tenantExists)
                 throw new ValidationException(nameof(UserForCreationDto.TenantId), "The tenant does not exist.");
 
-            return tenantId;
+            return requestedTenantId;
         }
     }
 }

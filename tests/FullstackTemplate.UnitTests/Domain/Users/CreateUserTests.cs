@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Domain.Users;
 
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.DomainEvents;
 using FullstackTemplate.Server.Exceptions;
@@ -40,6 +41,30 @@ public class CreateUserTests
 
         // Assert
         act.ShouldThrow<ValidationException>().Message.ShouldBe("Please provide a valid email.");
+    }
+
+    public static TheoryData<string?, string> InvalidTenantIds => new()
+    {
+        { null, "Please provide a tenant." },
+        { $"{User.IdPrefix}_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f", "Please provide a valid tenant ID." },
+        { $"{Tenant.IdPrefix}_{new string('a', 47)}", "Please provide a valid tenant ID." },
+        { $"{Tenant.IdPrefix}_0199F0C1A2B37C4D8E9F0A1B2C3D4E5F", "Please provide a valid tenant ID." },
+    };
+
+    [Theory]
+    [MemberData(nameof(InvalidTenantIds))]
+    public void cannot_create_user_with_invalid_tenant_id(string? tenantId, string message)
+    {
+        // Arrange
+        var userForCreation = new FakeUserForCreation()
+            .RuleFor(x => x.TenantId, _ => tenantId!)
+            .Generate();
+
+        // Act
+        var act = () => User.Create(userForCreation);
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Message.ShouldBe(message);
     }
 
     [Fact]

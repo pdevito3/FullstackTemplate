@@ -84,8 +84,8 @@ public static class TenantQueryFilterExtension
         var scopeTenantId = Expression.Property(scopeExpr, nameof(TenantScope.TenantId));
 
         // Build: scope.IncludesAllTenants || (scope.TenantId != null && tenantId == scope.TenantId)
-        var hasTenant = Expression.NotEqual(scopeTenantId, Expression.Constant(null, typeof(Guid?)));
-        var tenantMatch = Expression.Equal(Expression.Convert(entityTenantId, typeof(Guid?)), scopeTenantId);
+        var hasTenant = Expression.NotEqual(scopeTenantId, Expression.Constant(null, typeof(string)));
+        var tenantMatch = Expression.Equal(entityTenantId, scopeTenantId);
 
         return Expression.OrElse(includesAllTenants, Expression.AndAlso(hasTenant, tenantMatch));
     }

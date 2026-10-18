@@ -1,5 +1,6 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
@@ -76,7 +77,7 @@ public class RemoveUserPermissionCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var nonExistentId = Guid.NewGuid();
+        var nonExistentId = EntityId.New(User.IdPrefix);
 
         // Act & Assert
         var command = new RemoveUserPermission.Command(nonExistentId, "do_something_special");

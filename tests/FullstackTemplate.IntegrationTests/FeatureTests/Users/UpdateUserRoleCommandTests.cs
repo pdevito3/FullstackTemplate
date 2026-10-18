@@ -1,5 +1,6 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
@@ -139,7 +140,7 @@ public class UpdateUserRoleCommandTests : TestBase
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
-        var nonExistentId = Guid.NewGuid();
+        var nonExistentId = EntityId.New(User.IdPrefix);
 
         // Act & Assert
         var command = new UpdateUserRole.Command(nonExistentId, "Admin");

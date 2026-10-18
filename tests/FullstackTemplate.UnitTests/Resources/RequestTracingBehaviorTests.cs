@@ -1,5 +1,7 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using FullstackTemplate.Server.Domain.Tenants.Features;
@@ -56,7 +58,7 @@ public class RequestTracingBehaviorTests : IDisposable
         var behavior = new RequestTracingBehavior<GetTenant.Query, string>();
 
         // Act
-        await behavior.Handle(new GetTenant.Query(Guid.NewGuid()), _ => Task.FromResult("ok"), CancellationToken.None);
+        await behavior.Handle(new GetTenant.Query(EntityId.New(Tenant.IdPrefix)), _ => Task.FromResult("ok"), CancellationToken.None);
 
         // Assert
         var span = SingleSpan(test, "GetTenant.Query");
@@ -73,7 +75,7 @@ public class RequestTracingBehaviorTests : IDisposable
 
         // Act
         await Should.ThrowAsync<ValidationException>(() => behavior.Handle(
-            new GetTenant.Query(Guid.NewGuid()),
+            new GetTenant.Query(EntityId.New(Tenant.IdPrefix)),
             _ => throw new ValidationException("Please provide a tenant name."),
             CancellationToken.None));
 
@@ -92,7 +94,7 @@ public class RequestTracingBehaviorTests : IDisposable
 
         // Act
         await Should.ThrowAsync<NotFoundException>(() => behavior.Handle(
-            new GetTenant.Query(Guid.NewGuid()),
+            new GetTenant.Query(EntityId.New(Tenant.IdPrefix)),
             _ => throw new NotFoundException("Tenant was not found."),
             CancellationToken.None));
 
@@ -111,7 +113,7 @@ public class RequestTracingBehaviorTests : IDisposable
 
         // Act
         await Should.ThrowAsync<InvalidOperationException>(() => behavior.Handle(
-            new GetTenant.Query(Guid.NewGuid()),
+            new GetTenant.Query(EntityId.New(Tenant.IdPrefix)),
             _ => throw new InvalidOperationException("boom"),
             CancellationToken.None));
 

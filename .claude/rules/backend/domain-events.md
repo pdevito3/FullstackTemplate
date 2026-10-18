@@ -40,20 +40,20 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
 public sealed record [EntityName]Created([EntityName] [EntityName]) : DomainEvent;
 
-public sealed record [EntityName]Updated(Guid Id) : DomainEvent;
+public sealed record [EntityName]Updated(string Id) : DomainEvent;
 ```
 
 ### Business-Specific Events
 
 ```csharp
 public sealed record OrderSubmitted(
-    Guid OrderId,
-    Guid CustomerId,
+    string OrderId,
+    string CustomerId,
     decimal TotalAmount) : DomainEvent;
 
 public sealed record PaymentReceived(
-    Guid OrderId,
-    Guid PaymentId,
+    string OrderId,
+    string PaymentId,
     decimal Amount,
     DateTimeOffset ReceivedAt) : DomainEvent;
 ```
@@ -251,7 +251,7 @@ Use sealed records extending `DomainEvent`:
 
 ```csharp
 public sealed record OrderShipped(
-    Guid OrderId,
+    string OrderId,
     string TrackingNumber,
     DateTimeOffset ShippedAt) : DomainEvent;
 ```
@@ -280,13 +280,13 @@ Include all necessary information in the event:
 ```csharp
 // Good - self-contained
 public sealed record OrderSubmitted(
-    Guid OrderId,
-    Guid CustomerId,
+    string OrderId,
+    string CustomerId,
     decimal TotalAmount,
     int ItemCount) : DomainEvent;
 
 // Avoid - requiring database lookups in handlers
-public sealed record OrderSubmitted(Guid OrderId) : DomainEvent;  // Handlers must query for details
+public sealed record OrderSubmitted(string OrderId) : DomainEvent;  // Handlers must query for details
 ```
 
 ### 4. Queue Events at State Changes
@@ -300,7 +300,7 @@ public Order Submit()
     Status = OrderStatus.Submitted();
 
     // Queue event to notify system
-    QueueDomainEvent(new OrderSubmitted { ... });
+    QueueDomainEvent(new OrderSubmitted(...));
 
     return this;
 }
@@ -332,7 +332,7 @@ Record primary constructors ensure all properties are initialized:
 
 ```csharp
 public sealed record CustomerRegistered(
-    Guid CustomerId,
+    string CustomerId,
     string Email,
     DateTimeOffset RegisteredAt) : DomainEvent;
 ```
@@ -353,11 +353,11 @@ For updates, include only what's needed:
 
 ```csharp
 // Simple - just the ID
-public sealed record CustomerUpdated(Guid Id) : DomainEvent;
+public sealed record CustomerUpdated(string Id) : DomainEvent;
 
 // Detailed - include changed fields
 public sealed record CustomerAddressUpdated(
-    Guid CustomerId,
+    string CustomerId,
     Address OldAddress,
     Address NewAddress) : DomainEvent;
 ```
@@ -368,13 +368,13 @@ For domain-specific operations:
 
 ```csharp
 public sealed record SubscriptionRenewed(
-    Guid SubscriptionId,
-    Guid CustomerId,
+    string SubscriptionId,
+    string CustomerId,
     DateOnly NewExpirationDate,
     decimal AmountCharged) : DomainEvent;
 
 public sealed record InventoryReplenished(
-    Guid ProductId,
+    string ProductId,
     int QuantityAdded,
     int NewTotalQuantity) : DomainEvent;
 ```

@@ -156,6 +156,34 @@ public class EntityGraphCoreTests
     }
 
     [Fact]
+    public void new_id_throws_without_an_id_generator()
+    {
+        // Arrange
+        var bp = Blueprint.For<Seed, Org>(ctx => new Org { Id = ctx.NewId("org") });
+
+        // Act
+        var act = () => Start().Add(bp, out _, 1);
+
+        // Assert
+        act.ShouldThrow<InvalidOperationException>().Message.ShouldContain("GraphOptions.Ids");
+    }
+
+    [Fact]
+    public void ids_option_replaces_the_id_generator()
+    {
+        // Arrange
+        var next = 0;
+        var options = new GraphOptions<Seed>().Ids(prefix => $"{prefix}_{++next}");
+        var bp = Blueprint.For<Seed, Org>(ctx => new Org { Id = ctx.NewId("org") });
+
+        // Act
+        Start(options).Add(bp, out var orgs, 2);
+
+        // Assert
+        orgs.Select(o => o.Id).ShouldBe(["org_1", "org_2"]);
+    }
+
+    [Fact]
     public void options_are_frozen_after_start()
     {
         // Arrange
@@ -300,6 +328,7 @@ public class EntityGraphCoreTests
 
     public sealed class Org : IHasLabel
     {
+        public string Id { get; set; } = default!;
         public string? Name { get; set; }
         public int Number { get; set; }
         public string? Label { get; set; }

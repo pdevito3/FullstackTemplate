@@ -95,6 +95,8 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetai
 | `DbUpdateException` from a unique index (Postgres `23505`) | 422. `detail` does not show the constraint or the values |
 | Any other exception | 500 |
 
+If model binding or model validation fails, the Server returns 400 with a `ValidationProblemDetails` body. This body has the `errors` field. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]` on each action that can return 400, so that the OpenAPI document states this shape.
+
 Do not catch these exceptions in a controller. Throw them from the entity or the handler.
 
 Before you add a row with a unique value, check for the value in the handler and throw a `ValidationException` on the property. The check gives a clear message. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 422.

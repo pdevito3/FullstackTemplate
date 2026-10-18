@@ -6,6 +6,7 @@
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { UpdateUserRoleDto } from '../../models/types/update-user-role-dto'
 import type { UserDto } from '../../models/types/user-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type UpdateUserRolePath = {
     /**
@@ -18,7 +19,7 @@ export type UpdateUserRolePath = {
 
 export type UpdateUserRoleStatus200 = UserDto;
 
-export type UpdateUserRoleStatus400 = ProblemDetails;
+export type UpdateUserRoleStatus400 = ValidationProblemDetails;
 
 export type UpdateUserRoleStatus404 = ProblemDetails;
 

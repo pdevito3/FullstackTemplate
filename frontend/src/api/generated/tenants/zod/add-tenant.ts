@@ -7,10 +7,11 @@ import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { tenantDtoSchema } from '../../models/zod/tenant-dto'
 import { tenantForCreationDtoSchema } from '../../models/zod/tenant-for-creation-dto'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const addTenantStatus201Schema = tenantDtoSchema
 
-export const addTenantStatus400Schema = problemDetailsSchema
+export const addTenantStatus400Schema = validationProblemDetailsSchema
 
 export const addTenantStatus403Schema = problemDetailsSchema
 

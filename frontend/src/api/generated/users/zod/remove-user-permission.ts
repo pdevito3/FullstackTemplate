@@ -6,6 +6,7 @@
 import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { userDtoSchema } from '../../models/zod/user-dto'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const removeUserPermissionPathIdSchema = z.uuid()
 
@@ -13,7 +14,7 @@ export const removeUserPermissionPathPermissionSchema = z.string()
 
 export const removeUserPermissionStatus200Schema = userDtoSchema
 
-export const removeUserPermissionStatus400Schema = problemDetailsSchema
+export const removeUserPermissionStatus400Schema = validationProblemDetailsSchema
 
 export const removeUserPermissionStatus404Schema = problemDetailsSchema
 

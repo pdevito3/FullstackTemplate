@@ -6,10 +6,11 @@
 import type { InitiateUserAndTenantDto } from '../../models/types/initiate-user-and-tenant-dto'
 import type { InitiateUserAndTenantResponseDto } from '../../models/types/initiate-user-and-tenant-response-dto'
 import type { ProblemDetails } from '../../models/types/problem-details'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type InitiateUserAndTenantStatus201 = InitiateUserAndTenantResponseDto;
 
-export type InitiateUserAndTenantStatus400 = ProblemDetails;
+export type InitiateUserAndTenantStatus400 = ValidationProblemDetails;
 
 export type InitiateUserAndTenantStatus403 = ProblemDetails;
 

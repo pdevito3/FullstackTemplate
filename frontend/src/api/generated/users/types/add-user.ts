@@ -6,10 +6,11 @@
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { UserDto } from '../../models/types/user-dto'
 import type { UserForCreationDto } from '../../models/types/user-for-creation-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type AddUserStatus201 = UserDto;
 
-export type AddUserStatus400 = ProblemDetails;
+export type AddUserStatus400 = ValidationProblemDetails;
 
 export type AddUserStatus403 = ProblemDetails;
 

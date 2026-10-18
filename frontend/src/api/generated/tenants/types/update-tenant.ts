@@ -6,6 +6,7 @@
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { TenantDto } from '../../models/types/tenant-dto'
 import type { TenantForUpdateDto } from '../../models/types/tenant-for-update-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type UpdateTenantPath = {
     /**
@@ -18,7 +19,7 @@ export type UpdateTenantPath = {
 
 export type UpdateTenantStatus200 = TenantDto;
 
-export type UpdateTenantStatus400 = ProblemDetails;
+export type UpdateTenantStatus400 = ValidationProblemDetails;
 
 export type UpdateTenantStatus404 = ProblemDetails;
 

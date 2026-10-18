@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
-using WebMotions.Fake.Authentication.JwtBearer;
 
 public class TenantErrorResponseTests : TestBase
 {

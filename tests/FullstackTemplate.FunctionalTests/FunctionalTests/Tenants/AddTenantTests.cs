@@ -4,7 +4,6 @@ using System.Net;
 using System.Text;
 using Shouldly;
 using TestUtilities;
-using WebMotions.Fake.Authentication.JwtBearer;
 
 public class AddTenantTests : TestBase
 {

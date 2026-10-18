@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 /// <summary>
 /// A Debug build writes the OpenAPI document with the GetDocument.Insider tool. The tool starts
 /// Program to read the endpoints, but Aspire does not run during a build, so its settings are absent.
+/// Microsoft gives the entry assembly check in "Customize runtime behavior during build-time document generation":
+/// https://learn.microsoft.com/aspnet/core/fundamentals/openapi/aspnetcore-openapi#customize-runtime-behavior-during-build-time-document-generation
 /// </summary>
 public static class OpenApiBuildTime
 {

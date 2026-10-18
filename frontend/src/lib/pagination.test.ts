@@ -34,6 +34,18 @@ describe('parsePagination', () => {
     expect(parsePagination(resultWith(headers))).toEqual(metadata)
   })
 
+  it('reads the header from plain headers with a mixed-case name', () => {
+    const headers = { 'X-Pagination': JSON.stringify(metadata) }
+
+    expect(parsePagination({ response: { headers } })).toEqual(metadata)
+  })
+
+  it('reads the header from AxiosHeaders built with a mixed-case name', () => {
+    const headers = new AxiosHeaders({ 'X-Pagination': JSON.stringify(metadata) })
+
+    expect(parsePagination(resultWith(headers))).toEqual(metadata)
+  })
+
   it('throws when the header is missing', () => {
     const headers = new AxiosHeaders()
 

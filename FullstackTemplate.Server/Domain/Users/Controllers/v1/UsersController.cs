@@ -66,7 +66,6 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPost(Name = "AddUser")]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

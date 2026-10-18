@@ -12,12 +12,16 @@ export type GetTenantListQuery = {
     /**
      * @description
      * Format: `int32`
+     * @minLength 1
+     * @maxLength 2147483647
      * @type integer | undefined
     */
     pageNumber?: number;
     /**
      * @description
      * Format: `int32`
+     * @minLength 1
+     * @maxLength 2147483647
      * @type integer | undefined
     */
     pageSize?: number;

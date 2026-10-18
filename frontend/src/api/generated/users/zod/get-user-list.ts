@@ -11,9 +11,9 @@ export const getUserListQueryFiltersSchema = z.string().optional()
 
 export const getUserListQuerySortOrderSchema = z.string().optional()
 
-export const getUserListQueryPageNumberSchema = z.int32().optional()
+export const getUserListQueryPageNumberSchema = z.int32().min(1).max(2147483647).optional()
 
-export const getUserListQueryPageSizeSchema = z.int32().optional()
+export const getUserListQueryPageSizeSchema = z.int32().min(1).max(2147483647).optional()
 
 export const getUserListStatus200Schema = z.array(userDtoSchema)
 

@@ -25,6 +25,11 @@ public class QueryInputErrorTests : TestBase
         // Model binding gives these, so the key comes from the name of the query parameter
         { "pageNumber", "abc" },
         { "pageSize", "abc" },
+        // A page starts at 1, and a page has at least one row
+        { "pageNumber", "0" },
+        { "pageNumber", "-1" },
+        { "pageSize", "0" },
+        { "pageSize", "-1" },
     };
 
     [Theory]

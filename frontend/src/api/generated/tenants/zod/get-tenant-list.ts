@@ -11,9 +11,9 @@ export const getTenantListQueryFiltersSchema = z.string().optional()
 
 export const getTenantListQuerySortOrderSchema = z.string().optional()
 
-export const getTenantListQueryPageNumberSchema = z.int32().optional()
+export const getTenantListQueryPageNumberSchema = z.int32().min(1).max(2147483647).optional()
 
-export const getTenantListQueryPageSizeSchema = z.int32().optional()
+export const getTenantListQueryPageSizeSchema = z.int32().min(1).max(2147483647).optional()
 
 export const getTenantListStatus200Schema = z.array(tenantDtoSchema)
 

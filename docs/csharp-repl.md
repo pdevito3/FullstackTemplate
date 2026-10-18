@@ -47,8 +47,7 @@ The hook listens on a Unix domain socket in `$TMPDIR/csharprepl-connector/`. The
 2. Start the app.
 
    ```bash
-   cd FullstackTemplate.AppHost
-   aspire run
+   dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
    ```
 
 3. Get the process ID of `FullstackTemplate.Server`.

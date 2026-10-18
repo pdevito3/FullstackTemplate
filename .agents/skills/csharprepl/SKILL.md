@@ -9,7 +9,7 @@ CSharpRepl connects to the running `FullstackTemplate.Server` process and runs C
 
 ## Steps
 
-1. Start the app with `aspire run` (see `AGENTS.md`). If `dotnet csharprepl` is not found, run `dotnet tool restore`.
+1. Start the app (see the `aspire-cli` skill). If `dotnet csharprepl` is not found, run `dotnet tool restore`.
 2. Get the process ID of the server. Use the `FullstackTemplate.Server` row. The `dotnet` row is the `dotnet run` wrapper.
 
    ```bash

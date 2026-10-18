@@ -48,15 +48,16 @@ The detailed pattern rules are in `.claude/rules/backend/` and `.claude/rules/fr
 
 ## Run the application
 
+The Aspire CLI is a local tool in `dotnet-tools.json`. Run `dotnet tool restore` once, then use `dotnet aspire`.
+
 ```bash
-cd FullstackTemplate.AppHost
-aspire run
+dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
 ```
 
-This command starts the Aspire dashboard, the server, the BFF, the Vite dev server, and the auth provider.
+This command starts the Aspire dashboard, the server, the BFF, the Vite dev server, and the auth provider in the background. `--isolated` gives the stack random ports and its own empty database, so that each worktree can run a stack at the same time. The `aspire-cli` skill gives the commands to wait for, inspect, restart, and stop the stack.
 
-1. Before you make changes, run `aspire run` and make sure that all resources are healthy.
-2. If you change `AppHost.cs`, restart the app. Other code changes hot-reload.
+1. Before you make changes, start the stack and make sure that all resources are healthy.
+2. If you change `AppHost.cs`, restart the stack. Other code changes hot-reload.
 3. If a resource fails, read its logs and traces before you change code. The `aspire-telemetry` skill gives the commands.
 4. To run C# in the live server (inspect DI or data, send a MediatR request, patch a method), use the `csharprepl` skill.
 

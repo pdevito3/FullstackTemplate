@@ -1,6 +1,6 @@
 ---
 name: aspire-telemetry
-description: Queries and writes the app's OpenTelemetry logs, spans, traces, and metrics. Use when you debug a failure or a slow request with the Aspire dashboard or the `aspire otel` CLI, when you go from a log or a span to its code, or when you add a span, a span event, a log, or a metric.
+description: Queries and writes the app's OpenTelemetry logs, spans, traces, and metrics. Use when you debug a failure or a slow request with the Aspire dashboard or the `dotnet aspire otel` CLI, when you go from a log or a span to its code, or when you add a span, a span event, a log, or a metric.
 ---
 
 # Aspire Telemetry
@@ -11,18 +11,18 @@ The design is in `docs/telemetry.md`. Read it before you change a helper or the 
 
 ## Read telemetry
 
-The AppHost must be running (`aspire run` in `FullstackTemplate.AppHost`). The commands find it from the current directory. If you are not under the repository, add `--apphost <path>`.
+The stack must be running. The `aspire-cli` skill tells how to start it. Run each command from the root of your checkout with `--apphost FullstackTemplate.AppHost`, so that it reads your stack and not the stack of another worktree.
 
 | You need | Command |
 |---|---|
-| Errors of one resource | `aspire otel logs server --severity Error` |
-| Failed traces | `aspire otel traces server --has-error true` |
-| All signals of one request | `aspire otel logs --trace-id <id>` and `aspire otel spans --trace-id <id>` |
-| A text or attribute search | `aspire otel logs --search "<text>"` |
+| Errors of one resource | `dotnet aspire otel logs server --severity Error` |
+| Failed traces | `dotnet aspire otel traces server --has-error true` |
+| All signals of one request | `dotnet aspire otel logs --trace-id <id>` and `dotnet aspire otel spans --trace-id <id>` |
+| A text or attribute search | `dotnet aspire otel logs --search "<text>"` |
 | Fields for a script | Add `--format Json` |
-| Console output (stdout) of a resource | `aspire logs server` |
+| Console output (stdout) of a resource | `dotnet aspire logs server` |
 
-Resource names are the AppHost names, for example `server` and `bff`. Run `aspire otel logs --help` for the full flag list.
+Resource names are the AppHost names, for example `server` and `bff`. Run `dotnet aspire otel logs --help` for the full flag list.
 
 The Aspire MCP tools give the same data: `list_structured_logs`, `list_traces`, `list_trace_structured_logs`, and `list_console_logs`.
 
@@ -62,6 +62,6 @@ Obey these rules:
 ## Make sure that it works
 
 1. Run the request or the startup work.
-2. Find the new span, event, or log with `aspire otel spans --search "<name>"` or `aspire otel logs --search "<text>"`.
+2. Find the new span, event, or log with `dotnet aspire otel spans --search "<name>"` or `dotnet aspire otel logs --search "<text>"`.
 3. Make sure that it has the `code.*` attributes and that it is in the correct trace.
 4. For a test, read `docs/telemetry.md` (section "Tests") for the listener and exporter fixtures.

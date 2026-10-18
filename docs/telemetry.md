@@ -1,6 +1,6 @@
 # Telemetry
 
-The server and the BFF export traces, metrics, and logs with OpenTelemetry. In development, the Aspire dashboard shows them at https://localhost:17199 (the `aspire run` output gives the login link).
+The server and the BFF export traces, metrics, and logs with OpenTelemetry. In development, the Aspire dashboard shows them at https://localhost:17199 (the `aspire run` output gives the login link). An isolated run (`--isolated`) uses a random port. `dotnet aspire ps` gives its URL.
 
 ## Privacy rule
 

@@ -4,11 +4,14 @@ import type { AuthState, BffClaim } from '../types'
 import { AuthKeys } from './auth.keys'
 
 /**
- * Fetch user claims from BFF
+ * Fetch user claims from BFF. Returns null when nobody is signed in: the BFF answers 401 for an
+ * anonymous visitor, and that is a normal state, not an error to show in a toast.
  */
-export async function getUser(): Promise<BffClaim[]> {
-  const response = await apiClient.get<BffClaim[]>('/bff/user')
-  return response.data
+export async function getUser(): Promise<BffClaim[] | null> {
+  const response = await apiClient.get<BffClaim[]>('/bff/user', {
+    validateStatus: (status) => status === 200 || status === 401,
+  })
+  return response.status === 401 ? null : response.data
 }
 
 /**

@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+
 import { getSecureWeatherForecast } from '@/api/generated/weather/clients/get-secure-weather-forecast'
+
 import { WeatherKeys } from './weather.keys'
 
 /**

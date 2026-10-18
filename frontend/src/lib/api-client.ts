@@ -1,11 +1,13 @@
 import axios, { type AxiosRequestConfig, type AxiosError } from 'axios'
+
+import type { client as KubbClient } from '@/api/generated/.kubb/client'
+import { Notification } from '@/components/notification'
+
 import {
   ProblemDetailsError,
   isProblemDetails,
   type ProblemDetails,
 } from './problem-details'
-import { Notification } from '@/components/notification'
-import type { client as KubbClient } from '@/api/generated/.kubb/client'
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -22,16 +24,18 @@ declare module 'axios' {
 /**
  * Axios instance configured for BFF API calls with CSRF protection and credentials.
  *
- * Usage:
- *   import { apiClient } from '@/lib/api-client'
- *   const response = await apiClient.get('/api/weather')
- *   const data = await apiClient.post('/api/something', { body: data })
+ * The generated clients use this instance. Call a generated client for an endpoint of the Server:
+ *   import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+ *   const tenant = await getTenant({ path: { id } })
+ *
+ * Use apiClient directly only for an endpoint that is not in the OpenAPI document:
+ *   const response = await apiClient.get<BffClaim[]>('/bff/user')
  *
  * Error Handling:
  *   By default, errors are displayed as toast notifications.
  *   To suppress this and handle errors manually:
  *
- *   const response = await apiClient.get('/api/something', { suppressErrorToast: true })
+ *   await getTenant({ path: { id }, options: { suppressErrorToast: true } })
  */
 export const apiClient = axios.create({
   withCredentials: true, // Required to send cookies cross-origin

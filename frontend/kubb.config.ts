@@ -5,6 +5,10 @@ import { pluginAxios } from '@kubb/plugin-axios'
 import { pluginTs } from '@kubb/plugin-ts'
 import { pluginZod } from '@kubb/plugin-zod'
 
+// Kubb sends usage data to otlp.kubb.dev after each run. It reads this variable when it sends, after it loads this file.
+// A variable in the package.json script does not work on Windows, so the config sets it.
+process.env.KUBB_DISABLE_TELEMETRY = '1'
+
 // A Debug build of the Server writes one OpenAPI document for each API version:
 // FullstackTemplate.Server.json for v1, FullstackTemplate.Server_v2.json for v2, and more.
 const openApiFolder = '../FullstackTemplate.Server/openapi'

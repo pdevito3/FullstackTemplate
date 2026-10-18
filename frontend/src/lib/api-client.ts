@@ -112,35 +112,3 @@ apiClient.interceptors.response.use(
 
 // The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
 client.setConfig({ transport: apiClient })
-
-/**
- * Generic fetch function for custom API calls
- */
-export async function apiFetch<T>(
-  url: string,
-  config?: AxiosRequestConfig
-): Promise<T> {
-  const response = await apiClient.request<T>({ url, ...config })
-  return response.data
-}
-
-/**
- * Helper to make API calls that suppress error toasts.
- * Use when you want to handle errors in your component's UI.
- *
- * @example
- * const { data, error } = useQuery({
- *   queryKey: ['users', id],
- *   queryFn: () => fetchWithoutToast('/api/users/' + id),
- * })
- *
- * if (error) {
- *   // Handle error in component
- * }
- */
-export async function fetchWithoutToast<T>(
-  url: string,
-  config?: Omit<AxiosRequestConfig, 'suppressErrorToast'>
-): Promise<T> {
-  return apiFetch<T>(url, { ...config, suppressErrorToast: true })
-}

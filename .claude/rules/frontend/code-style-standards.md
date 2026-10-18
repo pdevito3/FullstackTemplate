@@ -15,34 +15,15 @@ Comprehensive coding standards to ensure consistency, maintainability, and best 
 
 ```typescript
 // ✅ Good - async/await
-async function fetchPatientData(patientId: string): Promise<PatientDto> {
-  try {
-    const response = await peakLimsApi.get(`/v1/patients/${patientId}`);
-    return response.data;
-  } catch (error) {
-    throw new Error(`Failed to fetch patient: ${error.message}`);
-  }
+async function getTenantName(id: string): Promise<string> {
+  const tenant = await getTenant({ path: { id } })
+  return tenant.name
 }
 
 // ❌ Bad - promise chains
-function fetchPatientData(patientId: string): Promise<PatientDto> {
-  return peakLimsApi
-    .get(`/v1/patients/${patientId}`)
-    .then(response => response.data)
-    .catch(error => {
-      throw new Error(`Failed to fetch patient: ${error.message}`);
-    });
+function getTenantName(id: string): Promise<string> {
+  return getTenant({ path: { id } }).then((tenant) => tenant.name)
 }
-```
-
-**Exception**: Simple single-operation promise chains in API functions are acceptable for brevity:
-```typescript
-// ✅ Acceptable for simple operations
-export const getPatient = async (patientId: string) => {
-  return peakLimsApi
-    .get(`/v1/patients/${patientId}`)
-    .then((response: AxiosResponse<PatientDto>) => response.data);
-};
 ```
 
 ### 2. Type Definitions - Interfaces vs Types
@@ -143,9 +124,9 @@ export const ACCESSION_STATUSES = [
 
 ```typescript
 // ✅ Good - explicit return types
-export async function createPatient(data: PatientFormData): Promise<PatientDto> {
-  const response = await peakLimsApi.post('/v1/patients', data);
-  return response.data;
+export async function getTenantName(id: string): Promise<string> {
+  const tenant = await getTenant({ path: { id } })
+  return tenant.name
 }
 
 export function formatPatientName(patient: PatientDto): string {
@@ -300,50 +281,36 @@ export function PatientCard({ patient }: { patient?: PatientDto }) {
 
 ### 1. TanStack Query Hook Pattern
 
-**Separate API functions from React Query hooks. Use consistent naming patterns.**
+**Call the generated client in a hand-written hook. Do not write an API function by hand. Kubb generates the client from the OpenAPI document of the Server.**
 
 ```typescript
-// ✅ Good - separate API function and hook
-// api function
-export const getPatient = async (patientId: string): Promise<PatientDto> => {
-  const response = await peakLimsApi.get(`/v1/patients/${patientId}`);
-  return response.data;
-};
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+import { updateTenant } from '@/api/generated/tenants/clients/update-tenant'
+import type { TenantForUpdateDto } from '@/api/generated/models/types/tenant-for-update-dto'
+import { TenantKeys } from './tenant.keys'
 
-// React Query hook
-export function useGetPatient(patientId: string | undefined) {
+// ✅ Good - query hook that calls the generated client
+export function useTenant(id: string | undefined) {
   return useQuery({
-    queryKey: PatientKeys.detail(patientId!),
-    queryFn: () => getPatient(patientId!),
-    enabled: patientId !== null && patientId !== undefined,
-  });
+    queryKey: TenantKeys.detail(id!),
+    queryFn: ({ signal }) => getTenant({ path: { id: id! }, signal }),
+    enabled: id !== undefined,
+  })
 }
 
-// ✅ Good - mutation pattern
-export const updatePatient = async (
-  patientId: string, 
-  data: Partial<PatientDto>
-): Promise<PatientDto> => {
-  const response = await peakLimsApi.put(`/v1/patients/${patientId}`, data);
-  return response.data;
-};
+// ✅ Good - mutation hook that calls the generated client
+export function useUpdateTenant() {
+  const queryClient = useQueryClient()
 
-export function useUpdatePatient(
-  options?: UseMutationOptions<PatientDto, AxiosError, { id: string; data: Partial<PatientDto> }>
-) {
-  const queryClient = useQueryClient();
-  
   return useMutation({
-    mutationFn: ({ id, data }) => updatePatient(id, data),
-    onSuccess: (updatedPatient) => {
-      queryClient.invalidateQueries({ queryKey: PatientKeys.lists() });
-      queryClient.setQueryData(
-        PatientKeys.detail(updatedPatient.id), 
-        updatedPatient
-      );
+    mutationFn: ({ id, body }: { id: string; body: TenantForUpdateDto }) =>
+      updateTenant({ path: { id }, body }),
+    onSuccess: (tenant) => {
+      queryClient.invalidateQueries({ queryKey: TenantKeys.lists() })
+      queryClient.setQueryData(TenantKeys.detail(tenant.id), tenant)
     },
-    ...options,
-  });
+  })
 }
 ```
 
@@ -368,48 +335,24 @@ export const PatientKeys = {
 
 ### 3. Error Handling
 
-**Implement consistent error handling patterns with proper typing.**
+**A generated client rejects with a `ProblemDetailsError` when the Server returns problem details. Do not wrap the client to convert the error.**
 
 ```typescript
-// ✅ Good - typed error handling
-interface ApiError {
-  message: string;
-  status: number;
-  code?: string;
-}
+import { isProblemDetailsError } from '@/lib/problem-details'
 
-export async function fetchPatientWithErrorHandling(
-  patientId: string
-): Promise<PatientDto> {
-  try {
-    const patient = await getPatient(patientId);
-    return patient;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const apiError: ApiError = {
-        message: error.response?.data?.message ?? 'Unknown API error',
-        status: error.response?.status ?? 500,
-        code: error.response?.data?.code,
-      };
-      throw apiError;
-    }
-    throw new Error(`Unexpected error: ${error.message}`);
-  }
-}
-
-// ✅ Good - error handling in hooks
-export function useGetPatientWithErrorHandling(patientId: string) {
+// ✅ Good - read the status from the ProblemDetailsError
+export function useTenant(id: string) {
   return useQuery({
-    queryKey: PatientKeys.detail(patientId),
-    queryFn: () => fetchPatientWithErrorHandling(patientId),
+    queryKey: TenantKeys.detail(id),
+    queryFn: ({ signal }) => getTenant({ path: { id }, signal }),
     retry: (failureCount, error) => {
-      // Don't retry on 404s
-      if (error && 'status' in error && error.status === 404) {
-        return false;
+      // A 404 does not change on a retry
+      if (isProblemDetailsError(error) && error.status === 404) {
+        return false
       }
-      return failureCount < 3;
+      return failureCount < 3
     },
-  });
+  })
 }
 ```
 
@@ -646,7 +589,7 @@ import * as z from 'zod';
 // Internal modules (using @ alias)
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField } from '@/components/ui/form';
-import { peakLimsApi } from '@/services/api-client';
+import { getTenant } from '@/api/generated/tenants/clients/get-tenant';
 import { useDebounce } from '@/hooks/use-debounce';
 
 // Relative imports

@@ -1,0 +1,5 @@
+# Kubb generates these files from the OpenAPI document. GitHub collapses them in diffs.
+frontend/src/api/generated*/** linguist-generated=true
+
+# A Debug build of the Server generates the OpenAPI document. GitHub collapses it in diffs.
+FullstackTemplate.Server/openapi/** linguist-generated=true

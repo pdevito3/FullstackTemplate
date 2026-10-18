@@ -148,6 +148,38 @@ public class TenantAccessTests : TestBase
     }
 
     [Fact]
+    public async Task admin_can_keep_the_name_of_their_own_tenant()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = tenant.Name });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task admin_cannot_rename_their_tenant_to_the_name_of_another_tenant()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        var (otherTenant, _) = await AddTenantWithUserAsync("User");
+        SignInAs(admin);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = otherTenant.Name });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status409Conflict);
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
+    }
+
+    [Fact]
     public async Task basic_member_cannot_delete_their_own_tenant()
     {
         // Arrange

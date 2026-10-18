@@ -7,7 +7,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Resources;
-using Resources.Extensions;
 
 [ApiController]
 [Route("api/v{v:apiVersion}/tenants")]
@@ -34,14 +33,12 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "GetTenantList")]
     [ProducesResponseType(typeof(PagedList<TenantDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<TenantDto>>> GetTenantList(
         [FromQuery] TenantParametersDto parameters)
     {
         var query = new GetTenantList.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result);
-
         return Ok(result);
     }
 
@@ -51,8 +48,10 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost(Name = "AddTenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TenantDto>> AddTenant(
         [FromBody] TenantForCreationDto dto)
     {
@@ -72,7 +71,9 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TenantDto>> UpdateTenant(
         string id,
         [FromBody] TenantForUpdateDto dto)
@@ -90,6 +91,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult> DeleteTenant(string id)
     {
         var command = new DeleteTenant.Command(id);

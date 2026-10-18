@@ -63,7 +63,7 @@ public abstract class BaseEntity
     /// <summary>Replaces the generated ID. The new ID must have the prefix of this entity type.</summary>
     protected void SetId(string id)
     {
-        Exceptions.ValidationException.Must(EntityId.IsValid(id, _idPrefix),
+        Exceptions.ValidationException.Must(EntityId.IsValid(id, _idPrefix), "id",
             $"The id '{id}' must start with '{_idPrefix}_', then have only lower-case letters and digits, and have no more than {EntityId.MaxLength} characters.");
         _id = id;
     }

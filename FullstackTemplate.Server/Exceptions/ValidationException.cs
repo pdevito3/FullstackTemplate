@@ -25,27 +25,28 @@ public class ValidationException : Exception
         Property = string.Empty;
     }
 
-    public static void ThrowWhenNull<T>(T? value, string message) where T : class
+    // The property is the name of the request field. It is the key in the errors of the problem.
+    public static void ThrowWhenNull<T>(T? value, string property, string message) where T : class
     {
         if (value is null)
-            throw new ValidationException(message);
+            throw new ValidationException(property, message);
     }
 
-    public static void ThrowWhenNullOrWhitespace(string? value, string message)
+    public static void ThrowWhenNullOrWhitespace(string? value, string property, string message)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ValidationException(message);
+            throw new ValidationException(property, message);
     }
 
-    public static void Must(bool condition, string message)
+    public static void Must(bool condition, string property, string message)
     {
         if (!condition)
-            throw new ValidationException(message);
+            throw new ValidationException(property, message);
     }
 
-    public static void MustNot(bool condition, string message)
+    public static void MustNot(bool condition, string property, string message)
     {
         if (condition)
-            throw new ValidationException(message);
+            throw new ValidationException(property, message);
     }
 }

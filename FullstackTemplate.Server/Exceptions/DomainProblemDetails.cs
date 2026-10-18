@@ -11,12 +11,15 @@ using Npgsql;
 public static class DomainProblemDetails
 {
     // A validation failure is 422: the request is well-formed, but it breaks a business rule.
+    // A duplicate unique value is 409: the request conflicts with a record that exists.
     public static int StatusCodeFor(Exception exception) => exception switch
     {
         ValidationException or FluentValidation.ValidationException => StatusCodes.Status422UnprocessableEntity,
+        QueryInputException => StatusCodes.Status400BadRequest,
         NotFoundException => StatusCodes.Status404NotFound,
         ForbiddenAccessException => StatusCodes.Status403Forbidden,
-        _ when IsUniqueViolation(exception) => StatusCodes.Status422UnprocessableEntity,
+        ConflictException => StatusCodes.Status409Conflict,
+        _ when IsUniqueViolation(exception) => StatusCodes.Status409Conflict,
         _ => StatusCodes.Status500InternalServerError,
     };
 
@@ -24,6 +27,16 @@ public static class DomainProblemDetails
     // Then the unique index stops the second save. That is a client conflict, not a server fault.
     private static bool IsUniqueViolation(Exception exception) =>
         exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
+
+    /// <summary>
+    /// The request field of each unique index. The problem names the field, not the index, because the index name shows the schema.
+    /// A unit test makes sure that each unique index in the model has an entry.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> UniqueIndexFields = new Dictionary<string, string>
+    {
+        ["ix_tenants_name"] = "name",
+        ["ix_users_identifier"] = "identifier",
+    };
 
     /// <summary>
     /// True when the exception is an expected outcome of a bad request, not a server fault.
@@ -59,12 +72,28 @@ public static class DomainProblemDetails
                 problem.Title = "You do not have access to do this.";
                 problem.Detail = ex.Message;
                 break;
+            case ConflictException ex:
+                problem.Title = "The request conflicts with a record that exists.";
+                problem.Detail = ex.Message;
+                problem.Extensions["errors"] = new Dictionary<string, string[]> { [ex.Property] = [ex.Message] };
+                break;
             // The constraint name and the values stay out of the response, because they show the schema and other rows.
             case { } ex when IsUniqueViolation(ex):
-                problem.Title = "One or more validation errors occurred.";
+                problem.Title = "The request conflicts with a record that exists.";
                 problem.Detail = "A record with this value already exists.";
-                problem.Extensions["errors"] = new Dictionary<string, string[]>();
+                problem.Extensions["errors"] = UniqueViolationField(ex) is { } field
+                    ? new Dictionary<string, string[]> { [field] = [problem.Detail] }
+                    : new Dictionary<string, string[]>();
+                break;
+            case QueryInputException ex:
+                problem.Title = "One or more validation errors occurred.";
+                problem.Detail = ex.Message;
+                problem.Extensions["errors"] = new Dictionary<string, string[]> { [ex.Parameter] = [ex.Message] };
                 break;
         }
     }
+    private static string? UniqueViolationField(Exception exception) =>
+        exception.InnerException is PostgresException { ConstraintName: { } index } && UniqueIndexFields.TryGetValue(index, out var field)
+            ? field
+            : null;
 }

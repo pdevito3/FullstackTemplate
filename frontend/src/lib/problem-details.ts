@@ -5,33 +5,14 @@
  * This is the standard error response format from .NET APIs with Problem Details enabled.
  */
 
-export interface StackFrame {
-  filePath: string
-  fileName: string
-  function: string
-  line: number
-  preContextLine: number
-  preContextCode: string[]
-  contextCode: string[]
-  postContextCode: string[]
-}
+import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
 
-export interface ExceptionDetail {
-  message: string
-  type: string
-  raw: string
-  stackFrames: StackFrame[]
-}
-
-export interface ProblemDetails {
-  type: string
-  title: string
-  status: number
-  detail?: string
-  instance?: string
+/**
+ * The problem details of the contract, with the member that ASP.NET adds to each body (`traceId`)
+ * and the members of a subtype (for example, `errors` on a validation problem).
+ */
+export type ProblemDetails = ContractProblemDetails & {
   traceId?: string
-  exceptionDetails?: ExceptionDetail[]
-  // Additional properties that may be included
   [key: string]: unknown
 }
 
@@ -42,7 +23,7 @@ export class ProblemDetailsError extends Error {
   public readonly problemDetails: ProblemDetails
 
   constructor(problemDetails: ProblemDetails) {
-    super(problemDetails.detail || problemDetails.title)
+    super(problemDetails.detail || problemDetails.title || undefined)
     this.name = 'ProblemDetailsError'
     this.problemDetails = problemDetails
 
@@ -52,16 +33,16 @@ export class ProblemDetailsError extends Error {
     }
   }
 
-  get status(): number {
-    return this.problemDetails.status
+  get status(): number | undefined {
+    return this.problemDetails.status ?? undefined
   }
 
-  get title(): string {
-    return this.problemDetails.title
+  get title(): string | undefined {
+    return this.problemDetails.title ?? undefined
   }
 
   get detail(): string | undefined {
-    return this.problemDetails.detail
+    return this.problemDetails.detail ?? undefined
   }
 
   get traceId(): string | undefined {

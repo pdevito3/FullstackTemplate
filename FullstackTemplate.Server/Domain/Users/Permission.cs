@@ -5,6 +5,9 @@ using Exceptions;
 
 public partial class Permission : ValueObject
 {
+    // The key in the errors of the problem is the name of the request field
+    private const string RequestField = "permission";
+
     private PermissionEnum _permission = null!;
 
     public string Value
@@ -13,7 +16,7 @@ public partial class Permission : ValueObject
         private set
         {
             if (!PermissionEnum.TryFromName(value, true, out var parsed))
-                throw new ValidationException(nameof(Permission), $"Invalid permission: {value}");
+                throw new ValidationException(RequestField, $"Invalid permission: {value}");
 
             _permission = parsed;
         }

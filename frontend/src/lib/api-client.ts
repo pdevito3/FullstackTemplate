@@ -1,36 +1,41 @@
 import axios, { type AxiosRequestConfig, type AxiosError } from 'axios'
+
+import type { client as KubbClient } from '@/api/generated/.kubb/client'
+import { Notification } from '@/components/notification'
+
 import {
   ProblemDetailsError,
   isProblemDetails,
   type ProblemDetails,
 } from './problem-details'
-import { Notification } from '@/components/notification'
 
-/**
- * Extended Axios config with Problem Details handling options
- */
-export interface ApiClientRequestConfig extends AxiosRequestConfig {
-  /**
-   * If true, suppresses automatic error toast notifications.
-   * Use this when you want to handle errors manually in your component.
-   * @default false
-   */
-  suppressErrorToast?: boolean
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * If true, suppresses automatic error toast notifications.
+     * Use this when you want to handle errors manually in your component.
+     * A generated client takes it through `options`, for example `getTenant({ path, options: { suppressErrorToast: true } })`.
+     * @default false
+     */
+    suppressErrorToast?: boolean
+  }
 }
 
 /**
  * Axios instance configured for BFF API calls with CSRF protection and credentials.
  *
- * Usage:
- *   import { apiClient } from '@/lib/api-client'
- *   const response = await apiClient.get('/api/weather')
- *   const data = await apiClient.post('/api/something', { body: data })
+ * The generated clients use this instance. Call a generated client for an endpoint of the Server:
+ *   import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+ *   const tenant = await getTenant({ path: { id } })
+ *
+ * Use apiClient directly only for an endpoint that is not in the OpenAPI document:
+ *   const response = await apiClient.get<BffClaim[]>('/bff/user')
  *
  * Error Handling:
  *   By default, errors are displayed as toast notifications.
  *   To suppress this and handle errors manually:
  *
- *   const response = await apiClient.get('/api/something', { suppressErrorToast: true })
+ *   await getTenant({ path: { id }, options: { suppressErrorToast: true } })
  */
 export const apiClient = axios.create({
   withCredentials: true, // Required to send cookies cross-origin
@@ -84,11 +89,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     // Get custom config options
-    const config = error.config as ApiClientRequestConfig | undefined
+    const config = error.config as AxiosRequestConfig | undefined
     const suppressToast = config?.suppressErrorToast ?? false
 
-    if (!axios.isAxiosError(error)) {
-      // Not an Axios error, re-throw as-is
+    // A cancel (for example, TanStack Query aborts an old query) is not an error to show.
+    if (!axios.isAxiosError(error) || axios.isCancel(error)) {
       return Promise.reject(error)
     }
 
@@ -109,34 +114,9 @@ apiClient.interceptors.response.use(
   }
 )
 
-/**
- * Generic fetch function for custom API calls
- */
-export async function apiFetch<T>(
-  url: string,
-  config?: ApiClientRequestConfig
-): Promise<T> {
-  const response = await apiClient.request<T>({ url, ...config })
-  return response.data
-}
-
-/**
- * Helper to make API calls that suppress error toasts.
- * Use when you want to handle errors in your component's UI.
- *
- * @example
- * const { data, error } = useQuery({
- *   queryKey: ['users', id],
- *   queryFn: () => fetchWithoutToast('/api/users/' + id),
- * })
- *
- * if (error) {
- *   // Handle error in component
- * }
- */
-export async function fetchWithoutToast<T>(
-  url: string,
-  config?: Omit<ApiClientRequestConfig, 'suppressErrorToast'>
-): Promise<T> {
-  return apiFetch<T>(url, { ...config, suppressErrorToast: true })
+// The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
+// Each API version has its own generated folder (src/api/generated, src/api/generated-v2), and each folder has its own client.
+const kubbClients = import.meta.glob<{ client: typeof KubbClient }>('/src/api/generated*/.kubb/client.ts', { eager: true })
+for (const { client } of Object.values(kubbClients)) {
+  client.setConfig({ transport: apiClient })
 }

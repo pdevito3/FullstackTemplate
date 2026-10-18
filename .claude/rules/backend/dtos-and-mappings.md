@@ -73,14 +73,17 @@ public sealed record [EntityName]ForUpdateDto
 
 ### 4. Parameters DTO (Query String)
 
-Used for filtering, sorting, and pagination on list endpoints.
+Used for filtering, sorting, and pagination on list endpoints. Give each query parameter a camelCase name with `[FromQuery(Name = ...)]`, the same as the keys of the errors of the problem. `BasePaginationParameters` names `pageNumber` and `pageSize`.
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
 public sealed class [EntityName]ParametersDto : BasePaginationParameters
 {
+    [FromQuery(Name = "filters")]
     public string? Filters { get; set; }
+
+    [FromQuery(Name = "sortOrder")]
     public string? SortOrder { get; set; }
 }
 ```
@@ -227,6 +230,16 @@ Suppress nullability warnings for properties that will always be set:
 ```csharp
 public string Name { get; init; } = default!;  // Required, always set
 public string? Description { get; init; }       // Optional, nullable
+```
+
+On a request DTO, mark each non-nullable value-type property (`Guid`, `int`, `bool`, and more) with `required`. Without it, a missing field binds to the default value, for example `Guid.Empty`. Then the request gets a 422 from a domain rule, not a 400, but the contract says that the field is required.
+
+```csharp
+public sealed record OrderForCreationDto
+{
+    public required Guid CustomerId { get; init; }  // A missing customerId gives 400
+    public string Notes { get; init; } = default!;
+}
 ```
 
 ### 4. Keep DTOs Flat

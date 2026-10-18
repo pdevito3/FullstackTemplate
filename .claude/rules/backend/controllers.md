@@ -48,14 +48,12 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "Get[EntityName]List")]
     [ProducesResponseType(typeof(PagedList<[EntityName]Dto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<[EntityName]Dto>>> Get[EntityName]List(
         [FromQuery] [EntityName]ParametersDto parameters)
     {
         var query = new Get[EntityName]List.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result);
-
         return Ok(result);
     }
 
@@ -65,7 +63,8 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost(Name = "Add[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<[EntityName]Dto>> Add[EntityName](
         [FromBody] [EntityName]ForCreationDto dto)
     {
@@ -84,7 +83,8 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [HttpPut("{id}", Name = "Update[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<[EntityName]Dto>> Update[EntityName](
         string id,
         [FromBody] [EntityName]ForUpdateDto dto)
@@ -101,6 +101,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [HttpDelete("{id}", Name = "Delete[EntityName]")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult> Delete[EntityName](string id)
     {
         var command = new Delete[EntityName].Command(id);
@@ -202,11 +203,19 @@ public async Task<ActionResult<CustomerDto>> AddCustomer(CustomerForCreationDto 
 /// <returns>The created customer.</returns>
 /// <response code="201">Returns the newly created customer.</response>
 /// <response code="400">If the request data is invalid.</response>
+/// <response code="422">If the request breaks a business rule.</response>
 [HttpPost]
 [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status201Created)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<CustomerDto>> AddCustomer(CustomerForCreationDto dto)
 ```
+
+A 400 comes from model binding or model validation, and its body is a `ValidationProblemDetails` with an `errors` field. Declare that type on each 400, so that the OpenAPI document states the real shape.
+
+A 422 comes from a domain rule (`ValidationException`) or a FluentValidation rule (`FluentValidation.ValidationException`). `Exceptions/DomainProblemDetails.cs` maps both to 422 with an `errors` field, so the body also has the `ValidationProblemDetails` shape. Declare the 422 on each write action (POST, PUT, PATCH, and DELETE), also when the action has no request body. A domain rule can fail in any write.
+
+A 409 comes from a duplicate unique value (`ConflictException`, or a unique index that stops the save). Its body also has the `ValidationProblemDetails` shape. Declare the 409 on each write action that can add or change a unique value.
 
 ### 7. Use Appropriate Authorization
 
@@ -241,18 +250,17 @@ public async Task<ActionResult<IEnumerable<ProductDto>>> GetPublicProducts() { .
 
 ## Pagination Headers
 
-For list endpoints, add pagination metadata to response headers. The `PagedList<T>` class contains all pagination information:
+A list endpoint returns a `PagedList<T>`. `PaginationHeaderFilter` adds the page data to the `X-Pagination` response header for each `PagedList<T>` result. Do not add the header in the controller.
+
+The name of a list endpoint must end in `List`. The frontend client of such an endpoint returns the full response, so that the caller can read the header. If a `PagedList<T>` endpoint has a different name, or another endpoint has a name that ends in `List`, the Debug build fails.
 
 ```csharp
-[HttpGet]
+[HttpGet(Name = "GetCustomerList")]
 public async Task<ActionResult<PagedList<CustomerDto>>> GetCustomerList(
     [FromQuery] CustomerParametersDto parameters)
 {
     var query = new GetCustomerList.Query(parameters);
     var result = await mediator.Send(query);
-
-    Response.AddPaginationHeader(result);
-
     return Ok(result);
 }
 ```
@@ -269,7 +277,8 @@ For domain-specific operations beyond CRUD:
 [HttpPost("{id}/submit", Name = "SubmitOrder")]
 [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<OrderDto>> SubmitOrder(string id)
 {
     var command = new SubmitOrder.Command(id);
@@ -284,7 +293,8 @@ public async Task<ActionResult<OrderDto>> SubmitOrder(string id)
 [HttpPost("{id}/cancel", Name = "CancelOrder")]
 [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<OrderDto>> CancelOrder(
     string id,
     [FromBody] CancelOrderDto dto)
@@ -334,17 +344,10 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
 
 ### Register New Versions
 
-Update `ApiVersioningExtension.cs`:
+Add the version to `SupportedVersions` in `ApiVersioningExtension.cs`. Each version in this list gets its own OpenAPI document. See the "API versioning" section of `docs/backend.md` for all the steps.
 
 ```csharp
-public static ApiVersionSet GetApiVersionSet(this WebApplication app)
-{
-    return app.NewApiVersionSet()
-        .HasApiVersion(new ApiVersion(1, 0))
-        .HasApiVersion(new ApiVersion(2, 0))  // Add new version
-        .ReportApiVersions()
-        .Build();
-}
+public static readonly ApiVersion[] SupportedVersions = [new ApiVersion(1, 0), new ApiVersion(2, 0)];
 ```
 
 ## Anti-Patterns to Avoid

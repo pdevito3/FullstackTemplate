@@ -151,15 +151,21 @@ public static class Get[EntityName]List
         {
             var queryKitConfig = new CustomQueryKitConfiguration();
 
+            // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
             var query = dbContext.[EntityName]s
                 .AsNoTracking()
-                .ApplyQueryKitFilter(request.Parameters.Filters, queryKitConfig)
-                .ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
+                .To[EntityName]DtoQueryable();
 
-            var dtos = query.To[EntityName]DtoQueryable();
+            if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
+                query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);
+
+            // Paging needs a fixed order, or a row can show on two pages or on none
+            query = string.IsNullOrWhiteSpace(request.Parameters.SortOrder)
+                ? query.OrderBy(e => e.Name).ThenBy(e => e.Id)
+                : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(e => e.Id);
 
             return await PagedList<[EntityName]Dto>.CreateAsync(
-                dtos,
+                query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
@@ -167,6 +173,8 @@ public static class Get[EntityName]List
     }
 }
 ```
+
+Apply the filter and the sort after the projection to the DTO, not to the entity. On the entity, a caller can filter on a field that the DTO does not show, for example `CreatedBy`. Each DTO field must translate to SQL. If a DTO field comes from a computed entity property, map it with an expression-bodied method, so that Mapperly inlines the expression into the projection (see `UserMapper.MapFullName`).
 
 ## Key Principles
 

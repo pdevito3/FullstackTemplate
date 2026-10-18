@@ -155,11 +155,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_users_identifier");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_users_tenant_id");
-
                     b.HasIndex("Username")
                         .HasDatabaseName("ix_users_username");
+
+                    b.HasIndex("TenantId", "LastName", "FirstName", "Id")
+                        .HasDatabaseName("ix_users_tenant_id_last_name_first_name_id");
 
                     b.ToTable("users", (string)null);
                 });

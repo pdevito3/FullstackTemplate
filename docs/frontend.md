@@ -10,12 +10,15 @@ pnpm install
 pnpm dev      # dev server
 pnpm build    # production build
 pnpm lint     # ESLint
+pnpm test     # Vitest unit tests (src/**/*.test.ts)
+pnpm generate:api  # API contract from the OpenAPI document
 ```
 
 ## Project structure
 
 ```
 frontend/src/
+├── api/generated*/         # Kubb output. Do not edit
 ├── domain/                 # One folder for each business area
 │   └── [area]/
 │       ├── apis/          # API functions, query hooks, and *.keys.ts
@@ -29,9 +32,11 @@ frontend/src/
 │   └── theme-toggle.tsx   # Light, dark, and system toggle
 ├── routes/                 # TanStack Router file routes
 ├── hooks/                  # Shared React hooks
-├── lib/                    # api-client.ts, problem-details.ts, utils.ts
+├── lib/                    # api-client.ts, pagination.ts, problem-details.ts, utils.ts
 └── main.tsx               # App entry point
 ```
+
+In `components/ui/`, the variants are in `*-variants.ts` files (for example `button-variants.ts`) and the hooks are in `use-*.ts` files. A component from `shadcn add` imports them from the component file, for example `buttonVariants` from `@/components/ui/button`. Change that import to the new file.
 
 ## API client
 
@@ -41,15 +46,73 @@ frontend/src/
 - The `X-CSRF: 1` header is necessary for the BFF CSRF protection.
 - An error response that has problem details becomes a `ProblemDetailsError`. The client shows it as a toast by default. To stop the toast, send `{ suppressErrorToast: true }` with the request.
 
-```typescript
-import { apiClient } from '@/lib/api-client'
+The generated API clients send each request through `apiClient`. `main.tsx` imports `lib/api-client.ts` to connect them before the first request. Use `apiClient` directly only for endpoints that are not in the OpenAPI document, such as `/bff/user`.
 
-const response = await apiClient.get('/api/v1/users')
+A generated client has two error modes. The `throwOnError` option selects the mode:
+
+- `throwOnError: true` (the default): a non-2xx response goes through the `apiClient` error interceptor. The client shows the toast and throws the `ProblemDetailsError`.
+- `throwOnError: false`: Kubb sets `validateStatus: () => true`, so axios accepts all statuses. The interceptor does not run. There is no toast and no `ProblemDetailsError`. The client returns the full result. Read `result.status`, and read `result.error` for a non-2xx body.
+
+In both modes, a network error or a cancel still rejects the promise.
+
+```typescript
+const result = await getTenant({ path: { id }, throwOnError: false, signal })
+if (result.status === 404) {
+  // Show the not found state. result.error has the problem details body.
+}
+```
+
+## API contract
+
+Kubb generates the API contract from the OpenAPI document of the Server. The configuration is in `kubb.config.ts`. The output for v1 is in `src/api/generated/`, and each later version has its own folder, for example `src/api/generated-v2/`. Each folder has one file for each endpoint:
+
+```
+src/api/generated/
+├── [tag]/
+│   ├── clients/[operation].ts  # Axios client function
+│   ├── types/[operation].ts    # Request and response types
+│   └── zod/[operation].ts      # Zod schemas
+├── models/
+│   ├── types/[schema].ts       # Shared DTO types
+│   └── zod/[schema].ts         # Shared DTO Zod schemas
+└── .kubb/                      # Client runtime
+```
+
+The tag and the operation names come from the endpoint names (`Name =` or `.WithName`) and the controller tags. The Server Debug build fails if an endpoint has no name.
+
+To change the contract after a change to the Server API:
+
+1. Build the Server in Debug. The build writes `FullstackTemplate.Server/openapi/FullstackTemplate.Server.json`.
+2. Run `pnpm generate:api` in `frontend/`.
+3. Commit the OpenAPI document and the generated files together.
+
+If a generated file has a merge conflict, do not merge it by hand. Accept either side, then do steps 1 and 2 again. The `api-contract` job of the `CI` workflow fails when the committed files are not current. See [ADR 0001](adr/0001-commit-generated-api-contract.md).
+
+Do not edit the generated files. ESLint ignores them, but `tsc` compiles them.
+
+- A list client (an operation name that ends in `List`) returns the full response, because the paging metadata is in the `X-Pagination` header. Read the header with `parsePagination` from `lib/pagination.ts`. It returns the `PaginationMetadata` type.
+- The other clients return only the response body.
+- The Zod schemas are for form validation and tests. The clients do not parse responses with them.
+
+```typescript
+import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+import type { TenantDto } from '@/api/generated/models/types/tenant-dto'
+
+const tenant: TenantDto = await getTenant({ path: { id }, signal })
+```
+
+```typescript
+import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
+import { parsePagination } from '@/lib/pagination'
+
+const result = await getTenantList({ query: { pageNumber: 1, pageSize: 10 }, signal })
+const tenants = result.data
+const pagination = parsePagination(result)
 ```
 
 ## Query hooks
 
-Each area keeps its API function, its hook, and its query key factory in `domain/[area]/apis/`.
+Each area keeps its hook and its query key factory in `domain/[area]/apis/`. The hook calls the generated client. Write the hooks and the keys by hand.
 
 ```typescript
 import { useWeatherForecast } from '@/domain/weather/apis/get-weather'

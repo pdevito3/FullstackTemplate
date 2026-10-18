@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Databases;
 using Domain.Users;
 using Exceptions;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
 using Services;
 using ZiggyCreatures.Caching.Fusion;
@@ -35,7 +36,12 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(TenantAdminBehavior<,>));
         });
         builder.Services.AddApiVersioningExtension();
-        builder.Services.AddControllers();
+        builder.Services.AddControllers(options =>
+        {
+            options.Filters.Add<PaginationHeaderFilter>();
+            // The keys of the validation errors use the JSON names of the request, for example "name", not "Name"
+            options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
+        });
         builder.Services.AddSwaggerExtension(builder.Configuration);
         builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 

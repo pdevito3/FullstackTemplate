@@ -8,7 +8,7 @@ public sealed partial class EmailAddress : ValueObject
 
     public EmailAddress(string value)
     {
-        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(value, "Please provide a valid email.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(value, "email", "Please provide a valid email.");
         new EmailValidator().ValidateAndThrow(value);
         Value = value;
     }
@@ -22,7 +22,11 @@ public sealed partial class EmailAddress : ValueObject
     {
         public EmailValidator()
         {
-            RuleFor(email => email).EmailAddress();
+            // The key in the errors of the problem is the name of the request field
+            RuleFor(email => email)
+                .EmailAddress()
+                .OverridePropertyName("email")
+                .WithMessage("Please provide a valid email.");
         }
     }
 }

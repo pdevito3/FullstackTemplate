@@ -2,8 +2,10 @@ namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
 using Databases;
 using Dtos;
+using Exceptions;
 using Mappings;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Users;
 
 public static class UpdateTenant
@@ -17,6 +19,14 @@ public static class UpdateTenant
             var tenant = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.update.load")
                 .GetById(request.Id, cancellationToken);
+
+            // Ignore all filters: the unique index on Name also covers deleted tenants and the tenants of other users.
+            var nameInUse = await dbContext.Tenants
+                .TagWithOperationCallSite("tenants.update.name_in_use")
+                .IgnoreQueryFilters()
+                .AnyAsync(t => t.Id != tenant.Id && t.Name == request.Dto.Name, cancellationToken);
+            if (nameInUse)
+                throw new ConflictException("name", "A tenant with this name already exists.");
 
             var forUpdate = request.Dto.ToTenantForUpdate();
             tenant.Update(forUpdate);

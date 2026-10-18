@@ -21,12 +21,13 @@ try
 {
     Log.Information("Starting FullstackTemplate.Server");
 
-    var builder = WebApplication.CreateBuilder(args);
+    var builder = WebApplication.CreateBuilder(OpenApiBuildTime.WithHostArgs(args));
     CSharpReplGuard.ThrowIfLoadedOutsideDevelopment(builder.Environment);
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.ConfigureServices();
     builder.Services.AddHostedService<MigrationHostedService<AppDbContext>>();
+    OpenApiBuildTime.RemoveHostedServices(builder.Services);
 
     var app = builder.Build();
 
@@ -71,7 +72,8 @@ try
         => summaries[(temperatureC - minTemperatureC) * summaries.Length / (maxTemperatureC - minTemperatureC)];
 
     var api = app.MapGroup("api/v{version:apiVersion}")
-        .WithApiVersionSet(apiVersionSet);
+        .WithApiVersionSet(apiVersionSet)
+        .WithTags("Weather");
 
     api.MapGet("/weather", () =>
     {
@@ -127,7 +129,8 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+// The build-time OpenAPI generator stops the host on purpose with a HostAbortedException.
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
     // A startup failure, such as a CSharpReplGuard stop, must not look like a clean exit to Aspire or CI.

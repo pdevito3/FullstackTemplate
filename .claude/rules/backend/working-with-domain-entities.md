@@ -77,9 +77,9 @@ public class Accession : BaseEntity
     // Public method that encapsulates business logic
     public Accession Submit()
     {
-        ValidationException.ThrowWhenNull(Patient,
+        ValidationException.ThrowWhenNull(Patient, "patientId",
             $"A patient is required in order to set an accession to {AccessionStatus.ReadyForTesting().Value}");
-        ValidationException.Must(Status == AccessionStatus.Draft(),
+        ValidationException.Must(Status == AccessionStatus.Draft(), "status",
             $"This accession is already submitted and is ready for testing");
 
         Status = AccessionStatus.ReadyForTesting();
@@ -172,7 +172,7 @@ public class Accession : BaseEntity
     public Accession SetPatient(Patient patient)
     {
         GuardIfInProcessingState("The patient");
-        ValidationException.ThrowWhenNull(patient, $"Invalid Patient.");
+        ValidationException.ThrowWhenNull(patient, "patientId", $"Invalid Patient.");
 
         Patient = patient;
         return this;
@@ -201,7 +201,7 @@ Use value objects to encompass common domain concepts with behavior and validati
 ```csharp
 public sealed class Email : ValueObject
 {
-    public string Value { get; private set; }
+    public string? Value { get; private set; }
     
     public Email(string value)
     {
@@ -215,7 +215,7 @@ public sealed class Email : ValueObject
     }
     
     public static Email Of(string value) => new Email(value);
-    public static implicit operator string(Email value) => value.Value;
+    public static implicit operator string?(Email value) => value.Value;
 
     private Email() { } // EF Core
     
@@ -223,7 +223,11 @@ public sealed class Email : ValueObject
     {
         public EmailValidator()
         {
-            RuleFor(email => email).EmailAddress();
+            // The key in the errors of the problem is the name of the request field
+            RuleFor(email => email)
+                .EmailAddress()
+                .OverridePropertyName("email")
+                .WithMessage("Please provide a valid email.");
         }
     }
 }
@@ -364,7 +368,7 @@ public class Sample : BaseEntity
 {
     public Sample SetContainer(Container container)
     {
-        ValidationException.ThrowWhenNull(container, $"Invalid Container.");
+        ValidationException.ThrowWhenNull(container, "containerId", $"Invalid Container.");
         if (!container.CanStore(Type))
             throw new ValidationException(nameof(Sample),
                 $"A {container.Type} container is used to store {container.UsedFor.Value} samples, not {Type.Value}.");
@@ -389,15 +393,16 @@ Perform domain validation within the entity methods, not in external services.
 
 **Pattern:**
 ```csharp
+// The second argument is the name of the request field. It is the key in the errors of the problem.
 private static void ValidatePatient(Patient patient)
 {
-    ValidationException.ThrowWhenNullOrWhitespace(patient.FirstName, "Please provide a first name.");
-    ValidationException.ThrowWhenNullOrWhitespace(patient.LastName, "Please provide a last name.");
-    ValidationException.ThrowWhenNullOrWhitespace(patient.Sex, "Please provide a sex.");
-    ValidationException.MustNot(patient.Lifespan.Age == null && patient.Lifespan.DateOfBirth == null,
+    ValidationException.ThrowWhenNullOrWhitespace(patient.FirstName, "firstName", "Please provide a first name.");
+    ValidationException.ThrowWhenNullOrWhitespace(patient.LastName, "lastName", "Please provide a last name.");
+    ValidationException.ThrowWhenNullOrWhitespace(patient.Sex, "sex", "Please provide a sex.");
+    ValidationException.MustNot(patient.Lifespan.Age == null && patient.Lifespan.DateOfBirth == null, "dateOfBirth",
         "Please provide a valid age and birth date.");
-    ValidationException.ThrowWhenNullOrWhitespace(patient.OrganizationId, "Please provide an organization id.");
-    ValidationException.Must(EntityId.IsValid(patient.OrganizationId, Organization.IdPrefix), "Please provide a valid organization ID.");
+    ValidationException.ThrowWhenNullOrWhitespace(patient.OrganizationId, "organizationId", "Please provide an organization id.");
+    ValidationException.Must(EntityId.IsValid(patient.OrganizationId, Organization.IdPrefix), "organizationId", "Please provide a valid organization ID.");
 }
 ```
 

@@ -6,9 +6,19 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- AV0029 and AV0030 ask for Asp.Versioning.OpenApi. With that package, GetOrCreateSchemaAsync in a transformer throws
+         (https://github.com/dotnet/aspnet-api-versioning/issues/1227), and PaginationHeaderTransformer calls it.
+         So SwaggerExtension calls AddOpenApi once for each supported version. -->
+    <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
     <!-- Only Debug builds load DOTNET_STARTUP_HOOKS, so CSharpRepl cannot attach to a deployed server.
          Every other configuration (Release, or a custom one such as Staging) turns startup hooks off. -->
     <StartupHookSupport Condition="'$(Configuration)' != 'Debug'">false</StartupHookSupport>
+  </PropertyGroup>
+
+  <!-- A Debug build writes the OpenAPI document to openapi/. The frontend generates its API contract from this file. -->
+  <PropertyGroup>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocuments Condition="'$(Configuration)' != 'Debug'">false</OpenApiGenerateDocuments>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +29,7 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="DistributedLock.Postgres" />
     <PackageReference Include="EFCore.NamingConventions" />
@@ -35,7 +46,11 @@
     <PackageReference Include="ZiggyCreatures.FusionCache" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
     <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />

@@ -10,6 +10,7 @@ public static class ApiRoutes
     {
         public static string GetList => $"{Base}/users";
         public static string GetRecord(string id) => $"{Base}/users/{id}";
+        public static string GetByIdentifier(string identifier) => $"{Base}/users/by-identifier/{identifier}";
         public static string Create => $"{Base}/users";
         public static string Initiate => $"{Base}/users/initiate";
         public static string Put(string id) => $"{Base}/users/{id}";

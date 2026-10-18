@@ -1,15 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
-import type { SecureWeatherForecast } from '../types'
-import { WeatherKeys } from './weather.keys'
 
-/**
- * Fetch secure weather forecast data (requires authentication)
- */
-export async function getSecureWeatherForecasts(): Promise<SecureWeatherForecast[]> {
-  const response = await apiClient.get<SecureWeatherForecast[]>('/api/v1/weather/secure')
-  return response.data
-}
+import { getSecureWeatherForecast } from '@/api/generated/weather/clients/get-secure-weather-forecast'
+
+import { WeatherKeys } from './weather.keys'
 
 /**
  * Hook for fetching secure weather forecast data (requires authentication)
@@ -17,7 +10,7 @@ export async function getSecureWeatherForecasts(): Promise<SecureWeatherForecast
 export function useSecureWeatherForecast(enabled: boolean = true) {
   return useQuery({
     queryKey: WeatherKeys.secure(),
-    queryFn: getSecureWeatherForecasts,
+    queryFn: ({ signal }) => getSecureWeatherForecast({ signal }),
     enabled,
     retry: false, // Don't retry on 401
   })

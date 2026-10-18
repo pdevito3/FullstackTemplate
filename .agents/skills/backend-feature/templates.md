@@ -69,11 +69,11 @@ public class [EntityName] : BaseEntity
 
     private static void Validate[EntityName]([EntityName] entity)
     {
-        ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "Please provide a name.");
+        ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "name", "Please provide a name.");
 
         // Check the prefix of each ID foreign key, as User checks its TenantId.
-        // ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "Please provide a tenant.");
-        // ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "Please provide a valid tenant ID.");
+        // ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "tenantId", "Please provide a tenant.");
+        // ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
     }
 
     // Business methods
@@ -165,9 +165,15 @@ public sealed record [EntityName]ForUpdateDto
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
+using Microsoft.AspNetCore.Mvc;
+using Resources;
+
 public sealed class [EntityName]ParametersDto : BasePaginationParameters
 {
+    [FromQuery(Name = "filters")]
     public string? Filters { get; set; }
+
+    [FromQuery(Name = "sortOrder")]
     public string? SortOrder { get; set; }
 }
 ```
@@ -352,7 +358,7 @@ using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using QueryKit;
+using FullstackTemplate.Server.Resources;
 
 public static class Get[EntityName]List
 {
@@ -364,15 +370,21 @@ public static class Get[EntityName]List
         {
             var queryKitConfig = new CustomQueryKitConfiguration();
 
+            // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
             var query = dbContext.[EntityName]s
                 .AsNoTracking()
-                .ApplyQueryKitFilter(request.Parameters.Filters, queryKitConfig)
-                .ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
+                .To[EntityName]DtoQueryable();
 
-            var dtos = query.To[EntityName]DtoQueryable();
+            if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
+                query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);
+
+            // Paging needs a fixed order, or a row can show on two pages or on none
+            query = string.IsNullOrWhiteSpace(request.Parameters.SortOrder)
+                ? query.OrderBy(e => e.Name).ThenBy(e => e.Id)
+                : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(e => e.Id);
 
             return await PagedList<[EntityName]Dto>.CreateAsync(
-                dtos,
+                query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
@@ -420,14 +432,12 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "Get[EntityName]List")]
     [ProducesResponseType(typeof(PagedList<[EntityName]Dto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<[EntityName]Dto>>> Get[EntityName]List(
         [FromQuery] [EntityName]ParametersDto parameters)
     {
         var query = new Get[EntityName]List.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result.Pagination);
-
         return Ok(result);
     }
 
@@ -437,7 +447,10 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost(Name = "Add[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    // Declare a 409 if this write can add or change a unique value
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<[EntityName]Dto>> Add[EntityName](
         [FromBody] [EntityName]ForCreationDto dto)
     {
@@ -456,7 +469,10 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [HttpPut("{id}", Name = "Update[EntityName]")]
     [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    // Declare a 409 if this write can add or change a unique value
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<[EntityName]Dto>> Update[EntityName](
         string id,
         [FromBody] [EntityName]ForUpdateDto dto)
@@ -473,6 +489,7 @@ public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
     [HttpDelete("{id}", Name = "Delete[EntityName]")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult> Delete[EntityName](string id)
     {
         var command = new Delete[EntityName].Command(id);
@@ -882,7 +899,8 @@ public [EntityName] [Action](string reason)
 [HttpPost("{id}/[action-route]", Name = "[Action][EntityName]")]
 [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](string id)
 {
     var command = new [Action][EntityName].Command(id);
@@ -897,7 +915,8 @@ public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](string id)
 [HttpPost("{id}/[action-route]", Name = "[Action][EntityName]")]
 [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
 public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](
     string id,
     [FromBody] [Action][EntityName]Dto dto)

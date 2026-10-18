@@ -1,12 +1,15 @@
 {
   "name": "FullstackTemplate-frontend",
   "private": true,
+  "packageManager": "pnpm@10.34.7",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "vitest run",
+    "generate:api": "kubb generate",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -27,7 +30,7 @@
     "@tanstack/react-router": "^1.141.8",
     "@tanstack/react-router-devtools": "^1.141.8",
     "@tanstack/react-table": "^8.21.3",
-    "axios": "^1.13.2",
+    "axios": "^1.20.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -46,6 +49,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@kubb/plugin-axios": "^5.7.0",
+    "@kubb/plugin-ts": "^5.0.14",
+    "@kubb/plugin-zod": "^5.4.12",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-plugin": "^1.142.0",
@@ -57,10 +63,17 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "kubb": "^5.11.0",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.1",
     "vite": "^7.2.6",
-    "vite-plugin-svgr": "^4.5.0"
+    "vite-plugin-svgr": "^4.5.0",
+    "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

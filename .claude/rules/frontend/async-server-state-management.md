@@ -277,22 +277,13 @@ function PatientDetails({ patientId }: { patientId: string }) {
 
 Always type your API responses and use them consistently:
 
-```tsx
-// types/index.ts
-export interface PatientDto {
-  id: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  // ...
-}
+Kubb generates the request and response types from the OpenAPI document of the Server. Use them. Do not write a DTO type by hand.
 
-// apis/get-patient.tsx
-const getPatient = async (id: string): Promise<PatientDto> => {
-  return peakLimsApi
-    .get(`/v1/patients/${id}`)
-    .then((response) => response.data as PatientDto);
-};
+```tsx
+import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+import type { TenantDto } from '@/api/generated/models/types/tenant-dto'
+
+const tenant: TenantDto = await getTenant({ path: { id }, signal })
 ```
 
 ### 11. Performance Optimizations

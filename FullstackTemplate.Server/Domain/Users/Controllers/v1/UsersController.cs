@@ -7,7 +7,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Resources;
-using Resources.Extensions;
 
 [ApiController]
 [Route("api/v{v:apiVersion}/users")]
@@ -52,14 +51,12 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "GetUserList")]
     [ProducesResponseType(typeof(PagedList<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<UserDto>>> GetUserList(
         [FromQuery] UserParametersDto parameters)
     {
         var query = new GetUserList.Query(parameters);
         var result = await mediator.Send(query);
-
-        Response.AddPaginationHeader(result);
-
         return Ok(result);
     }
 
@@ -68,10 +65,11 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPost(Name = "AddUser")]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<UserDto>> AddUser(
         [FromBody] UserForCreationDto dto)
     {
@@ -91,7 +89,8 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> UpdateUser(
         string id,
         [FromBody] UserForUpdateDto dto)
@@ -109,6 +108,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult> DeleteUser(string id)
     {
         var command = new DeleteUser.Command(id);
@@ -124,7 +124,8 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> UpdateUserRole(
         string id,
         [FromBody] UpdateUserRoleDto dto)
@@ -142,7 +143,8 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> AddUserPermission(
         string id,
         [FromBody] UserPermissionDto dto)
@@ -160,7 +162,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<UserDto>> RemoveUserPermission(
         string id,
         string permission)
@@ -177,8 +179,10 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost("initiate", Name = "InitiateUserAndTenant")]
     [ProducesResponseType(typeof(InitiateUserAndTenantResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<InitiateUserAndTenantResponseDto>> InitiateUserAndTenant(
         [FromBody] InitiateUserAndTenantDto dto)
     {

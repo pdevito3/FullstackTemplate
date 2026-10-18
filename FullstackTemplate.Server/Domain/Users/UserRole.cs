@@ -5,6 +5,9 @@ using Exceptions;
 
 public partial class UserRole : ValueObject
 {
+    // The key in the errors of the problem is the name of the request field
+    private const string RequestField = "role";
+
     private UserRoleEnum _role = null!;
 
     public string Value
@@ -13,7 +16,7 @@ public partial class UserRole : ValueObject
         private set
         {
             if (!UserRoleEnum.TryFromName(value, true, out var parsed))
-                throw new ValidationException(nameof(UserRole), $"Invalid role: {value}");
+                throw new ValidationException(RequestField, $"Invalid role: {value}");
 
             _role = parsed;
         }
@@ -22,7 +25,7 @@ public partial class UserRole : ValueObject
     public UserRole(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ValidationException(nameof(UserRole), "Role cannot be null or empty.");
+            throw new ValidationException(RequestField, "Role cannot be null or empty.");
 
         Value = value;
     }

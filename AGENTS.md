@@ -72,6 +72,7 @@ cd frontend
 pnpm install
 pnpm build
 pnpm lint
+pnpm test
 ```
 
 ## Rules

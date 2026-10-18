@@ -6,7 +6,7 @@ using Asp.Versioning.Builder;
 
 public static class ApiVersioningExtension
 {
-    // The version that a request without a version gets. Keep it when you add a version, so that these clients do not change.
+    // The version of a controller or an endpoint that declares no version. Each request has the version in its URL path.
     public static readonly ApiVersion DefaultVersion = new(1, 0);
 
     // Add a version here to serve it. Each version gets its own OpenAPI document and Swagger UI entry.

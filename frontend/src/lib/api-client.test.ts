@@ -99,3 +99,42 @@ describe('apiClient with a generated client', () => {
     expect(Notification.error).not.toHaveBeenCalled()
   })
 })
+
+describe('apiClient with a response that is not problem details', () => {
+  it.each([
+    ['the message field', { message: 'Down for maintenance.' }, 'Down for maintenance.'],
+    ['the error field', { error: 'Bad gateway.' }, 'Bad gateway.'],
+    ['the axios message when the body has neither field', { reason: 'x' }, 'Request failed with status code 503'],
+  ])('rejects with %s', async (_, body, message) => {
+    adapter.mockImplementation((config) => respond(config, 503, body))
+
+    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(ProblemDetailsError)
+    expect((error as Error).message).toBe(message)
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(message)
+  })
+
+  it('rejects with the axios message for a 401 with an empty body', async () => {
+    // The Server sends a 401 with no body, and the BFF passes it on
+    adapter.mockImplementation((config) => respond(config, 401, ''))
+
+    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+
+    expect(error).not.toBeInstanceOf(ProblemDetailsError)
+    expect((error as Error).message).toBe('Request failed with status code 401')
+  })
+
+  it('rejects with the axios message for a network error', async () => {
+    adapter.mockImplementation((config) =>
+      Promise.reject(new AxiosError('Network Error', AxiosError.ERR_NETWORK, config)),
+    )
+
+    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+
+    expect(error).not.toBeInstanceOf(ProblemDetailsError)
+    expect((error as Error).message).toBe('Network Error')
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith('Network Error')
+  })
+})

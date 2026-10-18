@@ -38,6 +38,12 @@
         }
       ]
     },
+    "skipRestore": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Do not restore the NuGet packages after the project is created"
+    },
     "UseKeycloak": {
       "type": "computed",
       "value": "(AuthProvider == \"Keycloak\")"
@@ -77,6 +83,9 @@
             ".vs/**",
             "**/bin/**",
             "**/obj/**",
+            "frontend/obj*/**",
+            "**/logs/**",
+            "**/*.log",
             "**/node_modules/**",
             "**/.idea/**",
             "**/dist/**",
@@ -88,6 +97,7 @@
             ".vscode/mcp.json",
             ".playwright-mcp/**",
             "template.csproj",
+            "scripts/template-smoke-test.sh",
             "*.nupkg",
             ".claude/worktrees/**",
             ".claude/settings.local.json",
@@ -113,6 +123,7 @@
   "postActions": [
     {
       "id": "restore",
+      "condition": "(!skipRestore)",
       "description": "Restore NuGet packages",
       "manualInstructions": [
         {

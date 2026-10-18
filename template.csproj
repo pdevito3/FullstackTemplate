@@ -21,14 +21,29 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Pack the whole repository. .template.config/template.json excludes the files that a new project does not get. -->
-    <!-- .claude/skills is a symlink. A package cannot hold a symlink, so the package has a copy of .agents/skills there. -->
-    <Content Include="**\*" Exclude="**\bin\**;**\obj\**;**\node_modules\**;**\dist\**;**\TestResults\**;**\.DS_Store;**\*.user;.git\**;.idea\**;.claude\worktrees\**;.playwright-mcp\**;nupkg\**;FullstackTemplate.sln;template.csproj" />
+    <Compile Remove="**\*" />
+    <Content Remove="**\*" />
+    <None Remove="**\*" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="**\*" />
-  </ItemGroup>
+  <!--
+    Pack only the files that git tracks. A glob over the folder also packs local files that git ignores,
+    such as logs, local settings, and build output, so the package depends on the machine that packs it.
+    .template.config/template.json excludes the tracked files that a new project does not get.
+  -->
+  <Target Name="AddGitTrackedFilesToPackage" BeforeTargets="_GetPackageFiles">
+    <Exec Command="git -c core.quotePath=false ls-files" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_GitTrackedFile" />
+    </Exec>
+    <ItemGroup>
+      <_GitTrackedFile Remove="template.csproj;FullstackTemplate.sln;.playwright-mcp/**" />
+      <!-- .claude/skills is a symlink. A package cannot hold a symlink, so the package has a copy of .agents/skills there. -->
+      <_GitTrackedFile Remove=".claude/skills" />
+      <_SkillFile Include="@(_GitTrackedFile)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('.agents/skills/'))" />
+      <Content Include="@(_GitTrackedFile)" Condition="Exists('%(Identity)')" Pack="true" PackagePath="content/%(RelativeDir)" />
+      <Content Include="@(_SkillFile)" Pack="true" PackagePath="content/$([System.String]::Copy('%(RelativeDir)').Replace('.agents/skills/', '.claude/skills/'))" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />

@@ -37,6 +37,15 @@ dotnet new fullstack-aspire -n MyProject --AuthProvider FusionAuth
 |-----------|---------|-------------|
 | `--name` / `-n` | (required) | Project name |
 | `--AuthProvider` | `DuendeDemo` | Auth provider: `DuendeDemo`, `Keycloak`, or `FusionAuth` |
+| `--no-restore` | `false` | Do not restore the NuGet packages after the project is created |
+
+## Publish the Template
+
+The package holds only the files that git tracks. Before you publish, run the smoke test. It packs the template, creates a project from the package, and fails if a local file that git ignores got into the package or the project.
+
+```bash
+./scripts/template-smoke-test.sh
+```
 
 ## What You Get
 

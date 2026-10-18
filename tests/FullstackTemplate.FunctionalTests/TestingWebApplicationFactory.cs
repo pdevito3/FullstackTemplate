@@ -22,9 +22,14 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
     private readonly PostgresTestDatabase _database = new();
 
     /// <summary>
-    /// The one machine client that the test server lets read the rows of all tenants.
+    /// The machine client that the test server lets manage all tenants. It also reads the rows of all tenants.
     /// </summary>
     public const string TrustedMachineClientId = "trusted-machine";
+
+    /// <summary>
+    /// The machine client that the test server lets read the rows of all tenants, with no right to change them.
+    /// </summary>
+    public const string ReadOnlyMachineClientId = "read-only-machine";
 
     /// <summary>
     /// The running factory for the assembly. Set when the fixture starts.
@@ -83,7 +88,8 @@ public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsy
         // Auth configuration required by AddJwtBearerAuthentication
         Environment.SetEnvironmentVariable("Auth__Authority", "https://localhost");
         Environment.SetEnvironmentVariable("Auth__Audience", "test-api");
-        Environment.SetEnvironmentVariable("Tenancy__AllTenantClientIds__0", TrustedMachineClientId);
+        Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__0", TrustedMachineClientId);
+        Environment.SetEnvironmentVariable("Tenancy__ReadAllTenantsClientIds__0", ReadOnlyMachineClientId);
 
         // Disable Aspire health checks that require database connectivity during startup
         Environment.SetEnvironmentVariable("Aspire__Npgsql__EntityFrameworkCore__PostgreSQL__DisableHealthChecks", "true");

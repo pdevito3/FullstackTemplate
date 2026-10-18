@@ -72,7 +72,7 @@ public static class InitiateUserAndTenant
         }
 
         // A signed-in user can start a tenant only for themselves. A caller with no user identifier must be
-        // able to manage all tenants: a machine client on the allow-list, or system work in a system scope.
+        // able to manage all tenants: a trusted tenant management client, or system work in a system scope.
         private void GuardCallerCanInitiateFor(string identifier)
         {
             var callerIdentifier = currentUserService.UserIdentifier;
@@ -80,7 +80,7 @@ public static class InitiateUserAndTenant
             {
                 if (!tenantScopeProvider.CanManageAllTenants())
                     throw new ForbiddenAccessException(
-                        "A caller with no user identifier must be a machine client on the all-tenant allow-list to start a tenant.");
+                        "A caller with no user identifier must be a trusted tenant management client to start a tenant.");
                 return;
             }
 

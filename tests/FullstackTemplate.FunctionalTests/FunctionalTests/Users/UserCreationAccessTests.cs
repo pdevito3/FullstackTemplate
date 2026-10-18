@@ -94,7 +94,7 @@ public class UserCreationAccessTests : TestBase
 
         // Assert
         await ShouldBeForbiddenAsync(result,
-            "A caller with no user identifier must be a machine client on the all-tenant allow-list to start a tenant.");
+            "A caller with no user identifier must be a trusted tenant management client to start a tenant.");
     }
 
     [Fact]

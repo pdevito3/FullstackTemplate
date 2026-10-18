@@ -45,7 +45,7 @@ public class TestFixture : IAsyncLifetime
         // Configure auth for testing (these values are not used since auth is mocked)
         builder.Configuration["Auth:Authority"] = "https://localhost";
         builder.Configuration["Auth:Audience"] = "test-api";
-        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.AllTenantClientIds)}:0"] = TrustedMachineClientId;
+        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
 
         // Configure services
         builder.ConfigureServices();

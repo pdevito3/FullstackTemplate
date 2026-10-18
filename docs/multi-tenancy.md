@@ -42,11 +42,11 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 | Current user | Scope | Rows that the filter shows |
 |--------------|-------|----------------------------|
 | System work in a system scope (see below) | `TenantScope.AllTenants` | The rows of all tenants |
-| A machine client on the allow-list | `TenantScope.AllTenants` | The rows of all tenants |
+| A machine client on one of the two allow-lists | `TenantScope.AllTenants` | The rows of all tenants |
 | A user with a user record | `TenantScope.ForTenant(id)` | The rows of this user's tenant |
 | A signed-in user with no user record | `TenantScope.NoTenant` | No rows |
 | No HTTP request and no system scope | `TenantScope.NoTenant` | No rows |
-| Any other caller (a machine client not on the allow-list, an anonymous request) | `TenantScope.NoTenant` | No rows |
+| Any other caller (a machine client on no allow-list, an anonymous request) | `TenantScope.NoTenant` | No rows |
 
 ## System work
 
@@ -74,7 +74,7 @@ The migration hosted service does not use a system scope. Migrations do not read
 
 The scope tells which rows a caller sees. It does not tell what a caller can do. For an access decision, use `ITenantScopeProvider.CanManageAllTenants()`, not `TenantScope.IncludesAllTenants`.
 
-`CanManageAllTenants()` is true for a machine client on the allow-list and for system work in a system scope. It is false for all other callers.
+`CanManageAllTenants()` is true for a client in `ManageAllTenantsClientIds` and for system work in a system scope. It is false for all other callers, including a client in `ReadAllTenantsClientIds`.
 
 ## Add a user to a tenant
 
@@ -96,16 +96,24 @@ The tenant filter also applies to `Tenant`, so the `/api/v1/tenants` endpoints o
 
 ## Machine clients
 
-A machine client gets a token with no `sub` claim. The issuer can give such a token to any client that it knows, so a missing `sub` does not make a caller trusted. Only the clients in `Tenancy:AllTenantClientIds` see the rows of all tenants and can manage all tenants. The list is empty by default.
+A machine client gets a token with no `sub` claim. The issuer can give such a token to any client that it knows, so a missing `sub` does not make a caller trusted. Only the clients on one of two allow-lists are trusted. Both lists are empty by default.
+
+| Setting | The client can |
+|---------|----------------|
+| `Tenancy:ReadAllTenantsClientIds` | Read the rows of all tenants. It cannot add, change, or delete anything. |
+| `Tenancy:ManageAllTenantsClientIds` | Read the rows of all tenants, add a tenant, start a tenant for another user, and do the work of an admin in any tenant. |
+
+Put a client on the read list unless it must change data. For example, a reporting service only reads.
 
 ```json
 {
   "Tenancy": {
-    "AllTenantClientIds": ["reporting-service"]
+    "ReadAllTenantsClientIds": ["reporting-service"],
+    "ManageAllTenantsClientIds": ["provisioning-service"]
   }
 }
 ```
 
-The server compares the `client_id` claim (or `azp`) with the list. The comparison is case-sensitive.
+The server compares the `client_id` claim (or `azp`) with the lists. The comparison is case-sensitive.
 
 Keycloak gives a service account token a `sub` claim. The server handles this token as a user, so the service account needs a user record in a tenant.

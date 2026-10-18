@@ -11,6 +11,7 @@ using Shouldly;
 public sealed class TenantScopeProviderTests : IDisposable
 {
     private const string TrustedClientId = "trusted-machine";
+    private const string ReadOnlyClientId = "read-only-machine";
 
     private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
     private readonly ITenantIdProvider _tenantIdProvider = Substitute.For<ITenantIdProvider>();
@@ -23,7 +24,11 @@ public sealed class TenantScopeProviderTests : IDisposable
         var services = new ServiceCollection();
         services.AddSingleton(_httpContextAccessor);
         services.AddSingleton(_tenantIdProvider);
-        services.AddSingleton(Options.Create(new TenancyOptions { AllTenantClientIds = [TrustedClientId] }));
+        services.AddSingleton(Options.Create(new TenancyOptions
+        {
+            ManageAllTenantsClientIds = [TrustedClientId],
+            ReadAllTenantsClientIds = [ReadOnlyClientId]
+        }));
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<SystemTenantAccess>();
         services.AddScoped<ITenantScopeProvider, TenantScopeProvider>();
@@ -126,6 +131,15 @@ public sealed class TenantScopeProviderTests : IDisposable
     {
         SetCaller();
 
+        _sut.CanManageAllTenants().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void read_only_machine_client_gets_all_tenants_but_cannot_manage_them()
+    {
+        SetCaller(new Claim("client_id", ReadOnlyClientId));
+
+        _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 

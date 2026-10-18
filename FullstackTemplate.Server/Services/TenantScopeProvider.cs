@@ -41,7 +41,8 @@ public sealed class TenantScopeProvider(
             return tenantId is { } id ? TenantScope.ForTenant(id) : TenantScope.NoTenant;
         }
 
-        if (IsAllowListedMachineClient())
+        if (IsMachineClientIn(tenancyOptions.Value.ReadAllTenantsClientIds)
+            || IsMachineClientIn(tenancyOptions.Value.ManageAllTenantsClientIds))
             return TenantScope.AllTenants;
 
         // Any other caller sees no rows. This includes work with no HTTP request that did not opt in,
@@ -49,11 +50,11 @@ public sealed class TenantScopeProvider(
         return TenantScope.NoTenant;
     }
 
-    public bool CanManageAllTenants() => systemTenantAccess.IsGranted || IsAllowListedMachineClient();
+    public bool CanManageAllTenants() =>
+        systemTenantAccess.IsGranted || IsMachineClientIn(tenancyOptions.Value.ManageAllTenantsClientIds);
 
     // The issuer can give a token with no "sub" to any client that it knows, so a missing "sub" alone
-    // does not make a caller trusted. Only a machine client on the allow-list is trusted.
-    private bool IsAllowListedMachineClient() =>
-        currentUserService.IsMachine
-        && tenancyOptions.Value.AllTenantClientIds.Contains(currentUserService.ClientId, StringComparer.Ordinal);
+    // does not make a caller trusted. Only a machine client on an allow-list is trusted.
+    private bool IsMachineClientIn(string[] allowList) =>
+        currentUserService.IsMachine && allowList.Contains(currentUserService.ClientId, StringComparer.Ordinal);
 }

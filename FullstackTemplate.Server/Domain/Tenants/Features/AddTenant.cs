@@ -17,11 +17,11 @@ public static class AddTenant
         public async Task<TenantDto> Handle(Command request, CancellationToken cancellationToken)
         {
             // A new tenant is outside the scope of each user, so only a caller that can manage all tenants
-            // can add one: a machine client on the allow-list, or system work in a system scope.
+            // can add one: a trusted tenant management client, or system work in a system scope.
             // A user starts their own tenant with InitiateUserAndTenant.
             if (!tenantScopeProvider.CanManageAllTenants())
                 throw new ForbiddenAccessException(
-                    "Only a machine client on the all-tenant allow-list can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.");
+                    "Only a trusted tenant management client can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.");
 
             var forCreation = request.Dto.ToTenantForCreation();
             var tenant = Tenant.Create(forCreation);

@@ -175,11 +175,7 @@ public class TenantAccessTests : TestBase
             ApiRoutes.Tenants.Create, new FakeTenantForCreationDto().Generate());
 
         // Assert
-        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
-        problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
-        problem.Detail.ShouldBe(
-            "Only a machine client on the all-tenant allow-list can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.");
+        await ShouldBeForbiddenAsync(result, AddTenantForbiddenDetail);
     }
 
     [Fact]
@@ -201,6 +197,68 @@ public class TenantAccessTests : TestBase
         added.StatusCode.ShouldBe(HttpStatusCode.Created);
         other.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task read_only_machine_client_can_read_all_tenants()
+    {
+        // Arrange
+        var (firstTenant, _) = await AddTenantWithUserAsync("User");
+        var (secondTenant, _) = await AddTenantWithUserAsync("User");
+        SignInAsReadOnlyMachineClient();
+
+        // Act
+        var record = await FactoryClient.GetRequestAsync(ApiRoutes.Tenants.GetRecord(firstTenant.Id));
+        var list = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageSize=500");
+
+        // Assert
+        record.StatusCode.ShouldBe(HttpStatusCode.OK);
+        list.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var ids = (await list.Content.ReadFromJsonAsync<List<TenantDto>>()).ShouldNotBeNull().Select(t => t.Id);
+        ids.ShouldContain(firstTenant.Id);
+        ids.ShouldContain(secondTenant.Id);
+    }
+
+    [Fact]
+    public async Task read_only_machine_client_cannot_add_a_tenant()
+    {
+        // Arrange
+        SignInAsReadOnlyMachineClient();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(
+            ApiRoutes.Tenants.Create, new FakeTenantForCreationDto().Generate());
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, AddTenantForbiddenDetail);
+    }
+
+    [Fact]
+    public async Task read_only_machine_client_cannot_change_a_tenant()
+    {
+        // Arrange
+        var (tenant, _) = await AddTenantWithUserAsync("User");
+        SignInAsReadOnlyMachineClient();
+
+        // Act
+        var updated = await FactoryClient.PutJsonRequestAsync(
+            ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}" });
+        var deleted = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
+
+        // Assert
+        await ShouldBeForbiddenAsync(updated, "Only an admin can do this.");
+        await ShouldBeForbiddenAsync(deleted, "Only an admin can do this.");
+        var exists = await ExecuteDbContextAsync(db => db.Tenants.AnyAsync(t => t.Id == tenant.Id));
+        exists.ShouldBeTrue();
+    }
+
+    private const string AddTenantForbiddenDetail =
+        "Only a trusted tenant management client can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.";
+
+    private void SignInAsReadOnlyMachineClient()
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.ReadOnlyMachineClientId
+        });
 
     private void SignInAs(User user)
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });

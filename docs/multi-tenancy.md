@@ -5,7 +5,7 @@ The server keeps the data of each tenant separate.
 ## How it works
 
 1. An entity implements `ITenantable`, so it has a `TenantId`.
-2. `AppDbContext` adds a query filter on `TenantId` for each tenantable entity.
+2. `AppDbContext` adds a query filter on `TenantId` for each tenantable entity. `Tenant` gets the same filter on its `Id`.
 3. `TenantScopeProvider` finds the `TenantScope` of the current request. The filter reads this scope for each query.
 4. The context does not set the `TenantId` of a new entity. Set it when you create the entity.
 
@@ -44,6 +44,14 @@ The request to add a user names the tenant. These rules stop a caller from joini
 - `POST /api/v1/users` adds a user only to a tenant in the scope of the caller. A caller with `TenantScope.NoTenant` cannot add a user. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must have `TenantScope.AllTenants`. Other requests get 403.
 - If a user already has the identifier, `initiate` returns 422. A user belongs to one tenant only.
+
+## Tenant endpoints
+
+The tenant filter also applies to `Tenant`, so the `/api/v1/tenants` endpoints obey the scope:
+
+- A user can get, update, and delete only their own tenant. For other tenants, the endpoints return 404.
+- The list shows only the tenant of the caller. A caller with `TenantScope.NoTenant` gets an empty list.
+- Only a caller with `TenantScope.AllTenants` can add a tenant with `POST /api/v1/tenants`. Other requests get 403. A user starts their own tenant with `POST /api/v1/users/initiate`.
 
 ## Machine clients
 

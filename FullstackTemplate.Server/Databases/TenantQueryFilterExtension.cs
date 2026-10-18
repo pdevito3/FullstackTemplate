@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Databases;
 
 using System.Linq.Expressions;
 using Domain;
+using Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Resources;
@@ -13,6 +14,7 @@ public static class TenantQueryFilterExtension
     /// Applies tenant filtering to all entities implementing ITenantable.
     /// Filter logic: scope.IncludesAllTenants OR (scope.TenantId != null AND entity.TenantId == scope.TenantId).
     /// For <see cref="TenantScope.NoTenant"/> both sides are false, so the filter matches no rows.
+    /// <see cref="Tenant"/> gets the same filter on its own ID, so a caller sees only their own tenant.
     /// </summary>
     public static void FilterByTenant(this ModelBuilder modelBuilder, AppDbContext context)
     {
@@ -36,6 +38,18 @@ public static class TenantQueryFilterExtension
                 mutableEntityType.SetQueryFilter(QueryFilterNames.Tenant, filterLambda);
             }
         }
+
+        modelBuilder.Entity<Tenant>().HasQueryFilter(QueryFilterNames.Tenant, BuildTenantFilter(context));
+    }
+
+    private static Expression<Func<Tenant, bool>> BuildTenantFilter(AppDbContext context)
+    {
+        var parameter = Expression.Parameter(typeof(Tenant), "t");
+
+        // t.Id
+        var idProperty = Expression.Property(parameter, nameof(Tenant.Id));
+
+        return Expression.Lambda<Func<Tenant, bool>>(BuildFilterBody(idProperty, context), parameter);
     }
 
     private static LambdaExpression BuildDirectFilter(Type entityType, AppDbContext context)

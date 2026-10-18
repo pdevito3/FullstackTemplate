@@ -52,6 +52,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [HttpPost(Name = "AddTenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<TenantDto>> AddTenant(
         [FromBody] TenantForCreationDto dto)
     {

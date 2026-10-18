@@ -18,8 +18,11 @@ public static class ApiRoutes
 
     public static class Tenants
     {
+        public static string GetList => $"{Base}/tenants";
         public static string Create => $"{Base}/tenants";
         public static string GetRecord(Guid id) => $"{Base}/tenants/{id}";
+        public static string Put(Guid id) => $"{Base}/tenants/{id}";
+        public static string Delete(Guid id) => $"{Base}/tenants/{id}";
     }
 
     public static class Weather

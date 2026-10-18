@@ -31,7 +31,10 @@ public class TenantErrorResponseTests : TestBase
     public async Task invalid_tenant_returns_validation_problem()
     {
         // Arrange
-        FactoryClient.SetFakeBearerToken("user");
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Tenants.Create, new { name = "" });

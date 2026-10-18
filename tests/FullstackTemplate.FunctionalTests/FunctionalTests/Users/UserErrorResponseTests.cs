@@ -54,6 +54,7 @@ public class UserErrorResponseTests : TestBase
     private static async Task ShouldBeBlankEmailProblem(HttpResponseMessage result)
     {
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
         problem.Detail.ShouldBe("Please provide a valid email.");
@@ -78,6 +79,7 @@ public class UserErrorResponseTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Detail.ShouldBe("Please provide a valid email.");
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("email");
@@ -103,6 +105,7 @@ public class UserErrorResponseTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("role");
     }

@@ -4,6 +4,7 @@ using FullstackTemplate.Server.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using QueryKit.Exceptions;
 using Shouldly;
 
 public class DomainProblemDetailsTests
@@ -76,6 +77,32 @@ public class DomainProblemDetailsTests
 
         // Assert
         status.ShouldBe(StatusCodes.Status500InternalServerError);
+    }
+
+    public static readonly TheoryData<Exception, int> ExpectedStatusCodes = new()
+    {
+        { new ValidationException("name", "Please provide a name."), StatusCodes.Status422UnprocessableEntity },
+        { new FluentValidation.ValidationException("Please provide a valid email."), StatusCodes.Status422UnprocessableEntity },
+        { new SortParsingException("Unknown"), StatusCodes.Status400BadRequest },
+        { new UnknownFilterPropertyException("Unknown"), StatusCodes.Status400BadRequest },
+        { new NotFoundException("Tenant was not found."), StatusCodes.Status404NotFound },
+        { new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden },
+        { new ConflictException("identifier", "A user with this identifier already exists."), StatusCodes.Status409Conflict },
+        // These two come from the setup of the server, not from the request
+        { new QueryKitDbContextTypeException("SoundsLike"), StatusCodes.Status500InternalServerError },
+        { new SoundsLikeNotImplementedException("AppDbContext"), StatusCodes.Status500InternalServerError },
+        { new InvalidOperationException("x"), StatusCodes.Status500InternalServerError },
+    };
+
+    [Theory]
+    [MemberData(nameof(ExpectedStatusCodes))]
+    public void each_exception_maps_to_its_status(Exception exception, int expected)
+    {
+        // Act
+        var status = DomainProblemDetails.StatusCodeFor(exception);
+
+        // Assert
+        status.ShouldBe(expected);
     }
 
     private static DbUpdateException SaveFailure(string sqlState)

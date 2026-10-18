@@ -12,7 +12,6 @@ using Swashbuckle.AspNetCore.SwaggerUI;
 public static class SwaggerExtension
 {
     private const string SecuritySchemeName = "oauth2";
-    private const string ApiVersion = "1";
 
     /// <summary>
     /// Adds OpenAPI document generation with optional OAuth2 security and XML documentation.
@@ -52,14 +51,20 @@ public static class SwaggerExtension
             oidcEndpoints = DiscoverOidcEndpoints(authAuthority!);
         }
 
-        services.AddOpenApi(options =>
+        // Each supported API version gets its own document, named by its ApiExplorer group ("v1", "v2")
+        foreach (var version in ApiVersioningExtension.SupportedVersions)
+            services.AddOpenApi(ApiVersioningExtension.DocumentName(version), ConfigureDocument);
+
+        return services;
+
+        void ConfigureDocument(OpenApiOptions options)
         {
             options.AddDocumentTransformer((document, context, cancellationToken) =>
             {
                 document.Info = new OpenApiInfo
                 {
                     Title = "FullstackTemplate API",
-                    Version = "v1",
+                    Version = context.DocumentName,
                     Description = "API documentation for the FullstackTemplate application"
                 };
 
@@ -95,25 +100,6 @@ public static class SwaggerExtension
                     ];
                 }
 
-                var updatedPaths = new OpenApiPaths();
-                foreach (var path in document.Paths)
-                {
-                    var newPath = path.Key
-                        .Replace("{version}", ApiVersion)
-                        .Replace("{v}", ApiVersion);
-                    updatedPaths[newPath] = path.Value;
-                }
-                document.Paths = updatedPaths;
-
-                return Task.CompletedTask;
-            });
-
-            options.AddOperationTransformer((operation, context, cancellationToken) =>
-            {
-                operation.Parameters = operation.Parameters?
-                    .Where(p => p.Name != "version" && p.Name != "v")
-                    .ToList();
-
                 return Task.CompletedTask;
             });
 
@@ -124,9 +110,7 @@ public static class SwaggerExtension
             options.AddOperationTransformer<UnauthorizedResponseTransformer>();
             options.AddDocumentTransformer<RequireOperationIdTransformer>();
             options.AddDocumentTransformer<RequireListOperationNameTransformer>();
-        });
-
-        return services;
+        }
     }
 
     /// <summary>
@@ -192,7 +176,11 @@ public static class SwaggerExtension
 
         app.UseSwaggerUI(options =>
         {
-            options.SwaggerEndpoint("/openapi/v1.json", "FullstackTemplate API v1");
+            foreach (var version in ApiVersioningExtension.SupportedVersions)
+            {
+                var documentName = ApiVersioningExtension.DocumentName(version);
+                options.SwaggerEndpoint($"/openapi/{documentName}.json", $"FullstackTemplate API {documentName}");
+            }
             options.RoutePrefix = "swagger";
 
             if (hasOAuthConfig && !string.IsNullOrEmpty(swaggerClientId))

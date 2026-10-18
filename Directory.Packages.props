@@ -16,7 +16,8 @@
     <!-- Distributed Locking -->
     <PackageVersion Include="DistributedLock.Postgres" Version="1.2.1" />
     <!-- API Versioning -->
-    <PackageVersion Include="Asp.Versioning.Http" Version="8.1.0" />
+    <PackageVersion Include="Asp.Versioning.Http" Version="10.2.3" />
+    <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
     <!-- Authentication -->
     <PackageVersion Include="Duende.BFF" Version="4.0.1" />
     <PackageVersion Include="Duende.BFF.Yarp" Version="4.0.1" />

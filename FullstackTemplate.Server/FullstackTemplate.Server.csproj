@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- AV0029 and AV0030 ask for Asp.Versioning.OpenApi. That package does not work with the schema transformers of
+         Microsoft.AspNetCore.OpenApi, so SwaggerExtension calls AddOpenApi once for each supported version. -->
+    <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
     <!-- Only Debug builds load DOTNET_STARTUP_HOOKS, so CSharpRepl cannot attach to a deployed server.
          Every other configuration (Release, or a custom one such as Staging) turns startup hooks off. -->
     <StartupHookSupport Condition="'$(Configuration)' != 'Debug'">false</StartupHookSupport>
@@ -25,6 +28,7 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="DistributedLock.Postgres" />
     <PackageReference Include="EFCore.NamingConventions" />

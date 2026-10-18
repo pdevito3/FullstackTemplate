@@ -82,7 +82,15 @@ The code is in `Resources/Extensions/ApiVersioningExtension.cs`. The URL has the
 public sealed class CustomersController : ControllerBase { }
 ```
 
-To add a version, add `.HasApiVersion(new ApiVersion(2, 0))` in `GetApiVersionSet()`.
+Each endpoint serves only the versions that it declares. A request for a different version, such as `/api/v2/tenants`, gets 404. `SupportedVersions` in `ApiVersioningExtension.cs` is the list of all versions. Each version in this list gets its own OpenAPI document (`/openapi/v1.json`, `/openapi/v2.json`) and its own Swagger UI entry. A document contains only the operations of its version.
+
+To add version 2:
+
+1. Add `new ApiVersion(2, 0)` to `SupportedVersions`.
+2. Add a `Controllers/v2/` controller with `[ApiVersion("2.0")]`. Keep the v1 controller for the clients that use v1.
+3. For a minimal API endpoint, add `.MapToApiVersion(new ApiVersion(2, 0))`.
+4. Build the Server. The Debug build writes the v2 document to `openapi/FullstackTemplate.Server_v2.json`.
+5. Add an entry for this file in `frontend/kubb.config.ts`, with its own output folder. Then run `pnpm generate:api`.
 
 ## Error responses
 

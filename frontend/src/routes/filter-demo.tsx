@@ -5,9 +5,11 @@ import {
   toQueryKitString,
   Operators,
   LogicalOperators,
-  type FilterConfig,
-  type FilterPreset,
-  type FilterState,
+} from '@/components/filter-builder'
+import type {
+  FilterConfig,
+  FilterPreset,
+  FilterState,
 } from '@/components/filter-builder'
 import {
   Card,

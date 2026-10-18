@@ -68,6 +68,37 @@ public class UserListQueryTests : TestBase
         (users[0].Id == target.Id).ShouldBe(targetFirst);
     }
 
+    // The insert order and the Id order are both the reverse of the expected order, so neither can give the correct result
+    [Fact]
+    public async Task list_with_no_sort_returns_the_users_by_last_name_then_first_name()
+    {
+        // Arrange
+        var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
+        await InsertAsync(tenant);
+        User UserNamed(string lastName, string firstName) => User.Create(FakeUserInTenant(tenant.Id, "")
+            .RuleFor(u => u.LastName, lastName)
+            .RuleFor(u => u.FirstName, firstName)
+            .Generate());
+        var third = UserNamed("b", "a");
+        var second = UserNamed("a", "b");
+        var first = UserNamed("a", "a");
+        // PostgreSQL sorts a uuid in the order of its text form
+        var ids = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() }.OrderBy(id => id.ToString(), StringComparer.Ordinal).ToArray();
+        third.OverrideId(ids[0]);
+        second.OverrideId(ids[1]);
+        first.OverrideId(ids[2]);
+        await InsertAsync(third, second, first);
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = third.Identifier });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetList);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
+        users.Select(u => u.Id).ShouldBe([first.Id, second.Id, third.Id]);
+    }
+
     // The DTO does not show these fields, so a caller must not filter or sort on them.
     // A 400 here also shows that the error message names only a field that the contract does not have.
     [Theory]

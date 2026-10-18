@@ -63,6 +63,12 @@ try
     var apiVersionSet = app.GetApiVersionSet();
 
     string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
+    const int minTemperatureC = -20;
+    const int maxTemperatureC = 55;
+
+    // The summary matches the temperature: the range splits into one equal band for each summary.
+    string SummaryFor(int temperatureC)
+        => summaries[(temperatureC - minTemperatureC) * summaries.Length / (maxTemperatureC - minTemperatureC)];
 
     var api = app.MapGroup("api/v{version:apiVersion}")
         .WithApiVersionSet(apiVersionSet);
@@ -72,12 +78,15 @@ try
         using var activity = Telemetry.Trace([], "GenerateWeatherForecast");
 
         var forecast = Enumerable.Range(1, 5).Select(index =>
-            new WeatherForecast
-            (
-                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                Random.Shared.Next(-20, 55),
-                summaries[Random.Shared.Next(summaries.Length)]
-            ))
+            {
+                var temperatureC = Random.Shared.Next(minTemperatureC, maxTemperatureC);
+                return new WeatherForecast
+                (
+                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    temperatureC,
+                    SummaryFor(temperatureC)
+                );
+            })
             .ToArray();
 
         activity?.SetTag("forecast.count", forecast.Length);
@@ -94,13 +103,16 @@ try
         var userName = user.Identity?.Name ?? user.FindFirstValue("sub") ?? "Unknown";
 
         var forecast = Enumerable.Range(1, 5).Select(index =>
-            new SecureWeatherForecast
-            (
-                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                Random.Shared.Next(-20, 55),
-                summaries[Random.Shared.Next(summaries.Length)],
-                userName
-            ))
+            {
+                var temperatureC = Random.Shared.Next(minTemperatureC, maxTemperatureC);
+                return new SecureWeatherForecast
+                (
+                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    temperatureC,
+                    SummaryFor(temperatureC),
+                    userName
+                );
+            })
             .ToArray();
 
         activity?.SetTag("forecast.count", forecast.Length);

@@ -36,6 +36,8 @@ frontend/src/
 └── main.tsx               # App entry point
 ```
 
+In `components/ui/`, the variants are in `*-variants.ts` files (for example `button-variants.ts`) and the hooks are in `use-*.ts` files. A component from `shadcn add` imports them from the component file, for example `buttonVariants` from `@/components/ui/button`. Change that import to the new file.
+
 ## API client
 
 `lib/api-client.ts` exports `apiClient`, an Axios instance for the BFF:

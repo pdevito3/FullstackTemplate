@@ -3,22 +3,40 @@ namespace FullstackTemplate.UnitTests.Services;
 using System.Security.Claims;
 using FullstackTemplate.Server.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Shouldly;
 
-public class TenantScopeProviderTests
+public sealed class TenantScopeProviderTests : IDisposable
 {
     private const string TrustedClientId = "trusted-machine";
 
     private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
     private readonly ITenantIdProvider _tenantIdProvider = Substitute.For<ITenantIdProvider>();
-    private readonly TenantScopeProvider _sut;
+    private readonly ServiceProvider _services;
+    private readonly IServiceScope _scope;
+    private readonly ITenantScopeProvider _sut;
 
     public TenantScopeProviderTests()
     {
-        var options = Options.Create(new TenancyOptions { AllTenantClientIds = [TrustedClientId] });
-        _sut = new TenantScopeProvider(new CurrentUserService(_httpContextAccessor), _tenantIdProvider, options);
+        var services = new ServiceCollection();
+        services.AddSingleton(_httpContextAccessor);
+        services.AddSingleton(_tenantIdProvider);
+        services.AddSingleton(Options.Create(new TenancyOptions { AllTenantClientIds = [TrustedClientId] }));
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<SystemTenantAccess>();
+        services.AddScoped<ITenantScopeProvider, TenantScopeProvider>();
+        _services = services.BuildServiceProvider();
+
+        _scope = _services.CreateScope();
+        _sut = _scope.ServiceProvider.GetRequiredService<ITenantScopeProvider>();
+    }
+
+    public void Dispose()
+    {
+        _scope.Dispose();
+        _services.Dispose();
     }
 
     private void SetCaller(params Claim[] claims)
@@ -47,11 +65,68 @@ public class TenantScopeProviderTests
     }
 
     [Fact]
-    public void work_with_no_http_request_gets_all_tenants()
+    public void work_with_no_http_request_and_no_opt_in_gets_no_tenant()
     {
         _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
 
-        _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
+        _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
+        _sut.CanManageAllTenants().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void system_scope_gets_all_tenants_and_can_manage_them()
+    {
+        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+
+        using var systemScope = _services.GetRequiredService<IServiceScopeFactory>().CreateSystemScope();
+        var provider = systemScope.ServiceProvider.GetRequiredService<ITenantScopeProvider>();
+
+        provider.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
+        provider.CanManageAllTenants().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void system_scope_does_not_change_other_scopes()
+    {
+        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+
+        using var systemScope = _services.GetRequiredService<IServiceScopeFactory>().CreateSystemScope();
+
+        _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
+        _sut.CanManageAllTenants().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void user_with_a_user_record_cannot_manage_all_tenants()
+    {
+        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(Guid.NewGuid());
+        SetCaller(new Claim("sub", "user-1"));
+
+        _sut.CanManageAllTenants().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void machine_client_on_the_allow_list_can_manage_all_tenants()
+    {
+        SetCaller(new Claim("client_id", TrustedClientId));
+
+        _sut.CanManageAllTenants().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void machine_client_not_on_the_allow_list_cannot_manage_all_tenants()
+    {
+        SetCaller(new Claim("client_id", "m2m"));
+
+        _sut.CanManageAllTenants().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void anonymous_request_cannot_manage_all_tenants()
+    {
+        SetCaller();
+
+        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Fact]

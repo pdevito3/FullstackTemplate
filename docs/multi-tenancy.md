@@ -41,11 +41,40 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 
 | Current user | Scope | Rows that the filter shows |
 |--------------|-------|----------------------------|
-| No HTTP request (startup work, background work, the REPL) | `TenantScope.AllTenants` | The rows of all tenants |
+| System work in a system scope (see below) | `TenantScope.AllTenants` | The rows of all tenants |
 | A machine client on the allow-list | `TenantScope.AllTenants` | The rows of all tenants |
 | A user with a user record | `TenantScope.ForTenant(id)` | The rows of this user's tenant |
 | A signed-in user with no user record | `TenantScope.NoTenant` | No rows |
+| No HTTP request and no system scope | `TenantScope.NoTenant` | No rows |
 | Any other caller (a machine client not on the allow-list, an anonymous request) | `TenantScope.NoTenant` | No rows |
+
+## System work
+
+Work with no HTTP request gets `TenantScope.NoTenant` by default. Examples are a hosted service, a background job, and fire-and-forget work that lost its request. This default fails closed.
+
+If system work must see all tenants, it must opt in. Create the DI scope with `CreateSystemScope()`:
+
+```csharp
+await using var scope = scopeFactory.CreateSystemScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+```
+
+The opt-in applies to this scope only. It does not flow into other scopes. A system scope gets `TenantScope.AllTenants`, even if the scope has a user.
+
+These callers use a system scope:
+
+- The integration test fixture, when it seeds the data.
+- The functional test helpers in `TestBase`, which arrange and check data outside a request.
+- The CSharpRepl `Send` and `InScope` helpers. `SendAs` uses a plain scope, so the filter uses the tenant of the user.
+- The design-time `AppDbContextFactory` for the EF Core tools.
+
+The migration hosted service does not use a system scope. Migrations do not read through the tenant filter.
+
+## Row scope and capability
+
+The scope tells which rows a caller sees. It does not tell what a caller can do. For an access decision, use `ITenantScopeProvider.CanManageAllTenants()`, not `TenantScope.IncludesAllTenants`.
+
+`CanManageAllTenants()` is true for a machine client on the allow-list and for system work in a system scope. It is false for all other callers.
 
 ## Add a user to a tenant
 
@@ -54,7 +83,7 @@ These rules stop a caller from joining a tenant that is not theirs:
 - `POST /api/v1/users` needs an admin (see [backend.md](backend.md#admin-requests)). The server puts the new user in the tenant of the caller. The request body does not need a tenant.
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
-- `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must have `TenantScope.AllTenants`. Other requests get 403.
+- `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must be able to manage all tenants. Other requests get 403.
 - If a user already has the identifier, `POST /api/v1/users` and `initiate` return 422. A user belongs to one tenant only.
 
 ## Tenant endpoints
@@ -63,11 +92,11 @@ The tenant filter also applies to `Tenant`, so the `/api/v1/tenants` endpoints o
 
 - A user can get only their own tenant. An admin can update and delete only their own tenant. For other tenants, the endpoints return 404. A user who is not an admin gets 403 for an update or a delete.
 - The list shows only the tenant of the caller. A caller with `TenantScope.NoTenant` gets an empty list.
-- Only a caller with `TenantScope.AllTenants` can add a tenant with `POST /api/v1/tenants`. Other requests get 403. A user starts their own tenant with `POST /api/v1/users/initiate`.
+- Only a caller that can manage all tenants can add a tenant with `POST /api/v1/tenants`. Other requests get 403. A user starts their own tenant with `POST /api/v1/users/initiate`.
 
 ## Machine clients
 
-A machine client gets a token with no `sub` claim. The issuer can give such a token to any client that it knows, so a missing `sub` does not make a caller trusted. Only the clients in `Tenancy:AllTenantClientIds` see the rows of all tenants. The list is empty by default.
+A machine client gets a token with no `sub` claim. The issuer can give such a token to any client that it knows, so a missing `sub` does not make a caller trusted. Only the clients in `Tenancy:AllTenantClientIds` see the rows of all tenants and can manage all tenants. The list is empty by default.
 
 ```json
 {

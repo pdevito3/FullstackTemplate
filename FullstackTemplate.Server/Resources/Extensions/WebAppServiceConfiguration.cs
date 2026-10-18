@@ -25,6 +25,7 @@ public static class WebAppServiceConfiguration
             });
         builder.Services.Configure<TenancyOptions>(builder.Configuration.GetSection(TenancyOptions.SectionName));
         builder.Services.AddApplicationServices();
+        builder.Services.AddScoped<SystemTenantAccess>();
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);

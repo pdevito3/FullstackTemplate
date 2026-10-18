@@ -18,7 +18,10 @@ public static class InitiateUserAndTenant
 {
     public sealed record Command(InitiateUserAndTenantDto Dto) : IRequest<InitiateUserAndTenantResponseDto>;
 
-    public sealed class Handler(AppDbContext dbContext, ICurrentUserService currentUserService)
+    public sealed class Handler(
+        AppDbContext dbContext,
+        ICurrentUserService currentUserService,
+        ITenantScopeProvider tenantScopeProvider)
         : IRequestHandler<Command, InitiateUserAndTenantResponseDto>
     {
         private readonly ILogger _logger = Log.ForContext<Handler>();
@@ -68,15 +71,16 @@ public static class InitiateUserAndTenant
             };
         }
 
-        // A signed-in user can start a tenant only for themselves. Only a caller that sees all tenants,
-        // such as an allow-listed machine client, can start a tenant for another identifier.
+        // A signed-in user can start a tenant only for themselves. A caller with no user identifier must be
+        // able to manage all tenants: a machine client on the allow-list, or system work in a system scope.
         private void GuardCallerCanInitiateFor(string identifier)
         {
             var callerIdentifier = currentUserService.UserIdentifier;
             if (callerIdentifier is null)
             {
-                if (!dbContext.CurrentTenantScope.IncludesAllTenants)
-                    throw new ForbiddenAccessException("Only a trusted machine client can start a tenant for another user.");
+                if (!tenantScopeProvider.CanManageAllTenants())
+                    throw new ForbiddenAccessException(
+                        "A caller with no user identifier must be a machine client on the all-tenant allow-list to start a tenant.");
                 return;
             }
 

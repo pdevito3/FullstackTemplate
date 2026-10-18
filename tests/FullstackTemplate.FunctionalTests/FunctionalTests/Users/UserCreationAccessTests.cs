@@ -93,7 +93,8 @@ public class UserCreationAccessTests : TestBase
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto);
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "Only a trusted machine client can start a tenant for another user.");
+        await ShouldBeForbiddenAsync(result,
+            "A caller with no user identifier must be a machine client on the all-tenant allow-list to start a tenant.");
     }
 
     [Fact]

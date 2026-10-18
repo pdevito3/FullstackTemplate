@@ -3,6 +3,7 @@ namespace FullstackTemplate.FunctionalTests;
 using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using MediatR;
@@ -54,9 +55,12 @@ public class TestBase : IDisposable
             return Factory.ExportedActivities.ToList();
     }
 
+    // The helpers below arrange and check data for the test, outside any HTTP request. They are system
+    // work, so each one opts in to all tenants with a system scope.
+
     public static async Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
     {
-        using var scope = ScopeFactory.CreateScope();
+        await using var scope = ScopeFactory.CreateSystemScope();
         var mediator = scope.ServiceProvider.GetRequiredService<ISender>();
         return await mediator.Send(request);
     }
@@ -64,14 +68,14 @@ public class TestBase : IDisposable
     public static async Task<TEntity?> FindAsync<TEntity>(params object[] keyValues)
         where TEntity : class
     {
-        using var scope = ScopeFactory.CreateScope();
+        await using var scope = ScopeFactory.CreateSystemScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.FindAsync<TEntity>(keyValues);
     }
 
     public static async Task AddAsync<TEntity>(TEntity entity) where TEntity : class
     {
-        using var scope = ScopeFactory.CreateScope();
+        await using var scope = ScopeFactory.CreateSystemScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -79,13 +83,13 @@ public class TestBase : IDisposable
 
     public static async Task ExecuteScopeAsync(Func<IServiceProvider, Task> action)
     {
-        using var scope = ScopeFactory.CreateScope();
+        await using var scope = ScopeFactory.CreateSystemScope();
         await action(scope.ServiceProvider);
     }
 
     public static async Task<T> ExecuteScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
     {
-        using var scope = ScopeFactory.CreateScope();
+        await using var scope = ScopeFactory.CreateSystemScope();
         return await action(scope.ServiceProvider);
     }
 

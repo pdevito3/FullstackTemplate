@@ -178,7 +178,8 @@ public class TenantAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
-        problem.Detail.ShouldBe("Only a trusted machine client can add a tenant.");
+        problem.Detail.ShouldBe(
+            "Only a machine client on the all-tenant allow-list can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.");
     }
 
     [Fact]

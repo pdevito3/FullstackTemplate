@@ -40,9 +40,11 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         public IReadOnlyList<string> GetClaimValues(string claimType) => [];
     }
 
+    // The EF Core tools are system work, so the design-time context opts in to all tenants.
     private sealed class DesignTimeTenantScopeProvider : ITenantScopeProvider
     {
         public TenantScope GetCurrentScope() => TenantScope.AllTenants;
+        public bool CanManageAllTenants() => true;
     }
 
     private sealed class DesignTimeMediator : IMediator

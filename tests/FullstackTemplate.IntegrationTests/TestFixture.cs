@@ -60,8 +60,8 @@ public class TestFixture : IAsyncLifetime
         var provider = services.BuildServiceProvider();
         BaseScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
-        // Run migrations
-        await using var scope = BaseScopeFactory.CreateAsyncScope();
+        // Run migrations and seed in a system scope. With no opt-in, a scope with no HTTP request sees no tenant.
+        await using var scope = BaseScopeFactory.CreateSystemScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await dbContext.Database.MigrateAsync();
 

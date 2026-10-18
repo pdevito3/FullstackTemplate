@@ -7,7 +7,8 @@ namespace FullstackTemplate.Server.Services;
 public sealed record TenantScope
 {
     /// <summary>
-    /// The rows of all tenants. For system work that has no user.
+    /// The rows of all tenants. For system work in a scope from <see cref="SystemScopeExtensions.CreateSystemScope"/>,
+    /// and for a machine client on the allow-list.
     /// </summary>
     public static TenantScope AllTenants { get; } = new(includesAllTenants: true, tenantId: null);
 

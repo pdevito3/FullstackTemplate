@@ -117,43 +117,43 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Create rich domain entity following DDD principles
    - Private setters, factory methods, encapsulated behavior
    - Value objects for complex concepts
-   - See: `.claude/rules/backend/working-with-domain-entities.md`
+   - See: `docs/backend/domain-entities.md`
 
 3. **Generate Domain Events**
    - Created and Updated events (no deleted event, because deletes are soft)
    - Additional business-specific events as needed
-   - See: `.claude/rules/backend/domain-events.md`
+   - See: `docs/backend/domain-events.md`
 
 4. **Generate DTOs and Models**
    - Read DTO for responses
    - Creation/Update DTOs for requests
    - Parameters DTO for list queries
    - Internal models for domain method contracts
-   - See: `.claude/rules/backend/dtos-and-mappings.md`
+   - See: `docs/backend/dtos-and-mappings.md`
 
 5. **Generate Mapperly Mapper**
    - Entity to DTO mappings
    - DTO to internal model mappings
    - IQueryable projection support
-   - See: `.claude/rules/backend/dtos-and-mappings.md`
+   - See: `docs/backend/dtos-and-mappings.md`
 
 6. **Generate CQRS Features**
    - Add, Update, Delete commands
    - Get single and Get list queries
    - MediatR handlers with proper patterns
-   - See: `.claude/rules/backend/features-and-cqrs.md`
+   - See: `docs/backend/features-and-cqrs.md`
 
 7. **Generate Controller**
    - Thin controller delegating to MediatR
    - Proper API versioning
    - OpenAPI documentation
-   - See: `.claude/rules/backend/controllers.md`
+   - See: `docs/backend/controllers.md`
 
 8. **Generate Entity Configuration**
    - Create `IEntityTypeConfiguration<T>` class
    - Configure property constraints and indexes
-   - Configure value object mappings with `OwnsOne`
-   - See: `.claude/rules/backend/entity-configurations.md`
+   - Configure value object mappings with `ComplexProperty`
+   - See: `docs/backend/entity-configurations.md`
 
 9. **Update Infrastructure**
    - Add DbSet to AppDbContext
@@ -224,7 +224,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    builder.Property(e => e.PhoneNumber).HasMaxLength(20);
 
    // Value object
-   builder.OwnsOne(e => e.Email, email =>
+   builder.ComplexProperty(e => e.Email, email =>
    {
        email.Property(e => e.Value).HasColumnName("email").HasMaxLength(320);
    });
@@ -382,7 +382,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Install MediatR if not already present
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
-- [ ] Add any needed FluentValidation validators
+- [ ] Put validation in the entity, and put database checks such as unique values in the handler
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -412,10 +412,10 @@ public LineItem AddLineItem(Product product, int quantity)
 
 ## Reference Files
 
-The following rules provide detailed patterns:
-- `.claude/rules/backend/working-with-domain-entities.md` - Rich domain entities
-- `.claude/rules/backend/features-and-cqrs.md` - CQRS with MediatR
-- `.claude/rules/backend/dtos-and-mappings.md` - DTOs and Mapperly
-- `.claude/rules/backend/controllers.md` - API controllers
-- `.claude/rules/backend/domain-events.md` - Domain events
-- `.claude/rules/backend/entity-configurations.md` - EF Core entity configurations
+These docs give the detailed patterns:
+- `docs/backend/domain-entities.md` - Rich domain entities
+- `docs/backend/features-and-cqrs.md` - CQRS with MediatR
+- `docs/backend/dtos-and-mappings.md` - DTOs and Mapperly
+- `docs/backend/controllers.md` - API controllers
+- `docs/backend/domain-events.md` - Domain events
+- `docs/backend/entity-configurations.md` - EF Core entity configurations

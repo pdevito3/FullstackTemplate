@@ -37,14 +37,16 @@ Read the doc for an area before you change code in that area.
 | Doc | Content |
 |-----|---------|
 | [docs/backend.md](docs/backend.md) | Domain structure, new features, DI, API versioning, error responses, database, tests |
+| [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, controllers, domain events, and EF configurations |
 | [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
+| [docs/frontend/](docs/frontend/) | Rules for server state, client state, and code style |
 | [docs/deployment-northflank.md](docs/deployment-northflank.md) | Northflank deployment and auth provider setup |
 | [docs/csharp-repl.md](docs/csharp-repl.md) | CSharpRepl in the running server: the hook wiring and the Development-only guards |
 
-The detailed pattern rules are in `.claude/rules/backend/` and `.claude/rules/frontend/`. Obey them when you write code.
+The pattern rules are in `docs/backend/` and `docs/frontend/`. Before you write code in an area, read its rule doc. Obey the rules in it.
 
 ## Run the application
 

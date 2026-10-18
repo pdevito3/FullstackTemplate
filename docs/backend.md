@@ -1,6 +1,6 @@
 # Backend
 
-`FullstackTemplate.Server` is the backend API. It uses .NET 10, CQRS with MediatR, and EF Core on PostgreSQL. The detailed rules for each pattern are in `.claude/rules/backend/`.
+`FullstackTemplate.Server` is the backend API. It uses .NET 10, CQRS with MediatR, and EF Core on PostgreSQL. The rules for each pattern are in `docs/backend/`.
 
 ## Domain structure
 
@@ -22,7 +22,7 @@ FullstackTemplate.Server/Domain/
 
 - **Rich domain entities** have private setters, factory methods, and their own business logic.
 - **CQRS with MediatR**: commands do the writes, and queries do the reads.
-- **Vertical slices**: each feature is one file with its request, validator, and handler.
+- **Vertical slices**: each feature is one file with its request and its handler.
 - **Mapperly** generates the DTO mapping code at compile time.
 - **QueryKit** does the filters and sorts for list endpoints. They run on the DTO projection, so a caller can query only the fields that the contract shows. `CustomQueryKitConfiguration` limits the length and the nesting depth of a filter.
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
@@ -31,14 +31,14 @@ FullstackTemplate.Server/Domain/
 
 ## Add a new feature
 
-Do these steps in sequence. Each step has a rule file in `.claude/rules/backend/`.
+Do these steps in sequence. Each step has a doc in `docs/backend/`.
 
-1. Create the domain entity (`working-with-domain-entities.md`).
-2. Add the entity configuration, then add a migration (`entity-configurations.md`).
-3. Create the DTOs and the Mapperly mapper (`dtos-and-mappings.md`).
-4. Add the commands and queries, with FluentValidation (`features-and-cqrs.md`).
-5. Add the controller (`controllers.md`).
-6. Add the domain events and their handlers (`domain-events.md`).
+1. Create the domain entity ([domain-entities.md](backend/domain-entities.md)).
+2. Add the entity configuration, then add a migration ([entity-configurations.md](backend/entity-configurations.md)).
+3. Create the DTOs and the Mapperly mapper ([dtos-and-mappings.md](backend/dtos-and-mappings.md)).
+4. Add the commands and queries ([features-and-cqrs.md](backend/features-and-cqrs.md)).
+5. Add the controller ([controllers.md](backend/controllers.md)).
+6. Add the domain events and their handlers ([domain-events.md](backend/domain-events.md)).
 7. Tag each EF query with `TagWithOperationCallSite` (see [telemetry.md](telemetry.md)).
 8. Build the Server, then run `pnpm generate:api` in `frontend/` (see [OpenAPI document](#openapi-document)).
 

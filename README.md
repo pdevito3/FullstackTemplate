@@ -153,7 +153,7 @@ After creating your project:
 
 1. **Run the app** to see everything working
 2. **Read `AGENTS.md` and `docs/`** for development patterns and guides
-3. **Add your first entity** using the patterns in `.claude/rules/`
+3. **Add your first entity** using the patterns in `docs/backend/`
 4. **Build your features** with the included CQRS patterns
 
 ## Development with Claude Code
@@ -162,13 +162,8 @@ This template includes comprehensive Claude Code integration:
 
 - **`AGENTS.md`** - Main agent guide with the architecture and an index of `docs/`
 - **`docs/`** - Guides for the backend, telemetry, multi-tenancy, auth, frontend, and deployment
-- **`.claude/rules/`** - Detailed guides for backend patterns:
-  - `controllers.md` - API controller patterns
-  - `features-and-cqrs.md` - CQRS command/query patterns
-  - `working-with-domain-entities.md` - Rich domain entity patterns
-  - `dtos-and-mappings.md` - DTO and Mapperly patterns
-  - `entity-configurations.md` - EF Core configuration patterns
-  - `domain-events.md` - Domain event patterns
+- **`docs/backend/`** - Backend pattern rules: entities, features, DTOs, controllers, domain events, and EF configurations
+- **`docs/frontend/`** - Frontend pattern rules: server state, client state, and code style
 - **`.claude/skills/`** - Automated scaffolding skills
 
 ## License

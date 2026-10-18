@@ -1,6 +1,10 @@
 # Frontend
 
-The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack Query, Tailwind v4, and pnpm. The detailed rules are in `.claude/rules/frontend/`.
+The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack Query, Tailwind v4, and pnpm. The rules are in `docs/frontend/`:
+
+- [server-state.md](frontend/server-state.md): TanStack Query, query keys, mutations, and forms with server data
+- [client-state.md](frontend/client-state.md): where to put UI state, effects, and memoization
+- [code-style.md](frontend/code-style.md): TypeScript, components, styles, files, and imports
 
 ## Commands
 
@@ -124,7 +128,7 @@ const { isLoggedIn, username, logoutUrl } = useAuth()
 const { login, logout } = useAuthActions()
 ```
 
-Never copy server state into local state. See `.claude/rules/frontend/async-server-state-management.md`.
+Never copy server state into local state. See [server-state.md](frontend/server-state.md).
 
 ## Routes
 

@@ -56,7 +56,7 @@ public class EmailAddressTests
         var email = EmailAddress.Of("test@example.com");
 
         // Act
-        string emailString = email;
+        string? emailString = email;
 
         // Assert
         emailString.ShouldBe("test@example.com");

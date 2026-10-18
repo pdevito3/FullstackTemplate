@@ -127,7 +127,7 @@ public class User : BaseEntity, ITenantable
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "Please provide a last name.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "Please provide an identifier.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Username, "Please provide a username.");
-        Exceptions.ValidationException.ThrowWhenNull(user.Email, "Please provide a valid email.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Email.Value, "Please provide a valid email.");
         Exceptions.ValidationException.ThrowWhenNull(user.Role, "Please provide a role.");
     }
 

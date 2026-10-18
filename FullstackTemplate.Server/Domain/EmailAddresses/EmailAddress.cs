@@ -4,7 +4,7 @@ using FluentValidation;
 
 public sealed partial class EmailAddress : ValueObject
 {
-    public string Value { get; private set; }
+    public string? Value { get; private set; }
     
     public EmailAddress(string value)
     {
@@ -18,7 +18,7 @@ public sealed partial class EmailAddress : ValueObject
     }
     
     public static EmailAddress Of(string value) => new EmailAddress(value);
-    public static implicit operator string(EmailAddress value) => value.Value;
+    public static implicit operator string?(EmailAddress value) => value.Value;
 
     private EmailAddress() { } // EF Core
     

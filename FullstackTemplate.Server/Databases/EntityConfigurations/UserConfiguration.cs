@@ -39,7 +39,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         {
             email.Property(e => e.Value)
                 .HasColumnName("email")
-                .HasMaxLength(320);
+                .HasMaxLength(320)
+                .IsRequired();
         });
 
         builder.ComplexProperty(e => e.Role, role =>

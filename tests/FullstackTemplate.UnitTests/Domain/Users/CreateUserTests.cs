@@ -25,6 +25,23 @@ public class CreateUserTests
         user.Username.ShouldBe(userForCreation.Username);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void cannot_create_user_with_blank_email(string email)
+    {
+        // Arrange
+        var userForCreation = new FakeUserForCreation()
+            .RuleFor(x => x.Email, _ => email)
+            .Generate();
+
+        // Act
+        var act = () => User.Create(userForCreation);
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Message.ShouldBe("Please provide a valid email.");
+    }
+
     [Fact]
     public void user_creation_queues_domain_event()
     {

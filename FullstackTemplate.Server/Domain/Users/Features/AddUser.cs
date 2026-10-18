@@ -17,6 +17,15 @@ public static class AddUser
         {
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
 
+            // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.
+            var identifierInUse = await dbContext.Users
+                .TagWithOperationCallSite("users.add.identifier_in_use")
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
+            if (identifierInUse)
+                throw new ValidationException(nameof(UserForCreationDto.Identifier),
+                    "A user with this identifier already exists.");
+
             var forCreation = request.Dto.ToUserForCreation(tenantId);
             var user = User.Create(forCreation);
 

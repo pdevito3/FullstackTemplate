@@ -143,6 +143,46 @@ public class UserCreationAccessTests : TestBase
     }
 
     [Fact]
+    public async Task duplicate_identifier_returns_validation_problem()
+    {
+        // Arrange
+        var (_, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        var dto = new FakeUserForCreationDto().RuleFor(x => x.Identifier, _ => admin.Identifier).Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
+        problem.Detail.ShouldBe("A user with this identifier already exists.");
+        problem.Errors.ShouldContainKey(nameof(UserForCreationDto.Identifier));
+    }
+
+    [Fact]
+    public async Task concurrent_adds_with_one_identifier_add_one_user_and_reject_the_others()
+    {
+        // Arrange
+        var (_, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        var identifier = Guid.NewGuid().ToString();
+        var dtos = Enumerable.Range(0, 5)
+            .Select(_ => new FakeUserForCreationDto().RuleFor(x => x.Identifier, _ => identifier).Generate())
+            .ToList();
+
+        // Act
+        var results = await Task.WhenAll(dtos.Select(dto => FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto)));
+
+        // Assert
+        // The duplicate check and the unique index can each stop a request, and both must give 422, never 500.
+        results.Count(r => r.StatusCode == HttpStatusCode.Created).ShouldBe(1);
+        results.Where(r => r.StatusCode != HttpStatusCode.Created)
+            .ShouldAllBe(r => r.StatusCode == HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
     public async Task trusted_machine_client_can_add_a_user_to_a_tenant_that_it_names()
     {
         // Arrange

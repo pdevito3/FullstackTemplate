@@ -1,5 +1,8 @@
 namespace FullstackTemplate.Server.Exceptions;
 
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+
 /// <summary>
 /// Maps domain exceptions to RFC 7807 problem details. <c>UseExceptionHandler</c> uses
 /// <see cref="StatusCodeFor"/> to pick the status, and <c>AddProblemDetails</c> uses
@@ -13,8 +16,14 @@ public static class DomainProblemDetails
         ValidationException or FluentValidation.ValidationException => StatusCodes.Status422UnprocessableEntity,
         NotFoundException => StatusCodes.Status404NotFound,
         ForbiddenAccessException => StatusCodes.Status403Forbidden,
+        _ when IsUniqueViolation(exception) => StatusCodes.Status422UnprocessableEntity,
         _ => StatusCodes.Status500InternalServerError,
     };
+
+    // A handler checks for a duplicate first, but two requests can pass the check at the same time.
+    // Then the unique index stops the second save. That is a client conflict, not a server fault.
+    private static bool IsUniqueViolation(Exception exception) =>
+        exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
 
     /// <summary>
     /// True when the exception is an expected outcome of a bad request, not a server fault.
@@ -49,6 +58,12 @@ public static class DomainProblemDetails
             case ForbiddenAccessException ex:
                 problem.Title = "You do not have access to do this.";
                 problem.Detail = ex.Message;
+                break;
+            // The constraint name and the values stay out of the response, because they show the schema and other rows.
+            case { } ex when IsUniqueViolation(ex):
+                problem.Title = "One or more validation errors occurred.";
+                problem.Detail = "A record with this value already exists.";
+                problem.Extensions["errors"] = new Dictionary<string, string[]>();
                 break;
         }
     }

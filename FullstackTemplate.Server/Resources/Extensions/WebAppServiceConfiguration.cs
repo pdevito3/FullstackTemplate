@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Databases;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Services;
 using ZiggyCreatures.Caching.Fusion;
 
 public static class WebAppServiceConfiguration
@@ -21,6 +22,7 @@ public static class WebAppServiceConfiguration
                 options.FailSafeMaxDuration = TimeSpan.FromHours(2);
                 options.FailSafeThrottleDuration = TimeSpan.FromSeconds(30);
             });
+        builder.Services.Configure<TenancyOptions>(builder.Configuration.GetSection(TenancyOptions.SectionName));
         builder.Services.AddApplicationServices();
         builder.Services.AddMediatR(cfg =>
         {

@@ -65,6 +65,43 @@ public class TenantIsolationTests : TestBase
         users.ShouldHaveSingleItem().Id.ShouldBe(user.Id);
     }
 
+    [Fact]
+    public async Task machine_client_not_on_the_allow_list_sees_no_tenant_data()
+    {
+        // Arrange
+        await AddTenantWithUserAsync();
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["client_id"] = "m2m" });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
+        users.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task machine_client_on_the_allow_list_sees_all_tenants()
+    {
+        // Arrange
+        var (_, user) = await AddTenantWithUserAsync();
+        var (_, otherUser) = await AddTenantWithUserAsync();
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(
+            $"{ApiRoutes.Users.GetList}?pageSize=500&filters=id == \"{user.Id}\" || id == \"{otherUser.Id}\"");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
+        users.Select(u => u.Id).ShouldBe([user.Id, otherUser.Id], ignoreOrder: true);
+    }
+
     private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string? identifier = null)
     {
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());

@@ -54,7 +54,8 @@ function RootComponent() {
           <Outlet />
         </div>
       </SidebarInset>
-      <TanStackRouterDevtools />
+      {/* The sidebar footer is at the bottom left, so the devtools button goes to the other corner. */}
+      <TanStackRouterDevtools position="bottom-right" />
     </SidebarProvider>
   )
 }

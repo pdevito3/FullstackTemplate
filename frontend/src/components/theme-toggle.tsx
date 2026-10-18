@@ -7,11 +7,11 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <div className="inline-flex items-center rounded-lg border bg-muted p-0.5">
+    <div className="inline-flex items-center rounded-lg border bg-muted p-0.5 group-data-[collapsible=icon]:flex-col">
       <button
         onClick={() => setTheme("light")}
         className={cn(
-          "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm transition-colors",
+          "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm group-data-[collapsible=icon]:px-1 transition-colors",
           theme === "light"
             ? "bg-background text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
@@ -23,7 +23,7 @@ export function ThemeToggle() {
       <button
         onClick={() => setTheme("dark")}
         className={cn(
-          "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm transition-colors",
+          "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm group-data-[collapsible=icon]:px-1 transition-colors",
           theme === "dark"
             ? "bg-background text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
@@ -35,7 +35,7 @@ export function ThemeToggle() {
       <button
         onClick={() => setTheme("system")}
         className={cn(
-          "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm transition-colors",
+          "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm group-data-[collapsible=icon]:px-1 transition-colors",
           theme === "system"
             ? "bg-background text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"

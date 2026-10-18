@@ -259,6 +259,19 @@ public class CurrentUserServiceTests
     }
 
     [Fact]
+    public void ClientId_ignores_the_non_standard_clientId_claim()
+    {
+        // Arrange
+        SetupUserWithClaims(new Claim("clientId", "trusted-machine"));
+
+        // Act
+        var clientId = _sut.ClientId;
+
+        // Assert
+        clientId.ShouldBeNull();
+    }
+
+    [Fact]
     public void IsMachine_returns_true_when_client_id_present_and_no_user_identifier()
     {
         // Arrange

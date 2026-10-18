@@ -105,9 +105,9 @@ public sealed class CurrentUserService(
     public string? Username => User?.FindFirstValue("preferred_username")
         ?? User?.FindFirstValue("username");
 
+    // "client_id" is the RFC 9068 claim. Keycloak uses "azp" (authorized party).
     public string? ClientId => User?.FindFirstValue("client_id")
-        ?? User?.FindFirstValue("clientId")
-        ?? User?.FindFirstValue("azp"); // Keycloak uses "azp" for authorized party
+        ?? User?.FindFirstValue("azp");
 
     public bool IsMachine => ClientId != null && UserIdentifier == null;
 

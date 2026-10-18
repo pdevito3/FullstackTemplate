@@ -23,7 +23,9 @@ public class MyEntity : BaseEntity, ITenantable
 
 `ITenantIdProvider` finds the tenant from the user identifier. FusionCache keeps the result for 30 minutes. If the database is not available, the fail-safe cache keeps the last result for a maximum of 2 hours.
 
-The provider does not cache a missing user. A user who gets a user record later sees their tenant on the next request.
+The provider keeps a missing user for 30 seconds, with no fail-safe. This stops a signed-in user with no user record from causing a database lookup for each query. When a user is added, `UserCreatedHandler` removes the cached result, so the new user sees their tenant on the next request. When a user is deleted, `DeleteUser` removes the cached tenant, so the user loses access on the next request.
+
+If you add a user, or change the identifier or the tenant of a user, in a different way, call `ITenantIdProvider.InvalidateCacheAsync`.
 
 A `TenantScope` has one of three values. The filter makes the decision for each value. It does not depend on the data in the rows.
 

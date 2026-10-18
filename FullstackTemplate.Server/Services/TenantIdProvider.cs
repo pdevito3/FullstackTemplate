@@ -35,6 +35,8 @@ public sealed class TenantIdProvider(
         FailSafeThrottleDuration = TimeSpan.FromSeconds(30)
     };
 
+    private static readonly TimeSpan MissingUserDuration = TimeSpan.FromSeconds(30);
+
     private string GetCacheKey(string userIdentifier) => $"tenant:user:{userIdentifier}";
     
     public async Task<Guid?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default)
@@ -47,12 +49,14 @@ public sealed class TenantIdProvider(
             {
                 var tenantId = await LookupTenantIdAsync(userIdentifier, ct);
 
-                // Do not cache a missing user. Nothing invalidates this key when the user is added later,
-                // so a cached null keeps a new user out of their tenant for the full duration.
+                // Cache a missing user for a short time only. Without this, each query from a signed-in user
+                // with no user record runs this lookup again. UserCreatedHandler removes the key when the user
+                // is added, so the short duration only limits a stale miss from some other write path.
+                // Fail-safe is off, so a stale miss never outlives this duration.
                 if (tenantId is null)
                 {
-                    ctx.Options.SkipMemoryCacheWrite = true;
-                    ctx.Options.SkipDistributedCacheWrite = true;
+                    ctx.Options.Duration = MissingUserDuration;
+                    ctx.Options.IsFailSafeEnabled = false;
                 }
 
                 return tenantId;

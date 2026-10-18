@@ -34,6 +34,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "GetTenantList")]
     [ProducesResponseType(typeof(PagedList<TenantDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<TenantDto>>> GetTenantList(
         [FromQuery] TenantParametersDto parameters)
     {

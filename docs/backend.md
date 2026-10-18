@@ -93,9 +93,10 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetai
 | `NotFoundException` | 404 |
 | `ForbiddenAccessException` | 403. `detail` has the message |
 | `DbUpdateException` from a unique index (Postgres `23505`) | 422. `detail` does not show the constraint or the values |
+| A QueryKit exception for a `filters` or `sortOrder` value that QueryKit cannot read | 400. `errors` has the message under `filters` or `sortOrder` |
 | Any other exception | 500 |
 
-If model binding or model validation fails, the Server returns 400 with a `ValidationProblemDetails` body. This body has the `errors` field. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]` on each action that can return 400, so that the OpenAPI document states this shape.
+If model binding or model validation fails, the Server returns 400 with a `ValidationProblemDetails` body. This body has the `errors` field. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]` on each action that can return 400, so that the OpenAPI document states this shape. This includes each list action, because of the QueryKit row in the table.
 
 A 422 comes from a domain rule or a FluentValidation rule. Its body also has the `ValidationProblemDetails` shape. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]` on each write action (POST, PUT, PATCH, and DELETE). Also declare it when the action has no request body, because a domain rule can fail in any write.
 

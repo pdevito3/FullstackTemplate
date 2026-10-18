@@ -52,6 +52,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpGet(Name = "GetUserList")]
     [ProducesResponseType(typeof(PagedList<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedList<UserDto>>> GetUserList(
         [FromQuery] UserParametersDto parameters)
     {

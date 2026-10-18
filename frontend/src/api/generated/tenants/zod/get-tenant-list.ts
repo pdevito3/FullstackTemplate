@@ -5,6 +5,7 @@
 
 import * as z from 'zod'
 import { tenantDtoSchema } from '../../models/zod/tenant-dto'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const getTenantListQueryFiltersSchema = z.string().optional()
 
@@ -16,4 +17,8 @@ export const getTenantListQueryPageSizeSchema = z.int32().optional()
 
 export const getTenantListStatus200Schema = z.array(tenantDtoSchema)
 
+export const getTenantListStatus400Schema = validationProblemDetailsSchema
+
 export const getTenantListResponseSchema = getTenantListStatus200Schema
+
+export const getTenantListErrorSchema = getTenantListStatus400Schema

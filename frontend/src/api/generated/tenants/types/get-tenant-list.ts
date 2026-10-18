@@ -4,6 +4,7 @@
 */
 
 import type { TenantDto } from '../../models/types/tenant-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetTenantListQuery = {
     Filters?: string;
@@ -24,6 +25,8 @@ export type GetTenantListQuery = {
 
 export type GetTenantListStatus200 = TenantDto[];
 
+export type GetTenantListStatus400 = ValidationProblemDetails;
+
 export type GetTenantListOptions = {
     body?: never;
     path?: never;
@@ -33,6 +36,7 @@ export type GetTenantListOptions = {
 
 export type GetTenantListResponses = {
     "200": GetTenantListStatus200;
+    "400": GetTenantListStatus400;
 };
 
 /**

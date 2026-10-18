@@ -4,6 +4,7 @@
 */
 
 import type { UserDto } from '../../models/types/user-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetUserListQuery = {
     Filters?: string;
@@ -24,6 +25,8 @@ export type GetUserListQuery = {
 
 export type GetUserListStatus200 = UserDto[];
 
+export type GetUserListStatus400 = ValidationProblemDetails;
+
 export type GetUserListOptions = {
     body?: never;
     path?: never;
@@ -33,6 +36,7 @@ export type GetUserListOptions = {
 
 export type GetUserListResponses = {
     "200": GetUserListStatus200;
+    "400": GetUserListStatus400;
 };
 
 /**

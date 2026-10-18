@@ -5,6 +5,7 @@
 
 import * as z from 'zod'
 import { userDtoSchema } from '../../models/zod/user-dto'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const getUserListQueryFiltersSchema = z.string().optional()
 
@@ -16,4 +17,8 @@ export const getUserListQueryPageSizeSchema = z.int32().optional()
 
 export const getUserListStatus200Schema = z.array(userDtoSchema)
 
+export const getUserListStatus400Schema = validationProblemDetailsSchema
+
 export const getUserListResponseSchema = getUserListStatus200Schema
+
+export const getUserListErrorSchema = getUserListStatus400Schema

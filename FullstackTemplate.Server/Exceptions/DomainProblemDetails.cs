@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Exceptions;
 
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using QueryKit.Exceptions;
 
 /// <summary>
 /// Maps domain exceptions to RFC 7807 problem details. <c>UseExceptionHandler</c> uses
@@ -14,6 +15,7 @@ public static class DomainProblemDetails
     public static int StatusCodeFor(Exception exception) => exception switch
     {
         ValidationException or FluentValidation.ValidationException => StatusCodes.Status422UnprocessableEntity,
+        _ when IsQueryInputError(exception) => StatusCodes.Status400BadRequest,
         NotFoundException => StatusCodes.Status404NotFound,
         ForbiddenAccessException => StatusCodes.Status403Forbidden,
         _ when IsUniqueViolation(exception) => StatusCodes.Status422UnprocessableEntity,
@@ -30,6 +32,14 @@ public static class DomainProblemDetails
     /// </summary>
     public static bool IsClientError(Exception exception) =>
         StatusCodeFor(exception) < StatusCodes.Status500InternalServerError;
+
+    // A filters or sortOrder value that QueryKit cannot read is a fault in the request, not in the server.
+    // The other QueryKit exceptions come from the server setup, so they stay 500.
+    private static bool IsQueryInputError(Exception exception) => exception is ParsingException
+        or QueryKitParsingException
+        or SortParsingException
+        or UnknownFilterPropertyException
+        or QueryKitPropertyDepthExceededException;
 
     // Detail carries the message because the frontend shows detail before title.
     public static void Customize(ProblemDetailsContext context)
@@ -64,6 +74,12 @@ public static class DomainProblemDetails
                 problem.Title = "One or more validation errors occurred.";
                 problem.Detail = "A record with this value already exists.";
                 problem.Extensions["errors"] = new Dictionary<string, string[]>();
+                break;
+            case { } ex when IsQueryInputError(ex):
+                var parameter = ex is SortParsingException ? "sortOrder" : "filters";
+                problem.Title = "One or more validation errors occurred.";
+                problem.Detail = ex.Message;
+                problem.Extensions["errors"] = new Dictionary<string, string[]> { [parameter] = [ex.Message] };
                 break;
         }
     }

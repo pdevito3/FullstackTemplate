@@ -3,6 +3,7 @@ namespace FullstackTemplate.Server.Services;
 using Databases;
 using Microsoft.EntityFrameworkCore;
 using Resources;
+using Resources.Extensions;
 using ZiggyCreatures.Caching.Fusion;
 
 /// <summary>
@@ -25,7 +26,7 @@ public interface ITenantIdProvider
 
 public sealed class TenantIdProvider(
     IFusionCache cache,
-    IServiceScopeFactory scopeFactory) : ITenantIdProvider
+    IServiceScopeFactory scopeFactory) : ITenantIdProvider, ISingletonService
 {
     private static readonly FusionCacheEntryOptions CacheOptions = new()
     {
@@ -37,8 +38,19 @@ public sealed class TenantIdProvider(
 
     private static readonly TimeSpan MissingUserDuration = TimeSpan.FromSeconds(30);
 
-    private string GetCacheKey(string userIdentifier) => $"tenant:user:{userIdentifier}";
-    
+    // A lookup that starts before a change is saved can finish after the invalidation and write its stale
+    // result. Each invalidation moves the identifier to a new generation, and the generation is part of the
+    // key. A late write then goes to the old key, which no reader uses. The generations are in buckets, so
+    // the memory stays fixed. Other identifiers in the same bucket only do one more lookup.
+    private const int GenerationBuckets = 4096;
+    private readonly long[] _generations = new long[GenerationBuckets];
+
+    private ref long Generation(string userIdentifier)
+        => ref _generations[(uint)StringComparer.Ordinal.GetHashCode(userIdentifier) % GenerationBuckets];
+
+    private string GetCacheKey(string userIdentifier)
+        => $"tenant:user:{userIdentifier}:{Volatile.Read(ref Generation(userIdentifier))}";
+
     public async Task<Guid?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default)
     {
         var cacheKey = GetCacheKey(userIdentifier);
@@ -83,7 +95,8 @@ public sealed class TenantIdProvider(
 
     public async Task InvalidateCacheAsync(string userIdentifier, CancellationToken cancellationToken = default)
     {
-        var cacheKey = GetCacheKey(userIdentifier);
-        await cache.RemoveAsync(cacheKey, token: cancellationToken);
+        var staleKey = GetCacheKey(userIdentifier);
+        Interlocked.Increment(ref Generation(userIdentifier));
+        await cache.RemoveAsync(staleKey, token: cancellationToken);
     }
 }

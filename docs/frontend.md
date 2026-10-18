@@ -10,6 +10,7 @@ pnpm install
 pnpm dev      # dev server
 pnpm build    # production build
 pnpm lint     # ESLint
+pnpm test     # Vitest unit tests (src/**/*.test.ts)
 pnpm generate:api  # API contract from the OpenAPI document
 ```
 

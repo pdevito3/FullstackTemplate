@@ -18,7 +18,7 @@ pnpm generate:api  # API contract from the OpenAPI document
 
 ```
 frontend/src/
-├── api/generated/          # Kubb output. Do not edit
+├── api/generated*/         # Kubb output. Do not edit
 ├── domain/                 # One folder for each business area
 │   └── [area]/
 │       ├── apis/          # API functions, query hooks, and *.keys.ts
@@ -64,7 +64,7 @@ if (result.status === 404) {
 
 ## API contract
 
-Kubb generates the API contract from the OpenAPI document of the Server. The configuration is in `kubb.config.ts`. The output is in `src/api/generated/`, with one file for each endpoint:
+Kubb generates the API contract from the OpenAPI document of the Server. The configuration is in `kubb.config.ts`. The output for v1 is in `src/api/generated/`, and each later version has its own folder, for example `src/api/generated-v2/`. Each folder has one file for each endpoint:
 
 ```
 src/api/generated/

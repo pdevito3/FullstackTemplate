@@ -103,7 +103,7 @@ components/
 └── [component].tsx       # Other shared components
 ```
 
-### 4. **API Contract** (`/src/api/generated/`) and **API Client** (`/src/lib/`)
+### 4. **API Contract** (`/src/api/generated*/`) and **API Client** (`/src/lib/`)
 Kubb generates the API contract from the OpenAPI document of the Server. Do not edit the generated files. See `docs/frontend.md`.
 
 ```
@@ -171,7 +171,7 @@ import { Patient } from "@/domain/patients/types"
 - `/src/main.tsx` - Application entry point
 - `/src/routeTree.gen.ts` - Auto-generated route tree (DO NOT EDIT)
 - `/src/lib/api-client.ts` - API configuration and interceptors
-- `/src/api/generated/` - Generated API contract (DO NOT EDIT)
+- `/src/api/generated*/` - Generated API contract, one folder for each API version (DO NOT EDIT)
 - `/src/services/auth.tsx` - Authentication hooks and utilities
 - `/src/lib/site-config.ts` - Site-wide configuration
 - `/src/components/ui/*` - Base UI component library

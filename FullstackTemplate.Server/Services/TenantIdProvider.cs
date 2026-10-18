@@ -18,7 +18,7 @@ public interface ITenantIdProvider
 
     /// <summary>
     /// Invalidates the cached tenant ID for a user.
-    /// Call this when a user's tenant assignment changes.
+    /// Call this after the change is saved, when a user or the tenant of a user changes.
     /// </summary>
     Task InvalidateCacheAsync(string userIdentifier, CancellationToken cancellationToken = default);
 }
@@ -70,11 +70,14 @@ public sealed class TenantIdProvider(
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // The tenant filter reads the result of this lookup, so the lookup ignores it. IgnoreQueryFilters applies
+        // to the whole query, so this includes the joined tenants. The soft-delete filter still applies to the
+        // users and to the tenants, so a deleted user or a deleted tenant gives no tenant.
         return await dbContext.Users
             .TagWithOperationCallSite("users.tenant_id_lookup")
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Where(u => u.Identifier == userIdentifier)
-            .Select(u => (Guid?)u.TenantId)
+            .Join(dbContext.Tenants, u => u.TenantId, t => t.Id, (_, t) => (Guid?)t.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 

@@ -2,6 +2,9 @@ namespace FullstackTemplate.FunctionalTests;
 
 using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -92,6 +95,13 @@ public class TestBase : IDisposable
     public static Task<T> ExecuteDbContextAsync<T>(Func<AppDbContext, Task<T>> action)
         => ExecuteScopeAsync(sp => action(sp.GetRequiredService<AppDbContext>()));
 
+    /// <summary>
+    /// Starts a scenario on an in-memory seed. The functional tests have no seed rows in the database,
+    /// so start the scenario with <c>AddTenant</c>. <c>BuildAsync</c> saves the new entities in one save.
+    /// </summary>
+    protected static GraphBuilder<TestSeed, Tenant[]> StartGraph()
+        => TestGraph.Start(TestSeed.Generate(), new ScopedDbContextStore());
+
     public static async Task<int> InsertAsync<T>(params T[] entities) where T : class
     {
         return await ExecuteDbContextAsync(async db =>
@@ -102,5 +112,12 @@ public class TestBase : IDisposable
             }
             return await db.SaveChangesAsync();
         });
+    }
+
+    /// <summary>Saves a graph through a new service scope, the same as a separate request.</summary>
+    private sealed class ScopedDbContextStore : IGraphStore
+    {
+        public async ValueTask SaveAsync(IReadOnlyList<object> entities, CancellationToken cancellationToken)
+            => await ExecuteDbContextAsync(async db => await db.AsGraphStore().SaveAsync(entities, cancellationToken));
     }
 }

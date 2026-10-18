@@ -7,43 +7,30 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 using Shouldly;
 
+// Each test checks one rule that a document transformer sets
 public class OpenApiDocumentTests
 {
     private const string ValidationProblemRef = "#/components/schemas/ValidationProblemDetails";
 
+    // GET /api/v1/weather is the only operation that allows anonymous callers
+    public const string AnonymousOperation = "GET /api/v1/weather";
+
     [Fact]
-    public async Task document_states_the_contract_that_the_transformers_set()
+    public async Task tenant_list_documents_the_pagination_header()
     {
-        // Arrange
-        // The test host does not run in Development, so it does not map /openapi/v1.json.
-        // IOpenApiDocumentProvider is the service behind that endpoint. It runs every registered transformer.
-        var provider = TestingWebApplicationFactory.Instance.Services
-            .GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+        var root = await LoadDocumentAsync();
 
-        // Act
-        var document = await provider.GetOpenApiDocumentAsync();
-        var json = await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_1);
-        var root = JsonNode.Parse(json).ShouldNotBeNull();
-
-        // Assert
-        ShouldHavePaginationHeaderOnTenantList(root);
-        ShouldUseProblemJsonForErrorResponses(root);
-        ShouldTypeNumbersOnlyAsNumbers(root);
-        ShouldRequireTheNonNullableDtoProperties(root);
-        ShouldDeclareValidationProblemOnEachWrite(root);
-        ShouldDeclareUnauthorizedOnlyOnSecuredOperations(root);
-    }
-
-    private static void ShouldHavePaginationHeaderOnTenantList(JsonNode root)
-    {
         var header = root["paths"]?["/api/v1/tenants"]?["get"]?["responses"]?["200"]?["headers"]?["X-Pagination"];
         header.ShouldNotBeNull();
         header["content"]?["application/json"]?["schema"]?["$ref"]?.GetValue<string>()
             .ShouldBe("#/components/schemas/PaginationMetadata");
     }
 
-    private static void ShouldUseProblemJsonForErrorResponses(JsonNode root)
+    [Fact]
+    public async Task error_responses_use_only_problem_json()
     {
+        var root = await LoadDocumentAsync();
+
         var errorResponses = Operations(root)
             .SelectMany(o => Responses(o.Operation)
                 .Where(r => r.Status[0] is '4' or '5' && r.Response["content"] is not null)
@@ -55,8 +42,30 @@ public class OpenApiDocumentTests
             content.Select(c => c.Key).ShouldBe(["application/problem+json"], name);
     }
 
-    private static void ShouldTypeNumbersOnlyAsNumbers(JsonNode root)
+    [Fact]
+    public async Task success_responses_and_request_bodies_use_only_json()
     {
+        var root = await LoadDocumentAsync();
+
+        var successContents = Operations(root)
+            .SelectMany(o => Responses(o.Operation)
+                .Where(r => r.Status[0] is '2' && r.Response["content"] is not null)
+                .Select(r => (Name: $"{o.Name} {r.Status}", Content: r.Response["content"]!.AsObject())));
+        var requestContents = Operations(root)
+            .Where(o => o.Operation["requestBody"]?["content"] is not null)
+            .Select(o => (Name: $"{o.Name} request body", Content: o.Operation["requestBody"]!["content"]!.AsObject()));
+        var contents = successContents.Concat(requestContents).ToList();
+
+        contents.ShouldNotBeEmpty();
+        foreach (var (name, content) in contents)
+            content.Select(c => c.Key).ShouldBe(["application/json"], name);
+    }
+
+    [Fact]
+    public async Task numbers_are_typed_only_as_numbers()
+    {
+        var root = await LoadDocumentAsync();
+
         var numberSchemas = Descendants(root)
             .OfType<JsonObject>()
             .Where(node => TypesOf(node).Any(type => type is "integer" or "number"))
@@ -70,8 +79,11 @@ public class OpenApiDocumentTests
         }
     }
 
-    private static void ShouldRequireTheNonNullableDtoProperties(JsonNode root)
+    [Fact]
+    public async Task non_nullable_dto_properties_are_required()
     {
+        var root = await LoadDocumentAsync();
+
         var dtoSchemas = root["components"]!["schemas"]!.AsObject()
             .Where(schema => schema.Key.EndsWith("Dto", StringComparison.Ordinal))
             .ToList();
@@ -92,8 +104,11 @@ public class OpenApiDocumentTests
             .ShouldContain("firstName");
     }
 
-    private static void ShouldDeclareValidationProblemOnEachWrite(JsonNode root)
+    [Fact]
+    public async Task each_write_declares_a_validation_problem()
     {
+        var root = await LoadDocumentAsync();
+
         var writes = Operations(root).Where(o => o.Method != "get").ToList();
 
         writes.ShouldNotBeEmpty();
@@ -105,17 +120,18 @@ public class OpenApiDocumentTests
         }
     }
 
-    private static void ShouldDeclareUnauthorizedOnlyOnSecuredOperations(JsonNode root)
+    [Fact]
+    public async Task only_secured_operations_declare_unauthorized()
     {
-        // GET /api/v1/weather is the only operation that allows anonymous callers
-        const string anonymous = "GET /api/v1/weather";
+        var root = await LoadDocumentAsync();
+
         var operations = Operations(root).ToList();
 
-        operations.Select(o => o.Name).ShouldContain(anonymous);
+        operations.Select(o => o.Name).ShouldContain(AnonymousOperation);
         foreach (var (name, _, operation) in operations)
         {
             var unauthorized = operation["responses"]?["401"];
-            if (name == anonymous)
+            if (name == AnonymousOperation)
             {
                 unauthorized.ShouldBeNull(name);
                 continue;
@@ -126,7 +142,21 @@ public class OpenApiDocumentTests
         }
     }
 
-    private static IEnumerable<(string Name, string Method, JsonNode Operation)> Operations(JsonNode root) =>
+    /// <summary>
+    /// The v1 document, with every registered transformer applied.
+    /// </summary>
+    public static async Task<JsonNode> LoadDocumentAsync()
+    {
+        // The test host does not run in Development, so it does not map /openapi/v1.json.
+        // IOpenApiDocumentProvider is the service behind that endpoint. It runs every registered transformer.
+        var provider = TestingWebApplicationFactory.Instance.Services
+            .GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+        var document = await provider.GetOpenApiDocumentAsync();
+        var json = await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_1);
+        return JsonNode.Parse(json).ShouldNotBeNull();
+    }
+
+    public static IEnumerable<(string Name, string Method, JsonNode Operation)> Operations(JsonNode root) =>
         root["paths"]!.AsObject()
             .SelectMany(path => path.Value!.AsObject()
                 .Where(operation => operation.Value?["responses"] is not null)

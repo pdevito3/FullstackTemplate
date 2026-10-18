@@ -266,8 +266,6 @@ function ComboboxClearButton({
   )
 }
 
-// Hook for filtering - re-export from Base UI
-
 // Convenience component that combines common parts
 function ComboboxContent({
   className,

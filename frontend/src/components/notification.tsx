@@ -2,7 +2,7 @@ import toast, { type ToastOptions } from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ToastContent, type ToastType } from '@/components/notifications'
+import { ToastContent, type ToastType } from '@/components/toaster'
 
 type NotificationOptions = ToastOptions & {
   description?: string

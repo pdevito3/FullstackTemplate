@@ -52,4 +52,30 @@ public class UserErrorResponseTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status404NotFound);
     }
+
+    [Fact]
+    public async Task missing_tenant_id_returns_bad_request_problem_with_errors()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+        var body = new
+        {
+            firstName = "Ada",
+            lastName = "Lovelace",
+            identifier = $"missing-tenant-{Guid.NewGuid()}",
+            email = "ada@example.com",
+            username = "ada",
+            role = "User",
+        };
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, body);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        problem.Errors.Values.SelectMany(messages => messages).ShouldContain(message => message.Contains("tenantId"));
+    }
 }

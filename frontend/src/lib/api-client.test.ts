@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
 import { Notification } from '@/components/notification'
 import { apiClient } from '@/lib/api-client'
+import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 
 vi.mock('@/components/notification', () => ({
@@ -21,12 +23,17 @@ const validationProblem = {
   errors: { name: ['Please provide a name.'] },
 }
 
-function respond(config: InternalAxiosRequestConfig, status: number, data: unknown): Promise<AxiosResponse> {
+function respond(
+  config: InternalAxiosRequestConfig,
+  status: number,
+  data: unknown,
+  headers: Record<string, string> = {},
+): Promise<AxiosResponse> {
   const response: AxiosResponse = {
     data,
     status,
     statusText: String(status),
-    headers: new AxiosHeaders({ 'content-type': status >= 400 ? 'application/problem+json' : 'application/json' }),
+    headers: new AxiosHeaders({ 'content-type': status >= 400 ? 'application/problem+json' : 'application/json', ...headers }),
     config,
   }
   const validateStatus = config.validateStatus ?? ((s: number) => s >= 200 && s < 300)
@@ -97,6 +104,32 @@ describe('apiClient with a generated client', () => {
     expect(result.status).toBe(422)
     expect(result.error).toEqual(validationProblem)
     expect(Notification.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('a generated list client', () => {
+  // A list endpoint has a name that ends in List, and kubb.config.ts makes its client return the full response
+  it('returns the full response, so that parsePagination can read the X-Pagination header', async () => {
+    const tenants = [{ id: tenantId, name: 'Acme' }]
+    const pagination = {
+      totalCount: 11,
+      pageSize: 10,
+      currentPageSize: 1,
+      currentStartIndex: 11,
+      currentEndIndex: 11,
+      pageNumber: 2,
+      totalPages: 2,
+      hasPrevious: true,
+      hasNext: false,
+    }
+    adapter.mockImplementation((config) =>
+      respond(config, 200, tenants, { 'X-Pagination': JSON.stringify(pagination) }),
+    )
+
+    const result = await getTenantList({ query: { pageNumber: 2 } })
+
+    expect(result.data).toEqual(tenants)
+    expect(parsePagination(result)).toEqual(pagination)
   })
 })
 

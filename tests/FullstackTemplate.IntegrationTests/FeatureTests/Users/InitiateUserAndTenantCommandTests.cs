@@ -55,7 +55,7 @@ public class InitiateUserAndTenantCommandTests : TestBase
         var act = () => testingServiceScope.SendAsync(new InitiateUserAndTenant.Command(dto));
 
         // Assert
-        var exception = await act.ShouldThrowAsync<ValidationException>();
+        var exception = await act.ShouldThrowAsync<ConflictException>();
         exception.Message.ShouldBe("A user with this identifier already exists.");
     }
 }

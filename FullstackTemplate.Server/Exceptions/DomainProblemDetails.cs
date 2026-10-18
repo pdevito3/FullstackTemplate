@@ -12,13 +12,15 @@ using QueryKit.Exceptions;
 public static class DomainProblemDetails
 {
     // A validation failure is 422: the request is well-formed, but it breaks a business rule.
+    // A duplicate unique value is 409: the request conflicts with a record that exists.
     public static int StatusCodeFor(Exception exception) => exception switch
     {
         ValidationException or FluentValidation.ValidationException => StatusCodes.Status422UnprocessableEntity,
         _ when IsQueryInputError(exception) => StatusCodes.Status400BadRequest,
         NotFoundException => StatusCodes.Status404NotFound,
         ForbiddenAccessException => StatusCodes.Status403Forbidden,
-        _ when IsUniqueViolation(exception) => StatusCodes.Status422UnprocessableEntity,
+        ConflictException => StatusCodes.Status409Conflict,
+        _ when IsUniqueViolation(exception) => StatusCodes.Status409Conflict,
         _ => StatusCodes.Status500InternalServerError,
     };
 
@@ -67,9 +69,14 @@ public static class DomainProblemDetails
                 problem.Title = "You do not have access to do this.";
                 problem.Detail = ex.Message;
                 break;
+            case ConflictException ex:
+                problem.Title = "The request conflicts with a record that exists.";
+                problem.Detail = ex.Message;
+                problem.Extensions["errors"] = new Dictionary<string, string[]> { [ex.Property] = [ex.Message] };
+                break;
             // The constraint name and the values stay out of the response, because they show the schema and other rows.
             case { } ex when IsUniqueViolation(ex):
-                problem.Title = "One or more validation errors occurred.";
+                problem.Title = "The request conflicts with a record that exists.";
                 problem.Detail = "A record with this value already exists.";
                 problem.Extensions["errors"] = new Dictionary<string, string[]>();
                 break;

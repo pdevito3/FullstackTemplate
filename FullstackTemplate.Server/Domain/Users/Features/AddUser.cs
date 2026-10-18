@@ -23,8 +23,7 @@ public static class AddUser
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
             if (identifierInUse)
-                throw new ValidationException(nameof(UserForCreationDto.Identifier),
-                    "A user with this identifier already exists.");
+                throw new ConflictException("identifier", "A user with this identifier already exists.");
 
             var forCreation = request.Dto.ToUserForCreation(tenantId);
             var user = User.Create(forCreation);

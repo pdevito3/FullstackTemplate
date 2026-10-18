@@ -69,6 +69,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<UserDto>> AddUser(
         [FromBody] UserForCreationDto dto)
     {
@@ -181,6 +182,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<InitiateUserAndTenantResponseDto>> InitiateUserAndTenant(
         [FromBody] InitiateUserAndTenantDto dto)
     {

@@ -144,7 +144,7 @@ public class UserCreationAccessTests : TestBase
     }
 
     [Fact]
-    public async Task duplicate_identifier_returns_validation_problem()
+    public async Task duplicate_identifier_returns_conflict_problem()
     {
         // Arrange
         var (_, admin) = await AddTenantWithUserAsync("Admin");
@@ -155,11 +155,12 @@ public class UserCreationAccessTests : TestBase
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
 
         // Assert
-        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
-        problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
+        problem.Status.ShouldBe(StatusCodes.Status409Conflict);
         problem.Detail.ShouldBe("A user with this identifier already exists.");
-        problem.Errors.ShouldContainKey(nameof(UserForCreationDto.Identifier));
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("identifier");
     }
 
     [Fact]
@@ -177,10 +178,10 @@ public class UserCreationAccessTests : TestBase
         var results = await Task.WhenAll(dtos.Select(dto => FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto)));
 
         // Assert
-        // The duplicate check and the unique index can each stop a request, and both must give 422, never 500.
+        // The duplicate check and the unique index can each stop a request, and both must give 409, never 500.
         results.Count(r => r.StatusCode == HttpStatusCode.Created).ShouldBe(1);
         results.Where(r => r.StatusCode != HttpStatusCode.Created)
-            .ShouldAllBe(r => r.StatusCode == HttpStatusCode.UnprocessableEntity);
+            .ShouldAllBe(r => r.StatusCode == HttpStatusCode.Conflict);
     }
 
     [Fact]

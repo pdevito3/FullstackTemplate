@@ -9,7 +9,7 @@ using Shouldly;
 public class DomainProblemDetailsTests
 {
     [Fact]
-    public void unique_violation_is_a_validation_problem()
+    public void unique_violation_is_a_conflict()
     {
         // Arrange
         var exception = SaveFailure(PostgresErrorCodes.UniqueViolation);
@@ -18,8 +18,32 @@ public class DomainProblemDetailsTests
         var status = DomainProblemDetails.StatusCodeFor(exception);
 
         // Assert
-        status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
+        status.ShouldBe(StatusCodes.Status409Conflict);
         DomainProblemDetails.IsClientError(exception).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void conflict_problem_has_the_message_under_the_property()
+    {
+        // Arrange
+        var exception = new ConflictException("identifier", "A user with this identifier already exists.");
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            Exception = exception,
+            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
+        };
+
+        // Act
+        var status = DomainProblemDetails.StatusCodeFor(exception);
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        status.ShouldBe(StatusCodes.Status409Conflict);
+        context.ProblemDetails.Detail.ShouldBe("A user with this identifier already exists.");
+        var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
+        error.Key.ShouldBe("identifier");
+        error.Value.ShouldBe(["A user with this identifier already exists."]);
     }
 
     [Fact]
@@ -30,7 +54,7 @@ public class DomainProblemDetailsTests
         {
             HttpContext = new DefaultHttpContext(),
             Exception = SaveFailure(PostgresErrorCodes.UniqueViolation),
-            ProblemDetails = new() { Status = StatusCodes.Status422UnprocessableEntity },
+            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
         };
 
         // Act

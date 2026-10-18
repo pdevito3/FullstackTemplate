@@ -27,6 +27,8 @@ export type UpdateTenantStatus403 = ProblemDetails;
 
 export type UpdateTenantStatus404 = ProblemDetails;
 
+export type UpdateTenantStatus409 = ValidationProblemDetails;
+
 export type UpdateTenantStatus422 = ValidationProblemDetails;
 
 export type UpdateTenantBody = TenantForUpdateDto;
@@ -44,6 +46,7 @@ export type UpdateTenantResponses = {
     "401": UpdateTenantStatus401;
     "403": UpdateTenantStatus403;
     "404": UpdateTenantStatus404;
+    "409": UpdateTenantStatus409;
     "422": UpdateTenantStatus422;
 };
 

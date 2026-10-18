@@ -35,8 +35,7 @@ public static class InitiateUserAndTenant
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
             if (identifierInUse)
-                throw new ValidationException(nameof(InitiateUserAndTenantDto.Identifier),
-                    "A user with this identifier already exists.");
+                throw new ConflictException("identifier", "A user with this identifier already exists.");
 
             // Create tenant first
             var tenantForCreation = new TenantForCreation { Name = request.Dto.TenantName };

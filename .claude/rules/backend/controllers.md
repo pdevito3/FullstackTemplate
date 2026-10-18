@@ -213,6 +213,8 @@ A 400 comes from model binding or model validation, and its body is a `Validatio
 
 A 422 comes from a domain rule (`ValidationException`) or a FluentValidation rule (`FluentValidation.ValidationException`). `Exceptions/DomainProblemDetails.cs` maps both to 422 with an `errors` field, so the body also has the `ValidationProblemDetails` shape. Declare the 422 on each write action (POST, PUT, PATCH, and DELETE), also when the action has no request body. A domain rule can fail in any write.
 
+A 409 comes from a duplicate unique value (`ConflictException`, or a unique index that stops the save). Its body also has the `ValidationProblemDetails` shape. Declare the 409 on each write action that can add or change a unique value.
+
 ### 7. Use Appropriate Authorization
 
 ```csharp

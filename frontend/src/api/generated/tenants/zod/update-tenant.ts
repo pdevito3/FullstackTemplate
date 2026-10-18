@@ -21,10 +21,12 @@ export const updateTenantStatus403Schema = problemDetailsSchema
 
 export const updateTenantStatus404Schema = problemDetailsSchema
 
+export const updateTenantStatus409Schema = validationProblemDetailsSchema
+
 export const updateTenantStatus422Schema = validationProblemDetailsSchema
 
 export const updateTenantResponseSchema = updateTenantStatus200Schema
 
-export const updateTenantErrorSchema = z.union([updateTenantStatus400Schema, updateTenantStatus401Schema, updateTenantStatus403Schema, updateTenantStatus404Schema, updateTenantStatus422Schema])
+export const updateTenantErrorSchema = z.union([updateTenantStatus400Schema, updateTenantStatus401Schema, updateTenantStatus403Schema, updateTenantStatus404Schema, updateTenantStatus409Schema, updateTenantStatus422Schema])
 
 export const updateTenantBodySchema = tenantForUpdateDtoSchema

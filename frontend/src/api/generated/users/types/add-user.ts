@@ -16,6 +16,8 @@ export type AddUserStatus401 = unknown;
 
 export type AddUserStatus403 = ProblemDetails;
 
+export type AddUserStatus409 = ValidationProblemDetails;
+
 export type AddUserStatus422 = ValidationProblemDetails;
 
 export type AddUserBody = UserForCreationDto;
@@ -32,6 +34,7 @@ export type AddUserResponses = {
     "400": AddUserStatus400;
     "401": AddUserStatus401;
     "403": AddUserStatus403;
+    "409": AddUserStatus409;
     "422": AddUserStatus422;
 };
 

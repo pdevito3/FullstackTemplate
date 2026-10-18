@@ -65,6 +65,29 @@ public class TenantErrorResponseTests : TestBase
         problem.Errors.ShouldNotBeEmpty();
     }
 
+    // No handler checks for a duplicate tenant name, so the unique index stops the save
+    [Fact]
+    public async Task duplicate_tenant_name_returns_conflict_problem()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+        var name = $"Tenant {Guid.NewGuid():N}";
+        (await FactoryClient.PostJsonRequestAsync(ApiRoutes.Tenants.Create, new { name })).StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Tenants.Create, new { name });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status409Conflict);
+        problem.Detail.ShouldBe("A record with this value already exists.");
+    }
+
     [Fact]
     public async Task missing_required_property_returns_bad_request_problem_with_errors()
     {

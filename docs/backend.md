@@ -103,7 +103,8 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetai
 | `ValidationException`, `FluentValidation.ValidationException` | 422. `detail` has the message. `errors` has the messages for each named property |
 | `NotFoundException` | 404 |
 | `ForbiddenAccessException` | 403. `detail` has the message |
-| `DbUpdateException` from a unique index (Postgres `23505`) | 422. `detail` does not show the constraint or the values |
+| `ConflictException` | 409. `detail` has the message. `errors` has the message under the named property |
+| `DbUpdateException` from a unique index (Postgres `23505`) | 409. `detail` does not show the constraint or the values |
 | A QueryKit exception for a `filters` or `sortOrder` value that QueryKit cannot read | 400. `errors` has the message under `filters` or `sortOrder` |
 | Any other exception | 500 |
 
@@ -111,9 +112,11 @@ If model binding or model validation fails, the Server returns 400 with a `Valid
 
 A 422 comes from a domain rule or a FluentValidation rule. Its body also has the `ValidationProblemDetails` shape. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]` on each write action (POST, PUT, PATCH, and DELETE). Also declare it when the action has no request body, because a domain rule can fail in any write.
 
+A 409 comes from a duplicate unique value. Its body also has the `ValidationProblemDetails` shape. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]` on each write action that can add or change a unique value.
+
 Do not catch these exceptions in a controller. Throw them from the entity or the handler.
 
-Before you add a row with a unique value, check for the value in the handler and throw a `ValidationException` on the property. The check gives a clear message. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 422.
+Before you add a row with a unique value, check for the value in the handler and throw a `ConflictException` on the property. The check gives a clear message. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 409.
 
 ## Admin requests
 

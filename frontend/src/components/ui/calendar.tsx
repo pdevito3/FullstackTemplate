@@ -30,7 +30,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button-variants"
 import { DateField, DateInput } from "@/components/ui/datefield"
 
 const Calendar = AriaCalendar

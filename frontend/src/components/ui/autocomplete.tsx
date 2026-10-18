@@ -197,7 +197,6 @@ function AutocompleteClearButton({
 }
 
 // Hook for filtering - re-export from Base UI
-const useAutocompleteFilter = AutocompletePrimitive.useFilter
 
 // Convenience component that combines common parts
 function AutocompleteContent({
@@ -236,5 +235,4 @@ export {
   AutocompleteStatus,
   AutocompleteClearButton,
   AutocompleteContent,
-  useAutocompleteFilter,
 }

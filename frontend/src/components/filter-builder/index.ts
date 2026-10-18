@@ -1,5 +1,6 @@
 // Main component
-export { FilterBuilder, toQueryKitString } from './filter-builder'
+export { FilterBuilder } from './filter-builder'
+export { toQueryKitString } from './utils/querykit-converter'
 
 // Types
 export type {

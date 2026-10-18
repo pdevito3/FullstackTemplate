@@ -76,6 +76,7 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetai
 |-----------|--------|
 | `ValidationException`, `FluentValidation.ValidationException` | 422. `detail` has the message. `errors` has the messages for each named property |
 | `NotFoundException` | 404 |
+| `ForbiddenAccessException` | 403. `detail` has the message |
 | Any other exception | 500 |
 
 Do not catch these exceptions in a controller. Throw them from the entity or the handler.

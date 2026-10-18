@@ -35,6 +35,14 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 | A signed-in user with no user record | `TenantScope.NoTenant` | No rows |
 | Any other caller (a machine client not on the allow-list, an anonymous request) | `TenantScope.NoTenant` | No rows |
 
+## Add a user to a tenant
+
+The request to add a user names the tenant. These rules stop a caller from joining a tenant that is not theirs:
+
+- `POST /api/v1/users` adds a user only to a tenant in the scope of the caller. A caller with `TenantScope.NoTenant` cannot add a user. Other requests get 403.
+- `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must have `TenantScope.AllTenants`. Other requests get 403.
+- If a user already has the identifier, `initiate` returns 422. A user belongs to one tenant only.
+
 ## Machine clients
 
 A machine client gets a token with no `sub` claim. The issuer can give such a token to any client that it knows, so a missing `sub` does not make a caller trusted. Only the clients in `Tenancy:AllTenantClientIds` see the rows of all tenants. The list is empty by default.

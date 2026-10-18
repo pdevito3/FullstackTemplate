@@ -70,6 +70,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [HttpPost(Name = "AddUser")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<UserDto>> AddUser(
         [FromBody] UserForCreationDto dto)
     {
@@ -171,6 +172,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [HttpPost("initiate", Name = "InitiateUserAndTenant")]
     [ProducesResponseType(typeof(InitiateUserAndTenantResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<InitiateUserAndTenantResponseDto>> InitiateUserAndTenant(
         [FromBody] InitiateUserAndTenantDto dto)
     {

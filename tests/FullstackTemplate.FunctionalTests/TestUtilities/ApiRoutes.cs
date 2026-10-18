@@ -11,6 +11,7 @@ public static class ApiRoutes
         public static string GetList => $"{Base}/users";
         public static string GetRecord(Guid id) => $"{Base}/users/{id}";
         public static string Create => $"{Base}/users";
+        public static string Initiate => $"{Base}/users/initiate";
         public static string Put(Guid id) => $"{Base}/users/{id}";
         public static string Delete(Guid id) => $"{Base}/users/{id}";
     }

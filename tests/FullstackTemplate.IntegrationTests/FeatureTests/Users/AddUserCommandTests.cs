@@ -2,6 +2,8 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
+using FullstackTemplate.Server.Exceptions;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -78,6 +80,40 @@ public class AddUserCommandTests : TestBase
         userInDb.ShouldNotBeNull();
         userInDb.Role.Value.ShouldBe("User");
         userInDb.UserPermissions.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task cannot_add_user_to_another_tenant()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out var otherTenant)
+            .BuildAsync();
+        var fakeUserDto = new FakeUserForCreationDto()
+            .RuleFor(x => x.TenantId, _ => otherTenant.Id)
+            .Generate();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        await act.ShouldThrowAsync<ForbiddenAccessException>();
+    }
+
+    [Fact]
+    public async Task user_with_no_user_record_cannot_add_user()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        testingServiceScope.SetUserWithDefaults(identifier: $"unknown-{Guid.NewGuid()}");
+        var fakeUserDto = new FakeUserForCreationDto().Generate();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
     [Fact]

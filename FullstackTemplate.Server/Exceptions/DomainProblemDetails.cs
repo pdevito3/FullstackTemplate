@@ -12,6 +12,7 @@ public static class DomainProblemDetails
     {
         ValidationException or FluentValidation.ValidationException => StatusCodes.Status422UnprocessableEntity,
         NotFoundException => StatusCodes.Status404NotFound,
+        ForbiddenAccessException => StatusCodes.Status403Forbidden,
         _ => StatusCodes.Status500InternalServerError,
     };
 
@@ -43,6 +44,10 @@ public static class DomainProblemDetails
                 break;
             case NotFoundException ex:
                 problem.Title = "The resource was not found.";
+                problem.Detail = ex.Message;
+                break;
+            case ForbiddenAccessException ex:
+                problem.Title = "You do not have access to do this.";
                 problem.Detail = ex.Message;
                 break;
         }

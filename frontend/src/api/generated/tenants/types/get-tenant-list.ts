@@ -27,6 +27,8 @@ export type GetTenantListStatus200 = TenantDto[];
 
 export type GetTenantListStatus400 = ValidationProblemDetails;
 
+export type GetTenantListStatus401 = unknown;
+
 export type GetTenantListOptions = {
     body?: never;
     path?: never;
@@ -37,6 +39,7 @@ export type GetTenantListOptions = {
 export type GetTenantListResponses = {
     "200": GetTenantListStatus200;
     "400": GetTenantListStatus400;
+    "401": GetTenantListStatus401;
 };
 
 /**

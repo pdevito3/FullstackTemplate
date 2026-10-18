@@ -12,6 +12,8 @@ export type AddUserStatus201 = UserDto;
 
 export type AddUserStatus400 = ValidationProblemDetails;
 
+export type AddUserStatus401 = unknown;
+
 export type AddUserStatus403 = ProblemDetails;
 
 export type AddUserStatus422 = ValidationProblemDetails;
@@ -28,6 +30,7 @@ export type AddUserOptions = {
 export type AddUserResponses = {
     "201": AddUserStatus201;
     "400": AddUserStatus400;
+    "401": AddUserStatus401;
     "403": AddUserStatus403;
     "422": AddUserStatus422;
 };

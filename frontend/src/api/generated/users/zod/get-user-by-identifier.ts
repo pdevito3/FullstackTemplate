@@ -11,8 +11,10 @@ export const getUserByIdentifierPathIdentifierSchema = z.string()
 
 export const getUserByIdentifierStatus200Schema = userDtoSchema
 
+export const getUserByIdentifierStatus401Schema = z.unknown()
+
 export const getUserByIdentifierStatus404Schema = problemDetailsSchema
 
 export const getUserByIdentifierResponseSchema = getUserByIdentifierStatus200Schema
 
-export const getUserByIdentifierErrorSchema = getUserByIdentifierStatus404Schema
+export const getUserByIdentifierErrorSchema = z.union([getUserByIdentifierStatus401Schema, getUserByIdentifierStatus404Schema])

@@ -7,6 +7,8 @@ import type { SecureWeatherForecast } from '../../models/types/secure-weather-fo
 
 export type GetSecureWeatherForecastStatus200 = SecureWeatherForecast[];
 
+export type GetSecureWeatherForecastStatus401 = unknown;
+
 export type GetSecureWeatherForecastOptions = {
     body?: never;
     path?: never;
@@ -16,6 +18,7 @@ export type GetSecureWeatherForecastOptions = {
 
 export type GetSecureWeatherForecastResponses = {
     "200": GetSecureWeatherForecastStatus200;
+    "401": GetSecureWeatherForecastStatus401;
 };
 
 /**

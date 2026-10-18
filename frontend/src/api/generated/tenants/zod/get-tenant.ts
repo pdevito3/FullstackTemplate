@@ -11,8 +11,10 @@ export const getTenantPathIdSchema = z.uuid()
 
 export const getTenantStatus200Schema = tenantDtoSchema
 
+export const getTenantStatus401Schema = z.unknown()
+
 export const getTenantStatus404Schema = problemDetailsSchema
 
 export const getTenantResponseSchema = getTenantStatus200Schema
 
-export const getTenantErrorSchema = getTenantStatus404Schema
+export const getTenantErrorSchema = z.union([getTenantStatus401Schema, getTenantStatus404Schema])

@@ -31,6 +31,7 @@ public class OpenApiDocumentTests
         ShouldTypeNumbersOnlyAsNumbers(root);
         ShouldRequireTheNonNullableDtoProperties(root);
         ShouldDeclareValidationProblemOnEachWrite(root);
+        ShouldDeclareUnauthorizedOnlyOnSecuredOperations(root);
     }
 
     private static void ShouldHavePaginationHeaderOnTenantList(JsonNode root)
@@ -101,6 +102,27 @@ public class OpenApiDocumentTests
             var schemaRef = operation["responses"]?["422"]?["content"]?["application/problem+json"]?["schema"]?["$ref"]?
                 .GetValue<string>();
             schemaRef.ShouldBe(ValidationProblemRef, name);
+        }
+    }
+
+    private static void ShouldDeclareUnauthorizedOnlyOnSecuredOperations(JsonNode root)
+    {
+        // GET /api/v1/weather is the only operation that allows anonymous callers
+        const string anonymous = "GET /api/v1/weather";
+        var operations = Operations(root).ToList();
+
+        operations.Select(o => o.Name).ShouldContain(anonymous);
+        foreach (var (name, _, operation) in operations)
+        {
+            var unauthorized = operation["responses"]?["401"];
+            if (name == anonymous)
+            {
+                unauthorized.ShouldBeNull(name);
+                continue;
+            }
+
+            unauthorized.ShouldNotBeNull(name);
+            unauthorized["content"].ShouldBeNull(name);
         }
     }
 

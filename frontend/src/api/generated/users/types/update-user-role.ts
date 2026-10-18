@@ -21,6 +21,8 @@ export type UpdateUserRoleStatus200 = UserDto;
 
 export type UpdateUserRoleStatus400 = ValidationProblemDetails;
 
+export type UpdateUserRoleStatus401 = unknown;
+
 export type UpdateUserRoleStatus404 = ProblemDetails;
 
 export type UpdateUserRoleStatus422 = ValidationProblemDetails;
@@ -37,6 +39,7 @@ export type UpdateUserRoleOptions = {
 export type UpdateUserRoleResponses = {
     "200": UpdateUserRoleStatus200;
     "400": UpdateUserRoleStatus400;
+    "401": UpdateUserRoleStatus401;
     "404": UpdateUserRoleStatus404;
     "422": UpdateUserRoleStatus422;
 };

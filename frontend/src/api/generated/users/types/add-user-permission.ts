@@ -21,6 +21,8 @@ export type AddUserPermissionStatus200 = UserDto;
 
 export type AddUserPermissionStatus400 = ValidationProblemDetails;
 
+export type AddUserPermissionStatus401 = unknown;
+
 export type AddUserPermissionStatus404 = ProblemDetails;
 
 export type AddUserPermissionStatus422 = ValidationProblemDetails;
@@ -37,6 +39,7 @@ export type AddUserPermissionOptions = {
 export type AddUserPermissionResponses = {
     "200": AddUserPermissionStatus200;
     "400": AddUserPermissionStatus400;
+    "401": AddUserPermissionStatus401;
     "404": AddUserPermissionStatus404;
     "422": AddUserPermissionStatus422;
 };

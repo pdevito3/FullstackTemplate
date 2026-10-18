@@ -19,6 +19,8 @@ export const getUserListStatus200Schema = z.array(userDtoSchema)
 
 export const getUserListStatus400Schema = validationProblemDetailsSchema
 
+export const getUserListStatus401Schema = z.unknown()
+
 export const getUserListResponseSchema = getUserListStatus200Schema
 
-export const getUserListErrorSchema = getUserListStatus400Schema
+export const getUserListErrorSchema = z.union([getUserListStatus400Schema, getUserListStatus401Schema])

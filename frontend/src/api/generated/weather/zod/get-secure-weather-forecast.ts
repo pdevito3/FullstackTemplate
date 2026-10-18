@@ -8,4 +8,8 @@ import { secureWeatherForecastSchema } from '../../models/zod/secure-weather-for
 
 export const getSecureWeatherForecastStatus200Schema = z.array(secureWeatherForecastSchema)
 
+export const getSecureWeatherForecastStatus401Schema = z.unknown()
+
 export const getSecureWeatherForecastResponseSchema = getSecureWeatherForecastStatus200Schema
+
+export const getSecureWeatherForecastErrorSchema = getSecureWeatherForecastStatus401Schema

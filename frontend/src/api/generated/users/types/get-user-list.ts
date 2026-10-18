@@ -27,6 +27,8 @@ export type GetUserListStatus200 = UserDto[];
 
 export type GetUserListStatus400 = ValidationProblemDetails;
 
+export type GetUserListStatus401 = unknown;
+
 export type GetUserListOptions = {
     body?: never;
     path?: never;
@@ -37,6 +39,7 @@ export type GetUserListOptions = {
 export type GetUserListResponses = {
     "200": GetUserListStatus200;
     "400": GetUserListStatus400;
+    "401": GetUserListStatus401;
 };
 
 /**

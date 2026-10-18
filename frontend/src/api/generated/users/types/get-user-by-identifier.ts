@@ -12,6 +12,8 @@ export type GetUserByIdentifierPath = {
 
 export type GetUserByIdentifierStatus200 = UserDto;
 
+export type GetUserByIdentifierStatus401 = unknown;
+
 export type GetUserByIdentifierStatus404 = ProblemDetails;
 
 export type GetUserByIdentifierOptions = {
@@ -23,6 +25,7 @@ export type GetUserByIdentifierOptions = {
 
 export type GetUserByIdentifierResponses = {
     "200": GetUserByIdentifierStatus200;
+    "401": GetUserByIdentifierStatus401;
     "404": GetUserByIdentifierStatus404;
 };
 

@@ -14,10 +14,12 @@ export const removeUserPermissionPathPermissionSchema = z.string()
 
 export const removeUserPermissionStatus200Schema = userDtoSchema
 
+export const removeUserPermissionStatus401Schema = z.unknown()
+
 export const removeUserPermissionStatus404Schema = problemDetailsSchema
 
 export const removeUserPermissionStatus422Schema = validationProblemDetailsSchema
 
 export const removeUserPermissionResponseSchema = removeUserPermissionStatus200Schema
 
-export const removeUserPermissionErrorSchema = z.union([removeUserPermissionStatus404Schema, removeUserPermissionStatus422Schema])
+export const removeUserPermissionErrorSchema = z.union([removeUserPermissionStatus401Schema, removeUserPermissionStatus404Schema, removeUserPermissionStatus422Schema])

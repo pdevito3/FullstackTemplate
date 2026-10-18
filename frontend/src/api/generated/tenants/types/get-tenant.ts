@@ -17,6 +17,8 @@ export type GetTenantPath = {
 
 export type GetTenantStatus200 = TenantDto;
 
+export type GetTenantStatus401 = unknown;
+
 export type GetTenantStatus404 = ProblemDetails;
 
 export type GetTenantOptions = {
@@ -28,6 +30,7 @@ export type GetTenantOptions = {
 
 export type GetTenantResponses = {
     "200": GetTenantStatus200;
+    "401": GetTenantStatus401;
     "404": GetTenantStatus404;
 };
 

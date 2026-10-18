@@ -19,6 +19,8 @@ export const getTenantListStatus200Schema = z.array(tenantDtoSchema)
 
 export const getTenantListStatus400Schema = validationProblemDetailsSchema
 
+export const getTenantListStatus401Schema = z.unknown()
+
 export const getTenantListResponseSchema = getTenantListStatus200Schema
 
-export const getTenantListErrorSchema = getTenantListStatus400Schema
+export const getTenantListErrorSchema = z.union([getTenantListStatus400Schema, getTenantListStatus401Schema])

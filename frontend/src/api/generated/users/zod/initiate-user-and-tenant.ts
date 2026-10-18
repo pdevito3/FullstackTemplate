@@ -13,12 +13,14 @@ export const initiateUserAndTenantStatus201Schema = initiateUserAndTenantRespons
 
 export const initiateUserAndTenantStatus400Schema = validationProblemDetailsSchema
 
+export const initiateUserAndTenantStatus401Schema = z.unknown()
+
 export const initiateUserAndTenantStatus403Schema = problemDetailsSchema
 
 export const initiateUserAndTenantStatus422Schema = validationProblemDetailsSchema
 
 export const initiateUserAndTenantResponseSchema = initiateUserAndTenantStatus201Schema
 
-export const initiateUserAndTenantErrorSchema = z.union([initiateUserAndTenantStatus400Schema, initiateUserAndTenantStatus403Schema, initiateUserAndTenantStatus422Schema])
+export const initiateUserAndTenantErrorSchema = z.union([initiateUserAndTenantStatus400Schema, initiateUserAndTenantStatus401Schema, initiateUserAndTenantStatus403Schema, initiateUserAndTenantStatus422Schema])
 
 export const initiateUserAndTenantBodySchema = initiateUserAndTenantDtoSchema

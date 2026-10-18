@@ -15,12 +15,14 @@ export const addUserPermissionStatus200Schema = userDtoSchema
 
 export const addUserPermissionStatus400Schema = validationProblemDetailsSchema
 
+export const addUserPermissionStatus401Schema = z.unknown()
+
 export const addUserPermissionStatus404Schema = problemDetailsSchema
 
 export const addUserPermissionStatus422Schema = validationProblemDetailsSchema
 
 export const addUserPermissionResponseSchema = addUserPermissionStatus200Schema
 
-export const addUserPermissionErrorSchema = z.union([addUserPermissionStatus400Schema, addUserPermissionStatus404Schema, addUserPermissionStatus422Schema])
+export const addUserPermissionErrorSchema = z.union([addUserPermissionStatus400Schema, addUserPermissionStatus401Schema, addUserPermissionStatus404Schema, addUserPermissionStatus422Schema])
 
 export const addUserPermissionBodySchema = userPermissionDtoSchema

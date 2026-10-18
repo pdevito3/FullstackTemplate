@@ -1,6 +1,9 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
 using FullstackTemplate.Server.Resources.Extensions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using NSubstitute;
@@ -90,6 +93,45 @@ public class OpenApiTransformerTests
         exception.Message.ShouldContain("GET /api/v1/tenants/{id} (GetTenantList)");
         exception.Message.ShouldContain("do not send the X-Pagination header");
     }
+
+    [Fact]
+    public async Task unauthorized_transformer_adds_401_with_no_content_to_a_secured_operation()
+    {
+        // Arrange
+        var operation = Operation("GetTenant", paged: false);
+
+        // Act
+        await new UnauthorizedResponseTransformer()
+            .TransformAsync(operation, OperationContext(new AuthorizeAttribute()), CancellationToken.None);
+
+        // Assert
+        var response = operation.Responses.ShouldNotBeNull()["401"].ShouldBeOfType<OpenApiResponse>();
+        response.Content.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task unauthorized_transformer_skips_an_operation_that_allows_anonymous_callers(bool hasAuthorize)
+    {
+        // Arrange
+        var operation = Operation("GetWeatherForecast", paged: false);
+        object[] metadata = hasAuthorize ? [new AuthorizeAttribute(), new AllowAnonymousAttribute()] : [];
+
+        // Act
+        await new UnauthorizedResponseTransformer()
+            .TransformAsync(operation, OperationContext(metadata), CancellationToken.None);
+
+        // Assert
+        operation.Responses.ShouldNotBeNull().Keys.ShouldBe(["200"]);
+    }
+
+    private static OpenApiOperationTransformerContext OperationContext(params object[] endpointMetadata) => new()
+    {
+        DocumentName = "v1",
+        Description = new ApiDescription { ActionDescriptor = new ActionDescriptor { EndpointMetadata = endpointMetadata } },
+        ApplicationServices = Substitute.For<IServiceProvider>(),
+    };
 
     private static OpenApiOperation Operation(string? operationId, bool paged)
     {

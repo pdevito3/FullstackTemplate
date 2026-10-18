@@ -15,12 +15,14 @@ export const updateUserRoleStatus200Schema = userDtoSchema
 
 export const updateUserRoleStatus400Schema = validationProblemDetailsSchema
 
+export const updateUserRoleStatus401Schema = z.unknown()
+
 export const updateUserRoleStatus404Schema = problemDetailsSchema
 
 export const updateUserRoleStatus422Schema = validationProblemDetailsSchema
 
 export const updateUserRoleResponseSchema = updateUserRoleStatus200Schema
 
-export const updateUserRoleErrorSchema = z.union([updateUserRoleStatus400Schema, updateUserRoleStatus404Schema, updateUserRoleStatus422Schema])
+export const updateUserRoleErrorSchema = z.union([updateUserRoleStatus400Schema, updateUserRoleStatus401Schema, updateUserRoleStatus404Schema, updateUserRoleStatus422Schema])
 
 export const updateUserRoleBodySchema = updateUserRoleDtoSchema

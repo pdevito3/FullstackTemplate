@@ -11,8 +11,10 @@ export const getUserPathIdSchema = z.uuid()
 
 export const getUserStatus200Schema = userDtoSchema
 
+export const getUserStatus401Schema = z.unknown()
+
 export const getUserStatus404Schema = problemDetailsSchema
 
 export const getUserResponseSchema = getUserStatus200Schema
 
-export const getUserErrorSchema = getUserStatus404Schema
+export const getUserErrorSchema = z.union([getUserStatus401Schema, getUserStatus404Schema])

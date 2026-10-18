@@ -344,17 +344,10 @@ public sealed class CustomersController(IMediator mediator) : ControllerBase
 
 ### Register New Versions
 
-Update `ApiVersioningExtension.cs`:
+Add the version to `SupportedVersions` in `ApiVersioningExtension.cs`. Each version in this list gets its own OpenAPI document. See the "API versioning" section of `docs/backend.md` for all the steps.
 
 ```csharp
-public static ApiVersionSet GetApiVersionSet(this WebApplication app)
-{
-    return app.NewApiVersionSet()
-        .HasApiVersion(new ApiVersion(1, 0))
-        .HasApiVersion(new ApiVersion(2, 0))  // Add new version
-        .ReportApiVersions()
-        .Build();
-}
+public static readonly ApiVersion[] SupportedVersions = [new ApiVersion(1, 0), new ApiVersion(2, 0)];
 ```
 
 ## Anti-Patterns to Avoid

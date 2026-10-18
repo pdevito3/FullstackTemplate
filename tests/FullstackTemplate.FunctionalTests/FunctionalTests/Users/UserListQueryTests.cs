@@ -103,6 +103,45 @@ public class UserListQueryTests : TestBase
         users.Select(u => u.Id).ShouldBe([first.Id, second.Id, third.Id]);
     }
 
+    // The users have the same role, so only the tie-break on Id puts each user on exactly one page.
+    // Each insert is separate and in the reverse of the Id order, so the order of the rows on disk cannot give the correct result.
+    // A sort on the names uses the index on the tenant and the names, which also has the Id, so it cannot show a missing tie-break.
+    [Theory]
+    [InlineData("Role")]
+    [InlineData("Role desc")]
+    public async Task users_with_the_same_sort_value_each_show_on_one_page_in_id_order(string sortOrder)
+    {
+        // Arrange
+        var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
+        await InsertAsync(tenant);
+        var ids = Enumerable.Range(0, 5)
+            .Select(_ => EntityId.New(User.IdPrefix))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var users = ids.Reverse()
+            .Select(id => User.Create(FakeUserInTenant(tenant.Id, "")
+                .RuleFor(u => u.Id, id)
+                .RuleFor(u => u.Role, UserRole.User().Value)
+                .Generate()))
+            .ToArray();
+        foreach (var user in users)
+            await InsertAsync(user);
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = users[0].Identifier });
+
+        // Act
+        var pages = new List<string>();
+        for (var pageNumber = 1; pageNumber <= ids.Length; pageNumber++)
+        {
+            var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageNumber={pageNumber}&pageSize=1&sortOrder={Uri.EscapeDataString(sortOrder)}");
+            result.StatusCode.ShouldBe(HttpStatusCode.OK);
+            var page = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
+            pages.Add(page.ShouldHaveSingleItem().Id);
+        }
+
+        // Assert
+        pages.ShouldBe(ids);
+    }
+
     // The count of a list is a number, so a value that is not a number cannot convert
     [Fact]
     public async Task filter_value_that_does_not_convert_returns_bad_request()

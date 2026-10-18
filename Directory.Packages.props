@@ -24,7 +24,7 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <!-- Dependency Injection -->
-    <PackageVersion Include="QueryKit" Version="1.12.0" />
+    <PackageVersion Include="QueryKit" Version="1.16.0" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="MediatR" Version="12.5.0" />
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />

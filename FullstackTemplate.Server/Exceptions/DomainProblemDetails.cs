@@ -34,12 +34,10 @@ public static class DomainProblemDetails
         StatusCodeFor(exception) < StatusCodes.Status500InternalServerError;
 
     // A filters or sortOrder value that QueryKit cannot read is a fault in the request, not in the server.
-    // The other QueryKit exceptions come from the server setup, so they stay 500.
-    private static bool IsQueryInputError(Exception exception) => exception is ParsingException
-        or QueryKitParsingException
-        or SortParsingException
-        or UnknownFilterPropertyException
-        or QueryKitPropertyDepthExceededException;
+    // QueryKit throws a QueryKitException for each bad filter or sort. These two come from the server setup, so they stay 500.
+    private static bool IsQueryInputError(Exception exception) => exception is QueryKitException
+        and not QueryKitDbContextTypeException
+        and not SoundsLikeNotImplementedException;
 
     // Detail carries the message because the frontend shows detail before title.
     public static void Customize(ProblemDetailsContext context)

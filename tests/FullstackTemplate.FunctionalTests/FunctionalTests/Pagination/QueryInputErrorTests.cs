@@ -12,6 +12,7 @@ public class QueryInputErrorTests : TestBase
     [Theory]
     [InlineData("filters", "Name @= ")]
     [InlineData("filters", "Unknown == \"x\"")]
+    [InlineData("filters", "Id == \"notaguid\"")]
     [InlineData("sortOrder", "Unknown desc,,")]
     public async Task query_value_that_cannot_be_read_returns_bad_request_problem(string parameter, string value)
     {

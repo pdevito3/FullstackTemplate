@@ -8,7 +8,8 @@ import { defineConfig, devices } from '@playwright/test'
  * 2. Wait for all services to be healthy
  * 3. Run tests: pnpm exec playwright test
  *
- * The tests assume the app is already running at the default ports.
+ * The tests use http://localhost:5173 by default. For an isolated run (`aspire run --isolated`),
+ * set BASE_URL to the webfrontend URL from `dotnet aspire describe webfrontend`.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -20,7 +21,7 @@ export default defineConfig({
   timeout: 60000, // 60 second timeout for auth flows
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',

@@ -157,7 +157,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await loginAtIdp(page, currentIdp)
 
       // Step 5: Wait for redirect back to app and verify logged in state
-      await page.waitForURL('http://localhost:5173/', { timeout: 30000 })
+      await page.waitForURL('/', { timeout: 30000 })
 
       // Verify logout button is visible (indicates logged in)
       const logoutButton = page.getByRole('button', { name: /logout/i })
@@ -198,7 +198,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       }
 
       // Wait for redirect back to app
-      await page.waitForURL('http://localhost:5173/', { timeout: 30000 })
+      await page.waitForURL('/', { timeout: 30000 })
 
       // Verify login button is visible again (indicates logged out)
       await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 10000 })
@@ -330,21 +330,12 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     const liveResponse = secureEndpoint.locator('.live-responses-table').first()
     await expect(liveResponse).toBeVisible({ timeout: 10000 })
 
-    // Look for response status - it could be 200 (success) or 401 (if auth failed)
-    const responseStatus = secureEndpoint.locator('.live-responses-table .response-col_status').first()
-    const statusText = await responseStatus.textContent({ timeout: 10000 })
+    // The first status cell is the table header ("Code"), so read the response row
+    const responseStatus = liveResponse.locator('tr.response .response-col_status')
+    await expect(responseStatus).toContainText('200', { timeout: 10000 })
 
-    if (statusText?.includes('200')) {
-      // Verify response contains requestedBy (proves auth worked)
-      const responseBody = secureEndpoint.locator('pre.microlight, .highlight-code pre').first()
-      await expect(responseBody).toContainText('requestedBy', { timeout: 5000 })
-    } else if (statusText?.includes('401')) {
-      // Auth failed - popup flow may have issues, but this test verifies Swagger OAuth is configured
-      // The React UI test validates auth works end-to-end
-      console.log('Swagger OAuth returned 401 - OAuth popup flow may have issues')
-      // Test still passes as it proves OAuth is configured and API is protected
-    } else {
-      console.log(`Swagger OAuth returned unexpected status: ${statusText}`)
-    }
+    // requestedBy in the body proves that the token reached the API
+    const responseBody = secureEndpoint.locator('.live-responses-table pre.microlight').first()
+    await expect(responseBody).toContainText('requestedBy', { timeout: 5000 })
   })
 })

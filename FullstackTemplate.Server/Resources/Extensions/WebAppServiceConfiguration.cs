@@ -37,7 +37,6 @@ public static class WebAppServiceConfiguration
         // JSON only, so each operation in the OpenAPI document has one media type.
         builder.Services.AddControllers(options =>
             {
-                options.Filters.Add(new ProducesAttribute("application/json"));
                 var jsonInput = options.InputFormatters.OfType<SystemTextJsonInputFormatter>().Single();
                 jsonInput.SupportedMediaTypes.Clear();
                 jsonInput.SupportedMediaTypes.Add("application/json");

@@ -2,6 +2,7 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
@@ -45,5 +46,22 @@ public class TenantErrorResponseTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status422UnprocessableEntity);
         problem.Detail.ShouldBe("Please provide a tenant name.");
+    }
+
+    [Fact]
+    public async Task malformed_json_returns_bad_request_problem()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+        using var content = new StringContent("{ \"name\": ", Encoding.UTF8, "application/json");
+
+        // Act
+        var result = await FactoryClient.PostAsync(ApiRoutes.Tenants.Create, content);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
     }
 }

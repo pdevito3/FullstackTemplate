@@ -122,6 +122,7 @@ public static class SwaggerExtension
             options.AddOperationTransformer<PaginationHeaderTransformer>();
             options.AddOperationTransformer<JsonContentTypeTransformer>();
             options.AddDocumentTransformer<RequireOperationIdTransformer>();
+            options.AddDocumentTransformer<RequireListOperationNameTransformer>();
         });
 
         return services;

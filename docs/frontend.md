@@ -30,7 +30,7 @@ frontend/src/
 │   └── theme-toggle.tsx   # Light, dark, and system toggle
 ├── routes/                 # TanStack Router file routes
 ├── hooks/                  # Shared React hooks
-├── lib/                    # api-client.ts, problem-details.ts, utils.ts
+├── lib/                    # api-client.ts, pagination.ts, problem-details.ts, utils.ts
 └── main.tsx               # App entry point
 ```
 
@@ -72,7 +72,7 @@ If a generated file has a merge conflict, do not merge it by hand. Accept either
 
 Do not edit the generated files. ESLint ignores them, but `tsc` compiles them.
 
-- A list client (an operation name that ends in `List`) returns the full response, because the paging metadata is in the `X-Pagination` header. Parse the header into the `PaginationMetadata` type.
+- A list client (an operation name that ends in `List`) returns the full response, because the paging metadata is in the `X-Pagination` header. Read the header with `parsePagination` from `lib/pagination.ts`. It returns the `PaginationMetadata` type.
 - The other clients return only the response body.
 - The Zod schemas are for form validation and tests. The clients do not parse responses with them.
 
@@ -81,6 +81,15 @@ import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
 import type { TenantDto } from '@/api/generated/models/types/tenant-dto'
 
 const tenant: TenantDto = await getTenant({ path: { id }, signal })
+```
+
+```typescript
+import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
+import { parsePagination } from '@/lib/pagination'
+
+const result = await getTenantList({ query: { PageNumber: 1, PageSize: 10 }, signal })
+const tenants = result.data
+const pagination = parsePagination(result)
 ```
 
 ## Query hooks

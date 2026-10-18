@@ -8,7 +8,8 @@ using ZiggyCreatures.Caching.Fusion;
 
 /// <summary>
 /// Provides tenant ID lookup with caching.
-/// Uses FusionCache for in-memory caching with support for Redis as distributed L2 cache.
+/// Uses FusionCache in memory only, with no distributed cache and no backplane. An invalidation
+/// applies only to the server instance that makes it.
 /// </summary>
 public interface ITenantIdProvider
 {

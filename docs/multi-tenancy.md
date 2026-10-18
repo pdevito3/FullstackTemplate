@@ -21,11 +21,21 @@ public class MyEntity : BaseEntity, ITenantable
 
 ## Tenant lookup
 
-`ITenantIdProvider` finds the tenant from the user identifier. FusionCache keeps the result for 30 minutes. If the database is not available, the fail-safe cache keeps the last result for a maximum of 2 hours.
+`ITenantIdProvider` finds the tenant from the user identifier. The lookup gives a tenant only if the user and the tenant exist and are not deleted. FusionCache keeps the result for 30 minutes. If the database is not available, the fail-safe cache keeps the last result for a maximum of 2 hours.
 
-The provider keeps a missing user for 30 seconds, with no fail-safe. This stops a signed-in user with no user record from causing a database lookup for each query. When a user is added, `UserCreatedHandler` removes the cached result, so the new user sees their tenant on the next request. When a user is deleted, `DeleteUser` removes the cached tenant, so the user loses access on the next request.
+The provider keeps a missing user for 30 seconds, with no fail-safe. This stops a signed-in user with no user record from causing a database lookup for each query.
+
+These writes remove the cached result after the save:
+
+- When a user is added, `UserCreatedHandler` removes the cached result. The new user sees their tenant on the next request.
+- When a user is deleted, `DeleteUser` removes the cached tenant. The user loses access on the next request.
+- When a tenant is deleted, `DeleteTenant` removes the cached tenant of each user of the tenant. The users lose access on the next request.
+
+A lookup can start before the save and finish after the removal. Each removal moves the identifier to a new cache key, so the late result goes to an old key that no request reads.
 
 If you add a user, or change the identifier or the tenant of a user, in a different way, call `ITenantIdProvider.InvalidateCacheAsync`.
+
+The cache is in the memory of each server instance. There is no distributed cache and no backplane. The removals and the "next request" behavior above are true for one server instance only. If you run more than one instance, the other instances keep the old result until it expires. Add a backplane to FusionCache before you run more than one instance.
 
 A `TenantScope` has one of three values. The filter makes the decision for each value. It does not depend on the data in the rows.
 

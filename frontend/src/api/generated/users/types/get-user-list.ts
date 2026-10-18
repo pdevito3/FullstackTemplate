@@ -13,7 +13,7 @@ export type GetUserListQuery = {
      * @description
      * Format: `int32`
      * @minLength 1
-     * @maxLength 2147483647
+     * @maxLength 4294967
      * @type integer | undefined
     */
     pageNumber?: number;

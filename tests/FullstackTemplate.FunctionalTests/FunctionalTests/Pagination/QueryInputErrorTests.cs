@@ -31,6 +31,9 @@ public class QueryInputErrorTests : TestBase
         { "pageNumber", "-1" },
         { "pageSize", "0" },
         { "pageSize", "-1" },
+        // The offset of a page must fit in an int
+        { "pageNumber", int.MaxValue.ToString() },
+        { "pageNumber", (BasePaginationParameters.MaxPageNumber + 1).ToString() },
     };
 
     [Theory]
@@ -52,5 +55,22 @@ public class QueryInputErrorTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(parameter);
+    }
+
+    [Fact]
+    public async Task last_page_number_with_the_largest_page_size_returns_an_empty_page()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(
+            $"{ApiRoutes.Tenants.GetList}?pageNumber={BasePaginationParameters.MaxPageNumber}&pageSize={BasePaginationParameters.MaxPageSizeLimit}");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

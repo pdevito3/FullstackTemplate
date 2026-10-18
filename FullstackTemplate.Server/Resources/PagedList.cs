@@ -37,7 +37,7 @@ public class PagedList<T> : List<T>, IPagedList
         PageSize = pageSize;
         PageNumber = pageNumber;
         CurrentPageSize = items.Count;
-        CurrentStartIndex = totalCount == 0 ? 0 : ((pageNumber - 1) * pageSize) + 1;
+        CurrentStartIndex = totalCount == 0 ? 0 : checked(((pageNumber - 1) * pageSize) + 1);
         CurrentEndIndex = totalCount == 0 ? 0 : CurrentStartIndex + CurrentPageSize - 1;
         TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
@@ -47,7 +47,7 @@ public class PagedList<T> : List<T>, IPagedList
     public static PagedList<T> Create(IQueryable<T> source, int pageNumber, int pageSize)
     {
         var count = source.Count();
-        var items = source.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+        var items = source.Skip(Offset(pageNumber, pageSize)).Take(pageSize).ToList();
         return new PagedList<T>(items, count, pageNumber, pageSize);
     }
 
@@ -59,9 +59,13 @@ public class PagedList<T> : List<T>, IPagedList
     {
         var count = await source.CountAsync(cancellationToken);
         var items = await source
-            .Skip((pageNumber - 1) * pageSize)
+            .Skip(Offset(pageNumber, pageSize))
             .Take(pageSize)
             .ToListAsync(cancellationToken);
         return new PagedList<T>(items, count, pageNumber, pageSize);
     }
+
+    // BasePaginationParameters limits the page number, so the offset fits in an int.
+    // Checked math makes an overflow from another caller throw, not wrap to a negative offset.
+    private static int Offset(int pageNumber, int pageSize) => checked((pageNumber - 1) * pageSize);
 }

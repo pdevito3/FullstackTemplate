@@ -83,8 +83,7 @@ public class DomainProblemDetailsTests
     {
         { new ValidationException("name", "Please provide a name."), StatusCodes.Status422UnprocessableEntity },
         { new FluentValidation.ValidationException("Please provide a valid email."), StatusCodes.Status422UnprocessableEntity },
-        { new SortParsingException("Unknown"), StatusCodes.Status400BadRequest },
-        { new UnknownFilterPropertyException("Unknown"), StatusCodes.Status400BadRequest },
+        { new QueryInputException("sortOrder", "Parsing failed during sorting.", new SortParsingException("Unknown")), StatusCodes.Status400BadRequest },
         { new NotFoundException("Tenant was not found."), StatusCodes.Status404NotFound },
         { new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden },
         { new ConflictException("identifier", "A user with this identifier already exists."), StatusCodes.Status409Conflict },

@@ -11,7 +11,6 @@ import { FilterPropertyMenu } from './filter-property-menu'
 import type { Filter, FilterBuilderProps } from './types'
 import { isFilter } from './types'
 import { canCreateGroup } from './utils/depth'
-import { toQueryKitString } from './utils/querykit-converter'
 import { LogicalOperators } from './utils/operators'
 import { useFilterBuilderReducer } from './use-filter-builder-reducer'
 
@@ -277,6 +276,3 @@ export function FilterBuilder({
     </div>
   )
 }
-
-// Export utility function to convert state to QueryKit string
-export { toQueryKitString }

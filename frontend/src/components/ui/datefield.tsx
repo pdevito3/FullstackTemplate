@@ -1,6 +1,6 @@
 "use client"
 
-import { cva, type VariantProps } from "class-variance-authority"
+import type { VariantProps } from "class-variance-authority"
 import {
   DateField as AriaDateField,
   DateInput as AriaDateInput,
@@ -19,6 +19,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import { dateInputVariants } from "@/components/ui/date-input-variants"
 
 const DateField = AriaDateField
 
@@ -45,24 +46,6 @@ function DateSegment({ className, ...props }: AriaDateSegmentProps) {
     />
   )
 }
-
-const dateInputVariants = cva("", {
-  variants: {
-    variant: {
-      default: [
-        "relative flex h-10 w-full items-center overflow-hidden rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-        /* Focus Within */
-        "data-[focus-within]:outline-none data-[focus-within]:ring-2 data-[focus-within]:ring-ring data-[focus-within]:ring-offset-2",
-        /* Disabled */
-        "data-[disabled]:opacity-50",
-      ],
-      ghost: "",
-    },
-  },
-  defaultVariants: {
-    variant: "default",
-  },
-})
 
 interface DateInputProps
   extends AriaDateInputProps,
@@ -166,6 +149,5 @@ export {
   TimeField,
   JollyDateField,
   JollyTimeField,
-  dateInputVariants,
 }
 export type { DateInputProps, JollyDateFieldProps, JollyTimeFieldProps }

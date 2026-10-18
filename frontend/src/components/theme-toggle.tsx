@@ -1,6 +1,6 @@
 import { Sun03Icon, Moon02Icon, ComputerIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/theme-context"
 import { cn } from "@/lib/utils"
 
 export function ThemeToggle() {

@@ -4,7 +4,7 @@ import {
   isProblemDetails,
   type ProblemDetails,
 } from './problem-details'
-import { Notification } from '@/components/notifications'
+import { Notification } from '@/components/notification'
 import { client } from '@/api/generated/.kubb/client'
 
 declare module 'axios' {

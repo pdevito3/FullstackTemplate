@@ -21,7 +21,9 @@ An isolated run (`--isolated`) gives the stack its own copy of everything that c
 
 Thus a worktree run never shares a port or a database with another run. The Docker images, the NuGet and pnpm caches, and the Duende demo identity server stay shared.
 
-An isolated run starts with an empty database. The server applies the migrations at startup. Make sure that the test data that you need is created by your steps, not by an earlier run.
+An isolated run starts with an empty database. The server applies the migrations at startup. Make sure that the test data that you need is created by your steps, not by an earlier run. Aspire deletes the database volume when the stack stops.
+
+For a Playwright run against an isolated stack, set `BASE_URL` to the `webfrontend` URL and `SERVER_URL` to the `server` https URL.
 
 ## Start
 
@@ -32,9 +34,10 @@ An isolated run starts with an empty database. The server applies the migrations
    dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
    ```
 
-3. Wait for the BFF. The BFF waits for the server, and the server waits for the database.
+3. Wait for the server and the BFF. The BFF can be healthy before the server is.
 
    ```bash
+   dotnet aspire wait server --apphost FullstackTemplate.AppHost
    dotnet aspire wait bff --apphost FullstackTemplate.AppHost
    ```
 

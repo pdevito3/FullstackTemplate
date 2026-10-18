@@ -30,7 +30,7 @@ public static class GetUserList
             // Paging needs a fixed order, or a row can show on two pages or on none
             query = string.IsNullOrWhiteSpace(request.Parameters.SortOrder)
                 ? query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id)
-                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
+                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig).ThenBy(u => u.Id);
 
             return await PagedList<UserDto>.CreateAsync(
                 query,

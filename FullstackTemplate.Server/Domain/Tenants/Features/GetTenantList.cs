@@ -30,7 +30,7 @@ public static class GetTenantList
             // Paging needs a fixed order, or a row can show on two pages or on none
             query = string.IsNullOrWhiteSpace(request.Parameters.SortOrder)
                 ? query.OrderBy(t => t.Name).ThenBy(t => t.Id)
-                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
+                : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig).ThenBy(t => t.Id);
 
             return await PagedList<TenantDto>.CreateAsync(
                 query,

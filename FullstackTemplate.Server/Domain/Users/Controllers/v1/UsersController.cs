@@ -7,7 +7,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Resources;
-using Resources.Extensions;
 
 [ApiController]
 [Route("api/v{v:apiVersion}/users")]

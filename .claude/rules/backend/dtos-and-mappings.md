@@ -224,6 +224,16 @@ public string Name { get; init; } = default!;  // Required, always set
 public string? Description { get; init; }       // Optional, nullable
 ```
 
+On a request DTO, mark each non-nullable value-type property (`Guid`, `int`, `bool`, and more) with `required`. Without it, a missing field binds to the default value, for example `Guid.Empty`. Then the request gets a 422 from a domain rule, not a 400, but the contract says that the field is required.
+
+```csharp
+public sealed record UserForCreationDto
+{
+    public required Guid TenantId { get; init; }  // A missing tenantId gives 400
+    public string Email { get; init; } = default!;
+}
+```
+
 ### 4. Keep DTOs Flat
 
 Prefer flat structures over nested objects for API responses:

@@ -59,6 +59,7 @@ public class TestingServiceScope
         currentUserService.IsAuthenticated.Returns(true);
         currentUserService.IsMachine.Returns(false);
         currentUserService.Roles.Returns(new List<string>());
+        RefreshTenantScope();
     }
 
     /// <summary>
@@ -87,6 +88,7 @@ public class TestingServiceScope
         currentUserService.UserIdentifier.Returns((string?)null);
         currentUserService.ClientId.Returns((string?)null);
         currentUserService.IsMachine.Returns(false);
+        RefreshTenantScope();
     }
 
     /// <summary>
@@ -102,7 +104,12 @@ public class TestingServiceScope
         currentUserService.ClientId.Returns(clientId);
         currentUserService.UserIdentifier.Returns((string?)null);
         currentUserService.IsAuthenticated.Returns(true);
+        RefreshTenantScope();
     }
+
+    // AppDbContext keeps the tenant scope of its caller. A test that changes the caller of this scope
+    // must make the context get the scope again.
+    private void RefreshTenantScope() => GetService<AppDbContext>().RefreshTenantScope();
 
     /// <summary>
     /// Starts a scenario on the seed tenant. <c>BuildAsync</c> saves the new entities in one save

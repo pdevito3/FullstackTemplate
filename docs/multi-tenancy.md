@@ -6,7 +6,7 @@ The server keeps the data of each tenant separate.
 
 1. An entity implements `ITenantable`, so it has a `TenantId`.
 2. `AppDbContext` adds a query filter on `TenantId` for each tenantable entity. `Tenant` gets the same filter on its `Id`.
-3. `TenantScopeProvider` finds the `TenantScope` of the current request. The filter reads this scope for each query.
+3. `TenantScopeProvider` finds the `TenantScope` of the current request. `AppDbContext` gets this scope once and keeps it. The filter reads the kept scope for each query. If code changes the caller of a live DI scope, for example a test, call `AppDbContext.RefreshTenantScope()`.
 4. The context does not set the `TenantId` of a new entity. Set it when you create the entity.
 
 ## Make an entity multi-tenant

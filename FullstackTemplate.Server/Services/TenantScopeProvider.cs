@@ -34,7 +34,9 @@ public sealed class TenantScopeProvider(
         var userIdentifier = currentUserService.UserIdentifier;
         if (userIdentifier != null)
         {
-            // The query filter reads the scope synchronously. FusionCache keeps the lookup in memory.
+            // EF Core evaluates the query filter parameters synchronously, so this blocks on the async lookup.
+            // AppDbContext calls this method once and keeps the scope. FusionCache usually has the lookup in
+            // memory. On a cache miss, the thread waits for one database query.
             var tenantId = tenantIdProvider.GetTenantIdAsync(userIdentifier).GetAwaiter().GetResult();
             return tenantId is { } id ? TenantScope.ForTenant(id) : TenantScope.NoTenant;
         }

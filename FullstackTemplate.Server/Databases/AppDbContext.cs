@@ -20,10 +20,22 @@ public class AppDbContext(
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     #endregion
 
+    private TenantScope? _tenantScope;
+
     /// <summary>
-    /// The tenants whose rows the current request can see. The tenant query filter reads it for each query.
+    /// The tenants whose rows the current caller can see. The tenant query filter reads it for each query.
+    /// The context gets the scope once and keeps it, because the caller of a DI scope does not change.
     /// </summary>
-    public TenantScope CurrentTenantScope => tenantScopeProvider.GetCurrentScope();
+    /// <remarks>
+    /// The context is not pooled. If you add DbContext pooling, clear this value when the pool resets the context.
+    /// </remarks>
+    public TenantScope CurrentTenantScope => _tenantScope ??= tenantScopeProvider.GetCurrentScope();
+
+    /// <summary>
+    /// Makes the next query get the tenant scope again. Call it only when code changes the caller of a live
+    /// DI scope, for example a test that changes the current user after a query.
+    /// </summary>
+    public void RefreshTenantScope() => _tenantScope = null;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

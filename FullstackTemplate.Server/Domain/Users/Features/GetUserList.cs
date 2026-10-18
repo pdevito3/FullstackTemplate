@@ -18,9 +18,11 @@ public static class GetUserList
         {
             var queryKitConfig = new CustomQueryKitConfiguration();
 
-            IQueryable<User> query = dbContext.Users
+            // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
+            var query = dbContext.Users
                 .TagWithOperationCallSite("users.list")
-                .AsNoTracking();
+                .AsNoTracking()
+                .ToUserDtoQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyQueryKitFilter(request.Parameters.Filters, queryKitConfig);
@@ -30,10 +32,8 @@ public static class GetUserList
                 ? query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id)
                 : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
 
-            var dtos = query.ToUserDtoQueryable();
-
             return await PagedList<UserDto>.CreateAsync(
-                dtos,
+                query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);

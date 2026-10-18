@@ -18,9 +18,11 @@ public static class GetTenantList
         {
             var queryKitConfig = new CustomQueryKitConfiguration();
 
-            IQueryable<Tenant> query = dbContext.Tenants
+            // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
+            var query = dbContext.Tenants
                 .TagWithOperationCallSite("tenants.list")
-                .AsNoTracking();
+                .AsNoTracking()
+                .ToTenantDtoQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyQueryKitFilter(request.Parameters.Filters, queryKitConfig);
@@ -30,10 +32,8 @@ public static class GetTenantList
                 ? query.OrderBy(t => t.Name).ThenBy(t => t.Id)
                 : query.ApplyQueryKitSort(request.Parameters.SortOrder, queryKitConfig);
 
-            var dtos = query.ToTenantDtoQueryable();
-
             return await PagedList<TenantDto>.CreateAsync(
-                dtos,
+                query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);

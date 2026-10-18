@@ -24,7 +24,7 @@ FullstackTemplate.Server/Domain/
 - **CQRS with MediatR**: commands do the writes, and queries do the reads.
 - **Vertical slices**: each feature is one file with its request, validator, and handler.
 - **Mapperly** generates the DTO mapping code at compile time.
-- **QueryKit** does the filters and sorts for list endpoints.
+- **QueryKit** does the filters and sorts for list endpoints. They run on the DTO projection, so a caller can query only the fields that the contract shows. `CustomQueryKitConfiguration` limits the length and the nesting depth of a filter.
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
 - **Domain events** queue in the entity. `SaveChangesAsync` dispatches them.
 

@@ -2,6 +2,7 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Pagination;
 
 using System.Net;
 using System.Net.Http.Json;
+using FullstackTemplate.Server.Resources;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
@@ -9,11 +10,22 @@ using TestUtilities;
 
 public class QueryInputErrorTests : TestBase
 {
+    private const int OverNestingLimit = CustomQueryKitConfiguration.FilterMaxNestingDepth + 1;
+
+    public static readonly TheoryData<string, string> QueryValuesThatCannotBeRead = new()
+    {
+        { "filters", "Name @= " },
+        { "filters", "Unknown == \"x\"" },
+        { "filters", "Id == \"notaguid\"" },
+        // TenantDto does not show CreatedBy, so the filter cannot use it
+        { "filters", "CreatedBy == \"x\"" },
+        { "filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\"" },
+        { "filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}" },
+        { "sortOrder", "Unknown desc,," },
+    };
+
     [Theory]
-    [InlineData("filters", "Name @= ")]
-    [InlineData("filters", "Unknown == \"x\"")]
-    [InlineData("filters", "Id == \"notaguid\"")]
-    [InlineData("sortOrder", "Unknown desc,,")]
+    [MemberData(nameof(QueryValuesThatCannotBeRead))]
     public async Task query_value_that_cannot_be_read_returns_bad_request_problem(string parameter, string value)
     {
         // Arrange

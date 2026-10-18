@@ -15,6 +15,7 @@ public static partial class UserMapper
     [MapperIgnoreSource(nameof(User.IsDeleted))]
     [MapperIgnoreSource(nameof(User.DomainEvents))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
+    [MapPropertyFromSource(nameof(UserDto.FullName), Use = nameof(MapFullName))]
     public static partial UserDto ToUserDto(this User user);
 
     public static partial IQueryable<UserDto> ToUserDtoQueryable(this IQueryable<User> queryable);
@@ -26,6 +27,8 @@ public static partial class UserMapper
     public static partial UserForUpdate ToUserForUpdate(this UserForUpdateDto dto);
 
     private static string MapEmail(EmailAddress email) => email.Value;
+    // The projection inlines this expression, so EF can filter and sort on FullName. User.FullName is not a column.
+    private static string MapFullName(User user) => user.FirstName + " " + user.LastName;
     private static string MapRole(UserRole role) => role.Value;
     private static IReadOnlyList<string> MapUserPermissionsToPermissions(IReadOnlyCollection<UserPermission> permissions)
         => permissions.Select(p => p.Permission.Value).ToList();

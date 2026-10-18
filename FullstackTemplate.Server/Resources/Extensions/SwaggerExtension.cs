@@ -87,7 +87,7 @@ public static class SwaggerExtension
                         new OpenApiSecurityRequirement
                         {
                             {
-                                new OpenApiSecuritySchemeReference(SecuritySchemeName),
+                                new OpenApiSecuritySchemeReference(SecuritySchemeName, document),
                                 scopesConfig.Keys.ToList()
                             }
                         }

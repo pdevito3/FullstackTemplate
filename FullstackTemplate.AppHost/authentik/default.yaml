@@ -34,7 +34,7 @@ entries:
       client_secret: super-secret-client-secret-change-in-production
       redirect_uris:
         - matching_mode: "strict"
-          url: "http://localhost:5173/signin-oidc"
+          url: !Format ["%s/signin-oidc", !Env APP_FRONTEND_URL]
         - matching_mode: "strict"
           url: "https://localhost:5173/signin-oidc"
         - matching_mode: "strict"
@@ -49,7 +49,7 @@ entries:
         - matching_mode: "strict"
           url: "http://localhost:7554/swagger/oauth2-redirect.html"
         - matching_mode: "strict"
-          url: "https://localhost:7554/swagger/oauth2-redirect.html"
+          url: !Format ["%s/swagger/oauth2-redirect.html", !Env APP_SERVER_URL]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       access_code_validity: minutes=1
       access_token_validity: hours=1
@@ -73,7 +73,7 @@ entries:
       slug: aspire-app
       provider: !KeyOf oauth2-provider
       policy_engine_mode: any
-      meta_launch_url: http://localhost:5173
+      meta_launch_url: !Env APP_FRONTEND_URL
 
   # Admin group
   - model: authentik_core.group

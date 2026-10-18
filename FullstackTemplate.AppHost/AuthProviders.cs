@@ -56,6 +56,16 @@ public sealed record AuthProviderConfig
 }
 
 /// <summary>
+/// The app URLs that a local identity provider must accept as redirect targets.
+/// An isolated run gives these endpoints random ports, so the seed files read them from environment variables.
+/// </summary>
+public sealed record AuthClientUrls(EndpointReference Frontend, EndpointReference Server)
+{
+    public const string FrontendVariable = "APP_FRONTEND_URL";
+    public const string ServerVariable = "APP_SERVER_URL";
+}
+
+/// <summary>
 /// Extension methods for configuring resources with auth provider settings.
 /// </summary>
 public static class AuthProviderExtensions
@@ -100,6 +110,22 @@ public static class AuthProviderExtensions
         }
 
         return resource;
+    }
+
+    /// <summary>
+    /// Gives the app URLs to an identity provider container for its redirect URI seed data.
+    /// </summary>
+    public static IResourceBuilder<ContainerResource> WithClientUrls(
+        this IResourceBuilder<ContainerResource> container,
+        AuthClientUrls clientUrls)
+    {
+        // Url is the host view (http://localhost:<port>) that the browser uses. A plain endpoint reference
+        // in a container environment resolves to the container network view instead.
+        return container.WithEnvironment(context =>
+        {
+            context.EnvironmentVariables[AuthClientUrls.FrontendVariable] = clientUrls.Frontend.Url;
+            context.EnvironmentVariables[AuthClientUrls.ServerVariable] = clientUrls.Server.Url;
+        });
     }
 
     /// <summary>
@@ -175,13 +201,13 @@ public static class AuthProviders
     /// Creates a configuration for FusionAuth running locally in Docker.
     /// Sets up PostgreSQL database and FusionAuth container with Kickstart auto-provisioning.
     /// </summary>
-    public static AuthProviderConfig FusionAuth(IDistributedApplicationBuilder builder)
+    public static AuthProviderConfig FusionAuth(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         // PostgreSQL database for FusionAuth
         var fusionAuthDbPassword = builder.AddParameter("fusionauth-db-password", secret: true);
         var fusionAuthPostgres = builder.AddPostgres("fusionauth-postgres", password: fusionAuthDbPassword)
             .WithImageTag(Config.PostgresImageTag)
-            .WithDataVolume($"{Config.VolumePrefix}-fusionauth-postgres-data");
+            .WithDataVolumeUnlessIsolated();
         var fusionAuthDb = fusionAuthPostgres.AddDatabase("fusionauth-db");
 
         // Get the postgres endpoint for container-to-container communication
@@ -207,6 +233,7 @@ public static class AuthProviders
             .WithEnvironment("FUSIONAUTH_APP_SILENT_MODE", "true")
             .WithEnvironment("SEARCH_TYPE", "database")
             .WithBindMount("./fusionauth", "/usr/local/fusionauth/kickstart", isReadOnly: true)
+            .WithClientUrls(clientUrls)
             .WaitFor(fusionAuthDb)
             // Health check ensures FusionAuth is ready before server starts
             .WithHttpHealthCheck("/api/status");
@@ -232,14 +259,14 @@ public static class AuthProviders
     /// Creates a configuration for Keycloak running locally in Docker.
     /// Uses PostgreSQL database with data volume for persistence and realm import for auto-provisioning.
     /// </summary>
-    public static AuthProviderConfig Keycloak(IDistributedApplicationBuilder builder)
+    public static AuthProviderConfig Keycloak(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         const string realmName = "aspire";
         const string clientId = "aspire-app";
         
         var keycloakPostgres = builder.AddPostgres("keycloak-postgres")
             .WithImageTag(Config.PostgresImageTag)
-            .WithDataVolume($"{Config.VolumePrefix}-keycloak-postgres-data");
+            .WithDataVolumeUnlessIsolated();
         var keycloakDb = keycloakPostgres.AddDatabase("keycloakdb");
         
         var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0")
@@ -261,6 +288,7 @@ public static class AuthProviders
                 context.EnvironmentVariables["KC_DB_PASSWORD"] = pgResource.PasswordParameter;
             })
             .WithBindMount("./keycloak", "/opt/keycloak/data/import", isReadOnly: true)
+            .WithClientUrls(clientUrls)
             .WithArgs("start-dev", "--import-realm")
             .WaitFor(keycloakDb)
             // Health check ensures Keycloak and the realm are ready before server starts
@@ -289,7 +317,7 @@ public static class AuthProviders
     /// Creates a configuration for Authentik running locally in Docker.
     /// Sets up PostgreSQL, Redis, server, and worker containers with blueprint auto-provisioning.
     /// </summary>
-    public static AuthProviderConfig Authentik(IDistributedApplicationBuilder builder)
+    public static AuthProviderConfig Authentik(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         const string appSlug = "aspire-app";
         const string clientId = "aspire-app";
@@ -300,7 +328,7 @@ public static class AuthProviders
         var authentikDbPassword = builder.AddParameter("authentik-db-password", secret: true);
         var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword)
             .WithImageTag(Config.PostgresImageTag)
-            .WithDataVolume($"{Config.VolumePrefix}-authentik-postgres-data");
+            .WithDataVolumeUnlessIsolated();
         var authentikDb = authentikPostgres.AddDatabase("authentik-db");
 
         var postgresEndpoint = authentikPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
@@ -308,7 +336,7 @@ public static class AuthProviders
         // Redis for Authentik with data persistence
         var redis = builder.AddContainer("authentik-redis", "redis", "alpine")
             .WithArgs("--save", "60", "1", "--loglevel", "warning")
-            .WithVolume("authentik-redis-data", "/data");
+            .WithDataVolumeUnlessIsolated("/data");
 
         var redisEndpoint = redis.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
 
@@ -328,6 +356,7 @@ public static class AuthProviders
             .WithEnvironment("AUTHENTIK_BOOTSTRAP_PASSWORD", "password123!")
             .WithEnvironment("AUTHENTIK_BOOTSTRAP_EMAIL", "akadmin@example.com")
             .WithBindMount("./authentik", "/blueprints/custom", isReadOnly: true)
+            .WithClientUrls(clientUrls)
             .WithArgs("worker")
             .WaitFor(authentikDb)
             .WaitFor(redis);

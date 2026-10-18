@@ -98,6 +98,17 @@ This starts:
 - **React Dev Server** - Vite with hot reload
 - **Auth Provider** - Keycloak/FusionAuth (Docker) or Duende Demo (external)
 
+### Run several stacks at the same time
+
+To run a stack in each git worktree, start each one in isolated mode:
+
+```bash
+dotnet tool restore   # once: installs the pinned Aspire CLI as `dotnet aspire`
+dotnet aspire run --isolated --apphost MyProject.AppHost
+```
+
+An isolated run gives each endpoint a random port and uses a copy of the user secrets. It also starts Postgres with no data volume, so each run gets an empty database. A normal run keeps port 5173 for the frontend and keeps a separate data volume for each checkout path.
+
 ## Test Users
 
 ### Keycloak / FusionAuth

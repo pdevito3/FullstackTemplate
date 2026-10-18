@@ -23,7 +23,7 @@
           "name": "FullstackTemplate",
           "oauthConfiguration": {
             "authorizedRedirectURLs": [
-              "http://localhost:5173/signin-oidc",
+              "#{ENV.APP_FRONTEND_URL}/signin-oidc",
               "https://localhost:5173/signin-oidc",
               "http://localhost:7130/signin-oidc",
               "https://localhost:7130/signin-oidc",
@@ -32,18 +32,18 @@
               "http://localhost:7130/signout-callback-oidc",
               "https://localhost:7130/signout-callback-oidc",
               "http://localhost:7554/swagger/oauth2-redirect.html",
-              "https://localhost:7554/swagger/oauth2-redirect.html",
+              "#{ENV.APP_SERVER_URL}/swagger/oauth2-redirect.html",
               "http://localhost:5566/swagger/oauth2-redirect.html"
             ],
             "authorizedOriginURLs": [
-              "http://localhost:5173",
+              "#{ENV.APP_FRONTEND_URL}",
               "https://localhost:5173",
               "http://localhost:7130",
               "https://localhost:7130",
               "http://localhost:7235",
               "https://localhost:7235",
               "http://localhost:7554",
-              "https://localhost:7554",
+              "#{ENV.APP_SERVER_URL}",
               "http://localhost:5566"
             ],
             "clientAuthenticationPolicy": "NotRequiredWhenUsingPKCE",
@@ -54,7 +54,7 @@
               "refresh_token"
             ],
             "generateRefreshTokens": true,
-            "logoutURL": "http://localhost:5173",
+            "logoutURL": "#{ENV.APP_FRONTEND_URL}",
             "logoutBehavior": "RedirectOnly",
             "proofKeyForCodeExchangePolicy": "Required",
             "requireClientAuthentication": false,

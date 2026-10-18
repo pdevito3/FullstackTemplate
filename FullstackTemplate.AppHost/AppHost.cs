@@ -23,44 +23,44 @@ try
         .Enrich.WithThreadId()
         .Enrich.WithProperty("Application", "FullstackTemplate.AppHost"));
 
-#if LOCAL_DEV
-    // var authProvider = AuthProviders.FusionAuth(builder);
-    // var authProvider = AuthProviders.Keycloak(builder);
-    var authProvider = AuthProviders.DuendeDemo();
-    // var authProvider = AuthProviders.Authentik(builder);
-#else
-    //#if (UseFusionAuth)
-    var authProvider = AuthProviders.FusionAuth(builder);
-    //#elseif (UseKeycloak)
-    var authProvider = AuthProviders.Keycloak(builder);
-    //#elseif (UseAuthentik)
-    var authProvider = AuthProviders.Authentik(builder);
-    //#else
-    var authProvider = AuthProviders.DuendeDemo();
-    //#endif
-#endif
-
+    // `aspire run --isolated` gives each proxied endpoint a random port and skips the data volumes,
+    // so that worktrees can run the full stack at the same time. See Isolation.cs.
     var postgres = builder.AddPostgres("postgres")
         .WithImageTag(Config.PostgresImageTag)
-        .WithDataVolume($"{Config.VolumePrefix}-db-volume");
+        .WithDataVolumeUnlessIsolated();
     var appDb = postgres.AddDatabase("appdb");
 
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
         .WithReference(appDb)
         .WaitFor(appDb)
-        .WithServerAuth(authProvider)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
         .WithCSharpRepl();
     postgres.WithParentRelationship(server);
 
+    // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
     var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
-        .WithEndpoint("http", endpoint =>
-        {
-            endpoint.Port = 5173;
-            endpoint.IsProxied = false;
-        })
+        .WithEndpoint("http", endpoint => endpoint.Port = 5173)
         .WithPnpm();
+
+    var authClientUrls = new AuthClientUrls(webfrontend.GetEndpoint("http"), server.GetEndpoint("https"));
+#if LOCAL_DEV
+    // var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
+    // var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
+    var authProvider = AuthProviders.DuendeDemo();
+    // var authProvider = AuthProviders.Authentik(builder, authClientUrls);
+#else
+    //#if (UseFusionAuth)
+    var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
+    //#elseif (UseKeycloak)
+    var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
+    //#elseif (UseAuthentik)
+    var authProvider = AuthProviders.Authentik(builder, authClientUrls);
+    //#else
+    var authProvider = AuthProviders.DuendeDemo();
+    //#endif
+#endif
+    server.WithServerAuth(authProvider);
 
     var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
         .WithBffAuth(authProvider)

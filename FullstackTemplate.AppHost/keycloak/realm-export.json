@@ -46,7 +46,7 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "super-secret-client-secret-change-in-production",
       "redirectUris": [
-        "http://localhost:5173/*",
+        "${APP_FRONTEND_URL}/*",
         "https://localhost:5173/*",
         "http://localhost:5566/*",
         "https://localhost:5566/*",
@@ -55,10 +55,10 @@
         "http://localhost:7235/*",
         "https://localhost:7235/*",
         "http://localhost:7554/*",
-        "https://localhost:7554/*"
+        "${APP_SERVER_URL}/*"
       ],
       "webOrigins": [
-        "http://localhost:5173",
+        "${APP_FRONTEND_URL}",
         "https://localhost:5173",
         "http://localhost:5566",
         "https://localhost:5566",
@@ -67,7 +67,7 @@
         "http://localhost:7235",
         "https://localhost:7235",
         "http://localhost:7554",
-        "https://localhost:7554"
+        "${APP_SERVER_URL}"
       ],
       "publicClient": false,
       "protocol": "openid-connect",

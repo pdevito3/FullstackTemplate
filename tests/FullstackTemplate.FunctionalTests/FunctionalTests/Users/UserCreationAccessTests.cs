@@ -9,6 +9,7 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using TestUtilities;
 
@@ -31,7 +32,7 @@ public class UserCreationAccessTests : TestBase
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You can add a user only to your own tenant.");
+        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
     }
 
     [Fact]
@@ -107,6 +108,38 @@ public class UserCreationAccessTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task basic_member_cannot_add_a_user()
+    {
+        // Arrange
+        var (_, member) = await AddTenantWithUserAsync("User");
+        SignInAs(member);
+        var dto = new FakeUserForCreationDto().RuleFor(x => x.Role, _ => "Admin").Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
+        var added = await ExecuteDbContextAsync(db => db.Users.IgnoreQueryFilters()
+            .AnyAsync(u => u.Identifier == dto.Identifier));
+        added.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task basic_member_cannot_change_a_role()
+    {
+        // Arrange
+        var (_, member) = await AddTenantWithUserAsync("User");
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Role(member.Id), new { role = "Admin" });
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
     }
 
     [Fact]

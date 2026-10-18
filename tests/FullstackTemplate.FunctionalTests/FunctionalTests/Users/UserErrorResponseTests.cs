@@ -15,12 +15,13 @@ public class UserErrorResponseTests : TestBase
     public async Task blank_email_on_create_returns_validation_problem()
     {
         // Arrange
-        TestGraph.Start(out _).AddTenant(out var tenant).AddUser(out var user);
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
         var dto = new FakeUserForCreationDto()
-            .RuleFor(x => x.TenantId, _ => tenant.Id)
             .RuleFor(x => x.Email, _ => "")
             .Generate();
 

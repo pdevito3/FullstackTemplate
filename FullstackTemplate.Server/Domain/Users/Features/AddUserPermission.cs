@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class AddUserPermission
 {
-    public sealed record Command(Guid Id, string Permission) : IRequest<UserDto>;
+    public sealed record Command(Guid Id, string Permission) : IRequest<UserDto>, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
     {

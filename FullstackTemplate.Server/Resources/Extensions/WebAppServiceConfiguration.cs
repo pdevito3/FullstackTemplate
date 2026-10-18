@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
 using Databases;
+using Domain.Users;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Services;
@@ -29,6 +30,8 @@ public static class WebAppServiceConfiguration
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
             // Outermost behavior, so its span covers every later behavior and the handler itself.
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
+            // Runs only for requests that have IRequireTenantAdmin, because of its generic constraint.
+            cfg.AddOpenBehavior(typeof(TenantAdminBehavior<,>));
         });
         builder.Services.AddApiVersioningExtension();
         builder.Services.AddControllers();

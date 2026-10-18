@@ -14,6 +14,7 @@ public static class ApiRoutes
         public static string Initiate => $"{Base}/users/initiate";
         public static string Put(Guid id) => $"{Base}/users/{id}";
         public static string Delete(Guid id) => $"{Base}/users/{id}";
+        public static string Role(Guid id) => $"{Base}/users/{id}/role";
     }
 
     public static class Tenants

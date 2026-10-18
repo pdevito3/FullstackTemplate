@@ -5,8 +5,8 @@ using System.Net.Http.Json;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
-using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,7 @@ public class TenantAccessTests : TestBase
     public async Task user_can_get_their_own_tenant()
     {
         // Arrange
-        var (tenant, user) = await AddTenantWithUserAsync();
+        var (tenant, user) = await AddTenantWithUserAsync("User");
         SignInAs(user);
 
         // Act
@@ -34,8 +34,8 @@ public class TenantAccessTests : TestBase
     public async Task user_cannot_get_another_tenant()
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
-        var (otherTenant, _) = await AddTenantWithUserAsync();
+        var (_, user) = await AddTenantWithUserAsync("User");
+        var (otherTenant, _) = await AddTenantWithUserAsync("User");
         SignInAs(user);
 
         // Act
@@ -49,8 +49,8 @@ public class TenantAccessTests : TestBase
     public async Task user_sees_only_their_own_tenant_in_the_list()
     {
         // Arrange
-        var (tenant, user) = await AddTenantWithUserAsync();
-        await AddTenantWithUserAsync();
+        var (tenant, user) = await AddTenantWithUserAsync("User");
+        await AddTenantWithUserAsync("User");
         SignInAs(user);
 
         // Act
@@ -66,7 +66,7 @@ public class TenantAccessTests : TestBase
     public async Task user_with_no_user_record_sees_no_tenants()
     {
         // Arrange
-        await AddTenantWithUserAsync();
+        await AddTenantWithUserAsync("User");
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = $"unknown-{Guid.NewGuid()}" });
 
         // Act
@@ -78,11 +78,11 @@ public class TenantAccessTests : TestBase
     }
 
     [Fact]
-    public async Task user_cannot_update_another_tenant()
+    public async Task admin_cannot_update_another_tenant()
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
-        var (otherTenant, _) = await AddTenantWithUserAsync();
+        var (_, user) = await AddTenantWithUserAsync("Admin");
+        var (otherTenant, _) = await AddTenantWithUserAsync("User");
         SignInAs(user);
 
         // Act
@@ -97,11 +97,11 @@ public class TenantAccessTests : TestBase
     }
 
     [Fact]
-    public async Task user_cannot_delete_another_tenant()
+    public async Task admin_cannot_delete_another_tenant()
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
-        var (otherTenant, _) = await AddTenantWithUserAsync();
+        var (_, user) = await AddTenantWithUserAsync("Admin");
+        var (otherTenant, _) = await AddTenantWithUserAsync("User");
         SignInAs(user);
 
         // Act
@@ -114,10 +114,60 @@ public class TenantAccessTests : TestBase
     }
 
     [Fact]
+    public async Task basic_member_cannot_update_their_own_tenant()
+    {
+        // Arrange
+        var (tenant, member) = await AddTenantWithUserAsync("User");
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(
+            ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}" });
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
+        var name = await ExecuteDbContextAsync(db => db.Tenants
+            .Where(t => t.Id == tenant.Id).Select(t => t.Name).SingleAsync());
+        name.ShouldBe(tenant.Name);
+    }
+
+    [Fact]
+    public async Task admin_can_update_their_own_tenant()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        var newName = $"renamed-{Guid.NewGuid()}";
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = newName });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await result.Content.ReadFromJsonAsync<TenantDto>()).ShouldNotBeNull().Name.ShouldBe(newName);
+    }
+
+    [Fact]
+    public async Task basic_member_cannot_delete_their_own_tenant()
+    {
+        // Arrange
+        var (tenant, member) = await AddTenantWithUserAsync("User");
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
+        var exists = await ExecuteDbContextAsync(db => db.Tenants.AnyAsync(t => t.Id == tenant.Id));
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task user_cannot_add_a_tenant()
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
+        var (_, user) = await AddTenantWithUserAsync("User");
         SignInAs(user);
 
         // Act
@@ -135,7 +185,7 @@ public class TenantAccessTests : TestBase
     public async Task trusted_machine_client_can_add_and_get_any_tenant()
     {
         // Arrange
-        var (otherTenant, _) = await AddTenantWithUserAsync();
+        var (otherTenant, _) = await AddTenantWithUserAsync("User");
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
         {
             ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
@@ -154,10 +204,19 @@ public class TenantAccessTests : TestBase
     private void SignInAs(User user)
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
 
-    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync()
+    private static async Task ShouldBeForbiddenAsync(HttpResponseMessage result, string detail)
     {
-        var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
-        var user = User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate());
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
+        problem.Detail.ShouldBe(detail);
+    }
+
+    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role)
+    {
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = role);
         await InsertAsync(tenant);
         await InsertAsync(user);
         return (tenant, user);

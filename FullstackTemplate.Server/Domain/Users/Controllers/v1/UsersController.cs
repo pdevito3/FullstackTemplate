@@ -68,6 +68,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPost(Name = "AddUser")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -118,6 +119,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPut("{id:guid}/role", Name = "UpdateUserRole")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -135,6 +137,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPost("{id:guid}/permissions", Name = "AddUserPermission")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -152,6 +155,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpDelete("{id:guid}/permissions/{permission}", Name = "RemoveUserPermission")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class UpdateUserRole
 {
-    public sealed record Command(Guid Id, string Role) : IRequest<UserDto>;
+    public sealed record Command(Guid Id, string Role) : IRequest<UserDto>, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
     {

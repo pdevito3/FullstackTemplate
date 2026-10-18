@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class AddUser
 {
-    public sealed record Command(UserForCreationDto Dto) : IRequest<UserDto>;
+    public sealed record Command(UserForCreationDto Dto) : IRequest<UserDto>, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
     {

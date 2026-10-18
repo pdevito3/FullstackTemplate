@@ -69,6 +69,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPut("{id:guid}", Name = "UpdateTenant")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -86,6 +87,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     /// </summary>
     [Authorize]
     [HttpDelete("{id:guid}", Name = "DeleteTenant")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteTenant(Guid id)

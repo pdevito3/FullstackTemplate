@@ -4,10 +4,11 @@ using Databases;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Services;
+using Users;
 
 public static class DeleteTenant
 {
-    public sealed record Command(Guid Id) : IRequest;
+    public sealed record Command(Guid Id) : IRequest, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext, ITenantIdProvider tenantIdProvider) : IRequestHandler<Command>
     {

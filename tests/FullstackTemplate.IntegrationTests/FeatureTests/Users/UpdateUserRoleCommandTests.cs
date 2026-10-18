@@ -10,6 +10,26 @@ using Shouldly;
 public class UpdateUserRoleCommandTests : TestBase
 {
     [Fact]
+    public async Task member_cannot_change_a_role()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var member, u => u.Role = "User")
+            .BuildAsync();
+        testingServiceScope.SetUserWithDefaults(identifier: member.Identifier);
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new UpdateUserRole.Command(member.Id, "Admin"));
+
+        // Assert
+        await act.ShouldThrowAsync<ForbiddenAccessException>();
+        var role = await testingServiceScope.ExecuteDbContextAsync(db => db.Users
+            .Where(u => u.Id == member.Id).Select(u => u.Role.Value).SingleAsync());
+        role.ShouldBe("User");
+    }
+
+    [Fact]
     public async Task can_change_role_from_user_to_admin()
     {
         // Arrange

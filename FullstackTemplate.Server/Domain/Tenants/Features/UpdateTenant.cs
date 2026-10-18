@@ -4,10 +4,11 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
+using Users;
 
 public static class UpdateTenant
 {
-    public sealed record Command(Guid Id, TenantForUpdateDto Dto) : IRequest<TenantDto>;
+    public sealed record Command(Guid Id, TenantForUpdateDto Dto) : IRequest<TenantDto>, IRequireTenantAdmin;
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, TenantDto>
     {

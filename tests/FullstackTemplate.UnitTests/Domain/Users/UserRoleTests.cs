@@ -99,4 +99,17 @@ public class UserRoleTests
         names.ShouldContain("User");
         names.Count.ShouldBe(2);
     }
+
+    [Theory]
+    [InlineData("Admin", true)]
+    [InlineData("admin", true)]
+    [InlineData("User", false)]
+    public void is_admin_is_true_only_for_the_admin_role(string role, bool expected)
+    {
+        // Arrange & Act
+        var isAdmin = UserRole.Of(role).IsAdmin();
+
+        // Assert
+        isAdmin.ShouldBe(expected);
+    }
 }

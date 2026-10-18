@@ -7,12 +7,13 @@ import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { userDtoSchema } from '../../models/zod/user-dto'
 import { userForUpdateDtoSchema } from '../../models/zod/user-for-update-dto'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const updateUserPathIdSchema = z.uuid()
 
 export const updateUserStatus200Schema = userDtoSchema
 
-export const updateUserStatus400Schema = problemDetailsSchema
+export const updateUserStatus400Schema = validationProblemDetailsSchema
 
 export const updateUserStatus404Schema = problemDetailsSchema
 

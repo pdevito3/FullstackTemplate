@@ -51,7 +51,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost(Name = "AddTenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<TenantDto>> AddTenant(
         [FromBody] TenantForCreationDto dto)
@@ -71,7 +71,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
     [HttpPut("{id:guid}", Name = "UpdateTenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TenantDto>> UpdateTenant(
         Guid id,
         [FromBody] TenantForUpdateDto dto)

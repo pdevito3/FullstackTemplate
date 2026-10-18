@@ -6,6 +6,7 @@
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { UserDto } from '../../models/types/user-dto'
 import type { UserForUpdateDto } from '../../models/types/user-for-update-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type UpdateUserPath = {
     /**
@@ -18,7 +19,7 @@ export type UpdateUserPath = {
 
 export type UpdateUserStatus200 = UserDto;
 
-export type UpdateUserStatus400 = ProblemDetails;
+export type UpdateUserStatus400 = ValidationProblemDetails;
 
 export type UpdateUserStatus404 = ProblemDetails;
 

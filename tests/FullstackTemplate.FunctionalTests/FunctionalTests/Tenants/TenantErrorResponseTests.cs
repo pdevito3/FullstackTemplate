@@ -63,5 +63,23 @@ public class TenantErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        problem.Errors.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task missing_required_property_returns_bad_request_problem_with_errors()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Tenants.Create, new { });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        problem.Errors.ShouldContainKey("Name");
     }
 }

@@ -7,10 +7,11 @@ import * as z from 'zod'
 import { initiateUserAndTenantDtoSchema } from '../../models/zod/initiate-user-and-tenant-dto'
 import { initiateUserAndTenantResponseDtoSchema } from '../../models/zod/initiate-user-and-tenant-response-dto'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const initiateUserAndTenantStatus201Schema = initiateUserAndTenantResponseDtoSchema
 
-export const initiateUserAndTenantStatus400Schema = problemDetailsSchema
+export const initiateUserAndTenantStatus400Schema = validationProblemDetailsSchema
 
 export const initiateUserAndTenantStatus403Schema = problemDetailsSchema
 

@@ -6,10 +6,11 @@
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { TenantDto } from '../../models/types/tenant-dto'
 import type { TenantForCreationDto } from '../../models/types/tenant-for-creation-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type AddTenantStatus201 = TenantDto;
 
-export type AddTenantStatus400 = ProblemDetails;
+export type AddTenantStatus400 = ValidationProblemDetails;
 
 export type AddTenantStatus403 = ProblemDetails;
 

@@ -94,6 +94,8 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainProblemDetai
 | `ForbiddenAccessException` | 403. `detail` has the message |
 | Any other exception | 500 |
 
+If model binding or model validation fails, the Server returns 400 with a `ValidationProblemDetails` body. This body has the `errors` field. Declare `[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]` on each action that can return 400, so that the OpenAPI document states this shape.
+
 Do not catch these exceptions in a controller. Throw them from the entity or the handler.
 
 ## Database

@@ -69,7 +69,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost(Name = "AddUser")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<UserDto>> AddUser(
         [FromBody] UserForCreationDto dto)
@@ -89,7 +89,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [HttpPut("{id:guid}", Name = "UpdateUser")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> UpdateUser(
         Guid id,
         [FromBody] UserForUpdateDto dto)
@@ -120,7 +120,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [HttpPut("{id:guid}/role", Name = "UpdateUserRole")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> UpdateUserRole(
         Guid id,
         [FromBody] UpdateUserRoleDto dto)
@@ -137,7 +137,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [HttpPost("{id:guid}/permissions", Name = "AddUserPermission")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> AddUserPermission(
         Guid id,
         [FromBody] UserPermissionDto dto)
@@ -154,7 +154,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [HttpDelete("{id:guid}/permissions/{permission}", Name = "RemoveUserPermission")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UserDto>> RemoveUserPermission(
         Guid id,
         string permission)
@@ -171,7 +171,7 @@ public sealed class UsersController(IMediator mediator) : ControllerBase
     [Authorize]
     [HttpPost("initiate", Name = "InitiateUserAndTenant")]
     [ProducesResponseType(typeof(InitiateUserAndTenantResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<InitiateUserAndTenantResponseDto>> InitiateUserAndTenant(
         [FromBody] InitiateUserAndTenantDto dto)

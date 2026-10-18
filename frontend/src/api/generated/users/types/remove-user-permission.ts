@@ -5,6 +5,7 @@
 
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { UserDto } from '../../models/types/user-dto'
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type RemoveUserPermissionPath = {
     /**
@@ -18,7 +19,7 @@ export type RemoveUserPermissionPath = {
 
 export type RemoveUserPermissionStatus200 = UserDto;
 
-export type RemoveUserPermissionStatus400 = ProblemDetails;
+export type RemoveUserPermissionStatus400 = ValidationProblemDetails;
 
 export type RemoveUserPermissionStatus404 = ProblemDetails;
 

@@ -32,13 +32,18 @@ public class TracingTests : TestBase
         // Arrange
         TestGraph.Start(out _).AddTenant(out var tenant);
         await AddAsync(tenant);
+        // Tests in other classes run at the same time and can also send GetTenant. The trace of this
+        // parent keeps their spans out of the assertions.
+        using var parent = Telemetry.Source.StartActivity("test.parent").ShouldNotBeNull();
 
         // Act
         await SendAsync(new GetTenant.Query(tenant.Id));
+        parent.Stop();
 
         // Assert
-        var slice = ExportedSpans().Where(a => a.DisplayName == "GetTenant.Query").ShouldHaveSingleItem();
-        var query = ExportedSpans().Where(a => a.DisplayName == "SQL: tenants.get_by_id").ShouldHaveSingleItem();
+        var spans = ExportedSpans().Where(a => a.TraceId == parent.TraceId).ToList();
+        var slice = spans.Where(a => a.DisplayName == "GetTenant.Query").ShouldHaveSingleItem();
+        var query = spans.Where(a => a.DisplayName == "SQL: tenants.get_by_id").ShouldHaveSingleItem();
         query.ParentSpanId.ShouldBe(slice.SpanId);
         query.GetTagItem("db.operation.name").ShouldBe("tenants.get_by_id");
         query.GetTagItem("code.function").ShouldBe("Handle");

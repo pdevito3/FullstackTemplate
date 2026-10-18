@@ -8,5 +8,7 @@ using Bogus;
 /// </summary>
 public static class TenantRules
 {
-    public static string Name(Faker f) => f.Company.CompanyName();
+    // Tenant names are unique in the database, and the company names repeat often. The suffix stops two
+    // tests that run at the same time from making the same name.
+    public static string Name(Faker f) => $"{f.Company.CompanyName()} {Guid.NewGuid().ToString("N")[..8]}";
 }

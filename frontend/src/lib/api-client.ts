@@ -20,11 +20,6 @@ declare module 'axios' {
 }
 
 /**
- * Extended Axios config with Problem Details handling options
- */
-export type ApiClientRequestConfig = AxiosRequestConfig
-
-/**
  * Axios instance configured for BFF API calls with CSRF protection and credentials.
  *
  * Usage:
@@ -90,7 +85,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     // Get custom config options
-    const config = error.config as ApiClientRequestConfig | undefined
+    const config = error.config as AxiosRequestConfig | undefined
     const suppressToast = config?.suppressErrorToast ?? false
 
     // A cancel (for example, TanStack Query aborts an old query) is not an error to show.
@@ -123,7 +118,7 @@ client.setConfig({ transport: apiClient })
  */
 export async function apiFetch<T>(
   url: string,
-  config?: ApiClientRequestConfig
+  config?: AxiosRequestConfig
 ): Promise<T> {
   const response = await apiClient.request<T>({ url, ...config })
   return response.data
@@ -145,7 +140,7 @@ export async function apiFetch<T>(
  */
 export async function fetchWithoutToast<T>(
   url: string,
-  config?: Omit<ApiClientRequestConfig, 'suppressErrorToast'>
+  config?: Omit<AxiosRequestConfig, 'suppressErrorToast'>
 ): Promise<T> {
   return apiFetch<T>(url, { ...config, suppressErrorToast: true })
 }

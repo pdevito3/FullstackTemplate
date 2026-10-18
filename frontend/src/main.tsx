@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { ThemeProvider } from '@/components/theme-provider'
-import { Notifications } from '@/components/notifications'
+import { Notifications } from '@/components/toaster'
 // Connects the generated API clients to apiClient before the first request.
 import '@/lib/api-client'
 import './index.css'

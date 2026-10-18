@@ -61,7 +61,7 @@ src/api/generated/
 └── .kubb/                      # Client runtime
 ```
 
-The tag and the operation names come from the endpoint names (`Name =` or `.WithName`) and the controller tags. The Server build fails if an endpoint has no name.
+The tag and the operation names come from the endpoint names (`Name =` or `.WithName`) and the controller tags. The Server Debug build fails if an endpoint has no name.
 
 To change the contract after a change to the Server API:
 

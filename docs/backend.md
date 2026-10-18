@@ -43,16 +43,16 @@ Do these steps in sequence. Each step has a rule file in `.claude/rules/backend/
 
 ## OpenAPI document
 
-`Microsoft.AspNetCore.OpenApi` makes the OpenAPI document. Swagger UI shows it at `/swagger`. A Debug build also writes it to `openapi/FullstackTemplate.Server.json`. The frontend generates its API contract from this file (see [frontend.md](frontend.md#api-contract)).
+`Microsoft.AspNetCore.OpenApi` makes the OpenAPI document. Swagger UI shows it at `/swagger`. A Debug build also writes it to `openapi/FullstackTemplate.Server.json`. Other configurations do not write it, because the Server csproj sets `OpenApiGenerateDocuments` to false for them. The frontend generates its API contract from this file (see [frontend.md](frontend.md#api-contract)).
 
-The build starts the host without an auth provider or a database. `Resources/OpenApiBuildTime.cs` gives the host placeholder auth values for this run. If startup code needs an external system, skip it when `OpenApiBuildTime.IsActive` is true.
+The build starts the host without an auth provider or a database. `Resources/OpenApiBuildTime.cs` gives the host placeholder auth values for this run. This run does no OIDC discovery, so the committed file has no OAuth2 security scheme, but the runtime document at `/openapi/v1.json` has it. If startup code needs an external system, skip it when `OpenApiBuildTime.IsActive` is true.
 
 The document transformers in `Resources/Extensions/` set these rules:
 
-- Each endpoint must have a name (`Name =` on the HTTP attribute, or `.WithName`). If an endpoint has no name, the build fails.
+- Each endpoint must have a name (`Name =` on the HTTP attribute, or `.WithName`). If an endpoint has no name, the Debug build fails.
 - A property that is not nullable is required.
 - A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema.
-- An endpoint that returns a `PagedList<T>` must have a name that ends in `List`. Other endpoints must not have a name that ends in `List`. If not, the build fails. The frontend list clients use this name to return the full response.
+- An endpoint that returns a `PagedList<T>` must have a name that ends in `List`. Other endpoints must not have a name that ends in `List`. If not, the Debug build fails. The frontend list clients use this name to return the full response.
 - Requests and success responses use only `application/json`. Error responses with a `ProblemDetails` body use only `application/problem+json`, as the Server sends them. The document types numbers only as numbers. The Server still accepts the lenient forms (`text/json` and `application/*+json` request bodies, and numbers in JSON strings), but the contract states only the canonical form.
 
 ## Service registration

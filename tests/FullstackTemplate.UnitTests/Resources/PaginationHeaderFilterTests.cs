@@ -1,35 +1,64 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
+using System.Text.Json;
 using FullstackTemplate.Server.Resources;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Net.Http.Headers;
 using Shouldly;
 
 public class PaginationHeaderFilterTests
 {
     [Fact]
-    public void filter_keeps_the_headers_that_another_component_exposed()
+    public void filter_adds_the_page_data_of_a_paged_list()
     {
         // Arrange
-        var httpContext = new DefaultHttpContext();
-        httpContext.Response.Headers.Append(HeaderNames.AccessControlExposeHeaders, "X-Other");
-        var pagedList = PagedList<int>.Create(new[] { 1, 2 }.AsQueryable(), 1, 1);
-        var context = new ResultExecutingContext(
-            new ActionContext(httpContext, new RouteData(), new ActionDescriptor()),
-            [],
-            new OkObjectResult(pagedList),
-            new object());
+        var pagedList = PagedList<int>.Create(new[] { 1, 2, 3 }.AsQueryable(), 2, 1);
+        var (context, headers) = ContextFor(new OkObjectResult(pagedList));
 
         // Act
         new PaginationHeaderFilter().OnResultExecuting(context);
 
         // Assert
-        httpContext.Response.Headers[HeaderNames.AccessControlExposeHeaders]
-            .ToArray()
-            .ShouldBe(["X-Other", PaginationMetadata.HeaderName]);
+        var metadata = JsonSerializer.Deserialize<PaginationMetadata>(
+            headers[PaginationMetadata.HeaderName].ToString(),
+            JsonSerializerOptions.Web).ShouldNotBeNull();
+        metadata.PageNumber.ShouldBe(2);
+        metadata.TotalCount.ShouldBe(3);
+        metadata.TotalPages.ShouldBe(3);
+    }
+
+    public static readonly TheoryData<IActionResult> ResultsThatAreNotAPagedList = new()
+    {
+        new OkObjectResult(new[] { 1, 2 }),
+        new OkObjectResult(null),
+        new NoContentResult(),
+    };
+
+    [Theory]
+    [MemberData(nameof(ResultsThatAreNotAPagedList))]
+    public void filter_adds_no_header_to_a_result_that_is_not_a_paged_list(IActionResult result)
+    {
+        // Arrange
+        var (context, headers) = ContextFor(result);
+
+        // Act
+        new PaginationHeaderFilter().OnResultExecuting(context);
+
+        // Assert
+        headers.ContainsKey(PaginationMetadata.HeaderName).ShouldBeFalse();
+    }
+
+    private static (ResultExecutingContext Context, IHeaderDictionary Headers) ContextFor(IActionResult result)
+    {
+        var httpContext = new DefaultHttpContext();
+        var context = new ResultExecutingContext(
+            new ActionContext(httpContext, new RouteData(), new ActionDescriptor()),
+            [],
+            result,
+            new object());
+        return (context, httpContext.Response.Headers);
     }
 }

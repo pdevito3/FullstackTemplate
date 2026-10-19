@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Paul",
+  "classifications": ["Web", "Aspire", "React"],
+  "identity": "FullstackTemplate",
+  "name": "Fullstack Aspire React Template",
+  "shortName": "fullstack-aspire",
+  "description": "A fullstack .NET Aspire template with React frontend",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sourceName": "FullstackTemplate",
+  "defaultName": "AspireApp",
+  "preferNameDirectory": true,
+  "symbols": {
+    "skipRestore": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Do not restore the NuGet packages after the project is created"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "exclude": [
+            ".git",
+            ".git/**",
+            ".vs/**",
+            "**/bin/**",
+            "**/obj/**",
+            "frontend/obj*/**",
+            "**/logs/**",
+            "**/*.log",
+            "**/node_modules/**",
+            "**/.idea/**",
+            "**/dist/**",
+            "**/*.user",
+            "**/*.DotSettings.user",
+            "**/.DS_Store",
+            "**/Thumbs.db",
+            ".playwright-mcp/**",
+            "template.csproj",
+            "scripts/template-smoke-test.sh",
+            "*.nupkg",
+            ".claude/worktrees/**",
+            ".claude/settings.local.json"
+          ]
+        }
+      ]
+    }
+  ],
+  "guids": [
+    "4C10ED0E-4114-4F21-832A-F472C56A6832",
+    "25764901-65B5-45EB-9CB6-218DC5E8AB61",
+    "2A054968-1B72-4793-A5B7-0E90A402929E",
+    "91F0EF7F-B090-4652-97BA-FBDAF7770878",
+    "4c914da6-509c-4fa2-ab1a-eb4125a15857"
+  ],
+  "primaryOutputs": [
+    {
+      "path": "FullstackTemplate.slnx"
+    }
+  ],
+  "postActions": [
+    {
+      "id": "restore",
+      "condition": "(!skipRestore)",
+      "description": "Restore NuGet packages",
+      "manualInstructions": [
+        {
+          "text": "Run 'dotnet restore'"
+        }
+      ],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    },
+    {
+      "id": "pnpm-install",
+      "description": "Install frontend dependencies",
+      "manualInstructions": [
+        {
+          "text": "Run 'cd frontend && pnpm install'"
+        }
+      ],
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "pnpm",
+        "args": "install",
+        "workingDirectory": "frontend"
+      },
+      "continueOnError": true
+    },
+    {
+      "id": "git-init",
+      "description": "Initialize a git repository",
+      "manualInstructions": [
+        {
+          "text": "Run 'git init'"
+        }
+      ],
+      "actionId": "3A7C4B45-1F5D-4A30-959A-51B88E82B5D2",
+      "args": {
+        "executable": "git",
+        "args": "init"
+      },
+      "continueOnError": true
+    }
+  ]
+}

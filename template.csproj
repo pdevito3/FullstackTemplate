@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageId>FullstackTemplate.Aspire.React</PackageId>
+    <Title>Fullstack Aspire React Template</Title>
+    <Authors>Paul</Authors>
+    <Description>A fullstack .NET Aspire template with React frontend</Description>
+    <PackageTags>dotnet-new;templates;aspire;react</PackageTags>
+    <PackageProjectUrl>https://github.com/yourusername/FullstackTemplate</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="**\*" />
+    <Content Remove="**\*" />
+    <None Remove="**\*" />
+  </ItemGroup>
+
+  <!--
+    Pack only the files that git tracks. A glob over the folder also packs local files that git ignores,
+    such as logs, local settings, and build output, so the package depends on the machine that packs it.
+    .template.config/template.json excludes the tracked files that a new project does not get.
+  -->
+  <Target Name="AddGitTrackedFilesToPackage" BeforeTargets="_GetPackageFiles">
+    <Exec Command="git -c core.quotePath=false ls-files" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_GitTrackedFile" />
+    </Exec>
+    <ItemGroup>
+      <_GitTrackedFile Remove="template.csproj;FullstackTemplate.sln" />
+      <Content Include="@(_GitTrackedFile)" Condition="Exists('%(Identity)')" Pack="true" PackagePath="content/%(RelativeDir)" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+  </ItemGroup>
+
+</Project>

@@ -48,6 +48,10 @@ const demoItems = [
     title: "Components",
     url: "/components",
   },
+  {
+    title: "Filter Builder",
+    url: "/filter-demo",
+  },
 ]
 
 export function AppSidebar() {

@@ -93,6 +93,8 @@
             "**/*.DotSettings.user",
             "**/.DS_Store",
             "**/Thumbs.db",
+            ".mcp.json",
+            ".vscode/mcp.json",
             ".playwright-mcp/**",
             "template.csproj",
             "scripts/template-smoke-test.sh",

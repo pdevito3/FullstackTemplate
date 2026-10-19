@@ -40,7 +40,7 @@ dotnet new fullstack-aspire -n SmokeApp -o "$work_dir/SmokeApp" --no-restore --a
   || [ $? -eq 104 ]
 
 project_files="$(cd "$work_dir/SmokeApp" && find . -type f -o -type l | sed 's|^\./||')"
-if echo "$project_files" | grep -E "$forbidden|^\.playwright-mcp/"; then
+if echo "$project_files" | grep -E "$forbidden|^\.mcp\.json$|^\.playwright-mcp/"; then
   echo "FAIL: the new project has the files above." >&2
   exit 1
 fi

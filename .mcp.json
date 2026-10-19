@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "aspire": {
+      "command": "dotnet",
+      "args": [
+        "aspire",
+        "agent",
+        "mcp"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    }
+  }
+}

@@ -1,0 +1,54 @@
+# FullstackTemplate verification map
+
+This directory is the maintained source for the proof of user-facing behavior in the FullstackTemplate SPA. Read this index before you drive the app. Then use the matching feature file as the recipe.
+
+## Baseline preconditions
+
+- `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
+- The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
+- The database is empty. No feature in this map reads or writes app data. The weather endpoints make random data at each request.
+- The Duende demo IdP at `https://demo.duendesoftware.com` is reachable. The users are `bob`/`bob` (name `Bob Smith`) and `alice`/`alice` (name `Alice Smith`).
+- Never drive a stack that the current verification run did not start.
+
+## Driving conventions
+
+- Run each recipe with `node .agents/skills/verify-fullstack-template/scripts/browse.mjs .agents/skills/verify-fullstack-template/recipes/<feature>.mjs`.
+- Each recipe starts from the baseline state. A recipe that needs a login calls `login('bob')` itself.
+- Use ARIA roles and accessible names. Use CSS only where a feature file names it.
+- Copy the quoted names and commands exactly.
+- The weather data is random. Assert that the screen matches the API response of the same run, never a fixed value.
+
+## Proof and skip reporting
+
+- Capture the user action and the resulting state, not only the last screen.
+- UI proof is a screenshot and an ARIA snapshot from `capture()`, with the URL in the `.aria.txt` file.
+- Proof of a side effect is a second, read-only view: the API response, the BFF session, or `localStorage`.
+- Record the feature ID and the entry point for each artifact. The `steps.log` step names do this.
+- If a path is not reachable, report the command and the precondition that failed. For example, the Duende IdP is down.
+- Do not report an entry point as verified when you used a different entry point.
+
+## Feature entry contract
+
+Each feature file starts with an H1 title and one paragraph about the user-visible behavior. It then has exactly four H2 sections in this order:
+
+1. `Sub-features` gives short IDs, one line for each behavior.
+2. `How to get to it (user POV)` gives each user entry point.
+3. `Driving it with browse.mjs` starts with `Preconditions:`. Then labeled bullets give each user action, the exact Playwright call, and the observable result.
+4. `Gotchas` gives the traps that can waste or invalidate a verification run.
+
+Keep implementation details out of the map. Name only user paths, stable handles, required state, commands, and observable proof.
+
+## Features
+
+- [Weather forecast](./weather-forecast.md) covers the public forecast cards, the °F/°C toggle, and Refresh.
+- [Login and logout](./login-logout.md) covers the BFF login through the Duende demo IdP, the session, and logout.
+- [Secure weather](./secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
+- [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the Demos submenu, the breadcrumb, sidebar collapse, and the light/dark/system theme.
+- [Filter builder](./filter-builder.md) covers the demo at `/filter-demo`: add a filter, presets, AND/OR, and Clear.
+
+## Not mapped yet
+
+- The Components demo page at `/components`. `navigation-and-theme` only opens it.
+- Filter grouping, the date, number, and boolean filter dialogs, and filter edit on the filter builder.
+- Swagger UI on the server (`/swagger`). The Playwright spec `frontend/e2e/auth-flows.spec.ts` covers it.
+- The Users and Tenants JSON API. It has no UI.

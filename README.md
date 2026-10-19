@@ -56,7 +56,8 @@ MyProject/
 ├── MyProject.Bff/         # BFF proxy (Duende BFF + YARP)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
 ├── tests/                 # Test projects
-└── docs/                  # Development guides (telemetry, auth, ...)
+├── docs/                  # Development guides (backend, telemetry, auth, ...)
+└── AGENTS.md              # Agent guide & index of docs
 ```
 
 ### Backend Features
@@ -151,12 +152,19 @@ An isolated run gives each endpoint a random port and uses a copy of the user se
 After creating your project:
 
 1. **Run the app** to see everything working
-2. **Read `docs/`** for development guides
-3. **Build your features** with the included CQRS patterns
+2. **Read `AGENTS.md` and `docs/`** for development patterns and guides
+3. **Add your first entity** using the patterns in `docs/backend/`
+4. **Build your features** with the included CQRS patterns
 
 ## Development with Claude Code
 
-- **`.claude/skills/`** - Skills to run the stack, read its telemetry, and use CSharpRepl
+This template includes comprehensive Claude Code integration:
+
+- **`AGENTS.md`** - Main agent guide with the architecture and an index of `docs/`
+- **`docs/`** - Guides for the backend, telemetry, multi-tenancy, auth, frontend, and deployment
+- **`docs/backend/`** - Backend pattern rules: entities, features, DTOs, controllers, domain events, and EF configurations
+- **`docs/frontend/`** - Frontend pattern rules: server state, client state, and code style
+- **`.claude/skills/`** - Automated scaffolding skills
 
 ## License
 

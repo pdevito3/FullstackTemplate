@@ -13,7 +13,7 @@ using Shouldly;
 
 public class CallerAccessTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task unauthenticated_caller_sees_no_rows()
     {
         // Arrange
@@ -32,7 +32,7 @@ public class CallerAccessTests : TestBase
         tenantFound.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task unauthenticated_caller_cannot_add_a_tenant()
     {
         // Arrange
@@ -46,7 +46,7 @@ public class CallerAccessTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task unauthenticated_caller_cannot_start_a_tenant()
     {
         // Arrange
@@ -61,7 +61,7 @@ public class CallerAccessTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_not_on_the_allow_list_sees_no_rows()
     {
         // Arrange
@@ -78,7 +78,7 @@ public class CallerAccessTests : TestBase
         userFound.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_not_on_the_allow_list_cannot_add_a_tenant()
     {
         // Arrange
@@ -92,7 +92,7 @@ public class CallerAccessTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_not_on_the_allow_list_cannot_start_a_tenant()
     {
         // Arrange
@@ -107,7 +107,7 @@ public class CallerAccessTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_on_the_allow_list_sees_all_tenants_and_can_add_a_tenant()
     {
         // Arrange

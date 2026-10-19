@@ -12,7 +12,7 @@ using TestUtilities;
 
 public class TenantIsolationTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task user_sees_only_the_users_in_their_tenant()
     {
         // Arrange
@@ -30,7 +30,7 @@ public class TenantIsolationTests : TestBase
         users.ShouldNotContain(u => u.Id == otherUser.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task signed_in_user_with_no_user_record_sees_no_tenant_data()
     {
         // Arrange
@@ -46,7 +46,7 @@ public class TenantIsolationTests : TestBase
         users.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task user_sees_their_tenant_as_soon_as_their_user_record_is_added()
     {
         // Arrange
@@ -65,7 +65,7 @@ public class TenantIsolationTests : TestBase
         users.ShouldHaveSingleItem().Id.ShouldBe(user.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_not_on_the_allow_list_sees_no_tenant_data()
     {
         // Arrange
@@ -81,7 +81,7 @@ public class TenantIsolationTests : TestBase
         users.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_on_the_allow_list_sees_all_tenants()
     {
         // Arrange

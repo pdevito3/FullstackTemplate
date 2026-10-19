@@ -12,7 +12,7 @@ using TestUtilities;
 
 public class TenantErrorResponseTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task missing_tenant_returns_not_found_problem()
     {
         // Arrange
@@ -29,7 +29,7 @@ public class TenantErrorResponseTests : TestBase
         problem.Detail.ShouldBe("Tenant was not found.");
     }
 
-    [Fact]
+    [Test]
     public async Task invalid_tenant_returns_validation_problem()
     {
         // Arrange
@@ -50,7 +50,7 @@ public class TenantErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 
-    [Fact]
+    [Test]
     public async Task malformed_json_returns_bad_request_problem()
     {
         // Arrange
@@ -68,7 +68,7 @@ public class TenantErrorResponseTests : TestBase
         problem.Errors.ShouldNotBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task duplicate_tenant_name_returns_conflict_problem()
     {
         // Arrange
@@ -90,7 +90,7 @@ public class TenantErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 
-    [Fact]
+    [Test]
     public async Task missing_required_property_returns_bad_request_problem_with_errors()
     {
         // Arrange

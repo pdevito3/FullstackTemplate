@@ -160,8 +160,14 @@ The server applies migrations at startup, with a Postgres advisory lock.
 | `tests/FullstackTemplate.FunctionalTests` | HTTP endpoints against one shared app and database |
 | `tests/FullstackTemplate.SharedTestHelpers` | Fakes and builders for all test projects |
 
+The tests use [TUnit](https://tunit.dev) on Microsoft.Testing.Platform, with Shouldly for assertions. Write `[Test]` for each test, `[Arguments(...)]` for an inline case, and `[MethodDataSource(nameof(...))]` for cases from a method or property.
+
 The functional tests share one `TestingWebApplicationFactory`. Each test gets its own `FactoryClient`.
 
-All tests in a project run in parallel on one assembly fixture. Each test must create its own data and must not depend on rows from other tests. If a test reads state of the whole app, such as all exported spans, put it in a collection with `DisableParallelization = true`.
+TUnit runs all tests in parallel, also the tests of one class. The integration and functional tests share one fixture for each assembly, which `AssemblyHooks.cs` starts and stops. Each test must create its own data and must not depend on rows from other tests. If a test reads state of the whole process, such as all exported spans, put `[NotInParallel]` on its class.
+
+To run the tests in a web UI, start the `tests` resource in the Aspire dashboard, then open its **Labcoat UI** link. The resource does not start with the stack, because Labcoat builds the test projects when it starts. [Labcoat](https://github.com/eriklieben/labcoat) builds and runs the test projects, and shows each failure with its source.
+
+To use Labcoat without the stack, run `dotnet labcoat` from the repository root.
 
 Local runs reuse one Postgres container and create a new database for each run. If the `CI` variable is set, each run gets a new container.

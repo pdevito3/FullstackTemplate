@@ -26,7 +26,7 @@ public class PaginationHeaderTests : TestBase
         ["hasNext"] = JsonValueKind.True,
     };
 
-    [Fact]
+    [Test]
     public async Task user_list_endpoint_sends_pagination_header_with_the_expected_shape()
     {
         // Arrange
@@ -45,7 +45,7 @@ public class PaginationHeaderTests : TestBase
         ShouldHavePaginationHeaderForFirstOfTwoPages(result);
     }
 
-    [Fact]
+    [Test]
     public async Task tenant_list_endpoint_sends_pagination_header_with_the_expected_shape()
     {
         // Arrange

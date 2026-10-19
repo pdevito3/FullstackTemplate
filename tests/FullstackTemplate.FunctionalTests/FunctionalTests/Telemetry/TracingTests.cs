@@ -8,12 +8,12 @@ using Shouldly;
 using Telemetry = FullstackTemplate.Server.Resources.Telemetry;
 
 // These tests count the spans of the whole app, so no other test can run at the same time.
-[Collection(nameof(TracingTests))]
+[NotInParallel]
 public class TracingTests : TestBase
 {
     private const string NpgsqlSource = "Npgsql";
 
-    [Fact]
+    [Test]
     public void startup_migration_exports_one_root_with_the_database_work_under_it()
     {
         // Assert
@@ -26,7 +26,7 @@ public class TracingTests : TestBase
             .ShouldNotBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task feature_slice_span_parents_the_tagged_query_span()
     {
         // Arrange
@@ -51,7 +51,7 @@ public class TracingTests : TestBase
         query.GetTagItem("code.line.number").ShouldNotBeNull();
     }
 
-    [Fact]
+    [Test]
     public async Task untagged_query_keeps_the_default_span_name()
     {
         // Arrange
@@ -68,7 +68,7 @@ public class TracingTests : TestBase
         query.GetTagItem("app.db.call_site").ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public async Task query_without_an_ambient_activity_is_not_exported()
     {
         // Arrange
@@ -82,7 +82,7 @@ public class TracingTests : TestBase
         ExportedSpans().Count(a => a.Source.Name == NpgsqlSource).ShouldBe(before);
     }
 
-    [Fact]
+    [Test]
     public async Task query_under_a_filtered_out_activity_is_not_exported()
     {
         // Arrange - this is what the ASP.NET Core instrumentation filter does to a /health request
@@ -96,6 +96,3 @@ public class TracingTests : TestBase
         ExportedSpans().ShouldNotContain(a => a.TraceId == filtered.TraceId);
     }
 }
-
-[CollectionDefinition(nameof(TracingTests), DisableParallelization = true)]
-public class TracingTestsCollection;

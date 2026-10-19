@@ -8,7 +8,7 @@ using Shouldly;
 
 public class InitiateUserAndTenantCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task user_with_no_user_record_can_start_a_tenant_for_themselves()
     {
         // Arrange
@@ -27,7 +27,7 @@ public class InitiateUserAndTenantCommandTests : TestBase
         userInDb.TenantId.ShouldBe(result.Tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task user_cannot_start_a_tenant_for_another_identifier()
     {
         // Arrange
@@ -42,7 +42,7 @@ public class InitiateUserAndTenantCommandTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task user_with_a_user_record_cannot_start_another_tenant()
     {
         // Arrange

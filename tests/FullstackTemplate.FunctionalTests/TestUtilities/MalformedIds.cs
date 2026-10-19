@@ -24,14 +24,8 @@ public static class MalformedIds
     };
 
     /// <summary>Makes one case for each target and each kind of ID.</summary>
-    public static TheoryData<string, string> Cases(params string[] targets)
-    {
-        var data = new TheoryData<string, string>();
-        foreach (var target in targets)
-            foreach (var kind in Kinds)
-                data.Add(target, kind);
-        return data;
-    }
+    public static IEnumerable<(string, string)> Cases(params string[] targets)
+        => targets.SelectMany(target => Kinds.Select(kind => (target, kind)));
 
     public static async Task ShouldBeNotFoundAsync(HttpResponseMessage result, string detail)
     {

@@ -76,6 +76,11 @@ try
     // The BFF serves the SPA in production. The server is an internal API only.
     bff.PublishWithContainerFiles(webfrontend, "wwwroot");
 
+    // Labcoat finds the test projects of the solution and shows a web UI to run them. Aspire tests and publish skip it.
+    // Labcoat builds the test projects when it starts, so it waits for a manual start in the dashboard.
+    builder.AddLabcoat("tests")
+        .WithExplicitStart();
+
     builder.Build().Run();
 }
 catch (Exception ex)

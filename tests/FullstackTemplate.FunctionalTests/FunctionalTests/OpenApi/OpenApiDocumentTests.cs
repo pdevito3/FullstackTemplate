@@ -15,7 +15,7 @@ public class OpenApiDocumentTests
     // GET /api/v1/weather is the only operation that allows anonymous callers
     public const string AnonymousOperation = "GET /api/v1/weather";
 
-    [Fact]
+    [Test]
     public async Task tenant_list_documents_the_pagination_header()
     {
         var root = await LoadDocumentAsync();
@@ -26,7 +26,7 @@ public class OpenApiDocumentTests
             .ShouldBe("#/components/schemas/PaginationMetadata");
     }
 
-    [Fact]
+    [Test]
     public async Task error_responses_use_only_problem_json()
     {
         var root = await LoadDocumentAsync();
@@ -42,7 +42,7 @@ public class OpenApiDocumentTests
             content.Select(c => c.Key).ShouldBe(["application/problem+json"], name);
     }
 
-    [Fact]
+    [Test]
     public async Task success_responses_and_request_bodies_use_only_json()
     {
         var root = await LoadDocumentAsync();
@@ -62,7 +62,7 @@ public class OpenApiDocumentTests
     }
 
     // The keys of the errors of the problem are camelCase, so the parameter names must be camelCase too
-    [Fact]
+    [Test]
     public async Task parameter_names_are_camel_case()
     {
         var root = await LoadDocumentAsync();
@@ -77,7 +77,7 @@ public class OpenApiDocumentTests
             char.IsLower(name[0]).ShouldBeTrue($"{operation} {name}");
     }
 
-    [Fact]
+    [Test]
     public async Task numbers_are_typed_only_as_numbers()
     {
         var root = await LoadDocumentAsync();
@@ -95,7 +95,7 @@ public class OpenApiDocumentTests
         }
     }
 
-    [Fact]
+    [Test]
     public async Task non_nullable_dto_properties_are_required()
     {
         var root = await LoadDocumentAsync();
@@ -120,7 +120,7 @@ public class OpenApiDocumentTests
             .ShouldContain("firstName");
     }
 
-    [Fact]
+    [Test]
     public async Task each_write_declares_a_validation_problem()
     {
         var root = await LoadDocumentAsync();
@@ -136,7 +136,7 @@ public class OpenApiDocumentTests
         }
     }
 
-    [Fact]
+    [Test]
     public async Task only_secured_operations_declare_unauthorized()
     {
         var root = await LoadDocumentAsync();

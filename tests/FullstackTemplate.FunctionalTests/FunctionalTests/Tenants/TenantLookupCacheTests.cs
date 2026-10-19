@@ -15,7 +15,7 @@ using TestUtilities;
 /// </summary>
 public class TenantLookupCacheTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task user_of_a_deleted_tenant_cannot_read_tenant_data()
     {
         // Arrange
@@ -39,7 +39,7 @@ public class TenantLookupCacheTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task user_of_a_deleted_tenant_with_no_cached_tenant_cannot_read_tenant_data()
     {
         // Arrange
@@ -60,7 +60,7 @@ public class TenantLookupCacheTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task user_who_starts_a_tenant_after_a_cached_miss_can_get_the_tenant()
     {
         // Arrange
@@ -81,7 +81,7 @@ public class TenantLookupCacheTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [Test]
     public async Task deleted_user_cannot_read_their_tenant()
     {
         // Arrange

@@ -13,32 +13,32 @@ public class QueryInputErrorTests : TestBase
 {
     private const int OverNestingLimit = CustomQueryKitConfiguration.FilterMaxNestingDepth + 1;
 
-    public static readonly TheoryData<string, string> QueryValuesThatCannotBeRead = new()
-    {
-        { "filters", "Name @= " },
-        { "filters", "Unknown == \"x\"" },
+    public static IEnumerable<(string, string)> QueryValuesThatCannotBeRead =>
+    [
+        ("filters", "Name @= "),
+        ("filters", "Unknown == \"x\""),
         // TenantDto does not show CreatedBy, so the filter cannot use it
-        { "filters", "CreatedBy == \"x\"" },
-        { "filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\"" },
-        { "filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}" },
-        { "filters", "Name ^^ \"x\"" },
-        { "sortOrder", "Unknown desc,," },
-        { "sortOrder", "Name foo" },
+        ("filters", "CreatedBy == \"x\""),
+        ("filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\""),
+        ("filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}"),
+        ("filters", "Name ^^ \"x\""),
+        ("sortOrder", "Unknown desc,,"),
+        ("sortOrder", "Name foo"),
         // Model binding gives these, so the key comes from the name of the query parameter
-        { "pageNumber", "abc" },
-        { "pageSize", "abc" },
+        ("pageNumber", "abc"),
+        ("pageSize", "abc"),
         // A page starts at 1, and a page has at least one row
-        { "pageNumber", "0" },
-        { "pageNumber", "-1" },
-        { "pageSize", "0" },
-        { "pageSize", "-1" },
+        ("pageNumber", "0"),
+        ("pageNumber", "-1"),
+        ("pageSize", "0"),
+        ("pageSize", "-1"),
         // The offset of a page must fit in an int
-        { "pageNumber", int.MaxValue.ToString(CultureInfo.InvariantCulture) },
-        { "pageNumber", (BasePaginationParameters.MaxPageNumber + 1).ToString(CultureInfo.InvariantCulture) },
-    };
+        ("pageNumber", int.MaxValue.ToString(CultureInfo.InvariantCulture)),
+        ("pageNumber", (BasePaginationParameters.MaxPageNumber + 1).ToString(CultureInfo.InvariantCulture)),
+    ];
 
-    [Theory]
-    [MemberData(nameof(QueryValuesThatCannotBeRead))]
+    [Test]
+    [MethodDataSource(nameof(QueryValuesThatCannotBeRead))]
     public async Task query_value_that_cannot_be_read_returns_bad_request_problem(string parameter, string value)
     {
         // Arrange
@@ -58,7 +58,7 @@ public class QueryInputErrorTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(parameter);
     }
 
-    [Fact]
+    [Test]
     public async Task last_page_number_with_the_largest_page_size_returns_an_empty_page()
     {
         // Arrange

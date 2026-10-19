@@ -52,7 +52,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _httpContextAccessor.HttpContext.Returns(new DefaultHttpContext { User = new ClaimsPrincipal(identity) });
     }
 
-    [Fact]
+    [Test]
     public void user_with_a_user_record_gets_their_tenant()
     {
         var tenantId = EntityId.New(Tenant.IdPrefix);
@@ -62,7 +62,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
     }
 
-    [Fact]
+    [Test]
     public void user_with_no_user_record_gets_no_tenant()
     {
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns((string?)null);
@@ -71,7 +71,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
     }
 
-    [Fact]
+    [Test]
     public void work_with_no_http_request_and_no_opt_in_gets_no_tenant()
     {
         _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
@@ -80,7 +80,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void system_scope_gets_all_tenants_and_can_manage_them()
     {
         _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
@@ -92,7 +92,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         provider.CanManageAllTenants().ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void system_scope_does_not_change_other_scopes()
     {
         _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
@@ -103,7 +103,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void user_with_a_user_record_cannot_manage_all_tenants()
     {
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns(EntityId.New(Tenant.IdPrefix));
@@ -112,7 +112,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void machine_client_on_the_allow_list_can_manage_all_tenants()
     {
         SetCaller(new Claim("client_id", TrustedClientId));
@@ -120,7 +120,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void machine_client_not_on_the_allow_list_cannot_manage_all_tenants()
     {
         SetCaller(new Claim("client_id", "m2m"));
@@ -128,7 +128,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void anonymous_request_cannot_manage_all_tenants()
     {
         SetCaller();
@@ -136,7 +136,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void read_only_machine_client_gets_all_tenants_but_cannot_manage_them()
     {
         SetCaller(new Claim("client_id", ReadOnlyClientId));
@@ -145,7 +145,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void machine_client_on_the_allow_list_gets_all_tenants()
     {
         SetCaller(new Claim("client_id", TrustedClientId));
@@ -153,7 +153,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
     }
 
-    [Fact]
+    [Test]
     public void machine_client_not_on_the_allow_list_gets_no_tenant()
     {
         SetCaller(new Claim("client_id", "m2m"));
@@ -161,7 +161,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
     }
 
-    [Fact]
+    [Test]
     public void allow_list_match_is_case_sensitive()
     {
         SetCaller(new Claim("client_id", TrustedClientId.ToUpperInvariant()));
@@ -169,7 +169,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
     }
 
-    [Fact]
+    [Test]
     public void token_with_no_sub_and_no_client_id_gets_no_tenant()
     {
         SetCaller(new Claim("name", "someone"));
@@ -177,7 +177,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
     }
 
-    [Fact]
+    [Test]
     public void anonymous_request_gets_no_tenant()
     {
         SetCaller();

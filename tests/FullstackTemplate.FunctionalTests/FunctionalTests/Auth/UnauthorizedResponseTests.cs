@@ -9,7 +9,7 @@ using TestUtilities;
 
 public partial class UnauthorizedResponseTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task request_with_no_token_returns_unauthorized_with_no_body()
     {
         // Act
@@ -21,7 +21,7 @@ public partial class UnauthorizedResponseTests : TestBase
         (await result.Content.ReadAsByteArrayAsync()).ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task each_secured_operation_returns_unauthorized_with_no_body_for_a_request_with_no_token()
     {
         // Arrange

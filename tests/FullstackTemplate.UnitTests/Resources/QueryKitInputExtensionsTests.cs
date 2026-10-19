@@ -11,7 +11,7 @@ public class QueryKitInputExtensionsTests
 
     private static readonly IQueryable<Row> Rows = new[] { new Row("a") }.AsQueryable();
 
-    [Fact]
+    [Test]
     public void bad_sort_direction_is_keyed_by_sort_order()
     {
         // Act
@@ -23,7 +23,7 @@ public class QueryKitInputExtensionsTests
         exception.InnerException.ShouldBeOfType<QueryKitParsingException>();
     }
 
-    [Fact]
+    [Test]
     public void unknown_filter_property_keeps_the_message_of_querykit()
     {
         // Act
@@ -35,7 +35,7 @@ public class QueryKitInputExtensionsTests
     }
 
     // The message of the .NET exception names .NET types, so the caller gets a fixed message
-    [Fact]
+    [Test]
     public void operator_that_does_not_fit_the_property_type_gets_a_fixed_message()
     {
         // Act

@@ -11,7 +11,7 @@ using Shouldly;
 
 public class PaginationHeaderFilterTests
 {
-    [Fact]
+    [Test]
     public void filter_adds_the_page_data_of_a_paged_list()
     {
         // Arrange
@@ -30,15 +30,15 @@ public class PaginationHeaderFilterTests
         metadata.TotalPages.ShouldBe(3);
     }
 
-    public static readonly TheoryData<IActionResult> ResultsThatAreNotAPagedList = new()
-    {
+    public static readonly IEnumerable<IActionResult> ResultsThatAreNotAPagedList =
+    [
         new OkObjectResult(new[] { 1, 2 }),
         new OkObjectResult(null),
         new NoContentResult(),
-    };
+    ];
 
-    [Theory]
-    [MemberData(nameof(ResultsThatAreNotAPagedList))]
+    [Test]
+    [MethodDataSource(nameof(ResultsThatAreNotAPagedList))]
     public void filter_adds_no_header_to_a_result_that_is_not_a_paged_list(IActionResult result)
     {
         // Arrange

@@ -10,7 +10,7 @@ using Shouldly;
 
 public class EntityIdColumnTests
 {
-    [Fact]
+    [Test]
     public void every_id_and_id_foreign_key_has_the_entity_id_length_and_collation()
     {
         // Arrange

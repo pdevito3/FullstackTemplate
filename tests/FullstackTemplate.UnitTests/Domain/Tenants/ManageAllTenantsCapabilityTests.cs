@@ -41,7 +41,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
 
     public void Dispose() => _dbContext.Dispose();
 
-    [Fact]
+    [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_tenant()
     {
         var handler = new AddTenant.Handler(_dbContext, _tenantScopeProvider);
@@ -52,7 +52,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_start_a_tenant()
     {
         var handler = new InitiateUserAndTenant.Handler(_dbContext, _currentUserService, _tenantScopeProvider);
@@ -64,7 +64,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_does_not_pass_the_admin_check()
     {
         var behavior = new TenantAdminBehavior<AddUser.Command, UserDto>(

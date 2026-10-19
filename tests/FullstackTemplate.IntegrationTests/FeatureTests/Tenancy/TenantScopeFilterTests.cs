@@ -8,7 +8,7 @@ using Shouldly;
 
 public class TenantScopeFilterTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task user_with_no_user_record_sees_no_row_even_when_the_row_has_an_empty_tenant_id()
     {
         // Arrange

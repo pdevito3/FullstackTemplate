@@ -10,7 +10,7 @@ using Shouldly;
 
 public class RemoveUserPermissionCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_remove_permission_from_user()
     {
         // Arrange - Create admin user
@@ -30,7 +30,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         userReturned.Permissions.ShouldNotContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task permission_is_removed_from_database()
     {
         // Arrange
@@ -54,7 +54,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         userInDb.UserPermissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task removing_nonexistent_permission_is_safe()
     {
         // Arrange - User role has no permissions
@@ -72,7 +72,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         userReturned.Permissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task throws_when_user_not_found()
     {
         // Arrange
@@ -85,7 +85,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             await testingServiceScope.SendAsync(command));
     }
 
-    [Fact]
+    [Test]
     public async Task throws_when_invalid_permission()
     {
         // Arrange
@@ -100,7 +100,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             await testingServiceScope.SendAsync(command));
     }
 
-    [Fact]
+    [Test]
     public async Task can_remove_and_verify_via_get()
     {
         // Arrange
@@ -121,7 +121,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         userFromGet.Permissions.ShouldNotContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task role_remains_unchanged_after_permission_removal()
     {
         // Arrange
@@ -138,7 +138,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         userReturned.Role.ShouldBe("Admin");
     }
 
-    [Fact]
+    [Test]
     public async Task add_then_remove_permission_roundtrip()
     {
         // Arrange

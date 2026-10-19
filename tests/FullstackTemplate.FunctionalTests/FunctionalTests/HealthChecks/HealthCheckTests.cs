@@ -6,7 +6,7 @@ using TestUtilities;
 
 public class HealthCheckTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task health_check_returns_ok()
     {
         // Act
@@ -16,7 +16,7 @@ public class HealthCheckTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [Test]
     public async Task alive_check_returns_ok()
     {
         // Act

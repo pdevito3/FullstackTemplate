@@ -9,7 +9,7 @@ public class IsolationTests
 {
     private const string IsolatedArgument = "--DcpPublisher:RandomizePorts=true";
 
-    [Fact]
+    [Test]
     public void a_normal_run_is_not_isolated()
     {
         // Act
@@ -19,7 +19,7 @@ public class IsolationTests
         builder.IsIsolated().ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void the_isolated_flag_of_the_aspire_cli_makes_the_run_isolated()
     {
         // Act
@@ -29,7 +29,7 @@ public class IsolationTests
         builder.IsIsolated().ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void a_normal_run_gives_postgres_a_volume_named_from_the_apphost_path()
     {
         // Arrange
@@ -44,7 +44,7 @@ public class IsolationTests
         volume.Source.ShouldBe(VolumeNameGenerator.Generate(postgres, "data"));
     }
 
-    [Fact]
+    [Test]
     public void an_isolated_run_gives_postgres_no_volume()
     {
         // Arrange
@@ -57,7 +57,7 @@ public class IsolationTests
         postgres.Resource.Annotations.OfType<ContainerMountAnnotation>().ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void a_normal_run_gives_a_container_a_volume_at_the_target()
     {
         // Arrange
@@ -72,7 +72,7 @@ public class IsolationTests
         volume.Source.ShouldBe(VolumeNameGenerator.Generate(redis, "data"));
     }
 
-    [Fact]
+    [Test]
     public void an_isolated_run_gives_a_container_no_volume()
     {
         // Arrange
@@ -86,5 +86,14 @@ public class IsolationTests
     }
 
     private static IDistributedApplicationBuilder CreateBuilder(params string[] args)
-        => DistributedApplication.CreateBuilder(new DistributedApplicationOptions { Args = args, DisableDashboard = true });
+    {
+        var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { Args = args, DisableDashboard = true });
+
+        // A test host that `aspire run --isolated` starts (for example the Labcoat resource) inherits
+        // DcpPublisher__RandomizePorts=true. A normal run has no value for the key, so remove the inherited value.
+        if (args.Length == 0)
+            builder.Configuration["DcpPublisher:RandomizePorts"] = null;
+
+        return builder;
+    }
 }

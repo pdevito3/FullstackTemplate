@@ -33,7 +33,7 @@ public class CurrentUserServiceTests
         _httpContextAccessor.HttpContext.Returns(httpContext);
     }
 
-    [Fact]
+    [Test]
     public void User_returns_claims_principal_from_http_context()
     {
         // Arrange
@@ -48,7 +48,7 @@ public class CurrentUserServiceTests
         user.Identity!.IsAuthenticated.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void User_returns_null_when_no_http_context()
     {
         // Arrange
@@ -61,7 +61,7 @@ public class CurrentUserServiceTests
         user.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void UserIdentifier_returns_sub_claim()
     {
         // Arrange
@@ -74,7 +74,7 @@ public class CurrentUserServiceTests
         identifier.ShouldBe("user-123");
     }
 
-    [Fact]
+    [Test]
     public void UserIdentifier_returns_name_identifier_claim_as_fallback()
     {
         // Arrange
@@ -87,7 +87,7 @@ public class CurrentUserServiceTests
         identifier.ShouldBe("user-456");
     }
 
-    [Fact]
+    [Test]
     public void UserIdentifier_prefers_name_identifier_over_sub()
     {
         // Arrange - NameIdentifier is checked first in the implementation
@@ -102,7 +102,7 @@ public class CurrentUserServiceTests
         identifier.ShouldBe("name-id");
     }
 
-    [Fact]
+    [Test]
     public void Email_returns_email_claim()
     {
         // Arrange
@@ -115,7 +115,7 @@ public class CurrentUserServiceTests
         email.ShouldBe("test@example.com");
     }
 
-    [Fact]
+    [Test]
     public void Email_returns_oidc_email_claim_as_fallback()
     {
         // Arrange
@@ -128,7 +128,7 @@ public class CurrentUserServiceTests
         email.ShouldBe("oidc@example.com");
     }
 
-    [Fact]
+    [Test]
     public void FirstName_returns_given_name_claim()
     {
         // Arrange
@@ -141,7 +141,7 @@ public class CurrentUserServiceTests
         firstName.ShouldBe("John");
     }
 
-    [Fact]
+    [Test]
     public void FirstName_returns_oidc_given_name_as_fallback()
     {
         // Arrange
@@ -154,7 +154,7 @@ public class CurrentUserServiceTests
         firstName.ShouldBe("Jane");
     }
 
-    [Fact]
+    [Test]
     public void LastName_returns_surname_claim()
     {
         // Arrange
@@ -167,7 +167,7 @@ public class CurrentUserServiceTests
         lastName.ShouldBe("Doe");
     }
 
-    [Fact]
+    [Test]
     public void LastName_returns_oidc_family_name_as_fallback()
     {
         // Arrange
@@ -180,7 +180,7 @@ public class CurrentUserServiceTests
         lastName.ShouldBe("Smith");
     }
 
-    [Fact]
+    [Test]
     public void Name_returns_identity_name()
     {
         // Arrange
@@ -193,7 +193,7 @@ public class CurrentUserServiceTests
         name.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void Name_returns_oidc_name_claim_as_fallback()
     {
         // Arrange
@@ -206,7 +206,7 @@ public class CurrentUserServiceTests
         name.ShouldBe("Jane Smith");
     }
 
-    [Fact]
+    [Test]
     public void Username_returns_preferred_username_claim()
     {
         // Arrange
@@ -219,7 +219,7 @@ public class CurrentUserServiceTests
         username.ShouldBe("johndoe");
     }
 
-    [Fact]
+    [Test]
     public void Username_returns_username_claim_as_fallback()
     {
         // Arrange
@@ -232,7 +232,7 @@ public class CurrentUserServiceTests
         username.ShouldBe("janesmith");
     }
 
-    [Fact]
+    [Test]
     public void ClientId_returns_client_id_claim()
     {
         // Arrange
@@ -245,7 +245,7 @@ public class CurrentUserServiceTests
         clientId.ShouldBe("my-client");
     }
 
-    [Fact]
+    [Test]
     public void ClientId_returns_azp_claim_for_keycloak()
     {
         // Arrange
@@ -258,7 +258,7 @@ public class CurrentUserServiceTests
         clientId.ShouldBe("keycloak-client");
     }
 
-    [Fact]
+    [Test]
     public void ClientId_ignores_the_non_standard_clientId_claim()
     {
         // Arrange
@@ -271,7 +271,7 @@ public class CurrentUserServiceTests
         clientId.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void IsMachine_returns_true_when_client_id_present_and_no_user_identifier()
     {
         // Arrange
@@ -284,7 +284,7 @@ public class CurrentUserServiceTests
         isMachine.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void IsMachine_returns_false_when_user_identifier_present()
     {
         // Arrange
@@ -299,7 +299,7 @@ public class CurrentUserServiceTests
         isMachine.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void IsAuthenticated_returns_true_for_authenticated_user()
     {
         // Arrange
@@ -312,7 +312,7 @@ public class CurrentUserServiceTests
         isAuthenticated.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void IsAuthenticated_returns_false_for_unauthenticated_user()
     {
         // Arrange
@@ -325,7 +325,7 @@ public class CurrentUserServiceTests
         isAuthenticated.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void Roles_returns_roles_from_role_claim()
     {
         // Arrange
@@ -341,7 +341,7 @@ public class CurrentUserServiceTests
         roles.ShouldContain("User");
     }
 
-    [Fact]
+    [Test]
     public void Roles_returns_roles_from_roles_claim()
     {
         // Arrange
@@ -354,7 +354,7 @@ public class CurrentUserServiceTests
         roles.ShouldContain("Manager");
     }
 
-    [Fact]
+    [Test]
     public void Roles_returns_roles_from_claim_types_role()
     {
         // Arrange
@@ -367,7 +367,7 @@ public class CurrentUserServiceTests
         roles.ShouldContain("SuperAdmin");
     }
 
-    [Fact]
+    [Test]
     public void Roles_aggregates_from_multiple_claim_types()
     {
         // Arrange
@@ -386,7 +386,7 @@ public class CurrentUserServiceTests
         roles.ShouldContain("User");
     }
 
-    [Fact]
+    [Test]
     public void Roles_returns_empty_when_no_user()
     {
         // Arrange
@@ -399,7 +399,7 @@ public class CurrentUserServiceTests
         roles.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void IsInRole_returns_true_for_matching_role()
     {
         // Arrange
@@ -412,7 +412,7 @@ public class CurrentUserServiceTests
         isInRole.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void IsInRole_is_case_insensitive()
     {
         // Arrange
@@ -425,7 +425,7 @@ public class CurrentUserServiceTests
         isInRole.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void IsInRole_returns_false_for_non_matching_role()
     {
         // Arrange
@@ -438,7 +438,7 @@ public class CurrentUserServiceTests
         isInRole.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void IsInRole_returns_false_when_no_user()
     {
         // Arrange
@@ -451,7 +451,7 @@ public class CurrentUserServiceTests
         isInRole.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public void GetClaimValue_returns_claim_value()
     {
         // Arrange
@@ -464,7 +464,7 @@ public class CurrentUserServiceTests
         value.ShouldBe("custom_value");
     }
 
-    [Fact]
+    [Test]
     public void GetClaimValue_returns_null_for_missing_claim()
     {
         // Arrange
@@ -477,7 +477,7 @@ public class CurrentUserServiceTests
         value.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public void GetClaimValues_returns_all_values_for_claim_type()
     {
         // Arrange
@@ -496,7 +496,7 @@ public class CurrentUserServiceTests
         values.ShouldContain("value3");
     }
 
-    [Fact]
+    [Test]
     public void GetClaimValues_returns_empty_when_no_user()
     {
         // Arrange

@@ -17,7 +17,7 @@ using WebMotions.Fake.Authentication.JwtBearer;
 /// One app and one database for the whole test assembly. Starting them once per test made each
 /// test pay for a new container and a new migration run.
 /// </summary>
-public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly PostgresTestDatabase _database = new();
 
@@ -74,7 +74,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         });
     }
 
-    public async ValueTask InitializeAsync()
+    public async Task InitializeAsync()
     {
         // Tests never reload configuration. A file watcher on appsettings can hang on macOS when the system is busy.
         Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");

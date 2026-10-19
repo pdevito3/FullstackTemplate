@@ -17,13 +17,13 @@ public class TenantMalformedIdTests : TestBase
         ["DELETE"] = HttpStatusCode.NoContent,
     };
 
-    public static TheoryData<string, string> Cases => MalformedIds.Cases([.. SuccessCodes.Keys]);
+    public static IEnumerable<(string, string)> Cases => MalformedIds.Cases([.. SuccessCodes.Keys]);
 
-    public static TheoryData<string, HttpStatusCode> Targets
-        => new(SuccessCodes.Select(target => (target.Key, target.Value)));
+    public static IEnumerable<(string, HttpStatusCode)> Targets
+        => SuccessCodes.Select(target => (target.Key, target.Value));
 
-    [Theory]
-    [MemberData(nameof(Cases))]
+    [Test]
+    [MethodDataSource(nameof(Cases))]
     public async Task malformed_tenant_id_returns_not_found_problem(string method, string kind)
     {
         // Arrange
@@ -37,8 +37,8 @@ public class TenantMalformedIdTests : TestBase
         await MalformedIds.ShouldBeNotFoundAsync(result, "Tenant was not found.");
     }
 
-    [Theory]
-    [MemberData(nameof(Targets))]
+    [Test]
+    [MethodDataSource(nameof(Targets))]
     public async Task correct_tenant_id_finds_the_record(string method, HttpStatusCode expected)
     {
         // Arrange

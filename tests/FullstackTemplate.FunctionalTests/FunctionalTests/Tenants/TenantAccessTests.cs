@@ -15,7 +15,7 @@ using TestUtilities;
 
 public class TenantAccessTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task user_can_get_their_own_tenant()
     {
         // Arrange
@@ -30,7 +30,7 @@ public class TenantAccessTests : TestBase
         (await result.Content.ReadFromJsonAsync<TenantDto>()).ShouldNotBeNull().Id.ShouldBe(tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task user_cannot_get_another_tenant()
     {
         // Arrange
@@ -45,7 +45,7 @@ public class TenantAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task user_sees_only_their_own_tenant_in_the_list()
     {
         // Arrange
@@ -62,7 +62,7 @@ public class TenantAccessTests : TestBase
         tenants.ShouldHaveSingleItem().Id.ShouldBe(tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task user_with_no_user_record_sees_no_tenants()
     {
         // Arrange
@@ -77,7 +77,7 @@ public class TenantAccessTests : TestBase
         (await result.Content.ReadFromJsonAsync<List<TenantDto>>()).ShouldNotBeNull().ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task admin_cannot_update_another_tenant()
     {
         // Arrange
@@ -96,7 +96,7 @@ public class TenantAccessTests : TestBase
         name.ShouldBe(otherTenant.Name);
     }
 
-    [Fact]
+    [Test]
     public async Task admin_cannot_delete_another_tenant()
     {
         // Arrange
@@ -113,7 +113,7 @@ public class TenantAccessTests : TestBase
         exists.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task basic_member_cannot_update_their_own_tenant()
     {
         // Arrange
@@ -131,7 +131,7 @@ public class TenantAccessTests : TestBase
         name.ShouldBe(tenant.Name);
     }
 
-    [Fact]
+    [Test]
     public async Task admin_can_update_their_own_tenant()
     {
         // Arrange
@@ -147,7 +147,7 @@ public class TenantAccessTests : TestBase
         (await result.Content.ReadFromJsonAsync<TenantDto>()).ShouldNotBeNull().Name.ShouldBe(newName);
     }
 
-    [Fact]
+    [Test]
     public async Task admin_can_keep_the_name_of_their_own_tenant()
     {
         // Arrange
@@ -161,7 +161,7 @@ public class TenantAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [Test]
     public async Task admin_cannot_rename_their_tenant_to_the_name_of_another_tenant()
     {
         // Arrange
@@ -179,7 +179,7 @@ public class TenantAccessTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 
-    [Fact]
+    [Test]
     public async Task basic_member_cannot_delete_their_own_tenant()
     {
         // Arrange
@@ -195,7 +195,7 @@ public class TenantAccessTests : TestBase
         exists.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task user_cannot_add_a_tenant()
     {
         // Arrange
@@ -210,7 +210,7 @@ public class TenantAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, AddTenantForbiddenDetail);
     }
 
-    [Fact]
+    [Test]
     public async Task trusted_machine_client_can_add_and_get_any_tenant()
     {
         // Arrange
@@ -230,7 +230,7 @@ public class TenantAccessTests : TestBase
         other.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [Test]
     public async Task read_only_machine_client_can_read_all_tenants()
     {
         // Arrange
@@ -250,7 +250,7 @@ public class TenantAccessTests : TestBase
         ids.ShouldContain(secondTenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task read_only_machine_client_cannot_add_a_tenant()
     {
         // Arrange
@@ -264,7 +264,7 @@ public class TenantAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, AddTenantForbiddenDetail);
     }
 
-    [Fact]
+    [Test]
     public async Task read_only_machine_client_cannot_change_a_tenant()
     {
         // Arrange

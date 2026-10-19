@@ -6,10 +6,10 @@ using TestUtilities;
 
 public class UnsupportedApiVersionTests : TestBase
 {
-    [Theory]
-    [InlineData("api/v2/tenants")]
-    [InlineData("api/v1.5/tenants")]
-    [InlineData("api/v2/weather")]
+    [Test]
+    [Arguments("api/v2/tenants")]
+    [Arguments("api/v1.5/tenants")]
+    [Arguments("api/v2/weather")]
     public async Task request_for_a_version_that_the_endpoint_does_not_declare_returns_not_found(string route)
     {
         // Arrange
@@ -26,7 +26,7 @@ public class UnsupportedApiVersionTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
-    [Fact]
+    [Test]
     public async Task request_for_a_declared_version_reports_the_supported_versions()
     {
         // Arrange

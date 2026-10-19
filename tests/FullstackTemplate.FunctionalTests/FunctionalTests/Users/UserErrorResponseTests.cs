@@ -14,7 +14,7 @@ using TestUtilities;
 
 public class UserErrorResponseTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task blank_email_on_create_returns_validation_problem()
     {
         // Arrange
@@ -35,7 +35,7 @@ public class UserErrorResponseTests : TestBase
         await ShouldBeBlankEmailProblem(result);
     }
 
-    [Fact]
+    [Test]
     public async Task blank_email_on_update_returns_validation_problem()
     {
         // Arrange
@@ -64,11 +64,11 @@ public class UserErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("email");
     }
 
-    [Theory]
-    [InlineData("firstName")]
-    [InlineData("lastName")]
-    [InlineData("identifier")]
-    [InlineData("username")]
+    [Test]
+    [Arguments("firstName")]
+    [Arguments("lastName")]
+    [Arguments("identifier")]
+    [Arguments("username")]
     public async Task blank_field_on_create_returns_validation_problem_keyed_by_the_field(string field)
     {
         // Arrange
@@ -96,7 +96,7 @@ public class UserErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(field);
     }
 
-    [Fact]
+    [Test]
     public async Task blank_tenant_name_on_initiate_returns_validation_problem_keyed_by_the_field()
     {
         // Arrange
@@ -112,7 +112,7 @@ public class UserErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("tenantName");
     }
 
-    [Fact]
+    [Test]
     public async Task taken_tenant_name_on_initiate_returns_conflict_keyed_by_the_field()
     {
         // Arrange
@@ -131,7 +131,7 @@ public class UserErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("tenantName");
     }
 
-    [Fact]
+    [Test]
     public async Task invalid_email_returns_validation_problem_keyed_by_the_field()
     {
         // Arrange
@@ -157,7 +157,7 @@ public class UserErrorResponseTests : TestBase
         problem.Errors["email"].ShouldBe(["Please provide a valid email."]);
     }
 
-    [Fact]
+    [Test]
     public async Task unknown_role_returns_validation_problem_keyed_by_the_field()
     {
         // Arrange
@@ -181,7 +181,7 @@ public class UserErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("role");
     }
 
-    [Fact]
+    [Test]
     public async Task unknown_permission_returns_validation_problem_keyed_by_the_field()
     {
         // Arrange
@@ -202,7 +202,7 @@ public class UserErrorResponseTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("permission");
     }
 
-    [Fact]
+    [Test]
     public async Task unknown_identifier_returns_not_found_problem()
     {
         // Arrange
@@ -218,15 +218,15 @@ public class UserErrorResponseTests : TestBase
         problem.Status.ShouldBe(StatusCodes.Status404NotFound);
     }
 
-    public static TheoryData<string> BadTenantIds => new()
-    {
+    public static IEnumerable<string> BadTenantIds =>
+    [
         "ten_doesnotexist",
         "ten_" + new string('a', 76),
         EntityId.New(User.IdPrefix),
-    };
+    ];
 
-    [Theory]
-    [MemberData(nameof(BadTenantIds))]
+    [Test]
+    [MethodDataSource(nameof(BadTenantIds))]
     public async Task bad_or_unknown_tenant_id_returns_validation_problem(string tenantId)
     {
         // Arrange

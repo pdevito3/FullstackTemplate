@@ -13,7 +13,7 @@ public class JsonNumberHandlingTests : TestBase
 
     private const string NumberInString = """{ "count": "5" }""";
 
-    [Fact]
+    [Test]
     public async Task controllers_read_a_number_in_a_json_string()
     {
         // Arrange
@@ -27,7 +27,7 @@ public class JsonNumberHandlingTests : TestBase
         body.ShouldNotBeNull().Count.ShouldBe(5);
     }
 
-    [Fact]
+    [Test]
     public async Task minimal_apis_read_a_number_in_a_json_string()
     {
         // Arrange

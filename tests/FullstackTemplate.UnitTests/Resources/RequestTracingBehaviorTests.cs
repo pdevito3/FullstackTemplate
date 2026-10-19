@@ -10,6 +10,9 @@ using FullstackTemplate.Server.Resources;
 using MediatR;
 using Shouldly;
 
+// The listeners collect the spans and measurements of the whole process. Two tests of this class
+// that run at the same time see the measurements of each other.
+[NotInParallel(nameof(RequestTracingBehaviorTests))]
 public class RequestTracingBehaviorTests : IDisposable
 {
     private readonly ActivitySource _testSource = new("FullstackTemplate.UnitTests.RequestTracing");
@@ -50,7 +53,7 @@ public class RequestTracingBehaviorTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [Test]
     public async Task span_is_named_after_the_feature_slice()
     {
         // Arrange
@@ -66,7 +69,7 @@ public class RequestTracingBehaviorTests : IDisposable
         span.Status.ShouldBe(ActivityStatusCode.Unset);
     }
 
-    [Fact]
+    [Test]
     public async Task validation_error_is_tagged_but_not_marked_failed()
     {
         // Arrange
@@ -85,7 +88,7 @@ public class RequestTracingBehaviorTests : IDisposable
         span.Status.ShouldBe(ActivityStatusCode.Unset);
     }
 
-    [Fact]
+    [Test]
     public async Task not_found_error_is_tagged_but_not_marked_failed()
     {
         // Arrange
@@ -104,7 +107,7 @@ public class RequestTracingBehaviorTests : IDisposable
         span.Status.ShouldBe(ActivityStatusCode.Unset);
     }
 
-    [Fact]
+    [Test]
     public async Task unexpected_error_marks_the_span_failed()
     {
         // Arrange
@@ -124,7 +127,7 @@ public class RequestTracingBehaviorTests : IDisposable
         span.StatusDescription.ShouldBe("boom");
     }
 
-    [Fact]
+    [Test]
     public async Task duration_is_recorded_with_the_request_name()
     {
         // Arrange
@@ -140,7 +143,7 @@ public class RequestTracingBehaviorTests : IDisposable
         duration.Tags.ShouldNotContainKey("error.type");
     }
 
-    [Fact]
+    [Test]
     public async Task client_error_duration_has_the_error_type_but_counts_no_error()
     {
         // Arrange
@@ -158,7 +161,7 @@ public class RequestTracingBehaviorTests : IDisposable
         Measurements("app.errors", "exception.type", nameof(MeteredClientFailure)).ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task unexpected_error_is_counted()
     {
         // Arrange

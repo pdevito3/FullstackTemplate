@@ -20,13 +20,13 @@ public class UserMalformedIdTests : TestBase
         ["remove-permission"] = HttpStatusCode.OK,
     };
 
-    public static TheoryData<string, string> Cases => MalformedIds.Cases([.. SuccessCodes.Keys]);
+    public static IEnumerable<(string, string)> Cases => MalformedIds.Cases([.. SuccessCodes.Keys]);
 
-    public static TheoryData<string, HttpStatusCode> Targets
-        => new(SuccessCodes.Select(target => (target.Key, target.Value)));
+    public static IEnumerable<(string, HttpStatusCode)> Targets
+        => SuccessCodes.Select(target => (target.Key, target.Value));
 
-    [Theory]
-    [MemberData(nameof(Cases))]
+    [Test]
+    [MethodDataSource(nameof(Cases))]
     public async Task malformed_user_id_returns_not_found_problem(string target, string kind)
     {
         // Arrange
@@ -40,8 +40,8 @@ public class UserMalformedIdTests : TestBase
         await MalformedIds.ShouldBeNotFoundAsync(result, "User was not found.");
     }
 
-    [Theory]
-    [MemberData(nameof(Targets))]
+    [Test]
+    [MethodDataSource(nameof(Targets))]
     public async Task correct_user_id_finds_the_record(string target, HttpStatusCode expected)
     {
         // Arrange

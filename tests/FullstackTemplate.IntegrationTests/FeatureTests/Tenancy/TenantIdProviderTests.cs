@@ -12,7 +12,7 @@ using ZiggyCreatures.Caching.Fusion;
 
 public class TenantIdProviderTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task missing_user_is_cached()
     {
         // Arrange
@@ -38,7 +38,7 @@ public class TenantIdProviderTests : TestBase
         fresh.ShouldBe(user.TenantId);
     }
 
-    [Fact]
+    [Test]
     public async Task missing_user_expires_after_30_seconds_with_no_fail_safe()
     {
         // Arrange
@@ -71,7 +71,7 @@ public class TenantIdProviderTests : TestBase
         afterExpiry.ShouldBe(user.TenantId);
     }
 
-    [Fact]
+    [Test]
     public async Task adding_a_user_removes_the_cached_miss()
     {
         // Arrange
@@ -89,7 +89,7 @@ public class TenantIdProviderTests : TestBase
         (await provider.GetTenantIdAsync(identifier)).ShouldBe(user.TenantId);
     }
 
-    [Fact]
+    [Test]
     public async Task deleting_a_user_removes_the_cached_tenant()
     {
         // Arrange
@@ -107,7 +107,7 @@ public class TenantIdProviderTests : TestBase
         (await provider.GetTenantIdAsync(user.Identifier)).ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public async Task lookup_that_finishes_after_an_invalidation_does_not_cache_its_stale_result()
     {
         // Arrange

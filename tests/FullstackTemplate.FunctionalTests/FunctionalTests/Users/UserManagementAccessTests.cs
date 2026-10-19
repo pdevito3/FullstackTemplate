@@ -18,7 +18,7 @@ using TestUtilities;
 /// </summary>
 public class UserManagementAccessTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task basic_member_cannot_delete_another_user()
     {
         // Arrange
@@ -34,7 +34,7 @@ public class UserManagementAccessTests : TestBase
         exists.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task admin_can_delete_a_user_of_their_tenant()
     {
         // Arrange
@@ -48,7 +48,7 @@ public class UserManagementAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
-    [Fact]
+    [Test]
     public async Task basic_member_cannot_update_another_user()
     {
         // Arrange
@@ -66,7 +66,7 @@ public class UserManagementAccessTests : TestBase
         firstName.ShouldBe(other.FirstName);
     }
 
-    [Fact]
+    [Test]
     public async Task basic_member_can_update_their_own_record()
     {
         // Arrange
@@ -82,7 +82,7 @@ public class UserManagementAccessTests : TestBase
         (await result.Content.ReadFromJsonAsync<UserDto>()).ShouldNotBeNull().FirstName.ShouldBe(dto.FirstName);
     }
 
-    [Fact]
+    [Test]
     public async Task admin_can_update_another_user_of_their_tenant()
     {
         // Arrange
@@ -98,7 +98,7 @@ public class UserManagementAccessTests : TestBase
         (await result.Content.ReadFromJsonAsync<UserDto>()).ShouldNotBeNull().FirstName.ShouldBe(dto.FirstName);
     }
 
-    [Fact]
+    [Test]
     public async Task read_only_machine_client_cannot_change_a_user()
     {
         // Arrange

@@ -1,5 +1,4 @@
 namespace FullstackTemplate.IntegrationTests;
 
-// No [Collection] attribute: each test class is its own collection, so the classes run in
-// parallel on the assembly fixture (see AssemblyFixtureRegistration.cs).
+// All tests run in parallel on the one fixture of the assembly (see AssemblyHooks.cs).
 public class TestBase;

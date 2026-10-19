@@ -77,9 +77,7 @@ try
     bff.PublishWithContainerFiles(webfrontend, "wwwroot");
 
     // Labcoat finds the test projects of the solution and shows a web UI to run them. Aspire tests and publish skip it.
-    // Labcoat builds the test projects when it starts, so it waits for a manual start in the dashboard.
-    builder.AddLabcoat("tests")
-        .WithExplicitStart();
+    builder.AddLabcoat("tests");
 
     builder.Build().Run();
 }

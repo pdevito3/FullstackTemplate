@@ -31,7 +31,7 @@ public static class GetTenantList
                 ? query.OrderBy(t => t.Name).ThenBy(t => t.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(t => t.Id);
 
-            return await PagedList<TenantDto>.CreateAsync(
+            return await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,

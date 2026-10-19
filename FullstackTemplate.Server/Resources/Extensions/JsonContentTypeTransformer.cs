@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources.Extensions;
 
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
@@ -43,7 +44,7 @@ public sealed class JsonContentTypeTransformer : IOpenApiOperationTransformer
 
     private static bool ReturnsProblemDetails(OpenApiOperationTransformerContext context, string statusCode) =>
         context.Description.SupportedResponseTypes.Any(r =>
-            r.StatusCode.ToString() == statusCode
+            r.StatusCode.ToString(CultureInfo.InvariantCulture) == statusCode
             && r.Type is not null
             && typeof(ProblemDetails).IsAssignableFrom(r.Type));
 }

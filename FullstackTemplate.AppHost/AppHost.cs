@@ -1,3 +1,4 @@
+using System.Globalization;
 using FullstackTemplate.AppHost;
 using Serilog;
 using Serilog.Events;
@@ -7,7 +8,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .MinimumLevel.Override("Aspire.Hosting.Dcp", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
 
 try

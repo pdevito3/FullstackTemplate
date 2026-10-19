@@ -15,7 +15,7 @@ public class PaginationHeaderFilterTests
     public void filter_adds_the_page_data_of_a_paged_list()
     {
         // Arrange
-        var pagedList = PagedList<int>.Create(new[] { 1, 2, 3 }.AsQueryable(), 2, 1);
+        var pagedList = PagedList.Create(Enumerable.Range(1, 3).AsQueryable(), 2, 1);
         var (context, headers) = ContextFor(new OkObjectResult(pagedList));
 
         // Act

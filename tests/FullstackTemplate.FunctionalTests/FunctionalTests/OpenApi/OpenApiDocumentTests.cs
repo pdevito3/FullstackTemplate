@@ -182,7 +182,7 @@ public class OpenApiDocumentTests
         operation["responses"]!.AsObject().Select(response => (response.Key, response.Value!));
 
     // A schema type is a single name or a list of names. A nullable schema can also be a oneOf with a null type.
-    private static IReadOnlyList<string> TypesOf(JsonNode schema)
+    private static List<string> TypesOf(JsonNode schema)
     {
         var types = schema["type"] switch
         {

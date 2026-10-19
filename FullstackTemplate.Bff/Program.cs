@@ -1,3 +1,4 @@
+using System.Globalization;
 using Duende.Bff;
 using Duende.Bff.AccessTokenManagement;
 using Duende.Bff.Yarp;
@@ -11,7 +12,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
 
 try

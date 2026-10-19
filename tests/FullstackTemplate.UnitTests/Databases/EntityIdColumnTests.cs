@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Databases;
 
+using System.Globalization;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +36,7 @@ public class EntityIdColumnTests
         // Act
         var failures = idColumns
             .Where(p => p.GetMaxLength() != EntityId.MaxLength || p.GetCollation() != EntityId.Collation)
-            .Select(p => $"{p.DeclaringType.DisplayName()}.{p.Name}: max length {p.GetMaxLength()?.ToString() ?? "none"}, collation {p.GetCollation() ?? "none"}")
+            .Select(p => $"{p.DeclaringType.DisplayName()}.{p.Name}: max length {p.GetMaxLength()?.ToString(CultureInfo.InvariantCulture) ?? "none"}, collation {p.GetCollation() ?? "none"}")
             .Order()
             .ToList();
 

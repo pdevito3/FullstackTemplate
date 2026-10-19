@@ -1,6 +1,7 @@
 namespace FullstackTemplate.UnitTests.SourceGenerators;
 
 using System.Collections.Immutable;
+using System.Globalization;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.SourceGenerators;
 using Microsoft.CodeAnalysis;
@@ -74,7 +75,7 @@ public class EntityIdPrefixAnalyzerTests
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID001");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldContain("App.Tenant");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("App.Tenant");
     }
 
     [Fact]
@@ -121,8 +122,8 @@ public class EntityIdPrefixAnalyzerTests
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID002");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldContain("App.Tenant");
-        diagnostic.GetMessage().ShouldContain($"'{prefix}'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("App.Tenant");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain($"'{prefix}'");
     }
 
     [Fact]
@@ -157,7 +158,7 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         diagnostics.Length.ShouldBe(2);
         diagnostics.ShouldAllBe(d => d.Id == "FSTID003" && d.Severity == DiagnosticSeverity.Error);
-        diagnostics.ShouldContain(d => d.GetMessage().Contains("'App.User'") && d.GetMessage().Contains("'App.Member'"));
+        diagnostics.ShouldContain(d => d.GetMessage(CultureInfo.InvariantCulture).Contains("'App.User'") && d.GetMessage(CultureInfo.InvariantCulture).Contains("'App.Member'"));
         diagnostics.Select(d => d.Location.GetLineSpan().StartLinePosition.Line).Distinct().Count().ShouldBe(2);
     }
 
@@ -275,8 +276,8 @@ public class EntityIdPrefixAnalyzerTests
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID004");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldContain("'App.Tenant'");
-        diagnostic.GetMessage().ShouldContain("its own IdPrefix");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Tenant'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own IdPrefix");
     }
 
     [Fact]
@@ -335,8 +336,8 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         diagnostics.Length.ShouldBe(2);
         diagnostics.ShouldAllBe(d => d.Id == "FSTID004");
-        diagnostics.ShouldContain(d => d.GetMessage().Contains("'App.AuditedEntity'") && d.GetMessage().Contains("its own idPrefix parameter"));
-        diagnostics.ShouldContain(d => d.GetMessage().Contains("'App.Tenant'") && d.GetMessage().Contains("its own IdPrefix"));
+        diagnostics.ShouldContain(d => d.GetMessage(CultureInfo.InvariantCulture).Contains("'App.AuditedEntity'") && d.GetMessage(CultureInfo.InvariantCulture).Contains("its own idPrefix parameter"));
+        diagnostics.ShouldContain(d => d.GetMessage(CultureInfo.InvariantCulture).Contains("'App.Tenant'") && d.GetMessage(CultureInfo.InvariantCulture).Contains("its own IdPrefix"));
     }
 
     [Fact]
@@ -393,8 +394,8 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID004");
-        diagnostic.GetMessage().ShouldContain("'App.Order'");
-        diagnostic.GetMessage().ShouldContain("its own IdPrefix");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Order'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own IdPrefix");
     }
 
     [Theory]
@@ -427,8 +428,8 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID004");
-        diagnostic.GetMessage().ShouldContain("'App.AuditedEntity'");
-        diagnostic.GetMessage().ShouldContain("its own idPrefix parameter");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.AuditedEntity'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own idPrefix parameter");
     }
 
     [Fact]
@@ -492,7 +493,7 @@ public class EntityIdPrefixAnalyzerTests
 
         // Assert
         diagnostics.ShouldAllBe(d => d.Id == "FSTID004");
-        diagnostics.Select(d => d.GetMessage().Split('\'')[1]).Order().ShouldBe(entities);
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture).Split('\'')[1]).Order().ShouldBe(entities);
     }
 
     [Fact]
@@ -518,8 +519,8 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID004");
-        diagnostic.GetMessage().ShouldContain("'App.Order'");
-        diagnostic.GetMessage().ShouldContain("its own IdPrefix");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Order'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own IdPrefix");
     }
 
     [Fact]
@@ -548,10 +549,10 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         var diagnostic = diagnostics.Single(d => d.Id == "FSTID005");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        diagnostic.GetMessage().ShouldContain("'App.Admin' derives from 'App.User'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Admin' derives from 'App.User'");
         // Admin cannot pass its own IdPrefix to the User constructor, so it also gets FSTID004. User gets nothing.
         diagnostics.Select(d => d.Id).Order().ShouldBe(["FSTID004", "FSTID005"]);
-        diagnostics.Single(d => d.Id == "FSTID004").GetMessage().ShouldContain("'App.Admin'");
+        diagnostics.Single(d => d.Id == "FSTID004").GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Admin'");
     }
 
     [Fact]
@@ -578,7 +579,7 @@ public class EntityIdPrefixAnalyzerTests
         // Assert
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTID005");
-        diagnostic.GetMessage().ShouldContain("'App.Tenant' derives from 'App.AuditedEntity'");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Tenant' derives from 'App.AuditedEntity'");
     }
 
     [Fact]

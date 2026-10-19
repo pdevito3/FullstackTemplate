@@ -1,0 +1,13 @@
+root = true
+
+[*.cs]
+# CA1711 reserves the Permission suffix for System.Security permission types. Here Permission is a domain name.
+dotnet_code_quality.CA1711.allowed_suffixes = Permission
+
+# An xUnit collection definition class ends in Collection by convention.
+[tests/**/*.cs]
+dotnet_code_quality.CA1711.allowed_suffixes = Permission|Collection
+
+# EF Core writes the migrations. Analyzers do not report on generated code.
+[**/Databases/Migrations/*.cs]
+generated_code = true

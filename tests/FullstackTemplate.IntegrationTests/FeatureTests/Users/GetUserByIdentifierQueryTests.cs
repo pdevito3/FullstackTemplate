@@ -73,8 +73,8 @@ public class GetUserByIdentifierQueryTests : TestBase
             .BuildAsync();
 
         // Act - Query with different case
-        var lowercaseQuery = new GetUserByIdentifier.Query(originalIdentifier.ToLower());
-        var uppercaseQuery = new GetUserByIdentifier.Query(originalIdentifier.ToUpper());
+        var lowercaseQuery = new GetUserByIdentifier.Query(originalIdentifier.ToLowerInvariant());
+        var uppercaseQuery = new GetUserByIdentifier.Query(originalIdentifier.ToUpperInvariant());
         var exactQuery = new GetUserByIdentifier.Query(originalIdentifier);
 
         var lowercaseResult = await testingServiceScope.SendAsync(lowercaseQuery);

@@ -43,15 +43,18 @@ public class PagedList<T> : List<T>, IPagedList
 
         AddRange(items);
     }
+}
 
-    public static PagedList<T> Create(IQueryable<T> source, int pageNumber, int pageSize)
+public static class PagedList
+{
+    public static PagedList<T> Create<T>(IQueryable<T> source, int pageNumber, int pageSize)
     {
         var count = source.Count();
         var items = source.Skip(Offset(pageNumber, pageSize)).Take(pageSize).ToList();
         return new PagedList<T>(items, count, pageNumber, pageSize);
     }
 
-    public static async Task<PagedList<T>> CreateAsync(
+    public static async Task<PagedList<T>> CreateAsync<T>(
         IQueryable<T> source,
         int pageNumber,
         int pageSize,

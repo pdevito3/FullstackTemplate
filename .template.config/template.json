@@ -100,8 +100,7 @@
             "scripts/template-smoke-test.sh",
             "*.nupkg",
             ".claude/worktrees/**",
-            ".claude/settings.local.json",
-            "Directory.Build.props"
+            ".claude/settings.local.json"
           ]
         }
       ]

@@ -37,7 +37,7 @@ public partial class Permission : ValueObject
 
     protected Permission() { } // EF Core
 
-    private class PermissionEnum(string name, int value) : SmartEnum<PermissionEnum>(name, value)
+    private sealed class PermissionEnum(string name, int value) : SmartEnum<PermissionEnum>(name, value)
     {
         public static readonly PermissionEnum DoSomethingSpecial = new("do_something_special", 0);
     }

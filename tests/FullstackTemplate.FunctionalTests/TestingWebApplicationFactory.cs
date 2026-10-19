@@ -17,7 +17,7 @@ using WebMotions.Fake.Authentication.JwtBearer;
 /// One app and one database for the whole test assembly. Starting them once per test made each
 /// test pay for a new container and a new migration run.
 /// </summary>
-public class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgresTestDatabase _database = new();
 

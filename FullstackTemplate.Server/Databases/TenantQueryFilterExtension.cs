@@ -75,7 +75,7 @@ public static class TenantQueryFilterExtension
         return Expression.Lambda(BuildFilterBody(navigationBody, context), parameter);
     }
 
-    private static Expression BuildFilterBody(Expression entityTenantId, AppDbContext context)
+    private static BinaryExpression BuildFilterBody(Expression entityTenantId, AppDbContext context)
     {
         // context.CurrentTenantScope. EF Core reads the property for each query, once for each use below.
         // The context keeps the scope, so only the first read calls the scope provider.

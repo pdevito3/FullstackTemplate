@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
 
 try
@@ -141,12 +142,12 @@ finally
     await Log.CloseAndFlushAsync();
 }
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+sealed record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
 
-record SecureWeatherForecast(DateOnly Date, int TemperatureC, string? Summary, string RequestedBy)
+sealed record SecureWeatherForecast(DateOnly Date, int TemperatureC, string? Summary, string RequestedBy)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }

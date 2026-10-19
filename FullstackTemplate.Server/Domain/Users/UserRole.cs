@@ -51,7 +51,7 @@ public partial class UserRole : ValueObject
 
         public abstract Permission[] GetDefaultPermissions();
 
-        private class AdminType() : UserRoleEnum("Admin", 0)
+        private sealed class AdminType() : UserRoleEnum("Admin", 0)
         {
             public override Permission[] GetDefaultPermissions() =>
             [
@@ -59,7 +59,7 @@ public partial class UserRole : ValueObject
             ];
         }
 
-        private class UserType() : UserRoleEnum("User", 1)
+        private sealed class UserType() : UserRoleEnum("User", 1)
         {
             public override Permission[] GetDefaultPermissions() => [];
         }

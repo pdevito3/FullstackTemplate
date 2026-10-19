@@ -14,15 +14,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-public class TestFixture : IAsyncLifetime
+public sealed class TestFixture : IAsyncLifetime
 {
     /// <summary>
     /// The one machine client that the test configuration lets see and manage all tenants.
     /// </summary>
     public const string TrustedMachineClientId = "trusted-machine";
 
-    public static IServiceScopeFactory BaseScopeFactory = null!;
-    public static TestSeed Seed = null!;
+    public static IServiceScopeFactory BaseScopeFactory { get; private set; } = null!;
+    public static TestSeed Seed { get; private set; } = null!;
     public static Tenant DefaultTenant => Seed.Tenant;
     public static User DefaultUser => Seed.User;
     private readonly PostgresTestDatabase _database = new();

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users.Mappings;
 
+using System.Diagnostics.CodeAnalysis;
 using Dtos;
 using EmailAddresses;
 using Models;
@@ -31,6 +32,9 @@ public static partial class UserMapper
     // The projection inlines this expression, so EF can filter and sort on FullName. User.FullName is not a column.
     private static string MapFullName(User user) => user.FirstName + " " + user.LastName;
     private static string MapRole(UserRole role) => role.Value;
+    // Mapperly uses this method only when its return type is the type of UserDto.Permissions.
+    // With List<string>, Mapperly ignores it and maps each permission with ToString().
+    [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
     private static IReadOnlyList<string> MapUserPermissionsToPermissions(IReadOnlyCollection<UserPermission> permissions)
         => permissions.Select(p => p.Permission.Value).ToList();
 }

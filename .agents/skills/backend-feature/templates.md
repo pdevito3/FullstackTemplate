@@ -383,7 +383,7 @@ public static class Get[EntityName]List
                 ? query.OrderBy(e => e.Name).ThenBy(e => e.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(e => e.Id);
 
-            return await PagedList<[EntityName]Dto>.CreateAsync(
+            return await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,

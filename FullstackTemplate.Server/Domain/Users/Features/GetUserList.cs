@@ -31,7 +31,7 @@ public static class GetUserList
                 ? query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(u => u.Id);
 
-            return await PagedList<UserDto>.CreateAsync(
+            return await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,

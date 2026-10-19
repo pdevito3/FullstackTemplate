@@ -81,6 +81,7 @@ pnpm test
 
 - Use pnpm for the frontend. Do not use npm.
 - Put all NuGet versions in `Directory.Packages.props`.
+- Warnings fail the build: `TreatWarningsAsErrors` in `Directory.Build.props` and `--max-warnings=0` in `pnpm lint`. Correct the cause of a warning. To accept a .NET warning, add its code to `NoWarn` with a comment that gives the reason.
 - Use `docker compose` with a space. Do not use `docker-compose`.
 - Do not install the Aspire workload. It is obsolete.
 - Do not use persistent containers early in development. They keep state between restarts.

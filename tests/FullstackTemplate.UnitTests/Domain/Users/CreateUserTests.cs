@@ -78,7 +78,7 @@ public class CreateUserTests
 
         // Assert
         user.DomainEvents.Count.ShouldBe(1);
-        user.DomainEvents.First().ShouldBeOfType<UserCreated>();
+        user.DomainEvents[0].ShouldBeOfType<UserCreated>();
     }
 
     [Fact]

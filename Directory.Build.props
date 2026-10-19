@@ -1,7 +1,18 @@
 <Project>
   <PropertyGroup>
+    <!-- A warning fails the build, so warnings cannot collect. To accept a warning, add its code to NoWarn with a comment that gives the reason. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- A new security advisory must not break a build that has no code change. The audit still shows it as a warning. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <!-- CA1707 forbids underscores in names. The test names use underscores to separate the parts of a scenario. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+  <!--#if (LOCAL_DEV) -->
+  <PropertyGroup>
     <!-- Define LOCAL_DEV for local development/testing -->
-    <!-- This is excluded from the template output -->
+    <!-- The template engine removes this group from the template output -->
     <DefineConstants>$(DefineConstants);LOCAL_DEV</DefineConstants>
   </PropertyGroup>
+  <!--#endif -->
 </Project>

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.FunctionalTests.FunctionalTests.Pagination;
 
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using FullstackTemplate.Server.Resources;
@@ -32,8 +33,8 @@ public class QueryInputErrorTests : TestBase
         { "pageSize", "0" },
         { "pageSize", "-1" },
         // The offset of a page must fit in an int
-        { "pageNumber", int.MaxValue.ToString() },
-        { "pageNumber", (BasePaginationParameters.MaxPageNumber + 1).ToString() },
+        { "pageNumber", int.MaxValue.ToString(CultureInfo.InvariantCulture) },
+        { "pageNumber", (BasePaginationParameters.MaxPageNumber + 1).ToString(CultureInfo.InvariantCulture) },
     };
 
     [Theory]

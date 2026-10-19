@@ -15,10 +15,12 @@
         <PackageReference Include="Shouldly" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
         <PackageReference Include="WebMotions.Fake.Authentication.JwtBearer" />
+        <PackageReference Include="OpenTelemetry.Exporter.InMemory" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\FullstackTemplate.Server\FullstackTemplate.Server.csproj" />
+        <ProjectReference Include="..\FullstackTemplate.SharedTestHelpers\FullstackTemplate.SharedTestHelpers.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -9,7 +9,8 @@ using Microsoft.OpenApi;
 /// The JWT bearer challenge sends a 401 with no body, so the response has no content.
 /// </summary>
 /// <remarks>
-/// No operation uses roles or policies, so authorization itself cannot return 403.
+/// No operation uses roles or policies, so authorization itself cannot return 403. An action that throws
+/// <c>ForbiddenAccessException</c> declares its 403 with <c>ProducesResponseType</c>.
 /// </remarks>
 public sealed class UnauthorizedResponseTransformer : IOpenApiOperationTransformer
 {

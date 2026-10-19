@@ -23,6 +23,7 @@ public static class HostExtensions
     private static readonly string[] FrameworkMeters =
     [
         "Polly",
+        "Microsoft.EntityFrameworkCore",
         "Microsoft.AspNetCore.Authentication",
         "Microsoft.AspNetCore.Authorization",
     ];

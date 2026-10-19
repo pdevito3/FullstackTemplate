@@ -91,6 +91,7 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
+      # The integration and functional tests start Postgres with Testcontainers on the runner's Docker.
       # The api-contract job checks the OpenAPI document, so this build does not write it again.
       - name: Run the tests
         run: dotnet test --solution FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false

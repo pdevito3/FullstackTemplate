@@ -7,7 +7,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <!-- AV0029 and AV0030 ask for Asp.Versioning.OpenApi. With that package, GetOrCreateSchemaAsync in a transformer throws
-         (https://github.com/dotnet/aspnet-api-versioning/issues/1227).
+         (https://github.com/dotnet/aspnet-api-versioning/issues/1227), and PaginationHeaderTransformer calls it.
          So SwaggerExtension calls AddOpenApi once for each supported version. -->
     <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
   </PropertyGroup>
@@ -19,8 +19,28 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FullstackTemplate.SourceGenerators\FullstackTemplate.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="DistributedLock.Postgres" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="QueryKit" />
+    <PackageReference Include="Scrutor" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Riok.Mapperly" />
+    <PackageReference Include="Ardalis.SmartEnum" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">

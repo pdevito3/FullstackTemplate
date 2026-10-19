@@ -24,9 +24,19 @@ try
         .Enrich.WithThreadId()
         .Enrich.WithProperty("Application", "FullstackTemplate.AppHost"));
 
+    // `aspire run --isolated` gives each proxied endpoint a random port and skips the data volumes,
+    // so that worktrees can run the full stack at the same time. See Isolation.cs.
+    var postgres = builder.AddPostgres("postgres")
+        .WithImageTag(Config.PostgresImageTag)
+        .WithDataVolumeUnlessIsolated();
+    var appDb = postgres.AddDatabase("appdb");
+
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
+        .WithReference(appDb)
+        .WaitFor(appDb)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints();
+    postgres.WithParentRelationship(server);
 
     // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
     var webfrontend = builder.AddViteApp("webfrontend", "../frontend")

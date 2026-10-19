@@ -30,6 +30,15 @@ public static class Telemetry
         description: "Number of errors encountered");
 
     /// <summary>
+    /// Duration of each MediatR request. <see cref="RequestTracingBehavior{TRequest,TResponse}"/> records
+    /// it, tagged with <c>app.request.name</c>, and with <c>error.type</c> when the request throws.
+    /// </summary>
+    public static readonly Histogram<double> RequestDuration = Meter.CreateHistogram<double>(
+        "app.request.duration",
+        unit: "s",
+        description: "Duration of a feature slice request");
+
+    /// <summary>
     /// Record an error on the current activity.
     /// </summary>
     public static void RecordError(Activity? activity, Exception ex)

@@ -63,6 +63,8 @@ function configFor({ input, output }: { input: string; output: string }) {
       pluginAxios({
         ...layout('clients'),
         returnType: 'data',
+        // A list endpoint sends its paging metadata in the X-Pagination header, so its client returns the full response.
+        override: [{ type: 'operationId', pattern: /List$/, options: { returnType: 'full' } }],
       }),
     ],
   }

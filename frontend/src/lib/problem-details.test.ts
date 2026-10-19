@@ -6,7 +6,7 @@ const problem = {
   type: 'https://tools.ietf.org/html/rfc9110#section-15.5.5',
   title: 'The resource was not found.',
   status: 404,
-  detail: 'Forecast was not found.',
+  detail: 'Tenant was not found.',
   traceId: '00-abc-def-00',
 }
 
@@ -33,7 +33,7 @@ describe('ProblemDetailsError', () => {
     expect(error.name).toBe('ProblemDetailsError')
     expect(error.status).toBe(404)
     expect(error.title).toBe('The resource was not found.')
-    expect(error.detail).toBe('Forecast was not found.')
+    expect(error.detail).toBe('Tenant was not found.')
     expect(error.traceId).toBe('00-abc-def-00')
     expect(isProblemDetailsError(error)).toBe(true)
     expect(isProblemDetailsError(new Error('x'))).toBe(false)
@@ -42,8 +42,8 @@ describe('ProblemDetailsError', () => {
   it('uses the detail as the message', () => {
     const error = new ProblemDetailsError(problem)
 
-    expect(error.message).toBe('Forecast was not found.')
-    expect(error.displayMessage).toBe('Forecast was not found.')
+    expect(error.message).toBe('Tenant was not found.')
+    expect(error.displayMessage).toBe('Tenant was not found.')
   })
 
   it('uses the title when the problem has no detail', () => {

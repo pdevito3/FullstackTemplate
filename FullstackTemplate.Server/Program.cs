@@ -1,7 +1,10 @@
 using System.Globalization;
 using System.Security.Claims;
 using Asp.Versioning;
+using Microsoft.EntityFrameworkCore;
 using FullstackTemplate.Server;
+using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Extensions;
 using Serilog;
@@ -23,6 +26,7 @@ try
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.ConfigureServices();
+    builder.Services.AddHostedService<MigrationHostedService<AppDbContext>>();
     OpenApiBuildTime.RemoveHostedServices(builder.Services);
 
     var app = builder.Build();
@@ -38,7 +42,12 @@ try
         };
     });
 
-    app.UseExceptionHandler();
+    app.UseExceptionHandler(new ExceptionHandlerOptions
+    {
+        StatusCodeSelector = DomainProblemDetails.StatusCodeFor,
+        // A client error is an expected outcome, so it is not logged as an unhandled exception.
+        SuppressDiagnosticsCallback = context => DomainProblemDetails.IsClientError(context.Exception),
+    });
 
     if (app.Environment.IsDevelopment())
     {

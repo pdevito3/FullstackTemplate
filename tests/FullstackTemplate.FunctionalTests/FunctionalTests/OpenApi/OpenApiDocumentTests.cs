@@ -10,8 +10,37 @@ using Shouldly;
 // Each test checks one rule of the document
 public class OpenApiDocumentTests
 {
+    private const string ValidationProblemRef = "#/components/schemas/ValidationProblemDetails";
+
     // GET /api/v1/weather is the only operation that allows anonymous callers
     public const string AnonymousOperation = "GET /api/v1/weather";
+
+    [Fact]
+    public async Task tenant_list_documents_the_pagination_header()
+    {
+        var root = await LoadDocumentAsync();
+
+        var header = root["paths"]?["/api/v1/tenants"]?["get"]?["responses"]?["200"]?["headers"]?["X-Pagination"];
+        header.ShouldNotBeNull();
+        header["content"]?["application/json"]?["schema"]?["$ref"]?.GetValue<string>()
+            .ShouldBe("#/components/schemas/PaginationMetadata");
+    }
+
+    [Fact]
+    public async Task error_responses_use_only_problem_json()
+    {
+        var root = await LoadDocumentAsync();
+
+        var errorResponses = Operations(root)
+            .SelectMany(o => Responses(o.Operation)
+                .Where(r => r.Status[0] is '4' or '5' && r.Response["content"] is not null)
+                .Select(r => (Name: $"{o.Name} {r.Status}", Content: r.Response["content"]!.AsObject())))
+            .ToList();
+
+        errorResponses.ShouldNotBeEmpty();
+        foreach (var (name, content) in errorResponses)
+            content.Select(c => c.Key).ShouldBe(["application/problem+json"], name);
+    }
 
     [Fact]
     public async Task success_responses_and_request_bodies_use_only_json()
@@ -32,6 +61,22 @@ public class OpenApiDocumentTests
             content.Select(c => c.Key).ShouldBe(["application/json"], name);
     }
 
+    // The keys of the errors of the problem are camelCase, so the parameter names must be camelCase too
+    [Fact]
+    public async Task parameter_names_are_camel_case()
+    {
+        var root = await LoadDocumentAsync();
+
+        var parameters = Operations(root)
+            .SelectMany(o => (o.Operation["parameters"]?.AsArray() ?? [])
+                .Select(p => (Operation: o.Name, Name: p!["name"]!.GetValue<string>())))
+            .ToList();
+
+        parameters.ShouldNotBeEmpty();
+        foreach (var (operation, name) in parameters)
+            char.IsLower(name[0]).ShouldBeTrue($"{operation} {name}");
+    }
+
     [Fact]
     public async Task numbers_are_typed_only_as_numbers()
     {
@@ -47,6 +92,47 @@ public class OpenApiDocumentTests
         {
             TypesOf(schema).ShouldNotContain("string", schema.ToJsonString());
             schema.ContainsKey("pattern").ShouldBeFalse(schema.ToJsonString());
+        }
+    }
+
+    [Fact]
+    public async Task non_nullable_dto_properties_are_required()
+    {
+        var root = await LoadDocumentAsync();
+
+        var dtoSchemas = root["components"]!["schemas"]!.AsObject()
+            .Where(schema => schema.Key.EndsWith("Dto", StringComparison.Ordinal))
+            .ToList();
+
+        dtoSchemas.Select(schema => schema.Key).ShouldContain("UserForCreationDto");
+        foreach (var (name, schema) in dtoSchemas)
+        {
+            var nonNullable = schema!["properties"]!.AsObject()
+                .Where(property => !TypesOf(property.Value!).Contains("null"))
+                .Select(property => property.Key);
+            var required = schema["required"]?.AsArray().Select(item => item!.GetValue<string>()) ?? [];
+
+            required.ShouldBe(nonNullable, ignoreOrder: true, name);
+        }
+
+        root["components"]!["schemas"]!["UserForCreationDto"]!["required"]!.AsArray()
+            .Select(item => item!.GetValue<string>())
+            .ShouldContain("firstName");
+    }
+
+    [Fact]
+    public async Task each_write_declares_a_validation_problem()
+    {
+        var root = await LoadDocumentAsync();
+
+        var writes = Operations(root).Where(o => o.Method != "get").ToList();
+
+        writes.ShouldNotBeEmpty();
+        foreach (var (name, _, operation) in writes)
+        {
+            var schemaRef = operation["responses"]?["422"]?["content"]?["application/problem+json"]?["schema"]?["$ref"]?
+                .GetValue<string>();
+            schemaRef.ShouldBe(ValidationProblemRef, name);
         }
     }
 

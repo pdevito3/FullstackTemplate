@@ -105,9 +105,11 @@ public static class SwaggerExtension
 
             options.AddSchemaTransformer<RequireNonNullablePropertiesTransformer>();
             options.AddSchemaTransformer<RemoveStringFromNumbersTransformer>();
+            options.AddOperationTransformer<PaginationHeaderTransformer>();
             options.AddOperationTransformer<JsonContentTypeTransformer>();
             options.AddOperationTransformer<UnauthorizedResponseTransformer>();
             options.AddDocumentTransformer<RequireOperationIdTransformer>();
+            options.AddDocumentTransformer<RequireListOperationNameTransformer>();
         }
     }
 

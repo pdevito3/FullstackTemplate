@@ -5,16 +5,13 @@
  * This is the standard error response format from .NET APIs with Problem Details enabled.
  */
 
+import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
+
 /**
- * The problem details body, with the member that ASP.NET adds to each body (`traceId`)
+ * The problem details of the contract, with the member that ASP.NET adds to each body (`traceId`)
  * and the members of a subtype (for example, `errors` on a validation problem).
  */
-export type ProblemDetails = {
-  type?: string | null
-  title?: string | null
-  status?: number | null
-  detail?: string | null
-  instance?: string | null
+export type ProblemDetails = ContractProblemDetails & {
   traceId?: string
   [key: string]: unknown
 }

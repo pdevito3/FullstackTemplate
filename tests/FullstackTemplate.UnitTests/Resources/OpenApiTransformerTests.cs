@@ -50,6 +50,51 @@ public class OpenApiTransformerTests
     }
 
     [Fact]
+    public async Task list_name_transformer_accepts_names_that_match_the_list_shape()
+    {
+        // Arrange
+        var document = DocumentWith(
+            ("/api/v1/tenants", HttpMethod.Get, Operation("GetTenantList", paged: true)),
+            ("/api/v1/tenants/{id}", HttpMethod.Get, Operation("GetTenant", paged: false)));
+
+        // Act
+        var act = () => new RequireListOperationNameTransformer().TransformAsync(document, Context, CancellationToken.None);
+
+        // Assert
+        await act.ShouldNotThrowAsync();
+    }
+
+    [Fact]
+    public async Task list_name_transformer_rejects_a_paged_operation_whose_name_does_not_end_in_list()
+    {
+        // Arrange
+        var document = DocumentWith(("/api/v1/tenants", HttpMethod.Get, Operation("GetTenants", paged: true)));
+
+        // Act
+        var act = () => new RequireListOperationNameTransformer().TransformAsync(document, Context, CancellationToken.None);
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain("GET /api/v1/tenants (GetTenants)");
+        exception.Message.ShouldContain("does not end in 'List'");
+    }
+
+    [Fact]
+    public async Task list_name_transformer_rejects_an_unpaged_operation_whose_name_ends_in_list()
+    {
+        // Arrange
+        var document = DocumentWith(("/api/v1/tenants/{id}", HttpMethod.Get, Operation("GetTenantList", paged: false)));
+
+        // Act
+        var act = () => new RequireListOperationNameTransformer().TransformAsync(document, Context, CancellationToken.None);
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain("GET /api/v1/tenants/{id} (GetTenantList)");
+        exception.Message.ShouldContain("do not send the X-Pagination header");
+    }
+
+    [Fact]
     public async Task unauthorized_transformer_adds_401_with_no_content_to_a_secured_operation()
     {
         // Arrange

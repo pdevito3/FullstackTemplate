@@ -14,7 +14,7 @@ declare module 'axios' {
     /**
      * If true, suppresses automatic error toast notifications.
      * Use this when you want to handle errors manually in your component.
-     * A generated client takes it through `options`, for example `getWeatherForecast({ options: { suppressErrorToast: true } })`.
+     * A generated client takes it through `options`, for example `getTenant({ path, options: { suppressErrorToast: true } })`.
      * @default false
      */
     suppressErrorToast?: boolean
@@ -25,8 +25,8 @@ declare module 'axios' {
  * Axios instance configured for BFF API calls with CSRF protection and credentials.
  *
  * The generated clients use this instance. Call a generated client for an endpoint of the Server:
- *   import { getWeatherForecast } from '@/api/generated/weather/clients/get-weather-forecast'
- *   const forecast = await getWeatherForecast()
+ *   import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
+ *   const tenant = await getTenant({ path: { id } })
  *
  * Use apiClient directly only for an endpoint that is not in the OpenAPI document:
  *   const response = await apiClient.get<BffClaim[]>('/bff/user')
@@ -35,7 +35,7 @@ declare module 'axios' {
  *   By default, errors are displayed as toast notifications.
  *   To suppress this and handle errors manually:
  *
- *   await getWeatherForecast({ options: { suppressErrorToast: true } })
+ *   await getTenant({ path: { id }, options: { suppressErrorToast: true } })
  */
 export const apiClient = axios.create({
   withCredentials: true, // Required to send cookies cross-origin

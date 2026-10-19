@@ -4,6 +4,7 @@ A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
 - **Backend-For-Frontend (BFF)** pattern using Duende BFF
 - **Authentication** with the Duende Demo identity server
+- **Multi-tenant architecture** with data isolation
 - **OpenTelemetry** observability built-in
 - **.NET 10** with Aspire 13.1
 
@@ -39,7 +40,7 @@ The package holds only the files that git tracks. Before you publish, run the sm
 ```
 MyProject/
 ├── MyProject.AppHost/     # Aspire orchestration (start here)
-├── MyProject.Server/      # Backend API (.NET 10, minimal APIs)
+├── MyProject.Server/      # Backend API (.NET 10, CQRS, MediatR)
 ├── MyProject.Bff/         # BFF proxy (Duende BFF + YARP)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
 ├── tests/                 # Test projects
@@ -47,8 +48,13 @@ MyProject/
 ```
 
 ### Backend Features
+- **CQRS with MediatR** - Vertical slice architecture
+- **Rich Domain Entities** - DDD patterns with value objects
+- **Multi-tenancy** - Automatic tenant isolation
+- **Soft Delete** - Audit fields and soft delete built-in
 - **API Versioning** - URL segment versioning (`/api/v1/...`)
 - **OpenTelemetry** - Distributed tracing and metrics
+- **PostgreSQL** - With EF Core and migrations
 
 ### Frontend Features
 - **TanStack Router** - File-based routing with type safety
@@ -86,7 +92,7 @@ To run a stack in each git worktree, start each one in isolated mode:
 aspire run --isolated --apphost MyProject.AppHost
 ```
 
-An isolated run gives each endpoint a random port and uses a copy of the user secrets. A normal run keeps port 5173 for the frontend.
+An isolated run gives each endpoint a random port and uses a copy of the user secrets. It also starts Postgres with no data volume, so each run gets an empty database. A normal run keeps port 5173 for the frontend and keeps a separate data volume for each checkout path.
 
 ## Test Users
 
@@ -126,7 +132,7 @@ After creating your project:
 
 1. **Run the app** to see everything working
 2. **Read `docs/`** for development guides
-3. **Build your features** on the weather example
+3. **Build your features** with the included CQRS patterns
 
 ## License
 

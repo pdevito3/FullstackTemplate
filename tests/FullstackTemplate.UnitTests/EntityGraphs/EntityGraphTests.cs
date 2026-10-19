@@ -9,7 +9,7 @@ using Shouldly;
 
 public class EntityGraphTests
 {
-    [Fact]
+    [Test]
     public void customizer_sets_only_the_given_values()
     {
         // Act
@@ -22,7 +22,7 @@ public class EntityGraphTests
         user.Identifier.ShouldNotBeNullOrWhiteSpace();
     }
 
-    [Fact]
+    [Test]
     public void derive_does_not_overwrite_an_explicit_value()
     {
         // Act - an empty string is explicit, so the derive keeps it and the domain rejects it
@@ -33,7 +33,7 @@ public class EntityGraphTests
         Should.Throw<ValidationException>(act);
     }
 
-    [Fact]
+    [Test]
     public void each_customizer_makes_a_new_entity()
     {
         // Act
@@ -46,7 +46,7 @@ public class EntityGraphTests
         users[1].Role.ShouldBe(UserRole.User());
     }
 
-    [Fact]
+    [Test]
     public void stacked_customizers_apply_to_one_entity()
     {
         // Arrange
@@ -63,7 +63,7 @@ public class EntityGraphTests
         users[0].Role.ShouldBe(UserRole.Admin());
     }
 
-    [Fact]
+    [Test]
     public void batch_entities_are_distinct()
     {
         // Act
@@ -75,7 +75,7 @@ public class EntityGraphTests
         users.Select(u => u.Identifier).Distinct().Count().ShouldBe(3);
     }
 
-    [Fact]
+    [Test]
     public void blueprints_give_each_entity_an_id_with_its_prefix()
     {
         // Act
@@ -89,7 +89,7 @@ public class EntityGraphTests
         user.UserPermissions.ShouldAllBe(p => p.UserId == user.Id);
     }
 
-    [Fact]
+    [Test]
     public void customizer_can_set_the_id()
     {
         // Act
@@ -105,7 +105,7 @@ public class EntityGraphTests
         user.UserPermissions.ShouldAllBe(p => p.UserId == "usr_fixed");
     }
 
-    [Fact]
+    [Test]
     public void customizer_id_must_have_the_entity_prefix()
     {
         // Act
@@ -116,7 +116,7 @@ public class EntityGraphTests
         Should.Throw<ValidationException>(act);
     }
 
-    [Fact]
+    [Test]
     public void child_gets_tenant_from_the_seed_anchor()
     {
         // Act
@@ -127,7 +127,7 @@ public class EntityGraphTests
         user.TenantId.ShouldBe(seed.Tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public void child_gets_tenant_from_a_new_parent()
     {
         // Act
@@ -140,7 +140,7 @@ public class EntityGraphTests
         user.TenantId.ShouldNotBe(seed.Tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public void children_fan_out_per_parent()
     {
         // Act
@@ -154,7 +154,7 @@ public class EntityGraphTests
         users.Count(u => u.TenantId == tenants[1].Id).ShouldBe(2);
     }
 
-    [Fact]
+    [Test]
     public void under_re_anchors_to_an_owned_parent()
     {
         // Act
@@ -169,7 +169,7 @@ public class EntityGraphTests
         seedUser.TenantId.ShouldBe(seed.Tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public void under_rejects_a_parent_that_the_session_does_not_own()
     {
         // Arrange
@@ -182,7 +182,7 @@ public class EntityGraphTests
         Should.Throw<ArgumentException>(act);
     }
 
-    [Fact]
+    [Test]
     public async Task build_saves_created_entities_once_and_not_the_seed()
     {
         // Arrange
@@ -202,7 +202,7 @@ public class EntityGraphTests
         store.Saves[0].ShouldNotContain(seed.User);
     }
 
-    [Fact]
+    [Test]
     public async Task build_runs_only_once()
     {
         // Arrange
@@ -214,7 +214,7 @@ public class EntityGraphTests
         Should.Throw<InvalidOperationException>(() => graph.AddUser(out _));
     }
 
-    [Fact]
+    [Test]
     public void a_failed_add_faults_the_session()
     {
         // Arrange

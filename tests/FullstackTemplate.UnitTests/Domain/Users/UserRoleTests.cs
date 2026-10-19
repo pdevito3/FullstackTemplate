@@ -6,7 +6,7 @@ using Shouldly;
 
 public class UserRoleTests
 {
-    [Fact]
+    [Test]
     public void can_create_admin_role()
     {
         // Arrange & Act
@@ -16,7 +16,7 @@ public class UserRoleTests
         role.Value.ShouldBe("Admin");
     }
 
-    [Fact]
+    [Test]
     public void can_create_user_role()
     {
         // Arrange & Act
@@ -26,7 +26,7 @@ public class UserRoleTests
         role.Value.ShouldBe("User");
     }
 
-    [Fact]
+    [Test]
     public void can_create_role_from_string()
     {
         // Arrange & Act
@@ -38,7 +38,7 @@ public class UserRoleTests
         userRole.Value.ShouldBe("User");
     }
 
-    [Fact]
+    [Test]
     public void role_is_case_insensitive()
     {
         // Arrange & Act
@@ -52,7 +52,7 @@ public class UserRoleTests
         adminMixed.Value.ShouldBe("Admin");
     }
 
-    [Fact]
+    [Test]
     public void invalid_role_throws_validation_exception()
     {
         // Arrange & Act & Assert
@@ -61,7 +61,7 @@ public class UserRoleTests
         Should.Throw<ValidationException>(() => UserRole.Of(null!));
     }
 
-    [Fact]
+    [Test]
     public void admin_role_has_default_permissions()
     {
         // Arrange
@@ -75,7 +75,7 @@ public class UserRoleTests
         permissions.ShouldContain(p => p.Value == "do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void user_role_has_no_default_permissions()
     {
         // Arrange
@@ -88,7 +88,7 @@ public class UserRoleTests
         permissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void list_names_returns_all_role_names()
     {
         // Arrange & Act
@@ -100,10 +100,10 @@ public class UserRoleTests
         names.Count.ShouldBe(2);
     }
 
-    [Theory]
-    [InlineData("Admin", true)]
-    [InlineData("admin", true)]
-    [InlineData("User", false)]
+    [Test]
+    [Arguments("Admin", true)]
+    [Arguments("admin", true)]
+    [Arguments("User", false)]
     public void is_admin_is_true_only_for_the_admin_role(string role, bool expected)
     {
         // Arrange & Act

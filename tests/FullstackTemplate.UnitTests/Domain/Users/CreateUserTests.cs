@@ -9,7 +9,7 @@ using Shouldly;
 
 public class CreateUserTests
 {
-    [Fact]
+    [Test]
     public void can_create_valid_user()
     {
         // Arrange
@@ -26,9 +26,9 @@ public class CreateUserTests
         user.Username.ShouldBe(userForCreation.Username);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
+    [Test]
+    [Arguments("")]
+    [Arguments("   ")]
     public void cannot_create_user_with_blank_email(string email)
     {
         // Arrange
@@ -43,16 +43,16 @@ public class CreateUserTests
         act.ShouldThrow<ValidationException>().Message.ShouldBe("Please provide a valid email.");
     }
 
-    public static TheoryData<string?, string> InvalidTenantIds => new()
-    {
-        { null, "Please provide a tenant." },
-        { $"{User.IdPrefix}_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f", "Please provide a valid tenant ID." },
-        { $"{Tenant.IdPrefix}_{new string('a', 47)}", "Please provide a valid tenant ID." },
-        { $"{Tenant.IdPrefix}_0199F0C1A2B37C4D8E9F0A1B2C3D4E5F", "Please provide a valid tenant ID." },
-    };
+    public static IEnumerable<(string?, string)> InvalidTenantIds =>
+    [
+        (null, "Please provide a tenant."),
+        ($"{User.IdPrefix}_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f", "Please provide a valid tenant ID."),
+        ($"{Tenant.IdPrefix}_{new string('a', 47)}", "Please provide a valid tenant ID."),
+        ($"{Tenant.IdPrefix}_0199F0C1A2B37C4D8E9F0A1B2C3D4E5F", "Please provide a valid tenant ID."),
+    ];
 
-    [Theory]
-    [MemberData(nameof(InvalidTenantIds))]
+    [Test]
+    [MethodDataSource(nameof(InvalidTenantIds))]
     public void cannot_create_user_with_invalid_tenant_id(string? tenantId, string message)
     {
         // Arrange
@@ -67,7 +67,7 @@ public class CreateUserTests
         act.ShouldThrow<ValidationException>().Message.ShouldBe(message);
     }
 
-    [Fact]
+    [Test]
     public void user_creation_queues_domain_event()
     {
         // Arrange
@@ -81,7 +81,7 @@ public class CreateUserTests
         user.DomainEvents[0].ShouldBeOfType<UserCreated>();
     }
 
-    [Fact]
+    [Test]
     public void admin_user_gets_default_permissions()
     {
         // Arrange
@@ -98,7 +98,7 @@ public class CreateUserTests
         user.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void regular_user_gets_no_default_permissions()
     {
         // Arrange
@@ -114,7 +114,7 @@ public class CreateUserTests
         user.UserPermissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void user_full_name_returns_concatenated_name()
     {
         // Arrange
@@ -130,7 +130,7 @@ public class CreateUserTests
         user.FullName.ShouldBe("John Doe");
     }
 
-    [Fact]
+    [Test]
     public void missing_first_name_throws_validation_exception()
     {
         // Arrange
@@ -142,7 +142,7 @@ public class CreateUserTests
         Should.Throw<ValidationException>(() => User.Create(userForCreation));
     }
 
-    [Fact]
+    [Test]
     public void missing_last_name_throws_validation_exception()
     {
         // Arrange
@@ -154,7 +154,7 @@ public class CreateUserTests
         Should.Throw<ValidationException>(() => User.Create(userForCreation));
     }
 
-    [Fact]
+    [Test]
     public void missing_identifier_throws_validation_exception()
     {
         // Arrange
@@ -166,7 +166,7 @@ public class CreateUserTests
         Should.Throw<ValidationException>(() => User.Create(userForCreation));
     }
 
-    [Fact]
+    [Test]
     public void missing_username_throws_validation_exception()
     {
         // Arrange

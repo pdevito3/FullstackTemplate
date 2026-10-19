@@ -10,7 +10,7 @@ using Shouldly;
 
 public class AddUserPermissionCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_add_permission_to_user()
     {
         // Arrange
@@ -28,7 +28,7 @@ public class AddUserPermissionCommandTests : TestBase
         userReturned.Permissions.ShouldContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task permission_is_persisted_to_database()
     {
         // Arrange
@@ -51,7 +51,7 @@ public class AddUserPermissionCommandTests : TestBase
         userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task adding_duplicate_permission_is_idempotent()
     {
         // Arrange - Admin already has do_something_special by default
@@ -76,7 +76,7 @@ public class AddUserPermissionCommandTests : TestBase
             .ShouldBe(1);
     }
 
-    [Fact]
+    [Test]
     public async Task throws_when_user_not_found()
     {
         // Arrange
@@ -89,7 +89,7 @@ public class AddUserPermissionCommandTests : TestBase
             await testingServiceScope.SendAsync(command));
     }
 
-    [Fact]
+    [Test]
     public async Task throws_when_invalid_permission()
     {
         // Arrange
@@ -104,7 +104,7 @@ public class AddUserPermissionCommandTests : TestBase
             await testingServiceScope.SendAsync(command));
     }
 
-    [Fact]
+    [Test]
     public async Task returns_all_permissions_after_adding()
     {
         // Arrange
@@ -122,7 +122,7 @@ public class AddUserPermissionCommandTests : TestBase
         userReturned.Permissions.ShouldContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task can_add_permission_and_verify_via_get()
     {
         // Arrange

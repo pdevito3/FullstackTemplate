@@ -11,7 +11,7 @@ using Shouldly;
 
 public class TenantScopeCachingTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task context_reads_the_tenant_scope_once()
     {
         // Arrange
@@ -35,7 +35,7 @@ public class TenantScopeCachingTests : TestBase
         tenantScopeProvider.Received(1).GetCurrentScope();
     }
 
-    [Fact]
+    [Test]
     public async Task refresh_makes_the_context_read_the_tenant_scope_again()
     {
         // Arrange
@@ -57,7 +57,7 @@ public class TenantScopeCachingTests : TestBase
         tenantScopeProvider.Received(2).GetCurrentScope();
     }
 
-    [Fact]
+    [Test]
     public async Task changing_the_test_caller_after_a_query_changes_the_rows_that_the_context_shows()
     {
         // Arrange

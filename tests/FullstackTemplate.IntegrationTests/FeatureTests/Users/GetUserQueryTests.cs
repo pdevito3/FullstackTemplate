@@ -8,7 +8,7 @@ using Shouldly;
 
 public class GetUserQueryTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_get_existing_user()
     {
         // Arrange
@@ -28,7 +28,7 @@ public class GetUserQueryTests : TestBase
         userReturned.LastName.ShouldBe("Doe");
     }
 
-    [Fact]
+    [Test]
     public async Task get_user_returns_with_permissions()
     {
         // Arrange
@@ -47,7 +47,7 @@ public class GetUserQueryTests : TestBase
         userReturned.Permissions.ShouldNotBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task get_nonexistent_user_throws_not_found()
     {
         // Arrange

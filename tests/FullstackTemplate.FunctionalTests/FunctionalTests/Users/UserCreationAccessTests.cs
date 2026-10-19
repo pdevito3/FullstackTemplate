@@ -15,7 +15,7 @@ using TestUtilities;
 
 public class UserCreationAccessTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task user_with_no_user_record_cannot_add_themselves_to_a_tenant()
     {
         // Arrange
@@ -35,7 +35,7 @@ public class UserCreationAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
     }
 
-    [Fact]
+    [Test]
     public async Task admin_cannot_add_a_user_to_another_tenant()
     {
         // Arrange
@@ -51,9 +51,9 @@ public class UserCreationAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "You can add a user only to your own tenant.");
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
     public async Task admin_adds_a_user_to_their_own_tenant(string? requestedTenantId)
     {
         // Arrange
@@ -70,7 +70,7 @@ public class UserCreationAccessTests : TestBase
         user.TenantId.ShouldBe(tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task user_cannot_start_a_tenant_for_another_identifier()
     {
         // Arrange
@@ -84,7 +84,7 @@ public class UserCreationAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "You can start a tenant only for yourself.");
     }
 
-    [Fact]
+    [Test]
     public async Task machine_client_not_on_the_allow_list_cannot_start_a_tenant()
     {
         // Arrange
@@ -99,7 +99,7 @@ public class UserCreationAccessTests : TestBase
             "A caller with no user identifier must be a trusted tenant management client to start a tenant.");
     }
 
-    [Fact]
+    [Test]
     public async Task user_with_no_user_record_can_start_a_tenant_for_themselves()
     {
         // Arrange
@@ -113,7 +113,7 @@ public class UserCreationAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 
-    [Fact]
+    [Test]
     public async Task basic_member_cannot_add_a_user()
     {
         // Arrange
@@ -131,7 +131,7 @@ public class UserCreationAccessTests : TestBase
         added.ShouldBeFalse();
     }
 
-    [Fact]
+    [Test]
     public async Task basic_member_cannot_change_a_role()
     {
         // Arrange
@@ -145,7 +145,7 @@ public class UserCreationAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
     }
 
-    [Fact]
+    [Test]
     public async Task duplicate_identifier_returns_conflict_problem()
     {
         // Arrange
@@ -165,7 +165,7 @@ public class UserCreationAccessTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("identifier");
     }
 
-    [Fact]
+    [Test]
     public async Task concurrent_adds_with_one_identifier_add_one_user_and_reject_the_others()
     {
         // Arrange
@@ -186,7 +186,7 @@ public class UserCreationAccessTests : TestBase
             .ShouldAllBe(r => r.StatusCode == HttpStatusCode.Conflict);
     }
 
-    [Fact]
+    [Test]
     public async Task trusted_machine_client_can_add_a_user_to_a_tenant_that_it_names()
     {
         // Arrange
@@ -203,7 +203,7 @@ public class UserCreationAccessTests : TestBase
         user.TenantId.ShouldBe(tenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task trusted_machine_client_must_name_a_tenant_to_add_a_user()
     {
         // Arrange
@@ -219,7 +219,7 @@ public class UserCreationAccessTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("tenantId");
     }
 
-    [Fact]
+    [Test]
     public async Task trusted_machine_client_can_start_a_tenant_for_another_identifier()
     {
         // Arrange

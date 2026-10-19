@@ -7,7 +7,7 @@ using TestUtilities;
 
 public class AddTenantTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task text_json_body_is_accepted()
     {
         // Arrange

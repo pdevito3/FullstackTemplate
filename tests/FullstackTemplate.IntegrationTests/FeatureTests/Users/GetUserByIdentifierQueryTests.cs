@@ -6,7 +6,7 @@ using Shouldly;
 
 public class GetUserByIdentifierQueryTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_get_user_by_identifier()
     {
         // Arrange
@@ -26,7 +26,7 @@ public class GetUserByIdentifierQueryTests : TestBase
         userReturned.FirstName.ShouldBe("IdentifierTest");
     }
 
-    [Fact]
+    [Test]
     public async Task returns_null_when_identifier_not_found()
     {
         // Arrange
@@ -41,7 +41,7 @@ public class GetUserByIdentifierQueryTests : TestBase
         userReturned.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public async Task returns_user_with_permissions()
     {
         // Arrange
@@ -62,7 +62,7 @@ public class GetUserByIdentifierQueryTests : TestBase
         userReturned.Permissions.ShouldContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task is_case_sensitive_for_identifier()
     {
         // Arrange
@@ -87,7 +87,7 @@ public class GetUserByIdentifierQueryTests : TestBase
         exactResult.Id.ShouldBe(fakeUser.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task does_not_return_soft_deleted_user()
     {
         // Arrange
@@ -109,7 +109,7 @@ public class GetUserByIdentifierQueryTests : TestBase
         userReturned.ShouldBeNull();
     }
 
-    [Fact]
+    [Test]
     public async Task returns_correct_user_when_multiple_exist()
     {
         // Arrange

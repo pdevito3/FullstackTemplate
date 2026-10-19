@@ -8,7 +8,7 @@ using Shouldly;
 
 public class LoggerExtensionsTests
 {
-    [Fact]
+    [Test]
     public void here_adds_the_call_site_to_the_log_event()
     {
         // Arrange
@@ -29,7 +29,7 @@ public class LoggerExtensionsTests
         Scalar(logEvent, "TenantId").ShouldBe(42);
     }
 
-    [Fact]
+    [Test]
     public void a_log_event_without_here_has_no_call_site()
     {
         // Arrange

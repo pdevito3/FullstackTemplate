@@ -8,9 +8,9 @@ using Shouldly;
 /// </summary>
 public class StartupHookSupportTests
 {
-    [Theory]
-    [InlineData("Release")]
-    [InlineData("Staging")]
+    [Test]
+    [Arguments("Release")]
+    [Arguments("Staging")]
     public async Task non_debug_builds_turn_startup_hooks_off(string configuration)
     {
         // Arrange

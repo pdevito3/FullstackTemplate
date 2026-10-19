@@ -7,7 +7,7 @@ using Shouldly;
 
 public class DeleteUserCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_delete_existing_user()
     {
         // Arrange
@@ -30,7 +30,7 @@ public class DeleteUserCommandTests : TestBase
         userInDb.IsDeleted.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task deleted_user_not_returned_in_queries()
     {
         // Arrange

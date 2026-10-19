@@ -21,7 +21,7 @@ public class SystemScopeTests : TestBase
     private static IServiceScopeFactory ScopeFactory =>
         TestingWebApplicationFactory.Instance.Services.GetRequiredService<IServiceScopeFactory>();
 
-    [Fact]
+    [Test]
     public async Task scope_with_no_http_request_and_no_opt_in_sees_no_tenant()
     {
         // Arrange
@@ -38,7 +38,7 @@ public class SystemScopeTests : TestBase
         dbContext.CurrentTenantScope.ShouldBe(TenantScope.NoTenant);
     }
 
-    [Fact]
+    [Test]
     public async Task scope_with_no_http_request_and_no_opt_in_cannot_add_a_tenant()
     {
         // Arrange
@@ -52,7 +52,7 @@ public class SystemScopeTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task system_scope_sees_all_tenants_and_can_add_a_tenant()
     {
         // Arrange

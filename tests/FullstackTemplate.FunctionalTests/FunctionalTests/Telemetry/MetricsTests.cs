@@ -8,7 +8,7 @@ using Shouldly;
 
 public class MetricsTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task feature_slice_duration_and_framework_meters_are_exported()
     {
         // Arrange

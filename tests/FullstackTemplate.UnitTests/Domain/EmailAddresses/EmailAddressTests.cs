@@ -6,7 +6,7 @@ using Shouldly;
 
 public class EmailAddressTests
 {
-    [Fact]
+    [Test]
     public void can_create_valid_email_address()
     {
         // Arrange & Act
@@ -16,7 +16,7 @@ public class EmailAddressTests
         email.Value.ShouldBe("test@example.com");
     }
 
-    [Fact]
+    [Test]
     public void can_create_email_with_various_valid_formats()
     {
         // Arrange & Act & Assert
@@ -26,10 +26,10 @@ public class EmailAddressTests
         EmailAddress.Of("user@subdomain.domain.com").Value.ShouldBe("user@subdomain.domain.com");
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
+    [Arguments("   ")]
     public void blank_email_throws_domain_validation_exception(string? value)
     {
         // Arrange & Act
@@ -39,7 +39,7 @@ public class EmailAddressTests
         act.ShouldThrow<FullstackTemplate.Server.Exceptions.ValidationException>().Message.ShouldBe("Please provide a valid email.");
     }
 
-    [Fact]
+    [Test]
     public void invalid_email_throws_validation_exception()
     {
         // Arrange & Act & Assert
@@ -48,7 +48,7 @@ public class EmailAddressTests
         Should.Throw<ValidationException>(() => EmailAddress.Of("noatsign.com"));
     }
 
-    [Fact]
+    [Test]
     public void email_can_be_implicitly_converted_to_string()
     {
         // Arrange
@@ -61,7 +61,7 @@ public class EmailAddressTests
         emailString.ShouldBe("test@example.com");
     }
 
-    [Fact]
+    [Test]
     public void email_equality_works_correctly()
     {
         // Arrange

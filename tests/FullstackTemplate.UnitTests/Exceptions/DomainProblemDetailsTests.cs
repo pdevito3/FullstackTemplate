@@ -12,7 +12,7 @@ using Shouldly;
 
 public class DomainProblemDetailsTests
 {
-    [Fact]
+    [Test]
     public void unique_violation_is_a_conflict()
     {
         // Arrange
@@ -26,7 +26,7 @@ public class DomainProblemDetailsTests
         DomainProblemDetails.IsClientError(exception).ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void conflict_problem_has_the_message_under_the_property()
     {
         // Arrange
@@ -50,7 +50,7 @@ public class DomainProblemDetailsTests
         error.Value.ShouldBe(["A user with this identifier already exists."]);
     }
 
-    [Fact]
+    [Test]
     public void unique_violation_problem_does_not_show_the_constraint()
     {
         // Arrange
@@ -69,7 +69,7 @@ public class DomainProblemDetailsTests
         context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void unique_violation_problem_has_the_message_under_the_field_of_the_index()
     {
         // Arrange
@@ -89,7 +89,7 @@ public class DomainProblemDetailsTests
         error.Value.ShouldBe(["A record with this value already exists."]);
     }
 
-    [Fact]
+    [Test]
     public void each_unique_index_in_the_model_has_a_field()
     {
         // Arrange
@@ -108,7 +108,7 @@ public class DomainProblemDetailsTests
         uniqueIndexes.Where(i => !DomainProblemDetails.UniqueIndexFields.ContainsKey(i!)).ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void other_database_failure_is_a_server_error()
     {
         // Arrange
@@ -121,22 +121,22 @@ public class DomainProblemDetailsTests
         status.ShouldBe(StatusCodes.Status500InternalServerError);
     }
 
-    public static readonly TheoryData<Exception, int> ExpectedStatusCodes = new()
-    {
-        { new ValidationException("name", "Please provide a name."), StatusCodes.Status422UnprocessableEntity },
-        { new FluentValidation.ValidationException("Please provide a valid email."), StatusCodes.Status422UnprocessableEntity },
-        { new QueryInputException("sortOrder", "Parsing failed during sorting.", new SortParsingException("Unknown")), StatusCodes.Status400BadRequest },
-        { new NotFoundException("Tenant was not found."), StatusCodes.Status404NotFound },
-        { new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden },
-        { new ConflictException("identifier", "A user with this identifier already exists."), StatusCodes.Status409Conflict },
+    public static IEnumerable<(Exception, int)> ExpectedStatusCodes =>
+    [
+        (new ValidationException("name", "Please provide a name."), StatusCodes.Status422UnprocessableEntity),
+        (new FluentValidation.ValidationException("Please provide a valid email."), StatusCodes.Status422UnprocessableEntity),
+        (new QueryInputException("sortOrder", "Parsing failed during sorting.", new SortParsingException("Unknown")), StatusCodes.Status400BadRequest),
+        (new NotFoundException("Tenant was not found."), StatusCodes.Status404NotFound),
+        (new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden),
+        (new ConflictException("identifier", "A user with this identifier already exists."), StatusCodes.Status409Conflict),
         // These two come from the setup of the server, not from the request
-        { new QueryKitDbContextTypeException("SoundsLike"), StatusCodes.Status500InternalServerError },
-        { new SoundsLikeNotImplementedException("AppDbContext"), StatusCodes.Status500InternalServerError },
-        { new InvalidOperationException("x"), StatusCodes.Status500InternalServerError },
-    };
+        (new QueryKitDbContextTypeException("SoundsLike"), StatusCodes.Status500InternalServerError),
+        (new SoundsLikeNotImplementedException("AppDbContext"), StatusCodes.Status500InternalServerError),
+        (new InvalidOperationException("x"), StatusCodes.Status500InternalServerError),
+    ];
 
-    [Theory]
-    [MemberData(nameof(ExpectedStatusCodes))]
+    [Test]
+    [MethodDataSource(nameof(ExpectedStatusCodes))]
     public void each_exception_maps_to_its_status(Exception exception, int expected)
     {
         // Act

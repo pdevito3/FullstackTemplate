@@ -7,13 +7,13 @@ using Shouldly;
 
 public class RequestLogLevelTests
 {
-    [Theory]
-    [InlineData("/health", 200, LogEventLevel.Verbose)]
-    [InlineData("/alive", 200, LogEventLevel.Verbose)]
-    [InlineData("/health", 503, LogEventLevel.Error)]
-    [InlineData("/api/v1/tenants", 200, LogEventLevel.Information)]
-    [InlineData("/api/v1/tenants", 404, LogEventLevel.Information)]
-    [InlineData("/api/v1/tenants", 500, LogEventLevel.Error)]
+    [Test]
+    [Arguments("/health", 200, LogEventLevel.Verbose)]
+    [Arguments("/alive", 200, LogEventLevel.Verbose)]
+    [Arguments("/health", 503, LogEventLevel.Error)]
+    [Arguments("/api/v1/tenants", 200, LogEventLevel.Information)]
+    [Arguments("/api/v1/tenants", 404, LogEventLevel.Information)]
+    [Arguments("/api/v1/tenants", 500, LogEventLevel.Error)]
     public void level_depends_on_the_path_and_the_status(string path, int statusCode, LogEventLevel expected)
     {
         // Arrange
@@ -28,7 +28,7 @@ public class RequestLogLevelTests
         level.ShouldBe(expected);
     }
 
-    [Fact]
+    [Test]
     public void an_exception_is_an_error_even_for_a_health_probe()
     {
         // Arrange

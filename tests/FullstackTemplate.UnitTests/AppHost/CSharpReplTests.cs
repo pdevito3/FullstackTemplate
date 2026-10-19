@@ -5,7 +5,7 @@ using Shouldly;
 
 public class CSharpReplTests
 {
-    [Fact]
+    [Test]
     public void parse_exports_reads_each_exported_variable()
     {
         // Arrange
@@ -25,7 +25,7 @@ public class CSharpReplTests
         variables["ASPNETCORE_HOSTINGSTARTUPASSEMBLIES"].ShouldBe("CSharpRepl.InjectedHook");
     }
 
-    [Fact]
+    [Test]
     public void parse_exports_keeps_an_equals_sign_in_the_value()
     {
         // Act
@@ -35,7 +35,7 @@ public class CSharpReplTests
         variables["NAME"].ShouldBe("a=b");
     }
 
-    [Fact]
+    [Test]
     public void parse_exports_returns_nothing_for_output_with_no_exports()
     {
         // Act

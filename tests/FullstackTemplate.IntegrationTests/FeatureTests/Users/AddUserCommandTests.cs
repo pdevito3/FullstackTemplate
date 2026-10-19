@@ -13,7 +13,7 @@ using Shouldly;
 
 public class AddUserCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_add_new_user_to_db()
     {
         // Arrange
@@ -37,7 +37,7 @@ public class AddUserCommandTests : TestBase
         userInDb.TenantId.ShouldBe(TestFixture.DefaultTenant.Id);
     }
 
-    [Fact]
+    [Test]
     public async Task can_add_user_with_admin_role()
     {
         // Arrange
@@ -62,7 +62,7 @@ public class AddUserCommandTests : TestBase
         userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task can_add_user_with_user_role()
     {
         // Arrange
@@ -86,7 +86,7 @@ public class AddUserCommandTests : TestBase
         userInDb.UserPermissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task cannot_add_user_to_another_tenant()
     {
         // Arrange
@@ -105,7 +105,7 @@ public class AddUserCommandTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task user_with_no_user_record_cannot_add_user()
     {
         // Arrange
@@ -120,7 +120,7 @@ public class AddUserCommandTests : TestBase
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
-    [Fact]
+    [Test]
     public async Task cannot_add_user_to_an_unknown_tenant()
     {
         // Arrange
@@ -139,7 +139,7 @@ public class AddUserCommandTests : TestBase
         await ShouldHaveNoUserAsync(testingServiceScope, fakeUserDto.Identifier);
     }
 
-    [Fact]
+    [Test]
     public async Task cannot_add_user_to_a_soft_deleted_tenant()
     {
         // Arrange
@@ -162,7 +162,7 @@ public class AddUserCommandTests : TestBase
         await ShouldHaveNoUserAsync(testingServiceScope, fakeUserDto.Identifier);
     }
 
-    [Fact]
+    [Test]
     public async Task queues_domain_event_on_create()
     {
         // Arrange

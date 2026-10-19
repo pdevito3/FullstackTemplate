@@ -15,17 +15,17 @@ using TestUtilities;
 public class UserListQueryTests : TestBase
 {
     // Each filter matches the user that the test makes, and no other user in its tenant.
-    [Theory]
-    [InlineData("FirstName == \"{firstName}\"")]
-    [InlineData("LastName == \"{lastName}\"")]
-    [InlineData("FullName == \"{firstName} {lastName}\"")]
-    [InlineData("Email == \"{email}\"")]
-    [InlineData("Username == \"{username}\"")]
-    [InlineData("Identifier == \"{identifier}\"")]
-    [InlineData("Id == \"{id}\"")]
-    [InlineData("Role == \"{role}\"")]
-    [InlineData("Permissions ^$ \"{permission}\"")]
-    [InlineData("Permissions == \"{permission}\"")]
+    [Test]
+    [Arguments("FirstName == \"{firstName}\"")]
+    [Arguments("LastName == \"{lastName}\"")]
+    [Arguments("FullName == \"{firstName} {lastName}\"")]
+    [Arguments("Email == \"{email}\"")]
+    [Arguments("Username == \"{username}\"")]
+    [Arguments("Identifier == \"{identifier}\"")]
+    [Arguments("Id == \"{id}\"")]
+    [Arguments("Role == \"{role}\"")]
+    [Arguments("Permissions ^$ \"{permission}\"")]
+    [Arguments("Permissions == \"{permission}\"")]
     public async Task filter_on_a_dto_field_returns_the_matching_user(string filterTemplate)
     {
         // Arrange
@@ -50,13 +50,13 @@ public class UserListQueryTests : TestBase
     }
 
     // The first user has the values that sort first, so an ascending sort returns the first user first.
-    [Theory]
-    [InlineData("FirstName", true)]
-    [InlineData("LastName desc", false)]
-    [InlineData("FullName", true)]
-    [InlineData("Email desc", false)]
-    [InlineData("Username", true)]
-    [InlineData("Role", true)]
+    [Test]
+    [Arguments("FirstName", true)]
+    [Arguments("LastName desc", false)]
+    [Arguments("FullName", true)]
+    [Arguments("Email desc", false)]
+    [Arguments("Username", true)]
+    [Arguments("Role", true)]
     public async Task sort_on_a_dto_field_returns_the_users_in_order(string sortOrder, bool targetFirst)
     {
         // Arrange
@@ -73,7 +73,7 @@ public class UserListQueryTests : TestBase
     }
 
     // The insert order and the Id order are both the reverse of the expected order, so neither can give the correct result
-    [Fact]
+    [Test]
     public async Task list_with_no_sort_returns_the_users_by_last_name_then_first_name()
     {
         // Arrange
@@ -106,9 +106,9 @@ public class UserListQueryTests : TestBase
     // The users have the same role, so only the tie-break on Id puts each user on exactly one page.
     // Each insert is separate and in the reverse of the Id order, so the order of the rows on disk cannot give the correct result.
     // A sort on the names uses the index on the tenant and the names, which also has the Id, so it cannot show a missing tie-break.
-    [Theory]
-    [InlineData("Role")]
-    [InlineData("Role desc")]
+    [Test]
+    [Arguments("Role")]
+    [Arguments("Role desc")]
     public async Task users_with_the_same_sort_value_each_show_on_one_page_in_id_order(string sortOrder)
     {
         // Arrange
@@ -143,7 +143,7 @@ public class UserListQueryTests : TestBase
     }
 
     // The count of a list is a number, so a value that is not a number cannot convert
-    [Fact]
+    [Test]
     public async Task filter_value_that_does_not_convert_returns_bad_request()
     {
         // Arrange
@@ -160,13 +160,13 @@ public class UserListQueryTests : TestBase
 
     // The DTO does not show these fields, so a caller must not filter or sort on them.
     // A 400 here also shows that the error message names only a field that the contract does not have.
-    [Theory]
-    [InlineData("filters", "CreatedBy == \"x\"")]
-    [InlineData("filters", "LastModifiedBy == \"x\"")]
-    [InlineData("filters", "IsDeleted == true")]
-    [InlineData("filters", "UserPermissions.Count > 0")]
-    [InlineData("filters", "(CreatedBy, FirstName) @= \"x\"")]
-    [InlineData("sortOrder", "CreatedOn desc")]
+    [Test]
+    [Arguments("filters", "CreatedBy == \"x\"")]
+    [Arguments("filters", "LastModifiedBy == \"x\"")]
+    [Arguments("filters", "IsDeleted == true")]
+    [Arguments("filters", "UserPermissions.Count > 0")]
+    [Arguments("filters", "(CreatedBy, FirstName) @= \"x\"")]
+    [Arguments("sortOrder", "CreatedOn desc")]
     public async Task query_on_a_field_that_the_dto_does_not_show_returns_bad_request(string parameter, string value)
     {
         // Arrange

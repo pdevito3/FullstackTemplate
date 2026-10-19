@@ -9,8 +9,7 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
-// No [Collection] attribute: all tests run in parallel on the assembly fixture
-// (see AssemblyFixtureRegistration.cs).
+// All tests run in parallel on the one factory of the assembly (see AssemblyHooks.cs).
 public class TestBase : IDisposable
 {
     private static TestingWebApplicationFactory Factory => TestingWebApplicationFactory.Instance;

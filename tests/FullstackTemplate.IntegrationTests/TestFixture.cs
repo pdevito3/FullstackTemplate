@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-public sealed class TestFixture : IAsyncLifetime
+public sealed class TestFixture : IAsyncDisposable
 {
     /// <summary>
     /// The one machine client that the test configuration lets see and manage all tenants.
@@ -27,7 +27,7 @@ public sealed class TestFixture : IAsyncLifetime
     public static User DefaultUser => Seed.User;
     private readonly PostgresTestDatabase _database = new();
 
-    public async ValueTask InitializeAsync()
+    public async Task InitializeAsync()
     {
         ConfigureAutoFaker();
 

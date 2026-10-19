@@ -27,7 +27,7 @@ public class TelemetryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [Test]
     public void trace_root_starts_a_new_trace_linked_to_the_caller()
     {
         // Arrange
@@ -51,7 +51,7 @@ public class TelemetryTests : IDisposable
         Activity.Current.ShouldBe(caller);
     }
 
-    [Fact]
+    [Test]
     public void trace_root_without_a_caller_has_no_links()
     {
         // Arrange
@@ -66,7 +66,7 @@ public class TelemetryTests : IDisposable
         root.Links.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void trace_root_adds_additional_links()
     {
         // Arrange
@@ -81,7 +81,7 @@ public class TelemetryTests : IDisposable
             .ShouldContain(link => link.Context.SpanId == clientContext.SpanId);
     }
 
-    [Fact]
+    [Test]
     public void trace_starts_a_child_of_the_caller_with_the_call_site()
     {
         // Arrange
@@ -102,7 +102,7 @@ public class TelemetryTests : IDisposable
         span.GetTagItem("code.line.number").ShouldBeOfType<int>().ShouldBeGreaterThan(0);
     }
 
-    [Fact]
+    [Test]
     public void add_event_adds_an_event_with_the_call_site_to_the_current_activity()
     {
         // Arrange
@@ -121,7 +121,7 @@ public class TelemetryTests : IDisposable
         tags["code.line.number"].ShouldBeOfType<int>().ShouldBeGreaterThan(0);
     }
 
-    [Fact]
+    [Test]
     public void add_event_without_an_activity_does_nothing()
     {
         // Arrange
@@ -131,7 +131,7 @@ public class TelemetryTests : IDisposable
         Should.NotThrow(() => Telemetry.AddEvent([], "lock.acquired"));
     }
 
-    [Fact]
+    [Test]
     public void trace_context_round_trips_the_current_activity()
     {
         // Arrange
@@ -150,7 +150,7 @@ public class TelemetryTests : IDisposable
         context.IsRemote.ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public void trace_context_capture_without_an_activity_has_no_trace_parent()
     {
         // Arrange
@@ -164,10 +164,10 @@ public class TelemetryTests : IDisposable
         Telemetry.TryParseTraceContext(captured, out _).ShouldBeFalse();
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("not-a-traceparent")]
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
+    [Arguments("not-a-traceparent")]
     public void trace_context_parse_rejects_a_missing_or_malformed_trace_parent(string? traceParent)
     {
         // Act
@@ -178,7 +178,7 @@ public class TelemetryTests : IDisposable
         context.ShouldBe(default);
     }
 
-    [Fact]
+    [Test]
     public void trace_context_parse_rejects_a_null_context()
     {
         Telemetry.TryParseTraceContext(null, out _).ShouldBeFalse();

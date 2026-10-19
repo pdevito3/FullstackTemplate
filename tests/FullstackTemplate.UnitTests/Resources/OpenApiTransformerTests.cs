@@ -19,7 +19,7 @@ public class OpenApiTransformerTests
         ApplicationServices = Substitute.For<IServiceProvider>(),
     };
 
-    [Fact]
+    [Test]
     public async Task operation_id_transformer_accepts_named_operations()
     {
         // Arrange
@@ -32,10 +32,10 @@ public class OpenApiTransformerTests
         await act.ShouldNotThrowAsync();
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData(" ")]
+    [Test]
+    [Arguments(null)]
+    [Arguments("")]
+    [Arguments(" ")]
     public async Task operation_id_transformer_rejects_an_operation_with_no_name(string? operationId)
     {
         // Arrange
@@ -49,7 +49,7 @@ public class OpenApiTransformerTests
         exception.Message.ShouldContain("GET /api/v1/tenants/{id}");
     }
 
-    [Fact]
+    [Test]
     public async Task list_name_transformer_accepts_names_that_match_the_list_shape()
     {
         // Arrange
@@ -64,7 +64,7 @@ public class OpenApiTransformerTests
         await act.ShouldNotThrowAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task list_name_transformer_rejects_a_paged_operation_whose_name_does_not_end_in_list()
     {
         // Arrange
@@ -79,7 +79,7 @@ public class OpenApiTransformerTests
         exception.Message.ShouldContain("does not end in 'List'");
     }
 
-    [Fact]
+    [Test]
     public async Task list_name_transformer_rejects_an_unpaged_operation_whose_name_ends_in_list()
     {
         // Arrange
@@ -94,7 +94,7 @@ public class OpenApiTransformerTests
         exception.Message.ShouldContain("do not send the X-Pagination header");
     }
 
-    [Fact]
+    [Test]
     public async Task unauthorized_transformer_adds_401_with_no_content_to_a_secured_operation()
     {
         // Arrange
@@ -109,9 +109,9 @@ public class OpenApiTransformerTests
         response.Content.ShouldBeNull();
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
     public async Task unauthorized_transformer_skips_an_operation_that_allows_anonymous_callers(bool hasAuthorize)
     {
         // Arrange

@@ -8,7 +8,7 @@ using Shouldly;
 
 public class UpdateUserCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task can_update_existing_user()
     {
         // Arrange
@@ -37,7 +37,7 @@ public class UpdateUserCommandTests : TestBase
         userReturned.LastName.ShouldBe("UpdatedLast");
     }
 
-    [Fact]
+    [Test]
     public async Task can_update_user_email()
     {
         // Arrange

@@ -6,7 +6,7 @@ using Shouldly;
 
 public class PermissionTests
 {
-    [Fact]
+    [Test]
     public void can_create_do_something_special_permission()
     {
         // Arrange & Act
@@ -16,7 +16,7 @@ public class PermissionTests
         permission.Value.ShouldBe("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void can_create_permission_from_string()
     {
         // Arrange & Act
@@ -26,7 +26,7 @@ public class PermissionTests
         permission.Value.ShouldBe("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void permission_is_case_insensitive()
     {
         // Arrange & Act
@@ -36,7 +36,7 @@ public class PermissionTests
         permission.Value.ShouldBe("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void invalid_permission_throws_validation_exception()
     {
         // Arrange & Act & Assert
@@ -44,7 +44,7 @@ public class PermissionTests
         Should.Throw<ValidationException>(() => Permission.Of("nonexistent"));
     }
 
-    [Fact]
+    [Test]
     public void permission_can_be_implicitly_converted_to_string()
     {
         // Arrange
@@ -57,7 +57,7 @@ public class PermissionTests
         permissionString.ShouldBe("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void list_names_returns_all_permission_names()
     {
         // Arrange & Act
@@ -67,7 +67,7 @@ public class PermissionTests
         names.ShouldContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void get_all_returns_all_permissions()
     {
         // Arrange & Act
@@ -78,7 +78,7 @@ public class PermissionTests
         permissions.ShouldContain(p => p.Value == "do_something_special");
     }
 
-    [Fact]
+    [Test]
     public void permission_equality_works_correctly()
     {
         // Arrange

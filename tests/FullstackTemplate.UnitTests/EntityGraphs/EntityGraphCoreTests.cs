@@ -27,7 +27,7 @@ public class EntityGraphCoreTests
         TimeProvider? time = null
     ) => EntityGraph.Start(new Seed(new Org { Name = "Seed org" }), options ?? new(), store, time);
 
-    [Fact]
+    [Test]
     public void sequence_skips_explicit_values_in_the_same_step()
     {
         // Act
@@ -38,7 +38,7 @@ public class EntityGraphCoreTests
         orgs[1].Name.ShouldBe("Org 2");
     }
 
-    [Fact]
+    [Test]
     public void sequence_continues_across_steps_in_one_session()
     {
         // Act
@@ -50,7 +50,7 @@ public class EntityGraphCoreTests
         second.Select(o => o.Number).ShouldBe([3, 4]);
     }
 
-    [Fact]
+    [Test]
     public void sequences_restart_in_each_session()
     {
         // Act
@@ -62,7 +62,7 @@ public class EntityGraphCoreTests
         second.Number.ShouldBe(1);
     }
 
-    [Fact]
+    [Test]
     public void per_parent_sequence_restarts_for_each_parent()
     {
         // Act
@@ -74,7 +74,7 @@ public class EntityGraphCoreTests
         members.Select(m => m.Number).ShouldBe([1, 2, 1, 2]);
     }
 
-    [Fact]
+    [Test]
     public void per_ancestor_sequence_counts_across_children_of_one_ancestor()
     {
         // Act
@@ -88,7 +88,7 @@ public class EntityGraphCoreTests
         jobs.Where(t => t.Org == orgs[1]).Select(t => t.Number).ShouldBe([1, 2]);
     }
 
-    [Fact]
+    [Test]
     public void time_is_frozen_for_the_session()
     {
         // Arrange
@@ -105,7 +105,7 @@ public class EntityGraphCoreTests
         first.CreatedAt.Offset.ShouldBe(TimeSpan.Zero);
     }
 
-    [Fact]
+    [Test]
     public void time_comes_from_the_provider_with_ago_and_from_now()
     {
         // Arrange
@@ -125,7 +125,7 @@ public class EntityGraphCoreTests
         org.ExpiresAt.ShouldBe(now.AddDays(1));
     }
 
-    [Fact]
+    [Test]
     public void time_precision_truncates_now()
     {
         // Arrange
@@ -140,7 +140,7 @@ public class EntityGraphCoreTests
         org.CreatedAt.ShouldBe(new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero));
     }
 
-    [Fact]
+    [Test]
     public void options_default_fills_only_unset_values_on_matching_types()
     {
         // Arrange
@@ -155,7 +155,7 @@ public class EntityGraphCoreTests
         orgs[1].Label.ShouldBe("default");
     }
 
-    [Fact]
+    [Test]
     public void new_id_throws_without_an_id_generator()
     {
         // Arrange
@@ -168,7 +168,7 @@ public class EntityGraphCoreTests
         act.ShouldThrow<InvalidOperationException>().Message.ShouldContain("GraphOptions.Ids");
     }
 
-    [Fact]
+    [Test]
     public void ids_option_replaces_the_id_generator()
     {
         // Arrange
@@ -183,7 +183,7 @@ public class EntityGraphCoreTests
         orgs.Select(o => o.Id).ShouldBe(["org_1", "org_2"]);
     }
 
-    [Fact]
+    [Test]
     public void options_are_frozen_after_start()
     {
         // Arrange
@@ -197,7 +197,7 @@ public class EntityGraphCoreTests
         Should.Throw<InvalidOperationException>(act);
     }
 
-    [Fact]
+    [Test]
     public async Task seed_entities_are_owned_and_saved_first()
     {
         // Arrange
@@ -217,7 +217,7 @@ public class EntityGraphCoreTests
         store.Saves[0].ShouldBe([seed.Org, member]);
     }
 
-    [Fact]
+    [Test]
     public async Task save_hooks_can_change_rows_and_run_around_the_store()
     {
         // Arrange
@@ -245,7 +245,7 @@ public class EntityGraphCoreTests
         store.Saves[0].ShouldBe([org, extra]);
     }
 
-    [Fact]
+    [Test]
     public async Task transient_outputs_are_not_saved()
     {
         // Arrange
@@ -263,7 +263,7 @@ public class EntityGraphCoreTests
         graph.All<Org>().Count.ShouldBe(3);
     }
 
-    [Fact]
+    [Test]
     public async Task aggregates_save_their_parts_and_not_themselves()
     {
         // Arrange
@@ -281,7 +281,7 @@ public class EntityGraphCoreTests
         store.Saves[0].ShouldBe([aggregate.Org, aggregate.Owner]);
     }
 
-    [Fact]
+    [Test]
     public void context_aware_customizers_see_the_index_and_seed()
     {
         // Act
@@ -294,7 +294,7 @@ public class EntityGraphCoreTests
         last.Label.ShouldBe("n1");
     }
 
-    [Fact]
+    [Test]
     public void with_trait_runs_on_every_output()
     {
         // Arrange
@@ -307,7 +307,7 @@ public class EntityGraphCoreTests
         orgs.ShouldAllBe(o => o.Label == "trait");
     }
 
-    [Fact]
+    [Test]
     public void under_accepts_a_single_owned_parent()
     {
         // Act

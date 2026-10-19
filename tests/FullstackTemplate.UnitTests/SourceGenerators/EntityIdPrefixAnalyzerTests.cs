@@ -21,7 +21,7 @@ public class EntityIdPrefixAnalyzerTests
         }
         """;
 
-    [Fact]
+    [Test]
     public void the_longest_prefix_makes_an_id_of_the_maximum_length()
     {
         // Assert
@@ -30,7 +30,7 @@ public class EntityIdPrefixAnalyzerTests
         EntityId.New(new string('a', EntityIdPrefixAnalyzer.MaxPrefixLength)).Length.ShouldBe(EntityId.MaxLength);
     }
 
-    [Fact]
+    [Test]
     public async Task valid_entities_have_no_diagnostics()
     {
         // Act
@@ -57,7 +57,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task an_entity_without_a_prefix_gets_fstid001()
     {
         // Act
@@ -78,7 +78,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("App.Tenant");
     }
 
-    [Fact]
+    [Test]
     public async Task a_prefix_that_is_not_a_public_string_constant_gets_fstid001()
     {
         // Act
@@ -97,13 +97,13 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldHaveSingleItem().Id.ShouldBe("FSTID001");
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("Ten")]
-    [InlineData("ten_a")]
-    [InlineData("te1")]
-    [InlineData("tén")]
-    [InlineData("abcdefghijklmnopqr")]
+    [Test]
+    [Arguments("")]
+    [Arguments("Ten")]
+    [Arguments("ten_a")]
+    [Arguments("te1")]
+    [Arguments("tén")]
+    [Arguments("abcdefghijklmnopqr")]
     public async Task an_invalid_prefix_gets_fstid002(string prefix)
     {
         // Act
@@ -126,7 +126,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain($"'{prefix}'");
     }
 
-    [Fact]
+    [Test]
     public async Task a_duplicate_prefix_gets_fstid003_on_each_entity()
     {
         // Act
@@ -162,9 +162,9 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.Select(d => d.Location.GetLineSpan().StartLinePosition.Line).Distinct().Count().ShouldBe(2);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
     public async Task a_partial_entity_without_a_prefix_gets_one_fstid001(bool baseListOnBothParts)
     {
         // Arrange
@@ -189,9 +189,9 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldHaveSingleItem().Id.ShouldBe("FSTID001");
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
     public async Task a_partial_entity_with_an_invalid_prefix_gets_one_fstid002(bool baseListOnBothParts)
     {
         // Arrange
@@ -217,7 +217,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldHaveSingleItem().Id.ShouldBe("FSTID002");
     }
 
-    [Fact]
+    [Test]
     public async Task constructors_that_pass_the_own_prefix_have_no_diagnostics()
     {
         // Act
@@ -245,10 +245,10 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData("User.IdPrefix")]
-    [InlineData("\"ten\"")]
-    [InlineData("Other")]
+    [Test]
+    [Arguments("User.IdPrefix")]
+    [Arguments("\"ten\"")]
+    [Arguments("Other")]
     public async Task a_constructor_that_does_not_pass_the_own_prefix_gets_fstid004(string argument)
     {
         // Act
@@ -280,7 +280,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own IdPrefix");
     }
 
-    [Fact]
+    [Test]
     public async Task a_constructor_in_another_part_of_a_partial_entity_is_checked()
     {
         // Act
@@ -314,7 +314,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldHaveSingleItem().Id.ShouldBe("FSTID004");
     }
 
-    [Fact]
+    [Test]
     public async Task an_abstract_base_that_does_not_pass_its_parameter_gets_fstid004()
     {
         // Act
@@ -340,7 +340,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldContain(d => d.GetMessage(CultureInfo.InvariantCulture).Contains("'App.Tenant'") && d.GetMessage(CultureInfo.InvariantCulture).Contains("its own IdPrefix"));
     }
 
-    [Fact]
+    [Test]
     public async Task primary_constructors_that_pass_the_right_prefix_have_no_diagnostics()
     {
         // Act
@@ -367,9 +367,9 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData("\"ord\"")]
-    [InlineData("User.IdPrefix")]
+    [Test]
+    [Arguments("\"ord\"")]
+    [Arguments("User.IdPrefix")]
     public async Task a_primary_constructor_that_does_not_pass_the_own_prefix_gets_fstid004(string argument)
     {
         // Act
@@ -398,9 +398,9 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own IdPrefix");
     }
 
-    [Theory]
-    [InlineData("\"aud\"")]
-    [InlineData("App.User.IdPrefix")]
+    [Test]
+    [Arguments("\"aud\"")]
+    [Arguments("App.User.IdPrefix")]
     public async Task an_abstract_base_with_a_primary_constructor_that_does_not_pass_its_parameter_gets_fstid004(string argument)
     {
         // Act
@@ -432,7 +432,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own idPrefix parameter");
     }
 
-    [Fact]
+    [Test]
     public async Task constructors_that_pass_the_own_prefix_among_more_arguments_have_no_diagnostics()
     {
         // Act
@@ -467,10 +467,10 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldBeEmpty();
     }
 
-    [Theory]
-    [InlineData("(string idPrefix, string createdBy) : base(createdBy)", "base(IdPrefix, \"system\")", "App.AuditedEntity")]
-    [InlineData("(string idPrefix, string createdBy) : base(idPrefix)", "base(\"system\", IdPrefix)", "App.Tenant")]
-    [InlineData("(string prefix) : base(prefix)", "base(IdPrefix)", "App.AuditedEntity", "App.Tenant")]
+    [Test]
+    [Arguments("(string idPrefix, string createdBy) : base(createdBy)", "base(IdPrefix, \"system\")", "App.AuditedEntity")]
+    [Arguments("(string idPrefix, string createdBy) : base(idPrefix)", "base(\"system\", IdPrefix)", "App.Tenant")]
+    [Arguments("(string prefix) : base(prefix)", "base(IdPrefix)", "App.AuditedEntity", "App.Tenant")]
     public async Task a_prefix_that_does_not_bind_to_the_idprefix_parameter_gets_fstid004(
         string auditedConstructor, string tenantInitializer, params string[] entities)
     {
@@ -496,7 +496,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture).Split('\'')[1]).Order().ShouldBe(entities);
     }
 
-    [Fact]
+    [Test]
     public async Task a_primary_constructor_without_base_arguments_gets_fstid004()
     {
         // Act
@@ -523,7 +523,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("its own IdPrefix");
     }
 
-    [Fact]
+    [Test]
     public async Task an_entity_that_derives_from_a_concrete_entity_gets_fstid005()
     {
         // Act
@@ -555,7 +555,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.Single(d => d.Id == "FSTID004").GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Admin'");
     }
 
-    [Fact]
+    [Test]
     public async Task an_entity_that_derives_from_an_abstract_base_with_a_prefix_gets_fstid005()
     {
         // Act
@@ -582,7 +582,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldContain("'App.Tenant' derives from 'App.AuditedEntity'");
     }
 
-    [Fact]
+    [Test]
     public async Task an_abstract_entity_is_skipped()
     {
         // Act
@@ -606,7 +606,7 @@ public class EntityIdPrefixAnalyzerTests
         diagnostics.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task a_class_that_does_not_derive_from_base_entity_is_skipped()
     {
         // Act
@@ -642,7 +642,7 @@ public class EntityIdPrefixAnalyzerTests
             logAnalyzerExecutionTime: false);
         var diagnostics = await compilation
             .WithAnalyzers([new EntityIdPrefixAnalyzer()], options)
-            .GetAnalyzerDiagnosticsAsync(TestContext.Current.CancellationToken);
+            .GetAnalyzerDiagnosticsAsync(TestContext.Current!.Execution.CancellationToken);
 
         exceptions.ShouldBeEmpty();
         return diagnostics;

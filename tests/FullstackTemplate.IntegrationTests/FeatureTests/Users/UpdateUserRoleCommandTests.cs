@@ -10,7 +10,7 @@ using Shouldly;
 
 public class UpdateUserRoleCommandTests : TestBase
 {
-    [Fact]
+    [Test]
     public async Task member_cannot_change_a_role()
     {
         // Arrange
@@ -30,7 +30,7 @@ public class UpdateUserRoleCommandTests : TestBase
         role.ShouldBe("User");
     }
 
-    [Fact]
+    [Test]
     public async Task can_change_role_from_user_to_admin()
     {
         // Arrange
@@ -48,7 +48,7 @@ public class UpdateUserRoleCommandTests : TestBase
         userReturned.Permissions.ShouldContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task changing_role_to_admin_grants_admin_permissions_in_db()
     {
         // Arrange
@@ -72,7 +72,7 @@ public class UpdateUserRoleCommandTests : TestBase
         userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task can_change_role_from_admin_to_user()
     {
         // Arrange
@@ -90,7 +90,7 @@ public class UpdateUserRoleCommandTests : TestBase
         userReturned.Permissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task changing_role_from_admin_to_user_removes_permissions()
     {
         // Arrange
@@ -117,7 +117,7 @@ public class UpdateUserRoleCommandTests : TestBase
         userAfter.UserPermissions.ShouldBeEmpty();
     }
 
-    [Fact]
+    [Test]
     public async Task changing_role_resets_custom_permissions_to_role_defaults()
     {
         // Arrange - Create admin
@@ -135,7 +135,7 @@ public class UpdateUserRoleCommandTests : TestBase
         userReturned.Permissions.ShouldContain("do_something_special");
     }
 
-    [Fact]
+    [Test]
     public async Task throws_when_user_not_found()
     {
         // Arrange
@@ -148,7 +148,7 @@ public class UpdateUserRoleCommandTests : TestBase
             await testingServiceScope.SendAsync(command));
     }
 
-    [Fact]
+    [Test]
     public async Task throws_when_invalid_role()
     {
         // Arrange
@@ -163,7 +163,7 @@ public class UpdateUserRoleCommandTests : TestBase
             await testingServiceScope.SendAsync(command));
     }
 
-    [Fact]
+    [Test]
     public async Task setting_same_role_resets_permissions_to_default()
     {
         // Arrange - Create admin user and remove permission

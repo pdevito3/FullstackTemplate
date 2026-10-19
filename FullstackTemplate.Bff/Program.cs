@@ -3,6 +3,7 @@ using Duende.Bff;
 using Duende.Bff.AccessTokenManagement;
 using Duende.Bff.Yarp;
 using FullstackTemplate.Bff;
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 
@@ -40,7 +41,19 @@ try
 
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
 
+    // Configure forwarded headers for reverse proxy (Northflank, AWS, Azure, etc.)
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+        // Trust all proxies in production if, for example, Northflank, AWS, Azure, etc. handles the external TLS
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
     var app = builder.Build();
+
+    // Must be first to properly set scheme/host from reverse proxy headers
+    app.UseForwardedHeaders();
 
     app.UseSerilogRequestLogging(options =>
     {
@@ -54,6 +67,16 @@ try
     });
 
     app.UseExceptionHandler();
+
+    // In development the Vite dev server serves the SPA. Otherwise the SPA build is in wwwroot.
+    var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
+                      ?? builder.Configuration["services:webfrontend:http:0"];
+
+    // The SPA fallback skips paths with a file extension, so the JS and CSS bundles need this
+    if (string.IsNullOrEmpty(frontendUrl))
+    {
+        app.UseStaticFiles();
+    }
 
     app.UseCors();
     app.UseAuthentication();
@@ -75,12 +98,14 @@ try
 
     app.MapDefaultEndpoints();
 
-    // The Vite dev server serves the SPA
-    var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
-                      ?? builder.Configuration["services:webfrontend:http:0"];
     if (!string.IsNullOrEmpty(frontendUrl))
     {
         app.MapGet("/", () => Results.Redirect(frontendUrl));
+    }
+    else
+    {
+        // SPA fallback for client-side routing in production
+        app.MapFallbackToFile("index.html");
     }
 
     app.Run();

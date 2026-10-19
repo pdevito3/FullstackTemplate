@@ -13,7 +13,11 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:keycloak": "IDP=keycloak playwright test",
+    "test:e2e:fusionauth": "IDP=fusionauth playwright test",
+    "test:e2e:authentik": "IDP=authentik playwright test",
+    "test:e2e:duende": "IDP=duende playwright test"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

@@ -14,9 +14,22 @@ The app uses the Backend-For-Frontend (BFF) pattern. The browser never holds a t
 
 ## Providers
 
-`FullstackTemplate.AppHost/AppHost.cs` selects the provider. The app uses the public Duende Demo server.
+`FullstackTemplate.AppHost/AppHost.cs` selects the provider. The options are Keycloak, FusionAuth, Authentik, and Duende Demo.
 
 ## Test users
+
+### Keycloak, FusionAuth, and Authentik
+
+| Email | Password | Roles |
+|-------|----------|-------|
+| admin@example.com | password123! | admin, user |
+| user@example.com | password123! | user |
+
+### Authentik admin
+
+| Email | Password |
+|-------|----------|
+| akadmin@example.com | password123! |
 
 ### Duende Demo
 

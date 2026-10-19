@@ -5,7 +5,7 @@
   "identity": "FullstackTemplate",
   "name": "Fullstack Aspire React Template",
   "shortName": "fullstack-aspire",
-  "description": "A fullstack .NET Aspire template with React frontend and BFF pattern authentication",
+  "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, Authentik, or Duende Demo)",
   "tags": {
     "language": "C#",
     "type": "solution"
@@ -14,16 +14,68 @@
   "defaultName": "AspireApp",
   "preferNameDirectory": true,
   "symbols": {
+    "AuthProvider": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "DuendeDemo",
+      "description": "The authentication provider to use",
+      "choices": [
+        {
+          "choice": "Keycloak",
+          "description": "Keycloak identity server running in Docker (dev mode)"
+        },
+        {
+          "choice": "FusionAuth",
+          "description": "FusionAuth identity server running in Docker with PostgreSQL"
+        },
+        {
+          "choice": "Authentik",
+          "description": "Authentik identity server running in Docker with PostgreSQL and Redis"
+        },
+        {
+          "choice": "DuendeDemo",
+          "description": "Duende Demo identity server (external, for testing)"
+        }
+      ]
+    },
     "skipRestore": {
       "type": "parameter",
       "datatype": "bool",
       "defaultValue": "false",
       "description": "Do not restore the NuGet packages after the project is created"
+    },
+    "UseKeycloak": {
+      "type": "computed",
+      "value": "(AuthProvider == \"Keycloak\")"
+    },
+    "UseFusionAuth": {
+      "type": "computed",
+      "value": "(AuthProvider == \"FusionAuth\")"
+    },
+    "UseAuthentik": {
+      "type": "computed",
+      "value": "(AuthProvider == \"Authentik\")"
+    },
+    "UseDuendeDemo": {
+      "type": "computed",
+      "value": "(AuthProvider == \"DuendeDemo\")"
     }
   },
   "sources": [
     {
       "modifiers": [
+        {
+          "condition": "(!UseFusionAuth)",
+          "exclude": ["**/fusionauth/**"]
+        },
+        {
+          "condition": "(!UseKeycloak)",
+          "exclude": ["**/keycloak/**"]
+        },
+        {
+          "condition": "(!UseAuthentik)",
+          "exclude": ["**/authentik/**"]
+        },
         {
           "exclude": [
             ".git",

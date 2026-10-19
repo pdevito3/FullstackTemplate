@@ -1,13 +1,14 @@
 import { test, expect, Page } from '@playwright/test'
 
 /**
- * Authentication flow tests for the Identity Provider.
+ * Authentication flow tests for all supported Identity Providers.
  *
  * These tests verify:
  * 1. Swagger OAuth authorization and secure API access
  * 2. React UI login, secure weather API access, and logout
  *
  * Test users (from docs/authentication.md):
+ * - Keycloak/FusionAuth/Authentik: admin@example.com / password123!
  * - Duende Demo: bob / bob
  *
  * Run with: pnpm exec playwright test
@@ -41,10 +42,41 @@ interface IdpConfig {
 const currentIdp: IdpConfig = getIdpConfig()
 
 function getIdpConfig(): IdpConfig {
-  // Detect IDP based on environment variable or default to Duende Demo
-  const idp = process.env.IDP || 'duende'
+  // Detect IDP based on environment variable or default to Keycloak
+  const idp = process.env.IDP || 'keycloak'
 
   switch (idp.toLowerCase()) {
+    case 'keycloak':
+      return {
+        name: 'Keycloak',
+        email: 'admin@example.com',
+        password: 'password123!',
+        usernameSelector: '#username',
+        passwordSelector: '#password',
+        submitSelector: '#kc-login',
+      }
+    case 'fusionauth':
+      return {
+        name: 'FusionAuth',
+        email: 'admin@example.com',
+        password: 'password123!',
+        usernameSelector: 'input[name="loginId"]',
+        passwordSelector: 'input[name="password"]',
+        submitSelector: 'button:has-text("Submit")',
+      }
+    case 'authentik':
+      return {
+        name: 'Authentik',
+        email: 'admin@example.com',
+        password: 'password123!',
+        usernameSelector: '[placeholder="Email or Username"]',
+        passwordSelector: '[placeholder="Please enter your password"]',
+        submitSelector: 'button:has-text("Log in")',
+        twoStepLogin: true,
+        secondStepSubmitSelector: 'button:has-text("Continue")',
+        hasConsentPage: true,
+        consentSelector: 'button:has-text("Continue")',
+      }
     case 'duende':
       return {
         name: 'Duende Demo',

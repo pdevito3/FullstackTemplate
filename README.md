@@ -3,7 +3,7 @@
 A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
 - **Backend-For-Frontend (BFF)** pattern using Duende BFF
-- **Authentication** with the Duende Demo identity server
+- **Configurable authentication** (Keycloak, FusionAuth, or Duende Demo)
 - **Multi-tenant architecture** with data isolation
 - **OpenTelemetry** observability built-in
 - **.NET 10** with Aspire 13.1
@@ -16,8 +16,19 @@ dotnet new install FullstackTemplate
 
 ## Create a New Project
 
+### With Duende Demo (default)
 ```bash
 dotnet new fullstack-aspire -n MyProject
+```
+
+### With Keycloak
+```bash
+dotnet new fullstack-aspire -n MyProject --AuthProvider Keycloak
+```
+
+### With FusionAuth
+```bash
+dotnet new fullstack-aspire -n MyProject --AuthProvider FusionAuth
 ```
 
 ## Template Parameters
@@ -25,6 +36,7 @@ dotnet new fullstack-aspire -n MyProject
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--name` / `-n` | (required) | Project name |
+| `--AuthProvider` | `DuendeDemo` | Auth provider: `DuendeDemo`, `Keycloak`, or `FusionAuth` |
 | `--no-restore` | `false` | Do not restore the NuGet packages after the project is created |
 
 ## Publish the Template
@@ -83,7 +95,7 @@ This starts:
 - **Backend API** - .NET API server
 - **BFF Proxy** - Handles auth and proxies to API
 - **React Dev Server** - Vite with hot reload
-- **Auth Provider** - Duende Demo (external)
+- **Auth Provider** - Keycloak/FusionAuth (Docker) or Duende Demo (external)
 
 ### Run several stacks at the same time
 
@@ -97,6 +109,12 @@ An isolated run gives each endpoint a random port and uses a copy of the user se
 
 ## Test Users
 
+### Keycloak / FusionAuth
+| Email | Password | Roles |
+|-------|----------|-------|
+| admin@example.com | password123! | admin, user |
+| user@example.com | password123! | user |
+
 ### Duende Demo
 | Username | Password |
 |----------|----------|
@@ -108,7 +126,7 @@ An isolated run gives each endpoint a random port and uses a copy of the user se
 ```
 ┌──────────┐     ┌─────────┐     ┌───────────────────┐
 │  React   │────►│   BFF   │────►│   Auth Provider   │
-│   App    │◄────│ (OIDC)  │◄────│    Duende Demo    │
+│   App    │◄────│ (OIDC)  │◄────│  (e.g. Keycloak)  │
 └──────────┘     └─────────┘     └───────────────────┘
      │                │
      │   Cookie       │  JWT Token

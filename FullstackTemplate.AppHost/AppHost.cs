@@ -43,7 +43,23 @@ try
         .WithEndpoint("http", endpoint => endpoint.Port = 5173)
         .WithPnpm();
 
+    var authClientUrls = new AuthClientUrls(webfrontend.GetEndpoint("http"), server.GetEndpoint("https"));
+#if LOCAL_DEV
+    // var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
+    // var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
     var authProvider = AuthProviders.DuendeDemo();
+    // var authProvider = AuthProviders.Authentik(builder, authClientUrls);
+#else
+    //#if (UseFusionAuth)
+    var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
+    //#elseif (UseKeycloak)
+    var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
+    //#elseif (UseAuthentik)
+    var authProvider = AuthProviders.Authentik(builder, authClientUrls);
+    //#else
+    var authProvider = AuthProviders.DuendeDemo();
+    //#endif
+#endif
     server.WithServerAuth(authProvider);
 
     var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")

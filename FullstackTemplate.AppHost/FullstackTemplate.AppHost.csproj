@@ -22,6 +22,10 @@
     <PackageReference Include="Serilog.Enrichers.Thread" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FullstackTemplate.UnitTests" />
+  </ItemGroup>
+
   <!--#if (UseFusionAuth) -->
   <ItemGroup>
     <Content Include="fusionauth\**\*">

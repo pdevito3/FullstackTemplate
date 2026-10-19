@@ -35,7 +35,8 @@ try
         .WithReference(appDb)
         .WaitFor(appDb)
         .WithHttpHealthCheck("/health")
-        .WithExternalHttpEndpoints();
+        .WithExternalHttpEndpoints()
+        .WithCSharpRepl();
     postgres.WithParentRelationship(server);
 
     // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.

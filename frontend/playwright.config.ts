@@ -9,7 +9,7 @@ import { defineConfig, devices } from '@playwright/test'
  * 3. Run tests: pnpm exec playwright test
  *
  * The tests use http://localhost:5173 by default. For an isolated run (`aspire run --isolated`),
- * set BASE_URL to the webfrontend URL from `aspire describe webfrontend`.
+ * set BASE_URL to the webfrontend URL from `dotnet aspire describe webfrontend`.
  */
 export default defineConfig({
   testDir: './e2e',

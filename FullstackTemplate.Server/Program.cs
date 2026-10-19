@@ -23,6 +23,7 @@ try
     Log.Information("Starting FullstackTemplate.Server");
 
     var builder = WebApplication.CreateBuilder(OpenApiBuildTime.WithHostArgs(args));
+    CSharpReplGuard.ThrowIfLoadedOutsideDevelopment(builder.Environment);
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.ConfigureServices();
@@ -133,7 +134,7 @@ try
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
-    // A startup failure must not look like a clean exit to Aspire or CI.
+    // A startup failure, such as a CSharpReplGuard stop, must not look like a clean exit to Aspire or CI.
     Environment.ExitCode = 1;
 }
 finally

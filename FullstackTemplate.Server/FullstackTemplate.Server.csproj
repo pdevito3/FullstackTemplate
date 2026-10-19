@@ -10,6 +10,9 @@
          (https://github.com/dotnet/aspnet-api-versioning/issues/1227), and PaginationHeaderTransformer calls it.
          So SwaggerExtension calls AddOpenApi once for each supported version. -->
     <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
+    <!-- Only Debug builds load DOTNET_STARTUP_HOOKS, so CSharpRepl cannot attach to a deployed server.
+         Every other configuration (Release, or a custom one such as Staging) turns startup hooks off. -->
+    <StartupHookSupport Condition="'$(Configuration)' != 'Debug'">false</StartupHookSupport>
   </PropertyGroup>
 
   <!-- A Debug build writes the OpenAPI document to openapi/. The frontend generates its API contract from this file. -->

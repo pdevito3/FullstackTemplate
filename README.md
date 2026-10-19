@@ -102,7 +102,8 @@ This starts:
 To run a stack in each git worktree, start each one in isolated mode:
 
 ```bash
-aspire run --isolated --apphost MyProject.AppHost
+dotnet tool restore   # once: installs the pinned Aspire CLI as `dotnet aspire`
+dotnet aspire run --isolated --apphost MyProject.AppHost
 ```
 
 An isolated run gives each endpoint a random port and uses a copy of the user secrets. It also starts Postgres with no data volume, so each run gets an empty database. A normal run keeps port 5173 for the frontend and keeps a separate data volume for each checkout path.
@@ -152,6 +153,10 @@ After creating your project:
 1. **Run the app** to see everything working
 2. **Read `docs/`** for development guides
 3. **Build your features** with the included CQRS patterns
+
+## Development with Claude Code
+
+- **`.claude/skills/`** - Skills to run the stack, read its telemetry, and use CSharpRepl
 
 ## License
 

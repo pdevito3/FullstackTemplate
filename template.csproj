@@ -37,7 +37,11 @@
     </Exec>
     <ItemGroup>
       <_GitTrackedFile Remove="template.csproj;FullstackTemplate.sln" />
+      <!-- .claude/skills is a symlink. A package cannot hold a symlink, so the package has a copy of .agents/skills there. -->
+      <_GitTrackedFile Remove=".claude/skills" />
+      <_SkillFile Include="@(_GitTrackedFile)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('.agents/skills/'))" />
       <Content Include="@(_GitTrackedFile)" Condition="Exists('%(Identity)')" Pack="true" PackagePath="content/%(RelativeDir)" />
+      <Content Include="@(_SkillFile)" Pack="true" PackagePath="content/$([System.String]::Copy('%(RelativeDir)').Replace('.agents/skills/', '.claude/skills/'))" />
     </ItemGroup>
   </Target>
 

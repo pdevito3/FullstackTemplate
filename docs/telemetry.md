@@ -1,6 +1,6 @@
 # Telemetry
 
-The server and the BFF export traces, metrics, and logs with OpenTelemetry. In development, the Aspire dashboard shows them at https://localhost:17199 (the `aspire run` output gives the login link). An isolated run (`--isolated`) uses a random port. `aspire ps` gives its URL.
+The server and the BFF export traces, metrics, and logs with OpenTelemetry. In development, the Aspire dashboard shows them at https://localhost:17199 (the `aspire run` output gives the login link). An isolated run (`--isolated`) uses a random port. `dotnet aspire ps` gives its URL.
 
 ## Privacy rule
 
@@ -181,3 +181,7 @@ In Development, the console uses a `Serilog.Expressions` template. Each line sho
 - Unit tests for metrics use a `MeterListener`. See `tests/FullstackTemplate.UnitTests/Resources/RequestTracingBehaviorTests.cs`.
 - Functional tests use the OpenTelemetry in-memory exporter. `TestBase.ExportedSpans()` returns the spans that the current test exported. `TestBase.AllExportedSpans()` also returns startup spans, such as `database.migrate`. See `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Telemetry/TracingTests.cs`.
 - `TestingWebApplicationFactory.ExportedMetrics` collects the exported metrics. Call `MeterProvider.ForceFlush()` before you read it. See `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Telemetry/MetricsTests.cs`.
+
+## Read telemetry as an agent
+
+The `aspire-telemetry` skill gives the commands that query logs, spans, and traces, and the steps from a log or a span to the code.

@@ -87,6 +87,7 @@ These callers use a system scope:
 
 - The integration test fixture, when it seeds the data.
 - The functional test helpers in `TestBase`, which arrange and check data outside a request.
+- The CSharpRepl `Send` and `InScope` helpers. `SendAs` uses a plain scope, so the filter uses the tenant of the user.
 - The design-time `AppDbContextFactory` for the EF Core tools.
 
 The migration hosted service does not use a system scope. Migrations do not read through the tenant filter.

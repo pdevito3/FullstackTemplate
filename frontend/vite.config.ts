@@ -12,6 +12,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 const vendorChunks: Record<string, string[]> = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
+  motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
 }
 
 function vendorChunk(id: string): string | undefined {

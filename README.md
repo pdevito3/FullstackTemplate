@@ -48,6 +48,10 @@ MyProject/
 
 ### Frontend Features
 - **TanStack Router** - File-based routing with type safety
+- **TanStack Table** - Data tables with sorting/filtering
+- **40+ UI Components** - Based on shadcn/ui and Base UI
+- **Theme System** - Light/dark/system mode
+- **React Hook Form + Zod** - Form handling with validation
 
 ## Running the Application
 

@@ -14,6 +14,7 @@
         <PackageReference Include="xunit.v3" />
         <PackageReference Include="Shouldly" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+        <PackageReference Include="WebMotions.Fake.Authentication.JwtBearer" />
     </ItemGroup>
 
     <ItemGroup>

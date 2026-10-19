@@ -6,7 +6,18 @@
   <ItemGroup>
     <!-- Aspire -->
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.1" />
+    <!-- API Versioning -->
+    <PackageVersion Include="Asp.Versioning.Http" Version="10.2.3" />
+    <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+    <!-- Authentication -->
+    <PackageVersion Include="Duende.BFF" Version="4.0.1" />
+    <PackageVersion Include="Duende.BFF.Yarp" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <!-- Microsoft Extensions -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.13" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.0" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.12.2" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.1.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.1.0" />
     <!-- OpenTelemetry -->
@@ -24,7 +35,9 @@
     <!-- Testing -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageVersion Include="WebMotions.Fake.Authentication.JwtBearer" Version="9.0.0" />
     <!-- Transitive pins: versions of packages that other packages bring in -->
     <!-- Aspire.Hosting and StreamJsonRpc: GHSA-qhrr-8q5h-9q3h -->
     <PackageVersion Include="MessagePack" Version="2.5.303" />

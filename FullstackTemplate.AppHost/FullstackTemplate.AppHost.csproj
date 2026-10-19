@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FullstackTemplate.Server\FullstackTemplate.Server.csproj" />
+    <ProjectReference Include="..\FullstackTemplate.Bff\FullstackTemplate.Bff.csproj" />
   </ItemGroup>
 
   <ItemGroup>

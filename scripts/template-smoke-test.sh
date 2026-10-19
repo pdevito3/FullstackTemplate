@@ -5,7 +5,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 work_dir="$(mktemp -d)"
-canary="$repo_root/FullstackTemplate.Server/logs/template-smoke-canary.log"
+canary="$repo_root/FullstackTemplate.Bff/logs/template-smoke-canary.log"
 canary_dir_created=false
 
 cleanup() {

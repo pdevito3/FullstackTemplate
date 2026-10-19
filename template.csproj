@@ -6,8 +6,8 @@
     <PackageId>FullstackTemplate.Aspire.React</PackageId>
     <Title>Fullstack Aspire React Template</Title>
     <Authors>Paul</Authors>
-    <Description>A fullstack .NET Aspire template with React frontend</Description>
-    <PackageTags>dotnet-new;templates;aspire;react</PackageTags>
+    <Description>A fullstack .NET Aspire template with React frontend, and BFF pattern authentication</Description>
+    <PackageTags>dotnet-new;templates;aspire;react;bff;authentication</PackageTags>
     <PackageProjectUrl>https://github.com/yourusername/FullstackTemplate</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

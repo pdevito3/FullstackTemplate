@@ -1,10 +1,20 @@
 # Telemetry
 
-The server exports traces, metrics, and logs with OpenTelemetry. In development, the Aspire dashboard shows them at https://localhost:17199 (the `aspire run` output gives the login link). An isolated run (`--isolated`) uses a random port. `aspire ps` gives its URL.
+The server and the BFF export traces, metrics, and logs with OpenTelemetry. In development, the Aspire dashboard shows them at https://localhost:17199 (the `aspire run` output gives the login link). An isolated run (`--isolated`) uses a random port. `aspire ps` gives its URL.
 
 ## Privacy rule
 
 A span carries names, identifiers, and counts. It never carries user-entered content or personal data, such as names or email addresses. Every helper below takes its tags from the caller, so each call site must obey this rule.
+
+## What a trace looks like
+
+A request through the BFF gives one trace with this shape:
+
+```
+BFF   GET /api/v1/weather/secure
+└─ Server   GET api/v{version}/weather/secure
+   └─ GenerateSecureWeatherForecast   (Telemetry.Trace)
+```
 
 ## Where the code is
 
@@ -13,6 +23,8 @@ A span carries names, identifiers, and counts. It never carries user-entered con
 | `FullstackTemplate.Server/Resources/Telemetry.cs` | The `ActivitySource`, the `Meter`, the shared metrics, `Trace`, `AddEvent`, `TraceRoot`, and the `TraceContext` helpers |
 | `FullstackTemplate.Server/Resources/LoggerExtensions.cs` | `Here()`, which adds the call site to a log event |
 | `FullstackTemplate.Server/Resources/Extensions/HostExtensions.cs` | OpenTelemetry and Serilog registration, resource attributes, framework meters, request log level |
+| `FullstackTemplate.Bff/Telemetry.cs`, `FullstackTemplate.Bff/LoginTraceLink.cs` | BFF telemetry and the login trace link |
+| `FullstackTemplate.Bff/LoggerExtensions.cs`, `FullstackTemplate.Bff/Extensions.cs` | The BFF copies of `Here()` and of the registration |
 
 ## Log, span, or event
 
@@ -51,6 +63,9 @@ The host also collects these framework meters:
 
 - ASP.NET Core, Kestrel, `System.Net.Http`, and the .NET runtime (from the instrumentation packages).
 - `Polly`, for the resilience handlers on `HttpClient`. The meter has data only after an outgoing call.
+- `Microsoft.AspNetCore.Authentication` and `Microsoft.AspNetCore.Authorization`.
+
+The BFF has no custom metrics. Its HTTP, YARP, and auth meters measure each request. The BFF keeps `app.errors` for `RecordError`.
 
 ## Resource attributes
 
@@ -78,6 +93,12 @@ using var trace = Telemetry.TraceRoot([], "work.run", links);
 ```
 
 `TryParseTraceContext` returns false for a null, empty, or malformed context. The receiver then continues with no link.
+
+## Login trace link
+
+A login is two requests with a browser redirect through the identity provider between them. `LoginTraceLink` stores the trace context of `/bff/login` in the OIDC authentication properties. These properties travel in the data-protected `state` parameter. The `/signin-oidc` callback reads the context and adds a span link to the login trace.
+
+The BFF names the OIDC callback spans `GET /signin-oidc`, `GET /signout-callback-oidc`, and `GET /signout-oidc`. No route handles these paths, so without this rule the span name is only `GET`.
 
 ## Logs
 

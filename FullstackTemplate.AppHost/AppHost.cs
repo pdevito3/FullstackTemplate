@@ -1,4 +1,5 @@
 using System.Globalization;
+using FullstackTemplate.AppHost;
 using Serilog;
 using Serilog.Events;
 
@@ -23,14 +24,27 @@ try
         .Enrich.WithThreadId()
         .Enrich.WithProperty("Application", "FullstackTemplate.AppHost"));
 
-    builder.AddProject<Projects.FullstackTemplate_Server>("server")
+    var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints();
 
     // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
-    builder.AddViteApp("webfrontend", "../frontend")
+    var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
         .WithEndpoint("http", endpoint => endpoint.Port = 5173)
         .WithPnpm();
+
+    var authProvider = AuthProviders.DuendeDemo();
+    server.WithServerAuth(authProvider);
+
+    var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
+        .WithBffAuth(authProvider)
+        .WithReference(server)
+        .WithReference(webfrontend)
+        .WithHttpHealthCheck("/health")
+        .WithExternalHttpEndpoints()
+        .WithParentRelationship(webfrontend);
+
+    webfrontend.WithReference(bff);
 
     builder.Build().Run();
 }

@@ -19,10 +19,12 @@ public static class HostExtensions
     private const string AlivenessEndpointPath = "/alive";
 
     // Meters that the instrumentation packages do not add. Polly reports the retries and circuit breaks
-    // of the standard resilience handler.
+    // of the standard resilience handler. The auth meters are new in .NET 10.
     private static readonly string[] FrameworkMeters =
     [
         "Polly",
+        "Microsoft.AspNetCore.Authentication",
+        "Microsoft.AspNetCore.Authorization",
     ];
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder

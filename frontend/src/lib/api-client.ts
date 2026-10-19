@@ -1,0 +1,122 @@
+import axios, { type AxiosRequestConfig, type AxiosError } from 'axios'
+
+import type { client as KubbClient } from '@/api/generated/.kubb/client'
+import { Notification } from '@/components/notification'
+
+import {
+  ProblemDetailsError,
+  isProblemDetails,
+  type ProblemDetails,
+} from './problem-details'
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * If true, suppresses automatic error toast notifications.
+     * Use this when you want to handle errors manually in your component.
+     * A generated client takes it through `options`, for example `getWeatherForecast({ options: { suppressErrorToast: true } })`.
+     * @default false
+     */
+    suppressErrorToast?: boolean
+  }
+}
+
+/**
+ * Axios instance configured for BFF API calls with CSRF protection and credentials.
+ *
+ * The generated clients use this instance. Call a generated client for an endpoint of the Server:
+ *   import { getWeatherForecast } from '@/api/generated/weather/clients/get-weather-forecast'
+ *   const forecast = await getWeatherForecast()
+ *
+ * Use apiClient directly only for an endpoint that is not in the OpenAPI document:
+ *   const response = await apiClient.get<BffClaim[]>('/bff/user')
+ *
+ * Error Handling:
+ *   By default, errors are displayed as toast notifications.
+ *   To suppress this and handle errors manually:
+ *
+ *   await getWeatherForecast({ options: { suppressErrorToast: true } })
+ */
+export const apiClient = axios.create({
+  withCredentials: true, // Required to send cookies cross-origin
+  headers: {
+    'X-CSRF': '1', // BFF CSRF protection header
+  },
+})
+
+/**
+ * Extracts a user-friendly error message from a Problem Details response
+ */
+function getErrorMessage(problemDetails: ProblemDetails): string {
+  // Prefer detail as it's usually the most specific message
+  if (problemDetails.detail) {
+    return problemDetails.detail
+  }
+  // Fall back to title
+  return problemDetails.title || 'An error occurred'
+}
+
+/**
+ * Handles error responses, converting to ProblemDetailsError when applicable
+ */
+function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
+  const responseData = error.response?.data
+
+  // Check if response follows Problem Details format
+  if (isProblemDetails(responseData)) {
+    return new ProblemDetailsError(responseData)
+  }
+
+  // Handle non-Problem Details responses
+  // Try to extract a message from common error response formats
+  if (responseData && typeof responseData === 'object') {
+    const data = responseData as Record<string, unknown>
+    const message =
+      typeof data.message === 'string'
+        ? data.message
+        : typeof data.error === 'string'
+          ? data.error
+          : error.message
+
+    return new Error(message)
+  }
+
+  return new Error(error.message || 'An unexpected error occurred')
+}
+
+// Response interceptor to handle errors with Problem Details support
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    // Get custom config options
+    const config = error.config as AxiosRequestConfig | undefined
+    const suppressToast = config?.suppressErrorToast ?? false
+
+    // A cancel (for example, TanStack Query aborts an old query) is not an error to show.
+    if (!axios.isAxiosError(error) || axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
+
+    // Convert to appropriate error type
+    const processedError = handleErrorResponse(error)
+
+    // Show toast notification unless suppressed
+    if (!suppressToast) {
+      const message =
+        processedError instanceof ProblemDetailsError
+          ? getErrorMessage(processedError.problemDetails)
+          : processedError.message
+
+      Notification.error(message)
+    }
+
+    return Promise.reject(processedError)
+  }
+)
+
+// The generated clients send each request through apiClient, so they get the CSRF header, the cookies, and the error toasts.
+// Each API version has its own generated folder (src/api/generated, src/api/generated-v2), and each folder has its own client.
+const kubbClients = import.meta.glob<{ client: typeof KubbClient }>('/src/api/generated*/.kubb/client.ts', { eager: true })
+for (const { client } of Object.values(kubbClients)) {
+  client.setConfig({ transport: apiClient })
+}

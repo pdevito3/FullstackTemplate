@@ -1,4 +1,8 @@
 using System.Globalization;
+using System.Security.Claims;
+using Asp.Versioning;
+using FullstackTemplate.Server;
+using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Extensions;
 using Serilog;
 using Serilog.Events;
@@ -15,10 +19,11 @@ try
 {
     Log.Information("Starting FullstackTemplate.Server");
 
-    var builder = WebApplication.CreateBuilder(args);
+    var builder = WebApplication.CreateBuilder(OpenApiBuildTime.WithHostArgs(args));
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.ConfigureServices();
+    OpenApiBuildTime.RemoveHostedServices(builder.Services);
 
     var app = builder.Build();
 
@@ -35,11 +40,88 @@ try
 
     app.UseExceptionHandler();
 
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+        app.UseSwaggerExtension(builder.Configuration);
+    }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    // API Versioning
+    var apiVersionSet = app.GetApiVersionSet();
+
+    string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
+    const int minTemperatureC = -20;
+    const int maxTemperatureC = 55;
+
+    // The summary matches the temperature: the range splits into one equal band for each summary.
+    string SummaryFor(int temperatureC)
+        => summaries[(temperatureC - minTemperatureC) * summaries.Length / (maxTemperatureC - minTemperatureC)];
+
+    var api = app.MapGroup("api/v{version:apiVersion}")
+        .WithApiVersionSet(apiVersionSet)
+        .WithTags("Weather");
+
+    api.MapGet("/weather", () =>
+    {
+        using var activity = Telemetry.Trace([], "GenerateWeatherForecast");
+
+        var forecast = Enumerable.Range(1, 5).Select(index =>
+            {
+                var temperatureC = Random.Shared.Next(minTemperatureC, maxTemperatureC);
+                return new WeatherForecast
+                (
+                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    temperatureC,
+                    SummaryFor(temperatureC)
+                );
+            })
+            .ToArray();
+
+        activity?.SetTag("forecast.count", forecast.Length);
+
+        return forecast;
+    })
+    .WithName("GetWeatherForecast")
+    .MapToApiVersion(new ApiVersion(1, 0));
+
+    api.MapGet("/weather/secure", (ClaimsPrincipal user) =>
+    {
+        using var activity = Telemetry.Trace([], "GenerateSecureWeatherForecast");
+
+        var userName = user.Identity?.Name ?? user.FindFirstValue("sub") ?? "Unknown";
+
+        var forecast = Enumerable.Range(1, 5).Select(index =>
+            {
+                var temperatureC = Random.Shared.Next(minTemperatureC, maxTemperatureC);
+                return new SecureWeatherForecast
+                (
+                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    temperatureC,
+                    SummaryFor(temperatureC),
+                    userName
+                );
+            })
+            .ToArray();
+
+        activity?.SetTag("forecast.count", forecast.Length);
+
+        return forecast;
+    })
+    .RequireAuthorization()
+    .WithName("GetSecureWeatherForecast")
+    .MapToApiVersion(new ApiVersion(1, 0));
+
     app.MapDefaultEndpoints();
 
     app.Run();
 }
-catch (Exception ex)
+// The build-time OpenAPI generator stops the host on purpose with a HostAbortedException.
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
     // A startup failure must not look like a clean exit to Aspire or CI.
@@ -48,4 +130,14 @@ catch (Exception ex)
 finally
 {
     await Log.CloseAndFlushAsync();
+}
+
+sealed record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+sealed record SecureWeatherForecast(DateOnly Date, int TemperatureC, string? Summary, string RequestedBy)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }

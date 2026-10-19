@@ -1,7 +1,9 @@
 # Fullstack Aspire React Template
 
 A production-ready .NET Aspire template featuring:
-- **React 19** frontend with TanStack Router
+- **React 19** frontend with TanStack Router and React Query
+- **Backend-For-Frontend (BFF)** pattern using Duende BFF
+- **Authentication** with the Duende Demo identity server
 - **OpenTelemetry** observability built-in
 - **.NET 10** with Aspire 13.1
 
@@ -37,17 +39,20 @@ The package holds only the files that git tracks. Before you publish, run the sm
 ```
 MyProject/
 ├── MyProject.AppHost/     # Aspire orchestration (start here)
-├── MyProject.Server/      # Backend API (.NET 10)
+├── MyProject.Server/      # Backend API (.NET 10, minimal APIs)
+├── MyProject.Bff/         # BFF proxy (Duende BFF + YARP)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
 ├── tests/                 # Test projects
-└── docs/                  # Development guides (telemetry)
+└── docs/                  # Development guides (telemetry, auth, ...)
 ```
 
 ### Backend Features
+- **API Versioning** - URL segment versioning (`/api/v1/...`)
 - **OpenTelemetry** - Distributed tracing and metrics
 
 ### Frontend Features
 - **TanStack Router** - File-based routing with type safety
+- **TanStack Query** - Server state management
 - **TanStack Table** - Data tables with sorting/filtering
 - **40+ UI Components** - Based on shadcn/ui and Base UI
 - **Theme System** - Light/dark/system mode
@@ -69,7 +74,9 @@ aspire run
 This starts:
 - **Aspire Dashboard** - View logs, traces, and metrics
 - **Backend API** - .NET API server
+- **BFF Proxy** - Handles auth and proxies to API
 - **React Dev Server** - Vite with hot reload
+- **Auth Provider** - Duende Demo (external)
 
 ### Run several stacks at the same time
 
@@ -81,13 +88,45 @@ aspire run --isolated --apphost MyProject.AppHost
 
 An isolated run gives each endpoint a random port and uses a copy of the user secrets. A normal run keeps port 5173 for the frontend.
 
+## Test Users
+
+### Duende Demo
+| Username | Password |
+|----------|----------|
+| bob | bob |
+| alice | alice |
+
+## Authentication Flow
+
+```
+┌──────────┐     ┌─────────┐     ┌───────────────────┐
+│  React   │────►│   BFF   │────►│   Auth Provider   │
+│   App    │◄────│ (OIDC)  │◄────│    Duende Demo    │
+└──────────┘     └─────────┘     └───────────────────┘
+     │                │
+     │   Cookie       │  JWT Token
+     │                ▼
+     │          ┌─────────┐
+     └─────────►│  API    │
+       via BFF  │ Server  │
+                └─────────┘
+```
+
+1. User clicks Login → navigates to `/bff/login`
+2. BFF redirects to identity provider
+3. User authenticates with provider
+4. Provider redirects back to `/signin-oidc`
+5. BFF creates secure `__Host-bff` cookie
+6. React app calls `/bff/user` to get claims
+7. API calls go through BFF at `/api/v1/*`
+
 ## Next Steps
 
 After creating your project:
 
 1. **Run the app** to see everything working
 2. **Read `docs/`** for development guides
-3. **Build your features**
+3. **Build your features** on the weather example
 
 ## License
 

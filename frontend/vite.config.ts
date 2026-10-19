@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -12,6 +13,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 const vendorChunks: Record<string, string[]> = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
+  query: ['@tanstack/react-query', '@tanstack/query-core'],
   motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
 }
 
@@ -47,5 +49,36 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  // Unit tests only. Playwright runs the e2e tests in e2e/.
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
+  server: {
+    proxy: {
+      // BFF management endpoints (login, logout, user)
+      '/bff': {
+        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        changeOrigin: true,
+        secure: false
+      },
+      // OIDC callback endpoints
+      '/signin-oidc': {
+        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        changeOrigin: true,
+        secure: false
+      },
+      '/signout-callback-oidc': {
+        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        changeOrigin: true,
+        secure: false
+      },
+      // API calls proxied through BFF
+      '/api': {
+        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        changeOrigin: true,
+        secure: false
+      }
+    }
   }
 })

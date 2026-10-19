@@ -31,10 +31,16 @@ function About() {
                 <strong className="text-foreground">TanStack Router</strong> - Type-safe routing
               </li>
               <li>
+                <strong className="text-foreground">TanStack Query</strong> - Data fetching
+              </li>
+              <li>
                 <strong className="text-foreground">Tailwind CSS</strong> - Styling
               </li>
               <li>
                 <strong className="text-foreground">Base UI + shadcn</strong> - Component library
+              </li>
+              <li>
+                <strong className="text-foreground">Duende BFF</strong> - Backend-for-Frontend security
               </li>
             </ul>
           </CardContent>

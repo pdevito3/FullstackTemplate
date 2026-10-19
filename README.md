@@ -39,7 +39,8 @@ MyProject/
 ├── MyProject.AppHost/     # Aspire orchestration (start here)
 ├── MyProject.Server/      # Backend API (.NET 10)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
-└── tests/                 # Test projects
+├── tests/                 # Test projects
+└── docs/                  # Development guides (telemetry)
 ```
 
 ### Backend Features
@@ -81,7 +82,8 @@ An isolated run gives each endpoint a random port and uses a copy of the user se
 After creating your project:
 
 1. **Run the app** to see everything working
-2. **Build your features**
+2. **Read `docs/`** for development guides
+3. **Build your features**
 
 ## License
 

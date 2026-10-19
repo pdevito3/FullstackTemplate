@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/tests/">
     <Project Path="tests/FullstackTemplate.FunctionalTests/FullstackTemplate.FunctionalTests.csproj" />
+    <Project Path="tests/FullstackTemplate.UnitTests/FullstackTemplate.UnitTests.csproj" />
   </Folder>
   <Project Path="frontend/frontend.esproj">
     <Build Solution="*|Any CPU" />

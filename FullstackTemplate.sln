@@ -11,6 +11,8 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "frontend", "frontend\fronte
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D22B7AEA-E58C-4320-80EC-72FB1BFEBF8D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullstackTemplate.UnitTests", "tests\FullstackTemplate.UnitTests\FullstackTemplate.UnitTests.csproj", "{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FullstackTemplate.FunctionalTests", "tests\FullstackTemplate.FunctionalTests\FullstackTemplate.FunctionalTests.csproj", "{321C5C92-AEA5-40F8-8282-BCDA29229084}"
 EndProject
 Global
@@ -55,6 +57,18 @@ Global
 		{91F0EF7F-B090-4652-97BA-FBDAF7770878}.Release|Any CPU.Build.0 = Release|Any CPU
 		{91F0EF7F-B090-4652-97BA-FBDAF7770878}.Release|x64.ActiveCfg = Release|x64
 		{91F0EF7F-B090-4652-97BA-FBDAF7770878}.Release|x86.ActiveCfg = Release|x86
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Debug|x64.Build.0 = Debug|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Debug|x86.Build.0 = Debug|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Release|x64.ActiveCfg = Release|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Release|x64.Build.0 = Release|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Release|x86.ActiveCfg = Release|Any CPU
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF}.Release|x86.Build.0 = Release|Any CPU
 		{321C5C92-AEA5-40F8-8282-BCDA29229084}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{321C5C92-AEA5-40F8-8282-BCDA29229084}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{321C5C92-AEA5-40F8-8282-BCDA29229084}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -72,6 +86,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{FA3A82A3-71EF-4267-A065-99DE2D0A88EF} = {D22B7AEA-E58C-4320-80EC-72FB1BFEBF8D}
 		{321C5C92-AEA5-40F8-8282-BCDA29229084} = {D22B7AEA-E58C-4320-80EC-72FB1BFEBF8D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

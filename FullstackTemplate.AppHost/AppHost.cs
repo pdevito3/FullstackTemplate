@@ -1,12 +1,44 @@
-var builder = DistributedApplication.CreateBuilder(args);
+using System.Globalization;
+using Serilog;
+using Serilog.Events;
 
-builder.AddProject<Projects.FullstackTemplate_Server>("server")
-    .WithHttpHealthCheck("/health")
-    .WithExternalHttpEndpoints();
+// Bootstrap logger to catch startup errors before host is built
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Override("Aspire.Hosting.Dcp", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+    .CreateBootstrapLogger();
 
-// The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
-builder.AddViteApp("webfrontend", "../frontend")
-    .WithEndpoint("http", endpoint => endpoint.Port = 5173)
-    .WithPnpm();
+try
+{
+    Log.Information("Starting FullstackTemplate.AppHost");
 
-builder.Build().Run();
+    var builder = DistributedApplication.CreateBuilder(args);
+
+    builder.Services.AddSerilog((_, lc) => lc
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithThreadId()
+        .Enrich.WithProperty("Application", "FullstackTemplate.AppHost"));
+
+    builder.AddProject<Projects.FullstackTemplate_Server>("server")
+        .WithHttpHealthCheck("/health")
+        .WithExternalHttpEndpoints();
+
+    // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
+    builder.AddViteApp("webfrontend", "../frontend")
+        .WithEndpoint("http", endpoint => endpoint.Port = 5173)
+        .WithPnpm();
+
+    builder.Build().Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "AppHost terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

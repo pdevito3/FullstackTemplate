@@ -32,6 +32,18 @@ export default async ({ page, step, capture, expect }) => {
   })
   await capture('celsius')
 
+  await step('reload: the unit stays Celsius and is stored in localStorage', async () => {
+    const res = page.waitForResponse((r) => r.url().endsWith('/api/v1/weather') && r.request().method() === 'GET')
+    await page.reload()
+    const reloaded = await (await res).json()
+    await expect(page.getByText('Celsius', { exact: true })).toHaveCount(5)
+    for (const f of reloaded) {
+      await expect(page.getByText(`${f.temperatureC}°`, { exact: true }).first()).toBeVisible()
+    }
+    expect(await page.evaluate(() => localStorage.getItem('weather-temperature-unit'))).toBe('celsius')
+  })
+  await capture('reloaded')
+
   await step('choose Refresh: a new GET /api/v1/weather replaces the cards', async () => {
     const res = page.waitForResponse((r) => r.url().endsWith('/api/v1/weather') && r.request().method() === 'GET')
     await page.getByRole('button', { name: 'Refresh' }).click()

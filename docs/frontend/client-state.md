@@ -11,9 +11,10 @@ Use the first item in this list that fits:
 3. Is it one value in one component? Use `useState`.
 4. Do some values always change together? Make a custom hook with `useReducer`.
 5. Must the state survive a reload, or be in a link? Put it in the route search params.
-6. Do components in different parts of the tree need it? Use a React context. Keep the context small.
+6. Is it a user preference that must survive a browser restart on this device? Search params do not, because the user can open the app from a bare URL. Store it in `localStorage` behind a hook that parses the stored value. See `components/theme-provider.tsx` and `domain/weather/temperature-unit.ts`.
+7. Do components in different parts of the tree need it? Use a React context. Keep the context small.
 
-The app has no global store library. Before you add one, make sure that items 1 to 6 do not fit.
+The app has no global store library. Before you add one, make sure that items 1 to 7 do not fit.
 
 ## Calculate, do not store
 

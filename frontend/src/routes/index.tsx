@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
 import type { WeatherForecast } from '@/api/generated/models/types/weather-forecast'
+import { useTemperatureUnit, type TemperatureUnit } from '@/domain/weather/temperature-unit'
 import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
 import { useSecureWeatherForecast } from '@/domain/weather/apis/get-secure-weather'
 import { WeatherKeys } from '@/domain/weather/apis/weather.keys'
@@ -22,7 +23,7 @@ export const Route = createFileRoute('/')({
 })
 
 function Index() {
-  const [useCelsius, setUseCelsius] = useState(false)
+  const [unit, setUnit] = useTemperatureUnit()
   const [showSecure, setShowSecure] = useState(false)
   const queryClient = useQueryClient()
   const auth = useAuth()
@@ -121,16 +122,16 @@ function Index() {
 
                 <div className="flex items-center rounded-lg border border-border p-1 gap-1">
                   <Button
-                    variant={!useCelsius ? 'default' : 'ghost'}
+                    variant={unit === 'fahrenheit' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setUseCelsius(false)}
+                    onClick={() => setUnit('fahrenheit')}
                   >
                     °F
                   </Button>
                   <Button
-                    variant={useCelsius ? 'default' : 'ghost'}
+                    variant={unit === 'celsius' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setUseCelsius(true)}
+                    onClick={() => setUnit('celsius')}
                   >
                     °C
                   </Button>
@@ -200,7 +201,7 @@ function Index() {
               <WeatherCard
                 key={index}
                 forecast={forecast}
-                useCelsius={useCelsius}
+                unit={unit}
                 isSecure={isSecureData}
                 formatDate={formatDate}
               />
@@ -225,12 +226,22 @@ function Index() {
 
 interface WeatherCardProps {
   forecast: WeatherForecast | SecureWeatherForecast
-  useCelsius: boolean
+  unit: TemperatureUnit
   isSecure: boolean
   formatDate: (date: string) => string
 }
 
-function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCardProps) {
+const UNIT_DISPLAY = {
+  fahrenheit: (f) => ({ temperature: f.temperatureF, label: 'Fahrenheit' }),
+  celsius: (f) => ({ temperature: f.temperatureC, label: 'Celsius' }),
+} satisfies Record<
+  TemperatureUnit,
+  (forecast: WeatherForecast | SecureWeatherForecast) => { temperature: number; label: string }
+>
+
+function WeatherCard({ forecast, unit, isSecure, formatDate }: WeatherCardProps) {
+  const { temperature, label } = UNIT_DISPLAY[unit](forecast)
+
   return (
     <Card className={`transition-shadow hover:shadow-md ${isSecure ? 'border-green-500/30' : ''}`}>
       <CardHeader className="pb-2">
@@ -254,10 +265,10 @@ function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCard
 
         <div className="pt-3 border-t">
           <p className="text-3xl font-bold">
-            {useCelsius ? forecast.temperatureC : forecast.temperatureF}°
+            {temperature}°
           </p>
           <p className="text-sm text-muted-foreground">
-            {useCelsius ? 'Celsius' : 'Fahrenheit'}
+            {label}
           </p>
         </div>
       </CardContent>

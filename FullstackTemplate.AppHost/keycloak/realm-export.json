@@ -55,7 +55,8 @@
         "http://localhost:7235/*",
         "https://localhost:7235/*",
         "http://localhost:7554/*",
-        "${APP_SERVER_URL}/*"
+        "${APP_SERVER_URL}/*",
+        "${APP_BFF_URL}/*"
       ],
       "webOrigins": [
         "${APP_FRONTEND_URL}",
@@ -67,7 +68,8 @@
         "http://localhost:7235",
         "https://localhost:7235",
         "http://localhost:7554",
-        "${APP_SERVER_URL}"
+        "${APP_SERVER_URL}",
+        "${APP_BFF_URL}"
       ],
       "publicClient": false,
       "protocol": "openid-connect",

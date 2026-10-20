@@ -58,11 +58,13 @@ public sealed record AuthProviderConfig
 /// <summary>
 /// The app URLs that a local identity provider must accept as redirect targets.
 /// An isolated run gives these endpoints random ports, so the seed files read them from environment variables.
+/// The BFF builds its OIDC redirect URI from its own URL, because the Vite proxy changes the origin.
 /// </summary>
-public sealed record AuthClientUrls(EndpointReference Frontend, EndpointReference Server)
+public sealed record AuthClientUrls(EndpointReference Frontend, EndpointReference Server, EndpointReference Bff)
 {
     public const string FrontendVariable = "APP_FRONTEND_URL";
     public const string ServerVariable = "APP_SERVER_URL";
+    public const string BffVariable = "APP_BFF_URL";
 }
 
 /// <summary>
@@ -75,7 +77,7 @@ public static class AuthProviderExtensions
     /// </summary>
     public static IResourceBuilder<T> WithServerAuth<T>(
         this IResourceBuilder<T> resource,
-        AuthProviderConfig authProvider) where T : IResourceWithEnvironment
+        AuthProviderConfig authProvider) where T : IResourceWithEnvironment, IResourceWithWaitSupport
     {
         resource
             .WithEnvironment("Auth__ClientId", authProvider.ClientId)
@@ -93,6 +95,9 @@ public static class AuthProviderExtensions
         }
         else if (authProvider.AuthResource is not null)
         {
+            // The app reads the OIDC discovery document at startup, so it waits for the health check of the provider
+            resource.WaitFor(authProvider.AuthResource);
+
             if (authProvider.AuthorityPathSuffix is not null)
             {
                 // Build authority URL with path suffix (e.g., for Keycloak realms)
@@ -125,6 +130,7 @@ public static class AuthProviderExtensions
         {
             context.EnvironmentVariables[AuthClientUrls.FrontendVariable] = clientUrls.Frontend.Url;
             context.EnvironmentVariables[AuthClientUrls.ServerVariable] = clientUrls.Server.Url;
+            context.EnvironmentVariables[AuthClientUrls.BffVariable] = clientUrls.Bff.Url;
         });
     }
 
@@ -133,7 +139,7 @@ public static class AuthProviderExtensions
     /// </summary>
     public static IResourceBuilder<T> WithBffAuth<T>(
         this IResourceBuilder<T> resource,
-        AuthProviderConfig authProvider) where T : IResourceWithEnvironment
+        AuthProviderConfig authProvider) where T : IResourceWithEnvironment, IResourceWithWaitSupport
     {
         resource
             .WithEnvironment("Auth__ClientId", authProvider.ClientId)
@@ -152,6 +158,9 @@ public static class AuthProviderExtensions
         }
         else if (authProvider.AuthResource is not null)
         {
+            // The app reads the OIDC discovery document at startup, so it waits for the health check of the provider
+            resource.WaitFor(authProvider.AuthResource);
+
             if (authProvider.AuthorityPathSuffix is not null)
             {
                 // Build authority URL with path suffix (e.g., for Keycloak realms)

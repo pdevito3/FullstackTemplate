@@ -46,12 +46,27 @@ try
         .WithEndpoint("http", endpoint => endpoint.Port = 5173)
         .WithPnpm();
 
-    var authClientUrls = new AuthClientUrls(webfrontend.GetEndpoint("http"), server.GetEndpoint("https"));
+    var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
+        .WithReference(server)
+        .WithReference(webfrontend)
+        .WithHttpHealthCheck("/health")
+        .WithExternalHttpEndpoints()
+        .WithParentRelationship(webfrontend);
+
+    var authClientUrls = new AuthClientUrls(
+        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"));
 #if LOCAL_DEV
-    // var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
-    // var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
-    var authProvider = AuthProviders.DuendeDemo();
-    // var authProvider = AuthProviders.Authentik(builder, authClientUrls);
+    // The AuthProvider setting selects the provider, for example the environment variable AuthProvider=Keycloak.
+    // The default is the public Duende demo. The e2e tests use Keycloak, which runs in the stack.
+    var authProvider = builder.Configuration["AuthProvider"] switch
+    {
+        null or "" or "DuendeDemo" => AuthProviders.DuendeDemo(),
+        "Keycloak" => AuthProviders.Keycloak(builder, authClientUrls),
+        "FusionAuth" => AuthProviders.FusionAuth(builder, authClientUrls),
+        "Authentik" => AuthProviders.Authentik(builder, authClientUrls),
+        var other => throw new InvalidOperationException(
+            $"AuthProvider '{other}' is not known. Use DuendeDemo, Keycloak, FusionAuth, or Authentik."),
+    };
 #else
     //#if (UseFusionAuth)
     var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
@@ -64,14 +79,7 @@ try
     //#endif
 #endif
     server.WithServerAuth(authProvider);
-
-    var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
-        .WithBffAuth(authProvider)
-        .WithReference(server)
-        .WithReference(webfrontend)
-        .WithHttpHealthCheck("/health")
-        .WithExternalHttpEndpoints()
-        .WithParentRelationship(webfrontend);
+    bff.WithBffAuth(authProvider);
 
     webfrontend.WithReference(bff);
 

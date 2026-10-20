@@ -24,6 +24,8 @@
           "oauthConfiguration": {
             "authorizedRedirectURLs": [
               "#{ENV.APP_FRONTEND_URL}/signin-oidc",
+              "#{ENV.APP_BFF_URL}/signin-oidc",
+              "#{ENV.APP_BFF_URL}/signout-callback-oidc",
               "https://localhost:5173/signin-oidc",
               "http://localhost:7130/signin-oidc",
               "https://localhost:7130/signin-oidc",
@@ -44,6 +46,7 @@
               "https://localhost:7235",
               "http://localhost:7554",
               "#{ENV.APP_SERVER_URL}",
+              "#{ENV.APP_BFF_URL}",
               "http://localhost:5566"
             ],
             "clientAuthenticationPolicy": "NotRequiredWhenUsingPKCE",

@@ -27,12 +27,14 @@ Domain/
     │   ├── [EntityName]ForCreationDto.cs
     │   ├── [EntityName]ForUpdateDto.cs
     │   └── [EntityName]ParametersDto.cs
-    ├── Features/
-    │   ├── Add[EntityName].cs
-    │   ├── Update[EntityName].cs
-    │   ├── Delete[EntityName].cs
-    │   ├── Get[EntityName].cs
-    │   └── Get[EntityName]List.cs
+    ├── Features/                       # One folder for each feature
+    │   ├── Add[EntityName]/
+    │   │   ├── Add[EntityName].cs      # Command and handler
+    │   │   └── Add[EntityName].Http.cs # HTTP endpoint
+    │   ├── Update[EntityName]/
+    │   ├── Delete[EntityName]/
+    │   ├── Get[EntityName]/
+    │   └── Get[EntityName]List/
     ├── Mappings/
     │   └── [EntityName]Mapper.cs
     └── Models/
@@ -42,11 +44,9 @@ Domain/
 Databases/
 └── EntityConfigurations/
     └── [EntityName]Configuration.cs    # EF Core entity configuration
-
-Controllers/
-└── v1/
-    └── [EntityName]sController.cs
 ```
+
+Each feature folder has `[Feature].cs`. Each adapter file is optional: `[Feature].Http.cs`, `[Feature].Grpc.cs`, and `[Feature].Mcp.cs`. Before you add an adapter, ask the user which transports the feature needs. Add only those files. A feature can have no adapter. See `docs/backend/endpoints.md#choose-the-entrypoints-of-a-feature`.
 
 Each entity needs `public const string IdPrefix` with 1 to 17 lower-case ASCII letters. The prefix must be unique. Each constructor must call `base(IdPrefix)` with the IdPrefix of its own type. An entity must derive from `BaseEntity`, or from an abstract base class that has no IdPrefix, never from another entity. The build fails when an entity breaks one of these rules (FSTID001-005).
 
@@ -75,8 +75,8 @@ When adding a business operation to an existing entity:
 |-----------|----------------------|
 | **Domain method** | `[EntityName].cs` - Add behavior method |
 | **Domain event** | `DomainEvents/[EntityName][Action].cs` - New event |
-| **Feature** | `Features/[Action][EntityName].cs` - New command/query |
-| **Controller** | `[EntityName]sController.cs` - Add endpoint |
+| **Feature** | `Features/[Action][EntityName]/[Action][EntityName].cs` - New command/query |
+| **Endpoint** | `Features/[Action][EntityName]/[Action][EntityName].Http.cs` - New `IEndpoint` |
 | **DTOs** (if needed) | `Dtos/[Action][EntityName]Dto.cs` - Request/response |
 
 ---
@@ -143,11 +143,13 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - MediatR handlers with proper patterns
    - See: `docs/backend/features-and-cqrs.md`
 
-7. **Generate Controller**
-   - Thin controller delegating to MediatR
-   - Proper API versioning
-   - OpenAPI documentation
-   - See: `docs/backend/controllers.md`
+7. **Generate Endpoints**
+   - Ask the user which transports each feature needs: HTTP, gRPC, MCP, or none
+   - For HTTP: one `IEndpoint` in the feature folder, which sends the MediatR request
+   - For HTTP: `.MapToApiVersion`, `.WithName`, `.WithTags`, and the error statuses
+   - For HTTP: an XML `<summary>` on the public static `Handle` method for OpenAPI
+   - For gRPC and MCP: one file each, only for the features that need them
+   - See: `docs/backend/endpoints.md`
 
 8. **Generate Entity Configuration**
    - Create `IEntityTypeConfiguration<T>` class
@@ -270,7 +272,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 4. **Create Feature (Command or Query)**
    ```csharp
-   // Features/SubmitOrder.cs
+   // Features/SubmitOrder/SubmitOrder.cs
    public static class SubmitOrder
    {
        public sealed record Command(string Id) : IRequest<OrderDto>;
@@ -291,22 +293,28 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    }
    ```
 
-5. **Add Endpoint to Controller**
+5. **Add the HTTP Endpoint**
    ```csharp
-   /// <summary>
-   /// Submits an order for processing.
-   /// </summary>
-   [Authorize]
-   [HttpPost("{id}/submit", Name = "SubmitOrder")]
-   [ProducesResponseType(typeof(OrderDto), StatusCodes.Status200OK)]
-   [ProducesResponseType(StatusCodes.Status404NotFound)]
-   [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-   [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-   public async Task<ActionResult<OrderDto>> SubmitOrder(string id)
+   // Features/SubmitOrder/SubmitOrder.Http.cs
+   public sealed class SubmitOrderEndpoint : IEndpoint
    {
-       var command = new SubmitOrder.Command(id);
-       var result = await mediator.Send(command);
-       return Ok(result);
+       public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+           .MapPost("/orders/{id}/submit", Handle)
+           .WithName("SubmitOrder")
+           .WithTags("Orders")
+           .MapToApiVersion(ApiVersions.V1)
+           .RequireAuthorization()
+           .ProducesProblem(StatusCodes.Status404NotFound)
+           .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+
+       /// <summary>
+       /// Submits an order for processing.
+       /// </summary>
+       public static async Task<Ok<OrderDto>> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
+       {
+           var result = await mediator.Send(new SubmitOrder.Command(id), cancellationToken);
+           return TypedResults.Ok(result);
+       }
    }
    ```
 
@@ -404,8 +412,10 @@ public LineItem AddLineItem(Product product, int quantity)
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
 - [ ] Domain event created (if state change is significant)
-- [ ] Feature file created with Command/Query and Handler
-- [ ] Controller endpoint added with proper attributes
+- [ ] Feature folder created with the Command/Query and Handler file
+- [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
+- [ ] One adapter file added for each of these transports, and no other
+- [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses
 - [ ] Additional DTOs created if needed
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -416,6 +426,6 @@ These docs give the detailed patterns:
 - `docs/backend/domain-entities.md` - Rich domain entities
 - `docs/backend/features-and-cqrs.md` - CQRS with MediatR
 - `docs/backend/dtos-and-mappings.md` - DTOs and Mapperly
-- `docs/backend/controllers.md` - API controllers
+- `docs/backend/endpoints.md` - HTTP endpoints, gRPC, and MCP
 - `docs/backend/domain-events.md` - Domain events
 - `docs/backend/entity-configurations.md` - EF Core entity configurations

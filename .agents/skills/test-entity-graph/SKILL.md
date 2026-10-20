@@ -24,7 +24,7 @@ The source generator in `tests/FullstackTemplate.EntityGraphs.Generators/` reads
 | You need | Use |
 |---|---|
 | Entities that exist before the code under test runs | The entity graph |
-| The request DTO for a command or a controller | The shape fakers in `Fakes/` (for example `FakeUserForCreationDto`) |
+| The request DTO for a command or an endpoint | The shape fakers in `Fakes/` (for example `FakeUserForCreationDto`) |
 | The model for a direct domain factory test | The shape fakers in `Fakes/` (for example `FakeUserForCreation`) |
 
 Do not send a create command (for example `AddUser.Command`) to arrange data. Use the entity graph. Send the command only when the command is the code under test.

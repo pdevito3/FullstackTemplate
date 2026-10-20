@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, Locator, Page } from '@playwright/test'
 
 /**
  * Authentication flow tests for all supported Identity Providers.
@@ -92,6 +92,29 @@ function getIdpConfig(): IdpConfig {
 }
 
 /**
+ * True when the locator becomes visible within the timeout. `locator.isVisible()` does not wait, and it ignores
+ * its timeout option, so it cannot wait for a page that is still loading.
+ */
+async function becomesVisible(locator: Locator, timeout: number): Promise<boolean> {
+  return locator.waitFor({ state: 'visible', timeout }).then(
+    () => true,
+    () => false,
+  )
+}
+
+/**
+ * Opens a tag section of Swagger UI. A click on the tag toggles it, so the click happens only when the section is closed.
+ */
+async function expandSwaggerTag(page: Page, tag: string) {
+  const section = page.locator('.opblock-tag-section').filter({ has: page.locator(`.opblock-tag[data-tag="${tag}"]`) })
+  await expect(section).toBeVisible()
+  if (!(await section.getAttribute('class'))?.includes('is-open')) {
+    await section.locator('.opblock-tag').click()
+  }
+  await expect(section).toHaveClass(/\bis-open\b/)
+}
+
+/**
  * Helper to login via the IDP login page
  */
 async function loginAtIdp(page: Page, idp: IdpConfig) {
@@ -102,9 +125,8 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
   if (idp.twoStepLogin) {
     // Two-step login: submit username first, then password
     await page.click(idp.submitSelector)
-    await page.waitForTimeout(2000) // Wait for password page to load
 
-    // Fill password on the second page
+    // Fill password on the second page. fill waits for the field
     await page.fill(idp.passwordSelector, idp.password)
 
     // Use secondStepSubmitSelector if defined, otherwise use submitSelector
@@ -124,11 +146,9 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
       // Check if page is still open before waiting
       if (page.isClosed()) return
 
-      await page.waitForTimeout(2000) // Wait for consent page to load
-
-      // Only click if the consent button is visible
+      // Only click if the consent button becomes visible
       const consentButton = page.locator(idp.consentSelector)
-      if (await consentButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      if (await becomesVisible(consentButton, 5000)) {
         await consentButton.click()
       }
     } catch {
@@ -150,8 +170,8 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await expect(loginButton).toBeVisible()
       await loginButton.click()
 
-      // Step 3: Wait for redirect to IDP login page
-      await page.waitForURL(/.*/, { timeout: 10000 })
+      // Step 3: Wait for the login form of the IDP. The page can show the form before all of its resources load
+      await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
 
       // Step 4: Login at the IDP
       await loginAtIdp(page, currentIdp)
@@ -171,9 +191,6 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
 
       // Step 7: Verify secure weather data loads
       // The secure endpoint returns data with a "requestedBy" field
-      // Wait for the weather cards to load
-      await page.waitForTimeout(2000) // Give time for API call
-
       // Look for temperature cards or data indicating weather loaded
       // The page shows "Authenticated" indicator when showing secure data
       await expect(page.getByText(/authenticated/i).first()).toBeVisible({ timeout: 10000 })
@@ -183,18 +200,18 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
 
       // Step 9: Wait for logout to complete
       // Some IDPs (like Authentik) show a logout confirmation page instead of auto-redirecting
-      await page.waitForTimeout(2000)
-
       // Check if we're on an IDP logout confirmation page
       // Authentik shows "Log back into [app]"
       // Duende Demo shows "Click here to return to the [app] application"
       const backToAppLink = page.getByRole('link', { name: /log back into/i })
       const duendeReturnLink = page.locator('a[href*="signout-callback-oidc"]')
 
-      if (await backToAppLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await backToAppLink.click()
-      } else if (await duendeReturnLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await duendeReturnLink.click()
+      // Wait for the app or for a return link, because some IDPs redirect to the app by themselves
+      const returnLink = backToAppLink.or(duendeReturnLink).first()
+      const appLoginButton = page.getByRole('button', { name: /login/i })
+      await expect(appLoginButton.or(returnLink).first()).toBeVisible({ timeout: 30000 })
+      if (await returnLink.isVisible()) {
+        await returnLink.click()
       }
 
       // Wait for redirect back to app
@@ -227,11 +244,8 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     const authorizeButton = page.getByRole('button', { name: /authorize/i })
     await expect(authorizeButton).toBeVisible({ timeout: 5000 })
 
-    // Step 4: Expand the FullstackTemplate.Server section to see Weather endpoints
-    // Click on the section header to expand it
-    const serverSection = page.getByText('FullstackTemplate.Server', { exact: true })
-    await expect(serverSection).toBeVisible()
-    await serverSection.click()
+    // Step 4: Expand the Weather section to see the Weather endpoints
+    await expandSwaggerTag(page, 'Weather')
 
     // Step 5: Verify Weather endpoints are visible after expansion
     await expect(page.getByText('/api/v1/weather').first()).toBeVisible({ timeout: 5000 })
@@ -289,33 +303,33 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     }
 
     // Step 7: Close the modal
-    await page.waitForTimeout(1000) // Wait for OAuth to complete
+    // Swagger UI exchanges the code for a token after the popup closes. Wait for the result, not a fixed time.
+    // The token call goes to the IDP, and the Duende demo IDP can take more than 15 seconds to answer
+    await expect(page.locator('.modal-ux').getByRole('heading', { name: 'Authorized' })).toBeVisible({
+      timeout: 30000,
+    })
     const closeButton = page.locator('.modal-ux button.btn-done')
     if (await closeButton.isVisible()) {
       await closeButton.click()
     }
 
-    // Step 8: Expand the FullstackTemplate.Server section
-    const serverSection = page.getByText('FullstackTemplate.Server', { exact: true })
-    if (await serverSection.isVisible()) {
-      await serverSection.click()
-      await page.waitForTimeout(500) // Wait for animation
-    }
+    // Step 8: Expand the Weather section
+    await expandSwaggerTag(page, 'Weather')
 
     // Step 9: Find and click on the secure weather endpoint row to expand it
     const secureEndpoint = page.locator('.opblock').filter({ hasText: '/api/v1/weather/secure' })
     await expect(secureEndpoint).toBeVisible({ timeout: 5000 })
 
-    // Click on the summary to expand if not already expanded
-    const opblockSummary = secureEndpoint.locator('.opblock-summary')
-    await opblockSummary.click()
-    await page.waitForTimeout(500)
+    // Click on the summary to expand if not already expanded. A click toggles it
+    if (!(await secureEndpoint.getAttribute('class'))?.includes('is-open')) {
+      await secureEndpoint.locator('.opblock-summary').click()
+    }
+    await expect(secureEndpoint).toHaveClass(/\bis-open\b/)
 
     // Step 10: Click "Try it out" button if visible (might be auto-enabled)
     const tryItOutButton = secureEndpoint.getByRole('button', { name: 'Try it out' })
-    if (await tryItOutButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await becomesVisible(tryItOutButton, 1000)) {
       await tryItOutButton.click()
-      await page.waitForTimeout(300)
     }
 
     // Step 11: Click Execute button
@@ -324,9 +338,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     await executeButton.click()
 
     // Step 12: Check response
-    await page.waitForTimeout(2000) // Wait for API response
-
-    // Look for response status in the live responses section
+    // Look for response status in the live responses section. The expect waits for the API response
     const liveResponse = secureEndpoint.locator('.live-responses-table').first()
     await expect(liveResponse).toBeVisible({ timeout: 10000 })
 

@@ -37,7 +37,7 @@ Read the doc for an area before you change code in that area.
 | Doc | Content |
 |-----|---------|
 | [docs/backend.md](docs/backend.md) | Domain structure, new features, DI, API versioning, error responses, database, tests |
-| [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, controllers, domain events, and EF configurations |
+| [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, endpoints (HTTP, gRPC, MCP), domain events, and EF configurations |
 | [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
@@ -79,6 +79,7 @@ pnpm test
 
 ## Rules
 
+- Put each entrypoint (HTTP, gRPC, MCP) in the folder of its feature, not in a separate project. Each entrypoint is optional. Add only the entrypoints that the callers of the feature need. See [docs/backend/endpoints.md](docs/backend/endpoints.md).
 - Use pnpm for the frontend. Do not use npm.
 - Put all NuGet versions in `Directory.Packages.props`.
 - Warnings fail the build: `TreatWarningsAsErrors` in `Directory.Build.props` and `--max-warnings=0` in `pnpm lint`. Correct the cause of a warning. To accept a .NET warning, add its code to `NoWarn` with a comment that gives the reason.

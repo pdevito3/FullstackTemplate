@@ -22,9 +22,10 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:5173',
-    trace: 'on-first-retry',
+    // A local run has no retries, so keep the trace and the video of each failure
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'on-first-retry',
+    video: 'retain-on-failure',
     ignoreHTTPSErrors: true, // For self-signed certs in development
   },
 

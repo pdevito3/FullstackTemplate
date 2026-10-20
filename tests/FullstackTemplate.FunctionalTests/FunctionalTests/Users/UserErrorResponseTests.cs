@@ -203,6 +203,58 @@ public class UserErrorResponseTests : TestBase
     }
 
     [Test]
+    public async Task missing_field_on_create_returns_bad_request_keyed_by_the_field()
+    {
+        // Arrange
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = "Admin");
+        await InsertAsync(tenant);
+        await InsertAsync(user);
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        var dto = new FakeUserForCreationDto().Generate();
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, new
+        {
+            dto.LastName, dto.Identifier, dto.Email, dto.Username, dto.Role,
+        });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe("firstName");
+        error.Value.ShouldBe(["The firstName field is required."]);
+    }
+
+    [Test]
+    [Arguments("role")]
+    [Arguments("permission")]
+    public async Task missing_field_of_a_command_returns_bad_request_keyed_by_the_field(string field)
+    {
+        // Arrange
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = "Admin");
+        await InsertAsync(tenant);
+        await InsertAsync(user);
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+
+        // Act
+        var result = field == "role"
+            ? await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(user.Id), new { })
+            : await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.AddPermission(user.Id), new { });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe(field);
+        error.Value.ShouldBe([$"The {field} field is required."]);
+    }
+
+    [Test]
     public async Task unknown_identifier_returns_not_found_problem()
     {
         // Arrange
@@ -216,6 +268,7 @@ public class UserErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status404NotFound);
+        problem.Detail.ShouldBe("User was not found.");
     }
 
     public static IEnumerable<string> BadTenantIds =>

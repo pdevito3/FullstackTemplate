@@ -2,11 +2,14 @@ namespace FullstackTemplate.FunctionalTests;
 
 using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
+using Grpc.Net.Client;
 using MediatR;
+using ModelContextProtocol.Client;
 using Microsoft.Extensions.DependencyInjection;
 
 // All tests run in parallel on the one factory of the assembly (see AssemblyHooks.cs).
@@ -34,6 +37,28 @@ public class TestBase : IDisposable
     {
         FactoryClient.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// A gRPC channel on <see cref="FactoryClient"/>, so it sends the bearer token that the test set.
+    /// </summary>
+    protected GrpcChannel CreateGrpcChannel()
+        => GrpcChannel.ForAddress(FactoryClient.BaseAddress!, new GrpcChannelOptions { HttpClient = FactoryClient });
+
+    /// <summary>
+    /// An MCP client on <see cref="FactoryClient"/>, so it sends the bearer token that the test set.
+    /// </summary>
+    protected async Task<McpClient> CreateMcpClientAsync()
+    {
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(FactoryClient.BaseAddress!, EntrypointRegistration.McpPath),
+                TransportMode = HttpTransportMode.StreamableHttp,
+            },
+            FactoryClient,
+            ownsHttpClient: false);
+        return await McpClient.CreateAsync(transport);
     }
 
     /// <summary>

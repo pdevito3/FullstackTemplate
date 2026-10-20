@@ -1,6 +1,6 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
-using FullstackTemplate.Server.Resources.Extensions;
+using FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;

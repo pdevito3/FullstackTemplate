@@ -21,11 +21,11 @@ Domain/[EntityName]s/
 ## Flow
 
 ```
-Controller gets UserForCreationDto
+Endpoint gets UserForCreationDto
   -> mapper makes UserForCreation
   -> User.Create(UserForCreation)
   -> mapper makes UserDto
-  -> controller returns UserDto
+  -> endpoint returns UserDto
 ```
 
 ## DTOs
@@ -36,6 +36,7 @@ Controller gets UserForCreationDto
 4. Keep a DTO flat. Use a nested DTO only when the data is a real child, such as a list of line items.
 5. Do not put an `Id`, audit fields, or internal data in a request DTO.
 6. In a request DTO, mark each non-nullable value-type property (`Guid`, `int`, `bool`, and more) with `required`. Without it, a missing field binds to the default value, and the request gets a 422 from a domain rule, not a 400.
+7. In a request DTO, give each non-nullable string property `[RequiredField]` from `Resources/RequiredFieldAttribute.cs`. `RequestValidationBehavior` does not read nullable annotations, so without it a missing field binds to null. With it, a missing field gets a 400 with a message that uses the JSON name of the field, and an empty string goes to the domain rules, which give a 422. The message names the field as the client sends it, for example "The firstName field is required.", not with a display name such as "First name", so that a client can match the message to its field.
 
 ```csharp
 public sealed record UserDto
@@ -48,15 +49,13 @@ public sealed record UserDto
 }
 ```
 
-The parameters DTO is a class, because ASP.NET binds it from the query string. Give each query parameter a camelCase name with `[FromQuery(Name = ...)]`. This name is also the key in the `errors` of the problem. `BasePaginationParameters` names `pageNumber` and `pageSize`.
+The parameters DTO is a class that derives from `BasePaginationParameters`. It has no transport attributes. The HTTP endpoint binds each query value to a handler parameter with the camelCase name, and copies it to the DTO (see [endpoints.md](endpoints.md#http)). The gRPC and MCP adapters fill the DTO from their own inputs.
 
 ```csharp
 public sealed class UserParametersDto : BasePaginationParameters
 {
-    [FromQuery(Name = "filters")]
     public string? Filters { get; set; }
 
-    [FromQuery(Name = "sortOrder")]
     public string? SortOrder { get; set; }
 }
 ```

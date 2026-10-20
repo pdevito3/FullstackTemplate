@@ -36,6 +36,8 @@ try
         .WaitFor(appDb)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
+        // The endpoints come from Kestrel:Endpoints in the appsettings of the Server, with the HTTP/2-only "grpc"
+        // endpoint. Aspire makes one endpoint for each name and sets its Url.
         .WithCSharpRepl();
     postgres.WithParentRelationship(server);
 

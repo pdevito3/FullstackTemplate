@@ -8,6 +8,7 @@ import type { GetWeatherForecastOptions, GetWeatherForecastResponses } from '../
 import { client, unwrapResult } from '../../.kubb/client'
 
 /**
+ * @summary Gets the weather forecast for the next five days. The caller does not need to sign in.
  * {@link /api/v1/weather}
  */
 export function getWeatherForecast<ThrowOnError extends boolean = true>(options: Options<GetWeatherForecastOptions, ThrowOnError> = {}): Promise<UnwrappedResult<GetWeatherForecastResponses, ThrowOnError>> {

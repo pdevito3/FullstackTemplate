@@ -162,7 +162,7 @@ This template includes comprehensive Claude Code integration:
 
 - **`AGENTS.md`** - Main agent guide with the architecture and an index of `docs/`
 - **`docs/`** - Guides for the backend, telemetry, multi-tenancy, auth, frontend, and deployment
-- **`docs/backend/`** - Backend pattern rules: entities, features, DTOs, controllers, domain events, and EF configurations
+- **`docs/backend/`** - Backend pattern rules: entities, features, DTOs, endpoints (HTTP, gRPC, MCP), domain events, and EF configurations
 - **`docs/frontend/`** - Frontend pattern rules: server state, client state, and code style
 - **`.claude/skills/`** - Automated scaffolding skills
 

@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+// The package and the C# namespace carry the version, the same as the /api/v1 segment of the HTTP API.
+// A v2 is a new package in a v2 folder next to this one, and v1 stays until its callers move.
+package fullstacktemplate.tenants.v1;
+
+option csharp_namespace = "FullstackTemplate.Server.Domain.Tenants.Grpc.V1";
+
+// The tenants of the caller. Each call needs a JWT bearer token in the authorization metadata,
+// and it sees the same tenant scope as the HTTP API.
+service TenantsService {
+  // Gets one tenant. NOT_FOUND when the caller cannot see a tenant with the ID.
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+
+  // Gets one page of tenants. INVALID_ARGUMENT for a bad filter, sort order, or page.
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+
+  // Adds a tenant. PERMISSION_DENIED unless the caller can manage all tenants.
+  // ALREADY_EXISTS when a tenant has the name.
+  rpc AddTenant(AddTenantRequest) returns (AddTenantResponse);
+}
+
+message Tenant {
+  string id = 1;
+  string name = 2;
+}
+
+message GetTenantRequest {
+  string id = 1;
+}
+
+// Each RPC has its own response message, so that a field can be added to one RPC without a change to the others.
+message GetTenantResponse {
+  Tenant tenant = 1;
+}
+
+// Each field is optional. An unset field uses the default of the HTTP API: the first page, the default page size,
+// no filter, and no sort order.
+message ListTenantsRequest {
+  // The page number. The first page is 1.
+  optional int32 page_number = 1;
+  // The number of tenants on a page. A value more than the maximum gives the maximum.
+  optional int32 page_size = 2;
+  // A QueryKit filter on the fields of Tenant, for example: name @=* "acme"
+  optional string filters = 3;
+  // A QueryKit sort order, for example: -name
+  optional string sort_order = 4;
+}
+
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  Pagination pagination = 2;
+}
+
+// The same data as the X-Pagination header of the HTTP API.
+message Pagination {
+  int32 page_number = 1;
+  int32 page_size = 2;
+  int32 current_page_size = 3;
+  int32 total_count = 4;
+  int32 total_pages = 5;
+  bool has_previous = 6;
+  bool has_next = 7;
+}
+
+message AddTenantRequest {
+  string name = 1;
+}
+
+message AddTenantResponse {
+  Tenant tenant = 1;
+}

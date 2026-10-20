@@ -141,8 +141,12 @@ public sealed record [EntityName]Dto
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
+using Resources;
+
 public sealed record [EntityName]ForCreationDto
 {
+    // A missing value is a 400. An empty value goes to the domain rules, which give a 422
+    [RequiredField]
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
 }
@@ -153,8 +157,12 @@ public sealed record [EntityName]ForCreationDto
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
+using Resources;
+
 public sealed record [EntityName]ForUpdateDto
 {
+    // A missing value is a 400. An empty value goes to the domain rules, which give a 422
+    [RequiredField]
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
 }
@@ -165,16 +173,28 @@ public sealed record [EntityName]ForUpdateDto
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 
-using Microsoft.AspNetCore.Mvc;
 using Resources;
 
 public sealed class [EntityName]ParametersDto : BasePaginationParameters
 {
-    [FromQuery(Name = "filters")]
     public string? Filters { get; set; }
 
-    [FromQuery(Name = "sortOrder")]
     public string? SortOrder { get; set; }
+
+    /// <summary>
+    /// Makes the parameters from the values of a caller. A null value keeps the default. An empty filter or sort
+    /// order means none.
+    /// </summary>
+    public static [EntityName]ParametersDto From(int? pageNumber, int? pageSize, string? filters, string? sortOrder)
+    {
+        var parameters = new [EntityName]ParametersDto
+        {
+            Filters = string.IsNullOrEmpty(filters) ? null : filters,
+            SortOrder = string.IsNullOrEmpty(sortOrder) ? null : sortOrder,
+        };
+        parameters.SetPage(pageNumber, pageSize);
+        return parameters;
+    }
 }
 ```
 
@@ -242,7 +262,7 @@ public static partial class [EntityName]Mapper
 
 ## 6. Features
 
-**File:** `Domain/[EntityName]s/Features/Add[EntityName].cs`
+**File:** `Domain/[EntityName]s/Features/Add[EntityName]/Add[EntityName].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -271,7 +291,7 @@ public static class Add[EntityName]
 }
 ```
 
-**File:** `Domain/[EntityName]s/Features/Update[EntityName].cs`
+**File:** `Domain/[EntityName]s/Features/Update[EntityName]/Update[EntityName].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -301,7 +321,7 @@ public static class Update[EntityName]
 }
 ```
 
-**File:** `Domain/[EntityName]s/Features/Delete[EntityName].cs`
+**File:** `Domain/[EntityName]s/Features/Delete[EntityName]/Delete[EntityName].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -325,7 +345,7 @@ public static class Delete[EntityName]
 }
 ```
 
-**File:** `Domain/[EntityName]s/Features/Get[EntityName].cs`
+**File:** `Domain/[EntityName]s/Features/Get[EntityName]/Get[EntityName].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -349,7 +369,7 @@ public static class Get[EntityName]
 }
 ```
 
-**File:** `Domain/[EntityName]s/Features/Get[EntityName]List.cs`
+**File:** `Domain/[EntityName]s/Features/Get[EntityName]List/Get[EntityName]List.cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -393,108 +413,192 @@ public static class Get[EntityName]List
 }
 ```
 
-## 7. Controller
+## 7. Endpoints
 
-**File:** `Controllers/v1/[EntityName]sController.cs`
+Each feature folder gets one `IEndpoint`. `EndpointDiscovery` finds it at startup and maps it on `api/v{version:apiVersion}`. See `docs/backend/endpoints.md`.
+
+**File:** `Domain/[EntityName]s/Features/Get[EntityName]/Get[EntityName].Http.cs`
 
 ```csharp
-namespace FullstackTemplate.Server.Controllers.v1;
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
-using Asp.Versioning;
-using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
-using FullstackTemplate.Server.Domain.[EntityName]s.Features;
+using Dtos;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources.Entrypoints.Http;
 
-[ApiController]
-[Route("api/v{v:apiVersion}/[controller]")]
-[ApiVersion("1.0")]
-public sealed class [EntityName]sController(IMediator mediator) : ControllerBase
+public sealed class Get[EntityName]Endpoint : IEndpoint
 {
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapGet("/[entityName]s/{id}", Handle)
+        .WithName("Get[EntityName]")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
     /// <summary>
     /// Gets a single [EntityName] by ID.
     /// </summary>
-    [Authorize]
-    [HttpGet("{id}", Name = "Get[EntityName]")]
-    [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<[EntityName]Dto>> Get[EntityName](string id)
+    public static async Task<Ok<[EntityName]Dto>> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
     {
-        var query = new Get[EntityName].Query(id);
-        var result = await mediator.Send(query);
-        return Ok(result);
+        var result = await mediator.Send(new Get[EntityName].Query(id), cancellationToken);
+        return TypedResults.Ok(result);
     }
+}
+```
+
+**File:** `Domain/[EntityName]s/Features/Get[EntityName]List/Get[EntityName]List.Http.cs`
+
+```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using System.ComponentModel.DataAnnotations;
+using Dtos;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources;
+using Resources.Entrypoints.Http;
+
+public sealed class Get[EntityName]ListEndpoint : IEndpoint
+{
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapGet("/[entityName]s", Handle)
+        .WithName("Get[EntityName]List")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization()
+        .ProducesValidationProblem();
 
     /// <summary>
     /// Gets a paginated list of [EntityName]s.
     /// </summary>
-    [Authorize]
-    [HttpGet(Name = "Get[EntityName]List")]
-    [ProducesResponseType(typeof(PagedList<[EntityName]Dto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PagedList<[EntityName]Dto>>> Get[EntityName]List(
-        [FromQuery] [EntityName]ParametersDto parameters)
+    // One nullable parameter for each query value, with the camelCase name of the contract
+    public static async Task<Ok<PagedList<[EntityName]Dto>>> Handle(
+        string? filters,
+        string? sortOrder,
+        [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
+        [Range(1, int.MaxValue)] int? pageSize,
+        IMediator mediator,
+        CancellationToken cancellationToken)
     {
-        var query = new Get[EntityName]List.Query(parameters);
-        var result = await mediator.Send(query);
-        return Ok(result);
+        var parameters = [EntityName]ParametersDto.From(pageNumber, pageSize, filters, sortOrder);
+
+        var result = await mediator.Send(new Get[EntityName]List.Query(parameters), cancellationToken);
+        return TypedResults.Ok(result);
     }
+}
+```
+
+**File:** `Domain/[EntityName]s/Features/Add[EntityName]/Add[EntityName].Http.cs`
+
+```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using Dtos;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources.Entrypoints.Http;
+
+public sealed class Add[EntityName]Endpoint : IEndpoint
+{
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapPost("/[entityName]s", Handle)
+        .WithName("Add[EntityName]")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization()
+        .ProducesValidationProblem()
+        // Declare a 403 if the handler can throw ForbiddenAccessException
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        // Declare a 409 if this write can add or change a unique value
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// Creates a new [EntityName].
     /// </summary>
-    [Authorize]
-    [HttpPost(Name = "Add[EntityName]")]
-    [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    // Declare a 409 if this write can add or change a unique value
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<[EntityName]Dto>> Add[EntityName](
-        [FromBody] [EntityName]ForCreationDto dto)
+    public static async Task<CreatedAtRoute<[EntityName]Dto>> Handle(
+        [EntityName]ForCreationDto dto,
+        IMediator mediator,
+        CancellationToken cancellationToken)
     {
-        var command = new Add[EntityName].Command(dto);
-        var result = await mediator.Send(command);
-
-        return CreatedAtRoute("Get[EntityName]",
-            new { id = result.Id },
-            result);
+        var result = await mediator.Send(new Add[EntityName].Command(dto), cancellationToken);
+        return TypedResults.CreatedAtRoute(result, "Get[EntityName]", new { id = result.Id });
     }
+}
+```
+
+**File:** `Domain/[EntityName]s/Features/Update[EntityName]/Update[EntityName].Http.cs`
+
+```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using Dtos;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources.Entrypoints.Http;
+
+public sealed class Update[EntityName]Endpoint : IEndpoint
+{
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapPut("/[entityName]s/{id}", Handle)
+        .WithName("Update[EntityName]")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization()
+        // Declare a 403 if the handler can throw ForbiddenAccessException
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem()
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        // Declare a 409 if this write can add or change a unique value
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// Updates an existing [EntityName].
     /// </summary>
-    [Authorize]
-    [HttpPut("{id}", Name = "Update[EntityName]")]
-    [ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    // Declare a 409 if this write can add or change a unique value
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<[EntityName]Dto>> Update[EntityName](
+    public static async Task<Ok<[EntityName]Dto>> Handle(
         string id,
-        [FromBody] [EntityName]ForUpdateDto dto)
+        [EntityName]ForUpdateDto dto,
+        IMediator mediator,
+        CancellationToken cancellationToken)
     {
-        var command = new Update[EntityName].Command(id, dto);
-        var result = await mediator.Send(command);
-        return Ok(result);
+        var result = await mediator.Send(new Update[EntityName].Command(id, dto), cancellationToken);
+        return TypedResults.Ok(result);
     }
+}
+```
+
+**File:** `Domain/[EntityName]s/Features/Delete[EntityName]/Delete[EntityName].Http.cs`
+
+```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources.Entrypoints.Http;
+
+public sealed class Delete[EntityName]Endpoint : IEndpoint
+{
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapDelete("/[entityName]s/{id}", Handle)
+        .WithName("Delete[EntityName]")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization()
+        // Declare a 403 if the handler can throw ForbiddenAccessException
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
     /// <summary>
     /// Deletes a [EntityName].
     /// </summary>
-    [Authorize]
-    [HttpDelete("{id}", Name = "Delete[EntityName]")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult> Delete[EntityName](string id)
+    public static async Task<NoContent> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
     {
-        var command = new Delete[EntityName].Command(id);
-        await mediator.Send(command);
-        return NoContent();
+        await mediator.Send(new Delete[EntityName].Command(id), cancellationToken);
+        return TypedResults.NoContent();
     }
 }
 ```
@@ -765,7 +869,7 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
 
 ### Business Action Command Template
 
-**File:** `Domain/[EntityName]s/Features/[Action][EntityName].cs`
+**File:** `Domain/[EntityName]s/Features/[Action][EntityName]/[Action][EntityName].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -796,7 +900,7 @@ public static class [Action][EntityName]
 
 ### Business Action with Parameters Template
 
-**File:** `Domain/[EntityName]s/Features/[Action][EntityName].cs`
+**File:** `Domain/[EntityName]s/Features/[Action][EntityName]/[Action][EntityName].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -887,43 +991,33 @@ public [EntityName] [Action](string reason)
 }
 ```
 
-### Controller Endpoint Template
+### Endpoint Template
+
+**File:** `Domain/[EntityName]s/Features/[Action][EntityName]/[Action][EntityName].Http.cs`
 
 ```csharp
-// Add to [EntityName]sController.cs
-
-/// <summary>
-/// [Description of the action].
-/// </summary>
-[Authorize]
-[HttpPost("{id}/[action-route]", Name = "[Action][EntityName]")]
-[ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](string id)
+public sealed class [Action][EntityName]Endpoint : IEndpoint
 {
-    var command = new [Action][EntityName].Command(id);
-    var result = await mediator.Send(command);
-    return Ok(result);
-}
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapPost("/[entityName]s/{id}/[action-route]", Handle)
+        .WithName("[Action][EntityName]")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization()
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        // Declare a 400 if the action has a request body
+        .ProducesValidationProblem()
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
-/// <summary>
-/// [Description of the action] with parameters.
-/// </summary>
-[Authorize]
-[HttpPost("{id}/[action-route]", Name = "[Action][EntityName]")]
-[ProducesResponseType(typeof([EntityName]Dto), StatusCodes.Status200OK)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-[ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](
-    string id,
-    [FromBody] [Action][EntityName]Dto dto)
-{
-    var command = new [Action][EntityName].Command(id, dto);
-    var result = await mediator.Send(command);
-    return Ok(result);
+    /// <summary>
+    /// [Description of the action].
+    /// </summary>
+    // Add a [Action][EntityName]Dto parameter if the action has a request body
+    public static async Task<Ok<[EntityName]Dto>> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new [Action][EntityName].Command(id), cancellationToken);
+        return TypedResults.Ok(result);
+    }
 }
 ```
 
@@ -933,7 +1027,7 @@ public async Task<ActionResult<[EntityName]Dto>> [Action][EntityName](
 
 ### Custom Query Template
 
-**File:** `Domain/[EntityName]s/Features/Get[EntityName]sBy[Criteria].cs`
+**File:** `Domain/[EntityName]s/Features/Get[EntityName]sBy[Criteria]/Get[EntityName]sBy[Criteria].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
@@ -963,21 +1057,30 @@ public static class Get[EntityName]sBy[Criteria]
 }
 ```
 
-### Controller Endpoint for Custom Query
+### Endpoint for Custom Query
+
+**File:** `Domain/[EntityName]s/Features/Get[EntityName]sBy[Criteria]/Get[EntityName]sBy[Criteria].Http.cs`
 
 ```csharp
-// Add to controller (could be [EntityName]sController or [Criteria]Controller)
-
-/// <summary>
-/// Gets all [EntityName]s for a specific [Criteria].
-/// </summary>
-[Authorize]
-[HttpGet("by-[criteria]/{[criteria]Id}", Name = "Get[EntityName]sBy[Criteria]")]
-[ProducesResponseType(typeof(IReadOnlyList<[EntityName]Dto>), StatusCodes.Status200OK)]
-public async Task<ActionResult<IReadOnlyList<[EntityName]Dto>>> Get[EntityName]sBy[Criteria](string [criteria]Id)
+public sealed class Get[EntityName]sBy[Criteria]Endpoint : IEndpoint
 {
-    var query = new Get[EntityName]sBy[Criteria].Query([criteria]Id);
-    var result = await mediator.Send(query);
-    return Ok(result);
+    public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
+        .MapGet("/[entityName]s/by-[criteria]/{[criteria]Id}", Handle)
+        .WithName("Get[EntityName]sBy[Criteria]")
+        .WithTags("[EntityName]s")
+        .MapToApiVersion(ApiVersions.V1)
+        .RequireAuthorization();
+
+    /// <summary>
+    /// Gets all [EntityName]s for a specific [Criteria].
+    /// </summary>
+    public static async Task<Ok<IReadOnlyList<[EntityName]Dto>>> Handle(
+        string [criteria]Id,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new Get[EntityName]sBy[Criteria].Query([criteria]Id), cancellationToken);
+        return TypedResults.Ok(result);
+    }
 }
 ```

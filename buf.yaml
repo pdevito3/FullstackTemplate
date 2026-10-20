@@ -1,0 +1,16 @@
+# The gRPC contract. Each .proto file lives in the Grpc/v{n} folder of its domain, for example
+# FullstackTemplate.Server/Domain/Tenants/Grpc/v1/tenants.proto. CI runs `buf lint` and `buf breaking` against main.
+version: v2
+modules:
+  - path: FullstackTemplate.Server/Domain
+lint:
+  use:
+    - STANDARD
+  except:
+    # The rule wants the folder to repeat the package, for example fullstacktemplate/tenants/v1/. A proto file lives
+    # in its domain folder instead, next to the features that it calls. The package still ends in the version.
+    - PACKAGE_DIRECTORY_MATCH
+breaking:
+  use:
+    # FILE also protects the generated C# code: the file names and the csharp_namespace option
+    - FILE

@@ -1,6 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain.Users.Features;
+using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
 
@@ -27,7 +28,7 @@ public class GetUserByIdentifierQueryTests : TestBase
     }
 
     [Test]
-    public async Task returns_null_when_identifier_not_found()
+    public async Task throws_not_found_when_identifier_not_found()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
@@ -35,10 +36,10 @@ public class GetUserByIdentifierQueryTests : TestBase
 
         // Act
         var query = new GetUserByIdentifier.Query(nonExistentIdentifier);
-        var userReturned = await testingServiceScope.SendAsync(query);
+        var act = () => testingServiceScope.SendAsync(query);
 
         // Assert
-        userReturned.ShouldBeNull();
+        await act.ShouldThrowAsync<NotFoundException>();
     }
 
     [Test]
@@ -77,14 +78,15 @@ public class GetUserByIdentifierQueryTests : TestBase
         var uppercaseQuery = new GetUserByIdentifier.Query(originalIdentifier.ToUpperInvariant());
         var exactQuery = new GetUserByIdentifier.Query(originalIdentifier);
 
-        var lowercaseResult = await testingServiceScope.SendAsync(lowercaseQuery);
-        var uppercaseResult = await testingServiceScope.SendAsync(uppercaseQuery);
+        var lowercase = () => testingServiceScope.SendAsync(lowercaseQuery);
+        var uppercase = () => testingServiceScope.SendAsync(uppercaseQuery);
         var exactResult = await testingServiceScope.SendAsync(exactQuery);
 
         // Assert
-        exactResult.ShouldNotBeNull();
-        // Case sensitivity depends on database collation - at minimum exact match works
         exactResult.Id.ShouldBe(fakeUser.Id);
+        // The default Postgres collation compares with case
+        await lowercase.ShouldThrowAsync<NotFoundException>();
+        await uppercase.ShouldThrowAsync<NotFoundException>();
     }
 
     [Test]
@@ -103,10 +105,10 @@ public class GetUserByIdentifierQueryTests : TestBase
 
         // Act
         var query = new GetUserByIdentifier.Query(uniqueIdentifier);
-        var userReturned = await testingServiceScope.SendAsync(query);
+        var act = () => testingServiceScope.SendAsync(query);
 
         // Assert - soft-deleted users should not be found
-        userReturned.ShouldBeNull();
+        await act.ShouldThrowAsync<NotFoundException>();
     }
 
     [Test]

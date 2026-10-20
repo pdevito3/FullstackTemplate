@@ -4,7 +4,6 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using System.Security.Claims;
 using FullstackTemplate.Server.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -15,7 +14,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     private const string TrustedClientId = "trusted-machine";
     private const string ReadOnlyClientId = "read-only-machine";
 
-    private readonly IHttpContextAccessor _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+    private readonly ICurrentPrincipalAccessor _principalAccessor = Substitute.For<ICurrentPrincipalAccessor>();
     private readonly ITenantIdProvider _tenantIdProvider = Substitute.For<ITenantIdProvider>();
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
@@ -24,7 +23,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     public TenantScopeProviderTests()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(_httpContextAccessor);
+        services.AddSingleton(_principalAccessor);
         services.AddSingleton(_tenantIdProvider);
         services.AddSingleton(Options.Create(new TenancyOptions
         {
@@ -49,7 +48,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     private void SetCaller(params Claim[] claims)
     {
         var identity = claims.Length == 0 ? new ClaimsIdentity() : new ClaimsIdentity(claims, "TestAuth");
-        _httpContextAccessor.HttpContext.Returns(new DefaultHttpContext { User = new ClaimsPrincipal(identity) });
+        _principalAccessor.Principal.Returns(new ClaimsPrincipal(identity));
     }
 
     [Test]
@@ -74,7 +73,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Test]
     public void work_with_no_http_request_and_no_opt_in_gets_no_tenant()
     {
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
         _sut.CanManageAllTenants().ShouldBeFalse();
@@ -83,7 +82,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Test]
     public void system_scope_gets_all_tenants_and_can_manage_them()
     {
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         using var systemScope = _services.GetRequiredService<IServiceScopeFactory>().CreateSystemScope();
         var provider = systemScope.ServiceProvider.GetRequiredService<ITenantScopeProvider>();
@@ -95,7 +94,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Test]
     public void system_scope_does_not_change_other_scopes()
     {
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         using var systemScope = _services.GetRequiredService<IServiceScopeFactory>().CreateSystemScope();
 

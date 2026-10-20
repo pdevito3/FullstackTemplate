@@ -81,10 +81,20 @@ public interface ICurrentUserService
     IReadOnlyList<string> GetClaimValues(string claimType);
 }
 
-public sealed class CurrentUserService(
-    IHttpContextAccessor httpContextAccessor) : ICurrentUserService
+/// <summary>
+/// Gives the principal of the current caller. The core does not know the transport, so an entrypoint gives the
+/// principal. <c>HttpContextPrincipalAccessor</c> reads it from the HTTP request of HTTP, gRPC, and MCP.
+/// </summary>
+public interface ICurrentPrincipalAccessor
 {
-    public ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
+    /// <summary>The principal of the current caller, or null when there is no caller.</summary>
+    ClaimsPrincipal? Principal { get; }
+}
+
+public sealed class CurrentUserService(
+    ICurrentPrincipalAccessor principalAccessor) : ICurrentUserService
+{
+    public ClaimsPrincipal? User => principalAccessor.Principal;
 
     public string? UserIdentifier => User?.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? User?.FindFirstValue("sub");

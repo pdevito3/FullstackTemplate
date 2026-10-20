@@ -1,10 +1,10 @@
 # Features and CQRS
 
-Each feature is one file in `Domain/[EntityName]s/Features/`. The file has a static class with a MediatR request and its handler. A command changes state. A query only reads. The examples come from `Domain/Users/Features/`.
+Each feature is one folder in `Domain/[EntityName]s/Features/`, for example `Features/AddUser/`. Its core file, `AddUser.cs`, has a static class with a MediatR request and its handler. The adapter files next to it (`AddUser.Http.cs`, and `.Grpc.cs` or `.Mcp.cs` when the feature has them) send this request. See [endpoints.md](endpoints.md). A command changes state. A query only reads. The examples come from `Domain/Users/Features/`.
 
 ## Rules
 
-1. Put one feature in one file. Name the file and the class for the action, for example `AddUser`, `GetUserList`, or `UpdateUserRole`.
+1. Put the request and the handler of one feature in one core file, in a folder with the same name. Name the folder, the file, and the class for the action, for example `AddUser`, `GetUserList`, or `UpdateUserRole`. Use the namespace `FullstackTemplate.Server.Domain.[EntityName]s.Features` for each file in the folder. A namespace with the feature name would clash with the class name. The exception is `[FeatureName].Grpc.cs`: it uses the namespace of the gRPC service, for example `...Tenants.Grpc.V1`, so that it can extend the partial service class. See [endpoints.md](endpoints.md#grpc).
 2. Make the request a `sealed record` named `Command` or `Query`.
 3. Make the handler a `sealed class` named `Handler`. Inject services with a primary constructor.
 4. Pass the `CancellationToken` to each async call.

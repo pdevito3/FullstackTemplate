@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Test-only types that break the entrypoint boundary on purpose. EntrypointBoundaryTests scans this assembly
+         to prove that each rule finds each kind of violation. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <!-- The fixtures are deliberate bad code, such as unused members and visible fields, not product code -->
+        <RunAnalyzers>false</RunAnalyzers>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\FullstackTemplate.Server\FullstackTemplate.Server.csproj" />
+    </ItemGroup>
+
+</Project>

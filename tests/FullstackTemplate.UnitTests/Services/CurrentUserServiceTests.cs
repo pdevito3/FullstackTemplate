@@ -2,35 +2,32 @@ namespace FullstackTemplate.UnitTests.Services;
 
 using System.Security.Claims;
 using FullstackTemplate.Server.Services;
-using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Shouldly;
 
 public class CurrentUserServiceTests
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ICurrentPrincipalAccessor _principalAccessor;
     private readonly CurrentUserService _sut;
 
     public CurrentUserServiceTests()
     {
-        _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-        _sut = new CurrentUserService(_httpContextAccessor);
+        _principalAccessor = Substitute.For<ICurrentPrincipalAccessor>();
+        _sut = new CurrentUserService(_principalAccessor);
     }
 
     private void SetupUserWithClaims(params Claim[] claims)
     {
         var identity = new ClaimsIdentity(claims, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = principal };
-        _httpContextAccessor.HttpContext.Returns(httpContext);
+        _principalAccessor.Principal.Returns(principal);
     }
 
     private void SetupUnauthenticatedUser()
     {
         var identity = new ClaimsIdentity(); // No auth type = unauthenticated
         var principal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = principal };
-        _httpContextAccessor.HttpContext.Returns(httpContext);
+        _principalAccessor.Principal.Returns(principal);
     }
 
     [Test]
@@ -52,7 +49,7 @@ public class CurrentUserServiceTests
     public void User_returns_null_when_no_http_context()
     {
         // Arrange
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         // Act
         var user = _sut.User;
@@ -390,7 +387,7 @@ public class CurrentUserServiceTests
     public void Roles_returns_empty_when_no_user()
     {
         // Arrange
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         // Act
         var roles = _sut.Roles;
@@ -442,7 +439,7 @@ public class CurrentUserServiceTests
     public void IsInRole_returns_false_when_no_user()
     {
         // Arrange
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         // Act
         var isInRole = _sut.IsInRole("Admin");
@@ -500,7 +497,7 @@ public class CurrentUserServiceTests
     public void GetClaimValues_returns_empty_when_no_user()
     {
         // Arrange
-        _httpContextAccessor.HttpContext.Returns((HttpContext?)null);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         // Act
         var values = _sut.GetClaimValues("any_claim");

@@ -65,7 +65,28 @@ public class TenantErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
-        problem.Errors.ShouldNotBeEmpty();
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("$.name");
+    }
+
+    [Test]
+    [Arguments("")]
+    [Arguments("null")]
+    public async Task missing_body_returns_bad_request_problem_with_the_empty_key(string body)
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        // Act
+        var result = await FactoryClient.PostAsync(ApiRoutes.Tenants.Create, content);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("A non-empty request body is required.");
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe("");
+        error.Value.ShouldBe(["A non-empty request body is required."]);
     }
 
     [Test]
@@ -105,5 +126,7 @@ public class TenantErrorResponseTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
         problem.Errors.ShouldContainKey("name");
+        // The message names the field the same as the JSON body does
+        problem.Errors["name"].ShouldBe(["The name field is required."]);
     }
 }

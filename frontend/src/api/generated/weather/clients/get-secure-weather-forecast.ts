@@ -8,6 +8,7 @@ import type { GetSecureWeatherForecastOptions, GetSecureWeatherForecastResponses
 import { client, unwrapResult } from '../../.kubb/client'
 
 /**
+ * @summary Gets the weather forecast for the next five days, with the name of the caller.
  * {@link /api/v1/weather/secure}
  */
 export function getSecureWeatherForecast<ThrowOnError extends boolean = true>(options: Options<GetSecureWeatherForecastOptions, ThrowOnError> = {}): Promise<UnwrappedResult<GetSecureWeatherForecastResponses, ThrowOnError>> {

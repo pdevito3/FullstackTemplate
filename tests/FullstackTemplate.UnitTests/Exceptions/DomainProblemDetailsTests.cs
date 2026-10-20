@@ -1,31 +1,15 @@
 namespace FullstackTemplate.UnitTests.Exceptions;
 
-using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Exceptions;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 using QueryKit.Exceptions;
 using Shouldly;
 
 public class DomainProblemDetailsTests
 {
-    [Test]
-    public void unique_violation_is_a_conflict()
-    {
-        // Arrange
-        var exception = SaveFailure(PostgresErrorCodes.UniqueViolation);
-
-        // Act
-        var status = DomainProblemDetails.StatusCodeFor(exception);
-
-        // Assert
-        status.ShouldBe(StatusCodes.Status409Conflict);
-        DomainProblemDetails.IsClientError(exception).ShouldBeTrue();
-    }
-
     [Test]
     public void conflict_problem_has_the_message_under_the_property()
     {
@@ -51,65 +35,53 @@ public class DomainProblemDetailsTests
     }
 
     [Test]
-    public void unique_violation_problem_does_not_show_the_constraint()
+    public void request_validation_problem_has_the_messages_under_each_field()
     {
         // Arrange
+        var exception = new RequestValidationException(new()
+        {
+            ["pageNumber"] = ["The field pageNumber must be between 1 and 4294967."],
+            ["pageSize"] = ["The field pageSize must be between 1 and 2147483647."],
+        });
         var context = new ProblemDetailsContext
         {
             HttpContext = new DefaultHttpContext(),
-            Exception = SaveFailure(PostgresErrorCodes.UniqueViolation),
-            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
+            Exception = exception,
+            ProblemDetails = new() { Status = StatusCodes.Status400BadRequest },
         };
 
         // Act
         DomainProblemDetails.Customize(context);
 
         // Assert
-        context.ProblemDetails.Detail.ShouldBe("A record with this value already exists.");
+        context.ProblemDetails.Title.ShouldBe("One or more validation errors occurred.");
+        var errors = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>();
+        errors.Keys.ShouldBe(["pageNumber", "pageSize"]);
+        errors["pageSize"].ShouldBe(["The field pageSize must be between 1 and 2147483647."]);
+    }
+
+    [Test]
+    public void validation_problem_with_no_property_has_empty_errors()
+    {
+        // Arrange
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            Exception = new ValidationException("Please provide a name."),
+            ProblemDetails = new() { Status = StatusCodes.Status422UnprocessableEntity },
+        };
+
+        // Act
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        context.ProblemDetails.Detail.ShouldBe("Please provide a name.");
+        // A 422 has the ValidationProblemDetails shape, so errors is present when no field is known
         context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldBeEmpty();
     }
 
     [Test]
-    public void unique_violation_problem_has_the_message_under_the_field_of_the_index()
-    {
-        // Arrange
-        var context = new ProblemDetailsContext
-        {
-            HttpContext = new DefaultHttpContext(),
-            Exception = SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"),
-            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
-        };
-
-        // Act
-        DomainProblemDetails.Customize(context);
-
-        // Assert
-        var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
-        error.Key.ShouldBe("identifier");
-        error.Value.ShouldBe(["A record with this value already exists."]);
-    }
-
-    [Test]
-    public void each_unique_index_in_the_model_has_a_field()
-    {
-        // Arrange
-        using var dbContext = new AppDbContextFactory().CreateDbContext([]);
-        var model = dbContext.GetService<IDesignTimeModel>().Model;
-
-        // Act
-        var uniqueIndexes = model.GetEntityTypes()
-            .SelectMany(e => e.GetIndexes())
-            .Where(i => i.IsUnique)
-            .Select(i => i.GetDatabaseName())
-            .ToList();
-
-        // Assert
-        uniqueIndexes.ShouldNotBeEmpty();
-        uniqueIndexes.Where(i => !DomainProblemDetails.UniqueIndexFields.ContainsKey(i!)).ShouldBeEmpty();
-    }
-
-    [Test]
-    public void other_database_failure_is_a_server_error()
+    public void database_failure_that_the_db_context_does_not_translate_is_a_server_error()
     {
         // Arrange
         var exception = SaveFailure(PostgresErrorCodes.ForeignKeyViolation);
@@ -125,6 +97,7 @@ public class DomainProblemDetailsTests
     [
         (new ValidationException("name", "Please provide a name."), StatusCodes.Status422UnprocessableEntity),
         (new FluentValidation.ValidationException("Please provide a valid email."), StatusCodes.Status422UnprocessableEntity),
+        (new RequestValidationException(new() { ["pageNumber"] = ["The field pageNumber must be between 1 and 4294967."] }), StatusCodes.Status400BadRequest),
         (new QueryInputException("sortOrder", "Parsing failed during sorting.", new SortParsingException("Unknown")), StatusCodes.Status400BadRequest),
         (new NotFoundException("Tenant was not found."), StatusCodes.Status404NotFound),
         (new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden),

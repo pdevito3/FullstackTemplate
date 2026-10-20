@@ -14,20 +14,6 @@ public class JsonNumberHandlingTests : TestBase
     private const string NumberInString = """{ "count": "5" }""";
 
     [Test]
-    public async Task controllers_read_a_number_in_a_json_string()
-    {
-        // Arrange
-        var options = await ExecuteScopeAsync(sp =>
-            Task.FromResult(sp.GetRequiredService<IOptions<Microsoft.AspNetCore.Mvc.JsonOptions>>().Value.JsonSerializerOptions));
-
-        // Act
-        var body = JsonSerializer.Deserialize<BodyWithNumber>(NumberInString, options);
-
-        // Assert
-        body.ShouldNotBeNull().Count.ShouldBe(5);
-    }
-
-    [Test]
     public async Task minimal_apis_read_a_number_in_a_json_string()
     {
         // Arrange

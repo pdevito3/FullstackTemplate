@@ -2,24 +2,21 @@ namespace FullstackTemplate.UnitTests.Resources;
 
 using System.Text.Json;
 using FullstackTemplate.Server.Resources;
+using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Abstractions;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Shouldly;
 
 public class PaginationHeaderFilterTests
 {
     [Test]
-    public void filter_adds_the_page_data_of_a_paged_list()
+    public async Task filter_adds_the_page_data_of_a_paged_list()
     {
         // Arrange
         var pagedList = PagedList.Create(Enumerable.Range(1, 3).AsQueryable(), 2, 1);
-        var (context, headers) = ContextFor(new OkObjectResult(pagedList));
 
         // Act
-        new PaginationHeaderFilter().OnResultExecuting(context);
+        var headers = await HeadersAfterFilter(TypedResults.Ok(pagedList));
 
         // Assert
         var metadata = JsonSerializer.Deserialize<PaginationMetadata>(
@@ -30,35 +27,47 @@ public class PaginationHeaderFilterTests
         metadata.TotalPages.ShouldBe(3);
     }
 
-    public static readonly IEnumerable<IActionResult> ResultsThatAreNotAPagedList =
+    [Test]
+    public async Task filter_reads_the_inner_result_of_a_union_result()
+    {
+        // Arrange
+        Results<Ok<PagedList<int>>, NotFound> result = TypedResults.Ok(PagedList.Create(Enumerable.Range(1, 3).AsQueryable(), 1, 2));
+
+        // Act
+        var headers = await HeadersAfterFilter(result);
+
+        // Assert
+        headers.ContainsKey(PaginationMetadata.HeaderName).ShouldBeTrue();
+    }
+
+    public static readonly IEnumerable<object?> ResultsThatAreNotAPagedList =
     [
-        new OkObjectResult(new[] { 1, 2 }),
-        new OkObjectResult(null),
-        new NoContentResult(),
+        TypedResults.Ok(new[] { 1, 2 }),
+        TypedResults.Ok<object?>(null),
+        TypedResults.NoContent(),
+        new[] { 1, 2 },
+        null,
     ];
 
     [Test]
     [MethodDataSource(nameof(ResultsThatAreNotAPagedList))]
-    public void filter_adds_no_header_to_a_result_that_is_not_a_paged_list(IActionResult result)
+    public async Task filter_adds_no_header_to_a_result_that_is_not_a_paged_list(object? result)
     {
-        // Arrange
-        var (context, headers) = ContextFor(result);
-
         // Act
-        new PaginationHeaderFilter().OnResultExecuting(context);
+        var headers = await HeadersAfterFilter(result);
 
         // Assert
         headers.ContainsKey(PaginationMetadata.HeaderName).ShouldBeFalse();
     }
 
-    private static (ResultExecutingContext Context, IHeaderDictionary Headers) ContextFor(IActionResult result)
+    private static async Task<IHeaderDictionary> HeadersAfterFilter(object? result)
     {
         var httpContext = new DefaultHttpContext();
-        var context = new ResultExecutingContext(
-            new ActionContext(httpContext, new RouteData(), new ActionDescriptor()),
-            [],
-            result,
-            new object());
-        return (context, httpContext.Response.Headers);
+        var context = EndpointFilterInvocationContext.Create(httpContext);
+
+        var returned = await new PaginationHeaderFilter().InvokeAsync(context, _ => ValueTask.FromResult(result));
+
+        returned.ShouldBeSameAs(result);
+        return httpContext.Response.Headers;
     }
 }

@@ -3,19 +3,19 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 using System.Diagnostics;
 using Databases;
 using Domain.Users;
-using Exceptions;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
 using Services;
 using ZiggyCreatures.Caching.Fusion;
 
 public static class WebAppServiceConfiguration
 {
+    /// <summary>
+    /// Adds the core services: the database, MediatR, the caches, and the tenant scope. It adds no transport.
+    /// The integration tests call only this method. <c>AddEntrypoints</c> adds HTTP, gRPC, and MCP.
+    /// </summary>
     public static void ConfigureServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton(TimeProvider.System);
-        builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = DomainProblemDetails.Customize);
-        builder.Services.AddHttpContextAccessor();
         builder.Services.AddFusionCache()
             .WithDefaultEntryOptions(options =>
             {
@@ -32,18 +32,11 @@ public static class WebAppServiceConfiguration
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
             // Outermost behavior, so its span covers every later behavior and the handler itself.
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
+            // Before the access check, so that a malformed request is a 400 for each caller, the same as model binding.
+            cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
             // Runs only for requests that have IRequireTenantAdmin, because of its generic constraint.
             cfg.AddOpenBehavior(typeof(TenantAdminBehavior<,>));
         });
-        builder.Services.AddApiVersioningExtension();
-        builder.Services.AddControllers(options =>
-        {
-            options.Filters.Add<PaginationHeaderFilter>();
-            // The keys of the validation errors use the JSON names of the request, for example "name", not "Name"
-            options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
-        });
-        builder.Services.AddSwaggerExtension(builder.Configuration);
-        builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
 
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {

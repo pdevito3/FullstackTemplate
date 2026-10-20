@@ -82,7 +82,7 @@ Traces, metrics, and logs share the same resource attributes: `service.name`, `s
 
 `RequestTracingBehavior` wraps each MediatR request in a span. The span name is the feature class plus the request type, for example `GetUser.Query`. You do not have to add code to a new slice to get this span or the `app.request.duration` metric.
 
-The behavior tags an exception type as `error.type`. A client error does not mark the span as failed. A client error is an exception that `DomainProblemDetails` maps to a 4xx response (`ValidationException`, `FluentValidation.ValidationException`, `NotFoundException`, and `ForbiddenAccessException`). All other exceptions mark the span with the `Error` status and increment `app.errors`.
+The behavior tags an exception type as `error.type`. A client error does not mark the span as failed. A client error is an exception for which `DomainError.IsClientError` is true. These are the domain exceptions that each entrypoint maps to a client error, for example a 4xx response (see the error table in [backend.md](backend.md#error-responses)). All other exceptions mark the span with the `Error` status and increment `app.errors`.
 
 ## Named queries
 

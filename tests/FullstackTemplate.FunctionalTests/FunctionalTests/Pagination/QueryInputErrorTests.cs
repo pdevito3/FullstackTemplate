@@ -59,6 +59,47 @@ public class QueryInputErrorTests : TestBase
     }
 
     [Test]
+    public async Task page_number_that_is_not_a_number_names_the_value_and_the_field()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageNumber=abc&pageSize=xyz");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("The value 'abc' is not valid for pageNumber.");
+        // The framework stops at the first value that does not bind
+        problem.Errors.ShouldHaveSingleItem().Value.ShouldBe(["The value 'abc' is not valid for pageNumber."]);
+    }
+
+    [Test]
+    public async Task page_out_of_range_names_each_field_in_its_message()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageNumber=0&pageSize=0");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Title.ShouldBe("One or more validation errors occurred.");
+        problem.Errors.Keys.ShouldBe(["pageNumber", "pageSize"], ignoreOrder: true);
+        problem.Errors["pageNumber"].ShouldBe(["The field pageNumber must be between 1 and 4294967."]);
+        problem.Errors["pageSize"].ShouldBe(["The field pageSize must be between 1 and 2147483647."]);
+    }
+
+    [Test]
     public async Task last_page_number_with_the_largest_page_size_returns_an_empty_page()
     {
         // Arrange

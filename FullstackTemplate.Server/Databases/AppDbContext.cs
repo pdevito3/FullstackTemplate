@@ -59,7 +59,15 @@ public class AppDbContext(
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         UpdateAuditFields();
-        var result = base.SaveChanges(acceptAllChangesOnSuccess);
+        int result;
+        try
+        {
+            result = base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+        catch (DbUpdateException exception) when (UniqueIndexException.From(exception) is { } conflict)
+        {
+            throw conflict;
+        }
         DispatchDomainEvents().GetAwaiter().GetResult();
         return result;
     }
@@ -76,7 +84,15 @@ public class AppDbContext(
         CancellationToken cancellationToken = default)
     {
         UpdateAuditFields();
-        var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        int result;
+        try
+        {
+            result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException exception) when (UniqueIndexException.From(exception) is { } conflict)
+        {
+            throw conflict;
+        }
         await DispatchDomainEvents();
         return result;
     }

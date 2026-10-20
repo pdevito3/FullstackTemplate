@@ -351,6 +351,17 @@
                         "policies": [],
                         "sso": {}
                       }
+                    },
+                    {
+                      "name": "grpc",
+                      "internalPort": 8081,
+                      "protocol": "HTTP2",
+                      "public": false,
+                      "security": {
+                        "credentials": [],
+                        "policies": [],
+                        "sso": {}
+                      }
                     }
                   ],
                   "healthChecks": [

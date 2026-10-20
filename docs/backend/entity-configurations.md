@@ -71,7 +71,7 @@ builder.Navigation(e => e.UserPermissions)
     .UsePropertyAccessMode(PropertyAccessMode.Field);
 ```
 
-When you delete the parent, load the children and remove each child in the handler. See `Domain/Users/Features/DeleteUser.cs`.
+When you delete the parent, load the children and remove each child in the handler. See `Domain/Users/Features/DeleteUser/DeleteUser.cs`.
 
 ## Unique indexes
 

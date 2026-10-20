@@ -21,6 +21,11 @@
     <OpenApiGenerateDocuments Condition="'$(Configuration)' != 'Debug'">false</OpenApiGenerateDocuments>
   </PropertyGroup>
 
+  <!-- The gRPC contract of each domain and version lives in its Grpc/v{n} folder. The functional tests generate the client. -->
+  <ItemGroup>
+    <Protobuf Include="Domain/**/Grpc/v*/*.proto" GrpcServices="Server" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\FullstackTemplate.SourceGenerators\FullstackTemplate.SourceGenerators.csproj"
                       OutputItemType="Analyzer"
@@ -29,6 +34,9 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Grpc.StatusProto" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="DistributedLock.Postgres" />

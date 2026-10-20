@@ -6,6 +6,9 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <OutputType>Exe</OutputType>
+        <!-- CS0436: the client stub below also generates the messages, with the same names as the messages of the
+             Server. The compiler uses the types of this project, which is correct for a client. -->
+        <NoWarn>$(NoWarn);CS0436</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,6 +17,14 @@
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
         <PackageReference Include="WebMotions.Fake.Authentication.JwtBearer" />
         <PackageReference Include="OpenTelemetry.Exporter.InMemory" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+        <PackageReference Include="ModelContextProtocol.Core" />
+    </ItemGroup>
+
+    <!-- The Server generates only the service base. A caller generates its own client from the same contract. -->
+    <ItemGroup>
+        <Protobuf Include="..\..\FullstackTemplate.Server\Domain\**\Grpc\v*\*.proto" GrpcServices="Client" Link="Grpc\%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
 
     <ItemGroup>

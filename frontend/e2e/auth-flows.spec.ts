@@ -32,7 +32,8 @@ interface IdpConfig {
   twoStepLogin?: boolean
   // Second step submit selector for two-step login (if different from submitSelector)
   secondStepSubmitSelector?: string
-  // Consent page needs approval (Authentik shows a consent page after login)
+  // Consent page needs approval. Authentik always shows one when the request has the offline_access scope,
+  // even with the implicit-consent flow. The BFF asks for offline_access, and Swagger UI does not.
   hasConsentPage?: boolean
   consentSelector?: string
 }

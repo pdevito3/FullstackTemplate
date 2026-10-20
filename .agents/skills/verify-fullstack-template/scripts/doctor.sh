@@ -23,9 +23,13 @@ else
   ok "AppHost pid $want_pid is ours"
 fi
 
-while read -r name state health urls; do
+while IFS=$'\t' read -r name state health urls; do
   case "$name" in
     webfrontend-installer) [[ "$state" == "Finished" ]] && ok "$name Finished" || fail "$name is $state" ;;
+    # Labcoat puts the result of the last test run in its state, for example "○ 523 tests · not run".
+    # Aspire then gives no health status, so ask the Labcoat health endpoint.
+    tests) [[ "$(curl -s -o /dev/null -w '%{http_code}' "${urls%%,*}/api/health")" == "200" ]] \
+      && ok "$name healthy ($state)" || fail "$name is $state, and ${urls%%,*}/api/health is not 200" ;;
     *) [[ "$state" == "Running" && "$health" == "Healthy" ]] && ok "$name $state $health" || fail "$name is $state $health" ;;
   esac
 done < <(resource_table)

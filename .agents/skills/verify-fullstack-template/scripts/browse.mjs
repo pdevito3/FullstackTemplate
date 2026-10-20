@@ -4,16 +4,17 @@
 // Usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>]
 //
 // A recipe is an ES module with a default export:
-//   export default async ({ page, context, stack, expect, step, capture, login, logout }) => { ... }
+//   export default async ({ page, context, stack, expect, step, capture, settle, login, logout }) => { ... }
 //
 // Evidence goes to artifacts/verify/<RUN_ID>/<label>/ (label defaults to the recipe file name):
 //   steps.log      each step with ok/FAIL and its duration
-//   NN-<name>.png  a full-page screenshot for each capture()
+//   NN-<name>.png  a screenshot for each capture(), full-page by default
 //   NN-<name>.aria.txt  the ARIA snapshot of the page for each capture()
 //   console.log    browser console errors and warnings, and page errors
+//                  (an uncaught page error fails the run, even if all steps pass)
 //   network.log    each response with status >= 400
 //   trace.zip      the Playwright trace (open with: pnpm --dir frontend exec playwright show-trace <path>)
-//   result.json    passed or failed, with the error
+//   result.json    passed or failed, with the error and the page errors
 import { execSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -58,10 +59,26 @@ const context = await browser.newContext({
 })
 await context.tracing.start({ screenshots: true, snapshots: true })
 const page = await context.newPage()
+// An uncaught error in the page is a bug, even if the UI looks right. Collect each one to fail the run at the end.
+// A console error is a bug too: an error boundary catches a render crash and only logs it. The browser also
+// logs each failed response as a console error. network.log has those, so they do not fail the run.
+const pageErrors = []
+const pendingConsoleErrors = []
 page.on('console', (m) => {
   if (m.type() === 'error' || m.type() === 'warning') log('console.log', `[${m.type()}] ${m.text()}`)
+  if (m.type() !== 'error' || m.text().startsWith('Failed to load resource')) return
+  // React logs a crash as console.error('%o ... %s', error, ...). Read the error from the arguments, not from the format string.
+  pendingConsoleErrors.push(
+    Promise.all(m.args().map((a) => a.evaluate((v) => (v instanceof Error ? v.message : String(v)))))
+      .then((parts) => parts.filter((part) => part.replace(/%[osdifcO]/g, '').trim() !== '').join(' ').replace(/\s+/g, ' ') || m.text())
+      .catch(() => m.text())
+      .then((text) => pageErrors.push(`console.error: ${text}`)),
+  )
 })
-page.on('pageerror', (e) => log('console.log', `[pageerror] ${e.message}`))
+page.on('pageerror', (e) => {
+  pageErrors.push(e.message)
+  log('console.log', `[pageerror] ${e.message}`)
+})
 page.on('response', (r) => {
   if (r.status() >= 400) log('network.log', `${r.status()} ${r.request().method()} ${r.url()}`)
 })
@@ -80,9 +97,30 @@ async function step(name, fn) {
   }
 }
 
-async function capture(name) {
+// Motion and CSS animations run on enter and exit. Wait for them before a capture or a click in an overlay.
+// Playwright retries a click on a moving element with a forced scroll, and React Aria closes a popover on scroll.
+// The two frames let a scroll event arrive before the next action.
+function settle() {
+  return page.evaluate(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    // Skip infinite animations, such as the Skeleton pulse. Their finished promise never resolves.
+    // Skip paused animations too, and cap the wait, so that a stuck animation cannot hang the run.
+    const finite = document
+      .getAnimations()
+      .filter((animation) => animation.playState === 'running' && animation.effect?.getComputedTiming().endTime !== Infinity)
+    await Promise.race([
+      Promise.all(finite.map((animation) => animation.finished.catch(() => {}))),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ])
+  })
+}
+
+// A full-page screenshot resizes the viewport to the page height. A React Aria Sheet (the Drawer)
+// closes on that resize, so capture an open overlay with { fullPage: false }.
+async function capture(name, { fullPage = true } = {}) {
+  await settle()
   const base = `${String(++captureCount).padStart(2, '0')}-${name}`
-  await page.screenshot({ path: path.join(outDir, `${base}.png`), fullPage: true })
+  await page.screenshot({ path: path.join(outDir, `${base}.png`), fullPage })
   const aria = await page.locator('body').ariaSnapshot()
   writeFileSync(path.join(outDir, `${base}.aria.txt`), `# ${page.url()}\n${aria}\n`)
   log('steps.log', `cap   ${base} ${page.url()}`)
@@ -121,20 +159,30 @@ let status = 'passed'
 let error = null
 try {
   const recipe = await import(pathToFileURL(path.resolve(recipeArg)).href)
-  await recipe.default({ page, context, stack, expect, step, capture, login, logout })
+  await recipe.default({ page, context, stack, expect, step, capture, settle, login, logout })
 } catch (e) {
   status = 'failed'
   error = e.message
   await capture('failure').catch(() => {})
 } finally {
+  await Promise.all(pendingConsoleErrors)
   await context.tracing.stop({ path: path.join(outDir, 'trace.zip') })
   await browser.close()
+  if (pageErrors.length > 0 && status === 'passed') {
+    status = 'failed'
+    error = `${pageErrors.length} page error(s) during the run`
+  }
   writeFileSync(
     path.join(outDir, 'result.json'),
-    JSON.stringify({ recipe: recipeArg, label, status, error, web: stack.urls.web, finishedAt: new Date().toISOString() }, null, 2),
+    JSON.stringify(
+      { recipe: recipeArg, label, status, error, pageErrors, web: stack.urls.web, finishedAt: new Date().toISOString() },
+      null,
+      2,
+    ),
   )
 }
 
 console.log(`${status === 'passed' ? 'PASSED' : 'FAILED'}  ${label}  evidence: ${outDir}`)
 if (error) console.log(error)
+for (const message of pageErrors) console.log(`[pageerror] ${message}`)
 process.exit(status === 'passed' ? 0 : 1)

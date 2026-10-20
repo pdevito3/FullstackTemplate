@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 @import "@fontsource/nunito-sans/400.css";
 @import "@fontsource/nunito-sans/500.css";
 @import "@fontsource/nunito-sans/600.css";
@@ -194,5 +193,38 @@
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
+  }
+}
+
+/* The React Aria Sheet plays this animation while the drawer is swiped, opened, or closed. */
+@keyframes drawer-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Each toast has the view transition class "toast". See components/toaster.tsx. */
+::view-transition-new(.toast):only-child {
+  animation: toast-slide-in 200ms ease-out;
+}
+
+::view-transition-old(.toast):only-child {
+  animation: toast-slide-out 200ms ease-in;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes toast-slide-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.5rem);
   }
 }

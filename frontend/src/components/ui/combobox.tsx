@@ -1,310 +1,369 @@
-"use client"
-
 import * as React from "react"
-import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
-import { Tick02Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import {
+  ComboBox as ComboBoxPrimitive,
+  ComboBoxStateContext,
+  ComboBoxValue as ComboBoxValuePrimitive,
+  composeRenderProps,
+  Group,
+  GroupContext,
+  Input as InputPrimitive,
+  ListBoxItem as ListBoxItemPrimitive,
+  ListBox as ListBoxPrimitive,
+  ListBoxSection as ListBoxSectionPrimitive,
+  OverlayTriggerStateContext,
+  Popover as PopoverPrimitive,
+  TagGroup as TagGroupPrimitive,
+  TagList as TagListPrimitive,
+  Tag as TagPrimitive,
+  useSlottedContext,
+  type ComboBoxProps,
+  type ComboBoxValueProps,
+  type GroupProps,
+  type InputProps,
+  type ListBoxItemProps,
+  type ListBoxProps,
+  type ListBoxSectionProps,
+  type TagListProps,
+  type TagProps,
+} from "@animate-ui/react/primitives/react-aria"
 import { HugeiconsIcon } from "@hugeicons/react"
-
+import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
-// Re-export the Root component for full access to props
-const Combobox = ComboboxPrimitive.Root
+import { Button } from "@/components/ui/button"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+
+function Combobox<T extends object, M extends "single" | "multiple" = "single">(
+  props: ComboBoxProps<T, M>
+) {
+  return (
+    // The same guard as in Select: in an overlay, the hidden copy that the
+    // ComboBox builds its collection from inherits the open state of the
+    // overlay, and React Aria throws "Duplicate key" when the overlay closes.
+    <OverlayTriggerStateContext.Provider value={null}>
+      <ComboBoxPrimitive {...props} />
+    </OverlayTriggerStateContext.Provider>
+  )
+}
+
+function ComboboxValue<T>({ ...props }: ComboBoxValueProps<T>) {
+  return <ComboBoxValuePrimitive data-slot="combobox-value" {...props} />
+}
+
+function ComboboxClear({
+  className,
+  onPress,
+  ...props
+}: React.ComponentProps<typeof InputGroupButton>) {
+  const state = React.useContext(ComboBoxStateContext)
+  // The button opts out of the ComboBox button slot, so it reads the disabled
+  // state from the group context that the ComboBox gives.
+  const isDisabled = useSlottedContext(GroupContext)?.isDisabled
+  if (state?.inputValue === "") {
+    return null
+  }
+
+  return (
+    <InputGroupButton
+      data-slot="combobox-clear"
+      variant="ghost"
+      size="icon-xs"
+      aria-label="Clear"
+      className={cn(className)}
+      onPress={(e) => {
+        state?.setValue(null)
+        // setValue(null) does not clear typed text when no item is selected.
+        state?.setInputValue("")
+        // The button unmounts when the text is empty. Give the focus back to the input.
+        e.target.closest("[data-slot=input-group]")?.querySelector("input")?.focus()
+        onPress?.(e)
+      }}
+      slot={null}
+      isDisabled={isDisabled}
+      {...props}
+    >
+      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="pointer-events-none" />
+    </InputGroupButton>
+  )
+}
 
 function ComboboxInput({
   className,
+  children,
+  showTrigger = true,
+  showClear = false,
   ...props
-}: ComboboxPrimitive.Input.Props) {
+}: Omit<React.ComponentProps<"input">, "disabled"> & {
+  showTrigger?: boolean
+  showClear?: boolean
+}) {
   return (
-    <ComboboxPrimitive.Input
-      data-slot="combobox-input"
-      className={cn(
-        "dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 disabled:bg-input/50 dark:disabled:bg-input/80",
-        "h-8 w-full rounded-lg border bg-transparent px-2.5 py-1 text-sm",
-        "transition-colors focus-visible:ring-[3px] aria-invalid:ring-[3px]",
-        "outline-none placeholder:text-muted-foreground",
-        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
+    <InputGroup className={cn("w-auto", className)}>
+      <InputGroupInput {...props} />
+      <InputGroupAddon align="inline-end">
+        {showTrigger && (
+          <InputGroupButton
+            size="icon-xs"
+            variant="ghost"
+            data-slot="combobox-trigger"
+            className="group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent [&_svg:not([class*='size-'])]:size-4"
+          >
+            <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} className="pointer-events-none size-4 text-muted-foreground" />
+          </InputGroupButton>
+        )}
+        {showClear && <ComboboxClear />}
+      </InputGroupAddon>
+      {children}
+    </InputGroup>
+  )
+}
+
+function ComboboxContent({
+  className,
+  placement = "bottom",
+  offset = 6,
+  crossOffset = 0,
+  anchor,
+  ...props
+}: Omit<
+  React.ComponentProps<typeof PopoverPrimitive>,
+  "className" | "children"
+> & {
+  className?: string
+  children?: React.ReactNode
+  anchor?: React.RefObject<HTMLDivElement | null>
+}) {
+  return (
+    <PopoverPrimitive
+      data-slot="combobox-content"
+      placement={placement}
+      offset={offset}
+      crossOffset={crossOffset}
+      triggerRef={anchor}
+      className={cn("relative isolate z-50 max-h-72 w-(--trigger-width) min-w-36 origin-(--trigger-anchor-point) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 **:data-[slot$=-item]:data-focused:bg-foreground/10 *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/30 *:data-[slot=input-group]:shadow-none", className )}
       {...props}
     />
   )
 }
 
-function ComboboxPortal({ ...props }: ComboboxPrimitive.Portal.Props) {
-  return <ComboboxPrimitive.Portal data-slot="combobox-portal" {...props} />
-}
-
-function ComboboxPositioner({
-  className,
-  sideOffset = 4,
-  ...props
-}: ComboboxPrimitive.Positioner.Props) {
-  return (
-    <ComboboxPrimitive.Positioner
-      data-slot="combobox-positioner"
-      sideOffset={sideOffset}
-      className={cn("isolate z-50 outline-none", className)}
-      {...props}
-    />
-  )
-}
-
-function ComboboxPopup({
+function ComboboxList<T extends object>({
   className,
   ...props
-}: ComboboxPrimitive.Popup.Props) {
+}: ListBoxProps<T>) {
   return (
-    <ComboboxPrimitive.Popup
-      data-slot="combobox-popup"
-      className={cn(
-        "bg-popover text-popover-foreground ring-foreground/10",
-        "group/combobox-popup origin-[var(--transform-origin)] rounded-lg shadow-md ring-1",
-        "max-h-[min(var(--available-height),20rem)] w-[var(--anchor-width)] overflow-hidden",
-        "data-open:animate-in data-closed:animate-out",
-        "data-closed:fade-out-0 data-open:fade-in-0",
-        "data-closed:zoom-out-95 data-open:zoom-in-95",
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-        "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        "duration-100",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function ComboboxList({
-  className,
-  ...props
-}: ComboboxPrimitive.List.Props) {
-  return (
-    <ComboboxPrimitive.List
+    <ListBoxPrimitive
       data-slot="combobox-list"
-      className={cn(
-        "max-h-[inherit] overflow-y-auto overscroll-contain p-1 scroll-py-1",
-        className
+      className={composeRenderProps(className, (className) =>
+        cn(
+          "group/combobox-content no-scrollbar max-h-[inherit] scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
+          className
+        )
       )}
       {...props}
     />
   )
 }
 
-function ComboboxItem({
+/**
+ * The filter and the input text after a pick use the `textValue` of an item. A
+ * string child gives the text. Other children do not, so the item must set `textValue`.
+ */
+type ComboboxItemProps<T extends object = object> = Omit<
+  ListBoxItemProps<T>,
+  "children" | "textValue"
+> &
+  (
+    | { children: string; textValue?: string }
+    | {
+        children?: Exclude<ListBoxItemProps<T>["children"], string>
+        textValue: string
+      }
+  )
+
+function ComboboxItem<T extends object>({
   className,
   children,
+  textValue,
   ...props
-}: ComboboxPrimitive.Item.Props) {
+}: ComboboxItemProps<T>) {
   return (
-    <ComboboxPrimitive.Item
+    <ListBoxItemPrimitive
       data-slot="combobox-item"
+      textValue={textValue ?? (typeof children === "string" ? children : undefined)}
+      className={composeRenderProps(className, (className) =>
+        cn(
+          "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-focused:bg-accent data-focused:text-accent-foreground not-data-[variant=destructive]:data-focused:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+          className
+        )
+      )}
+      {...props}
+    >
+      {composeRenderProps(children, (children, { isSelected }) => (
+        <>
+          {children}
+          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
+            {isSelected ? (
+              <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="pointer-events-none" />
+            ) : null}
+          </span>
+        </>
+      ))}
+    </ListBoxItemPrimitive>
+  )
+}
+
+function ComboboxGroup<T extends object>({
+  className,
+  ...props
+}: ListBoxSectionProps<T>) {
+  return (
+    <ListBoxSectionPrimitive
+      data-slot="combobox-group"
+      className={cn(className)}
+      {...props}
+    />
+  )
+}
+
+function ComboboxEmpty({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="combobox-empty"
       className={cn(
-        "relative flex w-full cursor-default select-none items-center gap-2",
-        "rounded-md py-1.5 pl-2 pr-8 text-sm outline-none",
-        "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground",
-        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "hidden w-full justify-center py-2 text-center text-sm text-muted-foreground group-data-empty/combobox-content:flex",
         className
+      )}
+      {...props}
+    />
+  )
+}
+
+function ComboboxChips({ children, className, ...props }: GroupProps) {
+  return (
+    <Group
+      data-slot="combobox-chips"
+      className={composeRenderProps(className, (className) =>
+        cn(
+          "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent bg-clip-padding px-2.5 py-1 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 has-data-[slot=combobox-chip]:px-1 dark:bg-input/30 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40",
+          className
+        )
       )}
       {...props}
     >
       {children}
-    </ComboboxPrimitive.Item>
+    </Group>
   )
 }
 
-function ComboboxItemIndicator({
+function ComboboxChipList<T extends object>({
   className,
+  "aria-label": ariaLabel = "Selected items",
   ...props
-}: ComboboxPrimitive.ItemIndicator.Props) {
+}: Omit<TagListProps<T>, "className" | "items"> & {
+  className?: string
+  "aria-label"?: string
+}) {
   return (
-    <ComboboxPrimitive.ItemIndicator
-      data-slot="combobox-item-indicator"
-      className={cn(
-        "absolute right-2 flex items-center justify-center",
-        className
+    <ComboBoxValuePrimitive<T> className="contents">
+      {({ selectedItems, state }) => (
+        <TagGroupPrimitive
+          data-slot="combobox-chip-list"
+          aria-label={ariaLabel}
+          className={cn("contents", className)}
+          onRemove={(keys) => {
+            if (Array.isArray(state.value)) {
+              state.setValue(state.value.filter((k) => !keys.has(k)))
+            }
+          }}
+        >
+          <TagListPrimitive
+            className="contents"
+            items={selectedItems.filter((item) => item != null)}
+            {...props}
+          />
+        </TagGroupPrimitive>
       )}
-      {...props}
-    >
-      <HugeiconsIcon icon={Tick02Icon} className="size-4" />
-    </ComboboxPrimitive.ItemIndicator>
-  )
-}
-
-// Note: Combobox.Item children serve as the item text
-// There is no separate ItemText component in Base UI Combobox
-
-function ComboboxGroup({
-  className,
-  ...props
-}: ComboboxPrimitive.Group.Props) {
-  return (
-    <ComboboxPrimitive.Group
-      data-slot="combobox-group"
-      className={cn("overflow-hidden", className)}
-      {...props}
-    />
-  )
-}
-
-function ComboboxGroupLabel({
-  className,
-  ...props
-}: ComboboxPrimitive.GroupLabel.Props) {
-  return (
-    <ComboboxPrimitive.GroupLabel
-      data-slot="combobox-group-label"
-      className={cn(
-        "text-muted-foreground px-2 py-1.5 text-xs font-medium",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function ComboboxEmpty({
-  className,
-  ...props
-}: ComboboxPrimitive.Empty.Props) {
-  return (
-    <ComboboxPrimitive.Empty
-      data-slot="combobox-empty"
-      className={cn(
-        "py-4 text-center text-sm text-muted-foreground empty:hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function ComboboxChips({
-  className,
-  ...props
-}: ComboboxPrimitive.Chips.Props) {
-  return (
-    <ComboboxPrimitive.Chips
-      data-slot="combobox-chips"
-      className={cn(
-        "dark:bg-input/30 border-input focus-within:border-ring focus-within:ring-ring/50",
-        "flex min-h-8 w-full flex-wrap items-center gap-1 rounded-lg border bg-transparent px-2 py-1",
-        "transition-colors focus-within:ring-[3px]",
-        className
-      )}
-      {...props}
-    />
+    </ComboBoxValuePrimitive>
   )
 }
 
 function ComboboxChip({
   className,
-  ...props
-}: ComboboxPrimitive.Chip.Props) {
-  return (
-    <ComboboxPrimitive.Chip
-      data-slot="combobox-chip"
-      className={cn(
-        "bg-secondary text-secondary-foreground",
-        "flex items-center gap-1 rounded-md px-2 py-0.5 text-sm",
-        "cursor-default outline-none",
-        "data-[highlighted]:bg-primary data-[highlighted]:text-primary-foreground",
-        "focus-within:bg-primary focus-within:text-primary-foreground",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function ComboboxChipRemove({
-  className,
-  ...props
-}: ComboboxPrimitive.ChipRemove.Props) {
-  return (
-    <ComboboxPrimitive.ChipRemove
-      data-slot="combobox-chip-remove"
-      className={cn(
-        "rounded-sm p-0.5 text-inherit opacity-70",
-        "hover:opacity-100 focus:opacity-100",
-        "outline-none",
-        className
-      )}
-      {...props}
-    >
-      <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-    </ComboboxPrimitive.ChipRemove>
-  )
-}
-
-function ComboboxValue({
-  ...props
-}: ComboboxPrimitive.Value.Props) {
-  return (
-    <ComboboxPrimitive.Value
-      {...props}
-    />
-  )
-}
-
-function ComboboxClearButton({
-  className,
-  ...props
-}: React.ComponentProps<"button">) {
-  return (
-    <button
-      type="button"
-      data-slot="combobox-clear-button"
-      className={cn(
-        "rounded-sm p-0.5 text-muted-foreground opacity-70",
-        "hover:opacity-100 focus:opacity-100",
-        "outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        className
-      )}
-      {...props}
-    >
-      <HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-    </button>
-  )
-}
-
-// Convenience component that combines common parts
-function ComboboxContent({
-  className,
   children,
-  sideOffset = 4,
-  emptyMessage = "No results found.",
+  showRemove = true,
   ...props
-}: ComboboxPrimitive.Popup.Props &
-  Pick<ComboboxPrimitive.Positioner.Props, "sideOffset"> & {
-    emptyMessage?: string
-  }) {
+}: Omit<TagProps, "children"> & {
+  showRemove?: boolean
+  children?: React.ReactNode
+}) {
   return (
-    <ComboboxPortal>
-      <ComboboxPositioner sideOffset={sideOffset}>
-        <ComboboxPopup className={className} {...props}>
-          <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
-          <ComboboxList>{children}</ComboboxList>
-        </ComboboxPopup>
-      </ComboboxPositioner>
-    </ComboboxPortal>
+    <TagPrimitive
+      data-slot="combobox-chip"
+      className={composeRenderProps(className, (className) =>
+        cn(
+          "flex h-[calc(--spacing(5.25))] w-fit items-center justify-center gap-1 rounded-sm bg-muted px-1.5 text-xs font-medium whitespace-nowrap text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0",
+          className
+        )
+      )}
+      {...props}
+    >
+      {children}
+      {showRemove && (
+        <Button
+          slot="remove"
+          variant="ghost"
+          size="icon-xs"
+          className="-ml-1 opacity-50 hover:opacity-100"
+          data-slot="combobox-chip-remove"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="pointer-events-none" />
+        </Button>
+      )}
+    </TagPrimitive>
+  )
+}
+
+function ComboboxChipsInput({ className, onKeyDown, ...props }: InputProps) {
+  const state = React.useContext(ComboBoxStateContext)
+  return (
+    <InputPrimitive
+      data-slot="combobox-chip-input"
+      className={composeRenderProps(className, (className) =>
+        cn("min-w-16 flex-1 outline-none", className)
+      )}
+      onKeyDown={(e) => {
+        if (
+          e.key === "Backspace" &&
+          e.currentTarget.value === "" &&
+          Array.isArray(state?.value) &&
+          state.value.length > 0
+        ) {
+          e.preventDefault()
+          state.setValue(state.value.slice(0, -1))
+        }
+        onKeyDown?.(e)
+      }}
+      {...props}
+    />
   )
 }
 
 export {
   Combobox,
   ComboboxInput,
-  ComboboxPortal,
-  ComboboxPositioner,
-  ComboboxPopup,
+  ComboboxContent,
   ComboboxList,
   ComboboxItem,
-  ComboboxItemIndicator,
   ComboboxGroup,
-  ComboboxGroupLabel,
   ComboboxEmpty,
   ComboboxChips,
   ComboboxChip,
-  ComboboxChipRemove,
+  ComboboxChipList,
+  ComboboxChipsInput,
   ComboboxValue,
-  ComboboxClearButton,
-  ComboboxContent,
 }

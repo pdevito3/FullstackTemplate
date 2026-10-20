@@ -1,12 +1,20 @@
 // Feature: navigation-and-theme. Sidebar links, Demos submenu, breadcrumb, collapse, theme. See features/navigation-and-theme.md.
-export default async ({ page, step, capture, expect }) => {
-  const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb' })
+export default async ({ page, step, capture, settle, expect }) => {
+  const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb', exact: true })
   // The layout has a Toggle Sidebar button in the header and a rail with the same name. Use the header one.
   const toggleSidebar = page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' }).first()
 
   await step('open / : breadcrumb is Home', async () => {
     await page.goto('/')
     await expect(breadcrumb).toHaveText('Home')
+  })
+
+  await step('open / : only the Home item of the sidebar is active', async () => {
+    const active = page.locator('[data-slot="sidebar"] [data-active]')
+    await expect(active).toHaveCount(1)
+    await expect(active).toHaveAccessibleName('Home')
+    // A false flag must not render as an attribute, because the data-active style matches any value.
+    await expect(page.locator('[data-active="false"]')).toHaveCount(0)
   })
 
   await step('choose About: URL /about, breadcrumb About', async () => {
@@ -27,6 +35,10 @@ export default async ({ page, step, capture, expect }) => {
     await page.getByRole('link', { name: 'Components' }).click()
     await expect(page).toHaveURL(/\/components$/)
     await expect(breadcrumb).toHaveText('Components')
+    const active = page.locator('[data-slot="sidebar"] [data-active]')
+    await expect(active).toHaveCount(2)
+    await expect(active.nth(0)).toHaveAccessibleName('Demos')
+    await expect(active.nth(1)).toHaveAccessibleName('Components')
   })
   await capture('components')
 
@@ -59,4 +71,25 @@ export default async ({ page, step, capture, expect }) => {
     await page.getByRole('button', { name: 'System theme' }).click()
     expect(await page.evaluate(() => localStorage.getItem('ui-theme'))).toBe('system')
   })
+
+  // The last step. No later step needs the desktop viewport.
+  const mobileSidebar = page.locator('[data-slot="sidebar"][data-mobile="true"]')
+  await step('mobile: the header toggle opens the sidebar sheet, 18rem wide, with no close button', async () => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(mobileSidebar).toHaveCount(0)
+    await toggleSidebar.click()
+    await expect(mobileSidebar).toBeVisible()
+    await settle()
+    const box = await mobileSidebar.boundingBox()
+    expect(Math.abs(box.width - 288)).toBeLessThanOrEqual(1)
+    await expect(mobileSidebar.getByRole('button', { name: 'Close' })).toHaveCount(0)
+  })
+  await capture('mobile-sidebar', { fullPage: false })
+  await step('mobile: choose About in the sheet: URL /about, the sheet closes', async () => {
+    await mobileSidebar.getByRole('link', { name: 'About' }).click()
+    await expect(page).toHaveURL(/\/about$/)
+    await expect(breadcrumb).toHaveText('About')
+    await expect(mobileSidebar).toHaveCount(0)
+  })
+  await capture('mobile-about', { fullPage: false })
 }

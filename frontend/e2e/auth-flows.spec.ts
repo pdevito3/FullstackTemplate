@@ -118,6 +118,10 @@ async function expandSwaggerTag(page: Page, tag: string) {
  * Helper to login via the IDP login page
  */
 async function loginAtIdp(page: Page, idp: IdpConfig) {
+  // Wait for the IDP login form, so that the origin is the IDP and not the app
+  await page.locator(idp.usernameSelector).waitFor({ state: 'visible' })
+  const idpOrigin = new URL(page.url()).origin
+
   // Fill username/email
   const usernameValue = idp.email || idp.username
   await page.fill(idp.usernameSelector, usernameValue!)
@@ -146,14 +150,20 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
       // Check if page is still open before waiting
       if (page.isClosed()) return
 
-      // Only click if the consent button becomes visible
+      // Wait for the consent page, or for the IDP to send the browser back, if it skipped consent.
       const consentButton = page.locator(idp.consentSelector)
-      if (await becomesVisible(consentButton, 5000)) {
+      const consentShown = consentButton.waitFor({ state: 'visible', timeout: 30000 }).then(() => true)
+      const leftIdp = page.waitForURL((url) => url.origin !== idpOrigin, { timeout: 30000 }).then(() => false)
+      consentShown.catch(() => {})
+      leftIdp.catch(() => {})
+      const hasConsent = await Promise.race([consentShown, leftIdp])
+      if (hasConsent) {
         await consentButton.click()
       }
-    } catch {
+    } catch (error) {
       // Page was closed - OAuth flow completed successfully without needing consent
-      return
+      if (page.isClosed()) return
+      throw error
     }
   }
 }
@@ -196,6 +206,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await expect(page.getByText(/authenticated/i).first()).toBeVisible({ timeout: 10000 })
 
       // Step 8: Click Logout
+      const appOrigin = new URL(page.url()).origin
       await logoutButton.click()
 
       // Step 9: Wait for logout to complete
@@ -206,10 +217,18 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const backToAppLink = page.getByRole('link', { name: /log back into/i })
       const duendeReturnLink = page.locator('a[href*="signout-callback-oidc"]')
 
-      // Wait for the app or for a return link, because some IDPs redirect to the app by themselves
+      // Wait for the app or for a return link, because some IDPs redirect to the app by themselves.
+      // The IDP login page also has a Login button, so count that button only on the app.
       const returnLink = backToAppLink.or(duendeReturnLink).first()
       const appLoginButton = page.getByRole('button', { name: /login/i })
-      await expect(appLoginButton.or(returnLink).first()).toBeVisible({ timeout: 30000 })
+      await expect
+        .poll(
+          async () =>
+            (await returnLink.isVisible()) ||
+            (new URL(page.url()).origin === appOrigin && (await appLoginButton.isVisible())),
+          { timeout: 30000 }
+        )
+        .toBe(true)
       if (await returnLink.isVisible()) {
         await returnLink.click()
       }
@@ -324,6 +343,9 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
       await secureEndpoint.locator('.opblock-summary').click()
     }
     await expect(secureEndpoint).toHaveClass(/\bis-open\b/)
+    // Swagger UI resolves an operation after it opens. An Execute before that fails with
+    // OperationNotFoundError and sends no request. The response example shows the resolved schema.
+    await expect(secureEndpoint.locator('.responses-wrapper')).toContainText('requestedBy', { timeout: 30000 })
 
     // Step 10: Click "Try it out" button if visible (might be auto-enabled)
     const tryItOutButton = secureEndpoint.getByRole('button', { name: 'Try it out' })

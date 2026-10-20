@@ -4,7 +4,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
+import { playwright } from '@vitest/browser-playwright'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { holdRequests, releaseRequests } from './vitest.commands'
 
 // Vendor libraries that the root layout loads on every page. Each group gets
 // its own chunk, so the entry chunk stays small and the browser can cache the
@@ -50,9 +52,44 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // Unit tests only. Playwright runs the e2e tests in e2e/.
+  // Unit tests (*.test.ts) run in Node. Component tests (*.test.tsx) run in a real headless Chromium.
+  // Playwright runs the e2e tests in e2e/.
   test: {
-    include: ['src/**/*.test.ts'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.ts'],
+          // Type-check the test files too, so that a type test (expectTypeOf, @ts-expect-error) fails pnpm test.
+          typecheck: {
+            enabled: true,
+            include: ['src/**/*.test.ts'],
+            tsconfig: './tsconfig.app.json',
+          },
+        },
+      },
+      {
+        extends: true,
+        // Vite finds the dependencies of the tests before the run. A dependency that Vite finds during
+        // the run reloads the test page, and the test fails.
+        optimizeDeps: {
+          entries: ['src/**/*.test.tsx'],
+        },
+        test: {
+          name: 'browser',
+          include: ['src/**/*.test.tsx'],
+          setupFiles: ['./src/test/browser-setup.ts'],
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            headless: true,
+            instances: [{ browser: 'chromium' }],
+            commands: { holdRequests, releaseRequests },
+          },
+        },
+      },
+    ],
   },
   server: {
     proxy: {

@@ -20,10 +20,11 @@ current_run_dir() {
   echo "$VERIFY_DIR/$(cat "$CURRENT_FILE")"
 }
 
-# Prints "<displayName> <state> <health> <url,url>" for each resource.
+# Prints one tab-separated line for each resource:
+# <displayName> TAB <state> TAB <health> TAB <url,url>.
 resource_table() {
   aspire describe --apphost "$APPHOST_DIR" --format Json \
-    | jq -r '.resources[] | "\(.displayName) \(.state) \(.healthStatus // "-") \([.urls[].url] | join(","))"'
+    | jq -r '.resources[] | [.displayName, .state, (.healthStatus // "-"), ([.urls[].url] | join(","))] | @tsv'
 }
 
 # url_of <displayName> <endpointName>

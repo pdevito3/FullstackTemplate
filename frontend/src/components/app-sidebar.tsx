@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router"
+import { useRouterState } from "@tanstack/react-router"
 import {
   Home01Icon,
   InformationCircleIcon,
@@ -28,6 +28,8 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-variants"
+import { useSidebar } from "@/components/ui/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const navItems = [
@@ -41,7 +43,7 @@ const navItems = [
     url: "/about",
     icon: InformationCircleIcon,
   },
-]
+] as const
 
 const demoItems = [
   {
@@ -52,11 +54,16 @@ const demoItems = [
     title: "Filter Builder",
     url: "/filter-demo",
   },
-]
+] as const
 
 export function AppSidebar() {
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
+  const { setOpenMobile } = useSidebar()
+
+  // On mobile the sidebar is a sheet over the page. Close it when a link is
+  // pressed, so the user sees the new page. On desktop the sheet is not used.
+  const closeMobile = () => setOpenMobile(false)
 
   // Check if any demo item is active
   const isDemoActive = demoItems.some((item) => currentPath === item.url || currentPath.startsWith(item.url + "/"))
@@ -66,7 +73,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link to="/" />}>
+            <SidebarMenuButton size="lg" href="/" onPress={closeMobile}>
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                 <span className="text-xs font-bold">FS</span>
               </div>
@@ -87,10 +94,7 @@ export function AppSidebar() {
                 const isActive = currentPath === item.url
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      render={<Link to={item.url} />}
-                      isActive={isActive}
-                    >
+                    <SidebarMenuButton href={item.url} isActive={isActive} tooltip={item.title} onPress={closeMobile}>
                       <HugeiconsIcon icon={item.icon} />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
@@ -99,14 +103,14 @@ export function AppSidebar() {
               })}
 
               {/* Demos submenu */}
-              <Collapsible defaultOpen={isDemoActive} className="group/collapsible">
+              <Collapsible defaultExpanded={isDemoActive} className="group/collapsible">
                 <SidebarMenuItem>
-                  <CollapsibleTrigger className="ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground gap-2 rounded-md p-2 text-left text-sm transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! focus-visible:ring-2 peer/menu-button flex w-full items-center overflow-hidden outline-hidden [&>span:last-child]:truncate [&_svg]:size-4 [&_svg]:shrink-0 h-8 data-[active]:bg-sidebar-accent data-[active]:text-sidebar-accent-foreground data-[active]:font-medium" data-active={isDemoActive || undefined}>
+                  <CollapsibleTrigger className={sidebarMenuButtonVariants()} data-active={isDemoActive || undefined}>
                     <HugeiconsIcon icon={DashboardSquare01Icon} />
                     <span>Demos</span>
                     <HugeiconsIcon
                       icon={ArrowRight01Icon}
-                      className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90"
+                      className="ml-auto transition-transform duration-200 group-data-[expanded]/collapsible:rotate-90"
                     />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -115,10 +119,7 @@ export function AppSidebar() {
                         const isActive = currentPath === item.url
                         return (
                           <SidebarMenuSubItem key={item.title} isActive={isActive}>
-                            <SidebarMenuSubButton
-                              render={<Link to={item.url} />}
-                              isActive={isActive}
-                            >
+                            <SidebarMenuSubButton href={item.url} isActive={isActive} onPress={closeMobile}>
                               <span>{item.title}</span>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>

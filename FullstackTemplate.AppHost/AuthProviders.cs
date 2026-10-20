@@ -344,6 +344,7 @@ public static class AuthProviders
 
         // Redis for Authentik with data persistence
         var redis = builder.AddContainer("authentik-redis", "redis", "alpine")
+            .WithEndpoint(targetPort: 6379, name: "tcp", scheme: "tcp")
             .WithArgs("--save", "60", "1", "--loglevel", "warning")
             .WithDataVolumeUnlessIsolated("/data");
 

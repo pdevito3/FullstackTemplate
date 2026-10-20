@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -29,41 +28,33 @@ function DataTableColumnHeader<TData, TValue>({
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-ml-3 h-8 data-[state=open]:bg-accent"
-            />
-          }
-        >
+      <DropdownMenuTrigger>
+        <Button variant="ghost" size="sm" className="-ml-3 h-8">
           <span>{title}</span>
           {column.getIsSorted() === "desc" ? (
-            <HugeiconsIcon icon={ArrowDown01Icon} className="ml-2 h-4 w-4" />
+            <HugeiconsIcon icon={ArrowDown01Icon} className="size-4" />
           ) : column.getIsSorted() === "asc" ? (
-            <HugeiconsIcon icon={ArrowUp01Icon} className="ml-2 h-4 w-4" />
+            <HugeiconsIcon icon={ArrowUp01Icon} className="size-4" />
           ) : (
-            <HugeiconsIcon icon={ArrowUpDownIcon} className="ml-2 h-4 w-4" />
+            <HugeiconsIcon icon={ArrowUpDownIcon} className="size-4" />
           )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-            <HugeiconsIcon icon={ArrowUp01Icon} className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+        </Button>
+        <DropdownMenu placement="bottom start" className="w-auto">
+          <DropdownMenuItem textValue="Asc" onAction={() => column.toggleSorting(false)}>
+            <HugeiconsIcon icon={ArrowUp01Icon} className="size-3.5 text-muted-foreground/70" />
             Asc
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-            <HugeiconsIcon icon={ArrowDown01Icon} className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+          <DropdownMenuItem textValue="Desc" onAction={() => column.toggleSorting(true)}>
+            <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5 text-muted-foreground/70" />
             Desc
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
-            <HugeiconsIcon icon={ViewOffSlashIcon} className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
+          <DropdownMenuItem textValue="Hide" onAction={() => column.toggleVisibility(false)}>
+            <HugeiconsIcon icon={ViewOffSlashIcon} className="size-3.5 text-muted-foreground/70" />
             Hide
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </DropdownMenu>
+      </DropdownMenuTrigger>
     </div>
   )
 }

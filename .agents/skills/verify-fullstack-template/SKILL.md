@@ -64,12 +64,14 @@ The harness is `scripts/browse.mjs`. It loads Playwright from `frontend/node_mod
 node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>]
 ```
 
-The command prints `ok` or `FAIL` for each step, then `PASSED` or `FAILED` and the evidence path. The exit code is 0 only when all steps pass.
+The command prints `ok` or `FAIL` for each step, then `PASSED` or `FAILED` and the evidence path. The exit code is 0 only when all steps pass and the page has no uncaught error.
+
+An uncaught error in the page (a Playwright `pageerror`) fails the run, even if all steps pass. A browser console error also fails the run, because an error boundary catches a render crash and only logs it. The one exception is `Failed to load resource`: `network.log` records those responses. After the `FAILED` line, the command prints each error on a line that starts with `[pageerror]`. A recipe does not need its own page-error check.
 
 To prove a feature in the map, run its recipe:
 
 ```bash
-for r in weather-forecast login-logout secure-weather navigation-and-theme filter-builder; do
+for r in weather-forecast login-logout secure-weather navigation-and-theme filter-builder components-showcase; do
   node $S/scripts/browse.mjs $S/recipes/$r.mjs
 done
 ```
@@ -81,7 +83,8 @@ To prove a new change, write a new recipe in the scratch folder of your run (for
 | `page`, `context` | The Playwright page and its browser context. `page.goto('/')` uses the `web` URL. |
 | `expect` | The Playwright `expect` with web-first assertions. |
 | `step(name, fn)` | Runs `fn` and logs `ok` or `FAIL` with the name. Put each user action and its assertion in one step. |
-| `capture(name)` | Saves a full-page screenshot and an ARIA snapshot. |
+| `capture(name, { fullPage })` | Waits for `settle()`, then saves a screenshot and an ARIA snapshot. The screenshot is full-page by default. For an open overlay, give `{ fullPage: false }`, because the resize for a full-page screenshot closes a Drawer. In a full-page screenshot of a scrolled page, the fixed sidebar shows at the scroll offset. This is normal. |
+| `settle()` | Waits two frames, then waits for all finite animations to end. Call it before a click in an animated overlay. Playwright retries a click on a moving element with a scroll, and React Aria closes a popover on scroll. |
 | `login(user)` | Logs in through the real BFF and Duende flow. `user` is `bob` (default) or `alice`. It tolerates a slow IdP (see `features/login-logout.md`). |
 | `logout()` | Logs out and follows the Duende return link. |
 | `stack` | The content of `stack.json` (`stack.urls.web`, `stack.urls.server`, and more). |
@@ -119,10 +122,10 @@ Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the
 | `steps.log` | Each step with `ok` or `FAIL` and its duration. Each capture with its URL. |
 | `NN-<name>.png` | A full-page screenshot. |
 | `NN-<name>.aria.txt` | The ARIA snapshot of the page, with the URL on the first line. |
-| `console.log` | Browser console errors and warnings, and page errors. |
+| `console.log` | Browser console errors and warnings, and page errors. Each page error starts with `[pageerror]`. |
 | `network.log` | Each response with status 400 or more. |
 | `trace.zip` | The Playwright trace. Open it with `pnpm --dir frontend exec playwright show-trace <path>`. |
-| `result.json` | `passed` or `failed`, with the error message. |
+| `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. |
 | `NN-failure.png` | A capture of the page at the time of the failure. |
 
 `artifacts/` is in `.gitignore`. The evidence stays after cleanup.

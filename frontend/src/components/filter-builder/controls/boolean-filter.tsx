@@ -1,19 +1,12 @@
 import { Button } from '@/components/ui/button'
-import type { Filter } from '../types'
+import type { Filter, FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
 
-interface BooleanFilterProps {
-  propertyKey: string
-  propertyLabel: string
-  onSubmit: (filter: Omit<Filter, 'id'>) => void
-  initialFilter?: Filter // Used by edit modal, but not needed for boolean (click = submit)
-}
+// A click on a value submits, so the control does not read initialFilter.
+type BooleanFilterProps = Pick<FilterControlProps, 'config' | 'onSubmit'>
 
-export function BooleanFilter({
-  propertyKey,
-  propertyLabel,
-  onSubmit,
-}: BooleanFilterProps) {
+export function BooleanFilter({ config, onSubmit }: BooleanFilterProps) {
+  const { propertyKey, propertyLabel } = config
   const handleSubmit = (selectedValue: boolean) => {
     onSubmit({
       propertyKey,
@@ -30,14 +23,14 @@ export function BooleanFilter({
       <div className="flex gap-2">
         <Button
           variant="outline"
-          onClick={() => handleSubmit(true)}
+          onPress={() => handleSubmit(true)}
           className="flex-1"
         >
           True
         </Button>
         <Button
           variant="outline"
-          onClick={() => handleSubmit(false)}
+          onPress={() => handleSubmit(false)}
           className="flex-1"
         >
           False

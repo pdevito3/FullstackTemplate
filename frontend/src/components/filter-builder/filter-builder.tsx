@@ -4,7 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { FilterEditModal } from './controls/filter-edit-modal'
+import { FilterControlDialog } from './controls/filter-control'
 import { FilterBadge } from './filter-badge'
 import { FilterGroup } from './filter-group'
 import { FilterPropertyMenu } from './filter-property-menu'
@@ -12,6 +12,7 @@ import type { Filter, FilterBuilderProps } from './types'
 import { isFilter } from './types'
 import { canCreateGroup } from './utils/depth'
 import { LogicalOperators } from './utils/operators'
+import { getFilterName } from './utils/filter-name'
 import { useFilterBuilderReducer } from './use-filter-builder-reducer'
 
 export function FilterBuilder({
@@ -25,7 +26,6 @@ export function FilterBuilder({
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editingFilter, setEditingFilter] = useState<Filter | null>(null)
-  const [editModalOpen, setEditModalOpen] = useState(false)
   const [isGroupingMode, setIsGroupingMode] = useState(false)
 
   const handleAddFilter = (filter: Omit<Filter, 'id'>) => {
@@ -64,14 +64,12 @@ export function FilterBuilder({
 
   const handleEditFilter = (filter: Filter) => {
     setEditingFilter(filter)
-    setEditModalOpen(true)
   }
 
   const handleUpdateFilter = (updatedFilter: Omit<Filter, 'id'>) => {
     if (!editingFilter) return
 
     actions.updateFilter(editingFilter.id, updatedFilter)
-    setEditModalOpen(false)
     setEditingFilter(null)
   }
 
@@ -134,16 +132,16 @@ export function FilterBuilder({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleEnterGroupingMode}
+              onPress={handleEnterGroupingMode}
             >
-              <HugeiconsIcon icon={FolderAddIcon} className="size-4 mr-2" />
+              <HugeiconsIcon icon={FolderAddIcon} className="size-4" />
               Group Filters
             </Button>
 
             <Button
               variant="outline"
               size="sm"
-              onClick={handleClearAll}
+              onPress={handleClearAll}
             >
               Clear
             </Button>
@@ -155,10 +153,10 @@ export function FilterBuilder({
             <Button
               variant="default"
               size="sm"
-              onClick={handleCreateGroup}
-              disabled={!canGroup}
+              onPress={handleCreateGroup}
+              isDisabled={!canGroup}
             >
-              <HugeiconsIcon icon={FolderAddIcon} className="size-4 mr-2" />
+              <HugeiconsIcon icon={FolderAddIcon} className="size-4" />
               {selectedCount > 0
                 ? `Group Selected (${selectedCount})`
                 : 'Group Filters'}
@@ -167,7 +165,7 @@ export function FilterBuilder({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleCancelGrouping}
+              onPress={handleCancelGrouping}
             >
               Cancel
             </Button>
@@ -179,7 +177,7 @@ export function FilterBuilder({
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleToggleLogicalOperator}
+            onPress={handleToggleLogicalOperator}
             className="h-7 px-2 text-xs"
           >
             Switch to {state.rootLogicalOperator === LogicalOperators.AND ? LogicalOperators.OR : LogicalOperators.AND}
@@ -194,6 +192,7 @@ export function FilterBuilder({
               <div className="flex items-center gap-1.5">
                 {isGroupingMode && (
                   <Checkbox
+                    aria-label={`Select filter: ${getFilterName(item)}`}
                     isSelected={selectedIds.has(item.id)}
                     onChange={() => handleToggleSelection(item.id)}
                     className="shrink-0"
@@ -242,7 +241,7 @@ export function FilterBuilder({
               key={preset.label}
               variant="outline"
               size="sm"
-              onClick={() => {
+              onPress={() => {
                 actions.applyPreset(preset.filter)
                 setSelectedIds(new Set())
               }}
@@ -260,17 +259,15 @@ export function FilterBuilder({
         </div>
       )}
 
-      {/* Edit filter modal (supports all filter types) */}
       {editingFilter && (
-        <FilterEditModal
-          isOpen={editModalOpen}
-          onClose={() => {
-            setEditModalOpen(false)
-            setEditingFilter(null)
-          }}
+        <FilterControlDialog
+          config={
+            filterOptions.find((opt) => opt.propertyKey === editingFilter.propertyKey) ??
+            editingFilter
+          }
+          initialFilter={editingFilter}
           onSubmit={handleUpdateFilter}
-          filter={editingFilter}
-          filterOptions={filterOptions}
+          onCancel={() => setEditingFilter(null)}
         />
       )}
     </div>

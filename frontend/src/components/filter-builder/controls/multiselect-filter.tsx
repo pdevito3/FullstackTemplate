@@ -1,41 +1,33 @@
 import { useState, useMemo } from 'react'
-import { ArrowDown01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import type { OperatorType, Filter, FilterOption } from '../types'
-import { getOperatorLabel, Operators } from '../utils/operators'
+import type { OperatorType, Filter, FilterControlProps, FilterOption } from '../types'
+import { getDefaultOperator, Operators, pickOperator } from '../utils/operators'
+import { OperatorSelect } from './operator-select'
 
-interface MultiSelectFilterProps {
-  propertyKey: string
-  propertyLabel: string
-  options: FilterOption[]
-  onSubmit: (filter: Omit<Filter, 'id'>) => void
-  initialFilter?: Filter // For editing existing filter
-  allowedOperators?: OperatorType[]
-}
+// A stable empty list, so that the memos below do not run again on each render.
+const NO_OPTIONS: FilterOption[] = []
+const DEFAULT_OPERATORS: OperatorType[] = [Operators.IN, Operators.NOT_IN]
 
 export function MultiSelectFilter({
-  propertyKey,
-  propertyLabel,
-  options,
-  onSubmit,
+  config,
   initialFilter,
-  allowedOperators = [Operators.IN, Operators.NOT_IN],
-}: MultiSelectFilterProps) {
+  onSubmit,
+  autoFocus = false,
+}: FilterControlProps) {
+  const {
+    propertyKey,
+    propertyLabel,
+    options = NO_OPTIONS,
+    operators: allowedOperators = DEFAULT_OPERATORS,
+  } = config
   const [searchTerm, setSearchTerm] = useState('')
   const [selected, setSelected] = useState<string[]>(
     (initialFilter?.value as string[]) || []
   )
   const [operator, setOperator] = useState<OperatorType>(
-    initialFilter?.operator || Operators.IN
+    pickOperator(allowedOperators, initialFilter?.operator ?? getDefaultOperator('multiselect'))
   )
   const [matchAll, setMatchAll] = useState(initialFilter?.matchAll || false)
 
@@ -101,24 +93,12 @@ export function MultiSelectFilter({
   return (
     <div className="flex flex-col gap-2 w-64 p-2">
       {/* Operator selector */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium">Operator</label>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="outline" size="sm" className="w-full justify-between" />}
-          >
-            {getOperatorLabel(operator)}
-            <HugeiconsIcon icon={ArrowDown01Icon} className="size-4 opacity-50" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {allowedOperators.map((op) => (
-              <DropdownMenuItem key={op} onClick={() => setOperator(op)}>
-                {getOperatorLabel(op)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <OperatorSelect
+        operators={allowedOperators}
+        value={operator}
+        onChange={setOperator}
+        size="sm"
+      />
 
       {/* Match all toggle */}
       <Checkbox
@@ -128,12 +108,13 @@ export function MultiSelectFilter({
         <span className="text-sm">All must match</span>
       </Checkbox>
 
-      {/* Search input */}
+      {/* Search input. Not autoFocus by default: in the Add Filter submenu it takes focus from the menu and breaks keyboard navigation. */}
       <Input
+        autoFocus={autoFocus}
+        aria-label="Filter options"
         placeholder="Filter options..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        autoFocus
         className="h-8"
       />
 
@@ -160,7 +141,7 @@ export function MultiSelectFilter({
                 variant="ghost"
                 size="xs"
                 className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => selectOnly(option.value)}
+                onPress={() => selectOnly(option.value)}
               >
                 Only
               </Button>
@@ -171,10 +152,10 @@ export function MultiSelectFilter({
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-2 border-t">
-        <Button variant="outline" size="sm" onClick={toggleAll}>
+        <Button variant="outline" size="sm" onPress={toggleAll}>
           {allRootSelected ? 'Deselect All' : 'Select All'}
         </Button>
-        <Button size="sm" onClick={handleSubmit} disabled={selected.length === 0}>
+        <Button size="sm" onPress={handleSubmit} isDisabled={selected.length === 0}>
           {initialFilter ? 'Update' : 'Add'} ({selected.length})
         </Button>
       </div>

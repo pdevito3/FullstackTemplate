@@ -1,5 +1,13 @@
-import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
+import {
+  createRootRoute,
+  Outlet,
+  useRouter,
+  useRouterState,
+  type NavigateOptions,
+  type ToOptions,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { RouterProvider } from 'react-aria-components'
 import {
   SidebarInset,
   SidebarProvider,
@@ -14,6 +22,14 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb'
 
+// Lets React Aria links (href) navigate with TanStack Router.
+declare module 'react-aria-components' {
+  interface RouterConfig {
+    href: ToOptions['to']
+    routerOptions: Omit<NavigateOptions, keyof ToOptions>
+  }
+}
+
 export const Route = createRootRoute({
   component: RootComponent,
 })
@@ -26,35 +42,41 @@ const routeNames: Record<string, string> = {
 }
 
 function RootComponent() {
+  const router = useRouter()
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
   const pageName = routeNames[currentPath] ?? 'Page'
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{pageName}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+    <RouterProvider
+      navigate={(to, options) => router.navigate({ ...options, to })}
+      useHref={(to) => router.buildLocation({ to }).href}
+    >
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 aria-[orientation=vertical]:h-4"
+              />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{pageName}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <Outlet />
           </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <Outlet />
-        </div>
-      </SidebarInset>
-      <TanStackRouterDevtools position="bottom-right" />
-    </SidebarProvider>
+        </SidebarInset>
+        <TanStackRouterDevtools position="bottom-right" />
+      </SidebarProvider>
+    </RouterProvider>
   )
 }

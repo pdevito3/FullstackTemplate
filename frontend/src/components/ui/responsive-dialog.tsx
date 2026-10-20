@@ -1,102 +1,122 @@
 "use client"
 
 import * as React from "react"
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import {
+  Dialog as DialogPrimitive,
+  DialogTrigger as DialogTriggerPrimitive,
+  Heading,
+  Modal as ModalPrimitive,
+  ModalOverlay as ModalOverlayPrimitive,
+  type DialogTriggerProps as DialogTriggerPrimitiveProps,
+  type ModalOverlayProps as ModalOverlayPrimitiveProps,
+} from "@animate-ui/react/primitives/react-aria"
 import { Cancel01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
-function ResponsiveDialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="responsive-dialog" {...props} />
-}
+import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Button } from "@/components/ui/button"
+import {
+  DialogDescriptionContext,
+  useDialogDescriptionId,
+} from "@/components/ui/dialog-description"
 
-function ResponsiveDialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="responsive-dialog-trigger" {...props} />
-}
-
-function ResponsiveDialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
-  return <DialogPrimitive.Portal data-slot="responsive-dialog-portal" {...props} />
-}
-
-function ResponsiveDialogClose({ ...props }: DialogPrimitive.Close.Props) {
-  return <DialogPrimitive.Close data-slot="responsive-dialog-close" {...props} />
-}
-
-function ResponsiveDialogOverlay({
-  className,
-  ...props
-}: DialogPrimitive.Backdrop.Props) {
+function ResponsiveDialogTrigger({ ...props }: DialogTriggerPrimitiveProps) {
   return (
-    <DialogPrimitive.Backdrop
-      data-slot="responsive-dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
-        "data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 duration-200",
-        className
-      )}
+    <DialogTriggerPrimitive {...props} />
+  )
+}
+
+function ResponsiveDialogClose({
+  className,
+  variant = "outline",
+  size = "default",
+  ...props
+}: React.ComponentProps<typeof Button>) {
+  return (
+    <Button
+      slot="close"
+      data-slot="responsive-dialog-close"
+      variant={variant}
+      size={size}
+      className={cn(className)}
       {...props}
     />
   )
 }
 
-function ResponsiveDialogContent({
+/**
+ * A dialog that is a bottom sheet on mobile and a centered modal on desktop.
+ * Put it inside a `ResponsiveDialogTrigger`, or control it with `isOpen`.
+ */
+function ResponsiveDialog({
   className,
   children,
   showCloseButton = true,
+  isDismissable = true,
   ...props
-}: DialogPrimitive.Popup.Props & {
+}: Omit<ModalOverlayPrimitiveProps, "className" | "children"> & {
+  className?: string
+  children: React.ReactNode
   showCloseButton?: boolean
 }) {
+  const isMobile = useIsMobile()
+  const [descriptionId, setDescriptionId] = React.useState<string>()
+
   return (
-    <ResponsiveDialogPortal>
-      <ResponsiveDialogOverlay />
-      <DialogPrimitive.Popup
+    <ModalOverlayPrimitive
+      data-slot="responsive-dialog-overlay"
+      isDismissable={isDismissable}
+      className={cn(
+        "fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+      )}
+      {...props}
+    >
+      <ModalPrimitive
         data-slot="responsive-dialog-content"
+        // The Animate UI Modal reads data-side: with "bottom" it slides the
+        // content up as a sheet, without it it plays the dialog animation.
+        data-side={isMobile ? "bottom" : undefined}
         className={cn(
-          "bg-background text-sm outline-none z-50 fixed w-full",
-          "ring-1 ring-foreground/10",
+          "fixed z-50 w-full bg-background text-sm ring-1 ring-foreground/10 outline-none",
           // Mobile: bottom sheet
-          "bottom-0 left-0 right-0 max-h-[85vh] rounded-t-xl",
-          "data-[open]:animate-in data-[closed]:animate-out",
-          "data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom",
-          // Desktop: centered modal
-          "md:bottom-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2",
-          "md:max-w-md md:max-h-[calc(100vh-4rem)] md:rounded-xl",
-          "md:data-[closed]:slide-out-to-bottom-0 md:data-[open]:slide-in-from-bottom-0",
-          "md:data-[closed]:fade-out-0 md:data-[open]:fade-in-0",
-          "md:data-[closed]:zoom-out-95 md:data-[open]:zoom-in-95",
-          "duration-200",
+          "right-0 bottom-0 left-0 max-h-[85vh] rounded-t-xl",
+          "md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[calc(100vh-4rem)] md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl",
           className
         )}
-        {...props}
       >
-        {/* Drag handle for mobile */}
-        <div className="mx-auto mt-3 h-1 w-12 shrink-0 rounded-full bg-muted md:hidden" />
-        <div className="overflow-y-auto p-4 md:p-4">
-          {children}
-        </div>
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="responsive-dialog-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-2 right-2 md:top-2 md:right-2"
-                size="icon-sm"
-              />
-            }
-          >
-            <HugeiconsIcon icon={Cancel01Icon} />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Popup>
-    </ResponsiveDialogPortal>
+        <DialogPrimitive
+          data-slot="responsive-dialog"
+          aria-describedby={descriptionId}
+          className="relative flex max-h-[inherit] flex-col outline-none"
+        >
+          {/* Drag handle for mobile */}
+          <div className="mx-auto mt-3 h-1 w-12 shrink-0 rounded-full bg-muted md:hidden" />
+          <div className="overflow-y-auto p-4">
+            <DialogDescriptionContext.Provider value={setDescriptionId}>
+              {children}
+            </DialogDescriptionContext.Provider>
+          </div>
+          {showCloseButton && (
+            <ResponsiveDialogClose
+              variant="ghost"
+              className="absolute top-2 right-2"
+              size="icon-sm"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} />
+              <span className="sr-only">Close</span>
+            </ResponsiveDialogClose>
+          )}
+        </DialogPrimitive>
+      </ModalPrimitive>
+    </ModalOverlayPrimitive>
   )
 }
 
-function ResponsiveDialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function ResponsiveDialogHeader({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="responsive-dialog-header"
@@ -108,7 +128,6 @@ function ResponsiveDialogHeader({ className, ...props }: React.ComponentProps<"d
 
 function ResponsiveDialogFooter({
   className,
-  children,
   ...props
 }: React.ComponentProps<"div">) {
   return (
@@ -119,17 +138,22 @@ function ResponsiveDialogFooter({
         className
       )}
       {...props}
-    >
-      {children}
-    </div>
+    />
   )
 }
 
-function ResponsiveDialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+function ResponsiveDialogTitle({
+  className,
+  ...props
+}: Omit<React.ComponentProps<typeof Heading>, "slot">) {
   return (
-    <DialogPrimitive.Title
+    <Heading
+      slot="title"
       data-slot="responsive-dialog-title"
-      className={cn("text-base font-semibold leading-none md:text-sm md:font-medium", className)}
+      className={cn(
+        "text-base leading-none font-semibold md:text-sm md:font-medium",
+        className
+      )}
       {...props}
     />
   )
@@ -137,13 +161,15 @@ function ResponsiveDialogTitle({ className, ...props }: DialogPrimitive.Title.Pr
 
 function ResponsiveDialogDescription({
   className,
+  id,
   ...props
-}: DialogPrimitive.Description.Props) {
+}: React.ComponentProps<"div">) {
   return (
-    <DialogPrimitive.Description
+    <div
+      id={useDialogDescriptionId(id)}
       data-slot="responsive-dialog-description"
       className={cn(
-        "text-muted-foreground text-sm",
+        "text-sm text-muted-foreground",
         "*:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className
       )}
@@ -154,13 +180,10 @@ function ResponsiveDialogDescription({
 
 export {
   ResponsiveDialog,
-  ResponsiveDialogTrigger,
-  ResponsiveDialogPortal,
-  ResponsiveDialogOverlay,
   ResponsiveDialogClose,
-  ResponsiveDialogContent,
-  ResponsiveDialogHeader,
-  ResponsiveDialogFooter,
-  ResponsiveDialogTitle,
   ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
 }

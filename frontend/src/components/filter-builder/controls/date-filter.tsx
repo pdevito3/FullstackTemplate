@@ -9,16 +9,8 @@ import { JollyCalendar, JollyRangeCalendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { DateType, DateValue, Filter } from '../types'
+import type { DateValue, Filter, FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
-
-interface DateFilterProps {
-  propertyKey: string
-  propertyLabel: string
-  onSubmit: (filter: Omit<Filter, 'id'>) => void
-  initialFilter?: Filter
-  dateType?: DateType // 'date' for date-only, 'datetime' for date+time
-}
 
 type DateMode = 'before' | 'after' | 'between' | 'on'
 
@@ -52,12 +44,13 @@ function applyTimeToDate(date: Date, timeStr: string): Date {
 }
 
 export function DateFilter({
-  propertyKey,
-  propertyLabel,
-  onSubmit,
+  config,
   initialFilter,
-  dateType = 'date',
-}: DateFilterProps) {
+  onSubmit,
+  autoFocus = false,
+}: FilterControlProps) {
+  // 'date' for date-only, 'datetime' for date+time
+  const { propertyKey, propertyLabel, dateType = 'date' } = config
   const initialDateValue = initialFilter?.value as DateValue | undefined
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
@@ -85,7 +78,8 @@ export function DateFilter({
       ? 'on'
       : initialDateValue?.mode || 'on'
   )
-  const [date, setDate] = useState<CalendarDate | undefined>(initialCalendarDate)
+  // null, not undefined, so that the calendar is controlled from the first render.
+  const [date, setDate] = useState<CalendarDate | null>(initialCalendarDate ?? null)
   const [dateRange, setDateRange] = useState<RangeValue<AriaDateValue> | null>(initialDateRange)
   const [exclude, setExclude] = useState(
     initialDateValue?.mode === 'excluding'
@@ -166,7 +160,7 @@ export function DateFilter({
             key={m.value}
             variant={mode === m.value ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setMode(m.value)}
+            onPress={() => setMode(m.value)}
             className="flex-1 min-w-0"
           >
             {m.label}
@@ -192,6 +186,7 @@ export function DateFilter({
             onChange={setDateRange}
             showQuickSelects
             showDateInput
+            autoFocus={autoFocus}
           />
         ) : (
           <JollyCalendar
@@ -199,6 +194,7 @@ export function DateFilter({
             onChange={setDate}
             showQuickSelects
             showDateInput
+            autoFocus={autoFocus}
           />
         )}
       </div>
@@ -244,7 +240,7 @@ export function DateFilter({
       )}
 
       {/* Submit button */}
-      <Button onClick={handleSubmit} disabled={!isValid} className="w-full">
+      <Button onPress={handleSubmit} isDisabled={!isValid} className="w-full">
         {initialFilter ? 'Update' : 'Add'} Filter
       </Button>
     </div>

@@ -37,7 +37,7 @@ function About() {
                 <strong className="text-foreground">Tailwind CSS</strong> - Styling
               </li>
               <li>
-                <strong className="text-foreground">Base UI + shadcn</strong> - Component library
+                <strong className="text-foreground">React Aria Components + shadcn</strong> - Component library, animated with Animate UI
               </li>
               <li>
                 <strong className="text-foreground">Duende BFF</strong> - Backend-for-Frontend security

@@ -26,3 +26,6 @@ dist-ssr
 # Playwright test output
 /test-results/
 /playwright-report/
+
+# Vitest browser mode output (failure screenshots)
+/.vitest/

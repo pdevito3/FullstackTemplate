@@ -44,11 +44,11 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Login and logout](./login-logout.md) covers the BFF login through the Duende demo IdP, the session, and logout.
 - [Secure weather](./secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
 - [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the Demos submenu, the breadcrumb, sidebar collapse, and the light/dark/system theme.
-- [Filter builder](./filter-builder.md) covers the demo at `/filter-demo`: add a filter, presets, AND/OR, and Clear.
+- [Filter builder](./filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
+- [Components showcase](./components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
 
 ## Not mapped yet
 
-- The Components demo page at `/components`. `navigation-and-theme` only opens it.
-- Filter grouping, the date, number, and boolean filter dialogs, and filter edit on the filter builder.
+- The boolean filter dialog and the add path of the date filter dialog on the filter builder. The filter builder map covers only the date edit dialog.
 - Swagger UI on the server (`/swagger`). The Playwright spec `frontend/e2e/auth-flows.spec.ts` covers it.
 - The Users and Tenants JSON API. It has no UI.

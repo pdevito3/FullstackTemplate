@@ -14,9 +14,11 @@ pnpm install
 pnpm dev      # dev server
 pnpm build    # production build
 pnpm lint     # ESLint
-pnpm test     # Vitest unit tests (src/**/*.test.ts)
+pnpm test     # Vitest: unit tests (src/**/*.test.ts) in Node, component tests (src/**/*.test.tsx) in headless Chromium
 pnpm generate:api  # API contract from the OpenAPI document
 ```
+
+The component tests use Vitest browser mode with the Playwright provider. Before the first `pnpm test`, install Chromium once with `pnpm exec playwright install chromium`. A component test renders with `render` from `vitest-browser-react`. Find an element in an overlay with `page` from `vitest/browser`, because an overlay renders outside the test container.
 
 ## Project structure
 
@@ -28,7 +30,7 @@ frontend/src/
 │       ├── apis/          # API functions, query hooks, and *.keys.ts
 │       └── types/         # Types for this area
 ├── components/
-│   ├── ui/                # Shared UI components (shadcn/ui and Base UI)
+│   ├── ui/                # Shared UI components (shadcn/ui, React Aria, and Animate UI)
 │   ├── filter-builder/    # QueryKit filter component
 │   ├── app-sidebar.tsx    # Main navigation
 │   ├── theme-context.ts   # Theme context and useTheme

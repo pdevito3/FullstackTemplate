@@ -11,7 +11,7 @@ import { test, expect, Locator, Page } from '@playwright/test'
  * - Keycloak/FusionAuth/Authentik: admin@example.com / password123!
  * - Duende Demo: bob / bob
  *
- * Run with: pnpm exec playwright test
+ * Run with: pnpm test:e2e:keycloak (against Keycloak in the stack, see docs/authentication.md)
  * Debug with: pnpm exec playwright test --debug
  * UI mode: pnpm exec playwright test --ui
  */
@@ -304,9 +304,8 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
 
     // Step 7: Close the modal
     // Swagger UI exchanges the code for a token after the popup closes. Wait for the result, not a fixed time.
-    // The token call goes to the IDP, and the Duende demo IDP can take more than 15 seconds to answer
     await expect(page.locator('.modal-ux').getByRole('heading', { name: 'Authorized' })).toBeVisible({
-      timeout: 30000,
+      timeout: 15000,
     })
     const closeButton = page.locator('.modal-ux button.btn-done')
     if (await closeButton.isVisible()) {

@@ -9,7 +9,7 @@ The primary surface is the React SPA in a browser. All browser traffic goes thro
 
 Other surfaces, not in the feature map yet:
 
-- Swagger UI on the server at `<server https URL>/swagger`. The Playwright spec `frontend/e2e/auth-flows.spec.ts` drives it.
+- Swagger UI on the server at `<server https URL>/swagger`. The Playwright spec `frontend/e2e/auth-flows.spec.ts` drives it. This spec uses Keycloak in the stack, not the Duende demo. To run it, start a stack with `AuthProvider=Keycloak` (not `launch.sh`), and run `pnpm test:e2e:keycloak` in `frontend`. See the "E2E tests" section of `docs/authentication.md`.
 - The JSON API (`/api/v1/users`, `/api/v1/tenants`). It has no UI. Call it through the BFF from a logged-in page with `fetch` and the `X-CSRF: 1` header.
 
 All helpers are in `.agents/skills/verify-fullstack-template/scripts/`. Run them from the checkout root. Below, `$S` means that directory:

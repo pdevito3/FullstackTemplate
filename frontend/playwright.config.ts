@@ -3,13 +3,13 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Playwright configuration for IDP authentication flow testing.
  *
- * Before running tests:
- * 1. Start the Aspire app with the desired IDP: cd FullstackTemplate.AppHost && aspire run
- * 2. Wait for all services to be healthy
- * 3. Run tests: pnpm exec playwright test
+ * The tests run against Keycloak in an isolated Aspire stack. From the checkout root:
+ * 1. Start the stack: AuthProvider=Keycloak dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+ * 2. Wait until the server, the BFF, and the webfrontend are healthy: dotnet aspire wait <resource> --status healthy
+ * 3. In frontend, run the tests: pnpm test:e2e:keycloak
  *
- * The tests use http://localhost:5173 by default. For an isolated run (`aspire run --isolated`),
- * set BASE_URL to the webfrontend URL from `dotnet aspire describe webfrontend`.
+ * The script e2e/run-against-stack.ts reads the URLs from `dotnet aspire describe` and sets BASE_URL, SERVER_URL,
+ * and IDP. See docs/authentication.md.
  */
 export default defineConfig({
   testDir: './e2e',

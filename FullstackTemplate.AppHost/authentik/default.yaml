@@ -36,6 +36,8 @@ entries:
         - matching_mode: "strict"
           url: !Format ["%s/signin-oidc", !Env APP_FRONTEND_URL]
         - matching_mode: "strict"
+          url: !Format ["%s/signin-oidc", !Env APP_BFF_URL]
+        - matching_mode: "strict"
           url: "https://localhost:5173/signin-oidc"
         - matching_mode: "strict"
           url: "http://localhost:7130/signin-oidc"

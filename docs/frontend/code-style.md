@@ -42,16 +42,31 @@ export function UserCard({ user, isCompact = false, onSelect }: UserCardProps) {
     return <p>No user found.</p>
   }
 
-  const handleClick = () => onSelect(user.id)
+  const handlePress = () => onSelect(user.id)
 
   return (
-    <button onClick={handleClick}>
+    <Button variant="ghost" onPress={handlePress}>
       {user.fullName}
       {!isCompact && <span>{user.email}</span>}
-    </button>
+    </Button>
   )
 }
 ```
+
+## UI components
+
+The components in `components/ui/` use React Aria Components (`react-aria-components`). They come from the shadcn `aria-nova` style. [Animate UI](https://animate-ui.com) animates some of them with Motion. The import source of the primitives shows which components are animated:
+
+- The animated components import the primitives from `@animate-ui/react/primitives/react-aria`. This package re-exports React Aria and adds the animations. The animated components are `checkbox`, `collapsible`, `combobox`, `command`, `dialog`, `dropdown-menu`, `popover`, `responsive-dialog`, `select`, `sheet`, and `tooltip`.
+- All other components import the primitives from `react-aria-components` directly.
+- An animated component imports from `react-aria-components` what Animate UI does not re-export, for example `OverlayTriggerStateContext` in `select.tsx`.
+
+1. Use a component from `components/ui/`. If it does not exist, add it with `pnpm dlx shadcn@latest add <name>`. Then run `pnpm dlx @animate-ui/cli@latest animate <name>`. If Animate UI has an animation for the component, import the primitives from `@animate-ui/react/primitives/react-aria`. If not, import them from `react-aria-components`. Do not add a second UI library.
+2. Use the React Aria props: `onPress` (not `onClick`) and `isDisabled` (not `disabled`) on a `Button`. Use `onAction` on a menu item.
+3. Put the trigger and its overlay as children of the trigger component. For example, put a `Button` and a `DropdownMenu` in a `DropdownMenuTrigger`. Do not use a `render` prop.
+4. Give a `Dialog` or a `Popover` a title or an `aria-label`. Give an icon-only `Button` an `aria-label`. Use a `Tooltip`, not the `title` attribute.
+5. Use `href` for a link. The `RouterProvider` in `routes/__root.tsx` sends React Aria links to TanStack Router.
+6. To show a toast, call `Notification.success`, `error`, `info`, or `warning` from `@/components/notification`.
 
 ## Styles
 

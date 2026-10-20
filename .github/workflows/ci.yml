@@ -71,6 +71,11 @@ jobs:
         working-directory: frontend
         run: pnpm lint
 
+      # The component tests (*.test.tsx) run in a headless Chromium with Vitest browser mode.
+      - name: Install Chromium for the component tests
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Test the frontend
         working-directory: frontend
         run: pnpm test

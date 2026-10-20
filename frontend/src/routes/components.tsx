@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { Dialog, type Key } from 'react-aria-components'
 import { today, getLocalTimeZone, type DateValue } from '@internationalized/date'
-import { Notification03Icon, Calendar03Icon, ArrowUpDownIcon, Mail01Icon, Add01Icon, Settings01Icon, UserIcon } from "@hugeicons/core-free-icons"
+import { Notification03Icon, Calendar03Icon, ArrowUpDownIcon, Mail01Icon, Add01Icon, Settings01Icon, UserIcon, Calculator01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
 import { Button } from '@/components/ui/button'
@@ -13,33 +14,53 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Notification } from '@/components/notification'
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
+import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverTrigger } from '@/components/ui/popover'
 import { JollyCalendar } from '@/components/ui/calendar'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { JollyDatePicker } from '@/components/ui/date-picker'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import {
   Table,
@@ -53,41 +74,24 @@ import {
   Select,
   SelectTrigger,
   SelectValue,
-  SelectIcon,
   SelectContent,
   SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
   SelectGroup,
-  SelectGroupLabel,
+  SelectLabel,
   SelectSeparator,
 } from '@/components/ui/select'
 import {
   Combobox,
-  ComboboxInput,
-  ComboboxPortal,
-  ComboboxPositioner,
-  ComboboxPopup,
-  ComboboxList,
-  ComboboxItem,
-  ComboboxItemIndicator,
+  ComboboxContent,
   ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
 } from '@/components/ui/combobox'
-import {
-  Autocomplete,
-  AutocompleteInput,
-  AutocompletePortal,
-  AutocompletePositioner,
-  AutocompletePopup,
-  AutocompleteList,
-  AutocompleteItem,
-  AutocompleteEmpty,
-} from '@/components/ui/autocomplete'
-import { useAutocompleteFilter } from '@/components/ui/use-autocomplete-filter'
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select'
 import {
   ResponsiveDialog,
-  ResponsiveDialogContent,
+  ResponsiveDialogClose,
   ResponsiveDialogDescription,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
@@ -137,15 +141,15 @@ const countries = [
 function ComponentsPage() {
   const [date, setDate] = useState<DateValue>(today(getLocalTimeZone()))
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false)
-  const [selectedFramework, setSelectedFramework] = useState<Framework | null>(null)
-  const [selectedLanguages, setSelectedLanguages] = useState<MultiSelectOption[]>([])
-  const [comboboxValue, setComboboxValue] = useState<Framework | null>(null)
+  const [isCommandOpen, setIsCommandOpen] = useState(false)
+  const [selectedFramework, setSelectedFramework] = useState<Key | null>(null)
+  const [selectedLanguages, setSelectedLanguages] = useState<Key[]>([])
+  const [comboboxValue, setComboboxValue] = useState<Key | null>(null)
   const [autocompleteValue, setAutocompleteValue] = useState('')
-  const { contains } = useAutocompleteFilter({ sensitivity: 'base' })
+  const [autocompleteKey, setAutocompleteKey] = useState<Key | null>(null)
 
-  const filteredCountries = countries.filter((country) =>
-    contains(country.label, autocompleteValue)
-  )
+  const frameworkLabel = (key: Key | null) =>
+    frameworks.find((framework) => framework.value === key)?.label
 
   const tableData = [
     { id: 1, name: 'John Doe', email: 'john@example.com', status: 'Active' },
@@ -154,14 +158,14 @@ function ComponentsPage() {
   ]
 
   return (
-    <TooltipProvider>
+    <>
       <div className="w-full min-h-screen bg-linear-to-br from-bg-gradient-start to-bg-gradient-end text-text-primary">
         <div className="max-w-[1200px] mx-auto px-8 py-10 max-md:px-4">
           {/* Header */}
           <div className="mb-10">
             <h1 className="text-4xl font-bold mb-2">Component Library</h1>
             <p className="text-text-secondary text-lg">
-              Base UI components with sky accent theme and Nunito Sans font
+              React Aria components with sky accent theme and Nunito Sans font
             </p>
           </div>
 
@@ -170,16 +174,14 @@ function ComponentsPage() {
             <h2 className="text-2xl font-semibold mb-4">Breadcrumb</h2>
             <Card>
               <CardContent>
-                <Breadcrumb>
+                <Breadcrumb aria-label="Example breadcrumb">
                   <BreadcrumbList>
                     <BreadcrumbItem>
                       <BreadcrumbLink href="/">Home</BreadcrumbLink>
                     </BreadcrumbItem>
-                    <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbLink href="/components">Components</BreadcrumbLink>
                     </BreadcrumbItem>
-                    <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbPage>Demo</BreadcrumbPage>
                     </BreadcrumbItem>
@@ -207,7 +209,7 @@ function ComponentsPage() {
                   <Button size="sm">Small</Button>
                   <Button size="default">Default</Button>
                   <Button size="lg">Large</Button>
-                  <Button size="icon"><HugeiconsIcon icon={Add01Icon} className="h-4 w-4" /></Button>
+                  <Button size="icon" aria-label="Add"><HugeiconsIcon icon={Add01Icon} className="size-4" /></Button>
                 </div>
               </CardContent>
             </Card>
@@ -238,6 +240,7 @@ function ComponentsPage() {
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" type="email" placeholder="Enter your email" />
                   </div>
+                  <JollyDatePicker label="Start date" />
                   <Checkbox>Accept terms and conditions</Checkbox>
                 </div>
               </CardContent>
@@ -251,116 +254,115 @@ function ComponentsPage() {
               <CardContent>
                 <div className="grid gap-6 max-w-sm">
                   {/* Select */}
-                  <div className="space-y-2">
+                  <Select
+                    value={selectedFramework}
+                    onChange={setSelectedFramework}
+                    placeholder="Select a framework..."
+                    className="flex w-full flex-col gap-2"
+                  >
                     <Label>Select (Dropdown)</Label>
-                    <Select
-                      value={selectedFramework}
-                      onValueChange={setSelectedFramework}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a framework..." />
-                        <SelectIcon />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectGroupLabel>Popular Frameworks</SelectGroupLabel>
-                          {frameworks.slice(0, 4).map((framework) => (
-                            <SelectItem key={framework.value} value={framework}>
-                              <SelectItemText>{framework.label}</SelectItemText>
-                              <SelectItemIndicator />
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                        <SelectSeparator />
-                        <SelectGroup>
-                          <SelectGroupLabel>Other Frameworks</SelectGroupLabel>
-                          {frameworks.slice(4).map((framework) => (
-                            <SelectItem key={framework.value} value={framework}>
-                              <SelectItemText>{framework.label}</SelectItemText>
-                              <SelectItemIndicator />
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Popular Frameworks</SelectLabel>
+                        {frameworks.slice(0, 4).map((framework) => (
+                          <SelectItem key={framework.value} id={framework.value}>
+                            {framework.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel>Other Frameworks</SelectLabel>
+                        {frameworks.slice(4).map((framework) => (
+                          <SelectItem key={framework.value} id={framework.value}>
+                            {framework.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
                     {selectedFramework && (
                       <p className="text-sm text-muted-foreground">
-                        Selected: {selectedFramework.label}
+                        Selected: {frameworkLabel(selectedFramework)}
                       </p>
                     )}
-                  </div>
+                  </Select>
 
                   {/* Combobox (single select with search) */}
-                  <div className="space-y-2">
+                  <Combobox
+                    value={comboboxValue}
+                    onChange={setComboboxValue}
+                    allowsEmptyCollection
+                    className="flex flex-col gap-2"
+                  >
                     <Label>Combobox (Searchable Single Select)</Label>
-                    <Combobox
-                      items={frameworks}
-                      value={comboboxValue}
-                      onValueChange={setComboboxValue}
-                      itemToStringValue={(item) => item?.label ?? ''}
-                    >
-                      <ComboboxInput
-                        placeholder="Search frameworks..."
-                        className="w-full"
-                      />
-                      <ComboboxPortal>
-                        <ComboboxPositioner sideOffset={4}>
-                          <ComboboxPopup>
-                            <ComboboxEmpty>No framework found.</ComboboxEmpty>
-                            <ComboboxList>
-                              {(framework: Framework) => (
-                                <ComboboxItem key={framework.value} value={framework}>
-                                  <span className="flex-1">{framework.label}</span>
-                                  <ComboboxItemIndicator />
-                                </ComboboxItem>
-                              )}
-                            </ComboboxList>
-                          </ComboboxPopup>
-                        </ComboboxPositioner>
-                      </ComboboxPortal>
-                    </Combobox>
+                    <ComboboxInput placeholder="Search frameworks..." className="w-full" showClear />
+                    <ComboboxContent>
+                      <ComboboxList
+                        items={frameworks}
+                        renderEmptyState={() => <ComboboxEmpty>No framework found.</ComboboxEmpty>}
+                      >
+                        {(framework) => (
+                          <ComboboxItem id={framework.value} textValue={framework.label}>
+                            {framework.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
                     {comboboxValue && (
                       <p className="text-sm text-muted-foreground">
-                        Selected: {comboboxValue.label}
+                        Selected: {frameworkLabel(comboboxValue)}
                       </p>
                     )}
-                  </div>
+                  </Combobox>
 
                   {/* Autocomplete (free-form text with suggestions) */}
-                  <div className="space-y-2">
+                  {/* The text is the value. When the text no longer matches the picked country, the
+                      key is cleared, because Escape puts the label of a selected key back over the text. */}
+                  <Combobox
+                    inputValue={autocompleteValue}
+                    onInputChange={(value) => {
+                      setAutocompleteValue(value)
+                      setAutocompleteKey((key) => (countries.find((c) => c.value === key)?.label === value ? key : null))
+                    }}
+                    selectedKey={autocompleteKey}
+                    onSelectionChange={(key) => {
+                      setAutocompleteKey(key)
+                      const country = countries.find((c) => c.value === key)
+                      if (country) setAutocompleteValue(country.label)
+                    }}
+                    allowsCustomValue
+                    allowsEmptyCollection
+                    menuTrigger="focus"
+                    className="flex flex-col gap-2"
+                  >
                     <Label>Autocomplete (Free-form with Suggestions)</Label>
-                    <Autocomplete
-                      items={filteredCountries}
-                      value={autocompleteValue}
-                      onValueChange={setAutocompleteValue}
-                      itemToStringValue={(item) => item?.label ?? ''}
-                      openOnInputClick
-                    >
-                      <AutocompleteInput
-                        placeholder="Type a country..."
-                        className="w-full"
-                      />
-                      <AutocompletePortal>
-                        <AutocompletePositioner sideOffset={4}>
-                          <AutocompletePopup>
-                            <AutocompleteEmpty>No countries found.</AutocompleteEmpty>
-                            <AutocompleteList>
-                              {(country: typeof countries[number]) => (
-                                <AutocompleteItem key={country.value} value={country}>
-                                  {country.label}
-                                </AutocompleteItem>
-                              )}
-                            </AutocompleteList>
-                          </AutocompletePopup>
-                        </AutocompletePositioner>
-                      </AutocompletePortal>
-                    </Autocomplete>
+                    <ComboboxInput
+                      placeholder="Type a country..."
+                      showTrigger={false}
+                      showClear
+                      className="w-full"
+                    />
+                    <ComboboxContent>
+                      <ComboboxList
+                        items={countries}
+                        renderEmptyState={() => <ComboboxEmpty>No countries found.</ComboboxEmpty>}
+                      >
+                        {(country) => (
+                          <ComboboxItem id={country.value} textValue={country.label}>
+                            {country.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
                     {autocompleteValue && (
                       <p className="text-sm text-muted-foreground">
                         Value: {autocompleteValue}
                       </p>
                     )}
-                  </div>
+                  </Combobox>
 
                   {/* Multi-Select */}
                   <div className="space-y-2">
@@ -368,12 +370,12 @@ function ComponentsPage() {
                     <MultiSelect
                       options={languages}
                       value={selectedLanguages}
-                      onValueChange={setSelectedLanguages}
+                      onChange={setSelectedLanguages}
                       placeholder="Select languages..."
                     />
                     {selectedLanguages.length > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Selected: {selectedLanguages.map(l => l.label).join(', ')}
+                        Selected: {languages.filter(l => selectedLanguages.includes(l.value)).map(l => l.label).join(', ')}
                       </p>
                     )}
                   </div>
@@ -405,7 +407,7 @@ function ComponentsPage() {
                 <CardContent>
                   <div className="flex -space-x-2">
                     <Avatar className="border-2 border-background">
-                      <AvatarImage src="https://github.com/shadcn.png" />
+                      <AvatarImage src="/avatar.png" />
                       <AvatarFallback>CN</AvatarFallback>
                     </Avatar>
                     <Avatar className="border-2 border-background">
@@ -423,17 +425,15 @@ function ComponentsPage() {
             </div>
           </section>
 
-          {/* Dialog & Sheet */}
+          {/* Dialog, Sheet & Drawer */}
           <section className="mb-10">
-            <h2 className="text-2xl font-semibold mb-4">Dialog & Sheet</h2>
+            <h2 className="text-2xl font-semibold mb-4">Dialog, Sheet & Drawer</h2>
             <Card>
               <CardContent>
                 <div className="flex flex-wrap gap-4">
-                  <ResponsiveDialog>
-                    <ResponsiveDialogTrigger render={<Button variant="outline" />}>
-                      Open Dialog
-                    </ResponsiveDialogTrigger>
-                    <ResponsiveDialogContent>
+                  <ResponsiveDialogTrigger>
+                    <Button variant="outline">Open Dialog</Button>
+                    <ResponsiveDialog>
                       <ResponsiveDialogHeader>
                         <ResponsiveDialogTitle>Dialog Title</ResponsiveDialogTitle>
                         <ResponsiveDialogDescription>
@@ -444,15 +444,13 @@ function ComponentsPage() {
                         <p>Try resizing your window while this is open!</p>
                       </div>
                       <ResponsiveDialogFooter>
-                        <Button>Continue</Button>
+                        <ResponsiveDialogClose>Continue</ResponsiveDialogClose>
                       </ResponsiveDialogFooter>
-                    </ResponsiveDialogContent>
-                  </ResponsiveDialog>
+                    </ResponsiveDialog>
+                  </ResponsiveDialogTrigger>
 
-                  <Sheet>
-                    <SheetTrigger render={<Button variant="outline" />}>
-                      Open Sheet
-                    </SheetTrigger>
+                  <SheetTrigger>
+                    <Button variant="outline">Open Sheet</Button>
                     <SheetContent>
                       <SheetHeader>
                         <SheetTitle>Sheet Title</SheetTitle>
@@ -460,11 +458,31 @@ function ComponentsPage() {
                           This is a sheet panel that slides in from the side.
                         </SheetDescription>
                       </SheetHeader>
-                      <div className="py-4">
+                      <div className="px-4">
                         <p>Sheet content goes here.</p>
                       </div>
                     </SheetContent>
-                  </Sheet>
+                  </SheetTrigger>
+
+                  <DrawerTrigger>
+                    <Button variant="outline">Open Drawer</Button>
+                    <Drawer>
+                      <div className="mx-auto w-full max-w-sm">
+                        <DrawerHeader>
+                          <DrawerTitle>Drawer Title</DrawerTitle>
+                          <DrawerDescription>
+                            Swipe down or press Escape to close the drawer.
+                          </DrawerDescription>
+                        </DrawerHeader>
+                        <div className="px-4">
+                          <p>Drawer content goes here.</p>
+                        </div>
+                        <DrawerFooter>
+                          <DrawerClose>Done</DrawerClose>
+                        </DrawerFooter>
+                      </div>
+                    </Drawer>
+                  </DrawerTrigger>
                 </div>
               </CardContent>
             </Card>
@@ -476,50 +494,131 @@ function ComponentsPage() {
             <Card>
               <CardContent>
                 <div className="flex flex-wrap gap-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="outline" />}>
-                      <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
+                  <DropdownMenuTrigger>
+                    <Button variant="outline">
+                      <HugeiconsIcon icon={Settings01Icon} className="size-4" />
                       Options
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                      </DropdownMenuGroup>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
-                        <HugeiconsIcon icon={UserIcon} className="mr-2 h-4 w-4" />
+                        <HugeiconsIcon icon={UserIcon} className="size-4" />
                         Profile
                       </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <HugeiconsIcon icon={Mail01Icon} className="mr-2 h-4 w-4" />
+                        <HugeiconsIcon icon={Mail01Icon} className="size-4" />
                         Messages
                       </DropdownMenuItem>
                       <DropdownMenuItem>
-                        <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
+                        <HugeiconsIcon icon={Settings01Icon} className="size-4" />
                         Settings
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </DropdownMenu>
+                  </DropdownMenuTrigger>
 
-                  <Popover>
-                    <PopoverTrigger render={<Button variant="outline" />}>
-                      <HugeiconsIcon icon={Calendar03Icon} className="mr-2 h-4 w-4" />
+                  <PopoverTrigger>
+                    <Button variant="outline">
+                      <HugeiconsIcon icon={Calendar03Icon} className="size-4" />
                       Pick a date
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-3" align="start">
-                      <JollyCalendar
-                        value={date}
-                        onChange={setDate}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                    </Button>
+                    <Popover className="w-auto p-3" placement="bottom start">
+                      <Dialog aria-label="Pick a date" className="outline-none">
+                        <JollyCalendar
+                          value={date}
+                          onChange={setDate}
+                        />
+                      </Dialog>
+                    </Popover>
+                  </PopoverTrigger>
 
-                  <Tooltip>
-                    <TooltipTrigger render={<Button variant="outline" size="icon" />}>
-                      <HugeiconsIcon icon={Notification03Icon} className="h-4 w-4" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>You have 3 notifications</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipTrigger>
+                    <Button variant="outline" size="icon" aria-label="Notifications">
+                      <HugeiconsIcon icon={Notification03Icon} className="size-4" />
+                    </Button>
+                    <Tooltip>You have 3 notifications</Tooltip>
+                  </TooltipTrigger>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Command */}
+          <section className="mb-10">
+            <h2 className="text-2xl font-semibold mb-4">Command</h2>
+            <Card>
+              <CardContent>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Command className="rounded-lg border">
+                    <CommandInput placeholder="Type a command or search..." />
+                    <CommandList renderEmptyState={() => <CommandEmpty>No results found.</CommandEmpty>}>
+                      <CommandGroup heading="Suggestions">
+                        <CommandItem textValue="Calendar">
+                          <HugeiconsIcon icon={Calendar03Icon} />
+                          Calendar
+                        </CommandItem>
+                        <CommandItem textValue="Calculator">
+                          <HugeiconsIcon icon={Calculator01Icon} />
+                          Calculator
+                        </CommandItem>
+                      </CommandGroup>
+                      <CommandSeparator />
+                      <CommandGroup heading="Settings">
+                        <CommandItem textValue="Profile">
+                          <HugeiconsIcon icon={UserIcon} />
+                          Profile
+                          <CommandShortcut>⌘P</CommandShortcut>
+                        </CommandItem>
+                        <CommandItem textValue="Settings">
+                          <HugeiconsIcon icon={Settings01Icon} />
+                          Settings
+                          <CommandShortcut>⌘S</CommandShortcut>
+                        </CommandItem>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                  <div>
+                    <Button variant="outline" onPress={() => setIsCommandOpen(true)}>
+                      Open Command Menu
+                    </Button>
+                    <CommandDialog isOpen={isCommandOpen} onOpenChange={setIsCommandOpen}>
+                      <Command>
+                        <CommandInput autoFocus placeholder="Type a command or search..." />
+                        <CommandList renderEmptyState={() => <CommandEmpty>No results found.</CommandEmpty>}>
+                          <CommandGroup heading="Suggestions">
+                            <CommandItem onAction={() => setIsCommandOpen(false)}>Calendar</CommandItem>
+                            <CommandItem onAction={() => setIsCommandOpen(false)}>Calculator</CommandItem>
+                            <CommandItem onAction={() => setIsCommandOpen(false)}>Settings</CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </CommandDialog>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Toast */}
+          <section className="mb-10">
+            <h2 className="text-2xl font-semibold mb-4">Toast</h2>
+            <Card>
+              <CardContent>
+                <div className="flex flex-wrap gap-4">
+                  <Button variant="outline" onPress={() => Notification.success('Changes saved')}>
+                    Success
+                  </Button>
+                  <Button variant="outline" onPress={() => Notification.error('Something went wrong')}>
+                    Error
+                  </Button>
+                  <Button variant="outline" onPress={() => Notification.info('A new version is available')}>
+                    Info
+                  </Button>
+                  <Button variant="outline" onPress={() => Notification.warning('Your session ends in 5 minutes')}>
+                    Warning
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -530,25 +629,27 @@ function ComponentsPage() {
             <h2 className="text-2xl font-semibold mb-4">Collapsible</h2>
             <Card>
               <CardContent>
-                <Collapsible open={isCollapsibleOpen} onOpenChange={setIsCollapsibleOpen}>
+                <Collapsible isExpanded={isCollapsibleOpen} onExpandedChange={setIsCollapsibleOpen}>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold">
                       @peduarte starred 3 repositories
                     </h4>
-                    <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
-                      <HugeiconsIcon icon={ArrowUpDownIcon} className="h-4 w-4" />
-                      <span className="sr-only">Toggle</span>
-                    </CollapsibleTrigger>
+                    <Button slot="trigger" variant="ghost" size="sm" aria-label="Toggle">
+                      <HugeiconsIcon icon={ArrowUpDownIcon} className="size-4" />
+                    </Button>
                   </div>
                   <div className="rounded-md border px-4 py-2 font-mono text-sm mt-2">
                     @radix-ui/primitives
                   </div>
-                  <CollapsibleContent className="space-y-2 mt-2">
-                    <div className="rounded-md border px-4 py-2 font-mono text-sm">
-                      @radix-ui/colors
-                    </div>
-                    <div className="rounded-md border px-4 py-2 font-mono text-sm">
-                      @stitches/react
+                  {/* The closed panel keeps its box, so the margin is inside it. */}
+                  <CollapsibleContent>
+                    <div className="space-y-2 pt-2">
+                      <div className="rounded-md border px-4 py-2 font-mono text-sm">
+                        @radix-ui/colors
+                      </div>
+                      <div className="rounded-md border px-4 py-2 font-mono text-sm">
+                        @stitches/react
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
@@ -561,13 +662,11 @@ function ComponentsPage() {
             <h2 className="text-2xl font-semibold mb-4">Table</h2>
             <Card>
               <CardContent>
-                <Table>
+                <Table aria-label="Users">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
+                    <TableHead isRowHeader>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableHeader>
                   <TableBody>
                     {tableData.map((row) => (
@@ -605,6 +704,6 @@ function ComponentsPage() {
 
         </div>
       </div>
-    </TooltipProvider>
+    </>
   )
 }

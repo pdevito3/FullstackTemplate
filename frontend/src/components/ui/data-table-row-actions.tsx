@@ -5,7 +5,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -27,26 +26,19 @@ function DataTableRowActions<TData>({
   children,
 }: DataTableRowActionsProps<TData>) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-          />
-        }
-      >
+    <DropdownMenuTrigger>
+      <Button variant="ghost" className="flex h-8 w-8 p-0">
         <HugeiconsIcon icon={MoreHorizontalCircle01Icon} className="h-4 w-4" />
         <span className="sr-only">Open menu</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[160px]">
+      </Button>
+      <DropdownMenu placement="bottom end" className="w-[160px]">
         {onView && (
-          <DropdownMenuItem onClick={() => onView(row.original)}>
+          <DropdownMenuItem onAction={() => onView(row.original)}>
             View
           </DropdownMenuItem>
         )}
         {onEdit && (
-          <DropdownMenuItem onClick={() => onEdit(row.original)}>
+          <DropdownMenuItem onAction={() => onEdit(row.original)}>
             Edit
           </DropdownMenuItem>
         )}
@@ -55,15 +47,15 @@ function DataTableRowActions<TData>({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => onDelete(row.original)}
-              className="text-destructive focus:text-destructive"
+              variant="destructive"
+              onAction={() => onDelete(row.original)}
             >
               Delete
             </DropdownMenuItem>
           </>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+    </DropdownMenuTrigger>
   )
 }
 

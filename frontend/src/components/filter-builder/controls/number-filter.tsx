@@ -1,41 +1,29 @@
-import { useState } from 'react'
-import { ArrowDown01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import { useId, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import type { OperatorType, Filter } from '../types'
-import { getOperatorsForControlType, getOperatorLabel, Operators } from '../utils/operators'
-
-interface NumberFilterProps {
-  propertyKey: string
-  propertyLabel: string
-  onSubmit: (filter: Omit<Filter, 'id'>) => void
-  allowedOperators?: OperatorType[]
-  initialFilter?: Filter
-}
+import type { OperatorType, Filter, FilterControlProps } from '../types'
+import { getDefaultOperator, getOperatorsForControlType, pickOperator } from '../utils/operators'
+import { OperatorSelect } from './operator-select'
 
 export function NumberFilter({
-  propertyKey,
-  propertyLabel,
-  onSubmit,
-  allowedOperators,
+  config,
   initialFilter,
-}: NumberFilterProps) {
+  onSubmit,
+  autoFocus = false,
+}: FilterControlProps) {
+  const { propertyKey, propertyLabel, operators: allowedOperators } = config
   const numberOperators = getOperatorsForControlType('number')
-  const availableOperators = allowedOperators
-    ? numberOperators.filter((op) => allowedOperators.includes(op.symbol))
-    : numberOperators
+  const availableOperators = (
+    allowedOperators
+      ? numberOperators.filter((op) => allowedOperators.includes(op.symbol))
+      : numberOperators
+  ).map((op) => op.symbol)
 
   const [value, setValue] = useState(initialFilter?.value?.toString() || '')
+  const valueId = useId()
   const [operator, setOperator] = useState<OperatorType>(
-    initialFilter?.operator || availableOperators[0]?.symbol || Operators.COUNT_EQUALS
+    pickOperator(availableOperators, initialFilter?.operator ?? getDefaultOperator('number'))
   )
 
   const handleSubmit = () => {
@@ -53,42 +41,26 @@ export function NumberFilter({
     } as Omit<Filter, 'id'>)
   }
 
-  const selectedOperatorLabel = getOperatorLabel(operator)
   const isValid = value.trim() !== '' && !isNaN(parseFloat(value))
 
   return (
     <div className="flex flex-col gap-3 w-64 p-3">
-      <div className="flex flex-col gap-2">
-        <Label>Operator</Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="outline" className="w-full justify-between" size="sm" />}
-          >
-            {selectedOperatorLabel}
-            <HugeiconsIcon icon={ArrowDown01Icon} className="size-4 opacity-50" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-full">
-            {availableOperators.map((op) => (
-              <DropdownMenuItem
-                key={op.symbol}
-                onClick={() => setOperator(op.symbol)}
-              >
-                {op.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <OperatorSelect
+        operators={availableOperators}
+        value={operator}
+        onChange={setOperator}
+        size="sm"
+      />
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="value">Value</Label>
+        <Label htmlFor={valueId}>Value</Label>
         <Input
-          id="value"
+          id={valueId}
           type="number"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
-          autoFocus
+          autoFocus={autoFocus}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && isValid) {
               handleSubmit()
@@ -97,7 +69,7 @@ export function NumberFilter({
         />
       </div>
 
-      <Button onClick={handleSubmit} disabled={!isValid} className="w-full">
+      <Button onPress={handleSubmit} isDisabled={!isValid} className="w-full">
         {initialFilter ? 'Update' : 'Add'} Filter
       </Button>
     </div>

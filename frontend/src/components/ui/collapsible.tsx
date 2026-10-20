@@ -1,20 +1,34 @@
-"use client"
+import { AnimatePresence } from "motion/react"
+import {
+  DisclosurePanel as CollapsibleContentPrimitive,
+  Disclosure as CollapsiblePrimitive,
+  Button as CollapsibleTriggerPrimitive,
+  type ButtonProps,
+  type DisclosurePanelProps,
+  type DisclosureProps,
+} from "@animate-ui/react/primitives/react-aria"
 
-import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible"
-
-function Collapsible({ ...props }: CollapsiblePrimitive.Root.Props) {
-  return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />
+function Collapsible({ ...props }: DisclosureProps) {
+  return <CollapsiblePrimitive data-slot="collapsible" {...props} />
 }
 
-function CollapsibleTrigger({ ...props }: CollapsiblePrimitive.Trigger.Props) {
+function CollapsibleTrigger({ ...props }: ButtonProps) {
   return (
-    <CollapsiblePrimitive.Trigger data-slot="collapsible-trigger" {...props} />
+    <CollapsibleTriggerPrimitive
+      slot="trigger"
+      data-slot="collapsible-trigger"
+      {...props}
+    />
   )
 }
 
-function CollapsibleContent({ ...props }: CollapsiblePrimitive.Panel.Props) {
+function CollapsibleContent({ ...props }: DisclosurePanelProps) {
+  // The Animate UI panel always mounts collapsed and then animates to its state.
+  // With AnimatePresence initial={false}, a panel that starts expanded shows without that animation.
   return (
-    <CollapsiblePrimitive.Panel data-slot="collapsible-content" {...props} />
+    <AnimatePresence initial={false}>
+      <CollapsibleContentPrimitive data-slot="collapsible-content" {...props} />
+    </AnimatePresence>
   )
 }
 

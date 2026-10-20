@@ -5,8 +5,8 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -19,43 +19,41 @@ interface DataTableViewOptionsProps<TData> {
 function DataTableViewOptions<TData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
+  const hideableColumns = table
+    .getAllColumns()
+    .filter(
+      (column) =>
+        typeof column.accessorFn !== "undefined" && column.getCanHide()
+    )
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto hidden h-8 lg:flex"
-          />
-        }
-      >
-        <HugeiconsIcon icon={Settings01Icon} className="mr-2 h-4 w-4" />
+    <DropdownMenuTrigger>
+      <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
+        <HugeiconsIcon icon={Settings01Icon} className="size-4" />
         View
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {table
-          .getAllColumns()
-          .filter(
-            (column) =>
-              typeof column.accessorFn !== "undefined" && column.getCanHide()
-          )
-          .map((column) => {
-            return (
-              <DropdownMenuCheckboxItem
-                key={column.id}
-                className="capitalize"
-                checked={column.getIsVisible()}
-                onCheckedChange={(value) => column.toggleVisibility(!!value)}
-              >
-                {column.id}
-              </DropdownMenuCheckboxItem>
-            )
-          })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </Button>
+      <DropdownMenu placement="bottom end" className="w-[150px]">
+        <DropdownMenuGroup
+          selectionMode="multiple"
+          selectedKeys={hideableColumns
+            .filter((column) => column.getIsVisible())
+            .map((column) => column.id)}
+          onSelectionChange={(keys) => {
+            for (const column of hideableColumns) {
+              column.toggleVisibility(keys === "all" || keys.has(column.id))
+            }
+          }}
+        >
+          <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {hideableColumns.map((column) => (
+            <DropdownMenuItem key={column.id} id={column.id} className="capitalize">
+              {column.id}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenu>
+    </DropdownMenuTrigger>
   )
 }
 

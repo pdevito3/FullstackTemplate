@@ -342,6 +342,14 @@ export function getDefaultOperator(controlType: ControlType): OperatorType {
 }
 
 /**
+ * Returns `preferred` if `operators` allows it, else the first operator in the list.
+ * A control must not start with an operator that its operator select cannot show.
+ */
+export function pickOperator(operators: OperatorType[], preferred: OperatorType): OperatorType {
+  return operators.includes(preferred) ? preferred : (operators[0] ?? preferred)
+}
+
+/**
  * Get the human-readable label for an operator
  */
 export function getOperatorLabel(operator: OperatorType): string {
@@ -349,8 +357,9 @@ export function getOperatorLabel(operator: OperatorType): string {
 }
 
 /**
- * Check if an operator requires case-sensitivity handling
+ * Whether a base operator has a case-insensitive variant (the operator with a
+ * `*` suffix). The phonetic operators have none.
  */
 export function operatorSupportsCaseSensitivity(operator: OperatorType): boolean {
-  return OPERATORS[operator]?.requiresCaseSensitive === true
+  return `${operator}*` in OPERATORS
 }

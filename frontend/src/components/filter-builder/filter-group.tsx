@@ -2,6 +2,7 @@ import { UnfoldMoreIcon, Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,7 @@ import type {
   FilterGroup as FilterGroupType,
 } from './types'
 import { isFilter } from './types'
+import { getFilterName } from './utils/filter-name'
 
 interface FilterGroupProps {
   group: FilterGroupType
@@ -42,29 +44,20 @@ export function FilterGroup({
 }: FilterGroupProps) {
   const isSelected = selectedIds.has(group.id)
 
-  // Color scheme based on depth for visual hierarchy
+  // A color for each depth (blue, purple, pink) from the theme chart palette,
+  // so that the dark theme changes it too.
   const depthColors = [
-    'border-l-blue-500',
-    'border-l-purple-500',
-    'border-l-pink-500',
+    'border-l-chart-1 bg-chart-1/5',
+    'border-l-chart-4 bg-chart-4/5',
+    'border-l-chart-5 bg-chart-5/5',
   ]
-  const depthBg = [
-    'bg-blue-50/50 dark:bg-blue-950/20',
-    'bg-purple-50/50 dark:bg-purple-950/20',
-    'bg-pink-50/50 dark:bg-pink-950/20',
-  ]
-
-  const borderColor =
-    depthColors[depth % depthColors.length] || 'border-l-gray-500'
-  const bgColor =
-    depthBg[depth % depthBg.length] || 'bg-gray-50/50 dark:bg-gray-950/20'
+  const depthColor = depthColors[depth % depthColors.length]
 
   return (
     <Card
       className={cn(
         'border-l-4 transition-all p-0',
-        borderColor,
-        bgColor,
+        depthColor,
         isSelected && 'ring-2 ring-primary'
       )}
     >
@@ -74,6 +67,7 @@ export function FilterGroup({
           {/* Selection Checkbox */}
           {showCheckbox && (
             <Checkbox
+              aria-label="Select group"
               isSelected={isSelected}
               onChange={() => onToggleSelection(group.id)}
               className="shrink-0"
@@ -89,7 +83,7 @@ export function FilterGroup({
           <Button
             variant="ghost"
             size="xs"
-            onClick={() => onToggleOperator(group.id)}
+            onPress={() => onToggleOperator(group.id)}
             className="h-6 px-2 text-xs font-medium shrink-0"
           >
             {group.logicalOperator}
@@ -105,27 +99,32 @@ export function FilterGroup({
           <div className="flex-1" />
 
           {/* Ungroup Button */}
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => onUngroup(group.id)}
-            className="h-6 px-2 text-xs shrink-0"
-            title="Ungroup (move filters to parent)"
-          >
-            <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3 mr-1" />
-            Ungroup
-          </Button>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="xs"
+              onPress={() => onUngroup(group.id)}
+              className="h-6 px-2 text-xs shrink-0"
+            >
+              <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3" />
+              Ungroup
+            </Button>
+            <Tooltip>Move the filters to the parent group</Tooltip>
+          </TooltipTrigger>
 
           {/* Remove Group Button */}
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => onRemove(group.id)}
-            className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive shrink-0"
-            title="Delete group and all its filters"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-          </Button>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onPress={() => onRemove(group.id)}
+              aria-label="Delete group"
+              className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive shrink-0"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+            </Button>
+            <Tooltip>Delete the group and all its filters</Tooltip>
+          </TooltipTrigger>
         </div>
 
         {/* Group Contents - Horizontal Layout */}
@@ -136,6 +135,7 @@ export function FilterGroup({
                 <>
                   {showCheckbox && (
                     <Checkbox
+                      aria-label={`Select filter: ${getFilterName(item)}`}
                       isSelected={selectedIds.has(item.id)}
                       onChange={() => onToggleSelection(item.id)}
                       className="shrink-0"

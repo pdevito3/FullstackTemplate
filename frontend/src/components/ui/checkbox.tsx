@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "motion/react"
 import {
   Checkbox as AriaCheckbox,
   CheckboxGroup as AriaCheckboxGroup,
@@ -9,49 +8,13 @@ import {
   type CheckboxGroupProps as AriaCheckboxGroupProps,
   type ValidationResult as AriaValidationResult,
   type CheckboxProps as AriaCheckboxProps,
-} from "react-aria-components"
+} from "@animate-ui/react/primitives/react-aria"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
 const labelVariants =
   "text-sm font-medium leading-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70 group-data-[invalid]:text-destructive"
-
-const tickVariants = {
-  checked: {
-    pathLength: 1,
-    opacity: 1,
-    transition: {
-      duration: 0.1,
-      delay: 0.1,
-    },
-  },
-  unchecked: {
-    pathLength: 0,
-    opacity: 0,
-    transition: {
-      duration: 0.1,
-    },
-  },
-}
-
-const indeterminateVariants = {
-  checked: {
-    scaleX: 1,
-    opacity: 1,
-    transition: {
-      duration: 0.1,
-      delay: 0.1,
-    },
-  },
-  unchecked: {
-    scaleX: 0,
-    opacity: 0,
-    transition: {
-      duration: 0.1,
-    },
-  },
-}
 
 const CheckboxGroup = AriaCheckboxGroup
 
@@ -85,39 +48,25 @@ const Checkbox = ({ className, children, ...props }: AriaCheckboxProps) => (
             "focus:outline-none focus-visible:outline-none"
           )}
         >
-          {renderProps.isIndeterminate ? (
-            <motion.svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              className="size-3.5"
-              initial="unchecked"
-              animate="checked"
-            >
-              <motion.path
-                fill="currentColor"
-                d="M3 8a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 8Z"
-                variants={indeterminateVariants}
-              />
-            </motion.svg>
-          ) : (
-            <motion.svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="3"
-              stroke="currentColor"
-              className="size-3.5"
-              initial={false}
-              animate={renderProps.isSelected ? "checked" : "unchecked"}
-            >
-              <motion.path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.5 12.75l6 6 9-13.5"
-                variants={tickVariants}
-              />
-            </motion.svg>
-          )}
+          {/* Animate UI draws the content of this slot in and out. */}
+          <span data-slot="checkbox-indicator" className="flex">
+            {(renderProps.isIndeterminate || renderProps.isSelected) && (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="3"
+                stroke="currentColor"
+                className="size-3.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d={renderProps.isIndeterminate ? "M5 12h14" : "M4.5 12.75l6 6 9-13.5"}
+                />
+              </svg>
+            )}
+          </span>
         </div>
         {children}
       </>

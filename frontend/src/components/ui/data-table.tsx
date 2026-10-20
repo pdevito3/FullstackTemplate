@@ -25,6 +25,8 @@ import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
 
 interface DataTableProps<TData, TValue> {
+  /** The accessible name of the table */
+  label: string
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   searchKey?: string
@@ -32,6 +34,7 @@ interface DataTableProps<TData, TValue> {
 }
 
 function DataTable<TData, TValue>({
+  label,
   columns,
   data,
   searchKey,
@@ -61,6 +64,14 @@ function DataTable<TData, TValue>({
     },
   })
 
+  // A React Aria table has one header row, so it shows the leaf headers.
+  const headers = table.getLeafHeaders().filter((header) => header.column.getIsVisible())
+  // The selection column holds only a checkbox, so it cannot name the row.
+  const rowHeaderIndex = Math.max(
+    headers.findIndex((header) => header.column.id !== "select"),
+    0
+  )
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
@@ -77,52 +88,36 @@ function DataTable<TData, TValue>({
         <DataTableViewOptions table={table} />
       </div>
       <div className="rounded-md border">
-        <Table>
+        <Table aria-label={label}>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
+            {headers.map((header, index) => (
+              <TableHead key={header.id} id={header.id} isRowHeader={index === rowHeaderIndex}>
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+              </TableHead>
             ))}
           </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
+          <TableBody renderEmptyState={() => "No results."}>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                id={row.id}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(
+                      cell.column.columnDef.cell,
+                      cell.getContext()
+                    )}
+                  </TableCell>
+                ))}
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>
@@ -135,16 +130,16 @@ function DataTable<TData, TValue>({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onPress={() => table.previousPage()}
+            isDisabled={!table.getCanPreviousPage()}
           >
             Previous
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onPress={() => table.nextPage()}
+            isDisabled={!table.getCanNextPage()}
           >
             Next
           </Button>

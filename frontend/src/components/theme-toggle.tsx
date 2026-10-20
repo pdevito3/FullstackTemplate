@@ -1,5 +1,7 @@
 import { Sun03Icon, Moon02Icon, ComputerIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { Button } from "react-aria-components"
+
 import { useTheme } from "@/components/theme-context"
 import { cn } from "@/lib/utils"
 
@@ -8,8 +10,8 @@ export function ThemeToggle() {
 
   return (
     <div className="inline-flex items-center rounded-lg border bg-muted p-0.5 group-data-[collapsible=icon]:flex-col">
-      <button
-        onClick={() => setTheme("light")}
+      <Button
+        onPress={() => setTheme("light")}
         className={cn(
           "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm group-data-[collapsible=icon]:px-1 transition-colors",
           theme === "light"
@@ -19,9 +21,9 @@ export function ThemeToggle() {
         aria-label="Light mode"
       >
         <HugeiconsIcon icon={Sun03Icon} className="size-4" />
-      </button>
-      <button
-        onClick={() => setTheme("dark")}
+      </Button>
+      <Button
+        onPress={() => setTheme("dark")}
         className={cn(
           "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm group-data-[collapsible=icon]:px-1 transition-colors",
           theme === "dark"
@@ -31,9 +33,9 @@ export function ThemeToggle() {
         aria-label="Dark mode"
       >
         <HugeiconsIcon icon={Moon02Icon} className="size-4" />
-      </button>
-      <button
-        onClick={() => setTheme("system")}
+      </Button>
+      <Button
+        onPress={() => setTheme("system")}
         className={cn(
           "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm group-data-[collapsible=icon]:px-1 transition-colors",
           theme === "system"
@@ -43,7 +45,7 @@ export function ThemeToggle() {
         aria-label="System theme"
       >
         <HugeiconsIcon icon={ComputerIcon} className="size-4" />
-      </button>
+      </Button>
     </div>
   )
 }

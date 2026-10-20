@@ -76,6 +76,20 @@ export interface FilterConfig {
   dateType?: DateType // For date control: 'date' for date-only, 'datetime' for date+time (defaults to 'date')
 }
 
+/** The props of each filter control. A control reads its own fields from `config`. */
+export interface FilterControlProps {
+  config: FilterConfig
+  initialFilter?: Filter
+  onSubmit: (filter: Omit<Filter, 'id'>) => void
+  /** Only a control that shows in a dialog has a Cancel button. */
+  onCancel?: () => void
+  /**
+   * Focus the first input. Set it only in a dialog. In the Add Filter submenu,
+   * focus must stay with the menu, or keyboard navigation breaks.
+   */
+  autoFocus?: boolean
+}
+
 export interface FilterPreset {
   label: string
   filter: FilterState

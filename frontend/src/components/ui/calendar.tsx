@@ -14,6 +14,8 @@ import {
   CalendarHeaderCell as AriaCalendarHeaderCell,
   CalendarStateContext as AriaCalendarStateContext,
   Heading as AriaHeading,
+  ListBox as AriaListBox,
+  ListBoxItem as AriaListBoxItem,
   RangeCalendar as AriaRangeCalendar,
   RangeCalendarStateContext as AriaRangeCalendarStateContext,
   composeRenderProps,
@@ -27,6 +29,7 @@ import {
   type CalendarProps as AriaCalendarProps,
   type DateValue as AriaDateValue,
   type RangeCalendarProps as AriaRangeCalendarProps,
+  type Selection as AriaSelection,
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
@@ -173,17 +176,16 @@ function QuickSelectsPanel({ onSelect }: QuickSelectsPanelProps) {
     <div className="flex flex-col gap-1 border-r pr-3 mr-3">
       <div className="text-xs font-medium text-muted-foreground mb-1">Quick Select</div>
       {singleDatePresets.map((preset) => (
-        <button
+        <AriaButton
           key={preset.label}
-          type="button"
-          onClick={() => onSelect(preset.getDate())}
+          onPress={() => onSelect(preset.getDate())}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
             "justify-start h-7 text-xs font-normal"
           )}
         >
           {preset.label}
-        </button>
+        </AriaButton>
       ))}
     </div>
   )
@@ -199,20 +201,38 @@ function QuickSelectsRangePanel({ onSelect }: QuickSelectsRangePanelProps) {
     <div className="flex flex-col gap-1 border-r pr-3 mr-3">
       <div className="text-xs font-medium text-muted-foreground mb-1">Quick Select</div>
       {dateRangePresets.map((preset) => (
-        <button
+        <AriaButton
           key={preset.label}
-          type="button"
-          onClick={() => onSelect(preset.getRange())}
+          onPress={() => onSelect(preset.getRange())}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
             "justify-start h-7 text-xs font-normal"
           )}
         >
           {preset.label}
-        </button>
+        </AriaButton>
       ))}
     </div>
   )
+}
+
+// The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
+// click picks an item. Each picker is w-63, the width of the day grid (7 cells of w-9), so that the popover keeps its size.
+const pickerClassName = "grid w-63 grid-cols-3 gap-1 p-1 outline-none"
+
+function pickerItemClassName({ isSelected }: { isSelected: boolean }) {
+  return cn(
+    buttonVariants({ variant: "ghost" }),
+    "h-9 cursor-default text-sm font-normal",
+    isSelected && "bg-primary text-primary-foreground"
+  )
+}
+
+// A press on the selected item toggles the single selection off. That press still picks the item.
+function pickedKey(keys: AriaSelection, selectedKey: number | null): number | null {
+  if (keys === "all") return selectedKey
+  const [key] = keys
+  return key === undefined ? selectedKey : Number(key)
 }
 
 // Month Picker Grid - 4x3 grid of months
@@ -238,34 +258,41 @@ function MonthPickerGrid() {
     )
     const newDate = new CalendarDate(zoomContext.viewYear, monthIndex, safeDay)
     state.setFocusedDate(newDate)
+    // The month button unmounts. Move focus to the day cell, so that the keyboard and Escape still work.
+    state.setFocused(true)
     zoomContext.setView("days")
   }
 
-  const currentMonth = state.focusedDate.month
-  const currentYear = state.focusedDate.year
+  // The focused month is selected only in its own year.
+  const selectedMonth =
+    zoomContext.viewYear === state.focusedDate.year ? state.focusedDate.month : null
+
+  const handleSelectionChange = (keys: AriaSelection) => {
+    const month = pickedKey(keys, selectedMonth)
+    if (month !== null) handleMonthSelect(month)
+  }
 
   return (
-    <div className="grid grid-cols-3 gap-1 p-1" role="grid" aria-label="Month picker">
-      {months.map(({ index, name }) => {
-        const isSelected =
-          index === currentMonth && zoomContext.viewYear === currentYear
-        return (
-          <button
-            key={index}
-            type="button"
-            onClick={() => handleMonthSelect(index)}
-            className={cn(
-              buttonVariants({ variant: "ghost" }),
-              "h-9 text-sm font-normal",
-              isSelected && "bg-primary text-primary-foreground"
-            )}
-            aria-selected={isSelected}
-          >
-            {name}
-          </button>
-        )
-      })}
-    </div>
+    <AriaListBox
+      aria-label="Month picker"
+      layout="grid"
+      selectionMode="single"
+      selectedKeys={selectedMonth === null ? [] : [selectedMonth]}
+      onSelectionChange={handleSelectionChange}
+      // The button that opened this view unmounts or is disabled. Keep focus in the calendar:
+      // on the selected month, or on January when no month is selected.
+      autoFocus="first"
+      // Escape closes the popover, as it does in the day grid.
+      escapeKeyBehavior="none"
+      shouldSelectOnPressUp
+      className={pickerClassName}
+    >
+      {months.map(({ index, name }) => (
+        <AriaListBoxItem key={index} id={index} textValue={name} className={pickerItemClassName}>
+          {name}
+        </AriaListBoxItem>
+      ))}
+    </AriaListBox>
   )
 }
 
@@ -287,29 +314,34 @@ function YearPickerGrid() {
     zoomContext.setView("months")
   }
 
-  const currentYear = state.focusedDate.year
+  const selectedYear = years.includes(state.focusedDate.year) ? state.focusedDate.year : null
+
+  const handleSelectionChange = (keys: AriaSelection) => {
+    const year = pickedKey(keys, selectedYear)
+    if (year !== null) handleYearSelect(year)
+  }
 
   return (
-    <div className="grid grid-cols-3 gap-1 p-1" role="grid" aria-label="Year picker">
-      {years.map((year) => {
-        const isSelected = year === currentYear
-        return (
-          <button
-            key={year}
-            type="button"
-            onClick={() => handleYearSelect(year)}
-            className={cn(
-              buttonVariants({ variant: "ghost" }),
-              "h-9 text-sm font-normal",
-              isSelected && "bg-primary text-primary-foreground"
-            )}
-            aria-selected={isSelected}
-          >
-            {year}
-          </button>
-        )
-      })}
-    </div>
+    <AriaListBox
+      aria-label="Year picker"
+      layout="grid"
+      selectionMode="single"
+      selectedKeys={selectedYear === null ? [] : [selectedYear]}
+      onSelectionChange={handleSelectionChange}
+      // The button that opened this view unmounts or is disabled. Keep focus in the calendar:
+      // on the selected year, or on the first year of the span when no year is selected.
+      autoFocus="first"
+      // Escape closes the popover, as it does in the day grid.
+      escapeKeyBehavior="none"
+      shouldSelectOnPressUp
+      className={pickerClassName}
+    >
+      {years.map((year) => (
+        <AriaListBoxItem key={year} id={year} textValue={String(year)} className={pickerItemClassName}>
+          {year}
+        </AriaListBoxItem>
+      ))}
+    </AriaListBox>
   )
 }
 
@@ -397,9 +429,10 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
   return (
     <header className="flex w-full items-center gap-1 px-1 pb-4" {...props}>
       {isZoomed ? (
-        <button
-          type="button"
-          onClick={handlePrevious}
+        <AriaButton
+          slot={null}
+          aria-label="Previous"
+          onPress={handlePrevious}
           className={cn(
             buttonVariants({ variant: "outline" }),
             "size-7 bg-transparent p-0 opacity-50 hover:opacity-100"
@@ -410,7 +443,7 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
           ) : (
             <HugeiconsIcon icon={ArrowLeft01Icon} aria-hidden className="size-4" />
           )}
-        </button>
+        </AriaButton>
       ) : (
         <AriaButton
           slot="previous"
@@ -428,15 +461,15 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
         </AriaButton>
       )}
 
-      <button
-        type="button"
-        onClick={handleHeadingClick}
+      <AriaButton
+        slot={null}
+        onPress={handleHeadingClick}
         className={cn(
           "grow text-center text-sm font-medium",
           "rounded-md py-1 transition-colors",
           zoomContext?.view !== "years" && "cursor-pointer hover:bg-muted"
         )}
-        disabled={zoomContext?.view === "years"}
+        isDisabled={zoomContext?.view === "years"}
         aria-label={
           zoomContext?.view === "days"
             ? "Select month"
@@ -446,12 +479,13 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
         }
       >
         {getHeadingText()}
-      </button>
+      </AriaButton>
 
       {isZoomed ? (
-        <button
-          type="button"
-          onClick={handleNext}
+        <AriaButton
+          slot={null}
+          aria-label="Next"
+          onPress={handleNext}
           className={cn(
             buttonVariants({ variant: "outline" }),
             "size-7 bg-transparent p-0 opacity-50 hover:opacity-100"
@@ -462,7 +496,7 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
           ) : (
             <HugeiconsIcon icon={ArrowRight01Icon} aria-hidden className="size-4" />
           )}
-        </button>
+        </AriaButton>
       ) : (
         <AriaButton
           slot="next"
@@ -613,6 +647,8 @@ interface JollyCalendarProps<T extends AriaDateValue>
   showDateInput?: boolean
 }
 
+// With showDateInput, autoFocus focuses the date input, because it is the first field.
+// Without it, autoFocus focuses the calendar grid.
 function JollyCalendar<T extends AriaDateValue>({
   errorMessage,
   className,
@@ -620,6 +656,7 @@ function JollyCalendar<T extends AriaDateValue>({
   showDateInput,
   onChange,
   value,
+  autoFocus,
   ...props
 }: JollyCalendarProps<T>) {
   // Track focused value to navigate calendar view when quick select is used
@@ -670,6 +707,7 @@ function JollyCalendar<T extends AriaDateValue>({
           value={value ? (value as AriaDateValue) : null}
           onChange={handleDateInputChange}
           aria-label="Date"
+          autoFocus={autoFocus}
         >
           <DateInput className="h-9" />
         </DateField>
@@ -684,6 +722,7 @@ function JollyCalendar<T extends AriaDateValue>({
           onChange={handleCalendarChange}
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
+          autoFocus={autoFocus && !showDateInput}
           {...props}
         >
           <CalendarZoomProvider>
@@ -717,6 +756,8 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
   showDateInput?: boolean
 }
 
+// With showDateInput, autoFocus focuses the start date input, because it is the first field.
+// Without it, autoFocus focuses the calendar grid.
 function JollyRangeCalendar<T extends AriaDateValue>({
   errorMessage,
   className,
@@ -724,6 +765,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   showDateInput,
   onChange,
   value,
+  autoFocus,
   ...props
 }: JollyRangeCalendarProps<T>) {
   // Track focused value to navigate calendar view when quick select is used
@@ -784,6 +826,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             value={value?.start ? (value.start as AriaDateValue) : null}
             onChange={handleStartDateChange}
             aria-label="Start date"
+            autoFocus={autoFocus}
             className="flex-1"
           >
             <DateInput className="h-9" />
@@ -809,6 +852,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           onChange={handleCalendarChange}
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
+          autoFocus={autoFocus && !showDateInput}
           {...props}
         >
           <CalendarZoomProvider>

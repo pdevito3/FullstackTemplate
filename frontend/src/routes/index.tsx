@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -84,14 +84,14 @@ function Index() {
                 <span className="text-sm">
                   Welcome, <span className="font-medium">{auth.username}</span>
                 </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <HugeiconsIcon icon={Logout01Icon} className="w-4 h-4 mr-2" />
+                <Button variant="outline" size="sm" onPress={handleLogout}>
+                  <HugeiconsIcon icon={Logout01Icon} className="size-4" />
                   Logout
                 </Button>
               </>
             ) : (
-              <Button onClick={handleLogin}>
-                <HugeiconsIcon icon={Login01Icon} className="w-4 h-4 mr-2" />
+              <Button onPress={handleLogin}>
+                <HugeiconsIcon icon={Login01Icon} className="size-4" />
                 Login
               </Button>
             )}
@@ -108,12 +108,12 @@ function Index() {
                   <Button
                     variant={showSecure ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setShowSecure(!showSecure)}
+                    onPress={() => setShowSecure(!showSecure)}
                   >
                     {showSecure ? (
-                      <HugeiconsIcon icon={SquareLock02Icon} className="w-4 h-4 mr-2" />
+                      <HugeiconsIcon icon={SquareLock02Icon} className="size-4" />
                     ) : (
-                      <HugeiconsIcon icon={SquareUnlock02Icon} className="w-4 h-4 mr-2" />
+                      <HugeiconsIcon icon={SquareUnlock02Icon} className="size-4" />
                     )}
                     {showSecure ? 'Secure API' : 'Public API'}
                   </Button>
@@ -123,14 +123,14 @@ function Index() {
                   <Button
                     variant={!useCelsius ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setUseCelsius(false)}
+                    onPress={() => setUseCelsius(false)}
                   >
                     °F
                   </Button>
                   <Button
                     variant={useCelsius ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setUseCelsius(true)}
+                    onPress={() => setUseCelsius(true)}
                   >
                     °C
                   </Button>
@@ -138,24 +138,20 @@ function Index() {
               </div>
 
               {/* Right: Refresh button */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      onClick={handleRefresh}
-                      disabled={isCurrentlyFetching}
-                    >
-                      <HugeiconsIcon
-                        icon={RotateClockwiseIcon}
-                        className={`w-4 h-4 mr-2 ${isCurrentlyFetching ? 'animate-spin' : ''}`}
-                      />
-                      Refresh
-                    </Button>
-                  }
-                />
-                <TooltipContent>Fetch latest weather data</TooltipContent>
-              </Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant="outline"
+                  onPress={handleRefresh}
+                  isPending={isCurrentlyFetching}
+                >
+                  <HugeiconsIcon
+                    icon={RotateClockwiseIcon}
+                    className={`size-4 ${isCurrentlyFetching ? 'animate-spin' : ''}`}
+                  />
+                  Refresh
+                </Button>
+                <Tooltip>Fetch latest weather data</Tooltip>
+              </TooltipTrigger>
             </div>
 
             {/* Status indicator */}
@@ -213,7 +209,7 @@ function Index() {
           <div className="text-center py-12">
             <HugeiconsIcon icon={CloudIcon} className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No weather data available</p>
-            <Button variant="outline" className="mt-4" onClick={handleRefresh}>
+            <Button variant="outline" className="mt-4" onPress={handleRefresh}>
               Try Again
             </Button>
           </div>

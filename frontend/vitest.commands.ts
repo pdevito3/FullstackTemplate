@@ -28,7 +28,8 @@ export const holdRequests: BrowserCommand<[path: string]> = async ({ page }, pat
   const matcher = matches(path)
   const handler: RouteHandler = async (route) => {
     await held
-    await route.continue()
+    // Not continue(): Playwright's unroute in releaseRequests can continue an in-flight request first, and a second continue throws "Route is already handled!".
+    await route.fallback()
   }
   holds.set(path, { release, matcher, handler })
   await page.route(matcher, handler)

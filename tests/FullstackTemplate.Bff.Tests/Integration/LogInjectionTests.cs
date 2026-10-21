@@ -21,7 +21,7 @@ public class LogInjectionTests
         ((ScalarValue)warning.Properties["Path"]).Value.ShouldBe($"/api/{marker}[12:00:00 ERR] forged");
         // Serilog logs the raw target when the server has it, so the path can stay percent-encoded
         ((string)((ScalarValue)request.Properties["RequestPath"]).Value!).ShouldNotContain('\n');
-        foreach (var logEvent in BffApp.Instance.Logs.WithPropertyContaining(marker))
+        foreach (var logEvent in BffApp.Logs.WithPropertyContaining(marker))
         {
             var message = logEvent.RenderMessage(CultureInfo.InvariantCulture);
             message.ShouldNotContain('\r', logEvent.MessageTemplate.Text);
@@ -35,7 +35,7 @@ public class LogInjectionTests
         var deadline = DateTime.UtcNow.AddSeconds(5);
         while (true)
         {
-            var found = BffApp.Instance.Logs.WithPropertyContaining(marker).FirstOrDefault(match);
+            var found = BffApp.Logs.WithPropertyContaining(marker).FirstOrDefault(match);
             if (found is not null)
                 return found;
             if (DateTime.UtcNow > deadline)

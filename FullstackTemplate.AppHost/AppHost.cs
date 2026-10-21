@@ -31,6 +31,8 @@ try
         .WithImageTag(Config.PostgresImageTag)
         .WithDataVolumeUnlessIsolated();
     var appDb = postgres.AddDatabase("appdb");
+    // The BFF sessions and the Data Protection keys of the BFF
+    var bffDb = postgres.AddDatabase("bffdb");
 
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
         .WithReference(appDb)
@@ -48,6 +50,8 @@ try
         .WithPnpm();
 
     var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
+        .WithReference(bffDb)
+        .WaitFor(bffDb)
         .WithReference(server)
         .WithReference(webfrontend)
         .WithHttpHealthCheck("/health")

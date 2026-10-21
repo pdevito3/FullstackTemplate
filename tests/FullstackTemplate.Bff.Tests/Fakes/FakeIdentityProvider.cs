@@ -20,7 +20,8 @@ using Microsoft.IdentityModel.Tokens;
 /// <para>
 /// The authorize endpoint reads test-only query parameters, so that each test chooses its own user:
 /// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_session_state</c>, <c>test_error</c>, and
-/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>).
+/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>). A refresh response has no
+/// <c>id_token</c>.
 /// </para>
 /// </summary>
 public sealed class FakeIdentityProvider : IAsyncDisposable
@@ -39,6 +40,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Grant> _codes = new();
     private readonly ConcurrentDictionary<string, Grant> _accessTokens = new();
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
+    private readonly ConcurrentDictionary<string, RefreshGate> _refreshGates = new();
+    private readonly ConcurrentQueue<IssuedTokens> _issued = new();
 
     private FakeIdentityProvider(WebApplication app) => _app = app;
 
@@ -130,6 +133,24 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     public int RefreshCount(string subject) =>
         RefreshRequests.Count(t => _refreshTokens.TryGetValue(t, out var grant) && grant.Subject == subject);
 
+    /// <summary>
+    /// The refresh tokens that the provider issued to <paramref name="subject"/>, in order.
+    /// </summary>
+    public IReadOnlyList<string> IssuedRefreshTokens(string subject) =>
+        _issued.Where(t => t.Subject == subject).Select(t => t.RefreshToken).ToList();
+
+    /// <summary>
+    /// The ID tokens that the provider issued to <paramref name="subject"/>, in order.
+    /// </summary>
+    public IReadOnlyList<string> IssuedIdTokens(string subject) =>
+        _issued.Where(t => t.Subject == subject && t.IdToken is not null).Select(t => t.IdToken!).ToList();
+
+    /// <summary>
+    /// Holds each refresh request of <paramref name="subject"/> until the test releases the gate. The gate tells
+    /// the test when a refresh request arrives.
+    /// </summary>
+    public RefreshGate HoldRefreshes(string subject) => _refreshGates.GetOrAdd(subject, _ => new RefreshGate());
+
     public ValueTask DisposeAsync() => _app.DisposeAsync();
 
     private void MapEndpoints()
@@ -194,6 +215,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
                 case "refresh_token" when _refreshTokens.TryGetValue(form["refresh_token"].ToString(), out var grant):
                     RefreshRequests.Add(form["refresh_token"].ToString());
+                    if (_refreshGates.TryGetValue(grant.Subject, out var gate))
+                    {
+                        gate.Arrived.TrySetResult();
+                        await gate.Released.Task;
+                    }
+
                     return grant.FailRefresh
                         ? Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest)
                         : IssueTokens(grant, includeIdToken: false);
@@ -226,6 +253,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _accessTokens[accessToken] = grant;
         _refreshTokens[refreshToken] = grant;
 
+        string? idToken = null;
         var response = new Dictionary<string, object>
         {
             ["access_token"] = accessToken,
@@ -249,8 +277,11 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             if (grant.SessionId is not null)
                 claims["sid"] = grant.SessionId;
 
-            response["id_token"] = CreateJwt(claims, "JWT");
+            idToken = CreateJwt(claims, "JWT");
+            response["id_token"] = idToken;
         }
+
+        _issued.Enqueue(new IssuedTokens(grant.Subject, refreshToken, idToken));
 
         return Results.Text(JsonSerializer.Serialize(response), "application/json");
     }
@@ -258,4 +289,16 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private static string NewToken(string prefix) => $"{prefix}-{Guid.NewGuid():N}";
 
     private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh);
+
+    private sealed record IssuedTokens(string Subject, string RefreshToken, string? IdToken);
+
+    /// <summary>
+    /// See <see cref="HoldRefreshes"/>.
+    /// </summary>
+    public sealed class RefreshGate
+    {
+        public TaskCompletionSource Arrived { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Released { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
 }

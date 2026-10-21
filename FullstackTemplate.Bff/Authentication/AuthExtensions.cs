@@ -1,7 +1,7 @@
 using Duende.AccessTokenManagement.OpenIdConnect;
 using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.Login;
-using FullstackTemplate.Bff.Logout;
+using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.User;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -141,7 +141,7 @@ public static class AuthExtensions
                 options.Events.OnTicketReceived = context =>
                 {
                     LoginTraceLink.LinkCurrentActivity(context.Properties);
-                    return Task.CompletedTask;
+                    return NewLogin.EndExistingSessionAsync(context);
                 };
             });
 
@@ -151,7 +151,7 @@ public static class AuthExtensions
             options.RefreshBeforeExpiration = TimeSpan.FromSeconds(refreshBeforeExpirationSeconds);
         });
 
-        services.Configure<LogoutOptions>(options => options.RevokeRefreshToken = revokeRefreshTokenOnLogout);
+        services.Configure<RevocationOptions>(options => options.Enabled = revokeRefreshTokenOnLogout);
 
         services.AddBffApiStatusCodes();
         services.AddAuthorization();

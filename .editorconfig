@@ -5,5 +5,5 @@ root = true
 dotnet_code_quality.CA1711.allowed_suffixes = Permission
 
 # EF Core writes the migrations. Analyzers do not report on generated code.
-[**/Databases/Migrations/*.cs]
+[{**/Databases/Migrations/*.cs,**/Sessions/Migrations/*.cs}]
 generated_code = true

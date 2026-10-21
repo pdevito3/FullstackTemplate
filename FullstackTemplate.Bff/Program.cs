@@ -4,6 +4,7 @@ using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.Authentication;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Proxy;
+using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
@@ -40,6 +41,8 @@ try
         });
     });
 
+    // Before the authentication, so that the bffdb migrations run before the Data Protection key ring loads
+    builder.AddBffSessions();
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddHttpForwarder();
 

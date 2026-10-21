@@ -4,12 +4,12 @@ using System.Security.Claims;
 using System.Text;
 using FullstackTemplate.Bff.BackChannel;
 using FullstackTemplate.Bff.Login;
+using FullstackTemplate.Bff.Tests.Fakes;
 using FullstackTemplate.Bff.User;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Shouldly;
@@ -100,14 +100,5 @@ public class ManagementEndpointUnitTests
         public void RequestRefresh()
         {
         }
-    }
-
-    private sealed class FixedOptionsMonitor<T>(T value) : IOptionsMonitor<T>
-    {
-        public T CurrentValue => value;
-
-        public T Get(string? name) => value;
-
-        public IDisposable? OnChange(Action<T, string?> listener) => null;
     }
 }

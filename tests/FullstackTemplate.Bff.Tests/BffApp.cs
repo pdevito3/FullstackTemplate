@@ -2,18 +2,23 @@ namespace FullstackTemplate.Bff.Tests;
 
 using System.Net;
 using System.Web;
+using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Serilog.Core;
 
 /// <summary>
-/// The BFF on a test server, with the <see cref="FakeIdentityProvider"/> as its identity provider and the
-/// <see cref="EchoApi"/> as its server API. One instance serves the whole assembly. Each test gets its own
-/// client, and thus its own cookies.
+/// The BFF on a test server, with the <see cref="FakeIdentityProvider"/> as its identity provider, the
+/// <see cref="EchoApi"/> as its server API, and a Postgres container for <c>bffdb</c>. One instance serves the
+/// whole assembly. Each test gets its own client, and thus its own cookies. A test that needs other settings, or
+/// a second BFF instance on the same <c>bffdb</c>, starts its own with <see cref="StartAnotherInstance"/>.
 /// </summary>
 public sealed class BffApp : WebApplicationFactory<Program>
 {
@@ -31,10 +36,22 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// <summary>
     /// Each log event of the BFF. Filter by a value that is unique to the test.
     /// </summary>
-    public CapturedLogs Logs { get; } = new();
+    /// <remarks>
+    /// Each host sets the static Serilog logger and logs through it, so a host logs to the sinks of the host that
+    /// started last. All instances share one sink, so that the events of each instance arrive here.
+    /// </remarks>
+    public static CapturedLogs Logs { get; } = new();
+
+    public static PostgresTestDatabase Database { get; private set; } = null!;
+
+    private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
+    private bool _ownsDependencies;
 
     public static async Task StartAsync()
     {
+        var database = new PostgresTestDatabase();
+        await database.StartAsync();
+        Database = database;
         var identityProvider = await FakeIdentityProvider.StartAsync();
         var api = await EchoApi.StartAsync();
 
@@ -47,24 +64,46 @@ public sealed class BffApp : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Auth__RequireHttpsMetadata", "false");
         Environment.SetEnvironmentVariable("services__server__http__0", api.Url);
         Environment.SetEnvironmentVariable("services__webfrontend__http__0", "http://localhost:5173");
+        Environment.SetEnvironmentVariable($"ConnectionStrings__{BffDbContext.DatabaseName}", database.ConnectionString);
 
-        var app = new BffApp { IdentityProvider = identityProvider, Api = api };
+        var app = new BffApp { IdentityProvider = identityProvider, Api = api, _ownsDependencies = true };
         // Start the host now, so that a startup failure fails the assembly hook with its own message
         _ = app.Server;
         Instance = app;
     }
 
+    /// <summary>
+    /// Starts one more BFF on the same identity provider, API, and <c>bffdb</c>, with the extra
+    /// <paramref name="settings"/>. The caller disposes it.
+    /// </summary>
+    public static BffApp StartAnotherInstance(IReadOnlyDictionary<string, string?>? settings = null)
+    {
+        var app = new BffApp
+        {
+            IdentityProvider = Instance.IdentityProvider,
+            Api = Instance.Api,
+            _settings = settings ?? new Dictionary<string, string?>(),
+        };
+        _ = app.Server;
+        return app;
+    }
+
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
+        if (!_ownsDependencies)
+            return;
+
         await IdentityProvider.DisposeAsync();
         await Api.DisposeAsync();
+        await Database.DisposeAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(_settings));
         builder.ConfigureTestServices(services =>
         {
             // Serilog reads the sinks from the services (ReadFrom.Services)
@@ -72,6 +111,40 @@ public sealed class BffApp : WebApplicationFactory<Program>
             services.AddTestAuthorization();
         });
     }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> with the BFF session store of this BFF, in its own scope.
+    /// </summary>
+    public async Task<T> WithStoreAsync<T>(Func<IBffSessionStore, Task<T>> action)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<IBffSessionStore>());
+    }
+
+    /// <summary>
+    /// The BFF session key in the last <c>__Host-bff</c> cookie that <paramref name="response"/> sets, or null if
+    /// it sets none or only deletes it.
+    /// </summary>
+    public string? SessionKeyIn(HttpResponseMessage response)
+    {
+        var value = SessionCookieValue(response);
+        if (string.IsNullOrEmpty(value))
+            return null;
+
+        var cookieOptions = Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        return cookieOptions.TicketDataFormat.Unprotect(value)?.Principal.FindFirst(SessionKey.ClaimType)?.Value;
+    }
+
+    /// <summary>
+    /// The value of the last <c>__Host-bff</c> cookie that <paramref name="response"/> sets.
+    /// </summary>
+    public static string? SessionCookieValue(HttpResponseMessage response) =>
+        response.Headers.TryGetValues("Set-Cookie", out var cookies)
+            ? cookies.Where(c => c.StartsWith("__Host-bff=", StringComparison.Ordinal))
+                .Select(c => c["__Host-bff=".Length..].Split(';')[0])
+                .LastOrDefault()
+            : null;
 
     /// <summary>
     /// A client with its own cookie container, that does not follow redirects.

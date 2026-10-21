@@ -1,22 +1,11 @@
-using Duende.AccessTokenManagement.OpenIdConnect;
+using FullstackTemplate.Bff.Authentication;
 using FullstackTemplate.Bff.Management;
+using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.Extensions.Options;
-using Serilog;
-using ILogger = Serilog.ILogger;
 
 namespace FullstackTemplate.Bff.Logout;
-
-public sealed class LogoutOptions
-{
-    /// <summary>
-    /// Revoke the refresh token at the identity provider (RFC 7009) on logout. From
-    /// <c>Auth:RevokeRefreshTokenOnLogout</c>, default true.
-    /// </summary>
-    public bool RevokeRefreshToken { get; set; } = true;
-}
 
 /// <summary>
 /// <c>/bff/logout</c> ends the BFF session and starts RP-initiated logout at the identity provider.
@@ -30,12 +19,11 @@ public static class LogoutEndpoint
 {
     public const string Path = "/bff/logout";
 
-    private static readonly ILogger Logger = Log.ForContext(typeof(LogoutEndpoint));
-
     public static async Task HandleAsync(
         HttpContext context,
-        IOptions<LogoutOptions> options,
-        IOpenIdConnectConfigurationService oidcConfiguration)
+        BffSessionRequest session,
+        IBffSessionStore store,
+        RefreshTokenRevocation revocation)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         var signedIn = result.Succeeded && result.Principal?.Identity?.IsAuthenticated == true;
@@ -58,8 +46,15 @@ public static class LogoutEndpoint
             return;
         }
 
-        if (signedIn && options.Value.RevokeRefreshToken)
-            await RevokeRefreshTokenAsync(context, oidcConfiguration);
+        if (signedIn)
+        {
+            // Delete the row first, so that a late write of a request that runs now cannot bring it back.
+            if (session.Key is { } key)
+                await store.DeleteAsync(key, context.RequestAborted);
+
+            if (result.Properties?.GetTokenValue("refresh_token") is { Length: > 0 } refreshToken)
+                await revocation.RevokeAsync(refreshToken, context.RequestAborted);
+        }
 
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -69,22 +64,5 @@ public static class LogoutEndpoint
         // The handler sends the browser to the end_session_endpoint with id_token_hint, and back to returnUrl
         // through /signout-callback-oidc.
         await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = returnUrl });
-    }
-
-    /// <summary>
-    /// Revokes the refresh token of the current user. A provider with no <c>revocation_endpoint</c> in
-    /// discovery is skipped, so the logout still completes. Token management logs an error response of the
-    /// provider and continues.
-    /// </summary>
-    private static async Task RevokeRefreshTokenAsync(HttpContext context, IOpenIdConnectConfigurationService oidcConfiguration)
-    {
-        var configuration = await oidcConfiguration.GetOpenIdConnectConfigurationAsync(ct: context.RequestAborted);
-        if (configuration.RevocationEndpoint is null)
-        {
-            Logger.Here().Information("Skipped the refresh token revocation, because discovery has no revocation_endpoint");
-            return;
-        }
-
-        await context.RevokeRefreshTokenAsync(ct: context.RequestAborted);
     }
 }

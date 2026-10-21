@@ -1084,8 +1084,20 @@
         "tags": [
           "Weather"
         ],
-        "summary": "Gets the weather forecast for the next five days. The caller does not need to sign in.",
+        "summary": "Gets the weather forecast for the next 1 to 14 days, 5 by default. The caller does not need to sign in.",
         "operationId": "GetWeatherForecast",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "maximum": 14,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1096,6 +1108,16 @@
                   "items": {
                     "$ref": "#/components/schemas/WeatherForecast"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }

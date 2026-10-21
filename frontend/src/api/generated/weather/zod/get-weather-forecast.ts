@@ -4,8 +4,15 @@
 */
 
 import * as z from 'zod'
+import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 import { weatherForecastSchema } from '../../models/zod/weather-forecast'
+
+export const getWeatherForecastQueryDaysSchema = z.int32().min(1).max(14).optional()
 
 export const getWeatherForecastStatus200Schema = z.array(weatherForecastSchema)
 
+export const getWeatherForecastStatus400Schema = validationProblemDetailsSchema
+
 export const getWeatherForecastResponseSchema = getWeatherForecastStatus200Schema
+
+export const getWeatherForecastErrorSchema = getWeatherForecastStatus400Schema

@@ -125,7 +125,7 @@ import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
 import { useAuth } from '@/domain/auth/apis/get-user'
 import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 
-const { data, isLoading, error } = useWeatherForecast()
+const { data, isLoading, error } = useWeatherForecast(days)
 const { isLoggedIn, username, logoutUrl } = useAuth()
 const { login, logout } = useAuthActions()
 ```

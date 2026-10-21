@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.Server.Domain.Users.Features;
+using FullstackTemplate.Server.Domain.Weather.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
@@ -74,14 +75,15 @@ public class RequestValidationBehaviorTests
     }
 
     /// <summary>
-    /// The HTTP list endpoints keep <c>[Range]</c> on their page parameters only for the OpenAPI contract.
-    /// The behavior applies the rules of the DTO, so each copy must be the same as the rule of the DTO.
+    /// The HTTP endpoints keep <c>[Range]</c> on their parameters only for the OpenAPI contract.
+    /// The behavior applies the rules of the request or its DTO, so each copy must be the same as that rule.
     /// </summary>
     [Test]
     public void each_range_of_an_endpoint_parameter_is_the_range_of_the_dto()
     {
         // Arrange
-        var dtoRanges = typeof(BasePaginationParameters).GetProperties()
+        var dtoRanges = new[] { typeof(BasePaginationParameters), typeof(GetWeatherForecast.Query) }
+            .SelectMany(type => type.GetProperties())
             .Where(property => property.GetCustomAttribute<RangeAttribute>() is not null)
             .ToDictionary(property => property.Name, property => property.GetCustomAttribute<RangeAttribute>()!, StringComparer.OrdinalIgnoreCase);
         var parameters = typeof(IEndpoint).Assembly.GetTypes()

@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
+import { z } from 'zod'
 import { useQueryClient } from '@tanstack/react-query'
+import type { Key } from 'react-aria-components'
 import { RotateClockwiseIcon, CloudIcon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
+import { getWeatherForecastQueryDaysSchema } from '@/api/generated/weather/zod/get-weather-forecast'
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
 import type { WeatherForecast } from '@/api/generated/models/types/weather-forecast'
 import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
@@ -14,43 +17,68 @@ import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 
+const DEFAULT_DAYS = 5
+
+const daysSchema = getWeatherForecastQueryDaysSchema.unwrap()
+const { minValue, maxValue } = daysSchema
+if (minValue === null || maxValue === null) {
+  throw new Error('The weather contract must bound the days parameter')
+}
+const DAY_OPTIONS = Array.from({ length: maxValue - minValue + 1 }, (_, index) => minValue + index)
+
+const searchSchema = z.object({
+  days: daysSchema.default(DEFAULT_DAYS).catch(DEFAULT_DAYS),
+})
+
 export const Route = createFileRoute('/')({
+  validateSearch: searchSchema,
+  search: { middlewares: [stripSearchParams({ days: DEFAULT_DAYS })] },
   component: Index,
 })
 
 function Index() {
   const [useCelsius, setUseCelsius] = useState(false)
   const [showSecure, setShowSecure] = useState(false)
+  const { days } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const queryClient = useQueryClient()
   const auth = useAuth()
   const { login, logout } = useAuthActions()
+
+  const isSecureView = showSecure && auth.isLoggedIn
 
   const {
     data: weatherData = [],
     isLoading: loading,
     error,
     isFetching,
-  } = useWeatherForecast()
+  } = useWeatherForecast(days)
 
   const {
     data: secureWeatherData = [],
     isLoading: secureLoading,
     error: secureError,
     isFetching: secureFetching,
-  } = useSecureWeatherForecast(showSecure && auth.isLoggedIn)
+  } = useSecureWeatherForecast(isSecureView)
+
+  const handleDaysChange = (key: Key | null) => {
+    if (typeof key !== 'number') return
+    void navigate({ search: { days: key } })
+  }
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: WeatherKeys.all })
   }
 
-  const isCurrentlyFetching = showSecure && auth.isLoggedIn ? secureFetching : isFetching
-  const displayData = showSecure && auth.isLoggedIn ? secureWeatherData : weatherData
-  const isSecureData = showSecure && auth.isLoggedIn && secureWeatherData.length > 0
-  const currentError = showSecure && auth.isLoggedIn ? secureError : error
-  const isLoading = showSecure && auth.isLoggedIn ? secureLoading : loading
+  const isCurrentlyFetching = isSecureView ? secureFetching : isFetching
+  const displayData = isSecureView ? secureWeatherData : weatherData
+  const isSecureData = isSecureView && secureWeatherData.length > 0
+  const currentError = isSecureView ? secureError : error
+  const isLoading = isSecureView ? secureLoading : loading
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -135,6 +163,25 @@ function Index() {
                     °C
                   </Button>
                 </div>
+
+                {!isSecureView && (
+                  <Select
+                    aria-label="Days"
+                    value={days}
+                    onChange={handleDaysChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_OPTIONS.map((option) => (
+                        <SelectItem key={option} id={option}>
+                          {`${option} ${option === 1 ? 'day' : 'days'}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Right: Refresh button */}

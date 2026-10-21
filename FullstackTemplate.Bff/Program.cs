@@ -2,11 +2,11 @@ using System.Globalization;
 using FullstackTemplate.Bff;
 using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.Authentication;
+using FullstackTemplate.Bff.HostTrust;
 using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Sessions;
-using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 
@@ -46,20 +46,16 @@ try
     builder.AddBffSessions();
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddHttpForwarder();
-
-    // Configure forwarded headers for reverse proxy (for example AWS or Azure)
-    builder.Services.Configure<ForwardedHeadersOptions>(options =>
-    {
-        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-        // Trust all proxies in production if a proxy, for example on AWS or Azure, handles the external TLS
-        options.KnownIPNetworks.Clear();
-        options.KnownProxies.Clear();
-    });
+    // Bff:PublicOrigin, the forwarded headers, and the host filter
+    builder.Services.AddHostTrust();
 
     var app = builder.Build();
 
-    // Must be first to properly set scheme/host from reverse proxy headers
+    // The host filter of the web host defaults runs before this, with the AllowedHosts of AddHostTrust.
+    // First, so that the request logs and the handlers see the client address and the scheme from the proxy
     app.UseForwardedHeaders();
+    // The OIDC handler builds the redirect URIs from the public origin, never from the request
+    app.UsePublicOrigin();
 
     app.UseSerilogRequestLogging(options =>
     {

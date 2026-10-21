@@ -12,7 +12,8 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// A stand-in for the server API on a real port. Each request gets its method, path, and headers back as JSON,
-/// so a test sees exactly what the BFF proxy forwarded.
+/// so a test sees exactly what the BFF proxy forwarded. The query parameter <see cref="SetCookieParameter"/> makes the
+/// response set cookies.
 /// <para>
 /// Two paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away, and
 /// <c>/api/test/drop/{id}</c> counts the request and then drops the connection with no response.
@@ -20,6 +21,8 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 public sealed class EchoApi : IAsyncDisposable
 {
+    public const string SetCookieParameter = "test_set_cookie";
+
     private readonly WebApplication _app;
     private readonly ConcurrentDictionary<string, int> _drops = new();
 
@@ -60,10 +63,17 @@ public sealed class EchoApi : IAsyncDisposable
             return Results.Empty;
         });
 
-        app.Map("/{**path}", (HttpRequest request) => Results.Json(new EchoedRequest(
-            request.Method,
-            request.Path.Value ?? "",
-            request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase))));
+        app.Map("/{**path}", (HttpRequest request, HttpResponse response) =>
+        {
+            // Each test_set_cookie query value becomes one Set-Cookie header of the response
+            foreach (var cookie in request.Query[SetCookieParameter])
+                response.Headers.Append("Set-Cookie", cookie);
+
+            return Results.Json(new EchoedRequest(
+                request.Method,
+                request.Path.Value ?? "",
+                request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase)));
+        });
 
         await app.StartAsync();
         api.Url = app.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>()

@@ -26,6 +26,21 @@ public class LoginEndpointTests
     }
 
     [Test]
+    [Arguments(".AspNetCore.Correlation.")]
+    [Arguments(".AspNetCore.OpenIdConnect.Nonce.")]
+    public async Task login_sets_the_correlation_and_nonce_cookies_with_samesite_lax(string cookiePrefix)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.GetAsync("/bff/login");
+
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith(cookiePrefix, StringComparison.Ordinal));
+        cookie.ShouldContain("samesite=lax", Case.Insensitive);
+        cookie.ShouldContain("secure", Case.Insensitive);
+        cookie.ShouldContain("httponly", Case.Insensitive);
+    }
+
+    [Test]
     public async Task a_supported_prompt_goes_to_the_authorize_request()
     {
         using var browser = BffApp.Instance.CreateBrowser();

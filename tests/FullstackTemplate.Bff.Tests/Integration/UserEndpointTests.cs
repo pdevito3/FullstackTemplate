@@ -82,7 +82,7 @@ public class UserEndpointTests
         var cookie = callback.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("__Host-bff=", StringComparison.Ordinal));
         cookie.ShouldContain("path=/", Case.Insensitive);
         cookie.ShouldContain("secure", Case.Insensitive);
-        cookie.ShouldContain("samesite=lax", Case.Insensitive);
+        cookie.ShouldContain("samesite=strict", Case.Insensitive);
         cookie.ShouldContain("httponly", Case.Insensitive);
         cookie.ShouldNotContain("domain=", Case.Insensitive);
     }

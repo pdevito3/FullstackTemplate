@@ -59,10 +59,11 @@ public static class AuthExtensions
             {
                 options.Cookie.Name = SessionCookieName;
                 options.Cookie.HttpOnly = true;
-                // Lax is required for OIDC redirects from external IdP
-                options.Cookie.SameSite = SameSiteMode.Lax;
-                // Ensure cookie works across ports in dev
-                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                // Each call that needs the BFF session is same-site. The first page load after the redirect from the
+                // identity provider is cross-site, so it has no cookie, but its HTML needs none.
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                // Also in development: browsers treat http://localhost as a secure context
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
                 options.Events.OnCheckSlidingExpiration = UserEndpoint.SuppressSlideWhenRequested;
             })
@@ -77,6 +78,11 @@ public static class AuthExtensions
                 options.ResponseType = "code";
                 options.ResponseMode = "query";
                 options.UsePkce = true;
+
+                // Lax, so that the browser sends them on the top-level GET from the identity provider to the callback.
+                // The default is None.
+                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+                options.NonceCookie.SameSite = SameSiteMode.Lax;
 
                 // No x-client-SKU and x-client-ver on the authorize URL: a pushed request then has only client_id and
                 // request_uri, and the provider does not learn the library version

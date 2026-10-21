@@ -4,6 +4,8 @@ using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 using Serilog;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
@@ -18,27 +20,67 @@ public static class ApiProxy
 {
     public const string Prefix = "/api";
 
+    private const string DPoPHeaderName = "DPoP";
+
     private static readonly ILogger Logger = Log.ForContext(typeof(ApiProxy));
 
     /// <summary>
     /// Maps the forwarder. <paramref name="apiBaseUrl"/> ends with <c>/api</c>, because the forwarder strips the
     /// local prefix: <c>/api/v1/x</c> goes to <c>&lt;server&gt;/api/v1/x</c>.
     /// <para>
-    /// The transforms: remove <c>Cookie</c>, strip the prefix, and attach the user token. The YARP defaults also
-    /// apply: the other request headers go through, <c>X-Forwarded-For</c>, <c>-Proto</c>, <c>-Host</c>, and
-    /// <c>-Prefix</c> are set, <c>Forwarded</c> is removed, and the response headers go back as they are. A
-    /// <c>Set-Cookie</c> that the BFF writes in the request, such as a cookie renewed by a token refresh, stays,
-    /// because YARP appends the API headers to the headers that the response already has.
+    /// The request transforms: remove <c>Cookie</c>, remove <c>Authorization</c> and <c>DPoP</c> (the BFF is the only
+    /// source of tokens), strip the prefix, and attach the user token. The response transform removes the
+    /// <c>Set-Cookie</c> values of the API, so that the API cannot replace the BFF session cookie. The YARP defaults
+    /// also apply: the other request headers go through, <c>X-Forwarded-For</c>, <c>-Proto</c>, <c>-Host</c>, and
+    /// <c>-Prefix</c> are set, <c>Forwarded</c> is removed, and the other response headers go back as they are.
     /// </para>
     /// </summary>
     public static IEndpointConventionBuilder MapApiProxy(this IEndpointRouteBuilder endpoints, Uri apiBaseUrl) =>
         endpoints.MapForwarder($"{Prefix}/{{**catch-all}}", apiBaseUrl.ToString(), ForwarderRequestConfig.Empty, transforms =>
             {
-                transforms.AddRequestHeaderRemove("Cookie");
+                transforms.AddRequestHeaderRemove(HeaderNames.Cookie);
+                transforms.AddRequestHeaderRemove(HeaderNames.Authorization);
+                transforms.AddRequestHeaderRemove(DPoPHeaderName);
                 transforms.AddPathRemovePrefix(Prefix);
+                // After the removal of Authorization, because it sets the header
                 transforms.AddRequestTransform(AttachUserAccessTokenAsync);
+                transforms.AddResponseTransform(RemoveApiSetCookies);
             })
             .AsBffApiEndpoint();
+
+    /// <summary>
+    /// Removes the <c>Set-Cookie</c> values of the proxied response. A <c>Set-Cookie</c> that the BFF wrote in this
+    /// request, such as a BFF session cookie renewed by a token refresh, stays. YARP appends the API headers to the
+    /// headers that the response already has, so a plain removal of the header would also remove the BFF values.
+    /// </summary>
+    public static ValueTask RemoveApiSetCookies(ResponseTransformContext context)
+    {
+        if (context.ProxyResponse is null || !context.ProxyResponse.Headers.TryGetValues(HeaderNames.SetCookie, out var apiValues))
+            return ValueTask.CompletedTask;
+
+        var headers = context.HttpContext.Response.Headers;
+        var values = headers.SetCookie.ToList();
+        var removed = 0;
+        foreach (var apiValue in apiValues)
+        {
+            // YARP appends, so the value of the API is the last one that is equal
+            var index = values.LastIndexOf(apiValue);
+            if (index < 0)
+                continue;
+
+            values.RemoveAt(index);
+            removed++;
+        }
+
+        headers.SetCookie = values.Count == 0 ? StringValues.Empty : new StringValues(values.ToArray());
+        if (removed > 0)
+        {
+            Logger.Here().Debug("Removed {Count} Set-Cookie values of the API response from {Path}",
+                removed, LogValue.Clean(context.HttpContext.Request.Path.Value));
+        }
+
+        return ValueTask.CompletedTask;
+    }
 
     /// <summary>
     /// Attaches the user access token, after a refresh when it is about to expire. An anonymous request goes to

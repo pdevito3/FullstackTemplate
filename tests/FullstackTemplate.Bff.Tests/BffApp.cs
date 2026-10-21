@@ -60,6 +60,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
     private Action<IServiceCollection>? _services;
     private bool _ownsDependencies;
+    private readonly Lock _clientsLock = new();
 
     public static async Task StartAsync()
     {
@@ -76,6 +77,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Auth__ClientSecret", FakeIdentityProvider.ClientSecret);
         Environment.SetEnvironmentVariable("Auth__Audience", "test-api");
         Environment.SetEnvironmentVariable("Auth__RequireHttpsMetadata", "false");
+        Environment.SetEnvironmentVariable("Bff__PublicOrigin", Origin.GetLeftPart(UriPartial.Authority));
         Environment.SetEnvironmentVariable("services__server__http__0", api.Url);
         Environment.SetEnvironmentVariable("services__webfrontend__http__0", "http://localhost:5173");
         Environment.SetEnvironmentVariable($"ConnectionStrings__{BffDbContext.DatabaseName}", database.ConnectionString);
@@ -207,6 +209,19 @@ public sealed class BffApp : WebApplicationFactory<Program>
                 .Select(c => c["__Host-bff=".Length..].Split(';')[0])
                 .LastOrDefault()
             : null;
+
+    /// <summary>
+    /// <see cref="WebApplicationFactory{TEntryPoint}.CreateClient(WebApplicationFactoryClientOptions)"/> under a
+    /// lock. The factory adds each client to a plain list, and the tests run in parallel. Two adds at the same time
+    /// can leave a null item in the list, and then <see cref="DisposeAsync"/> fails with a NullReferenceException.
+    /// </summary>
+    public new HttpClient CreateClient(WebApplicationFactoryClientOptions options)
+    {
+        lock (_clientsLock)
+        {
+            return base.CreateClient(options);
+        }
+    }
 
     /// <summary>
     /// A client with its own cookie container, that does not follow redirects.

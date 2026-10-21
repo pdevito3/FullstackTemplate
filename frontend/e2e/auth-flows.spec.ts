@@ -1,4 +1,4 @@
-import { test, expect, Locator, Page } from '@playwright/test'
+import { test, expect, Locator, Page, Request } from '@playwright/test'
 import { loadIdp, type IdpConfig } from './idps.ts'
 
 /**
@@ -193,6 +193,106 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await page.waitForURL('/', { timeout: 30000 })
       await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
     })
+  })
+})
+
+const sessionCookieName = '__Host-bff'
+
+/**
+ * Logs in through the SPA and waits for the first load after the redirect to show the signed-in user.
+ */
+async function signInThroughSpa(page: Page) {
+  await page.goto('/')
+  await page.getByRole('button', { name: /login/i }).click()
+  await loginAtIdp(page, currentIdp)
+  await page.waitForURL('/', { timeout: 30000 })
+  await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
+}
+
+/**
+ * Opens a page on another site with one link to `target`, and clicks the link. The browser then sends a cross-site
+ * top-level GET, as for a link in an email or on another web site. Returns the request of the navigation.
+ */
+async function followLinkFromAnotherSite(page: Page, target: string) {
+  const otherSite = 'https://cross-site.test/'
+  await page.route(otherSite, (route) =>
+    route.fulfill({ contentType: 'text/html', body: `<!doctype html><a href="${target}">Open the app</a>` }),
+  )
+  await page.goto(otherSite)
+  const navigation = page.waitForRequest((request) => request.url() === target && request.isNavigationRequest())
+  await page.getByRole('link', { name: 'Open the app' }).click()
+  return navigation
+}
+
+async function sentSessionCookie(request: Request) {
+  const cookie = (await request.allHeaders())['cookie'] ?? ''
+  return cookie.split(';').some((pair) => pair.trim().startsWith(`${sessionCookieName}=`))
+}
+
+// Section 3.8 of docs/specs/home-rolled-bff.md: the session cookie is SameSite=Strict
+test.describe(`Session cookie - ${currentIdp.name}`, () => {
+  test('should set the correlation and nonce cookies with Lax and the session cookie with Strict, and end signed in on the first load', async ({
+    page,
+    context,
+  }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: /login/i }).click()
+    await page.locator(currentIdp.usernameSelector).waitFor({ state: 'visible', timeout: 30000 })
+
+    // The browser must send these two cookies on the cross-site GET from the identity provider to /signin-oidc
+    const loginCookies = await context.cookies()
+    for (const prefix of ['.AspNetCore.Correlation.', '.AspNetCore.OpenIdConnect.Nonce.']) {
+      const cookie = loginCookies.find((c) => c.name.startsWith(prefix))
+      expect(cookie, `${prefix} cookie`).toBeDefined()
+      expect(cookie).toMatchObject({ sameSite: 'Lax', secure: true, httpOnly: true })
+    }
+
+    await loginAtIdp(page, currentIdp)
+
+    // The first load after the redirect is cross-site, so its HTML has no session cookie. The SPA calls /bff/user
+    // same-site, with the cookie, and shows the signed-in user.
+    await page.waitForURL('/', { timeout: 30000 })
+    await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
+
+    const sessionCookie = (await context.cookies()).find((c) => c.name === sessionCookieName)
+    expect(sessionCookie).toMatchObject({ sameSite: 'Strict', secure: true, httpOnly: true, path: '/' })
+  })
+
+  test('should show the signed-in user on a deep link from another site', async ({ page }) => {
+    await signInThroughSpa(page)
+    const deepLink = new URL('/about', page.url()).toString()
+
+    const navigation = await followLinkFromAnotherSite(page, deepLink)
+
+    await page.waitForURL(deepLink)
+    // The navigation is cross-site, so the browser does not send the Strict cookie with the HTML request
+    expect(await sentSessionCookie(navigation)).toBe(false)
+    await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toHaveText('About')
+
+    // Only the home page shows the user. The SPA that the cross-site link loaded calls /bff/user same-site
+    const user = page.waitForResponse((response) => new URL(response.url()).pathname === '/bff/user')
+    await page.getByRole('link', { name: 'Home' }).click()
+    expect((await user).status()).toBe(200)
+    await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
+  })
+
+  test('should send no session cookie on a cross-site top-level GET to /api, which gets a 401', async ({ page }) => {
+    await signInThroughSpa(page)
+    const apiUrl = new URL('/api/v1/weather/secure', page.url()).toString()
+
+    const navigation = await followLinkFromAnotherSite(page, apiUrl)
+
+    const response = await navigation.response()
+    expect(response?.status()).toBe(401)
+    expect(await sentSessionCookie(navigation)).toBe(false)
+
+    // The same call from the SPA is same-site, so it has the cookie and succeeds
+    await page.goto('/')
+    const sameSiteStatus = await page.evaluate(
+      async (url) => (await fetch(url, { headers: { 'X-CSRF': '1' } })).status,
+      apiUrl,
+    )
+    expect(sameSiteStatus).toBe(200)
   })
 })
 

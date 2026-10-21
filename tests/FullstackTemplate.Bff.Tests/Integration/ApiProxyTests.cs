@@ -2,6 +2,7 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
 using System.Net.Sockets;
+using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shouldly;
@@ -9,6 +10,11 @@ using Yarp.ReverseProxy.Forwarder;
 
 public class ApiProxyTests
 {
+    // A cookie that could replace the BFF session cookie, and one more
+    private static readonly string ApiPathThatSetsCookies =
+        $"/api/v1/weather?{EchoApi.SetCookieParameter}={Uri.EscapeDataString("__Host-bff=from-the-api; path=/; secure; httponly")}"
+        + $"&{EchoApi.SetCookieParameter}={Uri.EscapeDataString("other=from-the-api; path=/")}";
+
     [Test]
     public async Task an_anonymous_request_goes_to_the_api_path_with_no_token_and_no_cookie()
     {
@@ -55,6 +61,71 @@ public class ApiProxyTests
         provider.RefreshCount("user-refresh").ShouldBe(1);
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldStartWith("Bearer at-");
         response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=", StringComparison.Ordinal));
+    }
+
+    [Test]
+    public async Task a_browser_authorization_or_dpop_header_never_reaches_the_api_for_an_anonymous_request()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/weather");
+        request.Headers.Add("X-CSRF", "1");
+        request.Headers.Add("Authorization", "Bearer from-the-browser");
+        request.Headers.Add("DPoP", "proof-from-the-browser");
+
+        var echo = await (await browser.SendAsync(request)).ReadEchoAsync();
+
+        echo.Headers.ShouldNotContainKey("Authorization");
+        echo.Headers.ShouldNotContainKey("DPoP");
+    }
+
+    [Test]
+    public async Task a_signed_in_request_reaches_the_api_with_only_the_bff_token()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-only-bff-token");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/weather");
+        request.Headers.Add("X-CSRF", "1");
+        request.Headers.Add("Authorization", "Bearer from-the-browser");
+        request.Headers.Add("DPoP", "proof-from-the-browser");
+
+        var echo = await (await browser.SendAsync(request)).ReadEchoAsync();
+
+        echo.Headers["Authorization"].ShouldStartWith("Bearer at-");
+        echo.Headers["Authorization"].ShouldNotContain("from-the-browser");
+        echo.Headers["Authorization"].ShouldNotContain(",");
+        echo.Headers.ShouldNotContainKey("DPoP");
+    }
+
+    [Test]
+    public async Task a_set_cookie_from_the_api_never_reaches_the_browser()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-api-cookie");
+
+        var response = await browser.GetApiAsync(ApiPathThatSetsCookies);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Headers.Contains("Set-Cookie").ShouldBeFalse();
+        // The session cookie of the browser still works
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_set_cookie_from_the_api_is_removed_and_the_renewed_bff_cookie_still_reaches_the_browser()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        // 60 seconds is less than the 120 seconds of RefreshBeforeExpiration, so the call refreshes and renews the cookie
+        await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-api-cookie-refresh&test_expires_in=60");
+
+        var response = await browser.GetApiAsync(ApiPathThatSetsCookies);
+
+        BffApp.Instance.IdentityProvider.RefreshCount("user-api-cookie-refresh").ShouldBe(1);
+        var cookies = response.Headers.GetValues("Set-Cookie").ToList();
+        cookies.ShouldNotContain(c => c.Contains("from-the-api", StringComparison.Ordinal));
+        cookies.ShouldNotBeEmpty();
+        cookies.ShouldAllBe(c => c.StartsWith("__Host-bff=", StringComparison.Ordinal));
+        BffApp.Instance.SessionKeyIn(response).ShouldNotBeNull();
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Test]

@@ -77,6 +77,39 @@ public sealed class BffMetricsTests : IDisposable
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
         _metrics.Sum("bff.refresh.failures", ("kind", "permanent")).ShouldBe(1);
+        _metrics.Sum("bff.sessions.ended").ShouldBe(1);
+        _metrics.Sum("bff.sessions.ended", ("reason", "refresh_failure")).ShouldBe(1);
+    }
+
+    [Test]
+    public async Task a_refresh_with_a_503_is_one_temporary_failure_and_ends_no_session()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60&test_refresh=unavailable");
+
+        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        _metrics.Sum("bff.refresh.failures").ShouldBe(1);
+        _metrics.Sum("bff.refresh.failures", ("kind", "temporary")).ShouldBe(1);
+        _metrics.Sum("bff.sessions.ended").ShouldBe(0);
+    }
+
+    [Test]
+    public async Task a_lock_timeout_is_one_temporary_failure_and_ends_no_session()
+    {
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["Bff:Refresh:LockTimeout"] = "00:00:00.300",
+        });
+        var (cookie, key) = await RefreshLockTests.SignInAsync(app, $"test_sub={NewSubject()}&test_expires_in=60");
+        await using var holder = await RefreshLockTests.HoldLockAsync(key);
+        using var browser = RefreshLockTests.Cookieless(app);
+
+        (await browser.SendAsync(RefreshLockTests.ApiRequest(cookie))).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        _metrics.Sum("bff.refresh.failures").ShouldBe(1);
+        _metrics.Sum("bff.refresh.failures", ("kind", "temporary")).ShouldBe(1);
+        _metrics.Sum("bff.sessions.ended").ShouldBe(0);
     }
 
     [Test]

@@ -24,6 +24,8 @@ namespace FullstackTemplate.Bff.Sessions;
 ///   and the value in the row, also when another request wrote the row after this request read it.</item>
 ///   <item>A write that loses the race <see cref="WriteAttempts"/> times stops and logs the failure. A token write
 ///   that stops this way is dropped, and its new refresh token is revoked, because no BFF session holds it.</item>
+///   <item>A write with new tokens comes from a refresh, inside the refresh lock (<see cref="RefreshLock"/>). It can
+///   lose the race only to an expiry renewal. A conflict with other tokens is a fault, and throws.</item>
 ///   <item>If a write with new tokens finds no row, the BFF session ended during the request. The new refresh token
 ///   is then revoked, because no BFF session holds it.</item>
 ///   <item>A refresh response with no <c>id_token</c> keeps the stored <c>id_token</c>.</item>
@@ -191,11 +193,10 @@ public sealed class BffTicketStore(
                     break;
 
                 case BffSessionWrite.Conflict:
-                    // Another request wrote other tokens. The refresh lock of a later slice makes this case rare. The
-                    // row keeps the tokens of the other request.
-                    Logger.Here().Warning("Dropped the token write of the BFF session {SessionKey}, because another request wrote newer tokens",
-                        Fingerprint.Of(key));
-                    return;
+                    // Each token write runs inside the refresh lock, with the version that the lock read, so no
+                    // other token write can come between. A conflict with other tokens is a fault.
+                    throw new InvalidOperationException(
+                        $"The token write of the BFF session {Fingerprint.Of(key)} found other tokens. Each token write must run inside the refresh lock.");
             }
         }
 
@@ -238,8 +239,16 @@ public sealed class BffTicketStore(
     /// </summary>
     public string? RefreshTokenOf(BffSession session) => TokensOf(session)?.RefreshToken;
 
-    private SessionTokens? TokensOf(BffSession session) =>
-        Unprotect(session) is { } ticket ? SessionTokens.From(ticket.Properties) : null;
+    /// <summary>
+    /// The tokens in the ticket of <paramref name="session"/>, or null if the ticket cannot be read.
+    /// </summary>
+    public SessionTokens? TokensOf(BffSession session) =>
+        TicketOf(session) is { } ticket ? SessionTokens.From(ticket.Properties) : null;
+
+    /// <summary>
+    /// The ticket of <paramref name="session"/>, or null if it cannot be read.
+    /// </summary>
+    public AuthenticationTicket? TicketOf(BffSession session) => Unprotect(session);
 
     private byte[] Protect(AuthenticationTicket ticket) => _protector.Protect(TicketSerializer.Default.Serialize(ticket));
 

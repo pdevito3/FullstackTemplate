@@ -184,8 +184,9 @@ public class BffTicketStoreTests
     }
 
     [Test]
-    public async Task a_token_write_after_another_token_write_keeps_the_other_tokens()
+    public async Task a_token_write_after_another_token_write_fails_and_keeps_the_other_tokens()
     {
+        // The refresh lock makes this case a fault: each token write runs inside it, after a reread of the row
         var ticketStore = TicketStore();
         var key = await ticketStore.StoreAsync(Ticket("rt-1"), NewRequest(), CancellationToken.None);
         var first = NewRequest();
@@ -194,7 +195,8 @@ public class BffTicketStoreTests
         var secondTicket = (await ticketStore.RetrieveAsync(key, second, CancellationToken.None))!;
 
         await ticketStore.RenewAsync(key, WithTokens(firstTicket, "rt-2"), first, CancellationToken.None);
-        await ticketStore.RenewAsync(key, WithTokens(secondTicket, "rt-3"), second, CancellationToken.None);
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            ticketStore.RenewAsync(key, WithTokens(secondTicket, "rt-3"), second, CancellationToken.None));
 
         var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
         read.Properties.GetTokenValue("refresh_token").ShouldBe("rt-2");

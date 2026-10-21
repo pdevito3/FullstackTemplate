@@ -22,14 +22,16 @@ using Microsoft.IdentityModel.Tokens;
 /// talk to it over HTTP as they talk to a real provider.
 /// <para>
 /// The authorize endpoint reads test-only query parameters, so that each test chooses its own user:
-/// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_session_state</c>, <c>test_error</c>,
-/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>), <c>test_revoke</c> (<c>fail</c>
-/// makes each revocation of a refresh token of the user return 500, and <c>drop</c> closes the connection),
+/// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_refresh_expires_in</c> (the <c>expires_in</c> of a
+/// refresh response, by default <c>test_expires_in</c>), <c>test_session_state</c>, <c>test_error</c>,
+/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>, and <c>unavailable</c> a 503),
+/// <c>test_revoke</c> (<c>fail</c> makes each revocation of a refresh token of the user return 500, and <c>drop</c>
+/// closes the connection),
 /// <c>test_iss</c> (the <c>iss</c> of the callback, or <c>omit</c> for none), <c>test_aud</c> (one more audience in
 /// the ID token), <c>test_azp</c> (the <c>azp</c> of the ID token), <c>test_nonce=wrong</c> (an ID token
 /// <c>nonce</c> that is not the one of the authorize request), and <c>test_at_hash=wrong</c> (an <c>at_hash</c> that
 /// is not the hash of the access token). The ID token has the correct <c>at_hash</c> by default. A refresh response
-/// has no <c>id_token</c>.
+/// has no <c>id_token</c>. Refresh tokens rotate: each one works one time, and a reuse gets <c>invalid_grant</c>.
 /// </para>
 /// <para>
 /// <see cref="FakeProviderOptions"/> chooses the optional features in its discovery document. The token and PAR
@@ -53,6 +55,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Grant> _codes = new();
     private readonly ConcurrentDictionary<string, Grant> _accessTokens = new();
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
+    private readonly ConcurrentDictionary<string, bool> _usedRefreshTokens = new();
     private readonly ConcurrentDictionary<string, RequestGate> _refreshGates = new();
     private readonly ConcurrentQueue<IssuedTokens> _issued = new();
     private readonly ConcurrentDictionary<string, string> _revokeModes = new();
@@ -180,6 +183,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _issued.Where(t => t.Subject == subject).Select(t => t.RefreshToken).ToList();
 
     /// <summary>
+    /// The access tokens that the provider issued to <paramref name="subject"/>, in order.
+    /// </summary>
+    public IReadOnlyList<string> IssuedAccessTokens(string subject) =>
+        _issued.Where(t => t.Subject == subject).Select(t => t.AccessToken).ToList();
+
+    /// <summary>
     /// The ID tokens that the provider issued to <paramref name="subject"/>, in order.
     /// </summary>
     public IReadOnlyList<string> IssuedIdTokens(string subject) =>
@@ -282,7 +291,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 SessionId: Parameter("test_sid"),
                 Nonce: Parameter("test_nonce") == "wrong" ? "wrong-nonce" : Parameter("nonce") ?? "",
                 ExpiresIn: int.TryParse(Parameter("test_expires_in"), out var expiresIn) ? expiresIn : 3600,
-                FailRefresh: Parameter("test_refresh") == "fail",
+                RefreshExpiresIn: int.TryParse(Parameter("test_refresh_expires_in"), out var refreshExpiresIn) ? refreshExpiresIn : null,
+                Refresh: Parameter("test_refresh"),
                 ExtraAudience: Parameter("test_aud"),
                 AuthorizedParty: Parameter("test_azp"),
                 WrongAtHash: Parameter("test_at_hash") == "wrong",
@@ -332,7 +342,11 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                         await gate.Released.Task;
                     }
 
-                    return grant.FailRefresh
+                    if (grant.Refresh == "unavailable")
+                        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+
+                    var firstUse = _usedRefreshTokens.TryAdd(form["refresh_token"].ToString(), true);
+                    return grant.Refresh == "fail" || !firstUse
                         ? Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest)
                         : IssueTokens(grant, includeIdToken: false);
 
@@ -426,7 +440,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         {
             ["access_token"] = accessToken,
             ["token_type"] = "Bearer",
-            ["expires_in"] = grant.ExpiresIn,
+            ["expires_in"] = includeIdToken ? grant.ExpiresIn : grant.RefreshExpiresIn ?? grant.ExpiresIn,
             ["refresh_token"] = refreshToken,
         };
 
@@ -452,7 +466,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             response["id_token"] = idToken;
         }
 
-        _issued.Enqueue(new IssuedTokens(grant.Subject, refreshToken, idToken));
+        _issued.Enqueue(new IssuedTokens(grant.Subject, accessToken, refreshToken, idToken));
 
         return Results.Text(JsonSerializer.Serialize(response), "application/json");
     }
@@ -467,8 +481,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private static string CodeChallenge(string codeVerifier) =>
         Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
 
-    private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh, string? ExtraAudience,
-        string? AuthorizedParty, bool WrongAtHash, string RedirectUri, string? CodeChallenge);
+    /// <param name="Refresh">The <c>test_refresh</c> mode: null, <c>fail</c>, or <c>unavailable</c>.</param>
+    private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, int? RefreshExpiresIn, string? Refresh,
+        string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, string RedirectUri, string? CodeChallenge);
 
     /// <summary>
     /// One request to the token endpoint.
@@ -488,7 +503,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// client authentication failed.</param>
     public sealed record PushedRequest(string? RequestUri, string? ClientAuthentication);
 
-    private sealed record IssuedTokens(string Subject, string RefreshToken, string? IdToken);
+    private sealed record IssuedTokens(string Subject, string AccessToken, string RefreshToken, string? IdToken);
 
     /// <summary>
     /// See <see cref="HoldRefreshes"/> and <see cref="HoldingCommandInterceptor"/>.

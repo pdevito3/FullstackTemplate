@@ -1,6 +1,9 @@
 using System.Net.Http.Headers;
 using Duende.AccessTokenManagement.OpenIdConnect;
 using FullstackTemplate.Bff.ApiEndpoints;
+using FullstackTemplate.Bff.Authentication;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Serilog;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
@@ -38,9 +41,19 @@ public static class ApiProxy
             .AsBffApiEndpoint();
 
     /// <summary>
-    /// Attaches the user access token, after a refresh when it is about to expire. An anonymous request, or a
-    /// request whose refresh failed, goes to the API with no token, so the API decides the status code. The
-    /// BFF session stays after a failed refresh.
+    /// Attaches the user access token, after a refresh when it is about to expire. An anonymous request goes to
+    /// the API with no token, so the API decides the status code. The rules of a failed refresh (section 3.7 of
+    /// the spec):
+    /// <list type="bullet">
+    ///   <item><c>invalid_grant</c>, or a BFF session that ended during the refresh lock: the refresh lock deleted
+    ///   the row. The transform signs out the cookie and forwards with no token, so the next <c>/bff/user</c>
+    ///   gives a 401.</item>
+    ///   <item>Any other failure, such as a network error, a 5xx, or a lock timeout, is temporary: the BFF session
+    ///   stays. The transform sends the current access token while it is valid, and no token after that. The next
+    ///   request tries the refresh again.</item>
+    /// </list>
+    /// The refresh lock logs and counts each failed refresh, so the transform logs at most at
+    /// <c>Information</c>.
     /// </summary>
     public static async ValueTask AttachUserAccessTokenAsync(RequestTransformContext context)
     {
@@ -48,20 +61,36 @@ public static class ApiProxy
         if (httpContext.User.Identity?.IsAuthenticated != true)
             return;
 
+        // The browser chooses the path, so clean it of CR, LF, and the other control characters before a log
+        var path = LogValue.Clean(httpContext.Request.Path.Value);
         try
         {
             var result = await httpContext.GetUserAccessTokenAsync(ct: httpContext.RequestAborted);
             if (!result.WasSuccessful(out var token, out var failure))
             {
-                Logger.Here().Warning("Forwarded {Path} with no access token, because the token request failed with {Error}",
-                    LogValue.Clean(httpContext.Request.Path.Value), failure.Error);
-                return;
+                if (RefreshLock.EndsSession(failure.Error))
+                {
+                    await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    Logger.Here().Information("Forwarded {Path} with no access token, because the BFF session ended after the token request failed with {Error}",
+                        path, failure.Error);
+                    return;
+                }
+
+                token = await CurrentValidTokenAsync(httpContext);
+                if (token is null)
+                {
+                    Logger.Here().Information("Forwarded {Path} with no access token, because the token request failed with {Error} and the current access token expired",
+                        path, failure.Error);
+                    return;
+                }
+
+                Logger.Here().Debug("Forwarded {Path} with the current access token, because the token request failed with {Error}",
+                    path, failure.Error);
             }
 
             if (string.Equals(token.AccessTokenType?.ToString(), "DPoP", StringComparison.OrdinalIgnoreCase))
             {
-                Logger.Here().Error("Forwarded {Path} with no access token, because the BFF does not send DPoP tokens yet",
-                    LogValue.Clean(httpContext.Request.Path.Value));
+                Logger.Here().Error("Forwarded {Path} with no access token, because the BFF does not send DPoP tokens yet", path);
                 return;
             }
 
@@ -70,8 +99,22 @@ public static class ApiProxy
         catch (Exception ex)
         {
             // YARP turns the exception into a 502.
-            Logger.Here().Error(ex, "Failed to attach the access token to {Path}", LogValue.Clean(httpContext.Request.Path.Value));
+            Logger.Here().Error(ex, "Failed to attach the access token to {Path}", path);
             throw;
         }
+    }
+
+    /// <summary>
+    /// The access token of the BFF session as the request read it, or null when it has expired.
+    /// </summary>
+    private static async Task<UserToken?> CurrentValidTokenAsync(HttpContext httpContext)
+    {
+        var services = httpContext.RequestServices;
+        var current = await services.GetRequiredService<IUserTokenStore>()
+            .GetTokenAsync(httpContext.User, ct: httpContext.RequestAborted);
+        var now = services.GetRequiredService<TimeProvider>().GetUtcNow();
+        return current.WasSuccessful(out var stored) && stored.TokenForSpecifiedParameters is { } token && token.Expiration > now
+            ? token
+            : null;
     }
 }

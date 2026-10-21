@@ -58,20 +58,6 @@ public class ApiProxyTests
     }
 
     [Test]
-    public async Task a_failed_refresh_forwards_with_no_token_and_keeps_the_session()
-    {
-        var provider = BffApp.Instance.IdentityProvider;
-        using var browser = BffApp.Instance.CreateBrowser();
-        await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-refresh-fail&test_expires_in=60&test_refresh=fail");
-
-        var response = await browser.GetApiAsync("/api/v1/weather");
-
-        provider.RefreshCount("user-refresh-fail").ShouldBe(1);
-        (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
-    }
-
-    [Test]
     public async Task the_local_api_answers_with_the_header()
     {
         using var browser = BffApp.Instance.CreateBrowser();

@@ -6,6 +6,7 @@ using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.User;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace FullstackTemplate.Bff.Authentication;
@@ -177,6 +178,12 @@ public static class AuthExtensions
             options.RefreshBeforeExpiration = TimeSpan.FromSeconds(refreshBeforeExpirationSeconds);
         });
         RefreshFailureMetrics.Register(services);
+        services.AddOptions<RefreshOptions>()
+            .BindConfiguration(RefreshOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        // Replaces the in-process lock of token management
+        services.Replace(ServiceDescriptor.Singleton<IUserTokenRequestConcurrencyControl, RefreshLock>());
 
         services.AddOptions<ProviderFeatureOptions>().BindConfiguration(ProviderFeatureOptions.SectionName);
         services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)

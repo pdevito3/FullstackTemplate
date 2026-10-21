@@ -3,19 +3,34 @@
 * Do not edit manually.
 */
 
+import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 import type { WeatherForecast } from '../../models/types/weather-forecast'
 
+export type GetWeatherForecastQuery = {
+    /**
+     * @description
+     * Format: `int32`
+     * @minLength 1
+     * @maxLength 14
+     * @type integer | undefined
+    */
+    days?: number;
+};
+
 export type GetWeatherForecastStatus200 = WeatherForecast[];
+
+export type GetWeatherForecastStatus400 = ValidationProblemDetails;
 
 export type GetWeatherForecastOptions = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: GetWeatherForecastQuery;
     headers?: never;
 };
 
 export type GetWeatherForecastResponses = {
     "200": GetWeatherForecastStatus200;
+    "400": GetWeatherForecastStatus400;
 };
 
 /**

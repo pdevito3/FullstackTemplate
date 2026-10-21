@@ -7,9 +7,9 @@ import { WeatherKeys } from './weather.keys'
 /**
  * Hook for fetching public weather forecast data
  */
-export function useWeatherForecast() {
+export function useWeatherForecast(days: number) {
   return useQuery({
-    queryKey: WeatherKeys.list(),
-    queryFn: ({ signal }) => getWeatherForecast({ signal }),
+    queryKey: WeatherKeys.list(days),
+    queryFn: ({ signal }) => getWeatherForecast({ query: { days }, signal }),
   })
 }

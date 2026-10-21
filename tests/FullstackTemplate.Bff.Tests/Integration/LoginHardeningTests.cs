@@ -63,6 +63,29 @@ public class LoginHardeningTests
     }
 
     [Test]
+    public async Task a_callback_with_an_invalid_state_gets_400_problem_and_no_session()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        var issuer = Uri.EscapeDataString(BffApp.Instance.IdentityProvider.Issuer);
+
+        var callback = await browser.GetAsync($"/signin-oidc?code=x&state=not-a-state&iss={issuer}");
+
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+    }
+
+    [Test]
+    public async Task an_error_response_without_a_prompt_gets_400_problem()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var callback = await BffApp.SignInAsync(browser, providerQuery: "test_error=access_denied");
+
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+    }
+
+    [Test]
     public async Task an_id_token_with_another_audience_gets_400_problem_and_no_session()
     {
         using var browser = BffApp.Instance.CreateBrowser();

@@ -32,6 +32,7 @@ public static class ApiRoutes
     public static class Weather
     {
         public static string Get => $"{Base}/weather";
+        public static string GetDays(int days) => $"{Base}/weather?days={days}";
         public static string GetSecure => $"{Base}/weather/secure";
     }
 }

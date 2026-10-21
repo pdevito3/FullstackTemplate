@@ -14,7 +14,7 @@ public static class GetSecureWeatherForecast
         {
             var requestedBy = currentUserService.Name ?? currentUserService.UserIdentifier ?? "Unknown";
 
-            var forecast = Forecaster.NextFiveDays()
+            var forecast = Forecaster.NextDays(Forecaster.DefaultDays)
                 .Select(day => new SecureWeatherForecast(day.Date, day.TemperatureC, day.Summary, requestedBy))
                 .ToArray();
             return Task.FromResult(forecast);

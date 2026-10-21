@@ -6,12 +6,15 @@ public static class Forecaster
     private static readonly string[] Summaries =
         ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
 
+    public const int MinDays = 1;
+    public const int MaxDays = 14;
+    public const int DefaultDays = 5;
+
     private const int MinTemperatureC = -20;
     private const int MaxTemperatureC = 55;
 
-    /// <summary>One forecast for each of the next five days.</summary>
-    public static IEnumerable<(DateOnly Date, int TemperatureC, string Summary)> NextFiveDays() =>
-        Enumerable.Range(1, 5).Select(index =>
+    public static IEnumerable<(DateOnly Date, int TemperatureC, string Summary)> NextDays(int days) =>
+        Enumerable.Range(1, days).Select(index =>
         {
             var temperatureC = Random.Shared.Next(MinTemperatureC, MaxTemperatureC);
             return (DateOnly.FromDateTime(DateTime.Now.AddDays(index)), temperatureC, SummaryFor(temperatureC));

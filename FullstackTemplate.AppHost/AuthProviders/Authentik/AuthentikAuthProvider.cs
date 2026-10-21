@@ -89,7 +89,6 @@ public sealed class AuthentikAuthProvider : IAuthProvider
             RequireHttpsMetadata = false,
             NameClaimType = "email",
             RoleClaimType = "roles",
-            RevokeRefreshTokenOnLogout = true,
             AuthResource = server,
             AuthorityPathSuffix = $"/application/o/{appSlug}/"
         };

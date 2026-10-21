@@ -171,6 +171,28 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       // Verify login button is visible again (indicates logged out)
       await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 10000 })
     })
+
+    test('should use PAR when the provider offers it, and the plain authorize URL when not', async ({ page }) => {
+      await page.goto('/')
+      const loginResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/bff/login')
+      await page.getByRole('button', { name: /login/i }).click()
+
+      // The 302 of /bff/login holds the authorize URL
+      const location = (await loginResponse).headers()['location']
+      expect(location).toBeTruthy()
+      const authorizeParameters = [...new URL(location).searchParams.keys()].sort()
+      if (currentIdp.capabilities.pushedAuthorization) {
+        expect(authorizeParameters).toEqual(['client_id', 'request_uri'])
+      } else {
+        expect(authorizeParameters).toEqual(expect.arrayContaining(['client_id', 'code_challenge', 'redirect_uri', 'response_type', 'state']))
+        expect(authorizeParameters).not.toContain('request_uri')
+      }
+
+      // The login finishes with either form of the authorize request
+      await loginAtIdp(page, currentIdp)
+      await page.waitForURL('/', { timeout: 30000 })
+      await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
+    })
   })
 })
 

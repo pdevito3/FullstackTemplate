@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -34,11 +35,19 @@ public static class BackChannelLogoutEndpoint
         HttpContext context,
         IOptionsMonitor<OpenIdConnectOptions> oidcOptions,
         LogoutTokenReplayCache replayCache,
-        IBffSessionStore store)
+        IBffSessionStore store,
+        ProviderFeatures features)
     {
         context.Response.Headers.Append("Cache-Control", "no-cache, no-store");
         context.Response.Headers.Append("Pragma", "no-cache");
         var cancellationToken = context.RequestAborted;
+
+        if (!features.Active.BackChannelLogout)
+        {
+            Logger.Here().Information("Rejected a back-channel logout request, because Auth:Features:BackChannelLogout is Disable");
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
 
         var logoutToken = await ReadLogoutTokenAsync(context.Request);
 

@@ -6,6 +6,7 @@ using System.Web;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -87,16 +88,18 @@ public sealed class BffApp : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Starts one more BFF on the same identity provider, API, and <c>bffdb</c>, with the extra
-    /// <paramref name="settings"/>, and the changes of <paramref name="services"/> after the services of the app.
-    /// The caller disposes it.
+    /// Starts one more BFF on the same API and <c>bffdb</c>, with the extra <paramref name="settings"/>, and the
+    /// changes of <paramref name="services"/> after the services of the app. It uses the same identity provider, or
+    /// <paramref name="identityProvider"/>. The caller disposes it.
     /// </summary>
-    public static BffApp StartAnotherInstance(IReadOnlyDictionary<string, string?>? settings = null,
-        Action<IServiceCollection>? services = null)
+    public static BffApp StartAnotherInstance(
+        IReadOnlyDictionary<string, string?>? settings = null,
+        Action<IServiceCollection>? services = null,
+        FakeIdentityProvider? identityProvider = null)
     {
         var app = new BffApp
         {
-            IdentityProvider = Instance.IdentityProvider,
+            IdentityProvider = identityProvider ?? Instance.IdentityProvider,
             Api = Instance.Api,
             _settings = settings ?? new Dictionary<string, string?>(),
             _services = services,
@@ -153,6 +156,10 @@ public sealed class BffApp : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(_settings));
+        // AddBffAuthentication reads Auth:Authority before this configuration exists, so set the authority on the
+        // options. A Configure runs before the post-configure step that creates the ConfigurationManager.
+        builder.ConfigureTestServices(services => services.Configure<OpenIdConnectOptions>(
+            OpenIdConnectDefaults.AuthenticationScheme, options => options.Authority = IdentityProvider.Issuer));
         builder.ConfigureTestServices(services =>
         {
             // Serilog reads the sinks from the services (ReadFrom.Services)

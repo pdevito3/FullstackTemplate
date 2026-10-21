@@ -27,11 +27,10 @@ public sealed record AuthProviderConfig
     public IResourceBuilder<ContainerResource>? AuthResource { get; init; }
 
     /// <summary>
-    /// Whether to revoke refresh tokens on logout.
-    /// Some providers (like FusionAuth) don't expose a revocation endpoint in OIDC discovery.
-    /// Default is true for providers that support it.
+    /// The Auth:Features settings of the BFF. The defaults decide each feature from the discovery document of the
+    /// provider, which is correct for each provider.
     /// </summary>
-    public bool RevokeRefreshTokenOnLogout { get; init; } = true;
+    public AuthFeatureSettings Features { get; init; } = new();
 
     /// <summary>
     /// Whether to include the Audience as an OAuth scope.
@@ -65,6 +64,20 @@ public sealed record AuthProviderConfig
     /// The BFF sends client_id and logout_uri to it, as Cognito requires.
     /// </summary>
     public string? LogoutPath { get; init; }
+}
+
+/// <summary>
+/// The Auth:Features settings of the BFF: Auto, Require, or Disable for each optional feature of the provider.
+/// See section 3.3 of docs/specs/home-rolled-bff.md.
+/// </summary>
+public sealed record AuthFeatureSettings
+{
+    public string Revocation { get; init; } = "Auto";
+    public string IssuerParameter { get; init; } = "Auto";
+    public string BackChannelLogout { get; init; } = "Auto";
+    public string EndSession { get; init; } = "Auto";
+    public string PushedAuthorization { get; init; } = "Auto";
+    public string DPoP { get; init; } = "Disable";
 }
 
 /// <summary>
@@ -161,9 +174,14 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RequireHttpsMetadata", authProvider.RequireHttpsMetadata.ToString())
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
-            .WithEnvironment("Auth__RevokeRefreshTokenOnLogout", authProvider.RevokeRefreshTokenOnLogout.ToString())
             .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
-            .WithEnvironment("Auth__RequestOfflineAccess", authProvider.RequestOfflineAccess.ToString());
+            .WithEnvironment("Auth__RequestOfflineAccess", authProvider.RequestOfflineAccess.ToString())
+            .WithEnvironment("Auth__Features__Revocation", authProvider.Features.Revocation)
+            .WithEnvironment("Auth__Features__IssuerParameter", authProvider.Features.IssuerParameter)
+            .WithEnvironment("Auth__Features__BackChannelLogout", authProvider.Features.BackChannelLogout)
+            .WithEnvironment("Auth__Features__EndSession", authProvider.Features.EndSession)
+            .WithEnvironment("Auth__Features__PushedAuthorization", authProvider.Features.PushedAuthorization)
+            .WithEnvironment("Auth__Features__DPoP", authProvider.Features.DPoP);
 
         if (authProvider is { LogoutPath: not null, AuthResource: not null })
         {

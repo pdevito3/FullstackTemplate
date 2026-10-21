@@ -5,5 +5,8 @@
   "password": "password123!",
   "usernameSelector": "#username",
   "passwordSelector": "#password",
-  "submitSelector": "button:has-text(\"Sign in\")"
+  "submitSelector": "button:has-text(\"Sign in\")",
+  "capabilities": {
+    "pushedAuthorization": false
+  }
 }

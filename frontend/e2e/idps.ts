@@ -26,6 +26,16 @@ export interface IdpConfig {
   // even with the implicit-consent flow. The BFF asks for offline_access, and Swagger UI does not.
   hasConsentPage?: boolean
   consentSelector?: string
+  // The provider features that the e2e tests expect (section 6 of docs/specs/home-rolled-bff.md)
+  capabilities: IdpCapabilities
+}
+
+/**
+ * A feature test runs only for a provider that has the feature. For the other providers, a test proves the fallback.
+ */
+export interface IdpCapabilities {
+  // Discovery lists pushed_authorization_request_endpoint, so the BFF pushes the authorize request (RFC 9126)
+  pushedAuthorization: boolean
 }
 
 const idpsDir = new URL('./idps/', import.meta.url)

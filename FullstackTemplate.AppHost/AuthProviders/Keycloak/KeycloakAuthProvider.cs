@@ -55,7 +55,6 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             RequireHttpsMetadata = false,
             NameClaimType = "email",
             RoleClaimType = "roles",
-            RevokeRefreshTokenOnLogout = true,
             AuthResource = keycloak,
             AuthorityPathSuffix = $"/realms/{realmName}"
         };

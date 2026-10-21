@@ -31,7 +31,7 @@ public static class Extensions
 
     // The OIDC handler answers these paths in middleware, so no route names their spans. Without a
     // name they export as a bare "GET", and the login callback is hard to find among other requests.
-    private static readonly string[] OidcCallbackPaths = ["/signin-oidc", "/signout-callback-oidc", "/signout-oidc"];
+    private static readonly string[] OidcCallbackPaths = ["/signin-oidc", "/signout-callback-oidc"];
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {

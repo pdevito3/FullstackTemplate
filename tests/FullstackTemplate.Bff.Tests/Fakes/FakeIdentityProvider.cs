@@ -1,6 +1,9 @@
 namespace FullstackTemplate.Bff.Tests.Fakes;
 
 using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
@@ -20,9 +23,14 @@ using Microsoft.IdentityModel.Tokens;
 /// <para>
 /// The authorize endpoint reads test-only query parameters, so that each test chooses its own user:
 /// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_session_state</c>, <c>test_error</c>,
-/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>), and <c>test_revoke</c> (<c>fail</c>
-/// makes each revocation of a refresh token of the user return 500, and <c>drop</c> closes the connection).
-/// A refresh response has no <c>id_token</c>.
+/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>), <c>test_revoke</c> (<c>fail</c>
+/// makes each revocation of a refresh token of the user return 500, and <c>drop</c> closes the connection),
+/// <c>test_iss</c> (the <c>iss</c> of the callback, or <c>omit</c> for none), and <c>test_aud</c> (one more audience
+/// in the ID token). A refresh response has no <c>id_token</c>.
+/// </para>
+/// <para>
+/// <see cref="FakeProviderOptions"/> chooses the optional features in its discovery document. The token and PAR
+/// endpoints check the client authentication strictly: exactly one method, and only a method that discovery lists.
 /// </para>
 /// </summary>
 public sealed class FakeIdentityProvider : IAsyncDisposable
@@ -35,6 +43,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private static readonly string[] SigningAlgorithms = ["RS256"];
 
     private readonly WebApplication _app;
+    private readonly FakeProviderOptions _options;
     // A key from parameters, not from one RSA instance: each signature provider then gets its own RSA instance,
     // so that parallel tests do not sign with one RSA instance at the same time, which can give a bad signature
     private readonly RsaSecurityKey _signingKey = new(CreateRsaParameters()) { KeyId = "test-key" };
@@ -44,8 +53,13 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, RequestGate> _refreshGates = new();
     private readonly ConcurrentQueue<IssuedTokens> _issued = new();
     private readonly ConcurrentDictionary<string, string> _revokeModes = new();
+    private readonly ConcurrentDictionary<string, Dictionary<string, string>> _pushedRequests = new();
 
-    private FakeIdentityProvider(WebApplication app) => _app = app;
+    private FakeIdentityProvider(WebApplication app, FakeProviderOptions options)
+    {
+        _app = app;
+        _options = options;
+    }
 
     public string Issuer { get; private set; } = "";
 
@@ -59,6 +73,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// </summary>
     public ConcurrentBag<string> RefreshRequests { get; } = [];
 
+    /// <summary>
+    /// The client authentication of each request to the token endpoint, with its <c>grant_type</c> and the
+    /// <c>sub</c> of its grant (null when the code or token is unknown).
+    /// </summary>
+    public ConcurrentQueue<TokenRequest> TokenRequests { get; } = new();
+
     private static RSAParameters CreateRsaParameters()
     {
         using var rsa = RSA.Create(2048);
@@ -67,13 +87,13 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     public SigningCredentials SigningCredentials => new(_signingKey, SecurityAlgorithms.RsaSha256);
 
-    public static async Task<FakeIdentityProvider> StartAsync()
+    public static async Task<FakeIdentityProvider> StartAsync(FakeProviderOptions? options = null)
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         var app = builder.Build();
-        var provider = new FakeIdentityProvider(app);
+        var provider = new FakeIdentityProvider(app, options ?? new FakeProviderOptions());
         provider.MapEndpoints();
 
         await app.StartAsync();
@@ -157,20 +177,46 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     private void MapEndpoints()
     {
-        _app.MapGet("/.well-known/openid-configuration", () => Results.Json(new Dictionary<string, object>
+        _app.MapGet("/.well-known/openid-configuration", () =>
         {
-            ["issuer"] = Issuer,
-            ["authorization_endpoint"] = $"{Issuer}/authorize",
-            ["token_endpoint"] = $"{Issuer}/token",
-            ["userinfo_endpoint"] = $"{Issuer}/userinfo",
-            ["jwks_uri"] = $"{Issuer}/jwks",
-            ["end_session_endpoint"] = $"{Issuer}/endsession",
-            ["revocation_endpoint"] = $"{Issuer}/revoke",
-            ["response_types_supported"] = ResponseTypes,
-            ["subject_types_supported"] = SubjectTypes,
-            ["id_token_signing_alg_values_supported"] = SigningAlgorithms,
-            ["prompt_values_supported"] = PromptValues,
-        }));
+            var discovery = new Dictionary<string, object>
+            {
+                ["issuer"] = Issuer,
+                ["authorization_endpoint"] = $"{Issuer}/authorize",
+                ["token_endpoint"] = $"{Issuer}/token",
+                ["userinfo_endpoint"] = $"{Issuer}/userinfo",
+                ["jwks_uri"] = $"{Issuer}/jwks",
+                ["response_types_supported"] = ResponseTypes,
+                ["subject_types_supported"] = SubjectTypes,
+                ["id_token_signing_alg_values_supported"] = SigningAlgorithms,
+                ["prompt_values_supported"] = PromptValues,
+                ["token_endpoint_auth_methods_supported"] = _options.TokenEndpointAuthMethods,
+            };
+            if (_options.EndSession)
+                discovery["end_session_endpoint"] = $"{Issuer}/endsession";
+            if (_options.Revocation)
+                discovery["revocation_endpoint"] = $"{Issuer}/revoke";
+            if (_options.IssuerParameter)
+                discovery["authorization_response_iss_parameter_supported"] = true;
+            if (_options.BackChannelLogout)
+                discovery["backchannel_logout_supported"] = true;
+            if (_options.PushedAuthorization)
+                discovery["pushed_authorization_request_endpoint"] = $"{Issuer}/par";
+            return Results.Json(discovery);
+        });
+
+        _app.MapPost("/par", async (HttpRequest request) =>
+        {
+            var form = await request.ReadFormAsync();
+            if (Authenticate(request, form) is null)
+                return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var requestUri = $"urn:ietf:params:oauth:request_uri:{Guid.NewGuid():N}";
+            _pushedRequests[requestUri] = form
+                .Where(f => f.Key is not "client_secret")
+                .ToDictionary(f => f.Key, f => f.Value.ToString());
+            return Results.Json(new { request_uri = requestUri, expires_in = 60 }, statusCode: StatusCodes.Status201Created);
+        });
 
         _app.MapGet("/jwks", () =>
         {
@@ -184,27 +230,46 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _app.MapGet("/authorize", (HttpRequest request) =>
         {
             var query = request.Query;
-            var redirectUri = query["redirect_uri"].ToString();
-            var state = Uri.EscapeDataString(query["state"].ToString());
+            // A pushed request (RFC 9126): the parameters come from the PAR endpoint, the test parameters from the query
+            var parameters = query.ToDictionary(q => q.Key, q => q.Value.ToString());
+            if (query["request_uri"].FirstOrDefault() is { } requestUri)
+            {
+                if (!_pushedRequests.TryRemove(requestUri, out var pushed) || pushed["client_id"] != query["client_id"])
+                    return Results.BadRequest(new { error = "invalid_request_uri" });
+                foreach (var (key, value) in pushed)
+                    parameters[key] = value;
+            }
 
-            if (query["test_error"].FirstOrDefault() is { } error)
-                return Results.Redirect($"{redirectUri}?error={Uri.EscapeDataString(error)}&state={state}");
+            string? Parameter(string name) => parameters.TryGetValue(name, out var value) ? value : null;
+            var redirectUri = Parameter("redirect_uri") ?? "";
+            var state = Uri.EscapeDataString(Parameter("state") ?? "");
+            var iss = Parameter("test_iss") switch
+            {
+                "omit" => "",
+                { } value => $"&iss={Uri.EscapeDataString(value)}",
+                null when _options.IssuerParameter => $"&iss={Uri.EscapeDataString(Issuer)}",
+                null => "",
+            };
+
+            if (Parameter("test_error") is { } error)
+                return Results.Redirect($"{redirectUri}?error={Uri.EscapeDataString(error)}&state={state}{iss}");
 
             var grant = new Grant(
-                Subject: query["test_sub"].FirstOrDefault() ?? "user-1",
-                SessionId: query["test_sid"].FirstOrDefault(),
-                Nonce: query["nonce"].ToString(),
-                ExpiresIn: int.TryParse(query["test_expires_in"], out var expiresIn) ? expiresIn : 3600,
-                FailRefresh: query["test_refresh"] == "fail");
+                Subject: Parameter("test_sub") ?? "user-1",
+                SessionId: Parameter("test_sid"),
+                Nonce: Parameter("nonce") ?? "",
+                ExpiresIn: int.TryParse(Parameter("test_expires_in"), out var expiresIn) ? expiresIn : 3600,
+                FailRefresh: Parameter("test_refresh") == "fail",
+                ExtraAudience: Parameter("test_aud"));
 
-            if (query["test_revoke"].FirstOrDefault() is { } revokeMode)
+            if (Parameter("test_revoke") is { } revokeMode)
                 _revokeModes[grant.Subject] = revokeMode;
 
             var code = NewToken("code");
             _codes[code] = grant;
 
-            var location = $"{redirectUri}?code={code}&state={state}";
-            if (query["test_session_state"].FirstOrDefault() is { } sessionState)
+            var location = $"{redirectUri}?code={code}&state={state}{iss}";
+            if (Parameter("test_session_state") is { } sessionState)
                 location += $"&session_state={Uri.EscapeDataString(sessionState)}";
 
             return Results.Redirect(location);
@@ -213,7 +278,15 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _app.MapPost("/token", async (HttpRequest request) =>
         {
             var form = await request.ReadFormAsync();
-            switch (form["grant_type"].ToString())
+            var grantType = form["grant_type"].ToString();
+            var method = Authenticate(request, form);
+            _codes.TryGetValue(form["code"].ToString(), out var codeGrant);
+            _refreshTokens.TryGetValue(form["refresh_token"].ToString(), out var refreshGrant);
+            TokenRequests.Enqueue(new TokenRequest(grantType, method, (codeGrant ?? refreshGrant)?.Subject));
+            if (method is null)
+                return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            switch (grantType)
             {
                 case "authorization_code" when _codes.TryRemove(form["code"].ToString(), out var grant):
                     return IssueTokens(grant, includeIdToken: true);
@@ -246,6 +319,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _app.MapPost("/revoke", async (HttpContext context) =>
         {
             var form = await context.Request.ReadFormAsync();
+            if (Authenticate(context.Request, form) is null)
+                return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
+
             var token = form["token"].ToString();
             RevokedTokens.Add(token);
 
@@ -261,6 +337,46 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                     return Results.Ok();
             }
         });
+    }
+
+    /// <summary>
+    /// The client authentication method of a request, <c>client_secret_basic</c> or <c>client_secret_post</c>, or
+    /// null when it fails: a wrong secret, more than one method (RFC 6749 section 2.3), or a method that discovery
+    /// does not list.
+    /// </summary>
+    private string? Authenticate(HttpRequest request, IFormCollection form)
+    {
+        var hasBasic = AuthenticationHeaderValue.TryParse(request.Headers.Authorization.ToString(), out var header)
+            && string.Equals(header.Scheme, "Basic", StringComparison.OrdinalIgnoreCase);
+        var hasPost = form.ContainsKey("client_secret");
+
+        string method;
+        string? clientId;
+        string? clientSecret;
+        if (hasBasic && !hasPost)
+        {
+            // RFC 6749 section 2.3.1: each part is form-encoded before the Base64 step
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(header!.Parameter ?? "")).Split(':', 2);
+            method = "client_secret_basic";
+            clientId = WebUtility.UrlDecode(decoded[0]);
+            clientSecret = decoded.Length == 2 ? WebUtility.UrlDecode(decoded[1]) : null;
+            if (form.TryGetValue("client_id", out var bodyClientId) && bodyClientId != clientId)
+                return null;
+        }
+        else if (hasPost && !hasBasic)
+        {
+            method = "client_secret_post";
+            clientId = form["client_id"];
+            clientSecret = form["client_secret"];
+        }
+        else
+        {
+            return null;
+        }
+
+        return _options.TokenEndpointAuthMethods.Contains(method) && clientId == ClientId && clientSecret == ClientSecret
+            ? method
+            : null;
     }
 
     private IResult IssueTokens(Grant grant, bool includeIdToken)
@@ -285,7 +401,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             var claims = new Dictionary<string, object>
             {
                 ["iss"] = Issuer,
-                ["aud"] = ClientId,
+                ["aud"] = grant.ExtraAudience is { } extra ? new[] { ClientId, extra } : ClientId,
                 ["sub"] = grant.Subject,
                 ["nonce"] = grant.Nonce,
                 ["iat"] = now,
@@ -305,7 +421,16 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     private static string NewToken(string prefix) => $"{prefix}-{Guid.NewGuid():N}";
 
-    private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh);
+    private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh, string? ExtraAudience);
+
+    /// <summary>
+    /// One request to the token endpoint.
+    /// </summary>
+    /// <param name="GrantType">The <c>grant_type</c>.</param>
+    /// <param name="ClientAuthentication"><c>client_secret_basic</c>, <c>client_secret_post</c>, or null when the
+    /// client authentication failed.</param>
+    /// <param name="Subject">The <c>sub</c> of the code or refresh token, or null when it is unknown.</param>
+    public sealed record TokenRequest(string GrantType, string? ClientAuthentication, string? Subject);
 
     private sealed record IssuedTokens(string Subject, string RefreshToken, string? IdToken);
 

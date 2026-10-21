@@ -2,6 +2,7 @@ using System.Globalization;
 using FullstackTemplate.Bff;
 using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.Authentication;
+using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Sessions;
@@ -92,6 +93,7 @@ try
     }
 
     app.UseCors();
+    app.UseCallbackMethodGuard();
     // Also answers the OIDC callbacks, /signin-oidc and /signout-callback-oidc
     app.UseAuthentication();
     app.UseRouting();
@@ -130,6 +132,9 @@ try
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    // A failed startup, such as a failed discovery read, must not look like a clean stop. The rethrow gives a
+    // non-zero exit code, and it gives the cause to the test host.
+    throw;
 }
 finally
 {

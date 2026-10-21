@@ -1,5 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace FullstackTemplate.AppHost.AuthProviders;
 
@@ -10,6 +12,14 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 /// </summary>
 public sealed class FusionAuthAuthProvider : IAuthProvider
 {
+    private const string KickstartHealthCheck = "fusionauth-kickstart";
+
+    // The values of the variables apiKey and testUserEmail in seed/kickstart.json.
+    private const string KickstartApiKey = "super-secret-api-key-for-development-only";
+    private const string KickstartTestUserEmail = "user@example.com";
+
+    private static readonly HttpClient HealthClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+
     public AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         // PostgreSQL database for FusionAuth
@@ -44,8 +54,28 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
             .WithSeedFiles(this, "/usr/local/fusionauth/kickstart")
             .WithClientUrls(clientUrls)
             .WaitFor(fusionAuthDb)
-            // Health check ensures FusionAuth is ready before server starts
-            .WithHttpHealthCheck("/api/status");
+            .WithHealthCheck(KickstartHealthCheck);
+
+        // The BFF reads the discovery document and the signing keys at startup. /api/status is healthy before
+        // Kickstart has run, so the health check waits for the test user, the last item that Kickstart creates.
+        var fusionAuthHttp = fusionAuth.GetEndpoint("http");
+        builder.Services.AddHealthChecks().AddAsyncCheck(KickstartHealthCheck, async cancellationToken =>
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get,
+                $"{fusionAuthHttp.Url}/api/user?email={Uri.EscapeDataString(KickstartTestUserEmail)}");
+            request.Headers.TryAddWithoutValidation("Authorization", KickstartApiKey);
+            try
+            {
+                using var response = await HealthClient.SendAsync(request, cancellationToken);
+                return response.IsSuccessStatusCode
+                    ? HealthCheckResult.Healthy()
+                    : HealthCheckResult.Unhealthy($"Kickstart has not created the test user yet ({(int)response.StatusCode}).");
+            }
+            catch (HttpRequestException exception)
+            {
+                return HealthCheckResult.Unhealthy("FusionAuth does not answer yet.", exception);
+            }
+        });
 
         return new AuthProviderConfig
         {
@@ -55,7 +85,6 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
             RequireHttpsMetadata = false,
             NameClaimType = "email",
             RoleClaimType = "roles",
-            RevokeRefreshTokenOnLogout = false, // FusionAuth doesn't expose revocation in OIDC discovery
             UseAudienceAsScope = false, // FusionAuth doesn't support custom scopes
             AuthResource = fusionAuth
         };

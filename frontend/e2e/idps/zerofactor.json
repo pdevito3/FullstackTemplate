@@ -3,5 +3,8 @@
   "resource": "zerofactor",
   "email": "admin@example.com",
   "usernameSelector": "#email",
-  "submitSelector": "#continue"
+  "submitSelector": "#continue",
+  "capabilities": {
+    "pushedAuthorization": false
+  }
 }

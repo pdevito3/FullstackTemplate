@@ -3,6 +3,7 @@ namespace FullstackTemplate.Bff.Tests.Unit;
 using System.Security.Claims;
 using System.Text;
 using FullstackTemplate.Bff.BackChannel;
+using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Tests.Fakes;
 using FullstackTemplate.Bff.User;
@@ -86,7 +87,21 @@ public class ManagementEndpointUnitTests
     // The token fails validation, so the handler returns before it uses the replay cache or the store
     private static Task HandleBackChannelAsync(HttpContext context, OpenIdConnectOptions options) =>
         BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options),
-            replayCache: null!, store: null!);
+            replayCache: null!, store: null!, BackChannelLogoutEnabled());
+
+    private static ProviderFeatures BackChannelLogoutEnabled()
+    {
+        var features = new ProviderFeatures();
+        features.Set(new ActiveFeatures(
+            Issuer: "https://idp.test",
+            Revocation: false,
+            IssuerParameter: IssuerParameterRule.Disabled,
+            BackChannelLogout: true,
+            EndSession: false,
+            PushedAuthorization: false,
+            ClientAuthentication: ClientAuthenticationMethod.Auto));
+        return features;
+    }
 
     private static DefaultHttpContext BackChannelRequest()
     {

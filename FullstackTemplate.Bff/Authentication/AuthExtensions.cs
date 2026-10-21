@@ -1,10 +1,12 @@
 using Duende.AccessTokenManagement.OpenIdConnect;
 using FullstackTemplate.Bff.ApiEndpoints;
+using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.User;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.Options;
 
 namespace FullstackTemplate.Bff.Authentication;
 
@@ -21,7 +23,8 @@ public static class AuthExtensions
     /// <summary>
     /// Adds the cookie and OIDC handlers, token management, and the BFF API status code rules.
     /// Reads Auth:Authority, Auth:ClientId, Auth:ClientSecret, Auth:RequireHttpsMetadata,
-    /// Auth:NameClaimType, and Auth:RoleClaimType from configuration.
+    /// Auth:NameClaimType, and Auth:RoleClaimType from configuration. The BFF decides the provider features from
+    /// Auth:Features, Auth:ClientAuthentication, and the discovery document at startup.
     /// </summary>
     public static IServiceCollection AddBffAuthentication(
         this IServiceCollection services,
@@ -39,10 +42,8 @@ public static class AuthExtensions
         var requireHttpsMetadata = configuration.GetValue("Auth:RequireHttpsMetadata", !environment.IsDevelopment());
         var nameClaimType = configuration["Auth:NameClaimType"] ?? "name";
         var roleClaimType = configuration["Auth:RoleClaimType"] ?? "role";
-        var revokeRefreshTokenOnLogout = configuration.GetValue("Auth:RevokeRefreshTokenOnLogout", true);
         var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
         var requestOfflineAccess = configuration.GetValue("Auth:RequestOfflineAccess", true);
-        var logoutEndpoint = configuration["Auth:LogoutEndpoint"];
         var refreshBeforeExpirationSeconds = configuration.GetValue("Auth:RefreshBeforeExpirationSeconds", 120);
 
         services.AddAuthentication(options =>
@@ -76,6 +77,10 @@ public static class AuthExtensions
                 options.ResponseMode = "query";
                 options.UsePkce = true;
 
+                // No x-client-SKU and x-client-ver on the authorize URL: a pushed request then has only client_id and
+                // request_uri, and the provider does not learn the library version
+                options.DisableTelemetry = true;
+
                 options.GetClaimsFromUserInfoEndpoint = true;
                 options.SaveTokens = true;
                 options.MapInboundClaims = false;
@@ -104,6 +109,10 @@ public static class AuthExtensions
                     RoleClaimType = roleClaimType
                 };
 
+                // Front-channel logout is off: the handler maps no /signout-oidc. Only back-channel logout tells the
+                // BFF that an IdP session ended.
+                options.RemoteSignOutPath = PathString.Empty;
+
                 options.Events.OnRedirectToIdentityProvider = context =>
                 {
                     // Connect the login and callback traces across the identity provider redirect.
@@ -112,36 +121,52 @@ public static class AuthExtensions
                     return Task.CompletedTask;
                 };
 
-                options.Events.OnMessageReceived = LoginPrompt.RedirectOnPromptError;
-
-                // Cognito has a logout endpoint, but its discovery document has no end_session_endpoint.
-                // Its logout endpoint reads client_id and logout_uri, and it sends no state back.
-                // Without state, the handler does not redirect from the callback, so the callback redirects to SignedOutRedirectUri.
-                if (!string.IsNullOrEmpty(logoutEndpoint))
+                options.Events.OnMessageReceived = context =>
                 {
-                    options.Events.OnRedirectToIdentityProviderForSignOut = context =>
-                    {
-                        context.ProtocolMessage.IssuerAddress = logoutEndpoint;
-                        context.ProtocolMessage.ClientId = authClientId;
-                        context.ProtocolMessage.SetParameter("logout_uri", context.ProtocolMessage.PostLogoutRedirectUri);
-                        return Task.CompletedTask;
-                    };
+                    // The iss check comes first, so that the BFF does not trust an error response that fails it
+                    AuthorizationResponseIssuer.Check(context);
+                    return context.Result is null ? LoginPrompt.RedirectOnPromptError(context) : Task.CompletedTask;
+                };
 
-                    options.Events.OnSignedOutCallbackRedirect = context =>
-                    {
-                        if (string.IsNullOrEmpty(context.Properties?.RedirectUri))
-                        {
-                            context.Response.Redirect(context.Options.SignedOutRedirectUri);
-                            context.HandleResponse();
-                        }
-                        return Task.CompletedTask;
-                    };
-                }
+                options.Events.OnAuthorizationCodeReceived = TokenClientAuthentication.RedeemCodeAsync;
+                options.Events.OnTokenValidated = IdTokenChecks.ValidateAsync;
+                options.Events.OnRemoteFailure = CallbackRejection.WriteProblemAsync;
 
                 options.Events.OnTicketReceived = context =>
                 {
                     LoginTraceLink.LinkCurrentActivity(context.Properties);
                     return NewLogin.EndExistingSessionAsync(context);
+                };
+            });
+
+        // Cognito has a logout endpoint, but its discovery document has no end_session_endpoint.
+        // Its logout endpoint reads client_id and logout_uri, and it sends no state back.
+        // Without state, the handler does not redirect from the callback, so the callback redirects to SignedOutRedirectUri.
+        services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
+            .Configure<IConfiguration>((options, settings) =>
+            {
+                var logoutEndpoint = settings["Auth:LogoutEndpoint"];
+                if (string.IsNullOrEmpty(logoutEndpoint))
+                    return;
+
+                var onRedirectToIdentityProviderForSignOut = options.Events.OnRedirectToIdentityProviderForSignOut;
+                options.Events.OnRedirectToIdentityProviderForSignOut = context =>
+                {
+                    context.ProtocolMessage.IssuerAddress = logoutEndpoint;
+                    context.ProtocolMessage.ClientId = context.Options.ClientId;
+                    context.ProtocolMessage.SetParameter("logout_uri", context.ProtocolMessage.PostLogoutRedirectUri);
+                    return onRedirectToIdentityProviderForSignOut(context);
+                };
+
+                var onSignedOutCallbackRedirect = options.Events.OnSignedOutCallbackRedirect;
+                options.Events.OnSignedOutCallbackRedirect = context =>
+                {
+                    if (!string.IsNullOrEmpty(context.Properties?.RedirectUri))
+                        return onSignedOutCallbackRedirect(context);
+
+                    context.Response.Redirect(context.Options.SignedOutRedirectUri);
+                    context.HandleResponse();
+                    return Task.CompletedTask;
                 };
             });
 
@@ -152,7 +177,13 @@ public static class AuthExtensions
         });
         RefreshFailureMetrics.Register(services);
 
-        services.Configure<RevocationOptions>(options => options.Enabled = revokeRefreshTokenOnLogout);
+        services.AddOptions<ProviderFeatureOptions>().BindConfiguration(ProviderFeatureOptions.SectionName);
+        services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
+            .Configure<IOptions<ProviderFeatureOptions>>((oidc, features) =>
+                oidc.PushedAuthorizationBehavior = ProviderFeatureOptions.ToPushedAuthorizationBehavior(features.Value.PushedAuthorization));
+        services.AddSingleton<ProviderFeatures>();
+        services.AddSingleton<TokenClientAuthentication>();
+        services.AddHostedService<ProviderFeatureDiscovery>();
 
         services.AddBffApiStatusCodes();
         services.AddAuthorization();

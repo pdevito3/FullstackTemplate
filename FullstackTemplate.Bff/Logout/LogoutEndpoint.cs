@@ -1,4 +1,5 @@
 using FullstackTemplate.Bff.Authentication;
+using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.Authentication;
@@ -24,7 +25,8 @@ public static class LogoutEndpoint
         BffSessionRequest session,
         IBffSessionStore store,
         BffTicketStore ticketStore,
-        RefreshTokenRevocation revocation)
+        RefreshTokenRevocation revocation,
+        ProviderFeatures features)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         var signedIn = result.Succeeded && result.Principal?.Identity?.IsAuthenticated == true;
@@ -62,6 +64,13 @@ public static class LogoutEndpoint
 
         if (string.IsNullOrWhiteSpace(returnUrl))
             returnUrl = context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
+
+        // With no end_session_endpoint, the BFF session is still gone, and the IdP session stays
+        if (!features.Active.EndSession)
+        {
+            context.Response.Redirect(returnUrl);
+            return;
+        }
 
         // The handler sends the browser to the end_session_endpoint with id_token_hint, and back to returnUrl
         // through /signout-callback-oidc.

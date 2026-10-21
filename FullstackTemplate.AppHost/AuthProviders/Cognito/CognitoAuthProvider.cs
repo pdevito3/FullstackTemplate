@@ -55,7 +55,6 @@ public sealed class CognitoAuthProvider : IAuthProvider
             RequireHttpsMetadata = false,
             NameClaimType = "username",
             RoleClaimType = "cognito:groups",
-            RevokeRefreshTokenOnLogout = false, // Cognito doesn't expose revocation in OIDC discovery
             UseAudienceAsScope = false, // The app client allows only the openid, profile, and email scopes
             RequestOfflineAccess = false,
             AudienceClaimType = "client_id",

@@ -144,7 +144,7 @@ using var trace = Telemetry.TraceRoot([], "work.run", links);
 
 A login is two requests with a browser redirect through the identity provider between them. `LoginTraceLink` stores the trace context of `/bff/login` in the OIDC authentication properties. These properties travel in the data-protected `state` parameter. The `/signin-oidc` callback reads the context and adds a span link to the login trace.
 
-The BFF names the OIDC callback spans `GET /signin-oidc`, `GET /signout-callback-oidc`, and `GET /signout-oidc`. No route handles these paths, so without this rule the span name is only `GET`.
+The BFF names the OIDC callback spans `GET /signin-oidc` and `GET /signout-callback-oidc`. No route handles these paths, so without this rule the span name is only `GET`.
 
 ## Logs
 

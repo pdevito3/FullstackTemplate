@@ -9,5 +9,8 @@
   "twoStepLogin": true,
   "secondStepSubmitSelector": "button:has-text(\"Continue\")",
   "hasConsentPage": true,
-  "consentSelector": "button:has-text(\"Continue\")"
+  "consentSelector": "button:has-text(\"Continue\")",
+  "capabilities": {
+    "pushedAuthorization": false
+  }
 }

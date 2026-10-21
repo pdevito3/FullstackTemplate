@@ -23,17 +23,25 @@ public sealed class BffSessionCleanupService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(options.CurrentValue.CleanupInterval, timeProvider);
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        try
         {
-            try
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                await CleanupAsync(stoppingToken);
+                try
+                {
+                    await CleanupAsync(stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // The next run tries again. An exception here would stop the host.
+                    Logger.Here().Error(ex, "The cleanup of the ended BFF sessions failed");
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // The next run tries again. An exception here would stop the host.
-                Logger.Here().Error(ex, "The cleanup of the ended BFF sessions failed");
-            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // A normal stop. When the host fails to start, it does not signal a stop, and it logs a cancellation
+            // that escapes here as a failed service.
         }
     }
 

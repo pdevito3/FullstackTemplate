@@ -44,7 +44,8 @@ public class TenantIdProviderTests : TestBase
         // Arrange
         // The memory cache removes an entry at the end of its physical duration. With fail-safe on, that is
         // the 2 hour fail-safe maximum. With fail-safe off, it is the entry duration. A manual clock makes the
-        // memory cache see the time pass.
+        // memory cache see the time pass. FusionCache sets the expiry from the real time of the write, so the
+        // test moves the clock relative to the real times before and after that write, not to its start value.
         var clock = new ManualClock(DateTimeOffset.UtcNow);
         using var memoryCache = new MemoryCache(new MemoryCacheOptions { Clock = clock });
         using var cache = new FusionCache(new FusionCacheOptions(), memoryCache);
@@ -54,16 +55,18 @@ public class TenantIdProviderTests : TestBase
         await testingServiceScope.StartGraph(out _)
             .AddUser(out var user)
             .BuildAsync();
+        var missWriteStart = DateTimeOffset.UtcNow;
         (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
+        var missWriteEnd = DateTimeOffset.UtcNow;
 
         // A direct write raises no domain event, so nothing removes the cached miss.
         await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
             "UPDATE users SET identifier = {0} WHERE id = {1}", identifier, user.Id));
 
         // Act
-        clock.Advance(TimeSpan.FromSeconds(29));
+        clock.SetTo(missWriteStart + TimeSpan.FromSeconds(29));
         var beforeExpiry = await provider.GetTenantIdAsync(identifier);
-        clock.Advance(TimeSpan.FromSeconds(2));
+        clock.SetTo(missWriteEnd + TimeSpan.FromSeconds(31));
         var afterExpiry = await provider.GetTenantIdAsync(identifier);
 
         // Assert
@@ -165,6 +168,6 @@ public class TenantIdProviderTests : TestBase
     {
         public DateTimeOffset UtcNow { get; private set; } = now;
 
-        public void Advance(TimeSpan time) => UtcNow += time;
+        public void SetTo(DateTimeOffset time) => UtcNow = time;
     }
 }

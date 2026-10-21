@@ -72,7 +72,11 @@ The host also collects these framework meters:
 - `Microsoft.EntityFrameworkCore`. The server only.
 - `Microsoft.AspNetCore.Authentication` and `Microsoft.AspNetCore.Authorization`.
 
-The BFF has no custom metrics. Its HTTP, YARP, and auth meters measure each request. The BFF keeps `app.errors` for `RecordError`.
+The BFF has these custom metrics on the `FullstackTemplate.Bff` meter. Its HTTP, YARP, and auth meters measure each request. The BFF keeps `app.errors` for `RecordError`.
+
+- `bff.sessions.started` - a counter of the BFF sessions that a login created. It has no tags.
+- `bff.sessions.ended` - a counter of the BFF sessions that ended. The `reason` tag is `logout`, `backchannel_logout`, `refresh_failure`, or `expiry`.
+- `bff.refresh.failures` - a counter of the failed token refreshes. The `kind` tag is `permanent` (`invalid_grant`) or `temporary` (any other failure).
 
 ## Resource attributes
 

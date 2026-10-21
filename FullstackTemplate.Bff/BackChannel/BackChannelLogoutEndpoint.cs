@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text.Json;
+using FullstackTemplate.Bff.Authentication;
 using FullstackTemplate.Bff.Management;
+using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -15,8 +17,9 @@ namespace FullstackTemplate.Bff.BackChannel;
 /// <c>POST /bff/backchannel</c>, the receiver of OpenID Connect Back-Channel Logout. The identity provider
 /// calls it with a <c>logout_token</c> form field.
 /// <para>
-/// The endpoint validates the logout token and answers 200, or 400 for a missing or invalid token. The BFF
-/// session lives only in the cookie, so the endpoint cannot end a BFF session yet.
+/// The endpoint validates the logout token, rejects a replay of its <c>jti</c>, and ends the BFF sessions of the
+/// IdP session: the rows with the <c>sid</c> of the token, or all the rows of its <c>sub</c> when it has no
+/// <c>sid</c>. It answers 200, or 400 for a missing, invalid, or replayed token.
 /// </para>
 /// </summary>
 public static class BackChannelLogoutEndpoint
@@ -27,10 +30,17 @@ public static class BackChannelLogoutEndpoint
 
     private static readonly ILogger Logger = Log.ForContext(typeof(BackChannelLogoutEndpoint));
 
-    public static async Task HandleAsync(HttpContext context, IOptionsMonitor<OpenIdConnectOptions> oidcOptions)
+    public static async Task HandleAsync(
+        HttpContext context,
+        IOptionsMonitor<OpenIdConnectOptions> oidcOptions,
+        LogoutTokenReplayCache replayCache,
+        IBffSessionStore store,
+        BffTicketStore ticketStore,
+        RefreshTokenRevocation revocation)
     {
         context.Response.Headers.Append("Cache-Control", "no-cache, no-store");
         context.Response.Headers.Append("Pragma", "no-cache");
+        var cancellationToken = context.RequestAborted;
 
         var logoutToken = await ReadLogoutTokenAsync(context.Request);
 
@@ -41,16 +51,35 @@ public static class BackChannelLogoutEndpoint
             return;
         }
 
-        var identity = await ValidateAsync(logoutToken, oidcOptions, context.RequestAborted);
-        if (identity is null)
+        var token = await ValidateAsync(logoutToken, oidcOptions, cancellationToken);
+        if (token is null)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
 
+        // The jti goes into the replay cache only after the BFF sessions ended. A failure on the way then lets the
+        // identity provider send the same token again.
+        if (await replayCache.IsUsedAsync(token.Jti, cancellationToken))
+        {
+            Logger.Here().Information("Rejected a replay of the logout token {LogoutTokenId}", Fingerprint.Of(token.Jti));
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        var ended = await EndSessionsAsync(token, store, ticketStore, revocation, cancellationToken);
+
+        if (!await replayCache.TryAddAsync(token.Jti, token.Expires, cancellationToken))
+        {
+            // Another request with the same token came first. It ended the same BFF sessions.
+            Logger.Here().Information("Rejected a replay of the logout token {LogoutTokenId}", Fingerprint.Of(token.Jti));
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
         Logger.Here().Information(
-            "Received a valid back-channel logout for sub {Subject} and sid {SessionId}. The BFF has no server-side sessions to end",
-            identity.FindFirst("sub")?.Value, identity.FindFirst("sid")?.Value);
+            "Ended {Count} BFF sessions for the logout token {LogoutTokenId} with sub {Subject} and sid {SessionId}",
+            ended, Fingerprint.Of(token.Jti), token.Subject, token.SessionId);
         context.Response.StatusCode = StatusCodes.Status200OK;
     }
 
@@ -76,9 +105,38 @@ public static class BackChannelLogoutEndpoint
     }
 
     /// <summary>
+    /// Deletes the rows of the IdP session and revokes their refresh tokens. A revocation error does not change
+    /// the result. Returns the number of rows that this request deleted.
+    /// </summary>
+    private static async Task<int> EndSessionsAsync(LogoutToken token, IBffSessionStore store, BffTicketStore ticketStore,
+        RefreshTokenRevocation revocation, CancellationToken cancellationToken)
+    {
+        var sessions = token.SessionId is { } sessionId
+            ? await store.FindBySessionIdAsync(sessionId, cancellationToken)
+            : await store.FindBySubjectAsync(token.Subject!, cancellationToken);
+
+        var ended = 0;
+        foreach (var session in sessions)
+        {
+            // Delete the row first, so that a late write of a request that runs now cannot bring it back.
+            if (await store.DeleteAsync(session.Key, cancellationToken) is null)
+                continue;
+
+            ended++;
+            Telemetry.RecordSessionsEnded(SessionEndReason.BackChannelLogout);
+            Logger.Here().Information("Deleted the BFF session {SessionKey} for a back-channel logout", Fingerprint.Of(session.Key));
+
+            if (ticketStore.TokensOf(session)?.RefreshToken is { Length: > 0 } refreshToken)
+                await revocation.RevokeAsync(refreshToken, cancellationToken);
+        }
+
+        return ended;
+    }
+
+    /// <summary>
     /// The checks of the logout token (Back-Channel Logout 1.0 section 2.6). Returns null when a check fails.
     /// </summary>
-    public static async Task<ClaimsIdentity?> ValidateAsync(
+    public static async Task<LogoutToken?> ValidateAsync(
         string logoutToken,
         IOptionsMonitor<OpenIdConnectOptions> oidcOptions,
         CancellationToken cancellationToken)
@@ -126,8 +184,16 @@ public static class BackChannelLogoutEndpoint
             return null;
         }
 
-        return result.ClaimsIdentity;
+        var identity = result.ClaimsIdentity;
+        return new LogoutToken(
+            Jti: identity.FindFirst("jti")!.Value,
+            Subject: NullIfBlank(identity.FindFirst("sub")?.Value),
+            SessionId: NullIfBlank(identity.FindFirst("sid")?.Value),
+            // A token stays valid for the clock skew after its exp, so the replay cache keeps it as long
+            Expires: new DateTimeOffset(token.ValidTo, TimeSpan.Zero) + parameters.ClockSkew);
     }
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private static string? CheckClaims(JsonWebToken token, ClaimsIdentity identity)
     {
@@ -141,7 +207,14 @@ public static class BackChannelLogoutEndpoint
         if (identity.FindFirst("iat") is null)
             return "the iat claim is missing";
 
-        if (identity.FindFirst("sub") is null && identity.FindFirst("sid") is null)
+        // Back-Channel Logout 1.0 section 2.4 requires a jti, and the replay check needs it
+        var jti = identity.FindFirst("jti")?.Value;
+        if (string.IsNullOrWhiteSpace(jti))
+            return "the jti claim is missing";
+        if (jti.Length > UsedLogoutTokenConfiguration.JtiMaxLength)
+            return $"the jti claim is longer than {UsedLogoutTokenConfiguration.JtiMaxLength} characters";
+
+        if (string.IsNullOrWhiteSpace(identity.FindFirst("sub")?.Value) && string.IsNullOrWhiteSpace(identity.FindFirst("sid")?.Value))
             return "the sub and sid claims are both missing";
 
         if (!string.IsNullOrWhiteSpace(identity.FindFirst("nonce")?.Value))
@@ -166,3 +239,12 @@ public static class BackChannelLogoutEndpoint
         return null;
     }
 }
+
+/// <summary>
+/// A logout token that passed the checks. It has a <see cref="Subject"/>, a <see cref="SessionId"/>, or both.
+/// </summary>
+/// <param name="Jti">The <c>jti</c> claim, for the replay check.</param>
+/// <param name="Subject">The <c>sub</c> claim.</param>
+/// <param name="SessionId">The <c>sid</c> claim.</param>
+/// <param name="Expires">The time after which the token cannot pass the checks again.</param>
+public sealed record LogoutToken(string Jti, string? Subject, string? SessionId, DateTimeOffset Expires);

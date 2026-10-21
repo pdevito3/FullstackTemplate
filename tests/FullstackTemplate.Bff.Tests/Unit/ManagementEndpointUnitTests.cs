@@ -65,7 +65,7 @@ public class ManagementEndpointUnitTests
         var context = BackChannelRequest();
         var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = null };
 
-        await BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options));
+        await HandleBackChannelAsync(context, options);
 
         context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
@@ -77,11 +77,16 @@ public class ManagementEndpointUnitTests
         var context = BackChannelRequest();
         var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = new FailingConfigurationManager() };
 
-        await BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options));
+        await HandleBackChannelAsync(context, options);
 
         context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
     }
+
+    // The token fails validation, so the handler returns before it uses the replay cache, the store, or the revocation
+    private static Task HandleBackChannelAsync(HttpContext context, OpenIdConnectOptions options) =>
+        BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options),
+            replayCache: null!, store: null!, ticketStore: null!, revocation: null!);
 
     private static DefaultHttpContext BackChannelRequest()
     {

@@ -1,11 +1,12 @@
+using FullstackTemplate.Bff.BackChannel;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace FullstackTemplate.Bff.Sessions;
 
 /// <summary>
-/// The context of <c>bffdb</c>: the BFF sessions and the Data Protection keys. It has its own migrations in
-/// <c>Sessions/Migrations</c>, which the BFF applies at startup.
+/// The context of <c>bffdb</c>: the BFF sessions, the Data Protection keys, and the replay cache of the logout
+/// tokens. It has its own migrations in <c>Sessions/Migrations</c>, which the BFF applies at startup.
 /// </summary>
 public sealed class BffDbContext(DbContextOptions<BffDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
@@ -17,6 +18,8 @@ public sealed class BffDbContext(DbContextOptions<BffDbContext> options) : DbCon
     public DbSet<BffSession> Sessions => Set<BffSession>();
 
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    public DbSet<UsedLogoutToken> UsedLogoutTokens => Set<UsedLogoutToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

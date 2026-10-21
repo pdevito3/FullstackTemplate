@@ -150,6 +150,7 @@ public static class AuthExtensions
         {
             options.RefreshBeforeExpiration = TimeSpan.FromSeconds(refreshBeforeExpirationSeconds);
         });
+        RefreshFailureMetrics.Register(services);
 
         services.Configure<RevocationOptions>(options => options.Enabled = revokeRefreshTokenOnLogout);
 

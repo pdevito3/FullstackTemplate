@@ -2,6 +2,7 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Globalization;
 using System.Net;
+using FullstackTemplate.Bff.BackChannel;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
 using FullstackTemplate.Bff.User;
@@ -345,6 +346,31 @@ public class BffSessionTests
         (await app.WithStoreAsync(store => store.DeleteAsync(slidingEnded.Key, CancellationToken.None))).ShouldBeNull();
         (await app.WithStoreAsync(store => store.DeleteAsync(absoluteEnded.Key, CancellationToken.None))).ShouldBeNull();
         (await app.WithStoreAsync(store => store.GetAsync(live.Key, CancellationToken.None))).ShouldNotBeNull();
+    }
+
+    [Test]
+    [NotInParallel(BffSessionStoreContractTests.EndedRowDeletes)]
+    public async Task the_cleanup_deletes_the_expired_logout_tokens_and_keeps_the_others()
+    {
+        var app = BffApp.Instance;
+        var expiredJti = $"jti-{Guid.NewGuid():N}";
+        var liveJti = $"jti-{Guid.NewGuid():N}";
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var replayCache = scope.ServiceProvider.GetRequiredService<LogoutTokenReplayCache>();
+            (await replayCache.TryAddAsync(expiredJti, DateTimeOffset.UtcNow.AddMinutes(-1), CancellationToken.None)).ShouldBeTrue();
+            (await replayCache.TryAddAsync(liveJti, DateTimeOffset.UtcNow.AddMinutes(10), CancellationToken.None)).ShouldBeTrue();
+            (await replayCache.TryAddAsync(liveJti, DateTimeOffset.UtcNow.AddMinutes(10), CancellationToken.None)).ShouldBeFalse();
+        }
+
+        await app.Services.GetRequiredService<BffSessionCleanupService>().CleanupAsync(CancellationToken.None);
+
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var replayCache = scope.ServiceProvider.GetRequiredService<LogoutTokenReplayCache>();
+            (await replayCache.IsUsedAsync(expiredJti, CancellationToken.None)).ShouldBeFalse();
+            (await replayCache.IsUsedAsync(liveJti, CancellationToken.None)).ShouldBeTrue();
+        }
     }
 
     /// <summary>

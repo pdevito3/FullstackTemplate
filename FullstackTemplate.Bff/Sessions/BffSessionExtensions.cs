@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using FullstackTemplate.Bff.Authentication;
+using FullstackTemplate.Bff.BackChannel;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -18,8 +19,8 @@ public static class BffSessionExtensions
 
     /// <summary>
     /// Adds <c>bffdb</c>, the BFF session store, the Data Protection keys in <c>bffdb</c>, the session store of the
-    /// cookie handler, and the cleanup. Call it before <c>AddBffAuthentication</c>, so that the migrations run
-    /// before the Data Protection key ring loads.
+    /// cookie handler, the replay cache of the logout tokens, and the cleanup. Call it before
+    /// <c>AddBffAuthentication</c>, so that the migrations run before the Data Protection key ring loads.
     /// </summary>
     public static IHostApplicationBuilder AddBffSessions(this IHostApplicationBuilder builder)
     {
@@ -50,6 +51,7 @@ public static class BffSessionExtensions
         services.AddScoped<IBffSessionStore, EfBffSessionStore>();
         services.AddScoped<BffSessionRequest>();
         services.AddScoped<RefreshTokenRevocation>();
+        services.AddScoped<LogoutTokenReplayCache>();
         services.AddSingleton<BffTicketStore>();
 
         services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)

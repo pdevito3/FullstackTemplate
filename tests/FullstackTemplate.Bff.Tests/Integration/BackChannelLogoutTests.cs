@@ -2,7 +2,11 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
 using System.Security.Cryptography;
+using FullstackTemplate.Bff.BackChannel;
+using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Shouldly;
 
@@ -117,9 +121,117 @@ public class BackChannelLogoutTests
         yield return () => new("no events", () => Token(c => c.Remove("events")));
         yield return () => new("an events claim that is not an object", () => Token(c => c["events"] = LogoutEvent));
         yield return () => new("another event", () => Token(c => c["events"] = new Dictionary<string, object> { ["other"] = new Dictionary<string, object>() }));
+        yield return () => new("no jti", () => Token(c => c.Remove("jti")));
+        yield return () => new("an empty jti", () => Token(c => c["jti"] = ""));
+        yield return () => new("a jti that is too long", () => Token(c => c["jti"] = new string('j', 256)));
     }
 
-    private static string Token(Action<Dictionary<string, object>>? change = null, string? typ = "logout+jwt",
+    [Test]
+    public async Task an_id_token_of_the_provider_is_not_a_logout_token()
+    {
+        var provider = BffApp.Instance.IdentityProvider;
+        var subject = NewSubject();
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
+
+        var response = await PostAsync(provider.IssuedIdTokens(subject).Single());
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_logout_token_with_a_sid_ends_only_the_sessions_of_that_sid_and_revokes_their_refresh_tokens()
+    {
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        using var ended = app.CreateBrowser();
+        using var otherIdpSession = app.CreateBrowser();
+        var endedKey = app.SessionKeyIn(await BffApp.SignInAsync(ended, providerQuery: $"test_sub={subject}&test_sid={sessionId}"))!;
+        var otherKey = app.SessionKeyIn(await BffApp.SignInAsync(otherIdpSession, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}"))!;
+
+        var response = await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; }));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await app.WithStoreAsync(store => store.GetAsync(endedKey, CancellationToken.None))).ShouldBeNull();
+        (await ended.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await app.WithStoreAsync(store => store.GetAsync(otherKey, CancellationToken.None))).ShouldNotBeNull();
+        (await otherIdpSession.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
+        app.IdentityProvider.RevokedTokens.ShouldContain(issued[0]);
+        app.IdentityProvider.RevokedTokens.ShouldNotContain(issued[1]);
+    }
+
+    [Test]
+    public async Task a_logout_token_with_only_a_sub_ends_all_the_sessions_of_that_sub()
+    {
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var otherSubject = NewSubject();
+        using var first = app.CreateBrowser();
+        using var second = app.CreateBrowser();
+        using var otherUser = app.CreateBrowser();
+        await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
+        await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
+        await BffApp.SignInAsync(otherUser, providerQuery: $"test_sub={otherSubject}");
+
+        var response = await PostAsync(Token(c => { c["sub"] = subject; c.Remove("sid"); }));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await otherUser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
+        issued.Count.ShouldBe(2);
+        issued.ShouldAllBe(token => app.IdentityProvider.RevokedTokens.Contains(token));
+    }
+
+    [Test]
+    public async Task a_replayed_logout_token_gets_400_and_ends_no_new_session()
+    {
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var jti = Guid.NewGuid().ToString();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; });
+        (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        var replay = await PostAsync(logoutToken);
+
+        replay.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(replay);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var used = await UsedLogoutTokenAsync(jti);
+        used.ShouldNotBeNull();
+        used.Expires.ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddSeconds(120));
+    }
+
+    [Test]
+    public async Task the_same_logout_token_sent_twice_at_the_same_time_passes_one_time()
+    {
+        var logoutToken = Token(c => { c["sub"] = NewSubject(); c["sid"] = NewSessionId(); });
+
+        var responses = await Task.WhenAll(PostAsync(logoutToken), PostAsync(logoutToken));
+
+        responses.Select(r => r.StatusCode).ShouldBe([HttpStatusCode.OK, HttpStatusCode.BadRequest], ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task a_rejected_logout_token_is_not_kept_in_the_replay_cache()
+    {
+        var jti = Guid.NewGuid().ToString();
+
+        (await PostAsync(Token(c => { c["jti"] = jti; c["nonce"] = "n-1"; }))).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        (await UsedLogoutTokenAsync(jti)).ShouldBeNull();
+        (await PostAsync(Token(c => c["jti"] = jti))).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    public static string Token(Action<Dictionary<string, object>>? change = null, string? typ = "logout+jwt",
         SigningCredentials? credentials = null, bool withoutSignature = false)
     {
         var provider = BffApp.Instance.IdentityProvider;
@@ -140,7 +252,18 @@ public class BackChannelLogoutTests
 
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-    private static async Task<HttpResponseMessage> PostAsync(string logoutToken)
+    private static string NewSubject() => $"user-backchannel-{Guid.NewGuid():N}";
+
+    private static string NewSessionId() => $"sid-{Guid.NewGuid():N}";
+
+    private static async Task<UsedLogoutToken?> UsedLogoutTokenAsync(string jti)
+    {
+        await using var scope = BffApp.Instance.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<BffDbContext>().UsedLogoutTokens.AsNoTracking()
+            .SingleOrDefaultAsync(t => t.Jti == jti);
+    }
+
+    public static async Task<HttpResponseMessage> PostAsync(string logoutToken)
     {
         using var client = BffApp.Instance.CreateBrowser();
         return await client.PostAsync("/bff/backchannel", new FormUrlEncodedContent([new("logout_token", logoutToken)]));

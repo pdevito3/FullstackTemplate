@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FullstackTemplate.Bff.BackChannel;
 using Microsoft.Extensions.Options;
 using Serilog;
 using ILogger = Serilog.ILogger;
@@ -6,7 +7,8 @@ using ILogger = Serilog.ILogger;
 namespace FullstackTemplate.Bff.Sessions;
 
 /// <summary>
-/// Deletes the ended BFF sessions in batches, each <c>Bff:Session:CleanupInterval</c>. Each BFF instance runs it.
+/// Deletes the ended BFF sessions and the expired logout tokens of the replay cache in batches, each
+/// <c>Bff:Session:CleanupInterval</c>. Each BFF instance runs it.
 /// The delete is idempotent, so the instances need no lock.
 /// </summary>
 public sealed class BffSessionCleanupService(
@@ -36,7 +38,8 @@ public sealed class BffSessionCleanupService(
     }
 
     /// <summary>
-    /// Deletes all the rows that ended before now, and returns their number.
+    /// Deletes all the BFF sessions that ended before now, and returns their number. Also deletes the expired rows
+    /// of the replay cache of the logout tokens.
     /// </summary>
     public async Task<int> CleanupAsync(CancellationToken cancellationToken)
     {
@@ -49,18 +52,22 @@ public sealed class BffSessionCleanupService(
             var store = scope.ServiceProvider.GetRequiredService<IBffSessionStore>();
             var now = timeProvider.GetUtcNow();
 
-            var total = 0;
-            int deleted;
-            do
+            var total = await DeleteInBatchesAsync(async () =>
             {
-                deleted = await store.DeleteEndedAsync(now, BatchSize, cancellationToken);
-                total += deleted;
-            }
-            while (deleted == BatchSize);
+                var deleted = await store.DeleteEndedAsync(now, BatchSize, cancellationToken);
+                Telemetry.RecordSessionsEnded(SessionEndReason.Expiry, deleted);
+                return deleted;
+            });
+
+            var replayCache = scope.ServiceProvider.GetRequiredService<LogoutTokenReplayCache>();
+            var expiredLogoutTokens = await DeleteInBatchesAsync(() => replayCache.DeleteExpiredAsync(now, BatchSize, cancellationToken));
 
             activity?.SetTag("app.deleted_count", total);
+            activity?.SetTag("app.deleted_logout_token_count", expiredLogoutTokens);
             if (total > 0)
                 Logger.Here().Information("Deleted {Count} ended BFF sessions", total);
+            if (expiredLogoutTokens > 0)
+                Logger.Here().Information("Deleted {Count} expired logout tokens from the replay cache", expiredLogoutTokens);
             return total;
         }
         catch (Exception ex)
@@ -68,5 +75,19 @@ public sealed class BffSessionCleanupService(
             Telemetry.RecordError(activity, ex);
             throw;
         }
+    }
+
+    private static async Task<int> DeleteInBatchesAsync(Func<Task<int>> deleteBatch)
+    {
+        var total = 0;
+        int deleted;
+        do
+        {
+            deleted = await deleteBatch();
+            total += deleted;
+        }
+        while (deleted == BatchSize);
+
+        return total;
     }
 }

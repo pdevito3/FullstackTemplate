@@ -22,6 +22,27 @@ namespace FullstackTemplate.Bff.Sessions.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FullstackTemplate.Bff.BackChannel.UsedLogoutToken", b =>
+                {
+                    b.Property<string>("Jti")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("jti")
+                        .UseCollation("C");
+
+                    b.Property<DateTimeOffset>("Expires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires");
+
+                    b.HasKey("Jti")
+                        .HasName("pk_used_logout_tokens");
+
+                    b.HasIndex("Expires")
+                        .HasDatabaseName("ix_used_logout_tokens_expires");
+
+                    b.ToTable("used_logout_tokens", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Bff.Sessions.BffSession", b =>
                 {
                     b.Property<string>("Key")

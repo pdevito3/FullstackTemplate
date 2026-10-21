@@ -65,6 +65,7 @@ public sealed class BffTicketStore(
             Version: 0);
 
         var created = await store.CreateAsync(session, cancellationToken);
+        Telemetry.SessionsStarted.Add(1);
         request.Remember(created, SessionTokens.From(ticket.Properties));
         Logger.Here().Information("Created the BFF session {SessionKey}", Fingerprint.Of(created.Key));
         return created.Key;
@@ -237,7 +238,10 @@ public sealed class BffTicketStore(
     /// </summary>
     public string? RefreshTokenOf(BffSession session) => TokensOf(session)?.RefreshToken;
 
-    private SessionTokens? TokensOf(BffSession session) =>
+    /// <summary>
+    /// The tokens in the ticket of <paramref name="session"/>, or null if the ticket cannot be read.
+    /// </summary>
+    public SessionTokens? TokensOf(BffSession session) =>
         Unprotect(session) is { } ticket ? SessionTokens.From(ticket.Properties) : null;
 
     private byte[] Protect(AuthenticationTicket ticket) => _protector.Protect(TicketSerializer.Default.Serialize(ticket));

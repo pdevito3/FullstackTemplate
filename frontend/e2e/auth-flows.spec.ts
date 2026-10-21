@@ -8,7 +8,7 @@ import { test, expect, Locator, Page } from '@playwright/test'
  * 2. React UI login, secure weather API access, and logout
  *
  * Test users (from docs/authentication.md):
- * - Keycloak/FusionAuth/Authentik: admin@example.com / password123!
+ * - Keycloak/FusionAuth/Authentik/Cognito: admin@example.com / password123!
  * - Duende Demo: bob / bob
  *
  * Run with: pnpm test:e2e:keycloak (against Keycloak in the stack, see docs/authentication.md)
@@ -77,6 +77,15 @@ function getIdpConfig(): IdpConfig {
         secondStepSubmitSelector: 'button:has-text("Continue")',
         hasConsentPage: true,
         consentSelector: 'button:has-text("Continue")',
+      }
+    case 'cognito':
+      return {
+        name: 'Cognito',
+        email: 'admin@example.com',
+        password: 'password123!',
+        usernameSelector: '#username',
+        passwordSelector: '#password',
+        submitSelector: 'button:has-text("Sign in")',
       }
     case 'duende':
       return {

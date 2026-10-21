@@ -50,4 +50,12 @@
     </Content>
   </ItemGroup>
   <!--#endif -->
+
+  <!--#if (UseCognito) -->
+  <ItemGroup>
+    <Content Include="cognito\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <!--#endif -->
 </Project>

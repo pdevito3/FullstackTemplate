@@ -38,4 +38,4 @@ Preconditions:
 - Each anonymous page load logs a `401 /bff/user` line in `network.log` and `console.log`. This is normal.
 - The greeting shows the `name` claim (`Bob Smith`), not the user name (`bob`).
 - Duende shows a "return to the application" page after logout. If the recipe does not follow its link, the page stays on the IdP.
-- The local provider is Duende Demo because the AppHost has the `LOCAL_DEV` symbol. Keycloak, FusionAuth, and Authentik use other forms and users. See `frontend/e2e/auth-flows.spec.ts` for their selectors.
+- The local provider is Duende Demo because the AppHost has the `LOCAL_DEV` symbol. Keycloak, FusionAuth, Authentik, and Cognito use other forms and users. See `frontend/e2e/auth-flows.spec.ts` for their selectors.

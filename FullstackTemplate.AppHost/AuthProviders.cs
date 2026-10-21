@@ -50,6 +50,24 @@ public sealed record AuthProviderConfig
     public string? AuthorityPathSuffix { get; init; }
 
     /// <summary>
+    /// Whether the BFF requests the offline_access scope for a refresh token.
+    /// Cognito rejects this scope with invalid_scope and returns a refresh token without it.
+    /// </summary>
+    public bool RequestOfflineAccess { get; init; } = true;
+
+    /// <summary>
+    /// The access token claim that the API compares with the Audience.
+    /// Cognito access tokens have no aud claim. They put the app client ID in client_id.
+    /// </summary>
+    public string AudienceClaimType { get; init; } = "aud";
+
+    /// <summary>
+    /// Path of the logout endpoint on the container, for providers whose discovery document has no end_session_endpoint.
+    /// The BFF sends client_id and logout_uri to it, as Cognito requires.
+    /// </summary>
+    public string? LogoutPath { get; init; }
+
+    /// <summary>
     /// Returns true if this is a container-based provider (like FusionAuth).
     /// </summary>
     public bool IsContainerBased => AuthResource is not null;
@@ -86,7 +104,8 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RequireHttpsMetadata", authProvider.RequireHttpsMetadata.ToString())
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
-            .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString());
+            .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
+            .WithEnvironment("Auth__AudienceClaimType", authProvider.AudienceClaimType);
 
         // Apply authority - either static URL or container endpoint
         if (authProvider.Authority is not null)
@@ -149,7 +168,18 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
             .WithEnvironment("Auth__RevokeRefreshTokenOnLogout", authProvider.RevokeRefreshTokenOnLogout.ToString())
-            .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString());
+            .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
+            .WithEnvironment("Auth__RequestOfflineAccess", authProvider.RequestOfflineAccess.ToString());
+
+        if (authProvider is { LogoutPath: not null, AuthResource: not null })
+        {
+            resource.WithEnvironment(context =>
+            {
+                var endpoint = authProvider.AuthResource.GetEndpoint("http");
+                context.EnvironmentVariables["Auth__LogoutEndpoint"] = ReferenceExpression.Create(
+                    $"{endpoint}{authProvider.LogoutPath}");
+            });
+        }
 
         // Apply authority - either static URL or container endpoint
         if (authProvider.Authority is not null)
@@ -408,6 +438,56 @@ public static class AuthProviders
             RevokeRefreshTokenOnLogout = true,
             AuthResource = server,
             AuthorityPathSuffix = $"/application/o/{appSlug}/"
+        };
+    }
+//#endif
+
+//#if (UseCognito)
+    /// <summary>
+    /// Creates a configuration for Amazon Cognito, emulated locally by Floci in Docker.
+    /// The init hook in cognito/ready.d seeds the user pool, the app client, the groups, and the test users.
+    /// </summary>
+    public static AuthProviderConfig Cognito(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
+    {
+        // The seed script pins these values with the floci:override-* tags of the user pool
+        const string userPoolId = "us-east-1_aspire";
+        const string clientId = "aspire-app";
+
+        // The compat image has the AWS CLI that the seed script uses
+        var floci = builder.AddContainer("cognito", "floci/floci", "2.3.0-compat")
+            .WithHttpEndpoint(targetPort: 4566, name: "http");
+        var flociEndpoint = floci.GetEndpoint("http");
+
+        floci
+            // The issuer of the tokens comes from FLOCI_BASE_URL. It must be the host URL that the BFF,
+            // the server, and the browser use, so that the issuer check passes.
+            .WithEnvironment(context =>
+            {
+                context.EnvironmentVariables["FLOCI_BASE_URL"] = flociEndpoint.Url;
+                // Swagger UI on the server calls the token endpoint from the browser
+                context.EnvironmentVariables["FLOCI_SECURITY_EXTRA_CORS_ALLOWED_ORIGINS"] = clientUrls.Server.Url;
+            })
+            .WithBindMount("./cognito/ready.d", "/etc/floci/init/ready.d", isReadOnly: true)
+            .WithClientUrls(clientUrls)
+            // The pool exists only after the ready hook, so the discovery document is the health check
+            .WithHttpHealthCheck($"/{userPoolId}/.well-known/openid-configuration");
+
+        return new AuthProviderConfig
+        {
+            ProviderName = "Cognito",
+            ClientId = clientId,
+            ClientSecret = "super-secret-client-secret-change-in-production",
+            Audience = clientId,
+            RequireHttpsMetadata = false,
+            NameClaimType = "username",
+            RoleClaimType = "cognito:groups",
+            RevokeRefreshTokenOnLogout = false, // Cognito doesn't expose revocation in OIDC discovery
+            UseAudienceAsScope = false, // The app client allows only the openid, profile, and email scopes
+            RequestOfflineAccess = false,
+            AudienceClaimType = "client_id",
+            AuthResource = floci,
+            AuthorityPathSuffix = $"/{userPoolId}",
+            LogoutPath = "/cognito-idp/logout"
         };
     }
 //#endif

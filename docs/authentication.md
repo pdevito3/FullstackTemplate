@@ -14,15 +14,28 @@ The app uses the Backend-For-Frontend (BFF) pattern. The browser never holds a t
 
 ## Providers
 
-The options are Keycloak, FusionAuth, Authentik, and Duende Demo. Keycloak, FusionAuth, and Authentik run as containers in the stack. Their seed files read the app URLs from environment variables, so the redirect URIs work with the random ports of an isolated run.
+The options are Keycloak, FusionAuth, Authentik, Cognito, and Duende Demo. Keycloak, FusionAuth, Authentik, and Cognito run as containers in the stack. Their seed files read the app URLs from environment variables, so the redirect URIs work with the random ports of an isolated run.
 
 In a project from the template, the `--AuthProvider` option of `dotnet new` selects the provider. The default is `DuendeDemo`.
 
-In this repository, the `AuthProvider` setting of the AppHost selects the provider: `DuendeDemo` (the default), `Keycloak`, `FusionAuth`, or `Authentik`. For example, this command starts an isolated stack with Keycloak:
+In this repository, the `AuthProvider` setting of the AppHost selects the provider: `DuendeDemo` (the default), `Keycloak`, `FusionAuth`, `Authentik`, or `Cognito`. For example, this command starts an isolated stack with Keycloak:
 
 ```bash
 AuthProvider=Keycloak dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
 ```
+
+### Cognito
+
+[Floci](https://github.com/floci-io/floci) emulates Amazon Cognito in the `cognito` container. The init hook `FullstackTemplate.AppHost/cognito/ready.d/01-seed.sh` creates the user pool, the app client, the groups, and the test users at each start. Floci keeps no data, so each start gets a new pool. The hook pins the pool ID (`us-east-1_aspire`), the client ID, and the client secret, so the AppHost knows the authority before Floci starts.
+
+Cognito is different from the other providers in four ways. The AppHost sets each difference in `AuthProviders.Cognito`:
+
+- Cognito rejects the `offline_access` scope. It returns a refresh token without it. Thus `Auth:RequestOfflineAccess` is `false`.
+- The access token has no `aud` claim. It has `client_id` instead. Thus `Auth:AudienceClaimType` is `client_id`, and the server compares that claim with `Auth:Audience`.
+- The discovery document has no `end_session_endpoint` and no `revocation_endpoint`. The BFF reads the logout URL from `Auth:LogoutEndpoint` and sends `client_id` and `logout_uri` to it. The BFF does not revoke the refresh token.
+- The roles are in `cognito:groups`. The access token has no `email`, and its `username` is the `sub` UUID.
+
+The issuer comes from `FLOCI_BASE_URL`. The AppHost sets it to the host URL of the container, so the issuer is the URL that the BFF, the server, and the browser use.
 
 ## E2E tests
 
@@ -43,11 +56,11 @@ The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the Rea
    pnpm test:e2e:keycloak
    ```
 
-The script `frontend/e2e/run-against-stack.ts` reads the `webfrontend` and `server` URLs from `dotnet aspire describe`. Then it sets `BASE_URL`, `SERVER_URL`, and `IDP=keycloak`, and runs `playwright test`. Extra arguments go to Playwright, for example `pnpm test:e2e:keycloak --repeat-each=5`.
+The script `frontend/e2e/run-against-stack.ts` reads the `webfrontend` and `server` URLs from `dotnet aspire describe`. Then it sets `BASE_URL`, `SERVER_URL`, and `IDP` (`keycloak`, unless `IDP` is set), and runs `playwright test`. For Cognito, start the stack with `AuthProvider=Cognito` and run `pnpm test:e2e:cognito`. Extra arguments go to Playwright, for example `pnpm test:e2e:keycloak --repeat-each=5`.
 
 ## Test users
 
-### Keycloak, FusionAuth, and Authentik
+### Keycloak, FusionAuth, Authentik, and Cognito
 
 | Email | Password | Roles |
 |-------|----------|-------|

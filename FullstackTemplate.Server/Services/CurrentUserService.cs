@@ -130,12 +130,12 @@ public sealed class CurrentUserService(
             if (User == null) return [];
 
             // Check multiple role claim types to support all providers
-            // Duende uses "role", Keycloak/FusionAuth use "roles"
+            // Duende uses "role", Keycloak/FusionAuth use "roles", Cognito uses "cognito:groups"
             var roles = new HashSet<string>();
 
             foreach (var claim in User.Claims)
             {
-                if (claim.Type is "role" or "roles" or ClaimTypes.Role)
+                if (claim.Type is "role" or "roles" or "cognito:groups" or ClaimTypes.Role)
                 {
                     roles.Add(claim.Value);
                 }

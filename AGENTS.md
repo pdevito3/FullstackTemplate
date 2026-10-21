@@ -4,7 +4,7 @@ Guidance for coding agents that work in this repository.
 
 ## Overview
 
-This is a .NET Aspire application with a React frontend. It uses the Backend-For-Frontend (BFF) pattern. It has multi-tenancy, a CQRS architecture, and a configurable auth provider (Keycloak, FusionAuth, Authentik, or Duende Demo).
+This is a .NET Aspire application with a React frontend. It uses the Backend-For-Frontend (BFF) pattern. It has multi-tenancy, a CQRS architecture, and a configurable auth provider (Keycloak, FusionAuth, Authentik, Cognito, or Duende Demo).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

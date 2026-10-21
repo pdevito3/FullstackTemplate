@@ -64,8 +64,9 @@ try
         "Keycloak" => AuthProviders.Keycloak(builder, authClientUrls),
         "FusionAuth" => AuthProviders.FusionAuth(builder, authClientUrls),
         "Authentik" => AuthProviders.Authentik(builder, authClientUrls),
+        "Cognito" => AuthProviders.Cognito(builder, authClientUrls),
         var other => throw new InvalidOperationException(
-            $"AuthProvider '{other}' is not known. Use DuendeDemo, Keycloak, FusionAuth, or Authentik."),
+            $"AuthProvider '{other}' is not known. Use DuendeDemo, Keycloak, FusionAuth, Authentik, or Cognito."),
     };
 #else
     //#if (UseFusionAuth)
@@ -74,6 +75,8 @@ try
     var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
     //#elseif (UseAuthentik)
     var authProvider = AuthProviders.Authentik(builder, authClientUrls);
+    //#elseif (UseCognito)
+    var authProvider = AuthProviders.Cognito(builder, authClientUrls);
     //#else
     var authProvider = AuthProviders.DuendeDemo();
     //#endif

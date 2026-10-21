@@ -1,5 +1,5 @@
 /**
- * Runs the Playwright e2e tests against the Aspire stack of this checkout, with Keycloak as the IDP.
+ * Runs the Playwright e2e tests against the Aspire stack of this checkout. The IDP is Keycloak, unless IDP is set.
  * An isolated stack has random ports, so this script reads the URLs from `dotnet aspire describe`.
  * Extra arguments go to `playwright test`, for example `pnpm test:e2e:keycloak --repeat-each=5`.
  * See docs/authentication.md for the command that starts the stack.
@@ -23,14 +23,14 @@ function endpointUrl(resource: string, endpoint: string): string {
     .find((r) => r.displayName === resource)
     ?.urls?.find((u) => u.name === endpoint)?.url
   if (!url) {
-    throw new Error(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with AuthProvider=Keycloak.`)
+    throw new Error(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with the AuthProvider of the IDP.`)
   }
   return url
 }
 
 const env = {
   ...process.env,
-  IDP: 'keycloak',
+  IDP: process.env.IDP ?? 'keycloak',
   BASE_URL: endpointUrl('webfrontend', 'http'),
   SERVER_URL: endpointUrl('server', 'https'),
 }

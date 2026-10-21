@@ -17,6 +17,7 @@
     "test:e2e:keycloak": "node e2e/run-against-stack.ts",
     "test:e2e:fusionauth": "IDP=fusionauth playwright test",
     "test:e2e:authentik": "IDP=authentik playwright test",
+    "test:e2e:cognito": "IDP=cognito node e2e/run-against-stack.ts",
     "test:e2e:duende": "IDP=duende playwright test"
   },
   "dependencies": {

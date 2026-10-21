@@ -27,6 +27,9 @@ public static class AuthExtensions
         var requireHttpsMetadata = configuration.GetValue("Auth:RequireHttpsMetadata", !environment.IsDevelopment());
         var nameClaimType = configuration["Auth:NameClaimType"] ?? "name";
         var roleClaimType = configuration["Auth:RoleClaimType"] ?? "role";
+        // Cognito access tokens have no aud claim. They put the app client ID in client_id.
+        var audienceClaimType = configuration["Auth:AudienceClaimType"] ?? "aud";
+        var validatesAud = audienceClaimType == "aud";
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -39,12 +42,27 @@ public static class AuthExtensions
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidateAudience = true,
+                    ValidateAudience = validatesAud,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     NameClaimType = nameClaimType,
                     RoleClaimType = roleClaimType
                 };
+
+                if (!validatesAud)
+                {
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnTokenValidated = context =>
+                        {
+                            if (context.Principal?.FindFirst(audienceClaimType)?.Value != authAudience)
+                            {
+                                context.Fail($"The token has no '{audienceClaimType}' claim with the value '{authAudience}'.");
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
+                }
             });
 
         services.AddAuthorization();

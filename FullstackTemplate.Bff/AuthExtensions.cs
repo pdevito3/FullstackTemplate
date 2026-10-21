@@ -33,6 +33,8 @@ public static class AuthExtensions
         var roleClaimType = configuration["Auth:RoleClaimType"] ?? "role";
         var revokeRefreshTokenOnLogout = configuration.GetValue("Auth:RevokeRefreshTokenOnLogout", true);
         var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
+        var requestOfflineAccess = configuration.GetValue("Auth:RequestOfflineAccess", true);
+        var logoutEndpoint = configuration["Auth:LogoutEndpoint"];
         var refreshBeforeExpirationSeconds = configuration.GetValue("Auth:RefreshBeforeExpirationSeconds", 120);
 
         services.AddOpenIdConnectAccessTokenManagement(options =>
@@ -64,7 +66,12 @@ public static class AuthExtensions
                 options.Scope.Add("openid");
                 options.Scope.Add("profile");
                 options.Scope.Add("email");
-                options.Scope.Add("offline_access");
+
+                // Cognito rejects offline_access and returns a refresh token without it
+                if (requestOfflineAccess)
+                {
+                    options.Scope.Add("offline_access");
+                }
 
                 // Request the API audience scope to get access tokens with correct audience claim
                 // Some providers (like Keycloak) require this; others (like FusionAuth) don't support custom scopes
@@ -86,6 +93,33 @@ public static class AuthExtensions
                     LoginTraceLink.Capture(context.Properties);
                     return onRedirectToIdentityProvider(context);
                 };
+
+                // Cognito has a logout endpoint, but its discovery document has no end_session_endpoint.
+                // Its logout endpoint reads client_id and logout_uri, and it sends no state back.
+                // Without state, the handler does not redirect from the callback, so the callback redirects to SignedOutRedirectUri.
+                if (!string.IsNullOrEmpty(logoutEndpoint))
+                {
+                    var onRedirectToIdentityProviderForSignOut = options.Events.OnRedirectToIdentityProviderForSignOut;
+                    options.Events.OnRedirectToIdentityProviderForSignOut = context =>
+                    {
+                        context.ProtocolMessage.IssuerAddress = logoutEndpoint;
+                        context.ProtocolMessage.ClientId = authClientId;
+                        context.ProtocolMessage.SetParameter("logout_uri", context.ProtocolMessage.PostLogoutRedirectUri);
+                        return onRedirectToIdentityProviderForSignOut(context);
+                    };
+
+                    var onSignedOutCallbackRedirect = options.Events.OnSignedOutCallbackRedirect;
+                    options.Events.OnSignedOutCallbackRedirect = context =>
+                    {
+                        if (string.IsNullOrEmpty(context.Properties?.RedirectUri))
+                        {
+                            context.Response.Redirect(context.Options.SignedOutRedirectUri);
+                            context.HandleResponse();
+                            return Task.CompletedTask;
+                        }
+                        return onSignedOutCallbackRedirect(context);
+                    };
+                }
 
                 var onTicketReceived = options.Events.OnTicketReceived;
                 options.Events.OnTicketReceived = context =>

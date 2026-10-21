@@ -3,7 +3,7 @@
 A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
 - **Backend-For-Frontend (BFF)** pattern using Duende BFF
-- **Configurable authentication** (Keycloak, FusionAuth, or Duende Demo)
+- **Configurable authentication** (Keycloak, FusionAuth, Authentik, Cognito, or Duende Demo)
 - **Multi-tenant architecture** with data isolation
 - **OpenTelemetry** observability built-in
 - **.NET 10** with Aspire 13.1
@@ -31,12 +31,22 @@ dotnet new fullstack-aspire -n MyProject --AuthProvider Keycloak
 dotnet new fullstack-aspire -n MyProject --AuthProvider FusionAuth
 ```
 
+### With Authentik
+```bash
+dotnet new fullstack-aspire -n MyProject --AuthProvider Authentik
+```
+
+### With Cognito (emulated by Floci)
+```bash
+dotnet new fullstack-aspire -n MyProject --AuthProvider Cognito
+```
+
 ## Template Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--name` / `-n` | (required) | Project name |
-| `--AuthProvider` | `DuendeDemo` | Auth provider: `DuendeDemo`, `Keycloak`, or `FusionAuth` |
+| `--AuthProvider` | `DuendeDemo` | Auth provider: `DuendeDemo`, `Keycloak`, `FusionAuth`, `Authentik`, or `Cognito` |
 | `--no-restore` | `false` | Do not restore the NuGet packages after the project is created |
 
 ## Publish the Template
@@ -96,7 +106,7 @@ This starts:
 - **Backend API** - .NET API server
 - **BFF Proxy** - Handles auth and proxies to API
 - **React Dev Server** - Vite with hot reload
-- **Auth Provider** - Keycloak/FusionAuth (Docker) or Duende Demo (external)
+- **Auth Provider** - Keycloak/FusionAuth/Authentik/Cognito (Docker) or Duende Demo (external)
 
 ### Run several stacks at the same time
 
@@ -111,7 +121,7 @@ An isolated run gives each endpoint a random port and uses a copy of the user se
 
 ## Test Users
 
-### Keycloak / FusionAuth
+### Keycloak / FusionAuth / Authentik / Cognito
 | Email | Password | Roles |
 |-------|----------|-------|
 | admin@example.com | password123! | admin, user |

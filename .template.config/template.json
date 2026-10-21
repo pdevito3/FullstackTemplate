@@ -5,7 +5,7 @@
   "identity": "FullstackTemplate",
   "name": "Fullstack Aspire React Template",
   "shortName": "fullstack-aspire",
-  "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, Authentik, or Duende Demo)",
+  "description": "A fullstack .NET Aspire template with React frontend, BFF pattern, and configurable authentication (Keycloak, FusionAuth, Authentik, Cognito, or Duende Demo)",
   "tags": {
     "language": "C#",
     "type": "solution"
@@ -33,6 +33,10 @@
           "description": "Authentik identity server running in Docker with PostgreSQL and Redis"
         },
         {
+          "choice": "Cognito",
+          "description": "Amazon Cognito, emulated by Floci in Docker"
+        },
+        {
           "choice": "DuendeDemo",
           "description": "Duende Demo identity server (external, for testing)"
         }
@@ -56,6 +60,10 @@
       "type": "computed",
       "value": "(AuthProvider == \"Authentik\")"
     },
+    "UseCognito": {
+      "type": "computed",
+      "value": "(AuthProvider == \"Cognito\")"
+    },
     "UseDuendeDemo": {
       "type": "computed",
       "value": "(AuthProvider == \"DuendeDemo\")"
@@ -75,6 +83,10 @@
         {
           "condition": "(!UseAuthentik)",
           "exclude": ["**/authentik/**"]
+        },
+        {
+          "condition": "(!UseCognito)",
+          "exclude": ["**/cognito/**"]
         },
         {
           "exclude": [

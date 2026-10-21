@@ -1,0 +1,126 @@
+namespace FullstackTemplate.Bff.Tests.Integration;
+
+using System.Net;
+using System.Security.Cryptography;
+using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.IdentityModel.Tokens;
+using Shouldly;
+
+public class BackChannelLogoutTests
+{
+    private const string LogoutEvent = "http://schemas.openid.net/event/backchannel-logout";
+
+    [Test]
+    public async Task a_valid_logout_token_gets_200_with_no_store()
+    {
+        var response = await PostAsync(Token());
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        ShouldHaveNoStoreHeaders(response);
+    }
+
+    [Test]
+    public async Task a_logout_token_with_only_a_sid_passes()
+    {
+        var response = await PostAsync(Token(c => c.Remove("sub")));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_logout_token_with_no_typ_passes()
+    {
+        var response = await PostAsync(Token(typ: null));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_request_with_no_form_gets_400_with_no_store()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.PostAsync("/bff/backchannel", new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(response);
+    }
+
+    [Test]
+    public async Task a_form_with_no_logout_token_gets_400_with_no_store()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.PostAsync("/bff/backchannel", new FormUrlEncodedContent([new("other", "x")]));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(response);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(InvalidTokens))]
+    public async Task an_invalid_logout_token_gets_400_with_no_store(InvalidToken invalid)
+    {
+        var response = await PostAsync(invalid.Create());
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(response);
+    }
+
+    public static IEnumerable<Func<InvalidToken>> InvalidTokens()
+    {
+        yield return () => new("not a jwt", () => "not-a-jwt");
+        yield return () => new("unsigned", () => Token(withoutSignature: true));
+        yield return () => new("another key", () => Token(credentials: new SigningCredentials(
+            new RsaSecurityKey(RSA.Create(2048)) { KeyId = "test-key" }, SecurityAlgorithms.RsaSha256)));
+        yield return () => new("another issuer", () => Token(c => c["iss"] = "https://other.example"));
+        yield return () => new("another audience", () => Token(c => c["aud"] = "other-client"));
+        yield return () => new("expired", () => Token(c => c["exp"] = Now() - 600));
+        yield return () => new("no exp", () => Token(c => c.Remove("exp")));
+        yield return () => new("no iat", () => Token(c => c.Remove("iat")));
+        yield return () => new("an ID token typ", () => Token(typ: "JWT"));
+        yield return () => new("no sub and no sid", () => Token(c => { c.Remove("sub"); c.Remove("sid"); }));
+        yield return () => new("a nonce", () => Token(c => c["nonce"] = "n-1"));
+        yield return () => new("no events", () => Token(c => c.Remove("events")));
+        yield return () => new("another event", () => Token(c => c["events"] = new Dictionary<string, object> { ["other"] = new Dictionary<string, object>() }));
+    }
+
+    private static string Token(Action<Dictionary<string, object>>? change = null, string? typ = "logout+jwt",
+        SigningCredentials? credentials = null, bool withoutSignature = false)
+    {
+        var provider = BffApp.Instance.IdentityProvider;
+        var claims = new Dictionary<string, object>
+        {
+            ["iss"] = provider.Issuer,
+            ["aud"] = FakeIdentityProvider.ClientId,
+            ["iat"] = Now(),
+            ["exp"] = Now() + 120,
+            ["jti"] = Guid.NewGuid().ToString(),
+            ["sub"] = "user-backchannel",
+            ["sid"] = "sid-backchannel",
+            ["events"] = new Dictionary<string, object> { [LogoutEvent] = new Dictionary<string, object>() },
+        };
+        change?.Invoke(claims);
+        return provider.CreateJwt(claims, typ, credentials, withoutSignature);
+    }
+
+    private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private static async Task<HttpResponseMessage> PostAsync(string logoutToken)
+    {
+        using var client = BffApp.Instance.CreateBrowser();
+        return await client.PostAsync("/bff/backchannel", new FormUrlEncodedContent([new("logout_token", logoutToken)]));
+    }
+
+    private static void ShouldHaveNoStoreHeaders(HttpResponseMessage response)
+    {
+        response.Headers.CacheControl!.NoCache.ShouldBeTrue();
+        response.Headers.CacheControl.NoStore.ShouldBeTrue();
+        response.Headers.Pragma.ToString().ShouldBe("no-cache");
+    }
+
+    public sealed record InvalidToken(string Name, Func<string> Create)
+    {
+        public override string ToString() => Name;
+    }
+}

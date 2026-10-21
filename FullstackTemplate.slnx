@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/tests/">
     <Project Path="tests/FullstackTemplate.ArchitectureFixtures/FullstackTemplate.ArchitectureFixtures.csproj" />
+    <Project Path="tests/FullstackTemplate.Bff.Tests/FullstackTemplate.Bff.Tests.csproj" />
     <Project Path="tests/FullstackTemplate.EntityGraphs.Generators/FullstackTemplate.EntityGraphs.Generators.csproj" />
     <Project Path="tests/FullstackTemplate.FunctionalTests/FullstackTemplate.FunctionalTests.csproj" />
     <Project Path="tests/FullstackTemplate.IntegrationTests/FullstackTemplate.IntegrationTests.csproj" />

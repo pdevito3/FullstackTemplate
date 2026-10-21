@@ -1,0 +1,100 @@
+namespace FullstackTemplate.Bff.Tests.Integration;
+
+using System.Net;
+using Shouldly;
+
+public class CsrfHeaderTests
+{
+    [Test]
+    [Arguments("GET", "/bff/user")]
+    [Arguments("GET", "/local-api/hello")]
+    [Arguments("GET", "/api/v1/weather")]
+    [Arguments("POST", "/api/v1/weather")]
+    [Arguments("PUT", "/api/v1/weather/1")]
+    [Arguments("PATCH", "/api/v1/weather/1")]
+    [Arguments("DELETE", "/api/v1/weather/1")]
+    [Arguments("HEAD", "/api/v1/weather")]
+    [Arguments("OPTIONS", "/api/v1/weather")]
+    [Arguments("GET", "/api")]
+    [Arguments("GET", "/API/v1/weather")]
+    public async Task a_bff_api_request_without_the_header_gets_401_with_an_empty_body(string method, string path)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
+
+        await ShouldBeRejectedAsync(response);
+    }
+
+    [Test]
+    [Arguments("0")]
+    [Arguments("true")]
+    [Arguments(" 1")]
+    [Arguments("")]
+    public async Task a_header_value_other_than_1_gets_401(string value)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/local-api/hello");
+        request.Headers.TryAddWithoutValidation("X-CSRF", value);
+
+        var response = await browser.SendAsync(request);
+
+        await ShouldBeRejectedAsync(response);
+    }
+
+    [Test]
+    public async Task only_the_first_header_value_counts()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/local-api/hello");
+        request.Headers.TryAddWithoutValidation("X-CSRF", ["2", "1"]);
+
+        var response = await browser.SendAsync(request);
+
+        await ShouldBeRejectedAsync(response);
+    }
+
+    [Test]
+    public async Task a_signed_in_request_without_the_header_gets_401()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: "test_sub=csrf-user");
+
+        var response = await browser.GetAsync("/bff/user");
+
+        await ShouldBeRejectedAsync(response);
+    }
+
+    [Test]
+    [Arguments("GET", "/local-api/hello")]
+    [Arguments("GET", "/api/v1/weather")]
+    [Arguments("POST", "/api/v1/weather")]
+    [Arguments("DELETE", "/api/v1/weather/1")]
+    public async Task a_request_with_the_header_passes(string method, string path)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.SendApiAsync(new HttpMethod(method), path);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    [Arguments("/bff/login")]
+    [Arguments("/bff/logout")]
+    public async Task the_login_and_logout_endpoints_need_no_header(string path)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.GetAsync(path);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+    }
+
+    private static async Task ShouldBeRejectedAsync(HttpResponseMessage response)
+    {
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
+        response.Headers.WwwAuthenticate.ShouldBeEmpty();
+    }
+}

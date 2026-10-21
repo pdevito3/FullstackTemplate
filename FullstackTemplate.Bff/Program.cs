@@ -1,8 +1,9 @@
 using System.Globalization;
-using Duende.Bff;
-using Duende.Bff.AccessTokenManagement;
-using Duende.Bff.Yarp;
 using FullstackTemplate.Bff;
+using FullstackTemplate.Bff.ApiEndpoints;
+using FullstackTemplate.Bff.Authentication;
+using FullstackTemplate.Bff.Management;
+using FullstackTemplate.Bff.Proxy;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
@@ -40,6 +41,7 @@ try
     });
 
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
+    builder.Services.AddHttpForwarder();
 
     // Configure forwarded headers for reverse proxy (for example AWS or Azure)
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -79,10 +81,14 @@ try
     }
 
     app.UseCors();
+    // Also answers the OIDC callbacks, /signin-oidc and /signout-callback-oidc
     app.UseAuthentication();
     app.UseRouting();
-    app.UseBff();
+    // After routing, because it reads the endpoint metadata
+    app.UseCsrfHeaderCheck();
     app.UseAuthorization();
+
+    app.MapBffManagementEndpoints();
 
     app.MapGet("/local-api/hello", () => new { message = "Hello from BFF!", timestamp = DateTime.UtcNow })
         .AsBffApiEndpoint();
@@ -91,10 +97,9 @@ try
         ?? builder.Configuration["services:server:http:0"]
         ?? "https://localhost:5001";
 
-    // BFF strips the local path prefix when forwarding, so include /api in the remote URL
+    // The proxy strips the local path prefix when forwarding, so include /api in the remote URL
     var apiBaseUrl = new Uri(new Uri(serverUrl.TrimEnd('/') + "/"), "api");
-    app.MapRemoteBffApiEndpoint("/api", apiBaseUrl)
-        .WithAccessToken(RequiredTokenType.UserOrNone);
+    app.MapApiProxy(apiBaseUrl);
 
     app.MapDefaultEndpoints();
 
@@ -110,7 +115,8 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+// WebApplicationFactory stops the host on purpose with a HostAbortedException.
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
 }

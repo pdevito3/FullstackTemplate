@@ -55,6 +55,8 @@ public class TenantIdProviderTests : TestBase
             .AddUser(out var user)
             .BuildAsync();
         (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
+        // FusionCache sets the absolute expiration from the real clock, so the manual clock starts from the time of the miss.
+        clock.SetToNow();
 
         // A direct write raises no domain event, so nothing removes the cached miss.
         await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
@@ -166,5 +168,7 @@ public class TenantIdProviderTests : TestBase
         public DateTimeOffset UtcNow { get; private set; } = now;
 
         public void Advance(TimeSpan time) => UtcNow += time;
+
+        public void SetToNow() => UtcNow = DateTimeOffset.UtcNow;
     }
 }

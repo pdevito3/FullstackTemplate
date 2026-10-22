@@ -328,8 +328,8 @@ A `returnUrl` is local if it is `/`, or if it starts with `/` and its second cha
 6. End the BFF sessions. The request abort of the client does not cancel this step.
    - If the token has a `sid`, delete the rows with that `sid`.
    - If it has only a `sub`, delete all the rows of that `sub`.
-   - The BFF deletes all the rows first. Then, if revocation is active, it revokes the refresh token of each deleted row. A revocation error is logged and does not stop the other revocations or change the response.
-   - If a row delete fails, the BFF revokes the tokens of the rows that it deleted, removes the `jti`, and returns 500. The provider can then send the same token again.
+   - The BFF does not revoke the refresh tokens of the deleted rows. The provider already ended its session. With Keycloak, a revoke of one refresh token also ends the other sessions of the user for the client, and Keycloak sends no logout token for them, so their BFF sessions would stay signed in until the next refresh fails.
+   - If a row delete fails, the BFF removes the `jti` and returns 500. The provider can then send the same token again.
    - Add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
 7. Return 200. Any failure in steps 2 to 5 returns 400.
 
@@ -532,7 +532,7 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 | Refresh token revocation | RFC 7009 2.1 | Logout step 4 | Integration: a fake token endpoint gets the revocation. e2e: the revoked token fails on Keycloak and the Duende Demo. |
 | RP-initiated logout with `id_token_hint` and `post_logout_redirect_uri` | RPIL 2, 3 | Logout step 6 | e2e on each provider. Conformance: RP-initiated logout plan. |
 | Back-channel logout endpoint and token validation | BCL 2.4, 2.5, 2.6 | Back-channel logout | Unit: each check of section 3.4. Conformance: back-channel plan. |
-| Back-channel logout ends the sessions | BCL 2.7 | Delete by `sid` or `sub` | Integration: the rows go away. e2e on Keycloak and Authentik. |
+| Back-channel logout ends the sessions | BCL 2.7 | Delete by `sid` or `sub` | Integration: the rows go away, and no revocation request reaches the provider. e2e on Keycloak and Authentik. |
 | Back-channel response codes and `no-store` | BCL 2.8 | Steps 1 and 7 | Unit. Conformance: back-channel plan. |
 | Cross-JWT confusion | BCL 2.4, 4.1 | `typ` check | Unit: an ID token sent as a logout token fails. |
 | Cookie `__Host-` prefix, `HttpOnly`, `Secure`, `SameSite=Strict` | BBA 6.1.3.2 | Section 3.8 | e2e: the three cookie tests. Integration: the `Set-Cookie` attributes. |

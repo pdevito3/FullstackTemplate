@@ -238,10 +238,7 @@ public sealed class BffTicketStore(
     /// </summary>
     public string? RefreshTokenOf(BffSession session) => TokensOf(session)?.RefreshToken;
 
-    /// <summary>
-    /// The tokens in the ticket of <paramref name="session"/>, or null if the ticket cannot be read.
-    /// </summary>
-    public SessionTokens? TokensOf(BffSession session) =>
+    private SessionTokens? TokensOf(BffSession session) =>
         Unprotect(session) is { } ticket ? SessionTokens.From(ticket.Properties) : null;
 
     private byte[] Protect(AuthenticationTicket ticket) => _protector.Protect(TicketSerializer.Default.Serialize(ticket));

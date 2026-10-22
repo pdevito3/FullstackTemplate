@@ -83,10 +83,10 @@ public class ManagementEndpointUnitTests
         context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
     }
 
-    // The token fails validation, so the handler returns before it uses the replay cache, the store, or the revocation
+    // The token fails validation, so the handler returns before it uses the replay cache or the store
     private static Task HandleBackChannelAsync(HttpContext context, OpenIdConnectOptions options) =>
         BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options),
-            replayCache: null!, store: null!, ticketStore: null!, revocation: null!);
+            replayCache: null!, store: null!);
 
     private static DefaultHttpContext BackChannelRequest()
     {

@@ -142,7 +142,7 @@ public class BackChannelLogoutTests
     }
 
     [Test]
-    public async Task a_logout_token_with_a_sid_ends_only_the_sessions_of_that_sid_and_revokes_their_refresh_tokens()
+    public async Task a_logout_token_with_a_sid_ends_only_the_sessions_of_that_sid()
     {
         var app = BffApp.Instance;
         var subject = NewSubject();
@@ -159,10 +159,6 @@ public class BackChannelLogoutTests
         (await ended.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await app.WithStoreAsync(store => store.GetAsync(otherKey, CancellationToken.None))).ShouldNotBeNull();
         (await otherIdpSession.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
-
-        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
-        app.IdentityProvider.RevokedTokens.ShouldContain(issued[0]);
-        app.IdentityProvider.RevokedTokens.ShouldNotContain(issued[1]);
     }
 
     [Test]
@@ -185,9 +181,27 @@ public class BackChannelLogoutTests
         (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await otherUser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
-        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
-        issued.Count.ShouldBe(2);
-        issued.ShouldAllBe(token => app.IdentityProvider.RevokedTokens.Contains(token));
+    }
+
+    [Test]
+    public async Task a_back_channel_logout_sends_no_revocation_request_to_the_identity_provider()
+    {
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        using var first = app.CreateBrowser();
+        using var second = app.CreateBrowser();
+        await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}&test_sid={sessionId}");
+        await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
+
+        (await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; }))).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await PostAsync(Token(c => { c["sub"] = subject; c.Remove("sid"); }))).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        app.IdentityProvider.IssuedRefreshTokens(subject).Count.ShouldBe(2);
+        app.IdentityProvider.WasRefreshTokenRevoked(subject).ShouldBeFalse();
     }
 
     [Test]
@@ -293,48 +307,26 @@ public class BackChannelLogoutTests
     }
 
     [Test]
-    public async Task a_failed_revocation_does_not_stop_the_other_sessions_from_ending()
-    {
-        await using var app = BffApp.StartAnotherInstance(services: FailingRevocation.Register);
-        var subject = NewSubject();
-        using var first = app.CreateBrowser();
-        using var second = app.CreateBrowser();
-        await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
-        await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
-
-        var response = await PostAsync(app, Token(c => { c["sub"] = subject; c.Remove("sid"); }));
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
-        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
-        issued.Count.ShouldBe(2);
-        issued.Count(token => app.IdentityProvider.RevokedTokens.Contains(token)).ShouldBe(1);
-    }
-
-    [Test]
     public async Task a_request_that_aborts_during_the_logout_still_ends_all_the_sessions()
     {
-        var app = BffApp.Instance;
+        var hold = new HoldingCommandInterceptor("bff_sessions.delete");
+        await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(hold)));
         var subject = NewSubject();
         using var first = app.CreateBrowser();
         using var second = app.CreateBrowser();
         await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
         await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
-        var gate = app.IdentityProvider.HoldRevocations(subject);
         using var abort = new CancellationTokenSource();
 
         var post = PostAsync(app, Token(c => { c["sub"] = subject; c.Remove("sid"); }), abort.Token);
-        await gate.Arrived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await hold.Gate.Arrived.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await abort.CancelAsync();
+        hold.Gate.Released.SetResult();
         (await Should.ThrowAsync<Exception>(post)).ShouldBeAssignableTo<OperationCanceledException>();
-        gate.Released.SetResult();
 
-        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
-        issued.Count.ShouldBe(2);
-        await WaitUntilAsync(() => Task.FromResult(issued.All(token => app.IdentityProvider.RevokedTokens.Contains(token))));
-        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+        await WaitUntilAsync(async () =>
+            (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).Count == 0);
         (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }

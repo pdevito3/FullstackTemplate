@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using System.Text.Json;
-using FullstackTemplate.Bff.Authentication;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -35,9 +34,7 @@ public static class BackChannelLogoutEndpoint
         HttpContext context,
         IOptionsMonitor<OpenIdConnectOptions> oidcOptions,
         LogoutTokenReplayCache replayCache,
-        IBffSessionStore store,
-        BffTicketStore ticketStore,
-        RefreshTokenRevocation revocation)
+        IBffSessionStore store)
     {
         context.Response.Headers.Append("Cache-Control", "no-cache, no-store");
         context.Response.Headers.Append("Pragma", "no-cache");
@@ -85,25 +82,19 @@ public static class BackChannelLogoutEndpoint
             return;
         }
 
-        // The row delete is the logout. The revocation after it is best effort.
+        // The row delete is the logout. The BFF does not revoke the refresh tokens, because the identity provider
+        // already ended its session. With Keycloak, a revoke also ends the other sessions of the user for the client
+        // and sends no logout token for them, so their BFF sessions would stay signed in.
         var deleted = new List<BffSession>();
-        Exception? deleteFailure = null;
         try
         {
             await DeleteSessionsAsync(token, store, deleted);
         }
         catch (Exception ex)
         {
-            deleteFailure = ex;
-        }
-
-        await RevokeAsync(deleted, ticketStore, revocation);
-
-        if (deleteFailure is not null)
-        {
             // Some rows of the IdP session can still be alive. Take the jti out of the replay cache, so that the
             // identity provider can send the token again to end them.
-            Logger.Here().Error(deleteFailure,
+            Logger.Here().Error(ex,
                 "Could not end all the BFF sessions for the logout token {LogoutTokenId}. Ended {Count} BFF sessions",
                 Fingerprint.Of(token.Jti), deleted.Count);
             await ForgetAsync(replayCache, token.Jti);
@@ -156,26 +147,6 @@ public static class BackChannelLogoutEndpoint
             deleted.Add(session);
             Telemetry.RecordSessionsEnded(SessionEndReason.BackChannelLogout);
             Logger.Here().Information("Deleted the BFF session {SessionKey} for a back-channel logout", Fingerprint.Of(session.Key));
-        }
-    }
-
-    /// <summary>
-    /// Revokes the refresh token of each deleted row. A failed revocation is logged and does not stop the others.
-    /// </summary>
-    private static async Task RevokeAsync(List<BffSession> deleted, BffTicketStore ticketStore, RefreshTokenRevocation revocation)
-    {
-        foreach (var session in deleted)
-        {
-            try
-            {
-                if (ticketStore.TokensOf(session)?.RefreshToken is { Length: > 0 } refreshToken)
-                    await revocation.RevokeAsync(refreshToken, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Logger.Here().Warning(ex, "Could not revoke the refresh token of the BFF session {SessionKey} for a back-channel logout",
-                    Fingerprint.Of(session.Key));
-            }
         }
     }
 

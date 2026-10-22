@@ -42,7 +42,9 @@ public class DPoPReplayCacheTests : TestBase
     public async Task the_cleanup_deletes_the_expired_rows_and_keeps_the_others()
     {
         var jkt = Guid.NewGuid().ToString("N");
-        var now = DateTimeOffset.UtcNow;
+        // Long before the rows of the other tests expire: they use the real time or DPoPTestHost.Now. Thus this
+        // cleanup cannot delete a row that a parallel replay test still needs.
+        var now = DPoPTestHost.Now.AddYears(-10);
         await WithCacheAsync(c => c.TryAddAsync(jkt, "old", now.AddMinutes(-5), default));
         await WithCacheAsync(c => c.TryAddAsync(jkt, "new", now.AddMinutes(5), default));
 

@@ -57,11 +57,12 @@ try
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
         .WithParentRelationship(webfrontend);
-    // The BFF builds its redirect URIs from its own URL, because the Vite proxy changes the origin. The host filter
-    // also lets in the identity provider containers, which call /bff/backchannel at host.docker.internal, and the
-    // health probes, which call localhost.
-    bff.WithEnvironment("Bff__PublicOrigin", bff.GetEndpoint("https"))
-        .WithEnvironment("Bff__AdditionalAllowedHosts", "host.docker.internal;localhost");
+    // The BFF builds its redirect URIs from its own URL, because the Vite proxy changes the origin.
+    bff.WithEnvironment("Bff__PublicOrigin", bff.GetEndpoint("https"));
+    // In a local run, the host filter also lets in the identity provider containers, which call /bff/backchannel at
+    // host.docker.internal, and the health probes, which call localhost. A published BFF does not trust these hosts.
+    if (builder.ExecutionContext.IsRunMode)
+        bff.WithEnvironment("Bff__AdditionalAllowedHosts", "host.docker.internal;localhost");
 
     var authClientUrls = new AuthClientUrls(
         webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"));

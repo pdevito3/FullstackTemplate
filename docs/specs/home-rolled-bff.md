@@ -424,8 +424,8 @@ Decisions: [Session cookie SameSite](https://github.com/pdevito3/FullstackTempla
 
 **The host filter.** `AllowedHosts` holds the host of `Bff:PublicOrigin`, plus the hosts in `Bff:AdditionalAllowedHosts`. A request with another `Host` header gets a 400.
 
-- The identity provider containers and the conformance suite call `/bff/backchannel` at `host.docker.internal`. The AppHost and the conformance job add this host.
-- The health probes call the BFF at its internal host. The AppHost adds `localhost`. A deployment adds the host of its probes.
+- The identity provider containers and the conformance suite call `/bff/backchannel` at `host.docker.internal`. The AppHost adds this host in a local run only, not when it publishes. The conformance job adds it too.
+- The health probes call the BFF at its internal host. The AppHost adds `localhost` in a local run only. A deployment adds the host of its probes.
 
 **CORS.** No change. The default policy allows the Vite origin with credentials.
 

@@ -243,6 +243,11 @@ jobs:
           - idp: duendedemo
             provider: DuendeDemo
             public: true
+          # The public service with DPoP. It gets no refresh margin, as the leg above.
+          - idp: duendedemo
+            provider: DuendeDemo
+            dpop: true
+            public: true
     continue-on-error: ${{ matrix.public == true }}
     name: e2e (${{ matrix.provider }}${{ matrix.dpop && ' DPoP' || '' }})
     env:

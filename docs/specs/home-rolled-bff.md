@@ -184,14 +184,18 @@ Decision: [Session storage](https://github.com/pdevito3/FullstackTemplate/issues
 - If a renew finds no row, it does not create one. If the refresh token in the ticket is not the one that the request read at its start, a refresh ran in this request. The BFF then revokes that new refresh token.
 - A refresh writes inside the refresh lock, with the `xmin` of the row that the lock read (section 3.7). Thus the new tokens always reach the row.
 - A renew that changes only the expiry never replaces newer tokens. If it loses the `xmin` race, it reads the row again and applies only its expiry change.
-- A new login always gets a new key. In `OnTicketReceived`, if a BFF session exists, the BFF deletes its row and signs out the cookie before the new sign-in. Thus a renew never puts the ticket of a new login, with a new `sub` or `sid`, on an old key.
+- A renew never moves `Renewed` or `Expires` back. It writes the later of its own value and the value in the row that it read, also after it loses the `xmin` race.
+- A renew tries at most 3 times. After 3 lost races, it logs the failure and stops. A token write that stops this way is dropped, and the BFF revokes its new refresh token, as for a missing row.
+- A new login always gets a new key. In `OnTicketReceived`, if a BFF session exists, the BFF deletes its row, deletes the cookie and all its chunks in the browser, and signs out the cookie before the new sign-in. Thus a renew never puts the ticket of a new login, with a new `sub` or `sid`, on an old key.
+  - The BFF revokes the refresh token of the deleted row, as logout does. If the new login has the same `sid`, the BFF keeps the old token: with Keycloak, a revoke of one refresh token ends the client session, and thus also the new tokens. The end of the IdP session then ends the old token.
+  - The BFF finds the old BFF session only through the cookie of the callback. With a cross-site identity provider, the browser does not send the `SameSite=Strict` cookie on the redirect to `/signin-oidc`. The old row then stays until it expires or the cleanup deletes it, and the BFF does not revoke its refresh token.
 - The store adds to `bff.sessions.started` when it creates a row.
 
-**The `id_token` on a refresh.** If a refresh response has no `id_token`, the store keeps the stored `id_token` in the renewed ticket. `Duende.AccessTokenManagement` writes `null` in that case. All four providers send a new `id_token` today, so this rule is defensive ([Test id_token retention](https://github.com/pdevito3/FullstackTemplate/issues/23)).
+**The `id_token` on a refresh.** If a refresh response has no `id_token`, the store keeps the stored `id_token` in the renewed ticket. `Duende.AccessTokenManagement` writes `null` in that case. Keycloak, FusionAuth, Authentik, and the Duende Demo send a new `id_token` today, so this rule is defensive ([Test id_token retention](https://github.com/pdevito3/FullstackTemplate/issues/23)).
 
 **Data Protection.** The keys persist in the same `DbContext` through `PersistKeysToDbContext`, with one application name for all BFF instances. A deploy then does not log out every user. Encryption of the keys at rest is a deployment decision.
 
-**Cleanup.** A hosted service in each instance deletes the expired rows in batches. `Bff:Session:CleanupInterval`, default 10 minutes. The delete is idempotent, so it needs no lock. Each delete adds to the `bff.sessions.ended` count with `reason=expiry`.
+**Cleanup.** A hosted service in each instance deletes the expired rows in batches. Each batch comes in the order of `Expires` or of `AbsoluteExpires`, from the index on that column, so the batch query stops at the batch size. `Bff:Session:CleanupInterval`, default 10 minutes. The delete is idempotent, so it needs no lock. Each delete adds to the `bff.sessions.ended` count with `reason=expiry`.
 
 **Scale.** The design is for many BFF instances. The BFF session store, the Data Protection keys, the refresh lock, and the replay cache of the logout tokens are all in `bffdb`. A Redis or `HybridCache` adapter can come later behind the same seam.
 
@@ -257,6 +261,7 @@ Keep the two trace events of `LoginTraceLink` (`OnRedirectToIdentityProvider` an
   - It calls `context.HandleCodeRedemption` with the response.
 - The Microsoft default is `client_secret_post`.
 - Refresh and revocation use the same method through `ClientCredentialStyle` of `Duende.AccessTokenManagement`. Its default is already `AuthorizationHeader`.
+- The PAR request uses the same method (RFC 9126 section 2). The handler always sends `client_secret_post` to the PAR endpoint, so for `client_secret_basic` a hook in `OnPushAuthorization` pushes the request itself through the backchannel and calls `context.HandlePush`.
 
 **The signing keys.** The OIDC handler owns the `ConfigurationManager` for discovery and the signing keys. The back-channel receiver uses the same instance. `RefreshOnIssuerKeyNotFound` stays `true`, so a new key causes a refresh. `Auth:MetadataRefreshInterval` sets only `RefreshInterval`, the shortest time between two refreshes (minimum 1 s). `AutomaticRefreshInterval` keeps the handler default, because its minimum is 5 minutes. The default of `Auth:MetadataRefreshInterval` is the handler default. Only the conformance job sets a short value (section 7).
 
@@ -300,7 +305,7 @@ A `returnUrl` is local if it is `/`, or if it starts with `/` and its second cha
 1. Authenticate the cookie. Do the `sid` check (section 2).
 2. Do the local URL check on `returnUrl`.
 3. Delete the BFF session row. Add to `bff.sessions.ended` with `reason=logout`.
-4. If revocation is active, revoke the refresh token through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
+4. If revocation is active, revoke the refresh token of the deleted row through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). The delete returns the row as it was at the delete. Thus, if a refresh in another request wrote new tokens after step 1, the BFF revokes the new refresh token. If no row was deleted, another end of the BFF session came first, and the BFF revokes nothing. If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
 5. Sign out the cookie scheme.
 6. If `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`.
 7. If not, send a 302 to `returnUrl`.
@@ -320,11 +325,12 @@ A `returnUrl` is local if it is `/`, or if it starts with `/` and its second cha
    - `sub` or `sid` is present.
    - `events` has the member `http://schemas.openid.net/event/backchannel-logout`.
    - `nonce` is absent.
-5. Check `jti` for a replay. BCL 2.4 requires `jti`, so a token with no `jti` returns 400. The replay cache is a table in `bffdb`, keyed by `jti`, with the token `exp` as its expiry. A replay returns 400. The cleanup service also deletes the expired rows of this table.
-6. End the BFF sessions:
+5. Check `jti` for a replay. BCL 2.4 requires `jti`, so a token with no `jti` returns 400. The replay cache is a table in `bffdb`, keyed by `jti`, with the token `exp` as its expiry. The BFF writes the `jti` before it ends a session. A replay returns 400. A failed write of the `jti` returns 400 and ends no session, so that the provider can send the token again. The cleanup service also deletes the expired rows of this table.
+6. End the BFF sessions. The request abort of the client does not cancel this step.
    - If the token has a `sid`, delete the rows with that `sid`.
    - If it has only a `sub`, delete all the rows of that `sub`.
-   - For each row, if revocation is active, revoke its refresh token. A revocation error does not change the response.
+   - The BFF does not revoke the refresh tokens of the deleted rows. The provider already ended its session. With Keycloak, a revoke of one refresh token also ends the other sessions of the user for the client, and Keycloak sends no logout token for them, so their BFF sessions would stay signed in until the next refresh fails.
+   - If a row delete fails, the BFF removes the `jti` and returns 500. The provider can then send the same token again.
    - Add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
 7. Return 200. Any failure in steps 2 to 5 returns 400.
 
@@ -368,7 +374,7 @@ YARP `MapForwarder("/api/{**catch-all}", "<server>/api", ...)`. The server URL c
 
 Decisions: [Refresh lock across BFF instances](https://github.com/pdevito3/FullstackTemplate/issues/24), [Behavior when a token refresh fails](https://github.com/pdevito3/FullstackTemplate/issues/20).
 
-**Registration.** Call `AddOpenIdConnectAccessTokenManagement` one time, after the OIDC options. `RefreshBeforeExpiration` comes from `Auth:RefreshBeforeExpirationSeconds`, default 120 (parity). `IUserTokenStore` keeps its default, `AuthenticationSessionUserAccessTokenStore`. Its sign-in writes through the BFF session store.
+**Registration.** Call `AddOpenIdConnectAccessTokenManagement` one time, after the OIDC options. `RefreshBeforeExpiration` comes from `Auth:RefreshBeforeExpirationSeconds`, default 120 (parity). If a token response has no `expires_in`, token management treats the access token as one that does not expire, and never refreshes it. `Auth:DefaultAccessTokenLifetime` gives such a token a lifetime, at the code exchange and at each refresh. It has no default. Only the conformance job sets it (section 7). `IUserTokenStore` keeps its default, `AuthenticationSessionUserAccessTokenStore`. Its sign-in writes through the BFF session store.
 
 **The token attach.** A YARP request transform gets the user token through `GetUserAccessTokenAsync`:
 
@@ -376,15 +382,28 @@ Decisions: [Refresh lock across BFF instances](https://github.com/pdevito3/Fulls
 |---|---|
 | Anonymous | Forward with no token. |
 | Signed in, the token is valid or the refresh worked | `Authorization: Bearer <token>`. The token type compare is case-insensitive. |
-| Refresh failed with `invalid_grant` (permanent) | End the BFF session: delete the row, add to `bff.sessions.ended` with `reason=refresh_failure`, and sign out the cookie. Then forward with no token. |
-| Refresh failed for a temporary cause (network error, timeout, 5xx, or a lock timeout) | Keep the BFF session. If the current access token is still valid, send it. If not, forward with no token. |
+| Refresh failed with `invalid_grant`, or its ID token failed the checks below (permanent) | End the BFF session: delete the row, add to `bff.sessions.ended` with `reason=refresh_failure`, and sign out the cookie. Then forward with no token. |
+| Refresh failed for a temporary cause (network error, timeout, 5xx, a token request timeout, or a lock timeout) | Keep the BFF session. If the current access token is still valid, send it. If not, forward with no token. |
 | Token type `DPoP` | The transform reads the token type of the stored token in phase 1. With `Auth:Features:DPoP` at `Disable`, a `DPoP` token cannot occur. If one occurs, the transform logs an error and forwards with no token. Phase 2 adds the DPoP branch (section 9). |
 
-Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The resilience handler of the token `HttpClient` retries a temporary failure in the same call.
+**The ID token of a refresh response.** OIDC Core 12.2. `RefreshIdTokenValidation` wraps the token endpoint of token management, inside the other wrappers. A refresh response with no `id_token` passes, and the BFF keeps the stored `id_token`. A refresh response with an `id_token` passes only if the token passes these checks:
+
+- The signature, with the signing keys of discovery and the algorithm of the client registration. An unknown `kid` refreshes the keys one time, as at the login.
+- `iss` equals the discovery `issuer`.
+- `aud` holds only the client id, as at the login. If `azp` is present, it equals the client id.
+- `exp` is in the future, and `iat` is present. A nonce is not required.
+- `sub` equals the `sub` of the BFF session.
+- If the BFF session and the token both have an `auth_time`, the two values are equal.
+
+If a check fails, the refresh fails with the error `bff_invalid_refresh_id_token`. Token management then does not store the new tokens, and the request does not use them. The failure is permanent: the refresh lock deletes the row, and the BFF session ends as for `invalid_grant`. A wrong `iss` or `sub` is a sign of a wrong or attacked identity provider, so a retry with the same provider must not continue the BFF session. The BFF also revokes the refresh token of the rejected response, when revocation is active, because no BFF session holds it. The log gives the reason and a SHA-256 fingerprint of the ID token, never a token value.
+
+The checks and the revocation do not use the cancellation of `Bff:Refresh:TokenRequestTimeout`, because that cancellation gives a temporary failure and keeps the BFF session. Each gets its own limit of `Bff:Refresh:TokenRequestTimeout` instead. If the signing keys do not load within the limit, the check fails. A revocation that fails or reaches its limit is logged, and the refresh still fails with `bff_invalid_refresh_id_token`.
+
+Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The refresh has no retry inside the call. The next request that needs a token tries again. A retry inside the call can send a rotated refresh token two times, after the identity provider used it but the response got lost, and then the session ends. A retry also holds the refresh lock and its `bffdb` connection longer. The refresh goes through the backchannel `HttpClient` of the OIDC handler, which does not come from `IHttpClientFactory`, so the standard resilience handler of the service defaults does not apply to it.
 
 **The refresh lock.** Our own `IUserTokenRequestConcurrencyControl` replaces the default. It has two layers:
 
-1. **In process.** Keep the merge by refresh token, so that one instance takes the database lock only one time for each refresh.
+1. **In process.** Keep the merge by refresh token, so that one instance takes the database lock only one time for each refresh. The first request runs the refresh. Each other request waits at most `Bff:Refresh:LockTimeout` plus `Bff:Refresh:TokenRequestTimeout` plus 2 s, and stops its wait when its own client goes away. The first request can wait that long for the lock and then for the identity provider, so a shorter wait can end before the refresh ends. A wait that reaches the limit is a temporary failure.
 2. **Across instances.** In a `bffdb` transaction, take `pg_advisory_xact_lock` with a 64-bit hash of the BFF session key. Then read the BFF session row again.
    - If the stored refresh token is not the one that the caller has, return the stored tokens. Do not call the identity provider.
    - If it is the same, run the refresh. The delegate of `ExecuteWithConcurrencyControlAsync` runs `RefreshAccessTokenAsync` and then `StoreTokenAsync`, so the lock wraps the refresh and the write. The write uses the `xmin` of the row that the lock read. Thus a waiter always reads the new tokens.
@@ -393,6 +412,10 @@ Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kin
 The lock releases itself when the transaction ends, also if the instance stops. It does not block a plain read of the row.
 
 **The wait.** `Bff:Refresh:LockTimeout`, default 10 s. If the wait reaches the limit, the BFF treats it as a temporary failure.
+
+**The token request.** The lock transaction holds a `bffdb` connection during the call to the identity provider, so a hung identity provider must not hold it long. `Bff:Refresh:TokenRequestTimeout`, default 5 s, limits the refresh call. It must be less than `Bff:Refresh:LockTimeout`, so that a request that waits for the lock gets the result of the refresh. A call that reaches the limit is a temporary failure.
+
+**Cancellation.** The shared refresh and its commit do not stop when a client goes away. The identity provider can have rotated the refresh token already. A rollback then leaves the used refresh token in the row, and the next refresh gets `invalid_grant`. Thus the token attach does not give `RequestAborted` to token management, and the token write ignores it. The request that runs the refresh waits for its end, because the refresh uses the scoped `DbContext` of that request.
 
 ### 3.8 Cookies and host trust
 
@@ -414,8 +437,8 @@ Decisions: [Session cookie SameSite](https://github.com/pdevito3/FullstackTempla
 
 **The host filter.** `AllowedHosts` holds the host of `Bff:PublicOrigin`, plus the hosts in `Bff:AdditionalAllowedHosts`. A request with another `Host` header gets a 400.
 
-- The identity provider containers and the conformance suite call `/bff/backchannel` at `host.docker.internal`. The AppHost and the conformance job add this host.
-- The health probes call the BFF at its internal host. The AppHost adds `localhost`. A deployment adds the host of its probes.
+- The identity provider containers and the conformance suite call `/bff/backchannel` at `host.docker.internal`. The AppHost adds this host in a local run only, not when it publishes. The conformance job adds it too.
+- The health probes call the BFF at its internal host. The AppHost adds `localhost` in a local run only. A deployment adds the host of its probes.
 
 **CORS.** No change. The default policy allows the Vite origin with credentials.
 
@@ -523,11 +546,12 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 | Client authentication | OAuth 2.1 2.4.1, RFC 6749 2.3.1 | `client_secret_basic`, discovery fallback | Unit: each `Auth:ClientAuthentication` case. Conformance: basic plan. |
 | `iss` response parameter | RFC 9207 2.4 | `iss` check | Unit: each case of section 3.2. Conformance: basic plan. |
 | PAR when the AS offers it | RFC 9126 | `Auth:Features:PushedAuthorization` | Unit: the setting map. e2e: the authorize URL has only `client_id` and `request_uri` on Keycloak and the Duende Demo. |
-| Refresh token rotation and reuse | OAuth 2.1 4.3.3 | The refresh lock | Integration: two hosts, one refresh call. e2e: Keycloak with rotation. Conformance: refresh plan (report only). |
+| Refresh token rotation and reuse | OAuth 2.1 4.3.3 | The refresh lock | Integration: two hosts, one refresh call. e2e: the provider rejects a reused refresh token, and the BFF refreshes on each API call with the rotated token, on Keycloak, FusionAuth, and Authentik. Conformance: refresh plan. |
+| ID token of a refresh response: signature, `iss`, `aud`, `azp`, `exp`, `iat`, same `sub` and `auth_time` | Core 12.2 | `RefreshIdTokenValidation`, section 3.7 | Integration: a wrong `iss`, `sub`, `aud`, or `auth_time`, or a bad signature, ends the BFF session. A valid ID token or no ID token gives the new tokens. Conformance: refresh plan. |
 | Refresh token revocation | RFC 7009 2.1 | Logout step 4 | Integration: a fake token endpoint gets the revocation. e2e: the revoked token fails on Keycloak and the Duende Demo. |
 | RP-initiated logout with `id_token_hint` and `post_logout_redirect_uri` | RPIL 2, 3 | Logout step 6 | e2e on each provider. Conformance: RP-initiated logout plan. |
 | Back-channel logout endpoint and token validation | BCL 2.4, 2.5, 2.6 | Back-channel logout | Unit: each check of section 3.4. Conformance: back-channel plan. |
-| Back-channel logout ends the sessions | BCL 2.7 | Delete by `sid` or `sub` | Integration: the rows go away. e2e on Keycloak and Authentik. |
+| Back-channel logout ends the sessions | BCL 2.7 | Delete by `sid` or `sub` | Integration: the rows go away, and no revocation request reaches the provider. e2e on Keycloak and Authentik. |
 | Back-channel response codes and `no-store` | BCL 2.8 | Steps 1 and 7 | Unit. Conformance: back-channel plan. |
 | Cross-JWT confusion | BCL 2.4, 4.1 | `typ` check | Unit: an ID token sent as a logout token fails. |
 | Cookie `__Host-` prefix, `HttpOnly`, `Secure`, `SameSite=Strict` | BBA 6.1.3.2 | Section 3.8 | e2e: the three cookie tests. Integration: the `Set-Cookie` attributes. |
@@ -539,28 +563,28 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 
 Decision: [Provider seed and version changes](https://github.com/pdevito3/FullstackTemplate/issues/19).
 
-- **Version policy.** Each provider image gets an exact patch tag in a constant in `FullstackTemplate.AppHost/Config.cs`, as `PostgresImageTag` does today. Today the tags float: Keycloak `26.0`, Authentik `2024.12`, and FusionAuth `latest`. The research found 26.0.8, 2024.12.5, and 1.69.4 behind them.
+- **Version policy.** Each provider image gets an exact patch tag in its provider class in `FullstackTemplate.AppHost/AuthProviders/<Name>/`, as the Cognito and ZeroFactor classes do. Today the tags float: Keycloak `26.0`, Authentik `2024.12`, and FusionAuth `latest`. The research found 26.0.8, 2024.12.5, and 1.69.4 behind them.
 - **Authentik.** Upgrade from 2024.12.5 to the latest stable 2026.8.x. Read the release notes between the two versions for changes to the worker and the Redis setup.
 - **Authentik logout flow.** The seed in `FullstackTemplate.AppHost/AuthProviders/Authentik/seed/default.yaml` uses an invalidation flow with a user logout stage. RP-initiated logout then also ends the IdP session.
 - **Back-channel URLs.** Register `<BFF URL>/bff/backchannel` in the Keycloak and Authentik seeds. The container must reach the BFF, for example through `host.docker.internal`. Find out how Aspire exposes the BFF endpoint to a container. FusionAuth and the Duende Demo cannot take part. Back-channel logout in Authentik is a preview feature since 2025.8, so the seed can need to turn it on.
 - **Keycloak password grant.** Set `directAccessGrantsEnabled` to `false`. Nothing in the repo uses it.
 - **Refresh token rotation.** Turn on one-time use in Keycloak (`revokeRefreshToken`, max reuse `0`) and in FusionAuth.
-- **Feature settings.** `WithBffAuth` in `AuthProviders/AuthProviderConfig.cs` gives `Auth__Features__*` to the BFF. The defaults (`Auto`) are correct for the four providers.
+- **Feature settings.** `WithBffAuth` in `AuthProviders/AuthProviderConfig.cs` gives `Auth__Features__*` to the BFF. The defaults (`Auto`) are correct for each provider.
 - **Public origin.** `WithBffAuth` gives `Bff__PublicOrigin` from the BFF `https` endpoint.
 - **`bffdb`.** The AppHost adds the database and gives it to the BFF.
 - **The conformance provider.** The folder `AuthProviders/Conformance/` gets a `ConformanceAuthProvider` for the conformance job. Its authority is the suite, and its `Bff:PublicOrigin` is the BFF `https` URL. The suite client config registers `<BFF https URL>/signin-oidc`, `/signout-callback-oidc`, and `/bff/backchannel` at `host.docker.internal`.
 
 The capability table (section 7) holds the expected result of these changes:
 
-| Feature | Keycloak | FusionAuth | Authentik 2026.8 | Duende Demo |
-|---|---|---|---|---|
-| Revocation | yes | no | yes | yes |
-| `iss` parameter | yes | yes | no | yes |
-| Back-channel logout (testable) | yes | no | yes | no (cannot reach the BFF) |
-| `end_session_endpoint` | yes | yes | yes | yes |
-| PAR | yes | no | no | yes |
-| Refresh rotation | yes | yes | yes | no |
-| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | yes |
+| Feature | Keycloak | FusionAuth | Authentik 2026.8 | Cognito | ZeroFactor | Duende Demo |
+|---|---|---|---|---|---|---|
+| Revocation | yes | no | yes | no | yes | yes |
+| `iss` parameter | yes | yes | no | no | yes | yes |
+| Back-channel logout (testable) | yes | no | yes | no | no | no (cannot reach the BFF) |
+| `end_session_endpoint` | yes | yes | yes | no | yes | yes |
+| PAR | yes | no | no | no | no | yes |
+| Refresh rotation | yes | yes | yes | no | no (stateless refresh tokens) | no |
+| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | not tested | not tested | yes |
 
 The live discovery test (section 7) makes sure that the table is correct.
 
@@ -571,7 +595,7 @@ Decisions: [Test plan in CI](https://github.com/pdevito3/FullstackTemplate/issue
 ### Test layers
 
 - **BFF unit and integration tests.** A new project `tests/FullstackTemplate.Bff.Tests`. The integration tests use a `WebApplicationFactory` for the BFF, a fake identity provider, a fake API that echoes the headers, and a Postgres container for `bffdb`. The refresh lock tests run two BFF hosts on one `bffdb`. The tests of sections 3 and 5 go here.
-- **e2e tests.** The Playwright tests in `frontend/e2e`, against all four providers.
+- **e2e tests.** The Playwright tests in `frontend/e2e`, against each provider of the `e2e` matrix.
   - A fixed capability table in the test project holds the features of each provider (section 6).
   - A feature test runs only for the providers that have the feature. For the other providers, the test is skipped and gives the reason.
   - For a missing feature, a test proves the fallback, for example that logout still ends the BFF session.
@@ -583,7 +607,7 @@ Decisions: [Test plan in CI](https://github.com/pdevito3/FullstackTemplate/issue
   - `oidcc-client-config-certification-test-plan`
   - `oidcc-client-rp-initiated-logout-rp-basic`
   - `oidcc-client-back-channel-logout-rp-basic`
-  - `oidcc-client-refreshtoken-test-plan` (report only)
+  - `oidcc-client-refreshtoken-test-plan`
 
 ### Tests from the decision tickets
 
@@ -604,7 +628,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | Integration | A `Set-Cookie` from the API never reaches the browser, and the renewed BFF cookie still does. | [#21](https://github.com/pdevito3/FullstackTemplate/issues/21) |
 | Integration | Two BFF hosts on one `bffdb`, a fake token endpoint with rotation: concurrent calls on both hosts make exactly one refresh call, and every call gets the new token. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
 | Integration | A lock wait that reaches the limit gives the temporary-failure path. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
-| e2e | Keycloak with rotation: two `/api` calls at the same time after a forced refresh both succeed. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
+| e2e | The providers with rotation (Keycloak, FusionAuth, and Authentik): two `/api` calls at the same time after a forced refresh both succeed, and the BFF session still works after them. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
 | Integration | A late refresh after logout does not bring the BFF session back, and the BFF revokes its new refresh token. | [#11](https://github.com/pdevito3/FullstackTemplate/issues/11) |
 | Integration | A new login on a browser with a BFF session gets a new key. | This spec |
 | Unit | Each `Auth:ClientAuthentication` case of section 3.2. | [#17](https://github.com/pdevito3/FullstackTemplate/issues/17) |
@@ -612,18 +636,30 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 ### CI jobs
 
 - **No nightly run.** The BFF jobs run only on a BFF change, and on `workflow_dispatch`.
-- **The `changes` job.** A path filter. The BFF jobs depend on it. Do not use `paths:` on the trigger, because a skipped job then reports no status. These paths count as a BFF change:
+- **The `changes` job.** A path filter. The BFF jobs depend on it. Do not use `paths:` on the trigger, because a skipped job then reports no status. These paths count as a BFF change in `ci.yml` and in `conformance.yml`:
   - `FullstackTemplate.Bff/**`
-  - `tests/FullstackTemplate.Bff.Tests/**`
   - `FullstackTemplate.AppHost/**`
-  - `Directory.Packages.props` and `Directory.Build.props`
-  - The e2e and conformance scripts
+  - `FullstackTemplate.Server/Resources/Entrypoints/**`, the token check of the Server
+  - `Directory.Packages.props`, `Directory.Build.props`, `global.json`, and `dotnet-tools.json`
+  - `frontend/package.json` and `frontend/pnpm-lock.yaml`
   - The workflow file
+- `ci.yml` also counts these paths:
+  - `tests/FullstackTemplate.Bff.Tests/**`
+  - `frontend/e2e/**` and `frontend/playwright.config.ts`
+  - `frontend/vite.config.ts` and `frontend/src/**`, the SPA and the dev server proxy that the e2e tests drive
+- `conformance.yml` also counts `frontend/conformance/**`.
 - **`bff-tests`.** The BFF unit and integration tests, with the two-host lock tests.
-- **`e2e`.** A matrix of the four providers. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The Duende Demo leg uses `continue-on-error`, because it is a public service. The other three legs block a merge.
+- **`e2e`.** A matrix of eight legs: Keycloak, Keycloak with DPoP, FusionAuth, Authentik, Cognito, ZeroFactor, the Duende Demo, and the Duende Demo with DPoP. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The two Duende Demo legs use `continue-on-error`, because the Duende Demo is a public service. A failure of one of the other six legs fails the workflow.
+  - Each leg of a provider in the stack sets `BffRefreshBeforeExpirationSeconds` to 86400, so that each API call refreshes, and `EXPECT_REFRESH_MARGIN=true`. The two Duende Demo legs set no margin and `EXPECT_REFRESH_MARGIN=false`.
+  - A DPoP leg sets `DPoP=true` and `EXPECT_DPOP=true`. The other legs set `EXPECT_DPOP=false`.
+  - `run-against-stack.ts` fails the leg when an `EXPECT_*` variable and the stack disagree, so a leg cannot pass while its refresh tests or its DPoP test skip.
 - **`conformance`.** The job runs `dotnet aspire start --isolated` with the `Conformance` provider. The suite starts with `docker-compose-prebuilt.yml` and an override file with `extra_hosts: host.docker.internal:host-gateway`. The BFF trusts the self-signed suite certificate. The job sets `Auth:MetadataRefreshInterval` to 1 s, so that each test module gets fresh signing keys.
+  - The suite sends no `expires_in`, so the job sets `Auth:DefaultAccessTokenLifetime` to 1 s. Then the next API call refreshes the token.
+  - The access tokens of the suite are opaque. So the server, with `Auth:AccessTokenValidation=Userinfo` (Development only), checks each token at the userinfo endpoint of the suite. The happy path module of the refresh plan finishes on that userinfo call with the refreshed token. The driver stops the API calls of the SPA, because a call after a module finished fails it.
   - Each `FAILED` result fails the job.
   - Each `WARNING` or `REVIEW` result fails the job, unless it is in a committed list of accepted results. Each entry in the list gives a reason.
+  - Each module that does not finish, in each plan, is "not run" and fails the job. A plan with no result must not give a green job.
+  - Each plan blocks, the refresh plan too. Its negative modules send an ID token with a wrong `iss` or `sub` in the refresh response (section 3.7).
 - **Reports.** Each job uploads the exported suite results, the Playwright traces and screenshots, and the stack logs as artifacts, kept for 30 days. The job summary lists each plan with its pass, warning, and fail counts.
 - **Scripts.** The scripts for the stacks and the suite go in the repo, so that a developer can run the same commands locally.
 
@@ -636,7 +672,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | `FullstackTemplate.Bff/appsettings*.json` | Replace the `Duende` log level overrides. Add the new keys with their defaults. |
 | `FullstackTemplate.AppHost/AppHost.cs` | Add `bffdb`. |
 | `FullstackTemplate.AppHost/AuthProviders/AuthProviderConfig.cs` | Remove `RevokeRefreshTokenOnLogout`. Add the feature settings, `Bff__PublicOrigin`, and `Bff__AdditionalAllowedHosts`. |
-| `FullstackTemplate.AppHost/AuthProviders/Conformance/` | The new `ConformanceAuthProvider`. It also needs `frontend/e2e/idps/conformance.json`, because a unit test makes sure that each provider has an e2e file. |
+| `FullstackTemplate.AppHost/AuthProviders/Conformance/` | The new `ConformanceAuthProvider`. It sets `RunsE2eTests` to false, so it needs no file in `frontend/e2e/idps/`. The suite logs in with no login form. |
 | `FullstackTemplate.AppHost/Config.cs` | The provider image tags. |
 | `README.md` | Remove "using Duende BFF". Change the project tree line to "BFF proxy (YARP, OIDC)". |
 | `AGENTS.md` | The `FullstackTemplate.Bff` row: "BFF proxy (YARP and OIDC auth)". |
@@ -655,6 +691,7 @@ Phase 1 needs no change for phase 2. The BFF session row does not change.
 
 - **The key.** One DPoP key for the BFF client, from a secret in the configuration (`DPoPJsonWebKey` of `Duende.AccessTokenManagement`). All instances share it. A key rotation is a change of the configuration. A key for each BFF session can come later.
 - **The code exchange.** `Duende.AccessTokenManagement` binds it through its `AuthorizationServerDPoPHandler`: `dpop_jkt` on the authorize request, and a proof on the code exchange. The Microsoft handler needs no DPoP support.
+- **The userinfo call.** Token management keeps the key of the code exchange in `HttpContext.Items`, so its handler would add a proof without `ath` to the userinfo call. `UserInfoDPoP` removes the key after the code exchange. For a DPoP-bound token, it sends the userinfo call with `Authorization: DPoP` and a proof with `ath`, and it retries one time after `use_dpop_nonce`. When the provider answers with only a Bearer challenge, as Duende IdentityServer does at userinfo, it sends the call one more time as Bearer.
 - **The setting.** `Auth:Features:DPoP`, with `Disable` as the default. DPoP needs a configured key, so `Auto` is not a safe default.
 - **The proxy.** The token transform reads the token type of the stored token.
   - `Bearer` gives `Authorization: Bearer`.
@@ -668,7 +705,7 @@ Phase 1 needs no change for phase 2. The BFF session row does not change.
   - `cnf.jkt` of the access token
   - no replay of `jti`. The replay cache is a table in `appdb`, so that all server instances share it. A cleanup deletes the expired rows.
 - **Not used.** `Duende.AspNetCore.Authentication.JwtBearer`, because it has the commercial Duende license.
-- **Proof.** The Duende Demo, and Keycloak with `--features=dpop` (behind the pinned tag). FusionAuth and Authentik are skipped by the capability table.
+- **Proof.** The Duende Demo, and Keycloak with `--features=dpop` (behind the pinned tag). FusionAuth, Authentik, Cognito, and ZeroFactor are not tested with DPoP, as the capability table shows.
 
 ## 10. The build order
 
@@ -689,6 +726,6 @@ Each slice is one pull request that you can test alone. Slice 1 must reach parit
 5. **Refresh.** The advisory lock and the refresh failure rules.
 6. **The proxy header rules, `SameSite=Strict`, and host trust.**
 7. **Provider seed and version changes.**
-8. **CI.** The `changes` job, the four-provider e2e matrix, and the conformance suite.
+8. **CI.** The `changes` job, the e2e matrix of the providers, and the conformance suite.
 9. **Template and doc changes.**
 10. **Phase 2: DPoP.**

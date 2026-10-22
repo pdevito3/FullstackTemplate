@@ -27,11 +27,16 @@ public sealed record AuthProviderConfig
     public IResourceBuilder<ContainerResource>? AuthResource { get; init; }
 
     /// <summary>
-    /// Whether to revoke refresh tokens on logout.
-    /// Some providers (like FusionAuth) don't expose a revocation endpoint in OIDC discovery.
-    /// Default is true for providers that support it.
+    /// The Auth:Features settings of the BFF. The defaults decide each feature from the discovery document of the
+    /// provider, which is correct for each provider.
     /// </summary>
-    public bool RevokeRefreshTokenOnLogout { get; init; } = true;
+    public AuthFeatureSettings Features { get; init; } = new();
+
+    /// <summary>
+    /// The DPoP key of the BFF (<c>Auth:DPoPJsonWebKey</c>), when the stack runs with DPoP. See
+    /// <see cref="AuthProviderDPoP.WithDPoP"/>.
+    /// </summary>
+    public IResourceBuilder<ParameterResource>? DPoPKey { get; init; }
 
     /// <summary>
     /// Whether to include the Audience as an OAuth scope.
@@ -65,18 +70,57 @@ public sealed record AuthProviderConfig
     /// The BFF sends client_id and logout_uri to it, as Cognito requires.
     /// </summary>
     public string? LogoutPath { get; init; }
+
+    /// <summary>
+    /// More environment variables for the BFF only, for a provider that needs a BFF setting that no other provider needs.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> BffSettings { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// More environment variables for the server only, for a provider that needs a server setting that no other
+    /// provider needs.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ServerSettings { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// Changes the BFF resource after the AppHost has given it the auth settings, for a provider that must change how
+    /// the BFF starts or listens.
+    /// </summary>
+    public Action<IResourceBuilder<ProjectResource>>? ConfigureBff { get; init; }
+}
+
+/// <summary>
+/// The Auth:Features settings of the BFF: Auto, Require, or Disable for each optional feature of the provider.
+/// See section 3.3 of docs/specs/home-rolled-bff.md.
+/// </summary>
+public sealed record AuthFeatureSettings
+{
+    public string Revocation { get; init; } = "Auto";
+    public string IssuerParameter { get; init; } = "Auto";
+    public string BackChannelLogout { get; init; } = "Auto";
+    public string EndSession { get; init; } = "Auto";
+    public string PushedAuthorization { get; init; } = "Auto";
+    public string DPoP { get; init; } = "Disable";
 }
 
 /// <summary>
 /// The app URLs that a local identity provider must accept as redirect targets.
 /// An isolated run gives these endpoints random ports, so the seed files read them from environment variables.
 /// The BFF builds its OIDC redirect URI from its own URL, because the Vite proxy changes the origin.
+/// <para><paramref name="BffForContainers"/> is the BFF http endpoint in the container network view. The identity
+/// provider containers send the back-channel logout token to it. The http endpoint, because the containers do not
+/// trust the development certificate.</para>
 /// </summary>
-public sealed record AuthClientUrls(EndpointReference Frontend, EndpointReference Server, EndpointReference Bff)
+public sealed record AuthClientUrls(
+    EndpointReference Frontend,
+    EndpointReference Server,
+    EndpointReference Bff,
+    EndpointReference BffForContainers)
 {
     public const string FrontendVariable = "APP_FRONTEND_URL";
     public const string ServerVariable = "APP_SERVER_URL";
     public const string BffVariable = "APP_BFF_URL";
+    public const string BffBackChannelVariable = "APP_BFF_BACKCHANNEL_URL";
 }
 
 /// <summary>
@@ -100,6 +144,11 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
             .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
             .WithEnvironment("Auth__AudienceClaimType", authProvider.AudienceClaimType);
+
+        foreach (var (name, value) in authProvider.ServerSettings)
+        {
+            resource.WithEnvironment(name, value);
+        }
 
         // Apply authority - either static URL or container endpoint
         if (authProvider.Authority is not null)
@@ -144,6 +193,8 @@ public static class AuthProviderExtensions
             context.EnvironmentVariables[AuthClientUrls.FrontendVariable] = clientUrls.Frontend.Url;
             context.EnvironmentVariables[AuthClientUrls.ServerVariable] = clientUrls.Server.Url;
             context.EnvironmentVariables[AuthClientUrls.BffVariable] = clientUrls.Bff.Url;
+            context.EnvironmentVariables[AuthClientUrls.BffBackChannelVariable] =
+                ReferenceExpression.Create($"{clientUrls.BffForContainers}/bff/backchannel");
         });
     }
 
@@ -161,9 +212,24 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RequireHttpsMetadata", authProvider.RequireHttpsMetadata.ToString())
             .WithEnvironment("Auth__NameClaimType", authProvider.NameClaimType)
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
-            .WithEnvironment("Auth__RevokeRefreshTokenOnLogout", authProvider.RevokeRefreshTokenOnLogout.ToString())
             .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
-            .WithEnvironment("Auth__RequestOfflineAccess", authProvider.RequestOfflineAccess.ToString());
+            .WithEnvironment("Auth__RequestOfflineAccess", authProvider.RequestOfflineAccess.ToString())
+            .WithEnvironment("Auth__Features__Revocation", authProvider.Features.Revocation)
+            .WithEnvironment("Auth__Features__IssuerParameter", authProvider.Features.IssuerParameter)
+            .WithEnvironment("Auth__Features__BackChannelLogout", authProvider.Features.BackChannelLogout)
+            .WithEnvironment("Auth__Features__EndSession", authProvider.Features.EndSession)
+            .WithEnvironment("Auth__Features__PushedAuthorization", authProvider.Features.PushedAuthorization)
+            .WithEnvironment("Auth__Features__DPoP", authProvider.Features.DPoP);
+
+        if (authProvider.DPoPKey is not null)
+        {
+            resource.WithEnvironment("Auth__DPoPJsonWebKey", authProvider.DPoPKey);
+        }
+
+        foreach (var (name, value) in authProvider.BffSettings)
+        {
+            resource.WithEnvironment(name, value);
+        }
 
         if (authProvider is { LogoutPath: not null, AuthResource: not null })
         {

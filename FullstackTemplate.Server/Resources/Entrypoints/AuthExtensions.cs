@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints;
 
+using DPoP;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -30,6 +31,26 @@ public static class AuthExtensions
         // Cognito access tokens have no aud claim. They put the app client ID in client_id.
         var audienceClaimType = configuration["Auth:AudienceClaimType"] ?? "aud";
         var validatesAud = audienceClaimType == "aud";
+
+        // init:start - scripts/init.cs deletes the userinfo check of the conformance suite when it renames the app
+        const string accessTokenValidationKey = UserinfoAuthenticationHandler.AccessTokenValidationKey;
+        if (string.Equals(configuration[accessTokenValidationKey], "Userinfo", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!environment.IsDevelopment())
+                throw new InvalidOperationException($"{accessTokenValidationKey}=Userinfo is only for the conformance tests in Development.");
+
+            UserinfoAuthenticationHandler.AddHttpClient(services, configuration[UserinfoAuthenticationHandler.PinnedCertificatePathKey]);
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddScheme<UserinfoAuthenticationOptions, UserinfoAuthenticationHandler>(JwtBearerDefaults.AuthenticationScheme, options =>
+                {
+                    options.Authority = authAuthority;
+                    options.NameClaimType = nameClaimType;
+                    options.RoleClaimType = roleClaimType;
+                });
+            services.AddAuthorization();
+            return services;
+        }
+        // init:end
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -64,6 +85,9 @@ public static class AuthExtensions
                     };
                 }
             });
+
+        // DPoP (RFC 9449): the DPoP scheme, the proof check, and the rejection of a bound token sent as Bearer
+        services.AddDPoP(configuration);
 
         services.AddAuthorization();
 

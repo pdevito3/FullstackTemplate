@@ -26,7 +26,7 @@ This is a .NET Aspire application with a React frontend. It uses the Backend-For
 |---------|---------|
 | `FullstackTemplate.AppHost` | Aspire orchestration. Defines all resources in `AppHost.cs` |
 | `FullstackTemplate.Server` | Backend API (.NET 10, JWT auth, CQRS, multi-tenant) |
-| `FullstackTemplate.Bff` | BFF proxy (Duende BFF and YARP, OIDC auth). Serves the SPA in production |
+| `FullstackTemplate.Bff` | BFF proxy (YARP and OIDC auth). Serves the SPA in production |
 | `frontend` | React SPA (React 19, TanStack Router, TanStack Query, Tailwind v4) |
 | `tests/` | Unit, integration, and functional tests |
 

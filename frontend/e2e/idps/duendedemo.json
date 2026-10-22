@@ -4,5 +4,17 @@
   "password": "bob",
   "usernameSelector": "#Input_Username",
   "passwordSelector": "#Input_Password",
-  "submitSelector": "button[value=\"login\"]"
+  "submitSelector": "button[value=\"login\"]",
+  "capabilities": {
+    "revocation": true,
+    "issuerParameter": true,
+    "backChannelLogout": true,
+    "endSession": true,
+    "pushedAuthorization": true,
+    "dpop": true
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": false,
+    "refreshRotation": false
+  }
 }

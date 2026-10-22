@@ -16,7 +16,7 @@ entries:
       description: "Map user groups to roles claim"
       expression: |
         return {
-            "roles": [group.name for group in request.user.ak_groups.all()],
+            "roles": [group.name for group in request.user.groups.all()],
         }
 
   # OAuth2/OIDC Provider
@@ -28,11 +28,24 @@ entries:
     attrs:
       name: FullstackTemplate Provider
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      # The default invalidation flow has a user logout stage, so RP-initiated logout also ends the Authentik
+      # session. The default provider invalidation flow ends only the session of the application.
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
       client_type: confidential
       client_id: aspire-app
       client_secret: super-secret-client-secret-change-in-production
+      # Since 2026.5, a provider allows only the grant types in this list. A new provider has none.
+      grant_types:
+        - authorization_code
+        - refresh_token
+      # The worker sends the back-channel logout token to the BFF through the Aspire container network
+      logout_uri: !Env APP_BFF_BACKCHANNEL_URL
+      logout_method: backchannel
       redirect_uris:
+        # end_session accepts a post_logout_redirect_uri only if it is a redirect URI of the logout type
+        - matching_mode: "strict"
+          url: !Format ["%s/signout-callback-oidc", !Env APP_BFF_URL]
+          redirect_uri_type: logout
         - matching_mode: "strict"
           url: !Format ["%s/signin-oidc", !Env APP_FRONTEND_URL]
         - matching_mode: "strict"
@@ -56,6 +69,8 @@ entries:
       access_code_validity: minutes=1
       access_token_validity: hours=1
       refresh_token_validity: days=30
+      # Each refresh gives a new refresh token and revokes the old one (rotation). A reuse gets invalid_grant.
+      refresh_token_threshold: seconds=0
       include_claims_in_id_token: true
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]

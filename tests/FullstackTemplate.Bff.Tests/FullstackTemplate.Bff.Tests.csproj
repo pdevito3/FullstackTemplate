@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <OutputType>Exe</OutputType>
+        <!-- The bff-tests job of CI runs this project only on a BFF change. The test job passes SkipBffTests=true. -->
+        <IsTestProject Condition="'$(SkipBffTests)' == 'true'">false</IsTestProject>
+        <IsTestingPlatformApplication Condition="'$(SkipBffTests)' == 'true'">false</IsTestingPlatformApplication>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="TUnit" />
+        <PackageReference Include="Shouldly" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+        <PackageReference Include="Testcontainers.PostgreSql" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\FullstackTemplate.Bff\FullstackTemplate.Bff.csproj" />
+    </ItemGroup>
+
+</Project>

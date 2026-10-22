@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.AppHost;
 
+using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using FullstackTemplate.AppHost.AuthProviders;
@@ -69,12 +70,58 @@ public class AuthProviderCatalogTests
         // Arrange
         var appHost = AppHostSourceDirectory();
         var root = Path.GetDirectoryName(appHost)!;
+        var provider = AuthProviderCatalog.Select(Settings(name));
 
         // Assert
         File.Exists(Path.Combine(appHost, "AuthProviders", name, $"{name}AuthProvider.cs")).ShouldBeTrue(
             $"The class {name}AuthProvider must be in AuthProviders/{name}/, because scripts/init.cs finds the providers by folder.");
-        File.Exists(Path.Combine(root, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json")).ShouldBeTrue(
-            $"The e2e tests need the login form of {name} in frontend/e2e/idps/{name.ToLowerInvariant()}.json.");
+        File.Exists(Path.Combine(root, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json")).ShouldBe(provider.RunsE2eTests,
+            $"The e2e tests need the login form of {name} in frontend/e2e/idps/{name.ToLowerInvariant()}.json, but only if RunsE2eTests is true.");
+    }
+
+    [Test]
+    [MethodDataSource(nameof(ProviderNames))]
+    public void dpop_runs_only_with_a_provider_that_the_stack_tests_with_dpop(string name)
+    {
+        // Arrange
+        var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
+        var provider = AuthProviderCatalog.Select(Settings(name));
+        var config = new AuthProviderConfig
+        {
+            ClientId = "client", ClientSecret = "secret", Audience = "api", RequireHttpsMetadata = false,
+            NameClaimType = "name", RoleClaimType = "role", Authority = "https://idp.example",
+        };
+
+        // Act and assert
+        if (provider.TestedWithDPoP)
+        {
+            var withDPoP = config.WithDPoP(provider, builder);
+            withDPoP.Features.DPoP.ShouldBe("Require");
+            withDPoP.DPoPKey.ShouldNotBeNull();
+        }
+        else
+        {
+            var exception = Should.Throw<InvalidOperationException>(() => config.WithDPoP(provider, builder));
+            exception.Message.ShouldContain(name);
+        }
+    }
+
+    [Test]
+    [MethodDataSource(nameof(ProviderNames))]
+    public void a_provider_that_the_stack_tests_with_dpop_lists_dpop_in_its_e2e_file(string name)
+    {
+        // Arrange
+        var provider = AuthProviderCatalog.Select(Settings(name));
+        if (!provider.TestedWithDPoP)
+            return;
+        var e2eFile = Path.Combine(Path.GetDirectoryName(AppHostSourceDirectory())!, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json");
+
+        // Act
+        using var idp = JsonDocument.Parse(File.ReadAllText(e2eFile));
+
+        // Assert
+        idp.RootElement.GetProperty("capabilities").GetProperty("dpop").GetBoolean().ShouldBeTrue(
+            $"{name} runs with DPoP=true, so its discovery must list DPoP, and frontend/e2e/idps/{name.ToLowerInvariant()}.json must say so.");
     }
 
     [Test]
@@ -84,7 +131,7 @@ public class AuthProviderCatalogTests
         // Arrange
         var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
         var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
-        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
+        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
 
         // Act
         var config = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls);

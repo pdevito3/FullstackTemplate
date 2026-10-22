@@ -8,6 +8,16 @@
   "submitSelector": "button:has-text(\"Log in\")",
   "twoStepLogin": true,
   "secondStepSubmitSelector": "button:has-text(\"Continue\")",
-  "hasConsentPage": true,
-  "consentSelector": "button:has-text(\"Continue\")"
+  "capabilities": {
+    "revocation": true,
+    "issuerParameter": false,
+    "backChannelLogout": true,
+    "endSession": true,
+    "pushedAuthorization": false,
+    "dpop": true
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": true,
+    "refreshRotation": true
+  }
 }

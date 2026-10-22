@@ -3,5 +3,17 @@
   "resource": "zerofactor",
   "email": "admin@example.com",
   "usernameSelector": "#email",
-  "submitSelector": "#continue"
+  "submitSelector": "#continue",
+  "capabilities": {
+    "revocation": true,
+    "issuerParameter": true,
+    "backChannelLogout": false,
+    "endSession": true,
+    "pushedAuthorization": false,
+    "dpop": false
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": false,
+    "refreshRotation": false
+  }
 }

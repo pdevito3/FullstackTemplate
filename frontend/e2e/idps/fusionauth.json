@@ -5,5 +5,17 @@
   "password": "password123!",
   "usernameSelector": "input[name=\"loginId\"]",
   "passwordSelector": "input[name=\"password\"]",
-  "submitSelector": "button:has-text(\"Submit\")"
+  "submitSelector": "button:has-text(\"Submit\")",
+  "capabilities": {
+    "revocation": false,
+    "issuerParameter": true,
+    "backChannelLogout": false,
+    "endSession": true,
+    "pushedAuthorization": false,
+    "dpop": true
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": false,
+    "refreshRotation": true
+  }
 }

@@ -5,5 +5,17 @@
   "password": "password123!",
   "usernameSelector": "#username",
   "passwordSelector": "#password",
-  "submitSelector": "#kc-login"
+  "submitSelector": "#kc-login",
+  "capabilities": {
+    "revocation": true,
+    "issuerParameter": true,
+    "backChannelLogout": true,
+    "endSession": true,
+    "pushedAuthorization": true,
+    "dpop": true
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": true,
+    "refreshRotation": true
+  }
 }

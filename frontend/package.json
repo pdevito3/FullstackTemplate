@@ -11,6 +11,8 @@
     "test": "vitest run",
     "generate:api": "kubb generate",
     "preview": "vite preview",
+    "test:conformance": "node conformance/run-conformance.ts",
+    "conformance:down": "docker compose -p fullstacktemplate-conformance -f conformance/docker-compose-prebuilt.yml -f conformance/docker-compose.override.yml down -v",
     "test:e2e:stack": "node e2e/run-against-stack.ts"
   },
   "dependencies": {

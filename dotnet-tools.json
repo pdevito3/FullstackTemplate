@@ -2,6 +2,13 @@
   "version": 1,
   "isRoot": true,
   "tools": {
+    "labcoat": {
+      "version": "1.1.2",
+      "commands": [
+        "labcoat"
+      ],
+      "rollForward": false
+    },
     "csharprepl": {
       "version": "0.9.2",
       "commands": [
@@ -13,13 +20,6 @@
       "version": "13.6.1",
       "commands": [
         "aspire"
-      ],
-      "rollForward": false
-    },
-    "labcoat": {
-      "version": "1.1.2",
-      "commands": [
-        "labcoat"
       ],
       "rollForward": false
     }

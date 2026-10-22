@@ -17,6 +17,15 @@
   "requests": [
     {
       "method": "PATCH",
+      "url": "/api/tenant/#{FUSIONAUTH_TENANT_ID}",
+      "body": {
+        "tenant": {
+          "issuer": "#{ENV.APP_FUSIONAUTH_URL}"
+        }
+      }
+    },
+    {
+      "method": "PATCH",
       "url": "/api/system-configuration",
       "body": {
         "systemConfiguration": {
@@ -80,7 +89,8 @@
           },
           "jwtConfiguration": {
             "enabled": true,
-            "timeToLiveInSeconds": 3600
+            "timeToLiveInSeconds": 3600,
+            "refreshTokenUsagePolicy": "OneTimeUse"
           },
           "registrationConfiguration": {
             "enabled": true,

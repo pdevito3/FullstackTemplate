@@ -28,7 +28,13 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 
     public async Task StartAsync()
     {
-        await _container.StartAsync();
+        // Testcontainers finds a reusable container by its hash, but it does not lock across processes. The test
+        // projects start at the same time, so each one can create a container with the same hash. The next run then
+        // fails with "Sequence contains more than one element". The lock lets one process at a time start it.
+        await using (await AcquireStartLockAsync())
+        {
+            await _container.StartAsync();
+        }
         await ExecuteOnServerAsync($"""CREATE DATABASE "{_databaseName}" """);
         ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
@@ -46,6 +52,23 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 
         // The container stays up for the next run. Drop only the database of this run.
         await ExecuteOnServerAsync($"""DROP DATABASE IF EXISTS "{_databaseName}" WITH (FORCE)""");
+    }
+
+    private static async Task<FileStream> AcquireStartLockAsync()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "fullstacktemplate-test-postgres.lock");
+        var deadline = DateTime.UtcNow.AddMinutes(5);
+        while (true)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException) when (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(200));
+            }
+        }
     }
 
     private async Task ExecuteOnServerAsync(string sql)

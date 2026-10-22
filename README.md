@@ -2,11 +2,11 @@
 
 A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
-- **Backend-For-Frontend (BFF)** pattern using Duende BFF
+- **Backend-For-Frontend (BFF)** pattern with YARP and OIDC, and server-side sessions in PostgreSQL
 - **Configurable authentication** - one setting selects the auth provider, and a new provider is one folder in the AppHost
 - **Multi-tenant architecture** with data isolation
 - **OpenTelemetry** observability built-in
-- **.NET 10** with Aspire 13.1
+- **.NET 10** with Aspire 13.6
 
 <!-- init:start - scripts/init.cs deletes this section when it renames the app -->
 ## Create a New App
@@ -20,7 +20,7 @@ A production-ready .NET Aspire template featuring:
 
 3. Commit the result.
 
-The script works on all platforms. It changes only a clean git tree. A second run with the same arguments changes nothing.
+The script works on all platforms. It changes only a clean git tree. A second run with the same arguments changes nothing. The rename also deletes the files that only this repo uses: the CI job of the init script, and the OpenID conformance suite with its provider and the userinfo check of the server.
 
 All auth providers stay in the app, and the `AuthProvider` setting selects one at runtime. To delete a provider that you do not use, see [docs/authentication.md](docs/authentication.md#delete-a-provider).
 
@@ -38,7 +38,7 @@ See [ADR 0007](docs/adr/0007-regular-repo-instead-of-template.md) for the reason
 MyProject/
 ├── MyProject.AppHost/     # Aspire orchestration (start here)
 ├── MyProject.Server/      # Backend API (.NET 10, CQRS, MediatR)
-├── MyProject.Bff/         # BFF proxy (Duende BFF + YARP)
+├── MyProject.Bff/         # BFF proxy (YARP, OIDC)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
 ├── tests/                 # Test projects
 ├── docs/                  # Development guides (backend, telemetry, auth, ...)

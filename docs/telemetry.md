@@ -72,7 +72,15 @@ The host also collects these framework meters:
 - `Microsoft.EntityFrameworkCore`. The server only.
 - `Microsoft.AspNetCore.Authentication` and `Microsoft.AspNetCore.Authorization`.
 
-The BFF has no custom metrics. Its HTTP, YARP, and auth meters measure each request. The BFF keeps `app.errors` for `RecordError`.
+The BFF has these custom metrics on the `FullstackTemplate.Bff` meter. Its HTTP, YARP, and auth meters measure each request. The BFF keeps `app.errors` for `RecordError`.
+
+| Counter | Unit | Tags | Content |
+|---|---|---|---|
+| `bff.sessions.started` | `{session}` | none | The BFF sessions that a login created |
+| `bff.sessions.ended` | `{session}` | `reason`: `logout`, `backchannel_logout`, `refresh_failure`, or `expiry` | The BFF sessions that ended |
+| `bff.refresh.failures` | `{failure}` | `kind`: `permanent` or `temporary` | The failed token refreshes |
+
+A `permanent` failure is an `invalid_grant`, or an ID token in the refresh response that fails the checks. The BFF then ends the BFF session with `reason=refresh_failure`. A `temporary` failure is any other failure, also a refresh lock that is not free within `Bff:Refresh:LockTimeout`. The BFF session then stays.
 
 ## Resource attributes
 
@@ -140,7 +148,7 @@ using var trace = Telemetry.TraceRoot([], "work.run", links);
 
 A login is two requests with a browser redirect through the identity provider between them. `LoginTraceLink` stores the trace context of `/bff/login` in the OIDC authentication properties. These properties travel in the data-protected `state` parameter. The `/signin-oidc` callback reads the context and adds a span link to the login trace.
 
-The BFF names the OIDC callback spans `GET /signin-oidc`, `GET /signout-callback-oidc`, and `GET /signout-oidc`. No route handles these paths, so without this rule the span name is only `GET`.
+The BFF names the OIDC callback spans `GET /signin-oidc` and `GET /signout-callback-oidc`. No route handles these paths, so without this rule the span name is only `GET`.
 
 ## Logs
 

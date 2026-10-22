@@ -1,0 +1,138 @@
+name: Conformance
+
+# Runs the OpenID conformance suite against the BFF (section 7 of docs/specs/home-rolled-bff.md). The job runs only
+# when the changes job finds a BFF change, and on workflow_dispatch. There is no nightly run.
+# Only this repo runs the suite. scripts/init.cs deletes this file when it renames the app.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # A path filter, not paths: on the trigger, so that a skipped job still reports a status
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      bff: ${{ steps.filter.outputs.bff }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            bff:
+              - 'FullstackTemplate.Bff/**'
+              - 'FullstackTemplate.AppHost/**'
+              # The userinfo token check of the Server, which the refresh plan calls through the BFF
+              - 'FullstackTemplate.Server/Resources/Entrypoints/**'
+              - 'Directory.Packages.props'
+              - 'Directory.Build.props'
+              - 'global.json'
+              - 'dotnet-tools.json'
+              - 'frontend/package.json'
+              - 'frontend/pnpm-lock.yaml'
+              - 'frontend/conformance/**'
+              - '.github/workflows/conformance.yml'
+
+  conformance:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.bff == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      AuthProvider: Conformance
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Restore the .NET tools
+        run: dotnet tool restore
+
+      - name: Trust the development certificate
+        run: |
+          # Without SSL_CERT_DIR in this process, the command adds the OpenSSL trust but exits with 4
+          export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+          dotnet dev-certs https --trust
+          echo "SSL_CERT_DIR=$SSL_CERT_DIR" >> "$GITHUB_ENV"
+
+      - name: Install the frontend packages
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      # The BFF has an explicit start. The driver starts the suite, then starts the BFF for each test module.
+      - name: Start the stack
+        run: dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+
+      - name: Wait for healthy resources
+        run: |
+          for resource in server webfrontend; do
+            dotnet aspire wait "$resource" --status healthy --timeout 900 --non-interactive --apphost FullstackTemplate.AppHost
+          done
+
+      # Writes the plan counts to the job summary. Fails on each FAILED result, on each WARNING or REVIEW result
+      # that frontend/conformance/accepted-results.json does not list, and on each module that does not finish,
+      # because such a module gives no result. Each plan blocks, the refresh plan too.
+      - name: Run the conformance plans
+        working-directory: frontend
+        run: pnpm test:conformance
+
+      - name: Save the stack and suite logs
+        if: always()
+        run: |
+          mkdir -p stack-logs
+          dotnet aspire logs --timestamps --non-interactive --apphost FullstackTemplate.AppHost > stack-logs/aspire.log 2>&1 || true
+          docker compose --project-name fullstacktemplate-conformance logs --no-color > stack-logs/suite.log 2>&1 || true
+
+      - name: Stop the stack and the suite
+        if: always()
+        run: |
+          dotnet aspire stop --non-interactive --apphost FullstackTemplate.AppHost || true
+          cd frontend && pnpm conformance:down || true
+
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: conformance
+          path: |
+            frontend/conformance/results/
+            stack-logs/
+          retention-days: 30
+          if-no-files-found: ignore

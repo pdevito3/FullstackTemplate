@@ -31,6 +31,8 @@ try
         .WithImageTag(Config.PostgresImageTag)
         .WithDataVolumeUnlessIsolated();
     var appDb = postgres.AddDatabase("appdb");
+    // The BFF sessions and the Data Protection keys of the BFF
+    var bffDb = postgres.AddDatabase("bffdb");
 
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
         .WithReference(appDb)
@@ -48,19 +50,45 @@ try
         .WithPnpm();
 
     var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
+        .WithReference(bffDb)
+        .WaitFor(bffDb)
         .WithReference(server)
         .WithReference(webfrontend)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
         .WithParentRelationship(webfrontend);
+    // The identity provider containers call /bff/backchannel through this endpoint. The Aspire container tunnel
+    // gives it its own host and port. With the tunnel off, the host is host.docker.internal.
+    var bffForContainers = bff.GetEndpoint("http", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
+    // The BFF builds its redirect URIs from its own URL, because the Vite proxy changes the origin.
+    bff.WithEnvironment("Bff__PublicOrigin", bff.GetEndpoint("https"));
+    // In a local run, the host filter also lets in the identity provider containers, through the container endpoint
+    // above or host.docker.internal, and the health probes, which call localhost. A published BFF does not trust
+    // these hosts.
+    if (builder.ExecutionContext.IsRunMode)
+        bff.WithEnvironment("Bff__AdditionalAllowedHosts", ReferenceExpression.Create(
+            $"{bffForContainers.Property(EndpointProperty.Host)};host.docker.internal;localhost"));
 
     var authClientUrls = new AuthClientUrls(
-        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"));
+        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"), bffForContainers);
     // The AuthProvider setting selects the provider. appsettings.json gives the default, and the environment
     // variable AuthProvider=Keycloak overrides it. The e2e tests find the provider from the running stack.
-    var authProvider = AuthProviderCatalog.Select(builder.Configuration).AddTo(builder, authClientUrls);
+    var selectedProvider = AuthProviderCatalog.Select(builder.Configuration);
+    var authProvider = selectedProvider.AddTo(builder, authClientUrls);
+    // DPoP=true runs the stack with DPoP (RFC 9449): the BFF binds the tokens to its key. The setting is a flag like
+    // AuthProvider, for example the environment variable DPoP=true.
+    if (AuthProviderDPoP.IsOn(builder))
+        authProvider = authProvider.WithDPoP(selectedProvider, builder);
     server.WithServerAuth(authProvider);
     bff.WithBffAuth(authProvider);
+    authProvider.ConfigureBff?.Invoke(bff);
+
+    // Only the e2e runs set it. A margin longer than the access token lifetime makes each API call refresh, so
+    // that the e2e tests prove that the BFF refreshes and stores the rotated tokens.
+    if (builder.Configuration["BffRefreshBeforeExpirationSeconds"] is { Length: > 0 } refreshMargin)
+    {
+        bff.WithEnvironment("Auth__RefreshBeforeExpirationSeconds", refreshMargin);
+    }
 
     webfrontend.WithReference(bff);
 

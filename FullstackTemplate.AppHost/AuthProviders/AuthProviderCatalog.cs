@@ -17,6 +17,18 @@ public interface IAuthProvider
     string Name => GetType().Name[..^AuthProviderCatalog.ClassSuffix.Length];
 
     /// <summary>
+    /// Whether the e2e tests run against this provider. Then frontend/e2e/idps/&lt;name&gt;.json must exist. A provider
+    /// that has no login form for a user, such as a test suite that acts as the provider, has no e2e file.
+    /// </summary>
+    bool RunsE2eTests => true;
+
+    /// <summary>
+    /// Whether the stack can run this provider with DPoP=true. Set it only for a provider that the e2e tests prove with
+    /// DPoP. Its e2e file must then list the dpop capability. A provider can list DPoP in discovery and still not set it.
+    /// </summary>
+    bool TestedWithDPoP => false;
+
+    /// <summary>
     /// Adds the resources of the provider to the stack and returns the settings for the server and the BFF.
     /// </summary>
     AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls);

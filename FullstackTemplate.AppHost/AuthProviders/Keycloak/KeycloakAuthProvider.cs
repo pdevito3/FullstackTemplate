@@ -10,6 +10,8 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 /// </summary>
 public sealed class KeycloakAuthProvider : IAuthProvider
 {
+    public bool TestedWithDPoP => true;
+
     public AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         const string realmName = "aspire";
@@ -20,12 +22,12 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             .WithDataVolumeUnlessIsolated();
         var keycloakDb = keycloakPostgres.AddDatabase("keycloakdb");
 
-        var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0")
+        var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0.8")
             .WithReference(keycloakDb)
             .WaitFor(keycloakDb)
             .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
-            .WithEnvironment("KEYCLOAK_ADMIN", "admin")
-            .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
+            .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
+            .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
             .WithEnvironment("KC_DB", "postgres")
@@ -40,7 +42,9 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             })
             .WithSeedFiles(this, "/opt/keycloak/data/import")
             .WithClientUrls(clientUrls)
-            .WithArgs("start-dev", "--import-realm")
+            // The dpop feature adds dpop_signing_alg_values_supported to discovery and lets the token endpoint accept proofs.
+            // It changes nothing for a client that sends no proof.
+            .WithArgs("start-dev", "--import-realm", "--features=dpop")
             .WaitFor(keycloakDb)
             // Health check ensures Keycloak and the realm are ready before server starts
             .WithHttpHealthCheck($"/realms/{realmName}/.well-known/openid-configuration");
@@ -55,7 +59,6 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             RequireHttpsMetadata = false,
             NameClaimType = "email",
             RoleClaimType = "roles",
-            RevokeRefreshTokenOnLogout = true,
             AuthResource = keycloak,
             AuthorityPathSuffix = $"/realms/{realmName}"
         };

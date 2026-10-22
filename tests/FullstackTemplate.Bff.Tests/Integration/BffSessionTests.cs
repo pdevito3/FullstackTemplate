@@ -271,6 +271,43 @@ public class BffSessionTests
     }
 
     [Test]
+    public async Task the_session_expires_in_of_bff_user_comes_from_the_clock_of_the_bff()
+    {
+        var clock = new TestClock(DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        await using var app = BffApp.StartAnotherInstance(services: services => services.AddSingleton<TimeProvider>(clock));
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
+        clock.Advance(TimeSpan.FromHours(2));
+
+        var user = await (await browser.GetApiAsync("/bff/user")).ReadJsonAsync();
+
+        double.Parse(ClaimValue(user, UserEndpoint.SessionExpiresInClaim), CultureInfo.InvariantCulture)
+            .ShouldBe((TimeSpan.FromDays(14) - TimeSpan.FromHours(2)).TotalSeconds);
+    }
+
+    [Test]
+    public async Task bff_user_with_slide_false_keeps_the_row_expiry_and_a_plain_call_slides_it()
+    {
+        var clock = new TestClock(DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        await using var app = BffApp.StartAnotherInstance(
+            new Dictionary<string, string?> { ["Bff:Session:SlidingExpiration"] = "00:10:00" },
+            services => services.AddSingleton<TimeProvider>(clock));
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}"))!;
+        var signedIn = clock.Now;
+        // Past half of the sliding expiry, so that a call renews it
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        (await browser.GetApiAsync("/bff/user?slide=false")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None)))!.Expires
+            .ShouldBe(signedIn.AddMinutes(10));
+
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None)))!.Expires
+            .ShouldBe(clock.Now.AddMinutes(10));
+    }
+
+    [Test]
     public async Task another_bff_instance_reads_the_session_with_the_shared_data_protection_keys()
     {
         using var browser = BffApp.Instance.CreateBrowser();

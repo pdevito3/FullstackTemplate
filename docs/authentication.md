@@ -124,7 +124,7 @@ These are the active features for each provider with `Auto`. The e2e tests have 
 | `end_session_endpoint` | yes | yes | yes | yes | no (the BFF uses `/cognito-idp/logout`) | yes |
 | PAR | yes | no | no | yes | no | no |
 | Refresh token rotation | yes | yes | yes | no | no | no (the old token stays valid) |
-| DPoP | yes (the stack starts it with `--features=dpop`) | no | no | yes | no | no |
+| DPoP | yes (the stack starts it with `--features=dpop`) | listed, not tested | listed, not tested | yes | no | no |
 
 Other settings:
 
@@ -162,7 +162,7 @@ The server accepts both token types. A token with a `cnf.jkt` claim must come wi
 
 The server tags the span of a DPoP request with `app.auth.scheme=DPoP` and `app.dpop.jkt_prefix`, the first 8 characters of the thumbprint. No log or tag has a token, a proof, or a key.
 
-To run the local stack with DPoP, set `DPoP=true`. The AppHost then sets `Auth:Features:DPoP` to `Require` and gives the BFF a generated EC P-256 key as the secret parameter `bff-dpop-key`. Only a provider whose class sets `TestedWithDPoP` can run with DPoP: the Duende Demo and Keycloak. Keycloak always starts with `--features=dpop`. Keycloak 26.0.8 has DPoP as a preview feature. FusionAuth and Authentik have no DPoP support. For another provider, the AppHost stops.
+To run the local stack with DPoP, set `DPoP=true`. The AppHost then sets `Auth:Features:DPoP` to `Require` and gives the BFF a generated EC P-256 key as the secret parameter `bff-dpop-key`. Only a provider whose class sets `TestedWithDPoP` can run with DPoP: the Duende Demo and Keycloak. Keycloak always starts with `--features=dpop`. Keycloak 26.0.8 has DPoP as a preview feature. FusionAuth and Authentik list DPoP in discovery, but this stack does not test DPoP with them. Cognito and ZeroFactor have no DPoP support. For another provider, the AppHost stops.
 
 ```bash
 AuthProvider=Keycloak DPoP=true dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost

@@ -702,7 +702,7 @@ Phase 1 needs no change for phase 2. The BFF session row does not change.
   - `cnf.jkt` of the access token
   - no replay of `jti`. The replay cache is a table in `appdb`, so that all server instances share it. A cleanup deletes the expired rows.
 - **Not used.** `Duende.AspNetCore.Authentication.JwtBearer`, because it has the commercial Duende license.
-- **Proof.** The Duende Demo, and Keycloak with `--features=dpop` (behind the pinned tag). FusionAuth and Authentik are skipped by the capability table.
+- **Proof.** The Duende Demo, and Keycloak with `--features=dpop` (behind the pinned tag). FusionAuth, Authentik, Cognito, and ZeroFactor are not tested with DPoP, as the capability table shows.
 
 ## 10. The build order
 

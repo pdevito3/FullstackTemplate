@@ -15,17 +15,13 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Shouldly;
 
-/// <summary>
-/// Each row carries its Postgres xmin as a version. A save of a row that changed after the load is a conflict, not a
-/// lost update.
-/// </summary>
 public class ConcurrencyTests : TestBase
 {
     [Test]
     public async Task save_of_a_tenant_that_changed_after_the_load_is_a_stale_version()
     {
         // Arrange
-        var (first, second, tenantId) = await TwoScopesForANewTenantAsync();
+        var (first, second, tenantId) = await TwoAdminScopesForANewTenantAsync();
         var firstTenant = await first.GetService<AppDbContext>().Tenants.GetById(tenantId);
         var secondTenant = await second.GetService<AppDbContext>().Tenants.GetById(tenantId);
         firstTenant.Update(new TenantForUpdate { Name = $"Tenant {Guid.NewGuid():N}", Version = firstTenant.Version });
@@ -44,14 +40,14 @@ public class ConcurrencyTests : TestBase
     public async Task two_updates_from_one_loaded_version_give_one_success_and_one_stale_version()
     {
         // Arrange
-        var (first, second, tenantId) = await TwoScopesForANewTenantAsync();
+        var (first, second, tenantId) = await TwoAdminScopesForANewTenantAsync();
         var loaded = await first.SendAsync(new GetTenant.Query(tenantId));
 
         // Act
         var outcomes = await Task.WhenAll(
-            OutcomeOf(first.SendAsync(new UpdateTenant.Command(tenantId,
+            FailureOf(first.SendAsync(new UpdateTenant.Command(tenantId,
                 new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }))),
-            OutcomeOf(second.SendAsync(new UpdateTenant.Command(tenantId,
+            FailureOf(second.SendAsync(new UpdateTenant.Command(tenantId,
                 new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }))));
 
         // Assert
@@ -97,11 +93,10 @@ public class ConcurrencyTests : TestBase
         // Act
         Task<Exception?>[] adds =
         [
-            OutcomeOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "do_something_special"))),
-            OutcomeOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "do_something_special"))),
+            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "do_something_special"))),
+            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "do_something_special"))),
         ];
         await WaitUntilBlockedAsync(rowLock.ProcessID, adds);
-        // The close rolls back the transaction, so the lock ends
         await rowLock.CloseAsync();
         var outcomes = await Task.WhenAll(adds);
 
@@ -136,7 +131,7 @@ public class ConcurrencyTests : TestBase
     public async Task updated_tenant_carries_its_new_version()
     {
         // Arrange
-        var (scope, _, tenantId) = await TwoScopesForANewTenantAsync();
+        var (scope, _, tenantId) = await TwoAdminScopesForANewTenantAsync();
         var loaded = await scope.SendAsync(new GetTenant.Query(tenantId));
 
         // Act
@@ -151,8 +146,7 @@ public class ConcurrencyTests : TestBase
         reloaded.Version.ShouldBe(updated.Version);
     }
 
-    // A new tenant with an admin in it, and two scopes that act as that admin
-    private static async Task<(TestingServiceScope First, TestingServiceScope Second, string TenantId)> TwoScopesForANewTenantAsync()
+    private static async Task<(TestingServiceScope First, TestingServiceScope Second, string TenantId)> TwoAdminScopesForANewTenantAsync()
     {
         await new TestingServiceScope().StartGraph(out _)
             .AddTenant(out var tenant)
@@ -165,8 +159,7 @@ public class ConcurrencyTests : TestBase
         return (first, second, tenant.Id);
     }
 
-    // Null when the update succeeded
-    private static async Task<Exception?> OutcomeOf<T>(Task<T> update)
+    private static async Task<Exception?> FailureOf<T>(Task<T> update)
     {
         try
         {
@@ -187,7 +180,6 @@ public class ConcurrencyTests : TestBase
         var connection = new NpgsqlConnection(
             new TestingServiceScope().GetService<IConfiguration>().GetConnectionString(DatabaseConsts.DatabaseName));
         await connection.OpenAsync();
-        // The transaction stays open with the connection, so the lock holds until the caller closes it
         var transaction = await connection.BeginTransactionAsync();
         await using var command = new NpgsqlCommand("SELECT 1 FROM users WHERE id = @id FOR UPDATE", connection, transaction);
         command.Parameters.AddWithValue("id", userId);
@@ -195,7 +187,6 @@ public class ConcurrencyTests : TestBase
         return connection;
     }
 
-    // Waits until each save waits on the lock, directly or behind another save
     private static async Task WaitUntilBlockedAsync(int lockPid, Task<Exception?>[] saves)
     {
         var database = new TestingServiceScope().GetService<AppDbContext>().Database;

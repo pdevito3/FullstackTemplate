@@ -117,7 +117,7 @@ public class AppDbContext(
 
     private void UpdateAuditFields()
     {
-        TouchOwnersOfChangedChildren();
+        GuardOwnerVersionsOfChangedChildren();
 
         var now = timeProvider.GetUtcNow();
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
@@ -142,13 +142,7 @@ public class AppDbContext(
         }
     }
 
-    /// <summary>
-    /// A cascade foreign key links an owned child to its owner (entity-configurations.md rule 6). A change to a
-    /// child is a change to its owner, so this marks each unchanged owner as modified. The save then writes the
-    /// owner row with the version check, and a stale owner stops the save of the child. It walks up through the
-    /// owners of each owner.
-    /// </summary>
-    private void TouchOwnersOfChangedChildren()
+    private void GuardOwnerVersionsOfChangedChildren()
     {
         var entries = ChangeTracker.Entries<BaseEntity>().ToList();
         var changed = new Queue<EntityEntry<BaseEntity>>(entries.Where(e =>

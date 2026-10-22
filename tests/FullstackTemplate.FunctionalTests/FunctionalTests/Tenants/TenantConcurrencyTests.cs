@@ -10,10 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
 
-/// <summary>
-/// A client sends back the version that it loaded. A PUT from a stale version is a 409 with the stale version type, so a
-/// client cannot write over a change that it did not see, and it can tell the 409 from a duplicate value.
-/// </summary>
 public class TenantConcurrencyTests : TestBase
 {
     private const string StaleDetail = "This record changed after you loaded it. Reload it, then make your change again.";

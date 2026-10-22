@@ -6,7 +6,7 @@ using Npgsql;
 
 /// <summary>
 /// Turns a failed save that is a client error into a <see cref="StaleVersionException"/> or a
-/// <see cref="ConstraintConflictException"/>. It is the only code that reads the failure shapes of EF Core and Npgsql.
+/// <see cref="ConstraintConflictException"/>.
 /// </summary>
 public static class DatabaseConflict
 {

@@ -19,7 +19,6 @@ public static class DomainProblemDetails
     public const string StaleVersionType = "urn:fullstacktemplate:problem:stale-version";
 
     // A validation failure is 422: the request is well-formed, but it breaks a business rule.
-    // A duplicate unique value and a stale version are 409: the request conflicts with the current state of a record.
     public static int StatusCodeFor(Exception exception)
     {
         if (exception is BadHttpRequestException badRequest)

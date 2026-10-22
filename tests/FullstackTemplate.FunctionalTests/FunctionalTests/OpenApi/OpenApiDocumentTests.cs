@@ -100,7 +100,6 @@ public class OpenApiDocumentTests
     {
         var root = await LoadDocumentAsync();
 
-        // A client generator drops a format that OpenAPI does not define, so a uint gives its range in place of uint32
         var formats = Descendants(root)
             .OfType<JsonObject>()
             .Where(node => TypesOf(node).Any(type => type is "integer" or "number") && node.ContainsKey("format"))

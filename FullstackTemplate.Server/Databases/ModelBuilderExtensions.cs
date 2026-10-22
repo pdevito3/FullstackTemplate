@@ -41,11 +41,7 @@ public static class ModelBuilderExtensions
         }
     }
 
-    /// <summary>
-    /// Maps <see cref="BaseEntity.Version"/> to the <c>xmin</c> system column of each table as a concurrency token.
-    /// Each update and delete then checks that the row did not change after the load. Postgres has the column on each
-    /// table, so the migration has no DDL.
-    /// </summary>
+    /// <summary>Postgres has the <c>xmin</c> system column on each table, so the migration has no DDL.</summary>
     public static void MapVersionToXmin(this ModelBuilder modelBuilder)
     {
         foreach (var mutableEntityType in modelBuilder.Model.GetEntityTypes()

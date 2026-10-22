@@ -7,9 +7,6 @@ using ModelContextProtocol.Server;
 using NSubstitute;
 using Shouldly;
 
-/// <summary>
-/// No tool updates a record yet, so these tests drive the filter with a tool that throws.
-/// </summary>
 public class McpDomainErrorsTests
 {
     private const string StaleMessage = "This record changed after you loaded it. Reload it, then make your change again.";

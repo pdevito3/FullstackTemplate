@@ -56,6 +56,7 @@ public enum IssuerParameterRule
 /// <param name="EndSession">Logout sends the browser to the <c>end_session_endpoint</c>.</param>
 /// <param name="PushedAuthorization">A login pushes the authorize request (RFC 9126).</param>
 /// <param name="ClientAuthentication">The client authentication at the token endpoint: Basic or Post.</param>
+/// <param name="DPoP">The BFF binds the tokens to its DPoP key (RFC 9449) and sends DPoP proofs.</param>
 public sealed record ActiveFeatures(
     string Issuer,
     bool Revocation,
@@ -63,7 +64,8 @@ public sealed record ActiveFeatures(
     bool BackChannelLogout,
     bool EndSession,
     bool PushedAuthorization,
-    ClientAuthenticationMethod ClientAuthentication);
+    ClientAuthenticationMethod ClientAuthentication,
+    bool DPoP = false);
 
 /// <summary>
 /// A feature that the identity provider does not offer, under <c>Auto</c>. The BFF logs one startup warning for it.
@@ -81,11 +83,14 @@ public static class ProviderFeatureDecision
 {
     public const string BackChannelLogoutSupportedField = "backchannel_logout_supported";
 
+    public const string DPoPAlgorithmsField = "dpop_signing_alg_values_supported";
+
     public static (ActiveFeatures Features, IReadOnlyList<FeatureWarning> Warnings) Decide(
         OpenIdConnectConfiguration discovery,
         ProviderFeatureOptions options,
         ClientAuthenticationMethod clientAuthentication,
-        string? logoutEndpoint = null)
+        string? logoutEndpoint = null,
+        string? dpopKeyAlgorithm = null)
     {
         var warnings = new List<FeatureWarning>();
 
@@ -111,8 +116,10 @@ public static class ProviderFeatureDecision
             warnings, new FeatureWarning(nameof(options.PushedAuthorization), "pushed_authorization_request_endpoint",
                 "A login uses the plain authorize URL."));
 
-        if (options.DPoP != FeatureMode.Disable)
-            throw new ProviderFeatureException($"Auth:Features:DPoP is {options.DPoP}, but the BFF supports DPoP only in phase 2. Set it to Disable.");
+        // DPoP needs the key of the BFF, and discovery must list the algorithm of that key
+        var dpop = Decide(options.DPoP, dpopKeyAlgorithm is not null && discovery.DPoPSigningAlgValuesSupported.Contains(dpopKeyAlgorithm), warnings,
+            new FeatureWarning(nameof(options.DPoP), $"{DPoPAlgorithmsField} with the alg of Auth:DPoPJsonWebKey",
+                "The tokens are Bearer tokens."));
 
         var features = new ActiveFeatures(
             Issuer: discovery.Issuer,
@@ -126,7 +133,8 @@ public static class ProviderFeatureDecision
             BackChannelLogout: options.BackChannelLogout != FeatureMode.Disable,
             EndSession: endSession,
             PushedAuthorization: pushedAuthorization,
-            ClientAuthentication: DecideClientAuthentication(clientAuthentication, discovery.TokenEndpointAuthMethodsSupported, warnings));
+            ClientAuthentication: DecideClientAuthentication(clientAuthentication, discovery.TokenEndpointAuthMethodsSupported, warnings),
+            DPoP: dpop);
 
         return (features, warnings);
     }

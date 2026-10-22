@@ -125,10 +125,67 @@ public class ProviderFeatureDecisionTests
     [Test]
     [Arguments(FeatureMode.Auto)]
     [Arguments(FeatureMode.Require)]
-    public void dpop_other_than_disable_stops_the_bff_in_phase_1(FeatureMode mode)
+    public void dpop_is_active_when_the_key_is_set_and_discovery_lists_its_algorithm(FeatureMode mode)
     {
-        Should.Throw<ProviderFeatureException>(() =>
-            Decide(Discovery(AllFeatures), new ProviderFeatureOptions { DPoP = mode }));
+        var fields = new Dictionary<string, object>(AllFeatures) { ["dpop_signing_alg_values_supported"] = new[] { "RS256", "ES256" } };
+
+        var (features, warnings) = ProviderFeatureDecision.Decide(Discovery(fields), new ProviderFeatureOptions { DPoP = mode },
+            ClientAuthenticationMethod.Auto, dpopKeyAlgorithm: "ES256");
+
+        features.DPoP.ShouldBeTrue();
+        warnings.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void dpop_disable_is_inactive_even_with_a_key_and_a_listing_provider()
+    {
+        var fields = new Dictionary<string, object>(AllFeatures) { ["dpop_signing_alg_values_supported"] = new[] { "ES256" } };
+
+        var (features, warnings) = ProviderFeatureDecision.Decide(Discovery(fields), new ProviderFeatureOptions(),
+            ClientAuthenticationMethod.Auto, dpopKeyAlgorithm: "ES256");
+
+        features.DPoP.ShouldBeFalse();
+        warnings.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments(null)]
+    [Arguments("RS256")]
+    public void dpop_auto_falls_back_to_bearer_with_one_warning_when_the_key_or_the_listing_is_missing(string? keyAlgorithm)
+    {
+        var fields = new Dictionary<string, object>(AllFeatures) { ["dpop_signing_alg_values_supported"] = new[] { "ES256" } };
+
+        var (features, warnings) = ProviderFeatureDecision.Decide(Discovery(fields), new ProviderFeatureOptions { DPoP = FeatureMode.Auto },
+            ClientAuthenticationMethod.Auto, dpopKeyAlgorithm: keyAlgorithm);
+
+        features.DPoP.ShouldBeFalse();
+        warnings.Single().Feature.ShouldBe("DPoP");
+    }
+
+    [Test]
+    public void dpop_auto_falls_back_to_bearer_when_discovery_does_not_list_dpop()
+    {
+        var (features, warnings) = ProviderFeatureDecision.Decide(Discovery(AllFeatures), new ProviderFeatureOptions { DPoP = FeatureMode.Auto },
+            ClientAuthenticationMethod.Auto, dpopKeyAlgorithm: "ES256");
+
+        features.DPoP.ShouldBeFalse();
+        warnings.Single().DiscoveryField.ShouldStartWith("dpop_signing_alg_values_supported");
+    }
+
+    [Test]
+    [Arguments(null, true)]
+    [Arguments("ES256", false)]
+    [Arguments("RS256", true)]
+    public void dpop_require_stops_the_bff_without_a_key_or_a_listed_algorithm(string? keyAlgorithm, bool listsDPoP)
+    {
+        var fields = new Dictionary<string, object>(AllFeatures);
+        if (listsDPoP)
+            fields["dpop_signing_alg_values_supported"] = new[] { "ES256" };
+        if (keyAlgorithm == "ES256")
+            fields["dpop_signing_alg_values_supported"] = new[] { "RS256" };
+
+        Should.Throw<ProviderFeatureException>(() => ProviderFeatureDecision.Decide(Discovery(fields),
+            new ProviderFeatureOptions { DPoP = FeatureMode.Require }, ClientAuthenticationMethod.Auto, dpopKeyAlgorithm: keyAlgorithm));
     }
 
     [Test]

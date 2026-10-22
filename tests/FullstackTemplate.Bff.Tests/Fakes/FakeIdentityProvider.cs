@@ -51,6 +51,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private static readonly string[] ResponseTypes = ["code"];
     private static readonly string[] SubjectTypes = ["public"];
     private static readonly string[] SigningAlgorithms = ["RS256"];
+    private static readonly string[] DPoPAlgorithms = ["ES256"];
 
     private readonly WebApplication _app;
     private readonly FakeProviderOptions _options;
@@ -100,6 +101,11 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// (null when the client authentication failed).
     /// </summary>
     public ConcurrentQueue<PushedRequest> PushedAuthorizationRequests { get; } = new();
+
+    /// <summary>
+    /// The parameters of each authorize request, the pushed ones included, for example <c>dpop_jkt</c>.
+    /// </summary>
+    public ConcurrentQueue<IReadOnlyDictionary<string, string>> AuthorizeRequests { get; } = new();
 
     private static RSAParameters CreateRsaParameters()
     {
@@ -262,6 +268,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 discovery["backchannel_logout_supported"] = true;
             if (_options.PushedAuthorization)
                 discovery["pushed_authorization_request_endpoint"] = $"{Issuer}/par";
+            if (_options.DPoP)
+                discovery["dpop_signing_alg_values_supported"] = DPoPAlgorithms;
             return Results.Json(discovery);
         });
 
@@ -311,6 +319,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                     parameters[key] = value;
             }
 
+            AuthorizeRequests.Enqueue(parameters);
             string? Parameter(string name) => parameters.TryGetValue(name, out var value) ? value : null;
             var redirectUri = Parameter("redirect_uri") ?? "";
             var state = Uri.EscapeDataString(Parameter("state") ?? "");
@@ -340,7 +349,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 RefreshIdToken: Parameter("test_refresh_id_token"),
                 AuthTime: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 RedirectUri: redirectUri,
-                CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null);
+                CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null,
+                DPoPJkt: _options.DPoP ? Parameter("dpop_jkt") : null);
 
             if (Parameter("test_revoke") is { } revokeMode)
                 _revokeModes[grant.Subject] = revokeMode;
@@ -362,9 +372,17 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             var method = Authenticate(request, form);
             _codes.TryGetValue(form["code"].ToString(), out var codeGrant);
             _refreshTokens.TryGetValue(form["refresh_token"].ToString(), out var refreshGrant);
-            TokenRequests.Enqueue(new TokenRequest(grantType, method, (codeGrant ?? refreshGrant)?.Subject));
+            var proofHeader = request.Headers["DPoP"].ToString();
+            var proof = _options.DPoP && proofHeader.Length > 0
+                ? DPoPProofVerifier.Verify(proofHeader, "POST", $"{Issuer}/token")
+                : null;
+            TokenRequests.Enqueue(new TokenRequest(grantType, method, (codeGrant ?? refreshGrant)?.Subject, proof));
             if (method is null)
                 return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            // RFC 9449 section 5: a grant that the login bound to a key needs a valid proof of that key
+            if (_options.DPoP && (codeGrant ?? refreshGrant) is { DPoPJkt: { } boundJkt } && (proof is not { Valid: true } || proof.Jkt != boundJkt))
+                return Results.Json(new { error = "invalid_dpop_proof" }, statusCode: StatusCodes.Status400BadRequest);
 
             switch (grantType)
             {
@@ -492,7 +510,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         var response = new Dictionary<string, object>
         {
             ["access_token"] = accessToken,
-            ["token_type"] = "Bearer",
+            ["token_type"] = grant.DPoPJkt is null ? "Bearer" : "DPoP",
             ["refresh_token"] = refreshToken,
         };
         if (!grant.OmitExpiresIn)
@@ -593,9 +611,10 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// <param name="Refresh">The <c>test_refresh</c> mode: null, <c>fail</c>, or <c>unavailable</c>.</param>
     /// <param name="RefreshIdToken">The <c>test_refresh_id_token</c> mode, or null for no ID token in a refresh response.</param>
     /// <param name="AuthTime">The <c>auth_time</c> of the ID tokens.</param>
+    /// <param name="DPoPJkt">The <c>dpop_jkt</c> of the authorize request. The tokens of the grant are bound to it.</param>
     private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, int? RefreshExpiresIn, string? Refresh,
         string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, bool UnsignedIdToken, bool OmitExpiresIn,
-        string? RefreshIdToken, long AuthTime, string RedirectUri, string? CodeChallenge);
+        string? RefreshIdToken, long AuthTime, string RedirectUri, string? CodeChallenge, string? DPoPJkt = null);
 
     /// <summary>
     /// One request to the token endpoint.
@@ -604,7 +623,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// <param name="ClientAuthentication"><c>client_secret_basic</c>, <c>client_secret_post</c>, or null when the
     /// client authentication failed.</param>
     /// <param name="Subject">The <c>sub</c> of the code or refresh token, or null when it is unknown.</param>
-    public sealed record TokenRequest(string GrantType, string? ClientAuthentication, string? Subject);
+    /// <param name="DPoP">The <c>DPoP</c> proof of the request: null when it has none.</param>
+    public sealed record TokenRequest(string GrantType, string? ClientAuthentication, string? Subject, DPoPProofResult? DPoP = null);
 
     /// <summary>
     /// One request to the PAR endpoint.

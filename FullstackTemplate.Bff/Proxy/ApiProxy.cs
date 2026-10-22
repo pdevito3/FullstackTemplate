@@ -134,7 +134,7 @@ public static class ApiProxy
 
             if (string.Equals(token.AccessTokenType?.ToString(), "DPoP", StringComparison.OrdinalIgnoreCase))
             {
-                Logger.Here().Error("Forwarded {Path} with no access token, because the BFF does not send DPoP tokens yet", path);
+                await DPoPProxy.AttachAsync(context, token);
                 return;
             }
 

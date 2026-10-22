@@ -1,5 +1,6 @@
 using Duende.AccessTokenManagement.OpenIdConnect;
 using FullstackTemplate.Bff.ApiEndpoints;
+using FullstackTemplate.Bff.DPoP;
 using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Sessions;
@@ -212,6 +213,10 @@ public static class AuthExtensions
         {
             options.RefreshBeforeExpiration = TimeSpan.FromSeconds(refreshBeforeExpirationSeconds);
         });
+        // Auth:DPoPJsonWebKey with the final configuration. Under Auto, the feature decision turns it off again when
+        // discovery lacks DPoP.
+        services.AddOptions<UserTokenManagementOptions>()
+            .Configure<IConfiguration>((options, configuration) => options.DPoPJsonWebKey = DPoPKey.Read(configuration));
         RefreshIdTokenValidation.Register(services);
         RefreshFailureMetrics.Register(services);
         DefaultAccessTokenLifetime.AddToRefresh(services);

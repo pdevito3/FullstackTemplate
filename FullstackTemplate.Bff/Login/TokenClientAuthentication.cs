@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Duende.AccessTokenManagement.DPoP;
 using Duende.AccessTokenManagement.OpenIdConnect;
 using Duende.IdentityModel.Client;
 using FullstackTemplate.Bff.Authentication;
@@ -57,6 +58,7 @@ public sealed class TokenClientAuthentication(IOptions<UserTokenManagementOption
             request.Headers.Authorization = BasicHeader(context.Options.ClientId!, context.Options.ClientSecret!);
         }
 
+        BindCodeExchangeToDPoPKey(context);
         request.Content = new FormUrlEncodedContent(parameters);
         request.Version = context.Backchannel.DefaultRequestVersion;
 
@@ -127,6 +129,18 @@ public sealed class TokenClientAuthentication(IOptions<UserTokenManagementOption
 
         // HandlePush alone: the handler allows only one of HandlePush, SkipPush, and HandleClientAuthentication
         context.HandlePush(parResponse.RequestUri);
+    }
+
+    /// <summary>
+    /// Gives the DPoP key of the login to the DPoP handler of token management, which then adds the proof to the
+    /// token request. The authorize redirect stored the key in the authentication properties. The handler reads it
+    /// from <c>HttpContext.Items</c>, and token management copies it there only after this event returns, which is
+    /// too late for a request that this event sends itself. The two names below are those of token management.
+    /// </summary>
+    private static void BindCodeExchangeToDPoPKey(AuthorizationCodeReceivedContext context)
+    {
+        if (context.Properties?.Items.TryGetValue(".Token.dpop_proof_key", out var key) == true && !string.IsNullOrEmpty(key))
+            context.HttpContext.Items["dpop_proof_key"] = DPoPProofKey.Parse(key);
     }
 
     /// <summary>

@@ -9,6 +9,7 @@ using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Sessions;
 using Serilog;
 using Serilog.Events;
+using Yarp.ReverseProxy.Forwarder;
 
 // Bootstrap logger to catch startup errors before host is built
 Log.Logger = new LoggerConfiguration()
@@ -46,6 +47,8 @@ try
     builder.AddBffSessions();
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddHttpForwarder();
+    // After AddHttpForwarder, which registers the default factory. The wrapper adds the DPoP nonce retry.
+    builder.Services.AddSingleton<IForwarderHttpClientFactory, DPoPProxy.NonceRetryClientFactory>();
     // Bff:PublicOrigin, the forwarded headers, and the host filter
     builder.Services.AddHostTrust();
 

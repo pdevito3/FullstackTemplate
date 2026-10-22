@@ -58,7 +58,9 @@ public sealed class ProviderFeatureOptions
     public FeatureMode PushedAuthorization { get; set; } = FeatureMode.Auto;
 
     /// <summary>
-    /// DPoP (RFC 9449), from <c>dpop_signing_alg_values_supported</c>. Phase 2. Only <c>Disable</c> works today.
+    /// DPoP (RFC 9449), from <c>dpop_signing_alg_values_supported</c>. It also needs the key
+    /// <c>Auth:DPoPJsonWebKey</c>. <c>Auto</c> uses DPoP when the key is set and discovery lists its algorithm,
+    /// <c>Require</c> stops the BFF otherwise.
     /// </summary>
     public FeatureMode DPoP { get; set; } = FeatureMode.Disable;
 

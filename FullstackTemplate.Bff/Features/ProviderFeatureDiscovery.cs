@@ -1,3 +1,5 @@
+using Duende.AccessTokenManagement.OpenIdConnect;
+using FullstackTemplate.Bff.DPoP;
 using FullstackTemplate.Bff.Login;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
@@ -30,7 +32,8 @@ public sealed class ProviderFeatureDiscovery(
     IOptions<ProviderFeatureOptions> featureOptions,
     IConfiguration configuration,
     ProviderFeatures features,
-    TokenClientAuthentication tokenClientAuthentication) : IHostedService
+    TokenClientAuthentication tokenClientAuthentication,
+    IOptions<UserTokenManagementOptions> tokenManagementOptions) : IHostedService
 {
     private static readonly ILogger Logger = Log.ForContext<ProviderFeatureDiscovery>();
 
@@ -45,8 +48,9 @@ public sealed class ProviderFeatureDiscovery(
                 : options.Configuration ?? throw new InvalidOperationException("The OIDC handler has no discovery document.");
 
             var clientAuthentication = configuration.GetValue("Auth:ClientAuthentication", ClientAuthenticationMethod.Auto);
-            var (active, warnings) = ProviderFeatureDecision.Decide(
-                discovery, featureOptions.Value, clientAuthentication, configuration["Auth:LogoutEndpoint"]);
+            var (active, warnings) = ProviderFeatureDecision.Decide(discovery, featureOptions.Value, clientAuthentication,
+                configuration["Auth:LogoutEndpoint"],
+                tokenManagementOptions.Value.DPoPJsonWebKey is { } dpopKey ? DPoPKey.Algorithm(dpopKey) : null);
 
             foreach (var warning in warnings)
             {
@@ -57,11 +61,14 @@ public sealed class ProviderFeatureDiscovery(
 
             features.Set(active);
             tokenClientAuthentication.Apply(active.ClientAuthentication);
+            // The registration set the key when the setting is not Disable. Under Auto, discovery can still lack DPoP.
+            if (!active.DPoP)
+                tokenManagementOptions.Value.DPoPJsonWebKey = null;
 
             Logger.Here().Information(
                 "Decided the provider features from the discovery document of {Issuer}: Revocation={Revocation}, IssuerParameter={IssuerParameter}, BackChannelLogout={BackChannelLogout}, EndSession={EndSession}, PushedAuthorization={PushedAuthorization}, DPoP={DPoP}, ClientAuthentication={ClientAuthentication}",
                 active.Issuer, active.Revocation, active.IssuerParameter, active.BackChannelLogout, active.EndSession,
-                active.PushedAuthorization, false, active.ClientAuthentication);
+                active.PushedAuthorization, active.DPoP, active.ClientAuthentication);
         }
         catch (Exception ex)
         {

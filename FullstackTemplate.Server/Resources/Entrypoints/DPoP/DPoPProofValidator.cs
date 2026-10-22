@@ -59,9 +59,10 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
     // The members of a JWK that hold private key material (RFC 7518 sections 6.2.2, 6.3.2, and 6.4)
     private static readonly string[] PrivateKeyMembers = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"];
 
-    // The members of a JWK that name a key or point to a certificate (RFC 7517 section 4). IdentityModel can verify
-    // with the certificate of x5c in place of n and e, so a proof must carry only the key itself.
-    private static readonly string[] KeyReferenceMembers = ["x5c", "x5u", "x5t", "x5t#S256", "kid"];
+    // The members of a JWK that point to a certificate (RFC 7517 section 4). IdentityModel can verify
+    // with the certificate of x5c in place of n and e, so a proof must carry only the key itself. A kid is ignored,
+    // because the key that verifies the proof has only the thumbprint members.
+    private static readonly string[] KeyReferenceMembers = ["x5c", "x5u", "x5t", "x5t#S256"];
 
     public async Task<DPoPValidationResult> ValidateAsync(string proof, DPoPRequest request, CancellationToken cancellationToken)
     {
@@ -157,7 +158,7 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
             if (PrivateKeyMembers.Contains(member.Name, StringComparer.OrdinalIgnoreCase))
                 return (null, "The jwk header must not contain a private key.");
             if (KeyReferenceMembers.Contains(member.Name, StringComparer.OrdinalIgnoreCase))
-                return (null, "The jwk header must contain only the key, without a certificate or a key ID.");
+                return (null, "The jwk header must contain only the key, without a certificate.");
         }
 
         var key = Member(jwk, "kty") switch

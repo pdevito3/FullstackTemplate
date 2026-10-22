@@ -270,9 +270,8 @@ public class DPoPAuthenticationTests : TestBase
     [Arguments("x5u")]
     [Arguments("x5t")]
     [Arguments("x5t#S256")]
-    [Arguments("kid")]
     [Arguments("X5C")]
-    public async Task a_jwk_with_a_member_that_names_or_points_to_another_key_is_rejected(string member)
+    public async Task a_jwk_with_a_member_that_points_to_a_certificate_is_rejected(string member)
     {
         await using var c = await Case.CreateAsync();
         var jwk = DPoPProofBuilder.PublicJwk(c.Proof.Key);

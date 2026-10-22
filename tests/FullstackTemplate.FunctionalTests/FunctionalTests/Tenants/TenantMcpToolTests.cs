@@ -32,7 +32,7 @@ public class TenantMcpToolTests : TestBase
         var tools = await client.ListToolsAsync();
 
         // Assert
-        tools.Select(t => t.Name).ShouldBe(["add_tenant", "get_tenant", "list_tenants"], ignoreOrder: true);
+        tools.Select(t => t.Name).ShouldBe(["add_tenant", "get_tenant", "list_tenants", "update_tenant"], ignoreOrder: true);
     }
 
     [Test]
@@ -201,6 +201,64 @@ public class TenantMcpToolTests : TestBase
             .ShouldBe("A tenant with this name already exists.");
     }
 
+    [Test]
+    public async Task user_without_manage_tenant_cannot_rename_their_tenant()
+    {
+        // Arrange
+        var (tenant, user) = await AddTenantWithUserAsync();
+        SignInAs(user);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
+
+        // Assert
+        ShouldBeToolError(result, "permission_denied");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldNotBeNull()
+            .ShouldContain("manage_tenant");
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
+    }
+
+    [Test]
+    public async Task admin_can_rename_their_tenant()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        await using var client = await CreateMcpClientAsync();
+        var name = $"Renamed {Guid.NewGuid()}";
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = name });
+
+        // Assert
+        result.IsError.ShouldNotBe(true);
+        result.StructuredContent.ShouldNotBeNull().GetProperty("name").GetString().ShouldBe(name);
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(name);
+    }
+
+    [Test]
+    public async Task read_only_machine_client_cannot_rename_a_tenant()
+    {
+        // Arrange
+        var (tenant, _) = await AddTenantWithUserAsync();
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.ReadOnlyMachineClientId
+        });
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
+
+        // Assert
+        ShouldBeToolError(result, "permission_denied");
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
+    }
+
     /// <summary>
     /// The transport must stay stateless. A stateful session runs a tool call outside the HTTP request of the call,
     /// so the tool would not see the caller or the tenant scope of that request.
@@ -256,11 +314,11 @@ public class TenantMcpToolTests : TestBase
     private void SignInAs(User user)
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
 
-    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync()
+    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role = "User")
     {
         TestGraph.Start(out _)
             .AddTenant(out var tenant)
-            .AddUser(out var user, u => u.Role = "User");
+            .AddUser(out var user, u => u.Role = role);
         await InsertAsync(tenant);
         await InsertAsync(user);
         return (tenant, user);

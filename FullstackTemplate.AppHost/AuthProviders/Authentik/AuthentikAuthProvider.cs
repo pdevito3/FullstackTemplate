@@ -20,10 +20,10 @@ public sealed class AuthentikAuthProvider : IAuthProvider
         const string appSlug = "aspire-app";
         const string clientId = "aspire-app";
 
-        var authentikSecretKey = builder.AddParameter("authentik-secret-key", secret: true);
+        var authentikSecretKey = builder.AddParameter("authentik-secret-key", new GenerateParameterDefault { MinLength = 50, Special = false }, secret: true, persist: true);
 
         // PostgreSQL database for Authentik
-        var authentikDbPassword = builder.AddParameter("authentik-db-password", secret: true);
+        var authentikDbPassword = builder.AddParameter("authentik-db-password", new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true);
         var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword)
             .WithImageTag(Config.PostgresImageTag)
             .WithDataVolumeUnlessIsolated();

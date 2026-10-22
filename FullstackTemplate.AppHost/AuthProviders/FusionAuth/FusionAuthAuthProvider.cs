@@ -25,7 +25,7 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
     public AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         // PostgreSQL database for FusionAuth
-        var fusionAuthDbPassword = builder.AddParameter("fusionauth-db-password", secret: true);
+        var fusionAuthDbPassword = builder.AddParameter("fusionauth-db-password", new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true);
         var fusionAuthPostgres = builder.AddPostgres("fusionauth-postgres", password: fusionAuthDbPassword)
             .WithImageTag(Config.PostgresImageTag)
             .WithDataVolumeUnlessIsolated();

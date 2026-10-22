@@ -24,6 +24,8 @@ export interface IdpConfig {
   secondStepSubmitSelector?: string
   // The provider features that the e2e tests expect (section 6 of docs/specs/home-rolled-bff.md)
   capabilities: IdpCapabilities
+  // The provider features that discovery does not show
+  sessionFeatures: IdpSessionFeatures
 }
 
 /**
@@ -40,6 +42,18 @@ export interface IdpCapabilities {
   endSession: boolean
   // Discovery lists pushed_authorization_request_endpoint, so the BFF pushes the authorize request (RFC 9126)
   pushedAuthorization: boolean
+}
+
+/**
+ * The provider features that discovery does not show (section 6 of docs/specs/home-rolled-bff.md).
+ */
+export interface IdpSessionFeatures {
+  // The provider sends the back-channel logout token to the BFF. The Duende Demo cannot reach the BFF. FusionAuth
+  // does not send it, and Cognito and ZeroFactor do not support it.
+  backChannelLogoutReachesBff: boolean
+  // Each refresh gives a new refresh token, and a reuse of the old one gets invalid_grant. Cognito gives no new
+  // refresh token. ZeroFactor gives a new one, but its refresh tokens are stateless, so the old one still works.
+  refreshRotation: boolean
 }
 
 const idpsDir = new URL('./idps/', import.meta.url)

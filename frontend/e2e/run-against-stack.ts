@@ -20,15 +20,28 @@ const described = JSON.parse(
   }),
 ) as { resources: DescribedResource[] }
 
-// The authority of the BFF. Read only this variable: the environment of the BFF also holds its client secret.
+function environmentOf(resource: string): Record<string, string> {
+  return (described.resources.find((r) => r.displayName === resource) as { environment?: Record<string, string> } | undefined)
+    ?.environment ?? {}
+}
+
+// The authority of the BFF
 function bffAuthority(): string {
-  const environment = (described.resources.find((r) => r.displayName === 'bff') as { environment?: Record<string, string> } | undefined)
-    ?.environment
-  const authority = environment?.Auth__Authority
+  const authority = environmentOf('bff').Auth__Authority
   if (!authority) {
     throw new Error('The stack has no Auth__Authority for the BFF.')
   }
   return authority
+}
+
+// `dotnet aspire describe` hides the value of a secret parameter, so read it from the user secrets of the AppHost,
+// where the AppHost keeps each generated value. The value is the last line of the output.
+function appHostSecret(key: string): string {
+  const output = execFileSync('dotnet', ['aspire', 'secret', 'get', key, '--non-interactive', '--nologo', '--apphost', '../FullstackTemplate.AppHost'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit'],
+  })
+  return output.trim().split('\n').at(-1)?.trim() ?? ''
 }
 
 function endpointUrl(resource: string, endpoint: string): string {
@@ -53,13 +66,31 @@ function idpOfStack(): string {
   return detected.name
 }
 
-const env = {
+const idp = (process.env.IDP ?? idpOfStack()).toLowerCase()
+const bffEnvironment = environmentOf('bff')
+const env: NodeJS.ProcessEnv = {
   ...process.env,
-  IDP: process.env.IDP ?? idpOfStack(),
+  IDP: idp,
   BASE_URL: endpointUrl('webfrontend', 'http'),
   SERVER_URL: endpointUrl('server', 'https'),
   AUTHORITY: bffAuthority(),
+  // The refresh rotation test uses the client of the BFF for its own code flow against the identity provider
+  CLIENT_ID: bffEnvironment.Auth__ClientId,
+  CLIENT_SECRET: bffEnvironment.Auth__ClientSecret,
 }
+
+// The back-channel logout test ends the session of the user through the admin API of the identity provider. The
+// script reads only the admin variables of the provider, and it never prints a secret.
+if (idp === 'keycloak') {
+  const keycloak = environmentOf('keycloak')
+  env.IDP_URL = endpointUrl('keycloak', 'http')
+  env.IDP_ADMIN_USERNAME = keycloak.KC_BOOTSTRAP_ADMIN_USERNAME
+  env.IDP_ADMIN_PASSWORD = keycloak.KC_BOOTSTRAP_ADMIN_PASSWORD
+} else if (idp === 'authentik') {
+  env.IDP_URL = endpointUrl('authentik', 'http')
+  env.IDP_ADMIN_TOKEN = appHostSecret('Parameters:authentik-bootstrap-token')
+}
+
 console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP}`)
 
 const result = spawnSync('pnpm', ['exec', 'playwright', 'test', ...process.argv.slice(2)], { stdio: 'inherit', env })

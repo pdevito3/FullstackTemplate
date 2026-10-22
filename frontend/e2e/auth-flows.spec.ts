@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto'
 import { test, expect, Locator, Page, Request } from '@playwright/test'
 import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
 
@@ -420,5 +421,184 @@ test.describe(`Provider discovery - ${currentIdp.name}`, () => {
       pushedAuthorization: typeof discovery.pushed_authorization_request_endpoint === 'string',
     }
     expect(live).toEqual(currentIdp.capabilities)
+  })
+})
+
+function requiredEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`${name} is not set. pnpm test:e2e:stack sets it from the stack.`)
+  }
+  return value
+}
+
+/**
+ * Calls the identity provider with Node fetch, not the request fixture of Playwright, so that the tokens and the admin
+ * credentials stay out of the trace. Returns the status and the JSON body.
+ */
+async function callIdp(url: string, init: RequestInit = {}): Promise<{ status: number; body: Record<string, unknown> }> {
+  const response = await fetch(url, init)
+  const text = await response.text()
+  return { status: response.status, body: text ? (JSON.parse(text) as Record<string, unknown>) : {} }
+}
+
+async function readDiscovery(): Promise<Record<string, unknown>> {
+  const { status, body } = await callIdp(`${requiredEnv('AUTHORITY').replace(/\/$/, '')}/.well-known/openid-configuration`)
+  expect(status).toBe(200)
+  return body
+}
+
+// The status of /bff/user for the session cookie of the page
+async function bffUserStatus(page: Page): Promise<number> {
+  return page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
+}
+
+// The sid claim of the BFF session, the id of the session at the identity provider
+async function bffSessionId(page: Page): Promise<string> {
+  const claims = await page.evaluate(
+    async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
+  )
+  const sid = claims.find((claim) => claim.type === 'sid')?.value
+  expect(sid, 'the sid claim of the BFF session').toBeTruthy()
+  return sid!
+}
+
+/**
+ * Ends one Keycloak session through the admin REST API: the user session and its offline session, because the BFF asks
+ * for offline_access. Keycloak then sends a back-channel logout token to the clients of the session.
+ *
+ * The test ends only the session of its own login. When the BFF gets the logout token, it revokes the refresh token of
+ * the session. Keycloak then also drops the other sessions of the user for the client, with no logout token, so a
+ * second BFF session of the user would stay signed in until its next refresh.
+ */
+async function endKeycloakSession(sessionId: string) {
+  const keycloakUrl = requiredEnv('IDP_URL').replace(/\/$/, '')
+  const realm = /\/realms\/([^/]+)/.exec(requiredEnv('AUTHORITY'))?.[1]
+  expect(realm, 'the Keycloak realm in AUTHORITY').toBeTruthy()
+
+  const adminToken = await callIdp(`${keycloakUrl}/realms/master/protocol/openid-connect/token`, {
+    method: 'POST',
+    body: new URLSearchParams({
+      grant_type: 'password',
+      client_id: 'admin-cli',
+      username: requiredEnv('IDP_ADMIN_USERNAME'),
+      password: requiredEnv('IDP_ADMIN_PASSWORD'),
+    }),
+  })
+  expect(adminToken.status, 'the Keycloak admin token request').toBe(200)
+  const headers = { Authorization: `Bearer ${adminToken.body.access_token as string}` }
+  const session = `${keycloakUrl}/admin/realms/${realm}/sessions/${encodeURIComponent(sessionId)}`
+
+  const online = await fetch(session, { method: 'DELETE', headers })
+  expect(online.status, 'delete the Keycloak user session').toBe(204)
+  // The delete of the user session can also end the offline session, so 404 is not an error here
+  const offline = await fetch(`${session}?isOffline=true`, { method: 'DELETE', headers })
+  expect([204, 404], 'delete the Keycloak offline session').toContain(offline.status)
+}
+
+/**
+ * Ends each Authentik session of the user through the API, with the bootstrap token of akadmin. When a session ends,
+ * the worker sends a back-channel logout token to each provider of the session.
+ */
+async function endAuthentikSessions(email: string) {
+  const api = `${requiredEnv('IDP_URL').replace(/\/$/, '')}/api/v3`
+  const headers = { Authorization: `Bearer ${requiredEnv('IDP_ADMIN_TOKEN')}` }
+
+  const sessions = await callIdp(`${api}/core/authenticated_sessions/?user__username=${encodeURIComponent(email)}`, { headers })
+  expect(sessions.status, 'the Authentik session list').toBe(200)
+  const results = sessions.body.results as { uuid: string }[]
+  expect(results.length, 'the Authentik sessions of the user').toBeGreaterThan(0)
+
+  for (const session of results) {
+    const response = await fetch(`${api}/core/authenticated_sessions/${session.uuid}/`, { method: 'DELETE', headers })
+    expect(response.status, 'delete the Authentik session').toBe(204)
+  }
+}
+
+// Section 3.4 of docs/specs/home-rolled-bff.md: a back-channel logout token from the provider ends the BFF session
+test.describe(`Back-channel logout - ${currentIdp.name}`, () => {
+  test('an IdP session that ends at the provider ends the BFF session', async ({ page }) => {
+    test.skip(
+      !currentIdp.sessionFeatures.backChannelLogoutReachesBff,
+      `${currentIdp.name} cannot send a back-channel logout token to the BFF of the stack (section 6 of the spec).`,
+    )
+
+    await signInThroughSpa(page)
+    expect(await bffUserStatus(page)).toBe(200)
+
+    if (process.env.IDP === 'authentik') {
+      await endAuthentikSessions(currentIdp.email!)
+    } else {
+      await endKeycloakSession(await bffSessionId(page))
+    }
+
+    // The BFF deletes the session row when the logout token arrives. Authentik sends it from a worker task.
+    await expect.poll(() => bffUserStatus(page), { timeout: 30000 }).toBe(401)
+  })
+})
+
+function base64Url(bytes: Buffer): string {
+  return bytes.toString('base64url')
+}
+
+/**
+ * The BFF never gives a token to the browser, so this test does its own authorization code flow with the client of the
+ * BFF. It proves the provider side of rotation (OAuth 2.1 4.3.3): after one refresh, the old refresh token gets
+ * invalid_grant. The BFF tests prove that the BFF stores the new refresh token after each refresh.
+ */
+test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
+  test('the provider rejects the old refresh token after one refresh', async ({ page }) => {
+    test.skip(!currentIdp.sessionFeatures.refreshRotation, `${currentIdp.name} does not rotate refresh tokens (section 6 of the spec).`)
+
+    const discovery = await readDiscovery()
+    const clientId = requiredEnv('CLIENT_ID')
+    const authorization = `Basic ${Buffer.from(`${encodeURIComponent(clientId)}:${encodeURIComponent(requiredEnv('CLIENT_SECRET'))}`).toString('base64')}`
+    // A redirect URI that each seed registers
+    const redirectUri = new URL('/signin-oidc', process.env.BASE_URL ?? 'http://localhost:5173').toString()
+    const codeVerifier = base64Url(randomBytes(32))
+    const state = base64Url(randomBytes(16))
+
+    // Playwright cannot route the redirect of a navigation, so the callback reaches the BFF. The BFF did not start this
+    // login, so it answers 400 and does not redeem the code.
+    const callback = page.waitForRequest((request) => request.url().startsWith(`${redirectUri}?`), { timeout: 30000 })
+
+    const authorizeUrl = new URL(discovery.authorization_endpoint as string)
+    authorizeUrl.search = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: 'openid profile email offline_access',
+      state,
+      code_challenge: base64Url(createHash('sha256').update(codeVerifier).digest()),
+      code_challenge_method: 'S256',
+    }).toString()
+    await page.goto(authorizeUrl.toString())
+    await loginAtIdp(page, currentIdp)
+    const callbackUrl = new URL((await callback).url())
+    expect(callbackUrl.searchParams.get('state')).toBe(state)
+    const code = callbackUrl.searchParams.get('code')
+    expect(code, 'the authorization code').toBeTruthy()
+
+    const tokenRequest = (form: Record<string, string>) =>
+      callIdp(discovery.token_endpoint as string, {
+        method: 'POST',
+        headers: { Authorization: authorization },
+        body: new URLSearchParams(form),
+      })
+
+    const issued = await tokenRequest({ grant_type: 'authorization_code', code: code!, redirect_uri: redirectUri, code_verifier: codeVerifier })
+    expect(issued.status, 'the code exchange').toBe(200)
+    const firstRefreshToken = issued.body.refresh_token as string | undefined
+    expect(typeof firstRefreshToken, 'the first refresh token').toBe('string')
+
+    const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: firstRefreshToken! })
+    expect(refreshed.status, 'the first refresh').toBe(200)
+    const secondRefreshToken = refreshed.body.refresh_token as string | undefined
+    expect(typeof secondRefreshToken, 'the rotated refresh token').toBe('string')
+    // Compare without the values, so that a failure does not print a token
+    expect(secondRefreshToken !== firstRefreshToken, 'the refresh gives a new refresh token').toBe(true)
+
+    const reused = await tokenRequest({ grant_type: 'refresh_token', refresh_token: firstRefreshToken! })
+    expect({ status: reused.status, error: reused.body.error }).toEqual({ status: 400, error: 'invalid_grant' })
   })
 })

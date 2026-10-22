@@ -49,7 +49,7 @@ An isolated run starts with an empty database, so it does not have this problem.
 1. Add the folder `FullstackTemplate.AppHost/AuthProviders/<Name>/`.
 2. In the folder, add the class `<Name>AuthProvider` that implements `IAuthProvider`. The AppHost finds the class by reflection, and `<Name>` from the class name is the value of the `AuthProvider` setting. `AddTo` adds the containers of the provider to the stack and returns an `AuthProviderConfig`.
 3. Put the seed files in `seed/`, and mount them with `WithSeedFiles`. Call `WithClientUrls` on the container, and read the app URLs from the `APP_*` variables in the seed files. An isolated run gives the apps random ports.
-4. Add `frontend/e2e/idps/<name>.json`, with `<name>` in lowercase. Give the login form and the test user. Set `resource` to the name of the Aspire resource of the provider.
+4. Add `frontend/e2e/idps/<name>.json`, with `<name>` in lowercase. Give the login form and the test user. Set `resource` to the name of the Aspire resource of the provider. Set `capabilities` to what the discovery document of the provider lists, and `sessionFeatures` to what the provider does. The e2e tests skip a feature test if the provider does not have the feature.
 
 A unit test in `AuthProviderCatalogTests` makes sure that each provider has its folder and its e2e file.
 
@@ -80,7 +80,12 @@ The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the Rea
    pnpm test:e2e:stack
    ```
 
-The script `frontend/e2e/run-against-stack.ts` reads the `webfrontend` and `server` URLs from `dotnet aspire describe`. It finds the IdP whose `resource` is in the stack, or the IdP with no `resource` if the stack has none. Then it sets `BASE_URL`, `SERVER_URL`, and `IDP`, and runs `playwright test`. To override the IdP, set `IDP` to the name of a file in `frontend/e2e/idps/`. Extra arguments go to Playwright, for example `pnpm test:e2e:stack --repeat-each=5`.
+The script `frontend/e2e/run-against-stack.ts` reads the `webfrontend` and `server` URLs from `dotnet aspire describe`. It finds the IdP whose `resource` is in the stack, or the IdP with no `resource` if the stack has none. Then it sets `BASE_URL`, `SERVER_URL`, `AUTHORITY`, and `IDP`, and runs `playwright test`. To override the IdP, set `IDP` to the name of a file in `frontend/e2e/idps/`. Extra arguments go to Playwright, for example `pnpm test:e2e:stack --repeat-each=5`.
+
+The script also gives the tests the client id and the client secret of the BFF, and the admin credentials of the provider. It never prints them.
+
+- The refresh rotation test uses the client of the BFF for its own code flow. It proves that the provider rejects the old refresh token after one refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik.
+- The back-channel logout test ends the session at the provider through its admin API, and expects a 401 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database.
 
 ## Test users
 

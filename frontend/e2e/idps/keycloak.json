@@ -12,5 +12,9 @@
     "backChannelLogout": true,
     "endSession": true,
     "pushedAuthorization": true
+  },
+  "sessionFeatures": {
+    "backChannelLogoutReachesBff": true,
+    "refreshRotation": true
   }
 }

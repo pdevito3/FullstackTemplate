@@ -234,7 +234,7 @@ jobs:
           - idp: zerofactor
             provider: ZeroFactor
             refresh-margin: '86400'
-          # A public service, so its failure does not block a merge
+          # A public service, so its failure does not fail the workflow
           - idp: duendedemo
             provider: DuendeDemo
             public: true

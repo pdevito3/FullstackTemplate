@@ -191,7 +191,7 @@ Decision: [Session storage](https://github.com/pdevito3/FullstackTemplate/issues
   - The BFF finds the old BFF session only through the cookie of the callback. With a cross-site identity provider, the browser does not send the `SameSite=Strict` cookie on the redirect to `/signin-oidc`. The old row then stays until it expires or the cleanup deletes it, and the BFF does not revoke its refresh token.
 - The store adds to `bff.sessions.started` when it creates a row.
 
-**The `id_token` on a refresh.** If a refresh response has no `id_token`, the store keeps the stored `id_token` in the renewed ticket. `Duende.AccessTokenManagement` writes `null` in that case. All four providers send a new `id_token` today, so this rule is defensive ([Test id_token retention](https://github.com/pdevito3/FullstackTemplate/issues/23)).
+**The `id_token` on a refresh.** If a refresh response has no `id_token`, the store keeps the stored `id_token` in the renewed ticket. `Duende.AccessTokenManagement` writes `null` in that case. Keycloak, FusionAuth, Authentik, and the Duende Demo send a new `id_token` today, so this rule is defensive ([Test id_token retention](https://github.com/pdevito3/FullstackTemplate/issues/23)).
 
 **Data Protection.** The keys persist in the same `DbContext` through `PersistKeysToDbContext`, with one application name for all BFF instances. A deploy then does not log out every user. Encryption of the keys at rest is a deployment decision.
 
@@ -569,22 +569,22 @@ Decision: [Provider seed and version changes](https://github.com/pdevito3/Fullst
 - **Back-channel URLs.** Register `<BFF URL>/bff/backchannel` in the Keycloak and Authentik seeds. The container must reach the BFF, for example through `host.docker.internal`. Find out how Aspire exposes the BFF endpoint to a container. FusionAuth and the Duende Demo cannot take part. Back-channel logout in Authentik is a preview feature since 2025.8, so the seed can need to turn it on.
 - **Keycloak password grant.** Set `directAccessGrantsEnabled` to `false`. Nothing in the repo uses it.
 - **Refresh token rotation.** Turn on one-time use in Keycloak (`revokeRefreshToken`, max reuse `0`) and in FusionAuth.
-- **Feature settings.** `WithBffAuth` in `AuthProviders/AuthProviderConfig.cs` gives `Auth__Features__*` to the BFF. The defaults (`Auto`) are correct for the four providers.
+- **Feature settings.** `WithBffAuth` in `AuthProviders/AuthProviderConfig.cs` gives `Auth__Features__*` to the BFF. The defaults (`Auto`) are correct for each provider.
 - **Public origin.** `WithBffAuth` gives `Bff__PublicOrigin` from the BFF `https` endpoint.
 - **`bffdb`.** The AppHost adds the database and gives it to the BFF.
 - **The conformance provider.** The folder `AuthProviders/Conformance/` gets a `ConformanceAuthProvider` for the conformance job. Its authority is the suite, and its `Bff:PublicOrigin` is the BFF `https` URL. The suite client config registers `<BFF https URL>/signin-oidc`, `/signout-callback-oidc`, and `/bff/backchannel` at `host.docker.internal`.
 
 The capability table (section 7) holds the expected result of these changes:
 
-| Feature | Keycloak | FusionAuth | Authentik 2026.8 | Duende Demo |
-|---|---|---|---|---|
-| Revocation | yes | no | yes | yes |
-| `iss` parameter | yes | yes | no | yes |
-| Back-channel logout (testable) | yes | no | yes | no (cannot reach the BFF) |
-| `end_session_endpoint` | yes | yes | yes | yes |
-| PAR | yes | no | no | yes |
-| Refresh rotation | yes | yes | yes | no |
-| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | yes |
+| Feature | Keycloak | FusionAuth | Authentik 2026.8 | Cognito | ZeroFactor | Duende Demo |
+|---|---|---|---|---|---|---|
+| Revocation | yes | no | yes | no | yes | yes |
+| `iss` parameter | yes | yes | no | no | yes | yes |
+| Back-channel logout (testable) | yes | no | yes | no | no | no (cannot reach the BFF) |
+| `end_session_endpoint` | yes | yes | yes | no | yes | yes |
+| PAR | yes | no | no | no | no | yes |
+| Refresh rotation | yes | yes | yes | no | no (stateless refresh tokens) | no |
+| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | not tested | not tested | yes |
 
 The live discovery test (section 7) makes sure that the table is correct.
 
@@ -595,7 +595,7 @@ Decisions: [Test plan in CI](https://github.com/pdevito3/FullstackTemplate/issue
 ### Test layers
 
 - **BFF unit and integration tests.** A new project `tests/FullstackTemplate.Bff.Tests`. The integration tests use a `WebApplicationFactory` for the BFF, a fake identity provider, a fake API that echoes the headers, and a Postgres container for `bffdb`. The refresh lock tests run two BFF hosts on one `bffdb`. The tests of sections 3 and 5 go here.
-- **e2e tests.** The Playwright tests in `frontend/e2e`, against all four providers.
+- **e2e tests.** The Playwright tests in `frontend/e2e`, against each provider of the `e2e` matrix.
   - A fixed capability table in the test project holds the features of each provider (section 6).
   - A feature test runs only for the providers that have the feature. For the other providers, the test is skipped and gives the reason.
   - For a missing feature, a test proves the fallback, for example that logout still ends the BFF session.
@@ -628,7 +628,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | Integration | A `Set-Cookie` from the API never reaches the browser, and the renewed BFF cookie still does. | [#21](https://github.com/pdevito3/FullstackTemplate/issues/21) |
 | Integration | Two BFF hosts on one `bffdb`, a fake token endpoint with rotation: concurrent calls on both hosts make exactly one refresh call, and every call gets the new token. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
 | Integration | A lock wait that reaches the limit gives the temporary-failure path. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
-| e2e | Keycloak with rotation: two `/api` calls at the same time after a forced refresh both succeed. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
+| e2e | The providers with rotation (Keycloak, FusionAuth, and Authentik): two `/api` calls at the same time after a forced refresh both succeed, and the BFF session still works after them. | [#24](https://github.com/pdevito3/FullstackTemplate/issues/24) |
 | Integration | A late refresh after logout does not bring the BFF session back, and the BFF revokes its new refresh token. | [#11](https://github.com/pdevito3/FullstackTemplate/issues/11) |
 | Integration | A new login on a browser with a BFF session gets a new key. | This spec |
 | Unit | Each `Auth:ClientAuthentication` case of section 3.2. | [#17](https://github.com/pdevito3/FullstackTemplate/issues/17) |
@@ -649,7 +649,8 @@ These tests come from the tickets. Each one is in addition to the tests of secti
   - `frontend/vite.config.ts` and `frontend/src/**`, the SPA and the dev server proxy that the e2e tests drive
 - `conformance.yml` also counts `frontend/conformance/**`.
 - **`bff-tests`.** The BFF unit and integration tests, with the two-host lock tests.
-- **`e2e`.** A matrix of the four providers. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The Duende Demo leg uses `continue-on-error`, because it is a public service. The other three legs block a merge.
+- **`e2e`.** A matrix of six providers: Keycloak, FusionAuth, Authentik, Cognito, ZeroFactor, and the Duende Demo. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The Duende Demo leg uses `continue-on-error`, because it is a public service. A failure of one of the other five legs fails the workflow.
+  - Each leg of a provider in the stack sets `BffRefreshBeforeExpirationSeconds` to 86400, so that each API call refreshes, and `EXPECT_REFRESH_MARGIN=true`. The Duende Demo leg sets no margin and `EXPECT_REFRESH_MARGIN=false`. `run-against-stack.ts` fails the leg when an `EXPECT_*` variable and the stack disagree, so a leg cannot pass while its refresh tests skip.
 - **`conformance`.** The job runs `dotnet aspire start --isolated` with the `Conformance` provider. The suite starts with `docker-compose-prebuilt.yml` and an override file with `extra_hosts: host.docker.internal:host-gateway`. The BFF trusts the self-signed suite certificate. The job sets `Auth:MetadataRefreshInterval` to 1 s, so that each test module gets fresh signing keys.
   - The suite sends no `expires_in`, so the job sets `Auth:DefaultAccessTokenLifetime` to 1 s. Then the next API call refreshes the token.
   - The access tokens of the suite are opaque. So the server, with `Auth:AccessTokenValidation=Userinfo` (Development only), checks each token at the userinfo endpoint of the suite. The happy path module of the refresh plan finishes on that userinfo call with the refreshed token. The driver stops the API calls of the SPA, because a call after a module finished fails it.
@@ -722,6 +723,6 @@ Each slice is one pull request that you can test alone. Slice 1 must reach parit
 5. **Refresh.** The advisory lock and the refresh failure rules.
 6. **The proxy header rules, `SameSite=Strict`, and host trust.**
 7. **Provider seed and version changes.**
-8. **CI.** The `changes` job, the four-provider e2e matrix, and the conformance suite.
+8. **CI.** The `changes` job, the e2e matrix of the providers, and the conformance suite.
 9. **Template and doc changes.**
 10. **Phase 2: DPoP.**

@@ -42,7 +42,7 @@ public static class DPoPProxy
         if (token.DPoPJsonWebKey is not { } key)
         {
             Logger.Here().Error("Forwarded {Path} with no access token, because the token is a DPoP token and the BFF session has no DPoP key",
-                context.HttpContext.Request.Path.Value);
+                LogValue.Clean(context.HttpContext.Request.Path.Value));
             return false;
         }
 

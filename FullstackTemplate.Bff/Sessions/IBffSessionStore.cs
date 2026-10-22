@@ -32,9 +32,11 @@ public interface IBffSessionStore
         uint expectedVersion, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Deletes the row of <paramref name="key"/>. Returns false if there was none.
+    /// Deletes the row of <paramref name="key"/> and returns it as it was at the delete, or null if there was none.
+    /// The caller can then revoke the refresh token of the row, also when another request wrote new tokens after
+    /// the caller read the row.
     /// </summary>
-    Task<bool> DeleteAsync(string key, CancellationToken cancellationToken);
+    Task<BffSession?> DeleteAsync(string key, CancellationToken cancellationToken);
 
     /// <summary>
     /// The rows of the <c>sub</c> <paramref name="subjectId"/> that have not ended.

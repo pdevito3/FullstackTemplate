@@ -305,7 +305,7 @@ public class BffTicketStoreTests
             return await inner.RenewExpiryAsync(key, renewed, expires, expectedVersion, cancellationToken);
         }
 
-        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken) => inner.DeleteAsync(key, cancellationToken);
+        public Task<BffSession?> DeleteAsync(string key, CancellationToken cancellationToken) => inner.DeleteAsync(key, cancellationToken);
 
         public Task<IReadOnlyList<BffSession>> FindBySubjectAsync(string subjectId, CancellationToken cancellationToken) =>
             inner.FindBySubjectAsync(subjectId, cancellationToken);

@@ -132,14 +132,35 @@ public class BffSessionStoreContractTests
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
 
-        (await store.Store.DeleteAsync(created.Key, CancellationToken.None)).ShouldBeTrue();
+        (await store.Store.DeleteAsync(created.Key, CancellationToken.None))!.Key.ShouldBe(created.Key);
         var write = await store.Store.RenewAsync(created.Key, [3], clock.Now, clock.Now.AddHours(1), created.Version, CancellationToken.None);
         var expiryWrite = await store.Store.RenewExpiryAsync(created.Key, clock.Now, clock.Now.AddHours(1), created.Version, CancellationToken.None);
 
         write.ShouldBeOfType<BffSessionWrite.Missing>();
         expiryWrite.ShouldBeOfType<BffSessionWrite.Missing>();
         (await store.Store.GetAsync(created.Key, CancellationToken.None)).ShouldBeNull();
-        (await store.Store.DeleteAsync(created.Key, CancellationToken.None)).ShouldBeFalse();
+        (await store.Store.DeleteAsync(created.Key, CancellationToken.None)).ShouldBeNull();
+    }
+
+    [Test]
+    [Arguments(Memory)]
+    [Arguments(Postgres)]
+    public async Task the_delete_returns_the_row_with_the_last_write(string adapter)
+    {
+        var clock = NowClock();
+        await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
+        var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var written = (BffSessionWrite.Written)await store.Store.RenewAsync(created.Key, [9], clock.Now, clock.Now.AddHours(1),
+            created.Version, CancellationToken.None);
+
+        var deleted = await store.Store.DeleteAsync(created.Key, CancellationToken.None);
+
+        deleted.ShouldNotBeNull();
+        deleted.Key.ShouldBe(created.Key);
+        deleted.SubjectId.ShouldBe(created.SubjectId);
+        deleted.Ticket.ShouldBe([9]);
+        deleted.Expires.ShouldBe(clock.Now.AddHours(1));
+        deleted.Version.ShouldBe(written.Version);
     }
 
     [Test]
@@ -185,7 +206,7 @@ public class BffSessionStoreContractTests
         second.ShouldBe(2);
         third.ShouldBe(0);
         foreach (var key in ended)
-            (await store.Store.DeleteAsync(key, CancellationToken.None)).ShouldBeFalse();
+            (await store.Store.DeleteAsync(key, CancellationToken.None)).ShouldBeNull();
         (await store.Store.GetAsync(live.Key, CancellationToken.None)).ShouldNotBeNull();
     }
 

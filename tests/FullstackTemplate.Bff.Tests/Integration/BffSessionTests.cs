@@ -100,6 +100,37 @@ public class BffSessionTests
     }
 
     [Test]
+    public async Task a_refresh_that_writes_between_the_read_and_the_delete_of_a_logout_gets_its_refresh_token_revoked()
+    {
+        var deletes = new DeleteGate();
+        await using var app = BffApp.StartAnotherInstance(services: services => services.AddScoped<IBffSessionStore>(
+            sp => new HeldDeleteStore(ActivatorUtilities.CreateInstance<EfBffSessionStore>(sp), deletes)));
+        var provider = app.IdentityProvider;
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60"))!;
+        var refreshes = provider.HoldRefreshes(subject);
+
+        // The API call reads the row, and then its refresh waits at the identity provider
+        var apiCall = browser.GetApiAsync("/api/v1/weather");
+        await refreshes.Arrived.Task.WaitAsync(Timeout);
+        // The logout reads the row with the first refresh token, and then its delete waits
+        var logout = browser.GetAsync("/bff/logout");
+        await deletes.Arrived.Task.WaitAsync(Timeout);
+        // The refresh writes the second refresh token to the row before the delete
+        refreshes.Released.SetResult();
+        (await apiCall.WaitAsync(Timeout)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        deletes.Released.SetResult();
+        (await logout.WaitAsync(Timeout)).StatusCode.ShouldBe(HttpStatusCode.Redirect);
+
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
+        var issued = provider.IssuedRefreshTokens(subject);
+        issued.Count.ShouldBe(2);
+        provider.RevokedTokens.ShouldContain(issued[1]);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task a_token_write_that_races_a_sliding_renewal_keeps_the_later_expiry()
     {
         // Two BFF instances on one bffdb. The clock of the second is 6 minutes ahead, so a request there is past
@@ -235,9 +266,54 @@ public class BffSessionTests
         var deleted = await app.Services.GetRequiredService<BffSessionCleanupService>().CleanupAsync(CancellationToken.None);
 
         deleted.ShouldBeGreaterThanOrEqualTo(2);
-        (await app.WithStoreAsync(store => store.DeleteAsync(slidingEnded.Key, CancellationToken.None))).ShouldBeFalse();
-        (await app.WithStoreAsync(store => store.DeleteAsync(absoluteEnded.Key, CancellationToken.None))).ShouldBeFalse();
+        (await app.WithStoreAsync(store => store.DeleteAsync(slidingEnded.Key, CancellationToken.None))).ShouldBeNull();
+        (await app.WithStoreAsync(store => store.DeleteAsync(absoluteEnded.Key, CancellationToken.None))).ShouldBeNull();
         (await app.WithStoreAsync(store => store.GetAsync(live.Key, CancellationToken.None))).ShouldNotBeNull();
+    }
+
+    /// <summary>
+    /// See <see cref="HeldDeleteStore"/>.
+    /// </summary>
+    private sealed class DeleteGate
+    {
+        public TaskCompletionSource Arrived { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Released { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    /// <summary>
+    /// The BFF session store, with each delete held until the test releases the gate.
+    /// </summary>
+    private sealed class HeldDeleteStore(IBffSessionStore inner, DeleteGate gate) : IBffSessionStore
+    {
+        public Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken) =>
+            inner.CreateAsync(session, cancellationToken);
+
+        public Task<BffSession?> GetAsync(string key, CancellationToken cancellationToken) => inner.GetAsync(key, cancellationToken);
+
+        public Task<BffSessionWrite> RenewAsync(string key, byte[] ticket, DateTimeOffset renewed, DateTimeOffset expires,
+            uint expectedVersion, CancellationToken cancellationToken) =>
+            inner.RenewAsync(key, ticket, renewed, expires, expectedVersion, cancellationToken);
+
+        public Task<BffSessionWrite> RenewExpiryAsync(string key, DateTimeOffset renewed, DateTimeOffset expires,
+            uint expectedVersion, CancellationToken cancellationToken) =>
+            inner.RenewExpiryAsync(key, renewed, expires, expectedVersion, cancellationToken);
+
+        public async Task<BffSession?> DeleteAsync(string key, CancellationToken cancellationToken)
+        {
+            gate.Arrived.TrySetResult();
+            await gate.Released.Task;
+            return await inner.DeleteAsync(key, cancellationToken);
+        }
+
+        public Task<IReadOnlyList<BffSession>> FindBySubjectAsync(string subjectId, CancellationToken cancellationToken) =>
+            inner.FindBySubjectAsync(subjectId, cancellationToken);
+
+        public Task<IReadOnlyList<BffSession>> FindBySessionIdAsync(string sessionId, CancellationToken cancellationToken) =>
+            inner.FindBySessionIdAsync(sessionId, cancellationToken);
+
+        public Task<int> DeleteEndedAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken) =>
+            inner.DeleteEndedAsync(now, batchSize, cancellationToken);
     }
 
     private static List<string> ChunkCookieNames(CookieContainer cookies) =>

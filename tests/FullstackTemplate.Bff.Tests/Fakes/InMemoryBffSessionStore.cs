@@ -35,10 +35,10 @@ public sealed class InMemoryBffSessionStore(TimeProvider timeProvider) : IBffSes
         uint expectedVersion, CancellationToken cancellationToken) =>
         Task.FromResult(Write(key, expectedVersion, s => s with { Renewed = renewed, Expires = expires }));
 
-    public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken)
+    public Task<BffSession?> DeleteAsync(string key, CancellationToken cancellationToken)
     {
         lock (_writeLock)
-            return Task.FromResult(_rows.TryRemove(key, out _));
+            return Task.FromResult(_rows.TryRemove(key, out var deleted) ? deleted : null);
     }
 
     public Task<IReadOnlyList<BffSession>> FindBySubjectAsync(string subjectId, CancellationToken cancellationToken) =>

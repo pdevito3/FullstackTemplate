@@ -125,7 +125,7 @@ public sealed class BffTicketStore(
     public async Task RemoveAsync(string key, HttpContext httpContext, CancellationToken cancellationToken)
     {
         var (store, request) = Services(httpContext);
-        if (await store.DeleteAsync(key, cancellationToken))
+        if (await store.DeleteAsync(key, cancellationToken) is not null)
             Logger.Here().Information("Deleted the BFF session {SessionKey}", Fingerprint.Of(key));
         request.Forget();
     }
@@ -230,6 +230,12 @@ public sealed class BffTicketStore(
         tokens.Add(new AuthenticationToken { Name = "id_token", Value = stored.IdToken });
         properties.StoreTokens(tokens);
     }
+
+    /// <summary>
+    /// The refresh token in the ticket of <paramref name="session"/>, or null if it has none or if the ticket cannot
+    /// be read.
+    /// </summary>
+    public string? RefreshTokenOf(BffSession session) => TokensOf(session)?.RefreshToken;
 
     private SessionTokens? TokensOf(BffSession session) =>
         Unprotect(session) is { } ticket ? SessionTokens.From(ticket.Properties) : null;

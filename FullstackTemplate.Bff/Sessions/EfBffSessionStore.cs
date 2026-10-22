@@ -41,11 +41,18 @@ public sealed class EfBffSessionStore(BffDbContext dbContext, TimeProvider timeP
         WriteAsync(key, expectedVersion, s => s with { Renewed = renewed, Expires = expires },
             [nameof(BffSession.Renewed), nameof(BffSession.Expires)], cancellationToken);
 
-    public async Task<bool> DeleteAsync(string key, CancellationToken cancellationToken) =>
-        await dbContext.Sessions
+    /// <summary>
+    /// One <c>DELETE ... RETURNING</c>, so that the returned row is the row that the delete removed.
+    /// </summary>
+    public async Task<BffSession?> DeleteAsync(string key, CancellationToken cancellationToken)
+    {
+        var deleted = await dbContext.Sessions
+            .FromSql($"DELETE FROM sessions WHERE key = {key} RETURNING *, xmin")
+            .AsNoTracking()
             .TagWith("bff_sessions.delete")
-            .Where(s => s.Key == key)
-            .ExecuteDeleteAsync(cancellationToken) > 0;
+            .ToListAsync(cancellationToken);
+        return deleted.SingleOrDefault();
+    }
 
     public async Task<IReadOnlyList<BffSession>> FindBySubjectAsync(string subjectId, CancellationToken cancellationToken)
     {

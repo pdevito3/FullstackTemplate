@@ -23,6 +23,7 @@ public static class LogoutEndpoint
         HttpContext context,
         BffSessionRequest session,
         IBffSessionStore store,
+        BffTicketStore ticketStore,
         RefreshTokenRevocation revocation)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -46,15 +47,14 @@ public static class LogoutEndpoint
             return;
         }
 
-        if (signedIn)
-        {
-            // Delete the row first, so that a late write of a request that runs now cannot bring it back.
-            if (session.Key is { } key)
-                await store.DeleteAsync(key, context.RequestAborted);
-
-            if (result.Properties?.GetTokenValue("refresh_token") is { Length: > 0 } refreshToken)
-                await revocation.RevokeAsync(refreshToken, context.RequestAborted);
-        }
+        // Delete the row first, so that a late write of a request that runs now cannot bring it back. Revoke the
+        // refresh token of the deleted row, not the one that this request read: a refresh in another request can
+        // write new tokens between the read and the delete.
+        if (signedIn
+            && session.Key is { } key
+            && await store.DeleteAsync(key, context.RequestAborted) is { } deleted
+            && ticketStore.RefreshTokenOf(deleted) is { Length: > 0 } refreshToken)
+            await revocation.RevokeAsync(refreshToken, context.RequestAborted);
 
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 

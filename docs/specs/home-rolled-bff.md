@@ -302,7 +302,7 @@ A `returnUrl` is local if it is `/`, or if it starts with `/` and its second cha
 1. Authenticate the cookie. Do the `sid` check (section 2).
 2. Do the local URL check on `returnUrl`.
 3. Delete the BFF session row. Add to `bff.sessions.ended` with `reason=logout`.
-4. If revocation is active, revoke the refresh token through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
+4. If revocation is active, revoke the refresh token of the deleted row through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). The delete returns the row as it was at the delete. Thus, if a refresh in another request wrote new tokens after step 1, the BFF revokes the new refresh token. If no row was deleted, another end of the BFF session came first, and the BFF revokes nothing. If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
 5. Sign out the cookie scheme.
 6. If `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`.
 7. If not, send a 302 to `returnUrl`.

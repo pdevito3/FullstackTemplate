@@ -58,6 +58,39 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task an_empty_logout_token_gets_400_with_no_store()
+    {
+        var response = await PostAsync("");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(response);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(MalformedForms))]
+    public async Task a_malformed_form_gets_400_with_no_store(MalformedForm form)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.PostAsync("/bff/backchannel", form.Create());
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(response);
+    }
+
+    public static IEnumerable<Func<MalformedForm>> MalformedForms()
+    {
+        yield return () => new("multipart with no boundary", () =>
+            new StringContent("logout_token=x", System.Text.Encoding.UTF8, "multipart/form-data"));
+        // The form reader allows 1024 fields
+        yield return () => new("too many fields", () =>
+            new FormUrlEncodedContent(Enumerable.Range(0, 1100).Select(i => new KeyValuePair<string, string>($"f{i}", "x"))));
+        // The form reader allows a key of 2048 characters
+        yield return () => new("a key that is too long", () =>
+            new FormUrlEncodedContent([new(new string('k', 3000), "x")]));
+    }
+
+    [Test]
     [MethodDataSource(nameof(InvalidTokens))]
     public async Task an_invalid_logout_token_gets_400_with_no_store(InvalidToken invalid)
     {
@@ -82,6 +115,7 @@ public class BackChannelLogoutTests
         yield return () => new("no sub and no sid", () => Token(c => { c.Remove("sub"); c.Remove("sid"); }));
         yield return () => new("a nonce", () => Token(c => c["nonce"] = "n-1"));
         yield return () => new("no events", () => Token(c => c.Remove("events")));
+        yield return () => new("an events claim that is not an object", () => Token(c => c["events"] = LogoutEvent));
         yield return () => new("another event", () => Token(c => c["events"] = new Dictionary<string, object> { ["other"] = new Dictionary<string, object>() }));
     }
 
@@ -117,6 +151,11 @@ public class BackChannelLogoutTests
         response.Headers.CacheControl!.NoCache.ShouldBeTrue();
         response.Headers.CacheControl.NoStore.ShouldBeTrue();
         response.Headers.Pragma.ToString().ShouldBe("no-cache");
+    }
+
+    public sealed record MalformedForm(string Name, Func<HttpContent> Create)
+    {
+        public override string ToString() => Name;
     }
 
     public sealed record InvalidToken(string Name, Func<string> Create)

@@ -1,6 +1,8 @@
 namespace FullstackTemplate.Bff.Tests.Unit;
 
 using System.Security.Claims;
+using System.Text;
+using FullstackTemplate.Bff.BackChannel;
 using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.User;
 using Microsoft.AspNetCore.Authentication;
@@ -8,6 +10,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Shouldly;
 
 public class ManagementEndpointUnitTests
@@ -53,6 +57,49 @@ public class ManagementEndpointUnitTests
         await UserEndpoint.SuppressSlideWhenRequested(context);
 
         context.ShouldRenew.ShouldBe(shouldRenew);
+    }
+
+    [Test]
+    public async Task backchannel_returns_400_when_the_handler_has_no_discovery_document()
+    {
+        var context = BackChannelRequest();
+        var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = null };
+
+        await BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options));
+
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
+    }
+
+    [Test]
+    public async Task backchannel_returns_400_when_the_discovery_document_cannot_be_read()
+    {
+        var context = BackChannelRequest();
+        var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = new FailingConfigurationManager() };
+
+        await BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options));
+
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
+    }
+
+    private static DefaultHttpContext BackChannelRequest()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = HttpMethods.Post;
+        context.Request.ContentType = "application/x-www-form-urlencoded";
+        context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes("logout_token=a.b.c"));
+        return context;
+    }
+
+    private sealed class FailingConfigurationManager : IConfigurationManager<OpenIdConnectConfiguration>
+    {
+        public Task<OpenIdConnectConfiguration> GetConfigurationAsync(CancellationToken cancel) =>
+            throw new InvalidOperationException("IDX20803: Unable to obtain configuration.");
+
+        public void RequestRefresh()
+        {
+        }
     }
 
     private sealed class FixedOptionsMonitor<T>(T value) : IOptionsMonitor<T>

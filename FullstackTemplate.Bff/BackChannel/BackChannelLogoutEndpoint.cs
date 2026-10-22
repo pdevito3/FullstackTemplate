@@ -4,6 +4,7 @@ using FullstackTemplate.Bff.Management;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using ILogger = Serilog.ILogger;
@@ -31,9 +32,7 @@ public static class BackChannelLogoutEndpoint
         context.Response.Headers.Append("Cache-Control", "no-cache, no-store");
         context.Response.Headers.Append("Pragma", "no-cache");
 
-        var logoutToken = context.Request.HasFormContentType
-            ? (await context.Request.ReadFormAsync(context.RequestAborted))["logout_token"].FirstOrDefault()
-            : null;
+        var logoutToken = await ReadLogoutTokenAsync(context.Request);
 
         if (string.IsNullOrWhiteSpace(logoutToken))
         {
@@ -56,6 +55,27 @@ public static class BackChannelLogoutEndpoint
     }
 
     /// <summary>
+    /// The <c>logout_token</c> form field, or null when the body is not a form or the form is malformed.
+    /// </summary>
+    private static async Task<string?> ReadLogoutTokenAsync(HttpRequest request)
+    {
+        if (!request.HasFormContentType)
+            return null;
+
+        try
+        {
+            return (await request.ReadFormAsync(request.HttpContext.RequestAborted))["logout_token"].FirstOrDefault();
+        }
+        // The form reader throws these for a malformed form, such as a multipart body with no boundary or a form
+        // over the size limits. BadHttpRequestException is an IOException for a body that the server rejects.
+        catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or BadHttpRequestException)
+        {
+            Logger.Here().Information(ex, "Rejected a back-channel logout request with a malformed form");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// The checks of the logout token (Back-Channel Logout 1.0 section 2.6). Returns null when a check fails.
     /// </summary>
     public static async Task<ClaimsIdentity?> ValidateAsync(
@@ -64,8 +84,23 @@ public static class BackChannelLogoutEndpoint
         CancellationToken cancellationToken)
     {
         var options = oidcOptions.Get(OpenIdConnectDefaults.AuthenticationScheme);
-        var configuration = await OidcDiscovery.GetConfigurationAsync(oidcOptions, cancellationToken)
-            ?? throw new InvalidOperationException("The OIDC handler has no discovery document.");
+        OpenIdConnectConfiguration? configuration;
+        try
+        {
+            configuration = await OidcDiscovery.GetConfigurationAsync(oidcOptions, cancellationToken);
+        }
+        // The ConfigurationManager throws when it cannot get the document. The token then cannot pass.
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger.Here().Error(ex, "Rejected a logout token, because the discovery document could not be read");
+            return null;
+        }
+
+        if (configuration is null)
+        {
+            Logger.Here().Error("Rejected a logout token, because the OIDC handler has no discovery document");
+            return null;
+        }
 
         var parameters = new TokenValidationParameters
         {
@@ -101,7 +136,7 @@ public static class BackChannelLogoutEndpoint
         if (!string.IsNullOrEmpty(token.Typ)
             && !string.Equals(token.Typ, "logout+jwt", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(token.Typ, "application/logout+jwt", StringComparison.OrdinalIgnoreCase))
-            return $"the typ header is {token.Typ}, not logout+jwt";
+            return $"the typ header is {LogValue.Clean(token.Typ)}, not logout+jwt";
 
         if (identity.FindFirst("iat") is null)
             return "the iat claim is missing";

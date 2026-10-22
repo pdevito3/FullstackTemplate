@@ -76,7 +76,7 @@ The creation model has an `Id` only for tests. If the model has an `Id`, call `S
 
 ## Versions
 
-`BaseEntity.Version` is the version of the row that the entity came from. A method that replaces fields from an edit form gets the version that the caller edited in its update model. It calls `GuardVersion` before it changes a value. When the versions are not the same, `GuardVersion` throws a `ConcurrencyConflictException`, which gives 409. Thus a stale form cannot overwrite the change of another user.
+`BaseEntity.Version` is the version of the row that the entity came from. A method that replaces fields from an edit form gets the version that the caller edited in its update model. It calls `GuardVersion` before it changes a value. When the versions are not the same, `GuardVersion` throws a `StaleVersionException`, which gives 409. Thus a stale form cannot overwrite the change of another user.
 
 ```csharp
 public Tenant Update(TenantForUpdate tenantForUpdate)

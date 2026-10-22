@@ -123,7 +123,7 @@ The gRPC service of a domain is a partial class. The example is `Domain/Tenants/
 
 gRPC needs HTTP/2. Without TLS, Kestrel serves HTTP/2 only on a port that serves only HTTP/2. So the Server has two named Kestrel endpoints in `Kestrel:Endpoints` of `appsettings.json`. The `grpc` endpoint serves gRPC in plaintext (h2c) on 8081, with `Protocols` set to `Http2`. The `http` endpoint serves the HTTP API, MCP, and the health checks on 8080 with HTTP/1.1. `appsettings.Development.json` adds `https` and the local ports. Aspire reads these names, makes one endpoint for each, and replaces each `Url`. Do not set `ASPNETCORE_URLS`, because Kestrel ignores it when the configuration has endpoints.
 
-`DomainErrorInterceptor` maps the domain exceptions to status codes: `InvalidArgument` (a validation error or a bad input), `NotFound`, `PermissionDenied`, and `AlreadyExists`. If the error names request fields, the status has a `google.rpc.BadRequest` detail with one field violation for each message. These are the same fields as the `errors` of an HTTP problem. A client reads them with `RpcException.GetRpcStatus()` and `GetDetail<BadRequest>()`.
+`DomainErrorInterceptor` maps the domain exceptions to status codes: `InvalidArgument` (a validation error or a bad input), `NotFound`, `PermissionDenied`, `AlreadyExists` (a conflict with a record that exists), and `Aborted` (a stale version). If the error names request fields, the status has a `google.rpc.BadRequest` detail with one field violation for each message. These are the same fields as the `errors` of an HTTP problem. A client reads them with `RpcException.GetRpcStatus()` and `GetDetail<BadRequest>()`.
 
 ### gRPC versions
 
@@ -147,7 +147,7 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 4. Give each other parameter a `[Description]`. These parameters are the input schema.
 5. Return the DTO. For a list, return `McpPage.From(result)`, so that the result has the page data.
 
-`McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field.
+`McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. The `code` has the name of the gRPC status, for example `already_exists` for a conflict and `aborted` for a stale version. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field.
 
 ### MCP versions
 

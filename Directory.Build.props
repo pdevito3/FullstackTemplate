@@ -7,5 +7,8 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <!-- CA1707 forbids underscores in names. The test names use underscores to separate the parts of a scenario. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- CS8524 asks for a discard arm in a switch over an enum that names each member. A discard hides a member that a
+         switch forgets, so CS8509 can no longer fail the build when a new member is added. -->
+    <NoWarn>$(NoWarn);CS8524</NoWarn>
   </PropertyGroup>
 </Project>

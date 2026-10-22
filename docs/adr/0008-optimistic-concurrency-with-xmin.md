@@ -23,5 +23,6 @@ The read DTO of an aggregate root shows `version`, and a PUT body that replaces 
 - A child must change through its loaded owner. The save throws when the owner of a changed child is not tracked.
 - A stale save that changes no value also gives 409. Thus a retry of a PUT whose response was lost gets 409, and the client loads the record again.
 - Unique violations (`23505`) and exclusion violations (`23P01`) map to 409 in one place, `DatabaseConflict.From`, together with the concurrency failure.
+- A stale version is its own error kind, `StaleVersion`, on each entrypoint. It is not a conflict with a record that exists, so a caller can tell "load the record again and repeat the change" from "use another value". HTTP gives 409 with the type `urn:fullstacktemplate:problem:stale-version`, gRPC gives `Aborted`, and MCP gives the code `aborted`.
 - The SPA has no edit form yet, so it has no code for the version. The generated client makes `version` a required field of each PUT body, and [server-state.md](../frontend/server-state.md#forms-with-server-data) gives the rule for the first edit form. The toast already shows the `detail` of a 409.
-- gRPC maps each conflict to `AlreadyExists`. No gRPC method updates a record now. When one does, map a stale version to `Aborted`.
+- No gRPC method or MCP tool updates a record now, so unit tests of the gRPC interceptor and the MCP tool filter cover the stale version on those entrypoints.

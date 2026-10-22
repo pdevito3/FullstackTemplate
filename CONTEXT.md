@@ -18,3 +18,13 @@ _Avoid_: SSO session, provider session
 The external OpenID Connect server that authenticates the user, for example Keycloak.
 The `AuthProvider` setting selects it.
 _Avoid_: OP, IdP server
+
+### Concurrency
+
+**Version**:
+The Postgres `xmin` of the row of an aggregate root. It is opaque, so compare it only for equality. A change to an owned child also gives the root a new version.
+_Avoid_: Row version, ETag, revision
+
+**Stale version**:
+A change that the caller based on a version that is no longer current. The caller loads the record again and repeats the change.
+_Avoid_: Concurrency conflict, already exists

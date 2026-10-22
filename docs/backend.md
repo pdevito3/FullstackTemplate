@@ -111,9 +111,8 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainError.cs` cl
 | `ValidationException`, `FluentValidation.ValidationException` | 422. `detail` has the message. `errors` has the messages for each named property |
 | `NotFoundException` | 404 |
 | `ForbiddenAccessException` | 403. `detail` has the message |
-| `ConflictException` | 409. `detail` has the message. `errors` has the message under the named property |
-| `ConstraintConflictException`, which `AppDbContext` throws when a unique index (Postgres `23505`) or an exclusion constraint (`23P01`) stops a save | 409. `detail` does not show the constraint or the values. `errors` has the message under the field of the constraint |
-| `ConcurrencyConflictException`, which `GuardVersion` throws for an old version in the request, and `AppDbContext` throws when another save changed the row after the load | 409. `errors` has the message under `version` |
+| `ConflictException` from a duplicate check in a handler, and `ConstraintConflictException`, which `AppDbContext` throws when a unique index (Postgres `23505`) or an exclusion constraint (`23P01`) stops a save | 409 with the default `type`. `title` is "The request conflicts with a record that exists." `detail` has the message, and `errors` has it under the named field. A `ConstraintConflictException` does not show the constraint or the values |
+| `StaleVersionException`, which `GuardVersion` throws for an old version in the request, and `AppDbContext` throws when another save changed the row after the load | 409 with `type` `urn:fullstacktemplate:problem:stale-version`. `title` is "The record changed after you loaded it." `detail` has the message, and `errors` has it under `version` |
 | `RequestValidationException`, from a DataAnnotations rule in `RequestValidationBehavior` | 400. `errors` has the messages for each camelCase field |
 | `QueryInputException`, for a `filters` or `sortOrder` value that QueryKit cannot apply | 400. `errors` has the message under the name of the parameter |
 | Any other exception | 500 |
@@ -122,7 +121,16 @@ If a request value does not bind, or a DataAnnotations rule fails, the Server re
 
 A 422 comes from a domain rule or a FluentValidation rule. Its body also has the `ValidationProblemDetails` shape. Declare `.ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)` on each write endpoint (POST, PUT, PATCH, and DELETE). Also declare it when the endpoint has no request body, because a domain rule can fail in any write.
 
-A 409 comes from a duplicate unique value, an overlap that an exclusion constraint stops, or a record that changed after the caller loaded it. Its body also has the `ValidationProblemDetails` shape. The key in `errors` tells the cases apart. The key `version` means that the caller must load the record again. Another key names the field that has the conflicting value. Declare `.ProducesValidationProblem(StatusCodes.Status409Conflict)` on each write endpoint that changes an existing record, because each one can lose a race with another save. Also declare it on each write endpoint that can add or change a unique value.
+A 409 comes from a duplicate unique value, an overlap that an exclusion constraint stops, or a record that changed after the caller loaded it. Its body also has the `ValidationProblemDetails` shape. The `type` tells the cases apart. The type `urn:fullstacktemplate:problem:stale-version` (`DomainProblemDetails.StaleVersionType`) means that the caller must load the record again and repeat the change. Any other type means that the caller must change the value of the field in `errors`.
+
+Each entrypoint shows the two kinds differently:
+
+| Kind | HTTP | gRPC | MCP `code` |
+|------|------|------|------------|
+| Conflict with a record that exists | 409 with the default `type` | `AlreadyExists` | `already_exists` |
+| Stale version | 409 with the stale version `type` | `Aborted` | `aborted` |
+
+Declare `.ProducesValidationProblem(StatusCodes.Status409Conflict)` on each write endpoint that changes an existing record, because each one can lose a race with another save. Also declare it on each write endpoint that can add or change a unique value.
 
 In a list handler, call `ApplyFilters` and `ApplySortOrder` from `Resources/QueryKitInputExtensions.cs`, not the QueryKit methods. They throw a `QueryInputException` with the name of the parameter. If an operator does not fit the type of a property, QueryKit fails with a .NET exception. Then the response gets a fixed message, and the trace gets the exception.
 
@@ -154,7 +162,7 @@ A paged list query must have a fixed sort order. Without one, a row can show on 
 
 ### Concurrency
 
-Each entity has `Version`, the Postgres `xmin` of its row. `MapVersionToXmin` maps it for each entity, so a new entity needs no configuration for it. EF Core adds `WHERE xmin = @loaded` to each update. When another save changed the row after the load, the save throws a `ConcurrencyConflictException`, which gives 409. The reasons for this design are in [ADR 0008](adr/0008-optimistic-concurrency-with-xmin.md).
+Each entity has `Version`, the Postgres `xmin` of its row. `MapVersionToXmin` maps it for each entity, so a new entity needs no configuration for it. EF Core adds `WHERE xmin = @loaded` to each update. When another save changed the row after the load, the save throws a `StaleVersionException`, which gives 409. The reasons for this design are in [ADR 0008](adr/0008-optimistic-concurrency-with-xmin.md).
 
 - A save that adds, changes, or removes an owned child also updates the owner row. Thus the version of the root guards the whole aggregate. An owned child is the dependent of a `Cascade` foreign key (see [entity-configurations.md](backend/entity-configurations.md)). Change a child only through its loaded owner. The save throws when the owner of a changed child is not tracked.
 - The read DTO of a root shows `version`. A PUT body that replaces the fields of an edit form has a required `version`, and the entity method calls `GuardVersion` first (see [domain-entities.md](backend/domain-entities.md#versions)). A command for one intent, such as a role change, a new permission, or a delete, has no version. The `xmin` check still stops its race between the load and the save.

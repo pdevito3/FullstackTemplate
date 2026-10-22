@@ -73,7 +73,7 @@ public abstract class BaseEntity
     protected void GuardVersion(uint expectedVersion)
     {
         if (expectedVersion != Version)
-            throw new Exceptions.ConcurrencyConflictException();
+            throw new Exceptions.StaleVersionException();
     }
 
     /// <summary>Replaces the generated ID. The new ID must have the prefix of this entity type.</summary>

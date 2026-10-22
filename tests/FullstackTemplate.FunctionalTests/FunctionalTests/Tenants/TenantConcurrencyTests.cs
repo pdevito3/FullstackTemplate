@@ -4,14 +4,15 @@ using System.Net;
 using System.Net.Http.Json;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Dtos;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
 
 /// <summary>
-/// A client sends back the version that it loaded. A PUT from a stale version is a 409, so a client cannot write
-/// over a change that it did not see.
+/// A client sends back the version that it loaded. A PUT from a stale version is a 409 with the stale version type, so a
+/// client cannot write over a change that it did not see, and it can tell the 409 from a duplicate value.
 /// </summary>
 public class TenantConcurrencyTests : TestBase
 {
@@ -50,7 +51,7 @@ public class TenantConcurrencyTests : TestBase
     }
 
     [Test]
-    public async Task put_with_a_stale_version_is_a_conflict_on_the_version()
+    public async Task put_with_a_stale_version_is_a_stale_version_problem_on_the_version()
     {
         // Arrange
         var tenant = await AddTenantAndSignInAsAdminAsync();
@@ -67,6 +68,8 @@ public class TenantConcurrencyTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
+        problem.Title.ShouldBe("The record changed after you loaded it.");
         problem.Detail.ShouldBe(StaleDetail);
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("version");
         (await GetTenantAsync(tenant.Id)).Name.ShouldBe(name);
@@ -92,7 +95,7 @@ public class TenantConcurrencyTests : TestBase
     }
 
     [Test]
-    public async Task two_parallel_puts_from_one_version_give_one_success_and_one_conflict()
+    public async Task two_parallel_puts_from_one_version_give_one_success_and_one_stale_version()
     {
         // Arrange
         var tenant = await AddTenantAndSignInAsAdminAsync();
@@ -105,6 +108,9 @@ public class TenantConcurrencyTests : TestBase
 
         // Assert
         results.Select(r => r.StatusCode).Order().ShouldBe([HttpStatusCode.OK, HttpStatusCode.Conflict]);
+        var problem = (await results.Single(r => r.StatusCode == HttpStatusCode.Conflict).Content
+            .ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
     }
 
     private async Task<Tenant> AddTenantAndSignInAsAdminAsync()

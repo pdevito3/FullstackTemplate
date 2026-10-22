@@ -10,6 +10,9 @@ using Shouldly;
 
 public class DatabaseConflictTests
 {
+    // ASP.NET Core sets the default type of the status before Customize runs
+    private const string DefaultConflictType = "https://tools.ietf.org/html/rfc9110#section-15.5.10";
+
     [Test]
     public void unique_violation_is_a_conflict_on_the_field_of_the_index()
     {
@@ -35,6 +38,8 @@ public class DatabaseConflictTests
         DomainProblemDetails.Customize(context);
 
         // Assert
+        context.ProblemDetails.Type.ShouldBe(DefaultConflictType);
+        context.ProblemDetails.Title.ShouldBe("The request conflicts with a record that exists.");
         var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
         error.Key.ShouldBe("identifier");
         error.Value.ShouldBe(["A record with this value already exists."]);
@@ -83,16 +88,32 @@ public class DatabaseConflictTests
     }
 
     [Test]
-    public void concurrency_failure_is_a_stale_version_conflict()
+    public void concurrency_failure_is_a_stale_version()
     {
         // Act
         var exception = DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."))
-            .ShouldBeOfType<ConcurrencyConflictException>();
+            .ShouldBeOfType<StaleVersionException>();
 
         // Assert
-        exception.Property.ShouldBe("version");
         exception.Message.ShouldBe("This record changed after you loaded it. Reload it, then make your change again.");
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
+        DomainError.IsClientError(exception).ShouldBeTrue();
+    }
+
+    [Test]
+    public void concurrency_failure_problem_has_the_stale_version_type_and_the_message_under_the_version()
+    {
+        // Arrange
+        var context = ContextFor(DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."))!);
+
+        // Act
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        context.ProblemDetails.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
+        context.ProblemDetails.Title.ShouldBe("The record changed after you loaded it.");
+        context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>()
+            .ShouldHaveSingleItem().Key.ShouldBe("version");
     }
 
     [Test]
@@ -105,7 +126,7 @@ public class DatabaseConflictTests
     {
         HttpContext = new DefaultHttpContext(),
         Exception = exception,
-        ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
+        ProblemDetails = new() { Status = StatusCodes.Status409Conflict, Type = DefaultConflictType },
     };
 
     private static DbUpdateException SaveFailure(string sqlState, string? constraintName = null)

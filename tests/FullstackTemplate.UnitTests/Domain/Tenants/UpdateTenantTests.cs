@@ -9,7 +9,7 @@ using Shouldly;
 public class UpdateTenantTests
 {
     [Test]
-    public void update_from_a_stale_version_is_a_conflict_and_changes_nothing()
+    public void update_from_a_stale_version_is_refused_and_changes_nothing()
     {
         // Arrange
         TestGraph.Start(out _).AddTenant(out var tenant, t => t.Name = "Before");
@@ -19,7 +19,7 @@ public class UpdateTenantTests
         Action act = () => tenant.Update(new TenantForUpdate { Name = "After", Version = tenant.Version + 1 });
 
         // Assert
-        act.ShouldThrow<ConcurrencyConflictException>().Property.ShouldBe("version");
+        act.ShouldThrow<StaleVersionException>();
         tenant.Name.ShouldBe("Before");
         tenant.DomainEvents.ShouldBeEmpty();
     }

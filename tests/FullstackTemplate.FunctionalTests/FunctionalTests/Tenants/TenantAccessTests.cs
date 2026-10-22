@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using Microsoft.AspNetCore.Http;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -176,6 +177,8 @@ public class TenantAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status409Conflict);
+        problem.Type.ShouldNotBe(DomainProblemDetails.StaleVersionType);
+        problem.Title.ShouldBe("The request conflicts with a record that exists.");
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 

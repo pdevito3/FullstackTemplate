@@ -18,8 +18,17 @@ public enum DomainErrorKind
     /// <summary>The caller cannot do this action.</summary>
     Forbidden,
 
-    /// <summary>The request conflicts with a record that exists.</summary>
+    /// <summary>
+    /// The request conflicts with a record that exists, for example a duplicate unique value or an overlap. The
+    /// caller must change the value.
+    /// </summary>
     Conflict,
+
+    /// <summary>
+    /// The caller based the change on a version of the record that is no longer current. The caller must load the
+    /// record again and repeat the change.
+    /// </summary>
+    StaleVersion,
 
     /// <summary>A server fault. Its message stays on the server.</summary>
     Unexpected,
@@ -40,6 +49,7 @@ public sealed record DomainError(
 {
     private const string ValidationTitle = "One or more validation errors occurred.";
     private const string ConflictTitle = "The request conflicts with a record that exists.";
+    private const string StaleVersionTitle = "The record changed after you loaded it.";
 
     /// <summary>
     /// Classifies an exception. An exception that is not a domain exception is <see cref="DomainErrorKind.Unexpected"/>.
@@ -67,6 +77,11 @@ public sealed record DomainError(
             new() { [ex.Parameter] = [ex.Message] }),
         NotFoundException ex => new(DomainErrorKind.NotFound, "The resource was not found.", ex.Message, null),
         ForbiddenAccessException ex => new(DomainErrorKind.Forbidden, "You do not have access to do this.", ex.Message, null),
+        StaleVersionException ex => new(
+            DomainErrorKind.StaleVersion,
+            StaleVersionTitle,
+            ex.Message,
+            new() { [StaleVersionException.Field] = [ex.Message] }),
         // A conflict keeps the errors property when no field is known, because a 409 has the ValidationProblemDetails shape
         ConflictException ex => new(
             DomainErrorKind.Conflict,

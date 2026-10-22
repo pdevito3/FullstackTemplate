@@ -19,7 +19,7 @@ using Shouldly;
 public class ConcurrencyTests : TestBase
 {
     [Test]
-    public async Task save_of_a_tenant_that_changed_after_the_load_is_a_conflict()
+    public async Task save_of_a_tenant_that_changed_after_the_load_is_a_stale_version()
     {
         // Arrange
         var (first, second, tenantId) = await TwoScopesForANewTenantAsync();
@@ -33,13 +33,12 @@ public class ConcurrencyTests : TestBase
         Func<Task> act = () => second.GetService<AppDbContext>().SaveChangesAsync();
 
         // Assert
-        var exception = await act.ShouldThrowAsync<ConcurrencyConflictException>();
-        exception.Property.ShouldBe("version");
+        var exception = await act.ShouldThrowAsync<StaleVersionException>();
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
     }
 
     [Test]
-    public async Task two_updates_from_one_loaded_version_give_one_success_and_one_conflict()
+    public async Task two_updates_from_one_loaded_version_give_one_success_and_one_stale_version()
     {
         // Arrange
         var (first, second, tenantId) = await TwoScopesForANewTenantAsync();
@@ -54,11 +53,11 @@ public class ConcurrencyTests : TestBase
 
         // Assert
         outcomes.Count(o => o is null).ShouldBe(1);
-        outcomes.Count(o => o is ConcurrencyConflictException).ShouldBe(1);
+        outcomes.Count(o => o is StaleVersionException).ShouldBe(1);
     }
 
     [Test]
-    public async Task child_change_of_a_user_that_changed_after_the_load_is_a_conflict()
+    public async Task child_change_of_a_user_that_changed_after_the_load_is_a_stale_version()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
@@ -78,7 +77,7 @@ public class ConcurrencyTests : TestBase
 
         // Assert
         firstUser.Version.ShouldNotBe(user.Version);
-        await act.ShouldThrowAsync<ConcurrencyConflictException>();
+        await act.ShouldThrowAsync<StaleVersionException>();
         var saved = await LoadWithPermissionsAsync(new TestingServiceScope(), user.Id);
         saved.UserPermissions.Count.ShouldBe(1);
     }

@@ -5,16 +5,16 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 /// <summary>
-/// Turns a failed save that is a client conflict into a <see cref="ConflictException"/>. It is the only code that
-/// reads the failure shapes of EF Core and Npgsql.
+/// Turns a failed save that is a client error into a <see cref="StaleVersionException"/> or a
+/// <see cref="ConstraintConflictException"/>. It is the only code that reads the failure shapes of EF Core and Npgsql.
 /// </summary>
 public static class DatabaseConflict
 {
-    /// <summary>Null when the failure is not a conflict.</summary>
-    public static ConflictException? From(DbUpdateException exception)
+    /// <summary>Null when the failure is a server fault.</summary>
+    public static Exception? From(DbUpdateException exception)
     {
         if (exception is DbUpdateConcurrencyException)
-            return new ConcurrencyConflictException(exception);
+            return new StaleVersionException(exception);
 
         if (exception.InnerException is not PostgresException postgres)
             return null;

@@ -386,7 +386,7 @@ Decisions: [Refresh lock across BFF instances](https://github.com/pdevito3/Fulls
 | Refresh failed for a temporary cause (network error, timeout, 5xx, or a lock timeout) | Keep the BFF session. If the current access token is still valid, send it. If not, forward with no token. |
 | Token type `DPoP` | The transform reads the token type of the stored token in phase 1. With `Auth:Features:DPoP` at `Disable`, a `DPoP` token cannot occur. If one occurs, the transform logs an error and forwards with no token. Phase 2 adds the DPoP branch (section 9). |
 
-Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The resilience handler of the token `HttpClient` retries a temporary failure in the same call.
+Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The refresh has no retry inside the call. The next request that needs a token tries again. A retry inside the call can send a rotated refresh token two times, after the identity provider used it but the response got lost, and then the session ends. A retry also holds the refresh lock and its `bffdb` connection longer. The refresh goes through the backchannel `HttpClient` of the OIDC handler, which does not come from `IHttpClientFactory`, so the standard resilience handler of the service defaults does not apply to it.
 
 **The refresh lock.** Our own `IUserTokenRequestConcurrencyControl` replaces the default. It has two layers:
 

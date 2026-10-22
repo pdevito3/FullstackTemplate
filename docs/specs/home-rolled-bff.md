@@ -324,11 +324,12 @@ A `returnUrl` is local if it is `/`, or if it starts with `/` and its second cha
    - `sub` or `sid` is present.
    - `events` has the member `http://schemas.openid.net/event/backchannel-logout`.
    - `nonce` is absent.
-5. Check `jti` for a replay. BCL 2.4 requires `jti`, so a token with no `jti` returns 400. The replay cache is a table in `bffdb`, keyed by `jti`, with the token `exp` as its expiry. A replay returns 400. The cleanup service also deletes the expired rows of this table.
-6. End the BFF sessions:
+5. Check `jti` for a replay. BCL 2.4 requires `jti`, so a token with no `jti` returns 400. The replay cache is a table in `bffdb`, keyed by `jti`, with the token `exp` as its expiry. The BFF writes the `jti` before it ends a session. A replay returns 400. A failed write of the `jti` returns 400 and ends no session, so that the provider can send the token again. The cleanup service also deletes the expired rows of this table.
+6. End the BFF sessions. The request abort of the client does not cancel this step.
    - If the token has a `sid`, delete the rows with that `sid`.
    - If it has only a `sub`, delete all the rows of that `sub`.
-   - For each row, if revocation is active, revoke its refresh token. A revocation error does not change the response.
+   - The BFF deletes all the rows first. Then, if revocation is active, it revokes the refresh token of each deleted row. A revocation error is logged and does not stop the other revocations or change the response.
+   - If a row delete fails, the BFF revokes the tokens of the rows that it deleted, removes the `jti`, and returns 500. The provider can then send the same token again.
    - Add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
 7. Return 200. Any failure in steps 2 to 5 returns 400.
 

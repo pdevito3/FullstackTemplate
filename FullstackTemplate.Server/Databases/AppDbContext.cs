@@ -64,7 +64,7 @@ public class AppDbContext(
         {
             result = base.SaveChanges(acceptAllChangesOnSuccess);
         }
-        catch (DbUpdateException exception) when (UniqueIndexException.From(exception) is { } conflict)
+        catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {
             throw conflict;
         }
@@ -89,7 +89,7 @@ public class AppDbContext(
         {
             result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
-        catch (DbUpdateException exception) when (UniqueIndexException.From(exception) is { } conflict)
+        catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {
             throw conflict;
         }

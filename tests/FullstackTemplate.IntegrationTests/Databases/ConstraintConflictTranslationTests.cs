@@ -8,7 +8,7 @@ using Shouldly;
 /// Two requests can pass the duplicate check of a handler at the same time. Then the unique index stops the second
 /// save, and the DbContext gives a conflict on the request field, not a database failure.
 /// </summary>
-public class UniqueIndexTranslationTests : TestBase
+public class ConstraintConflictTranslationTests : TestBase
 {
     [Test]
     public async Task duplicate_save_is_a_conflict_on_the_field_of_the_index()
@@ -22,8 +22,9 @@ public class UniqueIndexTranslationTests : TestBase
         Func<Task> act = () => testingServiceScope.StartGraph(out _).AddTenant(out _, t => t.Name = name).BuildAsync();
 
         // Assert
-        var exception = await act.ShouldThrowAsync<UniqueIndexException>();
-        exception.Index.ShouldBe("ix_tenants_name");
+        var exception = await act.ShouldThrowAsync<ConstraintConflictException>();
+        exception.Constraint.ShouldBe("ix_tenants_name");
         exception.Property.ShouldBe("name");
+        exception.Message.ShouldBe(ConstraintConflictException.DuplicateMessage);
     }
 }

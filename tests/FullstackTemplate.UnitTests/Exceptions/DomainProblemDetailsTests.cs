@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Exceptions;
 
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Http;
@@ -78,6 +79,30 @@ public class DomainProblemDetailsTests
         context.ProblemDetails.Detail.ShouldBe("Please provide a name.");
         // A 422 has the ValidationProblemDetails shape, so errors is present when no field is known
         context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldBeEmpty();
+    }
+
+    [Test]
+    public void exclusion_violation_problem_is_a_conflict_with_the_message_under_the_field()
+    {
+        // Arrange
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"))!;
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            Exception = exception,
+            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
+        };
+
+        // Act
+        var status = DomainProblemDetails.StatusCodeFor(exception);
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        status.ShouldBe(StatusCodes.Status409Conflict);
+        context.ProblemDetails.Detail.ShouldBe("This value overlaps a record that exists.");
+        var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
+        error.Key.ShouldBe("name");
+        error.Value.ShouldBe(["This value overlaps a record that exists."]);
     }
 
     [Test]

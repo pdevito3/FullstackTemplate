@@ -5,22 +5,22 @@ using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 using Shouldly;
 
-public class UniqueIndexExceptionTests
+public class DatabaseConflictTests
 {
     [Test]
     public void unique_violation_is_a_conflict_on_the_field_of_the_index()
     {
         // Act
-        var exception = UniqueIndexException.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier")).ShouldNotBeNull();
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"))
+            .ShouldBeOfType<ConstraintConflictException>();
 
         // Assert
-        exception.Index.ShouldBe("ix_users_identifier");
+        exception.Constraint.ShouldBe("ix_users_identifier");
         exception.Property.ShouldBe("identifier");
+        exception.Message.ShouldBe(ConstraintConflictException.DuplicateMessage);
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
         DomainError.IsClientError(exception).ShouldBeTrue();
     }
@@ -29,7 +29,7 @@ public class UniqueIndexExceptionTests
     public void unique_violation_problem_has_the_message_under_the_field_of_the_index()
     {
         // Arrange
-        var context = ContextFor(UniqueIndexException.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"))!);
+        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"))!);
 
         // Act
         DomainProblemDetails.Customize(context);
@@ -44,7 +44,7 @@ public class UniqueIndexExceptionTests
     public void unique_violation_problem_does_not_show_the_constraint()
     {
         // Arrange
-        var context = ContextFor(UniqueIndexException.From(SaveFailure(PostgresErrorCodes.UniqueViolation))!);
+        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation))!);
 
         // Act
         DomainProblemDetails.Customize(context);
@@ -55,28 +55,37 @@ public class UniqueIndexExceptionTests
     }
 
     [Test]
-    public void other_database_failure_is_not_a_unique_violation()
+    public void exclusion_violation_is_an_overlap_conflict_on_the_field_of_the_constraint()
     {
-        UniqueIndexException.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation)).ShouldBeNull();
+        // Act
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"))
+            .ShouldBeOfType<ConstraintConflictException>();
+
+        // Assert
+        exception.Constraint.ShouldBe("ix_tenants_name");
+        exception.Property.ShouldBe("name");
+        exception.Message.ShouldBe("This value overlaps a record that exists.");
+        DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
     }
 
     [Test]
-    public void each_unique_index_in_the_model_has_a_field()
+    public void exclusion_violation_problem_of_an_unknown_constraint_does_not_show_the_constraint()
     {
         // Arrange
-        using var dbContext = new AppDbContextFactory().CreateDbContext([]);
-        var model = dbContext.GetService<IDesignTimeModel>().Model;
+        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ex_bookings_room_period"))!);
 
         // Act
-        var uniqueIndexes = model.GetEntityTypes()
-            .SelectMany(e => e.GetIndexes())
-            .Where(i => i.IsUnique)
-            .Select(i => i.GetDatabaseName())
-            .ToList();
+        DomainProblemDetails.Customize(context);
 
         // Assert
-        uniqueIndexes.ShouldNotBeEmpty();
-        uniqueIndexes.Where(i => !UniqueIndexException.IndexFields.ContainsKey(i!)).ShouldBeEmpty();
+        context.ProblemDetails.Detail.ShouldBe("This value overlaps a record that exists.");
+        context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldBeEmpty();
+    }
+
+    [Test]
+    public void other_database_failure_is_not_a_conflict()
+    {
+        DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation)).ShouldBeNull();
     }
 
     private static ProblemDetailsContext ContextFor(Exception exception) => new()

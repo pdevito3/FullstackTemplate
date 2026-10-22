@@ -20,6 +20,7 @@ permissions:
 jobs:
   api-contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -86,6 +87,7 @@ jobs:
 
   grpc-contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -111,6 +113,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -135,6 +138,7 @@ jobs:
   # A path filter, not paths: on the trigger, so that a skipped BFF job still reports a status
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: read
@@ -155,6 +159,10 @@ jobs:
               - 'FullstackTemplate.AppHost/**'
               - 'Directory.Packages.props'
               - 'Directory.Build.props'
+              - 'global.json'
+              - 'dotnet-tools.json'
+              - 'frontend/package.json'
+              - 'frontend/pnpm-lock.yaml'
               - 'frontend/e2e/**'
               - 'frontend/playwright.config.ts'
               - '.github/workflows/ci.yml'
@@ -163,6 +171,7 @@ jobs:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.bff == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -179,8 +188,11 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       # The integration tests start Postgres with Testcontainers. The refresh lock tests run two BFF hosts on it.
+      # Without --results-directory, Microsoft.Testing.Platform writes the reports under bin/ of the test project.
       - name: Run the BFF tests
-        run: dotnet test --project tests/FullstackTemplate.Bff.Tests/FullstackTemplate.Bff.Tests.csproj
+        run: >-
+          dotnet test --project tests/FullstackTemplate.Bff.Tests/FullstackTemplate.Bff.Tests.csproj
+          --report-trx --results-directory "$GITHUB_WORKSPACE/TestResults"
 
       - name: Upload the test report
         if: failure()

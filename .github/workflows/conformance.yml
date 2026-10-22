@@ -17,6 +17,7 @@ jobs:
   # A path filter, not paths: on the trigger, so that a skipped job still reports a status
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: read
@@ -36,6 +37,10 @@ jobs:
               - 'FullstackTemplate.AppHost/**'
               - 'Directory.Packages.props'
               - 'Directory.Build.props'
+              - 'global.json'
+              - 'dotnet-tools.json'
+              - 'frontend/package.json'
+              - 'frontend/pnpm-lock.yaml'
               - 'frontend/conformance/**'
               - '.github/workflows/conformance.yml'
 

@@ -65,7 +65,13 @@ A unit test in `AuthProviderCatalogTests` makes sure that each provider has its 
 
 The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the React app and through Swagger UI. They run against the provider of the running stack.
 
-1. Start the stack, as shown in [Select a provider](#select-a-provider).
+1. Start the stack, as shown in [Select a provider](#select-a-provider). For the BFF refresh test, also set `BffRefreshBeforeExpirationSeconds`, as the CI e2e job does:
+
+   ```bash
+   AuthProvider=Keycloak BffRefreshBeforeExpirationSeconds=86400 dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+   ```
+
+   The AppHost gives the value to the BFF as `Auth:RefreshBeforeExpirationSeconds`. It is longer than the access token lifetime of each provider, so each API call makes the BFF refresh. Do not set it for a normal run. Without it, the BFF refresh test is skipped.
 2. Wait until the server, the BFF, and the webfrontend are healthy:
 
    ```bash
@@ -85,6 +91,7 @@ The script `frontend/e2e/run-against-stack.ts` reads the `webfrontend` and `serv
 The script also gives the tests the client id and the client secret of the BFF, and the admin credentials of the provider. It never prints them.
 
 - The refresh rotation test uses the client of the BFF for its own code flow. It proves that the provider rejects the old refresh token after one refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik.
+- The BFF refresh test makes two API calls through the BFF, and each call refreshes. The second call succeeds only if the BFF stored the rotated refresh token of the first call. Then the test logs out, and the `id_token_hint` proves that the BFF stored the ID token of the second refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik. On a provider that does not reject a reused refresh token, the test cannot prove the rotation.
 - The back-channel logout test ends the session at the provider through its admin API, and expects a 401 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database.
 
 ## Test users

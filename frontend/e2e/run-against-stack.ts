@@ -77,6 +77,8 @@ const env: NodeJS.ProcessEnv = {
   // The refresh rotation test uses the client of the BFF for its own code flow against the identity provider
   CLIENT_ID: bffEnvironment.Auth__ClientId,
   CLIENT_SECRET: bffEnvironment.Auth__ClientSecret,
+  // The BFF refresh test runs only when the stack makes each API call refresh (BffRefreshBeforeExpirationSeconds)
+  BFF_REFRESH_BEFORE_EXPIRATION_SECONDS: bffEnvironment.Auth__RefreshBeforeExpirationSeconds ?? '',
 }
 
 // The back-channel logout test ends the session of the user through the admin API of the identity provider. The

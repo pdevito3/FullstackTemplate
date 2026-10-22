@@ -602,3 +602,61 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
     expect({ status: reused.status, error: reused.body.error }).toEqual({ status: 400, error: 'invalid_grant' })
   })
 })
+
+// The payload of a JWT, read with no signature check. The caller reads only claims, never prints the token.
+function jwtPayload(token: string): Record<string, unknown> {
+  return JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')) as Record<string, unknown>
+}
+
+// A GET through the BFF proxy with the session cookie of the page, as the SPA sends it
+async function bffApiStatus(page: Page, path: string): Promise<number> {
+  return page.evaluate(async (url) => (await fetch(url, { headers: { 'X-CSRF': '1' } })).status, path)
+}
+
+/**
+ * The BFF side of rotation. The stack starts with BffRefreshBeforeExpirationSeconds longer than the access token
+ * lifetime, so each API call makes the BFF refresh. The provider rotates the refresh token on each refresh and rejects
+ * a reused one (the test above). So the second call succeeds only if the BFF stored the rotated refresh token of the
+ * first call. A BFF that keeps the old one gets invalid_grant, ends the session, and forwards the call with no token.
+ *
+ * The stored ID token proves that the second call refreshed: the BFF sends it as id_token_hint at logout, and its iat
+ * is after the start of the second call. A refresh response replaces the stored ID token, and the login ID token is
+ * older.
+ */
+test.describe(`BFF refresh - ${currentIdp.name}`, () => {
+  test('each API call refreshes, and the BFF stores the rotated tokens', async ({ page }) => {
+    test.skip(
+      !currentIdp.sessionFeatures.refreshRotation,
+      `${currentIdp.name} does not rotate refresh tokens, so a BFF that keeps the old refresh token also passes (section 6 of the spec).`,
+    )
+    const margin = Number(process.env.BFF_REFRESH_BEFORE_EXPIRATION_SECONDS ?? '0')
+    test.skip(
+      !(margin > 3600),
+      'The BFF refreshes on each API call only when the stack starts with BffRefreshBeforeExpirationSeconds above the access token lifetime of 3600 s, for example BffRefreshBeforeExpirationSeconds=86400 (docs/authentication.md).',
+    )
+
+    const discovery = await readDiscovery()
+    await signInThroughSpa(page)
+
+    expect(await bffApiStatus(page, '/api/v1/weather/secure'), 'the first API call').toBe(200)
+    // iat has a resolution of one second, so the second call starts in a later second than each earlier token
+    await page.waitForTimeout(2500)
+    const secondCallStart = Math.floor(Date.now() / 1000)
+    expect(await bffApiStatus(page, '/api/v1/weather/secure'), 'the second API call, with the rotated refresh token').toBe(200)
+    expect(await bffUserStatus(page), 'the BFF session after the refreshes').toBe(200)
+
+    const claims = await page.evaluate(
+      async () => (await (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json()) as { type: string; value: string }[],
+    )
+    const logoutUrl = claims.find((claim) => claim.type === 'bff:logout_url')?.value
+    expect(logoutUrl, 'the bff:logout_url claim').toBeTruthy()
+    const endSession = page.waitForRequest((request) => request.url().startsWith(discovery.end_session_endpoint as string), { timeout: 30000 })
+    await page.goto(logoutUrl!)
+    const idTokenHint = new URL((await endSession).url()).searchParams.get('id_token_hint')
+    expect(idTokenHint, 'the id_token_hint of the logout').toBeTruthy()
+
+    const iat = jwtPayload(idTokenHint!).iat as number
+    // One second of tolerance for the clock of the provider container
+    expect(iat, 'the iat of the stored ID token is from the refresh of the second call').toBeGreaterThanOrEqual(secondCallStart - 1)
+  })
+})

@@ -78,6 +78,13 @@ try
     bff.WithBffAuth(authProvider);
     authProvider.ConfigureBff?.Invoke(bff);
 
+    // Only the e2e runs set it. A margin longer than the access token lifetime makes each API call refresh, so
+    // that the e2e tests prove that the BFF refreshes and stores the rotated tokens.
+    if (builder.Configuration["BffRefreshBeforeExpirationSeconds"] is { Length: > 0 } refreshMargin)
+    {
+        bff.WithEnvironment("Auth__RefreshBeforeExpirationSeconds", refreshMargin);
+    }
+
     webfrontend.WithReference(bff);
 
     // The BFF serves the SPA in production. The server is an internal API only.

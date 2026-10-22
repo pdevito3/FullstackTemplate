@@ -544,7 +544,7 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 | Client authentication | OAuth 2.1 2.4.1, RFC 6749 2.3.1 | `client_secret_basic`, discovery fallback | Unit: each `Auth:ClientAuthentication` case. Conformance: basic plan. |
 | `iss` response parameter | RFC 9207 2.4 | `iss` check | Unit: each case of section 3.2. Conformance: basic plan. |
 | PAR when the AS offers it | RFC 9126 | `Auth:Features:PushedAuthorization` | Unit: the setting map. e2e: the authorize URL has only `client_id` and `request_uri` on Keycloak and the Duende Demo. |
-| Refresh token rotation and reuse | OAuth 2.1 4.3.3 | The refresh lock | Integration: two hosts, one refresh call. e2e: Keycloak with rotation. Conformance: refresh plan. |
+| Refresh token rotation and reuse | OAuth 2.1 4.3.3 | The refresh lock | Integration: two hosts, one refresh call. e2e: the provider rejects a reused refresh token, and the BFF refreshes on each API call with the rotated token, on Keycloak, FusionAuth, and Authentik. Conformance: refresh plan. |
 | ID token of a refresh response: signature, `iss`, `aud`, `azp`, `exp`, `iat`, same `sub` and `auth_time` | Core 12.2 | `RefreshIdTokenValidation`, section 3.7 | Integration: a wrong `iss`, `sub`, `aud`, or `auth_time`, or a bad signature, ends the BFF session. A valid ID token or no ID token gives the new tokens. Conformance: refresh plan. |
 | Refresh token revocation | RFC 7009 2.1 | Logout step 4 | Integration: a fake token endpoint gets the revocation. e2e: the revoked token fails on Keycloak and the Duende Demo. |
 | RP-initiated logout with `id_token_hint` and `post_logout_redirect_uri` | RPIL 2, 3 | Logout step 6 | e2e on each provider. Conformance: RP-initiated logout plan. |

@@ -230,6 +230,9 @@ jobs:
     env:
       AuthProvider: ${{ matrix.provider }}
       IDP: ${{ matrix.idp }}
+      # Longer than the access token lifetime of each provider, so that each API call refreshes. The BFF refresh test
+      # in auth-flows.spec.ts needs it.
+      BffRefreshBeforeExpirationSeconds: '86400'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:

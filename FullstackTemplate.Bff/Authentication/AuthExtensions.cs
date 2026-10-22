@@ -216,7 +216,7 @@ public static class AuthExtensions
         // Auth:DPoPJsonWebKey with the final configuration. Under Auto, the feature decision turns it off again when
         // discovery lacks DPoP.
         services.AddOptions<UserTokenManagementOptions>()
-            .Configure<IConfiguration>((options, configuration) => options.DPoPJsonWebKey = DPoPKey.Read(configuration));
+            .Configure<IConfiguration>((options, configuration) => options.DPoPJsonWebKey = DPoPKey.ReadOrNull(configuration));
         RefreshIdTokenValidation.Register(services);
         RefreshFailureMetrics.Register(services);
         DefaultAccessTokenLifetime.AddToRefresh(services);

@@ -39,6 +39,9 @@ public sealed class ProviderFeatureDiscovery(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // Stops the BFF when Auth:DPoPJsonWebKey is set but is not a valid private key
+        DPoPKey.Read(configuration);
+
         using var activity = Telemetry.Source.StartActivity("provider_features.decide");
         try
         {

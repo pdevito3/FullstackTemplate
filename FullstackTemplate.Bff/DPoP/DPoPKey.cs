@@ -43,6 +43,24 @@ public static class DPoPKey
     }
 
     /// <summary>
+    /// <see cref="Read"/>, but null for a key that is not valid. The options of token management use it: Duende
+    /// resolves them while the host builds its services, and an exception there races with the dispose of the host.
+    /// <see cref="ProviderFeatureDiscovery"/> calls <see cref="Read"/> at startup, so that a key that is not valid
+    /// still stops the BFF.
+    /// </summary>
+    public static DPoPProofKey? ReadOrNull(IConfiguration configuration)
+    {
+        try
+        {
+            return Read(configuration);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// The <c>alg</c> of the key.
     /// </summary>
     public static string Algorithm(DPoPProofKey key) => new JsonWebKey(key.ToString()).Alg;

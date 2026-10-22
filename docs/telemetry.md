@@ -76,7 +76,7 @@ The BFF has these custom metrics on the `FullstackTemplate.Bff` meter. Its HTTP,
 
 - `bff.sessions.started` - a counter of the BFF sessions that a login created. It has no tags.
 - `bff.sessions.ended` - a counter of the BFF sessions that ended. The `reason` tag is `logout`, `backchannel_logout`, `refresh_failure`, or `expiry`.
-- `bff.refresh.failures` - a counter of the failed token refreshes. The `kind` tag is `permanent` (`invalid_grant`) or `temporary` (any other failure).
+- `bff.refresh.failures` - a counter of the failed token refreshes. The `kind` tag is `permanent` (`invalid_grant`, or an ID token in the refresh response that fails the checks) or `temporary` (any other failure).
 
 ## Resource attributes
 

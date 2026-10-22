@@ -32,8 +32,11 @@ using Microsoft.IdentityModel.Tokens;
 /// the ID token), <c>test_azp</c> (the <c>azp</c> of the ID token), <c>test_nonce=wrong</c> (an ID token
 /// <c>nonce</c> that is not the one of the authorize request), <c>test_at_hash=wrong</c> (an <c>at_hash</c> that
 /// is not the hash of the access token), and <c>test_id_token</c> (<c>unsigned</c> gives an ID token with
-/// <c>alg=none</c>). The ID token has the correct <c>at_hash</c> by default. A refresh response has no <c>id_token</c>.
-/// Refresh tokens rotate: each one works one time, and a reuse gets <c>invalid_grant</c>.
+/// <c>alg=none</c>). The ID token has the correct <c>at_hash</c> by default. By default a refresh
+/// response has no <c>id_token</c>. <c>test_refresh_id_token</c> adds one: <c>valid</c>, or one with a fault,
+/// <c>wrong_iss</c>, <c>wrong_sub</c>, <c>wrong_aud</c>, <c>wrong_auth_time</c>, or <c>bad_signature</c> (signed with
+/// another key with the <c>kid</c> of the provider key). Refresh tokens rotate: each one works one time, and a reuse
+/// gets <c>invalid_grant</c>.
 /// </para>
 /// <para>
 /// <see cref="FakeProviderOptions"/> chooses the optional features in its discovery document. The token and PAR
@@ -319,6 +322,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 WrongAtHash: Parameter("test_at_hash") == "wrong",
                 UnsignedIdToken: Parameter("test_id_token") == "unsigned",
                 OmitExpiresIn: Parameter("test_expires_in") == "omit",
+                RefreshIdToken: Parameter("test_refresh_id_token"),
+                AuthTime: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 RedirectUri: redirectUri,
                 CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null);
 
@@ -355,7 +360,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                         || CodeChallenge(form["code_verifier"].ToString()) != grant.CodeChallenge)
                         return Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest);
 
-                    return IssueTokens(grant, includeIdToken: true);
+                    return IssueTokens(grant, refresh: false);
 
                 case "refresh_token" when _refreshTokens.TryGetValue(form["refresh_token"].ToString(), out var grant):
                     RefreshRequests.Add(form["refresh_token"].ToString());
@@ -371,7 +376,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                     var firstUse = _usedRefreshTokens.TryAdd(form["refresh_token"].ToString(), true);
                     return grant.Refresh == "fail" || !firstUse
                         ? Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest)
-                        : IssueTokens(grant, includeIdToken: false);
+                        : IssueTokens(grant, refresh: true);
 
                 default:
                     return Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest);
@@ -451,7 +456,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             : null;
     }
 
-    private IResult IssueTokens(Grant grant, bool includeIdToken)
+    private IResult IssueTokens(Grant grant, bool refresh)
     {
         var accessToken = NewToken("at");
         var refreshToken = NewToken("rt");
@@ -466,33 +471,80 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             ["refresh_token"] = refreshToken,
         };
         if (!grant.OmitExpiresIn)
-            response["expires_in"] = includeIdToken ? grant.ExpiresIn : grant.RefreshExpiresIn ?? grant.ExpiresIn;
+            response["expires_in"] = refresh ? grant.RefreshExpiresIn ?? grant.ExpiresIn : grant.ExpiresIn;
 
-        if (includeIdToken)
+        if (!refresh)
         {
-            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var claims = new Dictionary<string, object>
-            {
-                ["iss"] = Issuer,
-                ["aud"] = grant.ExtraAudience is { } extra ? new[] { ClientId, extra } : ClientId,
-                ["sub"] = grant.Subject,
-                ["nonce"] = grant.Nonce,
-                ["at_hash"] = AtHash(grant.WrongAtHash ? NewToken("at") : accessToken),
-                ["iat"] = now,
-                ["exp"] = now + 300,
-            };
-            if (grant.SessionId is not null)
-                claims["sid"] = grant.SessionId;
-            if (grant.AuthorizedParty is not null)
-                claims["azp"] = grant.AuthorizedParty;
+            var claims = IdTokenClaims(grant);
+            claims["nonce"] = grant.Nonce;
+            claims["at_hash"] = AtHash(grant.WrongAtHash ? NewToken("at") : accessToken);
+            if (grant.ExtraAudience is { } extra)
+                claims["aud"] = new[] { ClientId, extra };
 
             idToken = CreateJwt(claims, "JWT", withoutSignature: grant.UnsignedIdToken);
+            response["id_token"] = idToken;
+        }
+        else if (grant.RefreshIdToken is { } fault)
+        {
+            idToken = RefreshIdToken(grant, fault);
             response["id_token"] = idToken;
         }
 
         _issued.Enqueue(new IssuedTokens(grant.Subject, accessToken, refreshToken, idToken));
 
         return Results.Text(JsonSerializer.Serialize(response), "application/json");
+    }
+
+    private Dictionary<string, object> IdTokenClaims(Grant grant)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var claims = new Dictionary<string, object>
+        {
+            ["iss"] = Issuer,
+            ["aud"] = ClientId,
+            ["sub"] = grant.Subject,
+            ["iat"] = now,
+            ["exp"] = now + 300,
+            ["auth_time"] = grant.AuthTime,
+        };
+        if (grant.SessionId is not null)
+            claims["sid"] = grant.SessionId;
+        if (grant.AuthorizedParty is not null)
+            claims["azp"] = grant.AuthorizedParty;
+        return claims;
+    }
+
+    /// <summary>
+    /// The ID token of a refresh response (OIDC Core 12.2), with no nonce, and with the fault that
+    /// <c>test_refresh_id_token</c> names.
+    /// </summary>
+    private string RefreshIdToken(Grant grant, string fault)
+    {
+        var claims = IdTokenClaims(grant);
+        switch (fault)
+        {
+            case "valid" or "bad_signature":
+                break;
+            case "wrong_iss":
+                claims["iss"] = $"{Issuer}/other";
+                break;
+            case "wrong_sub":
+                claims["sub"] = $"other-{grant.Subject}";
+                break;
+            case "wrong_aud":
+                claims["aud"] = "other-client";
+                break;
+            case "wrong_auth_time":
+                claims["auth_time"] = grant.AuthTime - 60;
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown test_refresh_id_token value '{fault}'.");
+        }
+
+        var credentials = fault == "bad_signature"
+            ? new SigningCredentials(new RsaSecurityKey(CreateRsaParameters()) { KeyId = _signingKey.KeyId }, SecurityAlgorithms.RsaSha256)
+            : null;
+        return CreateJwt(claims, "JWT", credentials);
     }
 
     private static string NewToken(string prefix) => $"{prefix}-{Guid.NewGuid():N}";
@@ -506,9 +558,11 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
 
     /// <param name="Refresh">The <c>test_refresh</c> mode: null, <c>fail</c>, or <c>unavailable</c>.</param>
+    /// <param name="RefreshIdToken">The <c>test_refresh_id_token</c> mode, or null for no ID token in a refresh response.</param>
+    /// <param name="AuthTime">The <c>auth_time</c> of the ID tokens.</param>
     private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, int? RefreshExpiresIn, string? Refresh,
         string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, bool UnsignedIdToken, bool OmitExpiresIn,
-        string RedirectUri, string? CodeChallenge);
+        string? RefreshIdToken, long AuthTime, string RedirectUri, string? CodeChallenge);
 
     /// <summary>
     /// One request to the token endpoint.

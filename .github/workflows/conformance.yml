@@ -104,9 +104,9 @@ jobs:
             dotnet aspire wait "$resource" --status healthy --timeout 900 --non-interactive --apphost FullstackTemplate.AppHost
           done
 
-      # Writes the plan counts to the job summary. Fails on each FAILED result, and on each WARNING or REVIEW
-      # result that frontend/conformance/accepted-results.json does not list. A report-only plan fails only on a
-      # module that does not finish, because such a module gives no result.
+      # Writes the plan counts to the job summary. Fails on each FAILED result, on each WARNING or REVIEW result
+      # that frontend/conformance/accepted-results.json does not list, and on each module that does not finish,
+      # because such a module gives no result. Each plan blocks, the refresh plan too.
       - name: Run the conformance plans
         working-directory: frontend
         run: pnpm test:conformance

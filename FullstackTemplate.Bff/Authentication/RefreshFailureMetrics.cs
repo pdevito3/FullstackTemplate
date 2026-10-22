@@ -36,30 +36,22 @@ public sealed class RefreshFailureMetrics(IOpenIdConnectUserTokenEndpoint inner)
         inner.RevokeRefreshTokenAsync(userToken, parameters, ct);
 
     /// <summary>
-    /// <c>invalid_grant</c> is permanent: the refresh token is expired, revoked, or used. Each other error, such as
-    /// a network error, a timeout, or a 5xx, is temporary.
+    /// <c>invalid_grant</c> is permanent: the refresh token is expired, revoked, or used. A rejected ID token in the
+    /// refresh response (<see cref="RefreshIdTokenValidation.InvalidIdTokenError"/>) is also permanent. Each other
+    /// error, such as a network error, a timeout, or a 5xx, is temporary.
     /// </summary>
     public static string KindOf(string? error) =>
         string.Equals(error, "invalid_grant", StringComparison.Ordinal)
+        || string.Equals(error, RefreshIdTokenValidation.InvalidIdTokenError, StringComparison.Ordinal)
             ? RefreshFailureKind.Permanent
             : RefreshFailureKind.Temporary;
 
     /// <summary>
     /// Wraps the token endpoint that token management registered, with the <see cref="RefreshTimeout"/> inside, so
-    /// that a timeout counts as a temporary failure. Call it after <c>AddOpenIdConnectAccessTokenManagement</c>.
+    /// that a timeout counts as a temporary failure. Call it after <see cref="RefreshIdTokenValidation.Register"/>,
+    /// so that a rejected ID token counts as a failure.
     /// </summary>
-    public static void Register(IServiceCollection services)
-    {
-        var registered = services.Single(d => d.ServiceType == typeof(IOpenIdConnectUserTokenEndpoint));
-        var implementation = registered.ImplementationType
-            ?? throw new InvalidOperationException("Token management registered its token endpoint with no implementation type.");
-
-        services.Remove(registered);
-        services.Add(ServiceDescriptor.Describe(
-            typeof(IOpenIdConnectUserTokenEndpoint),
-            sp => new RefreshFailureMetrics(new RefreshTimeout(
-                (IOpenIdConnectUserTokenEndpoint)ActivatorUtilities.CreateInstance(sp, implementation),
-                sp.GetRequiredService<IOptionsMonitor<RefreshOptions>>())),
-            registered.Lifetime));
-    }
+    public static void Register(IServiceCollection services) =>
+        TokenEndpointDecorator.Decorate(services, (provider, inner) => new RefreshFailureMetrics(new RefreshTimeout(
+            inner, provider.GetRequiredService<IOptionsMonitor<RefreshOptions>>())));
 }

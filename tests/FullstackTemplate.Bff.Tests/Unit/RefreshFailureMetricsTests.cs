@@ -18,6 +18,7 @@ public sealed class RefreshFailureMetricsTests : IDisposable
 
     [Test]
     [Arguments("invalid_grant", "permanent")]
+    [Arguments("bff_invalid_refresh_id_token", "permanent")]
     [Arguments("server_error", "temporary")]
     [Arguments("temporarily_unavailable", "temporary")]
     [Arguments("Service Unavailable", "temporary")]

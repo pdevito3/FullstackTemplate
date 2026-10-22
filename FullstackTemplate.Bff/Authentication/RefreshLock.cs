@@ -264,9 +264,17 @@ public sealed class RefreshLock(
             return;
         }
 
-        // An expected end: the refresh token expired or was revoked, or the IdP session ended. Not a fault of the BFF.
         if (outcome.Ended)
             Telemetry.RecordSessionsEnded(SessionEndReason.RefreshFailure);
+        if (string.Equals(failure.Error, RefreshIdTokenValidation.InvalidIdTokenError, StringComparison.Ordinal))
+        {
+            // RefreshIdTokenValidation logs the reason
+            Logger.Here().Warning("Ended the BFF session {SessionKey}, because the ID token of its refresh response failed the checks",
+                fingerprint);
+            return;
+        }
+
+        // An expected end: the refresh token expired or was revoked, or the IdP session ended. Not a fault of the BFF.
         Logger.Here().Information("Ended the BFF session {SessionKey}, because the identity provider rejected its refresh token with {Error}",
             fingerprint, failure.Error);
     }

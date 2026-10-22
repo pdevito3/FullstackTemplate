@@ -12,8 +12,7 @@
  * through /bff/logout for the logout plans. The suite pages need no user input.
  *
  * Each FAILED result fails the run. Each WARNING or REVIEW result fails the run, unless accepted-results.json lists
- * it with a reason. The FAILED, WARNING, and REVIEW results of a report-only plan do not fail the run. Each module
- * that does not finish is "not run" and fails the run, also in a report-only plan: it has no result, so a green run
+ * it with a reason. Each module that does not finish is "not run" and fails the run: it has no result, so a green run
  * would hide a plan that tests nothing. The results, the HTML export of each plan, and the screenshots go to
  * conformance/results/.
  *
@@ -47,7 +46,6 @@ interface PlanDefinition {
   // The variants that the plan does not fix
   variant: Record<string, string>
   flow: Flow
-  reportOnly?: boolean
 }
 
 const staticClient = { client_registration: 'static_client', request_type: 'plain_http_request' }
@@ -62,8 +60,9 @@ const plans: PlanDefinition[] = [
   { name: 'oidcc-client-back-channel-logout-rp-basic', variant: codeFlow, flow: 'login-logout' },
   // Not part of the certification program. The happy path module finishes on a userinfo call with the refreshed
   // access token. The BFF does not make it, but the server does, because it checks the opaque access tokens of the
-  // suite at the userinfo endpoint (Auth:AccessTokenValidation in ConformanceAuthProvider).
-  { name: 'oidcc-client-refreshtoken-test-plan', variant: { ...codeFlow, response_type: 'code' }, flow: 'login-refresh', reportOnly: true },
+  // suite at the userinfo endpoint (Auth:AccessTokenValidation in ConformanceAuthProvider). The negative modules
+  // send an ID token with a wrong iss or sub in the refresh response, and the BFF must not use the new tokens.
+  { name: 'oidcc-client-refreshtoken-test-plan', variant: { ...codeFlow, response_type: 'code' }, flow: 'login-refresh' },
 ]
 
 // The key rotation module of the config plan needs a second login, with the new keys
@@ -292,9 +291,9 @@ async function runPlan(api: APIRequestContext, browser: Browser, bff: string, pl
         ? accepted.find((a) => a.plan === plan.name && a.module === testModule && a.result === result.result)
         : undefined
       result.accepted = entry?.reason
-      result.blocking = !plan.reportOnly && !entry
+      result.blocking = !entry
     }
-    const mark = result.blocking ? 'FAIL' : result.accepted ? 'accepted' : plan.reportOnly && !['PASSED', 'SKIPPED'].includes(result.result) ? 'report only' : 'ok'
+    const mark = result.blocking ? 'FAIL' : result.accepted ? 'accepted' : 'ok'
     console.log(`  ${result.result.padEnd(9)} ${testModule} [${mark}] ${result.steps.join('; ')}`)
     results.push(result)
   }
@@ -320,13 +319,11 @@ function summarize(results: ModuleResult[]) {
     const count = (predicate: (r: ModuleResult) => boolean) => planResults.filter(predicate).length
     const notRun = count((r) => !finishedResults.includes(r.result))
     const status = notRun === 0 ? 'ran' : notRun === planResults.length ? 'NOT RUN' : 'INCOMPLETE'
-    const name = plan.reportOnly ? `${plan.name} (report only)` : plan.name
     lines.push(
-      `| ${name} | ${status} | ${count((r) => r.result === 'PASSED')} | ${count((r) => r.result === 'SKIPPED')} | ${count((r) => r.result === 'WARNING')} | ${count((r) => r.result === 'REVIEW')} | ${count((r) => r.result === 'FAILED')} | ${notRun} | ${count((r) => r.blocking)} |`,
+      `| ${plan.name} | ${status} | ${count((r) => r.result === 'PASSED')} | ${count((r) => r.result === 'SKIPPED')} | ${count((r) => r.result === 'WARNING')} | ${count((r) => r.result === 'REVIEW')} | ${count((r) => r.result === 'FAILED')} | ${notRun} | ${count((r) => r.blocking)} |`,
     )
   }
-  const reportOnly = new Set(plans.filter((p) => p.reportOnly).map((p) => p.name))
-  const notes = results.filter((r) => r.blocking || r.accepted || (reportOnly.has(r.plan) && !['PASSED', 'SKIPPED'].includes(r.result)))
+  const notes = results.filter((r) => r.blocking || r.accepted)
   if (notes.length > 0) {
     lines.push('', '| Plan | Module | Result | Note |', '|---|---|---|---|')
     for (const r of notes) {
@@ -334,9 +331,7 @@ function summarize(results: ModuleResult[]) {
         ? `Blocking: not run. ${r.steps.join('; ').replaceAll('|', '\\|')}`
         : r.blocking
           ? 'Blocking'
-          : r.accepted
-            ? `Accepted: ${r.accepted}`
-            : 'Report only'
+          : `Accepted: ${r.accepted}`
       lines.push(`| ${r.plan} | ${r.module} | ${r.result} | ${note} |`)
     }
   }

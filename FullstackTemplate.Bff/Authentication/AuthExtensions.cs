@@ -212,6 +212,7 @@ public static class AuthExtensions
         {
             options.RefreshBeforeExpiration = TimeSpan.FromSeconds(refreshBeforeExpirationSeconds);
         });
+        RefreshIdTokenValidation.Register(services);
         RefreshFailureMetrics.Register(services);
         DefaultAccessTokenLifetime.AddToRefresh(services);
         services.AddOptions<RefreshOptions>()

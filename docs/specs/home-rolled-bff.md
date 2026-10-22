@@ -382,9 +382,20 @@ Decisions: [Refresh lock across BFF instances](https://github.com/pdevito3/Fulls
 |---|---|
 | Anonymous | Forward with no token. |
 | Signed in, the token is valid or the refresh worked | `Authorization: Bearer <token>`. The token type compare is case-insensitive. |
-| Refresh failed with `invalid_grant` (permanent) | End the BFF session: delete the row, add to `bff.sessions.ended` with `reason=refresh_failure`, and sign out the cookie. Then forward with no token. |
+| Refresh failed with `invalid_grant`, or its ID token failed the checks below (permanent) | End the BFF session: delete the row, add to `bff.sessions.ended` with `reason=refresh_failure`, and sign out the cookie. Then forward with no token. |
 | Refresh failed for a temporary cause (network error, timeout, 5xx, a token request timeout, or a lock timeout) | Keep the BFF session. If the current access token is still valid, send it. If not, forward with no token. |
 | Token type `DPoP` | The transform reads the token type of the stored token in phase 1. With `Auth:Features:DPoP` at `Disable`, a `DPoP` token cannot occur. If one occurs, the transform logs an error and forwards with no token. Phase 2 adds the DPoP branch (section 9). |
+
+**The ID token of a refresh response.** OIDC Core 12.2. `RefreshIdTokenValidation` wraps the token endpoint of token management, inside the other wrappers. A refresh response with no `id_token` passes, and the BFF keeps the stored `id_token`. A refresh response with an `id_token` passes only if the token passes these checks:
+
+- The signature, with the signing keys of discovery and the algorithm of the client registration. An unknown `kid` refreshes the keys one time, as at the login.
+- `iss` equals the discovery `issuer`.
+- `aud` holds only the client id, as at the login. If `azp` is present, it equals the client id.
+- `exp` is in the future, and `iat` is present. A nonce is not required.
+- `sub` equals the `sub` of the BFF session.
+- If the BFF session and the token both have an `auth_time`, the two values are equal.
+
+If a check fails, the refresh fails with the error `bff_invalid_refresh_id_token`. Token management then does not store the new tokens, and the request does not use them. The failure is permanent: the refresh lock deletes the row, and the BFF session ends as for `invalid_grant`. A wrong `iss` or `sub` is a sign of a wrong or attacked identity provider, so a retry with the same provider must not continue the BFF session. The BFF also revokes the refresh token of the rejected response, when revocation is active, because no BFF session holds it. The log gives the reason and a SHA-256 fingerprint of the ID token, never a token value.
 
 Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The refresh has no retry inside the call. The next request that needs a token tries again. A retry inside the call can send a rotated refresh token two times, after the identity provider used it but the response got lost, and then the session ends. A retry also holds the refresh lock and its `bffdb` connection longer. The refresh goes through the backchannel `HttpClient` of the OIDC handler, which does not come from `IHttpClientFactory`, so the standard resilience handler of the service defaults does not apply to it.
 
@@ -533,7 +544,8 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 | Client authentication | OAuth 2.1 2.4.1, RFC 6749 2.3.1 | `client_secret_basic`, discovery fallback | Unit: each `Auth:ClientAuthentication` case. Conformance: basic plan. |
 | `iss` response parameter | RFC 9207 2.4 | `iss` check | Unit: each case of section 3.2. Conformance: basic plan. |
 | PAR when the AS offers it | RFC 9126 | `Auth:Features:PushedAuthorization` | Unit: the setting map. e2e: the authorize URL has only `client_id` and `request_uri` on Keycloak and the Duende Demo. |
-| Refresh token rotation and reuse | OAuth 2.1 4.3.3 | The refresh lock | Integration: two hosts, one refresh call. e2e: Keycloak with rotation. Conformance: refresh plan (report only). |
+| Refresh token rotation and reuse | OAuth 2.1 4.3.3 | The refresh lock | Integration: two hosts, one refresh call. e2e: Keycloak with rotation. Conformance: refresh plan. |
+| ID token of a refresh response: signature, `iss`, `aud`, `azp`, `exp`, `iat`, same `sub` and `auth_time` | Core 12.2 | `RefreshIdTokenValidation`, section 3.7 | Integration: a wrong `iss`, `sub`, `aud`, or `auth_time`, or a bad signature, ends the BFF session. A valid ID token or no ID token gives the new tokens. Conformance: refresh plan. |
 | Refresh token revocation | RFC 7009 2.1 | Logout step 4 | Integration: a fake token endpoint gets the revocation. e2e: the revoked token fails on Keycloak and the Duende Demo. |
 | RP-initiated logout with `id_token_hint` and `post_logout_redirect_uri` | RPIL 2, 3 | Logout step 6 | e2e on each provider. Conformance: RP-initiated logout plan. |
 | Back-channel logout endpoint and token validation | BCL 2.4, 2.5, 2.6 | Back-channel logout | Unit: each check of section 3.4. Conformance: back-channel plan. |
@@ -593,7 +605,7 @@ Decisions: [Test plan in CI](https://github.com/pdevito3/FullstackTemplate/issue
   - `oidcc-client-config-certification-test-plan`
   - `oidcc-client-rp-initiated-logout-rp-basic`
   - `oidcc-client-back-channel-logout-rp-basic`
-  - `oidcc-client-refreshtoken-test-plan` (report only)
+  - `oidcc-client-refreshtoken-test-plan`
 
 ### Tests from the decision tickets
 
@@ -636,7 +648,8 @@ These tests come from the tickets. Each one is in addition to the tests of secti
   - The access tokens of the suite are opaque. So the server, with `Auth:AccessTokenValidation=Userinfo` (Development only), checks each token at the userinfo endpoint of the suite. The happy path module of the refresh plan finishes on that userinfo call with the refreshed token. The driver stops the API calls of the SPA, because a call after a module finished fails it.
   - Each `FAILED` result fails the job.
   - Each `WARNING` or `REVIEW` result fails the job, unless it is in a committed list of accepted results. Each entry in the list gives a reason.
-  - The results of the report-only plan do not fail the job. But each module that does not finish, in each plan, is "not run" and fails the job. A plan with no result must not give a green job.
+  - Each module that does not finish, in each plan, is "not run" and fails the job. A plan with no result must not give a green job.
+  - Each plan blocks, the refresh plan too. Its negative modules send an ID token with a wrong `iss` or `sub` in the refresh response (section 3.7).
 - **Reports.** Each job uploads the exported suite results, the Playwright traces and screenshots, and the stack logs as artifacts, kept for 30 days. The job summary lists each plan with its pass, warning, and fail counts.
 - **Scripts.** The scripts for the stacks and the suite go in the repo, so that a developer can run the same commands locally.
 

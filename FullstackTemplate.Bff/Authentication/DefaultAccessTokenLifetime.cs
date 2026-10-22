@@ -30,21 +30,11 @@ public static class DefaultAccessTokenLifetime
     /// The refresh: wraps the token endpoint of token management. Call it after
     /// <see cref="RefreshFailureMetrics.Register"/>, which wraps the same registration.
     /// </summary>
-    public static void AddToRefresh(IServiceCollection services)
-    {
-        var registered = services.Single(d => d.ServiceType == typeof(IOpenIdConnectUserTokenEndpoint));
-        Func<IServiceProvider, object> inner = registered.ImplementationFactory
-            ?? (provider => ActivatorUtilities.CreateInstance(provider, registered.ImplementationType
-                ?? throw new InvalidOperationException("Token management registered its token endpoint with no implementation type.")));
-        services.Remove(registered);
-        services.Add(ServiceDescriptor.Describe(
-            typeof(IOpenIdConnectUserTokenEndpoint),
-            provider => new RefreshEndpoint(
-                (IOpenIdConnectUserTokenEndpoint)inner(provider),
-                provider.GetRequiredService<TimeProvider>(),
-                provider.GetRequiredService<IConfiguration>()),
-            registered.Lifetime));
-    }
+    public static void AddToRefresh(IServiceCollection services) =>
+        TokenEndpointDecorator.Decorate(services, (provider, inner) => new RefreshEndpoint(
+            inner,
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<IConfiguration>()));
 
     /// <summary>
     /// Token management gives <see cref="DateTimeOffset.MaxValue"/> as the expiry of a refreshed token when the

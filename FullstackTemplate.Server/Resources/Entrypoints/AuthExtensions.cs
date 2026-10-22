@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints;
 
+using DPoP;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -84,6 +85,9 @@ public static class AuthExtensions
                     };
                 }
             });
+
+        // DPoP (RFC 9449): the DPoP scheme, the proof check, and the rejection of a bound token sent as Bearer
+        services.AddDPoP(configuration);
 
         services.AddAuthorization();
 

@@ -23,6 +23,27 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.DPoPProofs.UsedDPoPProof", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<DateTimeOffset>("Expires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires");
+
+                    b.HasKey("Id")
+                        .HasName("pk_used_dpop_proofs");
+
+                    b.HasIndex("Expires")
+                        .HasDatabaseName("ix_used_dpop_proofs_expires");
+
+                    b.ToTable("used_dpop_proofs", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Tenants.Tenant", b =>
                 {
                     b.Property<string>("Id")

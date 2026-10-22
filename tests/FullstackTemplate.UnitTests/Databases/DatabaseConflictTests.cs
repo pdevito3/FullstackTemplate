@@ -83,6 +83,19 @@ public class DatabaseConflictTests
     }
 
     [Test]
+    public void concurrency_failure_is_a_stale_version_conflict()
+    {
+        // Act
+        var exception = DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."))
+            .ShouldBeOfType<ConcurrencyConflictException>();
+
+        // Assert
+        exception.Property.ShouldBe("version");
+        exception.Message.ShouldBe("This record changed after you loaded it. Reload it, then make your change again.");
+        DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
+    }
+
+    [Test]
     public void other_database_failure_is_not_a_conflict()
     {
         DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation)).ShouldBeNull();

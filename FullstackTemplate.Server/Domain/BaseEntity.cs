@@ -29,6 +29,12 @@ public abstract class BaseEntity
 
     public bool IsDeleted { get; private set; }
 
+    /// <summary>
+    /// The Postgres <c>xmin</c> of the row, which changes on each write. It is opaque: compare it only for equality.
+    /// It is 0 before the first save.
+    /// </summary>
+    public uint Version { get; private set; }
+
     private readonly List<DomainEvent> _domainEvents = [];
     [NotMapped]
     public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();

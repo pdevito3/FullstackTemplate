@@ -40,4 +40,22 @@ public static class ModelBuilderExtensions
             idProperty.SetPropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
         }
     }
+
+    /// <summary>
+    /// Maps <see cref="BaseEntity.Version"/> to the <c>xmin</c> system column of each table as a concurrency token.
+    /// Each update and delete then checks that the row did not change after the load. Postgres has the column on each
+    /// table, so the migration has no DDL.
+    /// </summary>
+    public static void MapVersionToXmin(this ModelBuilder modelBuilder)
+    {
+        foreach (var mutableEntityType in modelBuilder.Model.GetEntityTypes()
+                     .Where(m => m.ClrType.IsAssignableTo(typeof(BaseEntity))))
+        {
+            modelBuilder.Entity(mutableEntityType.ClrType)
+                .Property(nameof(BaseEntity.Version))
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .IsRowVersion();
+        }
+    }
 }

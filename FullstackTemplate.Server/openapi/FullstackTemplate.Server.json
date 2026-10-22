@@ -1279,7 +1279,8 @@
       "TenantDto": {
         "required": [
           "id",
-          "name"
+          "name",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1288,6 +1289,10 @@
           },
           "name": {
             "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "uint32"
           }
         }
       },
@@ -1335,7 +1340,8 @@
           "email",
           "username",
           "role",
-          "permissions"
+          "permissions",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1371,6 +1377,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "version": {
+            "type": "integer",
+            "format": "uint32"
           }
         }
       },

@@ -6,4 +6,10 @@
 export type TenantDto = {
     id: string;
     name: string;
+    /**
+     * @description
+     * Format: `uint32`
+     * @type integer
+    */
+    version: number;
 };

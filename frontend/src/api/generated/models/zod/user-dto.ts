@@ -16,4 +16,5 @@ export const userDtoSchema = z.object({
   username: z.string(),
   role: z.string(),
   permissions: z.array(z.string()),
+  version: z.uint32(),
 })

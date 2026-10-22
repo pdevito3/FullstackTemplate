@@ -5,6 +5,7 @@ using Domain.Tenants;
 using Domain.Users;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Services;
 
 public class AppDbContext(
@@ -44,6 +45,7 @@ public class AppDbContext(
         // Automatically discovers and applies all IEntityTypeConfiguration<T> implementations in the assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         modelBuilder.MapEntityIdToField();
+        modelBuilder.MapVersionToXmin();
         modelBuilder.FilterSoftDeletedRecords();
         modelBuilder.FilterByTenant(this);
     }
@@ -115,6 +117,8 @@ public class AppDbContext(
 
     private void UpdateAuditFields()
     {
+        TouchOwnersOfChangedChildren();
+
         var now = timeProvider.GetUtcNow();
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -134,6 +138,41 @@ public class AppDbContext(
                     entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
                     entry.Entity.UpdateIsDeleted(true);
                     break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// A cascade foreign key links an owned child to its owner (entity-configurations.md rule 6). A change to a
+    /// child is a change to its owner, so this marks each unchanged owner as modified. The save then writes the
+    /// owner row with the version check, and a stale owner stops the save of the child. It walks up through the
+    /// owners of each owner.
+    /// </summary>
+    private void TouchOwnersOfChangedChildren()
+    {
+        var entries = ChangeTracker.Entries<BaseEntity>().ToList();
+        var changed = new Queue<EntityEntry<BaseEntity>>(entries.Where(e =>
+            e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted));
+
+        while (changed.TryDequeue(out var child))
+        {
+            foreach (var ownership in child.Metadata.GetForeignKeys().Where(fk =>
+                         fk.DeleteBehavior == DeleteBehavior.Cascade
+                         && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity))))
+            {
+                var ownerIdProperty = child.Property(ownership.Properties.Single().Name);
+                var ownerId = child.State == EntityState.Deleted
+                    ? ownerIdProperty.OriginalValue
+                    : ownerIdProperty.CurrentValue;
+                var owner = entries.SingleOrDefault(e =>
+                                e.Metadata == ownership.PrincipalEntityType && Equals(e.Entity.Id, ownerId))
+                            ?? throw new InvalidOperationException(
+                                $"A {child.Metadata.ClrType.Name} changed, but its {ownership.PrincipalEntityType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownership.PrincipalEntityType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
+                if (owner.State != EntityState.Unchanged)
+                    continue;
+
+                owner.Property(e => e.LastModifiedOn).IsModified = true;
+                changed.Enqueue(owner);
             }
         }
     }

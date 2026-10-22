@@ -82,6 +82,30 @@ public class DomainProblemDetailsTests
     }
 
     [Test]
+    public void concurrency_conflict_problem_has_the_message_under_the_version()
+    {
+        // Arrange
+        var exception = new ConcurrencyConflictException();
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            Exception = exception,
+            ProblemDetails = new() { Status = StatusCodes.Status409Conflict },
+        };
+
+        // Act
+        var status = DomainProblemDetails.StatusCodeFor(exception);
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        status.ShouldBe(StatusCodes.Status409Conflict);
+        context.ProblemDetails.Detail.ShouldBe("This record changed after you loaded it. Reload it, then make your change again.");
+        var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
+        error.Key.ShouldBe("version");
+        error.Value.ShouldBe(["This record changed after you loaded it. Reload it, then make your change again."]);
+    }
+
+    [Test]
     public void exclusion_violation_problem_is_a_conflict_with_the_message_under_the_field()
     {
         // Arrange

@@ -12,4 +12,5 @@ public sealed record UserDto
     public string Username { get; init; } = default!;
     public string Role { get; init; } = default!;
     public IReadOnlyList<string> Permissions { get; init; } = [];
+    public uint Version { get; init; }
 }

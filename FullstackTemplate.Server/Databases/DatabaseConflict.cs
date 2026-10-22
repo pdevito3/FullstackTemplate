@@ -13,6 +13,9 @@ public static class DatabaseConflict
     /// <summary>Null when the failure is not a conflict.</summary>
     public static ConflictException? From(DbUpdateException exception)
     {
+        if (exception is DbUpdateConcurrencyException)
+            return new ConcurrencyConflictException(exception);
+
         if (exception.InnerException is not PostgresException postgres)
             return null;
 

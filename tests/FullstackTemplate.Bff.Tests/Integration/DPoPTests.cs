@@ -1,9 +1,11 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using FullstackTemplate.Bff.Features;
+using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
@@ -253,6 +255,61 @@ public class DPoPTests
         requests.Count.ShouldBe(2);
         requests[1].Headers["Content-Type"].ShouldStartWith("application/json");
         requests[1].Headers["Content-Length"].ShouldBe("7");
+    }
+
+    [Test]
+    public async Task a_body_over_the_retry_limit_gets_no_retry_but_the_next_request_has_the_nonce()
+    {
+        var body = new ByteArrayContent(new byte[DPoPProxy.MaxRetryBodyBytes + 1]);
+        body.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+        await TheNonceIsStoredWithoutARetryAsync(body);
+    }
+
+    [Test]
+    public async Task a_body_without_a_content_length_gets_no_retry_but_the_next_request_has_the_nonce()
+    {
+        var body = new UnknownLengthContent("""{"a":1}"""u8.ToArray());
+        body.Headers.ContentLength.ShouldBeNull();
+
+        await TheNonceIsStoredWithoutARetryAsync(body);
+    }
+
+    // The BFF cannot hold the body to send it again, so the 401 goes to the browser. The BFF still stores the
+    // nonce, so the next request to the URL has it in its first proof.
+    private static async Task TheNonceIsStoredWithoutARetryAsync(HttpContent body)
+    {
+        using var browser = _bff.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
+        var path = $"/api/v1/{PathName()}";
+        var nonce = $"nonce-{Guid.NewGuid():N}";
+        var url = $"{path}?{EchoApi.RequireNonceParameter}={nonce}";
+        var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = body };
+        request.Headers.Add("X-CSRF", "1");
+
+        var response = await browser.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        ApiRequests(path).Count.ShouldBe(1);
+
+        (await browser.SendApiAsync(HttpMethod.Post, url)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var requests = ApiRequests(path);
+        requests.Count.ShouldBe(2);
+        DPoPProofVerifier.Verify(requests[1].Headers["DPoP"], "POST", $"{BffApp.Instance.Api.Url}{path}").Nonce.ShouldBe(nonce);
+    }
+
+    /// <summary>
+    /// A body that the client sends chunked, with no <c>Content-Length</c>.
+    /// </summary>
+    private sealed class UnknownLengthContent(byte[] bytes) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(bytes).AsTask();
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
     }
 
     [Test]

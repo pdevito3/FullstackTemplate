@@ -53,7 +53,9 @@ public class RefreshIdTokenTests
     [Arguments("wrong_iss")]
     [Arguments("wrong_sub")]
     [Arguments("wrong_aud")]
+    [Arguments("wrong_azp")]
     [Arguments("wrong_auth_time")]
+    [Arguments("expired")]
     [Arguments("bad_signature")]
     public async Task an_invalid_id_token_in_the_refresh_response_ends_the_session_and_drops_the_new_tokens(string fault)
     {

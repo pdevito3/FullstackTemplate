@@ -34,9 +34,9 @@ using Microsoft.IdentityModel.Tokens;
 /// is not the hash of the access token), and <c>test_id_token</c> (<c>unsigned</c> gives an ID token with
 /// <c>alg=none</c>). The ID token has the correct <c>at_hash</c> by default. By default a refresh
 /// response has no <c>id_token</c>. <c>test_refresh_id_token</c> adds one: <c>valid</c>, or one with a fault,
-/// <c>wrong_iss</c>, <c>wrong_sub</c>, <c>wrong_aud</c>, <c>wrong_auth_time</c>, or <c>bad_signature</c> (signed with
-/// another key with the <c>kid</c> of the provider key). Refresh tokens rotate: each one works one time, and a reuse
-/// gets <c>invalid_grant</c>.
+/// <c>wrong_iss</c>, <c>wrong_sub</c>, <c>wrong_aud</c>, <c>wrong_azp</c>, <c>wrong_auth_time</c>, <c>expired</c>, or
+/// <c>bad_signature</c> (signed with another key with the <c>kid</c> of the provider key). Refresh tokens rotate:
+/// each one works one time, and a reuse gets <c>invalid_grant</c>.
 /// </para>
 /// <para>
 /// <see cref="FakeProviderOptions"/> chooses the optional features in its discovery document. The token and PAR
@@ -559,8 +559,16 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             case "wrong_aud":
                 claims["aud"] = "other-client";
                 break;
+            case "wrong_azp":
+                claims["azp"] = "other-client";
+                break;
             case "wrong_auth_time":
                 claims["auth_time"] = grant.AuthTime - 60;
+                break;
+            case "expired":
+                // Past the default clock skew of 5 minutes
+                claims["iat"] = (long)claims["iat"] - 900;
+                claims["exp"] = (long)claims["iat"] + 300;
                 break;
             default:
                 throw new InvalidOperationException($"Unknown test_refresh_id_token value '{fault}'.");

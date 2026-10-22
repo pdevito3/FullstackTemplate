@@ -154,13 +154,16 @@ public static class DPoPAuthentication
     /// <summary>
     /// The <c>cnf.jkt</c> claim of the access token (RFC 9449 section 6.1), or null when the token is not DPoP-bound.
     /// </summary>
-    public static string? BoundKeyThumbprint(JsonWebToken token) =>
-        DPoPProofValidator.PayloadOf(token).TryGetProperty("cnf", out var cnf)
-        && cnf.ValueKind == JsonValueKind.Object
-        && cnf.TryGetProperty("jkt", out var jkt)
-        && jkt.ValueKind == JsonValueKind.String
+    public static string? BoundKeyThumbprint(JsonWebToken token)
+    {
+        using var payload = DPoPProofValidator.ParsePayload(token);
+        return payload.RootElement.TryGetProperty("cnf", out var cnf)
+               && cnf.ValueKind == JsonValueKind.Object
+               && cnf.TryGetProperty("jkt", out var jkt)
+               && jkt.ValueKind == JsonValueKind.String
             ? jkt.GetString()
             : null;
+    }
 
     private static void WriteChallenge(JwtBearerChallengeContext context)
     {

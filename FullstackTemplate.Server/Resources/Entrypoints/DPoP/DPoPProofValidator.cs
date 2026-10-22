@@ -110,8 +110,10 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
             return DPoPValidationResult.Proof("The signature of the DPoP proof does not verify with the jwk header.");
 
         // Rule 3: the required claims
-        if (!TryGetString(jwt, "jti", out var jti) || !TryGetString(jwt, "htm", out var htm)
-            || !TryGetString(jwt, "htu", out var htu) || !TryGetLong(jwt, "iat", out var iat))
+        using var payload = ParsePayload(jwt);
+        var claims = payload.RootElement;
+        if (!TryGetString(claims, "jti", out var jti) || !TryGetString(claims, "htm", out var htm)
+            || !TryGetString(claims, "htu", out var htu) || !TryGetLong(claims, "iat", out var iat))
             return DPoPValidationResult.Proof("The DPoP proof needs the claims jti, htm, htu, and iat.");
 
         // Rule 8
@@ -129,7 +131,7 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
             return DPoPValidationResult.Proof("The iat claim is outside the accepted window.");
 
         // Rule 12: ath
-        if (!TryGetString(jwt, "ath", out var ath))
+        if (!TryGetString(claims, "ath", out var ath))
             return DPoPValidationResult.Proof("The DPoP proof needs the ath claim, because it goes with an access token.");
         var expectedAth = Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(request.AccessToken)));
         if (!string.Equals(ath, expectedAth, StringComparison.Ordinal))
@@ -200,25 +202,26 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
     }
 
     /// <summary>
-    /// The payload of a token as a JSON object. The token handler does not give a claim as a JSON element for each type.
+    /// The payload of a token as a JSON document. The token handler does not give a claim as a JSON element for each
+    /// type. Parse it once for each check, and dispose it.
     /// </summary>
-    public static JsonElement PayloadOf(JsonWebToken jwt) =>
-        JsonDocument.Parse(Base64UrlEncoder.DecodeBytes(jwt.EncodedPayload)).RootElement;
+    public static JsonDocument ParsePayload(JsonWebToken jwt) =>
+        JsonDocument.Parse(Base64UrlEncoder.DecodeBytes(jwt.EncodedPayload));
 
-    private static bool TryGetString(JsonWebToken jwt, string name, out string value)
+    private static bool TryGetString(JsonElement claims, string name, out string value)
     {
         value = string.Empty;
-        if (!PayloadOf(jwt).TryGetProperty(name, out var element) || element.ValueKind != JsonValueKind.String)
+        if (!claims.TryGetProperty(name, out var element) || element.ValueKind != JsonValueKind.String)
             return false;
 
         value = element.GetString() ?? string.Empty;
         return value.Length > 0;
     }
 
-    private static bool TryGetLong(JsonWebToken jwt, string name, out long value)
+    private static bool TryGetLong(JsonElement claims, string name, out long value)
     {
         value = 0;
-        return PayloadOf(jwt).TryGetProperty(name, out var element)
+        return claims.TryGetProperty(name, out var element)
                && element.ValueKind == JsonValueKind.Number
                && element.TryGetInt64(out value);
     }

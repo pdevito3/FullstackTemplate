@@ -20,7 +20,7 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             .WithDataVolumeUnlessIsolated();
         var keycloakDb = keycloakPostgres.AddDatabase("keycloakdb");
 
-        var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0")
+        var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0.8")
             .WithReference(keycloakDb)
             .WaitFor(keycloakDb)
             .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")

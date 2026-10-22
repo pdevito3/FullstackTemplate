@@ -5,12 +5,16 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 
 /// <summary>
 /// Creates a configuration for Authentik running locally in Docker.
-/// Sets up PostgreSQL, Redis, server, and worker containers with blueprint auto-provisioning.
+/// Sets up PostgreSQL, server, and worker containers with blueprint auto-provisioning.
+/// Authentik keeps its cache, sessions, and tasks in PostgreSQL since 2025.10, so it has no Redis.
 /// Test users: admin@example.com (roles admin and user) and user@example.com (role user). The password is password123!.
 /// The Authentik admin is akadmin@example.com, with the password password123!.
 /// </summary>
 public sealed class AuthentikAuthProvider : IAuthProvider
 {
+    // The image of the server and the worker
+    private const string ImageTag = "2026.8.5";
+
     public AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         const string appSlug = "aspire-app";
@@ -27,23 +31,14 @@ public sealed class AuthentikAuthProvider : IAuthProvider
 
         var postgresEndpoint = authentikPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
 
-        // Redis for Authentik with data persistence
-        var redis = builder.AddContainer("authentik-redis", "redis", "alpine")
-            .WithEndpoint(targetPort: 6379, name: "tcp", scheme: "tcp")
-            .WithArgs("--save", "60", "1", "--loglevel", "warning")
-            .WithDataVolumeUnlessIsolated("/data");
-
-        var redisEndpoint = redis.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
-
-        // Authentik Worker (must start before server to apply blueprints)
-        var worker = builder.AddContainer("authentik-worker", "ghcr.io/goauthentik/server", "2024.12")
+        // Authentik Worker (must start before server to apply blueprints). It also sends the back-channel logout tokens.
+        var worker = builder.AddContainer("authentik-worker", "ghcr.io/goauthentik/server", ImageTag)
             .WithReference(authentikDb)
             .WithEnvironment("AUTHENTIK_SECRET_KEY", authentikSecretKey)
             .WithEnvironment(context =>
             {
                 context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__HOST"] = postgresEndpoint.Property(EndpointProperty.Host);
                 context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__PORT"] = postgresEndpoint.Property(EndpointProperty.Port);
-                context.EnvironmentVariables["AUTHENTIK_REDIS__HOST"] = redisEndpoint.Property(EndpointProperty.Host);
             })
             .WithEnvironment("AUTHENTIK_POSTGRESQL__USER", "postgres")
             .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
@@ -53,11 +48,10 @@ public sealed class AuthentikAuthProvider : IAuthProvider
             .WithSeedFiles(this, "/blueprints/custom")
             .WithClientUrls(clientUrls)
             .WithArgs("worker")
-            .WaitFor(authentikDb)
-            .WaitFor(redis);
+            .WaitFor(authentikDb);
 
         // Authentik Server (parent resource for dashboard grouping)
-        var server = builder.AddContainer("authentik", "ghcr.io/goauthentik/server", "2024.12")
+        var server = builder.AddContainer("authentik", "ghcr.io/goauthentik/server", ImageTag)
             .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "http")
             .WithReference(authentikDb)
             .WithEnvironment("AUTHENTIK_SECRET_KEY", authentikSecretKey)
@@ -65,7 +59,6 @@ public sealed class AuthentikAuthProvider : IAuthProvider
             {
                 context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__HOST"] = postgresEndpoint.Property(EndpointProperty.Host);
                 context.EnvironmentVariables["AUTHENTIK_POSTGRESQL__PORT"] = postgresEndpoint.Property(EndpointProperty.Port);
-                context.EnvironmentVariables["AUTHENTIK_REDIS__HOST"] = redisEndpoint.Property(EndpointProperty.Host);
             })
             .WithEnvironment("AUTHENTIK_POSTGRESQL__USER", "postgres")
             .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
@@ -78,7 +71,6 @@ public sealed class AuthentikAuthProvider : IAuthProvider
 
         // Group all Authentik resources under the server in the dashboard
         authentikPostgres.WithParentRelationship(server);
-        redis.WithParentRelationship(server);
         worker.WithParentRelationship(server);
 
         return new AuthProviderConfig

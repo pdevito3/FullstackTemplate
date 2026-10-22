@@ -80,7 +80,8 @@
           },
           "jwtConfiguration": {
             "enabled": true,
-            "timeToLiveInSeconds": 3600
+            "timeToLiveInSeconds": 3600,
+            "refreshTokenUsagePolicy": "OneTimeUse"
           },
           "registrationConfiguration": {
             "enabled": true,

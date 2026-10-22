@@ -48,9 +48,8 @@ async function expandSwaggerTag(page: Page, tag: string) {
  * Helper to login via the IDP login page
  */
 async function loginAtIdp(page: Page, idp: IdpConfig) {
-  // Wait for the IDP login form, so that the origin is the IDP and not the app
+  // Wait for the IDP login form
   await page.locator(idp.usernameSelector).waitFor({ state: 'visible' })
-  const idpOrigin = new URL(page.url()).origin
 
   // Fill username/email
   const usernameValue = idp.email || idp.username
@@ -72,31 +71,6 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
       await page.fill(idp.passwordSelector, idp.password!)
     }
     await page.click(idp.submitSelector)
-  }
-
-  // Handle consent page if needed
-  // Note: The popup may close immediately after successful OAuth callback,
-  // so we need to handle the case where the page is no longer available
-  if (idp.hasConsentPage && idp.consentSelector) {
-    try {
-      // Check if page is still open before waiting
-      if (page.isClosed()) return
-
-      // Wait for the consent page, or for the IDP to send the browser back, if it skipped consent.
-      const consentButton = page.locator(idp.consentSelector)
-      const consentShown = consentButton.waitFor({ state: 'visible', timeout: 30000 }).then(() => true)
-      const leftIdp = page.waitForURL((url) => url.origin !== idpOrigin, { timeout: 30000 }).then(() => false)
-      consentShown.catch(() => {})
-      leftIdp.catch(() => {})
-      const hasConsent = await Promise.race([consentShown, leftIdp])
-      if (hasConsent) {
-        await consentButton.click()
-      }
-    } catch (error) {
-      // Page was closed - OAuth flow completed successfully without needing consent
-      if (page.isClosed()) return
-      throw error
-    }
   }
 }
 

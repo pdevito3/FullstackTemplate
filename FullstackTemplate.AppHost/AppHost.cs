@@ -57,15 +57,20 @@ try
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
         .WithParentRelationship(webfrontend);
+    // The identity provider containers call /bff/backchannel through this endpoint. The Aspire container tunnel
+    // gives it its own host and port. With the tunnel off, the host is host.docker.internal.
+    var bffForContainers = bff.GetEndpoint("http", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
     // The BFF builds its redirect URIs from its own URL, because the Vite proxy changes the origin.
     bff.WithEnvironment("Bff__PublicOrigin", bff.GetEndpoint("https"));
-    // In a local run, the host filter also lets in the identity provider containers, which call /bff/backchannel at
-    // host.docker.internal, and the health probes, which call localhost. A published BFF does not trust these hosts.
+    // In a local run, the host filter also lets in the identity provider containers, through the container endpoint
+    // above or host.docker.internal, and the health probes, which call localhost. A published BFF does not trust
+    // these hosts.
     if (builder.ExecutionContext.IsRunMode)
-        bff.WithEnvironment("Bff__AdditionalAllowedHosts", "host.docker.internal;localhost");
+        bff.WithEnvironment("Bff__AdditionalAllowedHosts", ReferenceExpression.Create(
+            $"{bffForContainers.Property(EndpointProperty.Host)};host.docker.internal;localhost"));
 
     var authClientUrls = new AuthClientUrls(
-        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"));
+        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"), bffForContainers);
     // The AuthProvider setting selects the provider. appsettings.json gives the default, and the environment
     // variable AuthProvider=Keycloak overrides it. The e2e tests find the provider from the running stack.
     var authProvider = AuthProviderCatalog.Select(builder.Configuration).AddTo(builder, authClientUrls);

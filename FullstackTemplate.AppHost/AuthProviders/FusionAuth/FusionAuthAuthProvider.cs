@@ -33,7 +33,7 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
         var postgresEndpoint = fusionAuthPostgres.GetEndpoint("tcp", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);
 
         // FusionAuth Identity Provider container
-        var fusionAuth = builder.AddContainer("fusionauth", "fusionauth/fusionauth-app", "latest")
+        var fusionAuth = builder.AddContainer("fusionauth", "fusionauth/fusionauth-app", "1.69.4")
             .WithHttpEndpoint(port: 9011, targetPort: 9011, name: "http")
             .WithReference(fusionAuthDb)
             .WithEnvironment(context =>

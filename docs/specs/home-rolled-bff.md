@@ -549,7 +549,7 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 
 Decision: [Provider seed and version changes](https://github.com/pdevito3/FullstackTemplate/issues/19).
 
-- **Version policy.** Each provider image gets an exact patch tag in a constant in `FullstackTemplate.AppHost/Config.cs`, as `PostgresImageTag` does today. Today the tags float: Keycloak `26.0`, Authentik `2024.12`, and FusionAuth `latest`. The research found 26.0.8, 2024.12.5, and 1.69.4 behind them.
+- **Version policy.** Each provider image gets an exact patch tag in its provider class in `FullstackTemplate.AppHost/AuthProviders/<Name>/`, as the Cognito and ZeroFactor classes do. Today the tags float: Keycloak `26.0`, Authentik `2024.12`, and FusionAuth `latest`. The research found 26.0.8, 2024.12.5, and 1.69.4 behind them.
 - **Authentik.** Upgrade from 2024.12.5 to the latest stable 2026.8.x. Read the release notes between the two versions for changes to the worker and the Redis setup.
 - **Authentik logout flow.** The seed in `FullstackTemplate.AppHost/AuthProviders/Authentik/seed/default.yaml` uses an invalidation flow with a user logout stage. RP-initiated logout then also ends the IdP session.
 - **Back-channel URLs.** Register `<BFF URL>/bff/backchannel` in the Keycloak and Authentik seeds. The container must reach the BFF, for example through `host.docker.internal`. Find out how Aspire exposes the BFF endpoint to a container. FusionAuth and the Duende Demo cannot take part. Back-channel logout in Authentik is a preview feature since 2025.8, so the seed can need to turn it on.

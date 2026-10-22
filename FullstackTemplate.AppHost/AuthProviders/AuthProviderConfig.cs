@@ -84,12 +84,20 @@ public sealed record AuthFeatureSettings
 /// The app URLs that a local identity provider must accept as redirect targets.
 /// An isolated run gives these endpoints random ports, so the seed files read them from environment variables.
 /// The BFF builds its OIDC redirect URI from its own URL, because the Vite proxy changes the origin.
+/// <para><paramref name="BffForContainers"/> is the BFF http endpoint in the container network view. The identity
+/// provider containers send the back-channel logout token to it. The http endpoint, because the containers do not
+/// trust the development certificate.</para>
 /// </summary>
-public sealed record AuthClientUrls(EndpointReference Frontend, EndpointReference Server, EndpointReference Bff)
+public sealed record AuthClientUrls(
+    EndpointReference Frontend,
+    EndpointReference Server,
+    EndpointReference Bff,
+    EndpointReference BffForContainers)
 {
     public const string FrontendVariable = "APP_FRONTEND_URL";
     public const string ServerVariable = "APP_SERVER_URL";
     public const string BffVariable = "APP_BFF_URL";
+    public const string BffBackChannelVariable = "APP_BFF_BACKCHANNEL_URL";
 }
 
 /// <summary>
@@ -157,6 +165,8 @@ public static class AuthProviderExtensions
             context.EnvironmentVariables[AuthClientUrls.FrontendVariable] = clientUrls.Frontend.Url;
             context.EnvironmentVariables[AuthClientUrls.ServerVariable] = clientUrls.Server.Url;
             context.EnvironmentVariables[AuthClientUrls.BffVariable] = clientUrls.Bff.Url;
+            context.EnvironmentVariables[AuthClientUrls.BffBackChannelVariable] =
+                ReferenceExpression.Create($"{clientUrls.BffForContainers}/bff/backchannel");
         });
     }
 

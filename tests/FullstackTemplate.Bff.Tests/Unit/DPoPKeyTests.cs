@@ -74,8 +74,10 @@ public class DPoPKeyTests
 
         var exception = Should.Throw<InvalidOperationException>(() => Read(JsonSerializer.Serialize(key)));
 
-        exception.Message.ShouldContain("does not match");
-        exception.Message.ShouldNotContain(key["d"]);
+        // Linux fails the signature and macOS fails the verify, with the same message
+        exception.Message.ShouldBe(
+            "Auth:DPoPJsonWebKey has a private part that does not match its public part, so a test signature with alg ES256 fails.");
+        exception.InnerException.ShouldBeNull();
     }
 
     private static Duende.AccessTokenManagement.DPoP.DPoPProofKey? Read(string jwk) =>

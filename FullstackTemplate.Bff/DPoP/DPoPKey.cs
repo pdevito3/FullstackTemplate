@@ -69,6 +69,10 @@ public static class DPoPKey
     /// Signs a test value with the private key and verifies it with the public members alone, as a provider does
     /// with the <c>jwk</c> of a proof. It fails for a private part that does not match the public part.
     /// </summary>
+    /// <remarks>
+    /// The platforms fail a mismatched key at different steps: OpenSSL on Linux throws when it signs, and macOS
+    /// signs and then fails the verify. Both give the same error.
+    /// </remarks>
     private static void CheckTestSignature(JsonWebKey jwk)
     {
         var publicKey = jwk.Kty == JsonWebAlgorithmsKeyTypes.RSA
@@ -91,14 +95,15 @@ public static class DPoPKey
                 CryptoProviderFactory.Default.ReleaseSignatureProvider(verifier);
             }
         }
+        // Do not keep the exception: its message can have parts of the key
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            // No inner exception: its message can have parts of the key
-            throw new InvalidOperationException($"{ConfigurationKey} cannot sign with alg {jwk.Alg}: {ex.GetType().Name}.");
+            verified = false;
         }
 
         if (!verified)
-            throw new InvalidOperationException($"{ConfigurationKey} has a private part that does not match its public part.");
+            throw new InvalidOperationException(
+                $"{ConfigurationKey} has a private part that does not match its public part, so a test signature with alg {jwk.Alg} fails.");
     }
 
     /// <summary>

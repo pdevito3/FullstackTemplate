@@ -390,7 +390,7 @@ Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kin
 
 **The refresh lock.** Our own `IUserTokenRequestConcurrencyControl` replaces the default. It has two layers:
 
-1. **In process.** Keep the merge by refresh token, so that one instance takes the database lock only one time for each refresh. The first request runs the refresh. Each other request waits at most `Bff:Refresh:LockTimeout`, and stops its wait when its own client goes away. A wait that reaches the limit is a temporary failure.
+1. **In process.** Keep the merge by refresh token, so that one instance takes the database lock only one time for each refresh. The first request runs the refresh. Each other request waits at most `Bff:Refresh:LockTimeout` plus `Bff:Refresh:TokenRequestTimeout` plus 2 s, and stops its wait when its own client goes away. The first request can wait that long for the lock and then for the identity provider, so a shorter wait can end before the refresh ends. A wait that reaches the limit is a temporary failure.
 2. **Across instances.** In a `bffdb` transaction, take `pg_advisory_xact_lock` with a 64-bit hash of the BFF session key. Then read the BFF session row again.
    - If the stored refresh token is not the one that the caller has, return the stored tokens. Do not call the identity provider.
    - If it is the same, run the refresh. The delegate of `ExecuteWithConcurrencyControlAsync` runs `RefreshAccessTokenAsync` and then `StoreTokenAsync`, so the lock wraps the refresh and the write. The write uses the `xmin` of the row that the lock read. Thus a waiter always reads the new tokens.

@@ -22,8 +22,8 @@ namespace FullstackTemplate.Bff.Authentication;
 /// <list type="number">
 ///   <item>In process: the requests that need a refresh with the same refresh token share one refresh, so that
 ///   one instance takes the database lock only one time for each refresh. The first request runs it. Each other
-///   request waits at most <see cref="RefreshOptions.LockTimeout"/>, and stops its wait when its own client goes
-///   away.</item>
+///   request waits at most <see cref="RefreshOptions.InProcessWaitLimit"/>, and stops its wait when its own client
+///   goes away.</item>
 ///   <item>Across instances: a <c>bffdb</c> transaction takes <c>pg_advisory_xact_lock</c> on a 64-bit hash of
 ///   the BFF session key, and then reads the row again. If another request already refreshed, the tokens in the
 ///   row are the result, and the identity provider gets no call. If not, the refresh and the write of its tokens
@@ -48,7 +48,8 @@ public sealed class RefreshLock(
     IHttpContextAccessor httpContextAccessor,
     BffTicketStore ticketStore,
     IStoreTokensInAuthenticationProperties tokensInProperties,
-    IOptionsMonitor<RefreshOptions> options) : IUserTokenRequestConcurrencyControl
+    IOptionsMonitor<RefreshOptions> options,
+    TimeProvider timeProvider) : IUserTokenRequestConcurrencyControl
 {
     /// <summary>
     /// The error of a refresh that did not get the lock within <see cref="RefreshOptions.LockTimeout"/>. It is a
@@ -129,23 +130,25 @@ public sealed class RefreshLock(
         || string.Equals(error, SessionEndedError, StringComparison.Ordinal);
 
     /// <summary>
-    /// Waits for the refresh of another request in this instance, at most <see cref="RefreshOptions.LockTimeout"/>,
-    /// as a wait for the lock of another instance does. The wait stops when the client of this request goes away.
+    /// Waits for the refresh of another request in this instance, at most <see cref="RefreshOptions.InProcessWaitLimit"/>,
+    /// the longest run of that refresh. The wait stops when the client of this request goes away.
     /// </summary>
     private async Task<TokenResult<UserToken>> WaitForRefreshAsync(Task<TokenResult<UserToken>> refresh)
     {
         var httpContext = CurrentHttpContext();
-        var lockTimeout = options.CurrentValue.LockTimeout;
+        var waitLimit = options.CurrentValue.InProcessWaitLimit;
+        // Start the timer before the count goes up. Then each request in the count has its timer.
+        var wait = refresh.WaitAsync(waitLimit, timeProvider, httpContext.RequestAborted);
         Interlocked.Increment(ref _waiting);
         try
         {
-            return await refresh.WaitAsync(lockTimeout, httpContext.RequestAborted);
+            return await wait;
         }
         catch (TimeoutException)
         {
             Telemetry.RecordRefreshFailure(RefreshFailureKind.Temporary);
-            Logger.Here().Warning("Kept the BFF session {SessionKey} with no refresh, because the refresh of another request did not end within {LockTimeout}",
-                Fingerprint.Of(httpContext.RequestServices.GetRequiredService<BffSessionRequest>().Key ?? ""), lockTimeout);
+            Logger.Here().Warning("Kept the BFF session {SessionKey} with no refresh, because the refresh of another request did not end within {WaitLimit}",
+                Fingerprint.Of(httpContext.RequestServices.GetRequiredService<BffSessionRequest>().Key ?? ""), waitLimit);
             return TokenResult.Failure(LockTimeoutError);
         }
         finally

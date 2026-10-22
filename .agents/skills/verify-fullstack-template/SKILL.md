@@ -43,7 +43,9 @@ S=.agents/skills/verify-fullstack-template
 
 The stack is ready when the output ends with `launch: ready.` and the URLs. The run state is in `artifacts/verify/<RUN_ID>/stack.json`. The file `artifacts/verify/.current` holds the RUN_ID of the live stack.
 
-If `launch.sh` fails, run `$S/scripts/cleanup.sh` before you try again. Then read the logs with `dotnet aspire logs <resource> -n 100 --apphost FullstackTemplate.AppHost` (see the `aspire-cli` skill).
+If a resource fails to start or stops, `launch.sh` stops at once and prints the last log lines of that resource. If `launch.sh` fails, run `$S/scripts/cleanup.sh` before you try again. For more log lines, run `dotnet aspire logs <resource> -n 100 --apphost FullstackTemplate.AppHost` (see the `aspire-cli` skill).
+
+If a container fails with `bind source path does not exist` and the folder is on disk, git probably deleted and wrote the folder again, for example in a branch switch. Docker Desktop can keep an old view of the path for some minutes. Make sure that `docker run --rm -v <path>:/x alpine ls /x` lists the files. Then run `cleanup.sh` and `launch.sh` again.
 
 ## Doctor
 

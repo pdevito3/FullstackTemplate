@@ -36,9 +36,32 @@ start_json="$(AuthProvider="$AUTH_PROVIDER" aspire start --isolated --format Jso
 echo "$start_json" > "$RUN_DIR/aspire-start.json"
 echo "$RUN_ID" > "$CURRENT_FILE"
 
-for r in server bff webfrontend; do
-  echo "launch: waiting for $r..."
-  aspire wait "$r" --status healthy --timeout 300 --apphost "$APPHOST_DIR" >/dev/null
+# Poll the states instead of `aspire wait`. A resource that cannot start never gets healthy, and `aspire wait` then
+# waits its full timeout. A resource that failed to start or stopped stops the launch at once, with its logs.
+# webfrontend-installer is the only resource that stops when its work is done.
+echo "launch: waiting for server, bff, and webfrontend..."
+deadline=$((SECONDS + 600))
+while :; do
+  table="$(resource_table)"
+  failed="$(awk -F'\t' '$2 == "FailedToStart" || $2 == "RuntimeUnhealthy" ||
+    (($2 == "Exited" || $2 == "Finished") && $1 != "webfrontend-installer") { print $1 }' <<<"$table")"
+  if [[ -n "$failed" ]]; then
+    for r in $failed; do
+      echo "launch: $r is $(awk -F'\t' -v r="$r" '$1 == r { print $2 }' <<<"$table"). Its last log lines:" >&2
+      aspire logs "$r" -n 20 --apphost "$APPHOST_DIR" >&2 || true
+    done
+    echo "launch: run cleanup.sh before you launch again." >&2
+    exit 1
+  fi
+  healthy="$(awk -F'\t' '($1 == "server" || $1 == "bff" || $1 == "webfrontend") && $2 == "Running" && $3 == "Healthy"' <<<"$table" | wc -l)"
+  (( healthy == 3 )) && break
+  if (( SECONDS >= deadline )); then
+    echo "launch: server, bff, and webfrontend are not all healthy after 600 s. The states:" >&2
+    echo "$table" >&2
+    echo "launch: run cleanup.sh before you launch again." >&2
+    exit 1
+  fi
+  sleep 2
 done
 
 web="$(url_of webfrontend http)"

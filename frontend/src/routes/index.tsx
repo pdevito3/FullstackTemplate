@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { RotateClockwiseIcon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+import { Refresh01Icon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
@@ -145,7 +145,7 @@ function Index() {
                   isPending={isCurrentlyFetching}
                 >
                   <HugeiconsIcon
-                    icon={RotateClockwiseIcon}
+                    icon={Refresh01Icon}
                     className={`size-4 ${isCurrentlyFetching ? 'animate-spin' : ''}`}
                   />
                   Refresh

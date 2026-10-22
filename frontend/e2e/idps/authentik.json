@@ -13,7 +13,8 @@
     "issuerParameter": false,
     "backChannelLogout": true,
     "endSession": true,
-    "pushedAuthorization": false
+    "pushedAuthorization": false,
+    "dpop": false
   },
   "sessionFeatures": {
     "backChannelLogoutReachesBff": true,

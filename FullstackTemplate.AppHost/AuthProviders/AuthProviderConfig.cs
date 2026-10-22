@@ -33,6 +33,12 @@ public sealed record AuthProviderConfig
     public AuthFeatureSettings Features { get; init; } = new();
 
     /// <summary>
+    /// The DPoP key of the BFF (<c>Auth:DPoPJsonWebKey</c>), when the stack runs with DPoP. See
+    /// <see cref="AuthProviderDPoP.WithDPoP"/>.
+    /// </summary>
+    public IResourceBuilder<ParameterResource>? DPoPKey { get; init; }
+
+    /// <summary>
     /// Whether to include the Audience as an OAuth scope.
     /// Some providers (like Keycloak) require the audience as a scope to get proper access tokens.
     /// FusionAuth doesn't support custom scopes and will reject unknown scopes.
@@ -214,6 +220,11 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__Features__EndSession", authProvider.Features.EndSession)
             .WithEnvironment("Auth__Features__PushedAuthorization", authProvider.Features.PushedAuthorization)
             .WithEnvironment("Auth__Features__DPoP", authProvider.Features.DPoP);
+
+        if (authProvider.DPoPKey is not null)
+        {
+            resource.WithEnvironment("Auth__DPoPJsonWebKey", authProvider.DPoPKey);
+        }
 
         foreach (var (name, value) in authProvider.BffSettings)
         {

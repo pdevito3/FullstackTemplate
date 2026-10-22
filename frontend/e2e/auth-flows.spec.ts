@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { test, expect, Locator, Page, Request } from '@playwright/test'
 import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
@@ -76,6 +77,26 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
   }
 }
 
+/**
+ * The number of server spans of the secure weather call with a DPoP proof since `startedAt`. The server tags the span
+ * of a request with `app.auth.scheme=DPoP` after it checked the proof and the binding of the token.
+ */
+function dpopSpansOfSecureWeatherSince(startedAt: number): number {
+  const output = execFileSync(
+    'dotnet',
+    ['aspire', 'otel', 'spans', '--search', 'app.auth.scheme', '--format', 'Json', '--apphost', '../FullstackTemplate.AppHost'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+  )
+  const json = output.split('\n').find((line) => line.startsWith('[{') || line === '[]')
+  const spans = JSON.parse(json ?? '[]') as { timestamp: string; attributes: Record<string, string> }[]
+  return spans.filter(
+    (span) =>
+      Date.parse(span.timestamp) >= startedAt &&
+      span.attributes['url.path'] === '/api/v1/weather/secure' &&
+      span.attributes['app.auth.scheme'] === 'DPoP',
+  ).length
+}
+
 test.describe(`Auth Flows - ${currentIdp.name}`, () => {
   test.describe('React UI Authentication', () => {
     test('should login, access secure weather, and logout', async ({ page }) => {
@@ -146,6 +167,27 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
 
       // Verify login button is visible again (indicates logged out)
       await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 10000 })
+    })
+
+    // The stack runs with DPoP when the BFF has Auth:Features:DPoP=Require (DPoP=true when the stack starts). The
+    // server tags the span of a request that came with a valid DPoP proof, so the test reads the span of the call.
+    test('should call the secure weather API with a DPoP-bound token', async ({ page }) => {
+      test.skip(process.env.DPOP !== 'true', 'The stack does not use DPoP. Start it with DPoP=true.')
+      const startedAt = Date.now()
+
+      await page.goto('/')
+      await page.getByRole('button', { name: /login/i }).click()
+      await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
+      await loginAtIdp(page, currentIdp)
+      await page.waitForURL('/', { timeout: 30000 })
+      await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
+
+      await page.getByRole('button', { name: /public api|secure api/i }).click()
+      await expect(page.getByText(/authenticated/i).first()).toBeVisible({ timeout: 10000 })
+
+      await expect
+        .poll(() => dpopSpansOfSecureWeatherSince(startedAt), { timeout: 30000, message: 'no server span with app.auth.scheme=DPoP' })
+        .toBeGreaterThan(0)
     })
 
     test('should use PAR when the provider offers it, and the plain authorize URL when not', async ({ page }) => {
@@ -420,6 +462,7 @@ test.describe(`Provider discovery - ${currentIdp.name}`, () => {
       backChannelLogout: discovery.backchannel_logout_supported === true,
       endSession: typeof discovery.end_session_endpoint === 'string',
       pushedAuthorization: typeof discovery.pushed_authorization_request_endpoint === 'string',
+      dpop: Array.isArray(discovery.dpop_signing_alg_values_supported) && discovery.dpop_signing_alg_values_supported.length > 0,
     }
     expect(live).toEqual(currentIdp.capabilities)
   })

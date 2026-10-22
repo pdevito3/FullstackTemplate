@@ -81,6 +81,8 @@ const env: NodeJS.ProcessEnv = {
   CLIENT_SECRET: bffEnvironment.Auth__ClientSecret,
   // The BFF refresh test runs only when the stack makes each API call refresh (BffRefreshBeforeExpirationSeconds)
   BFF_REFRESH_BEFORE_EXPIRATION_SECONDS: bffEnvironment.Auth__RefreshBeforeExpirationSeconds ?? '',
+  // The stack runs with DPoP (AppHost setting DPoP=true), so the tests expect DPoP-bound tokens
+  DPOP: String(bffEnvironment.Auth__Features__DPoP === 'Require'),
 }
 
 // The back-channel logout test ends the session of the user through the admin API of the identity provider. The
@@ -123,7 +125,7 @@ if (mismatch) {
   process.exit(1)
 }
 
-console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP}`)
+console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP} DPOP=${env.DPOP}`)
 
 const result = spawnSync('pnpm', ['exec', 'playwright', 'test', ...process.argv.slice(2)], { stdio: 'inherit', env })
 process.exit(result.status ?? 1)

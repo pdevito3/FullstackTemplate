@@ -222,6 +222,11 @@ jobs:
           - idp: keycloak
             provider: Keycloak
             refresh-margin: '86400'
+          # The same stack with DPoP: the BFF binds the tokens to its key (RFC 9449)
+          - idp: keycloak
+            provider: Keycloak
+            dpop: true
+            refresh-margin: '86400'
           - idp: fusionauth
             provider: FusionAuth
             refresh-margin: '86400'
@@ -239,10 +244,11 @@ jobs:
             provider: DuendeDemo
             public: true
     continue-on-error: ${{ matrix.public == true }}
-    name: e2e (${{ matrix.provider }})
+    name: e2e (${{ matrix.provider }}${{ matrix.dpop && ' DPoP' || '' }})
     env:
       AuthProvider: ${{ matrix.provider }}
       IDP: ${{ matrix.idp }}
+      DPoP: ${{ matrix.dpop == true }}
       # Longer than the access token lifetime of each provider, so that each API call refreshes. The BFF refresh test
       # in auth-flows.spec.ts needs it. The public Duende service gets no margin, so that the job does not refresh on
       # each call to it, and the test skips there.
@@ -323,7 +329,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: e2e-${{ matrix.idp }}
+          name: e2e-${{ matrix.idp }}${{ matrix.dpop && '-dpop' || '' }}
           path: |
             frontend/playwright-report/
             frontend/test-results/

@@ -10,6 +10,8 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 /// </summary>
 public sealed class KeycloakAuthProvider : IAuthProvider
 {
+    public bool TestedWithDPoP => true;
+
     public AuthProviderConfig AddTo(IDistributedApplicationBuilder builder, AuthClientUrls clientUrls)
     {
         const string realmName = "aspire";
@@ -40,7 +42,9 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             })
             .WithSeedFiles(this, "/opt/keycloak/data/import")
             .WithClientUrls(clientUrls)
-            .WithArgs("start-dev", "--import-realm")
+            // The dpop feature adds dpop_signing_alg_values_supported to discovery and lets the token endpoint accept proofs.
+            // It changes nothing for a client that sends no proof.
+            .WithArgs("start-dev", "--import-realm", "--features=dpop")
             .WaitFor(keycloakDb)
             // Health check ensures Keycloak and the realm are ready before server starts
             .WithHttpHealthCheck($"/realms/{realmName}/.well-known/openid-configuration");

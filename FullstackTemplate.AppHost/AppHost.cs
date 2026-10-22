@@ -73,7 +73,12 @@ try
         webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"), bffForContainers);
     // The AuthProvider setting selects the provider. appsettings.json gives the default, and the environment
     // variable AuthProvider=Keycloak overrides it. The e2e tests find the provider from the running stack.
-    var authProvider = AuthProviderCatalog.Select(builder.Configuration).AddTo(builder, authClientUrls);
+    var selectedProvider = AuthProviderCatalog.Select(builder.Configuration);
+    var authProvider = selectedProvider.AddTo(builder, authClientUrls);
+    // DPoP=true runs the stack with DPoP (RFC 9449): the BFF binds the tokens to its key. The setting is a flag like
+    // AuthProvider, for example the environment variable DPoP=true.
+    if (AuthProviderDPoP.IsOn(builder))
+        authProvider = authProvider.WithDPoP(selectedProvider, builder);
     server.WithServerAuth(authProvider);
     bff.WithBffAuth(authProvider);
     authProvider.ConfigureBff?.Invoke(bff);

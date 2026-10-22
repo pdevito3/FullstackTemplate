@@ -106,7 +106,7 @@ The BFF reads the discovery document of the provider one time at startup. It use
 | `Auth:Features:BackChannelLogout` | `backchannel_logout_supported` | The endpoint stays mapped, and it validates each token. |
 | `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to the local `returnUrl`. |
 | `Auth:Features:PushedAuthorization` | `pushed_authorization_request_endpoint` | The BFF uses the plain authorize URL. |
-| `Auth:Features:DPoP` | `dpop_signing_alg_values_supported` | Always `Disable` in phase 1. Another value stops the BFF at startup. |
+| `Auth:Features:DPoP` | `dpop_signing_alg_values_supported` | The BFF uses Bearer tokens. See [DPoP](#dpop). |
 
 The values are:
 
@@ -124,6 +124,7 @@ These are the active features for each provider with `Auto`. The e2e tests have 
 | `end_session_endpoint` | yes | yes | yes | yes | no (the BFF uses `/cognito-idp/logout`) | yes |
 | PAR | yes | no | no | yes | no | no |
 | Refresh token rotation | yes | yes | yes | no | no | no (the old token stays valid) |
+| DPoP | yes (the stack starts it with `--features=dpop`) | no | no | yes | no | no |
 
 Other settings:
 
@@ -134,6 +135,40 @@ Other settings:
 | `Auth:MetadataRefreshInterval` | The handler default | The shortest time between two reads of the discovery document and the signing keys. |
 | `Auth:UseAudienceAsScope` | `true` | Adds `Auth:Audience` to the scopes. FusionAuth needs `false`. |
 | `Auth:DefaultAccessTokenLifetime` | none | The lifetime of an access token when the token response has no `expires_in`. With no value, such a token never expires, and the BFF never refreshes it. |
+
+## DPoP
+
+DPoP (RFC 9449) binds the access token and the refresh token to a key of the BFF. A thief of a token cannot use it without the key. `Auth:Features:DPoP` is `Disable` by default, so the tokens are Bearer tokens.
+
+| Setting | Content |
+|---|---|
+| `Auth:Features:DPoP` | `Disable` (the default), `Auto`, or `Require`. `Auto` uses DPoP if the key is set and discovery lists its algorithm. Otherwise the BFF logs one warning and uses Bearer tokens. `Require` stops the BFF at startup if the key is missing, or if discovery does not list its algorithm. |
+| `Auth:DPoPJsonWebKey` | The one DPoP key of the BFF, as a private JSON Web Key with an `alg`, for example an EC P-256 key with `"alg": "ES256"`. It is a secret. |
+
+How the BFF uses the key:
+
+- The authorize request has `dpop_jkt`, the thumbprint of the key. The code exchange and each refresh have a DPoP proof.
+- An API call has `Authorization: DPoP <token>` and a new `DPoP` proof for that request. The proof has the method, the URL of the API without the query, and the hash of the token.
+- If the API answers `401` with `use_dpop_nonce`, the BFF keeps the nonce and sends the request one more time with a new proof. A request body larger than 64 KiB gets no retry, but the next request has the nonce.
+- The BFF stores the key in the session ticket with the tokens, so the tokens of a session always match the key that bound them. A change of the key applies to new logins. A session from before the change has Bearer tokens, or the old key, until the user logs in again.
+
+The server accepts both token types. A token with a `cnf.jkt` claim must come with `Authorization: DPoP` and a valid proof. The same token as a Bearer token gets `401`. The server checks each rule of RFC 9449 section 4.3 and section 7, and answers with `WWW-Authenticate: DPoP error="invalid_dpop_proof"` or `error="invalid_token"`. The proof of a request can pass one time: the server keeps the `jti` of each proof in the table `used_dpop_proofs` of `appdb` until the proof is too old to pass the `iat` check, and a background service deletes the expired rows. The server builds the URL of the proof from the scheme, host, path base, and path of the request. The server has no forwarded headers middleware. If a proxy between the BFF and the server ends TLS or changes the `Host` header, the URL of the proof does not match. Add `UseForwardedHeaders` to the server in that case.
+
+| Server setting | Default | Content |
+|---|---|---|
+| `Auth:DPoP:ProofLifetime` | 60 s | The oldest `iat` that a proof can have. |
+| `Auth:DPoP:ClockSkew` | 5 s | How far in the future an `iat` can be. |
+| `Auth:DPoP:CleanupInterval` | 5 min | How often the server deletes expired replay rows. |
+
+The server tags the span of a DPoP request with `app.auth.scheme=DPoP` and `app.dpop.jkt_prefix`, the first 8 characters of the thumbprint. No log or tag has a token, a proof, or a key.
+
+To run the local stack with DPoP, set `DPoP=true`. The AppHost then sets `Auth:Features:DPoP` to `Require` and gives the BFF a generated EC P-256 key as the secret parameter `bff-dpop-key`. Only a provider whose class sets `TestedWithDPoP` can run with DPoP: the Duende Demo and Keycloak. Keycloak always starts with `--features=dpop`. Keycloak 26.0.8 has DPoP as a preview feature. FusionAuth and Authentik have no DPoP support. For another provider, the AppHost stops.
+
+```bash
+AuthProvider=Keycloak DPoP=true dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+```
+
+When the stack runs with DPoP, `run-against-stack.ts` sets `DPOP=true`, and the e2e test "should call the secure weather API with a DPoP-bound token" reads the server span of the secure weather call with `dotnet aspire otel spans`. Without DPoP, that test is skipped.
 
 ## Auth provider
 
@@ -173,6 +208,7 @@ An isolated run starts with an empty database, so it does not have this problem.
 2. In the folder, add the class `<Name>AuthProvider` that implements `IAuthProvider`. The AppHost finds the class by reflection, and `<Name>` from the class name is the value of the `AuthProvider` setting. `AddTo` adds the containers of the provider to the stack and returns an `AuthProviderConfig`.
 3. Put the seed files in `seed/`, and mount them with `WithSeedFiles`. Call `WithClientUrls` on the container, and read the app URLs from the `APP_*` variables in the seed files. An isolated run gives the apps random ports.
 4. Add `frontend/e2e/idps/<name>.json`, with `<name>` in lowercase. Give the login form and the test user. Set `resource` to the name of the Aspire resource of the provider. Set `capabilities` to what the discovery document of the provider lists, and `sessionFeatures` to what the provider does. The e2e tests skip a feature test if the provider does not have the feature.
+5. To run the provider with `DPoP=true`, make `TestedWithDPoP` of the class return true, and run the e2e tests with DPoP. See [DPoP](#dpop).
 
 A unit test in `AuthProviderCatalogTests` makes sure that each provider has its folder and its e2e file.
 

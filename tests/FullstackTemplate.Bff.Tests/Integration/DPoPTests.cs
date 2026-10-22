@@ -124,6 +124,20 @@ public class DPoPTests
     }
 
     [Test]
+    public async Task the_userinfo_call_falls_back_to_bearer_when_the_provider_offers_only_bearer_there()
+    {
+        await using var provider = await FakeIdentityProvider.StartAsync(new FakeProviderOptions { DPoP = true, UserInfoBearerOnly = true });
+        await using var app = StartBff(FeatureMode.Require, provider);
+        using var browser = app.CreateBrowser();
+        var subject = NewSubject();
+
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        provider.UserInfoRequests.Where(r => r.Subject == subject).Select(r => r.Scheme).ShouldBe(["DPoP", "Bearer"]);
+    }
+
+    [Test]
     public async Task a_refresh_has_a_proof_of_the_key()
     {
         using var browser = _bff.CreateBrowser();

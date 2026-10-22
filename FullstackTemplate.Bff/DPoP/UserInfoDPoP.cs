@@ -53,7 +53,8 @@ public static class UserInfoDPoP
     /// <summary>
     /// The backchannel handler of the OIDC handler. For the userinfo call with a DPoP-bound token, it sets
     /// <c>Authorization: DPoP</c> and a proof with <c>ath</c>. After <c>use_dpop_nonce</c> it sends the call one
-    /// more time with the nonce. Other requests go through unchanged.
+    /// more time with the nonce. When the provider answers with only a Bearer challenge, it sends the call one more
+    /// time as Bearer. Other requests go through unchanged.
     /// </summary>
     public sealed class Handler(IHttpContextAccessor httpContextAccessor, IDPoPProofService proofService) : DelegatingHandler
     {
@@ -69,14 +70,32 @@ public static class UserInfoDPoP
 
             await SetHeadersAsync(request, binding, nonce: null, cancellationToken);
             var response = await base.SendAsync(request, cancellationToken);
-            if (!DPoPProxy.UsesNonceError(response, out var nonce))
+            if (DPoPProxy.UsesNonceError(response, out var nonce))
+            {
+                response.Dispose();
+                await SetHeadersAsync(request, binding, nonce, cancellationToken);
+                Logger.Here().Debug("Sent the userinfo request again with the DPoP nonce that the identity provider gave");
+                response = await base.SendAsync(request, cancellationToken);
+            }
+
+            if (!OffersBearerOnly(response))
                 return response;
 
+            // Some providers check DPoP at their APIs but not at userinfo. Duende IdentityServer answers the DPoP
+            // scheme there with 401 and only a Bearer challenge, and accepts the bound token as Bearer. The token goes
+            // back to the provider that issued it, so the Bearer scheme gives it to no one new.
             response.Dispose();
-            await SetHeadersAsync(request, binding, nonce, cancellationToken);
-            Logger.Here().Debug("Sent the userinfo request again with the DPoP nonce that the identity provider gave");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", binding.AccessToken);
+            request.Headers.Remove(DPoPHeaderName);
+            Logger.Here().Information("The userinfo endpoint offers only the Bearer scheme, so the BFF sent the DPoP-bound token as Bearer");
             return await base.SendAsync(request, cancellationToken);
         }
+
+        // A 401 with a Bearer challenge and no DPoP challenge (RFC 9449 section 7.1)
+        private static bool OffersBearerOnly(HttpResponseMessage response) =>
+            response.StatusCode == System.Net.HttpStatusCode.Unauthorized
+            && response.Headers.WwwAuthenticate.Any(c => string.Equals(c.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase))
+            && !response.Headers.WwwAuthenticate.Any(c => string.Equals(c.Scheme, "DPoP", StringComparison.OrdinalIgnoreCase));
 
         private async Task SetHeadersAsync(HttpRequestMessage request, Binding binding, DPoPNonce? nonce, CancellationToken cancellationToken)
         {

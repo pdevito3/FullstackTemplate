@@ -433,7 +433,16 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
             // RFC 9449 section 7.1: a DPoP-bound token needs the DPoP scheme and a proof of its key for this
             // request and this token
-            if (grant.DPoPJkt is { } boundJkt)
+            if (_options.UserInfoBearerOnly)
+            {
+                UserInfoRequests.Enqueue(new UserInfoRequest(header.Scheme, grant.Subject, null));
+                if (!string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase))
+                {
+                    request.HttpContext.Response.Headers.WWWAuthenticate = "Bearer error=\"invalid_token\"";
+                    return Results.StatusCode(StatusCodes.Status401Unauthorized);
+                }
+            }
+            else if (grant.DPoPJkt is { } boundJkt)
             {
                 var proof = DPoPProofVerifier.Verify(request.Headers["DPoP"].ToString(), request.Method, $"{Issuer}/userinfo", accessToken);
                 UserInfoRequests.Enqueue(new UserInfoRequest(header.Scheme, grant.Subject, proof));

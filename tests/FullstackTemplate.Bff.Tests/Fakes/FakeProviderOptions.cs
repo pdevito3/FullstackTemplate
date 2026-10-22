@@ -32,6 +32,12 @@ public sealed record FakeProviderOptions
     public string? UserInfoNonce { get; init; }
 
     /// <summary>
+    /// With <see cref="DPoP"/>: the userinfo endpoint does not know the DPoP scheme, as Duende IdentityServer. It
+    /// answers it with 401 and only a Bearer challenge, and accepts a bound token as Bearer.
+    /// </summary>
+    public bool UserInfoBearerOnly { get; init; }
+
+    /// <summary>
     /// The discovery document has an <c>issuer</c> that is not the issuer URL of the provider (OIDC Discovery 4.3).
     /// </summary>
     public bool MismatchedDiscoveryIssuer { get; init; }

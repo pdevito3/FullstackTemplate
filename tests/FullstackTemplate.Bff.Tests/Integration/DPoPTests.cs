@@ -86,6 +86,42 @@ public class DPoPTests
     }
 
     [Test]
+    public async Task the_userinfo_call_has_the_dpop_scheme_and_a_proof_for_the_token()
+    {
+        using var browser = _bff.CreateBrowser();
+        var subject = NewSubject();
+
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        // The provider rejects a bound token with the Bearer scheme, or a proof without the right ath, htm, and htu
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var userInfo = _provider.UserInfoRequests.Single(r => r.Subject == subject);
+        userInfo.Scheme.ShouldBe("DPoP");
+        userInfo.DPoP.ShouldNotBeNull();
+        userInfo.DPoP.Error.ShouldBeNull();
+        userInfo.DPoP.Jkt.ShouldBe(_key.Jkt);
+    }
+
+    [Test]
+    public async Task the_userinfo_call_is_sent_again_with_the_nonce_when_the_provider_asks_for_one()
+    {
+        const string nonce = "userinfo-nonce";
+        await using var provider = await FakeIdentityProvider.StartAsync(new FakeProviderOptions { DPoP = true, UserInfoNonce = nonce });
+        await using var app = StartBff(FeatureMode.Require, provider);
+        using var browser = app.CreateBrowser();
+        var subject = NewSubject();
+
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var requests = provider.UserInfoRequests.Where(r => r.Subject == subject).ToList();
+        requests.Count.ShouldBe(2);
+        requests[0].DPoP!.Nonce.ShouldBeNull();
+        requests[1].DPoP!.Error.ShouldBeNull();
+        requests[1].DPoP!.Nonce.ShouldBe(nonce);
+    }
+
+    [Test]
     public async Task a_refresh_has_a_proof_of_the_key()
     {
         using var browser = _bff.CreateBrowser();
@@ -236,6 +272,7 @@ public class DPoPTests
         echo.Headers["Authorization"].ShouldStartWith("Bearer at-");
         echo.Headers.ShouldNotContainKey("DPoP");
         _plainProvider.TokenRequests.Single(t => t.Subject == subject).DPoP.ShouldBeNull();
+        _plainProvider.UserInfoRequests.Single(r => r.Subject == subject).Scheme.ShouldBe("Bearer");
     }
 
     [Test]

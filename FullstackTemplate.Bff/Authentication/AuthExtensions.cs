@@ -1,3 +1,4 @@
+using Duende.AccessTokenManagement.DPoP;
 using Duende.AccessTokenManagement.OpenIdConnect;
 using FullstackTemplate.Bff.ApiEndpoints;
 using FullstackTemplate.Bff.DPoP;
@@ -159,7 +160,11 @@ public static class AuthExtensions
 
                 options.Events.OnPushAuthorization = TokenClientAuthentication.PushAuthorizationAsync;
                 options.Events.OnAuthorizationCodeReceived = TokenClientAuthentication.RedeemCodeAsync;
-                options.Events.OnTokenValidated = IdTokenChecks.ValidateAsync;
+                options.Events.OnTokenValidated = context =>
+                {
+                    UserInfoDPoP.BindAfterCodeExchange(context);
+                    return IdTokenChecks.ValidateAsync(context);
+                };
                 options.Events.OnRemoteFailure = CallbackRejection.WriteProblemAsync;
 
                 options.Events.OnTicketReceived = context =>
@@ -217,6 +222,13 @@ public static class AuthExtensions
         // discovery lacks DPoP.
         services.AddOptions<UserTokenManagementOptions>()
             .Configure<IConfiguration>((options, configuration) => options.DPoPJsonWebKey = DPoPKey.ReadOrNull(configuration));
+        // After token management, so that this handler is outside its backchannel handler and its proofs
+        services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
+            .Configure<IHttpContextAccessor, IDPoPProofService>((options, httpContextAccessor, proofService) =>
+                options.BackchannelHttpHandler = new UserInfoDPoP.Handler(httpContextAccessor, proofService)
+                {
+                    InnerHandler = options.BackchannelHttpHandler ?? new HttpClientHandler(),
+                });
         RefreshIdTokenValidation.Register(services);
         RefreshFailureMetrics.Register(services);
         DefaultAccessTokenLifetime.AddToRefresh(services);

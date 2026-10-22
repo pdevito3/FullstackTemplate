@@ -689,6 +689,7 @@ Phase 1 needs no change for phase 2. The BFF session row does not change.
 
 - **The key.** One DPoP key for the BFF client, from a secret in the configuration (`DPoPJsonWebKey` of `Duende.AccessTokenManagement`). All instances share it. A key rotation is a change of the configuration. A key for each BFF session can come later.
 - **The code exchange.** `Duende.AccessTokenManagement` binds it through its `AuthorizationServerDPoPHandler`: `dpop_jkt` on the authorize request, and a proof on the code exchange. The Microsoft handler needs no DPoP support.
+- **The userinfo call.** Token management keeps the key of the code exchange in `HttpContext.Items`, so its handler would add a proof without `ath` to the userinfo call. `UserInfoDPoP` removes the key after the code exchange. For a DPoP-bound token, it sends the userinfo call with `Authorization: DPoP` and a proof with `ath`, and it retries one time after `use_dpop_nonce`.
 - **The setting.** `Auth:Features:DPoP`, with `Disable` as the default. DPoP needs a configured key, so `Auto` is not a safe default.
 - **The proxy.** The token transform reads the token type of the stored token.
   - `Bearer` gives `Authorization: Bearer`.

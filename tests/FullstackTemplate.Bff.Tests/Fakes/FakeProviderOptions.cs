@@ -26,6 +26,12 @@ public sealed record FakeProviderOptions
     public bool DPoP { get; init; }
 
     /// <summary>
+    /// With <see cref="DPoP"/>: the userinfo endpoint answers <c>use_dpop_nonce</c> with this nonce to a proof
+    /// without it (RFC 9449 section 9).
+    /// </summary>
+    public string? UserInfoNonce { get; init; }
+
+    /// <summary>
     /// The discovery document has an <c>issuer</c> that is not the issuer URL of the provider (OIDC Discovery 4.3).
     /// </summary>
     public bool MismatchedDiscoveryIssuer { get; init; }

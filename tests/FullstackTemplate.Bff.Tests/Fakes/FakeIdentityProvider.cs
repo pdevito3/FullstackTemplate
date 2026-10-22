@@ -103,6 +103,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     public ConcurrentQueue<PushedRequest> PushedAuthorizationRequests { get; } = new();
 
     /// <summary>
+    /// The scheme of each request to the userinfo endpoint with a known token, with the <c>sub</c> of its grant and,
+    /// for a DPoP-bound token, the check of its proof.
+    /// </summary>
+    public ConcurrentQueue<UserInfoRequest> UserInfoRequests { get; } = new();
+
+    /// <summary>
     /// The parameters of each authorize request, the pushed ones included, for example <c>dpop_jkt</c>.
     /// </summary>
     public ConcurrentQueue<IReadOnlyDictionary<string, string>> AuthorizeRequests { get; } = new();
@@ -418,10 +424,35 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
         _app.MapMethods("/userinfo", ["GET", "POST"], (HttpRequest request) =>
         {
-            var accessToken = request.Headers.Authorization.ToString().Replace("Bearer ", "", StringComparison.Ordinal);
-            return _accessTokens.TryGetValue(accessToken, out var grant)
-                ? Results.Json(new { sub = grant.Subject, name = $"Name of {grant.Subject}", email = $"{grant.Subject}@example.com" })
-                : Results.Unauthorized();
+            if (!AuthenticationHeaderValue.TryParse(request.Headers.Authorization.ToString(), out var header)
+                || header.Parameter is not { } accessToken
+                || !_accessTokens.TryGetValue(accessToken, out var grant))
+            {
+                return Results.Unauthorized();
+            }
+
+            // RFC 9449 section 7.1: a DPoP-bound token needs the DPoP scheme and a proof of its key for this
+            // request and this token
+            if (grant.DPoPJkt is { } boundJkt)
+            {
+                var proof = DPoPProofVerifier.Verify(request.Headers["DPoP"].ToString(), request.Method, $"{Issuer}/userinfo", accessToken);
+                UserInfoRequests.Enqueue(new UserInfoRequest(header.Scheme, grant.Subject, proof));
+                if (!string.Equals(header.Scheme, "DPoP", StringComparison.OrdinalIgnoreCase) || proof is not { Valid: true } || proof.Jkt != boundJkt)
+                    return DPoPError(request, "invalid_dpop_proof");
+                if (_options.UserInfoNonce is { } nonce && proof.Nonce != nonce)
+                {
+                    request.HttpContext.Response.Headers["DPoP-Nonce"] = nonce;
+                    return DPoPError(request, "use_dpop_nonce");
+                }
+            }
+            else
+            {
+                UserInfoRequests.Enqueue(new UserInfoRequest(header.Scheme, grant.Subject, null));
+                if (!string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase))
+                    return Results.Unauthorized();
+            }
+
+            return Results.Json(new { sub = grant.Subject, name = $"Name of {grant.Subject}", email = $"{grant.Subject}@example.com" });
         });
 
         _app.MapPost("/revoke", async (HttpContext context) =>
@@ -457,6 +488,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
         gate.Arrived.TrySetResult();
         await gate.Released.Task;
+    }
+
+    private static IResult DPoPError(HttpRequest request, string error)
+    {
+        request.HttpContext.Response.Headers.WWWAuthenticate = $"DPoP error=\"{error}\", algs=\"ES256\"";
+        return Results.StatusCode(StatusCodes.Status401Unauthorized);
     }
 
     /// <summary>
@@ -625,6 +662,10 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// <param name="Subject">The <c>sub</c> of the code or refresh token, or null when it is unknown.</param>
     /// <param name="DPoP">The <c>DPoP</c> proof of the request: null when it has none.</param>
     public sealed record TokenRequest(string GrantType, string? ClientAuthentication, string? Subject, DPoPProofResult? DPoP = null);
+
+    /// <param name="Scheme">The scheme of the <c>Authorization</c> header.</param>
+    /// <param name="DPoP">The check of the <c>DPoP</c> proof: null when the token is not DPoP-bound.</param>
+    public sealed record UserInfoRequest(string Scheme, string Subject, DPoPProofResult? DPoP);
 
     /// <summary>
     /// One request to the PAR endpoint.

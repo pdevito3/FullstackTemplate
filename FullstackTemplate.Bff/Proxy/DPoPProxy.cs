@@ -72,6 +72,26 @@ public static class DPoPProxy
     }
 
     /// <summary>
+    /// True for a <c>401</c> with <c>WWW-Authenticate: DPoP error="use_dpop_nonce"</c> and a <c>DPoP-Nonce</c>
+    /// header (RFC 9449 section 9). <paramref name="nonce"/> is then the nonce.
+    /// </summary>
+    internal static bool UsesNonceError(HttpResponseMessage response, out DPoPNonce nonce)
+    {
+        nonce = default;
+        if (response.StatusCode != HttpStatusCode.Unauthorized
+            || !response.Headers.TryGetValues(NonceHeaderName, out var values)
+            || DPoPNonce.ParseOrDefault(values.FirstOrDefault()) is not { } parsed)
+        {
+            return false;
+        }
+
+        nonce = parsed;
+        return response.Headers.WwwAuthenticate.Any(c =>
+            string.Equals(c.Scheme, "DPoP", StringComparison.OrdinalIgnoreCase)
+            && c.Parameter?.Contains("error=\"use_dpop_nonce\"", StringComparison.Ordinal) == true);
+    }
+
+    /// <summary>
     /// Wraps the forwarder handler with the nonce retry.
     /// </summary>
     internal sealed class NonceRetryClientFactory(IServiceProvider services) : ForwarderHttpClientFactory
@@ -136,22 +156,6 @@ public static class DPoPProxy
             foreach (var header in original.Headers)
                 copy.Headers.TryAddWithoutValidation(header.Key, header.Value);
             return copy;
-        }
-
-        private static bool UsesNonceError(HttpResponseMessage response, out DPoPNonce nonce)
-        {
-            nonce = default;
-            if (response.StatusCode != HttpStatusCode.Unauthorized
-                || !response.Headers.TryGetValues(NonceHeaderName, out var values)
-                || DPoPNonce.ParseOrDefault(values.FirstOrDefault()) is not { } parsed)
-            {
-                return false;
-            }
-
-            nonce = parsed;
-            return response.Headers.WwwAuthenticate.Any(c =>
-                string.Equals(c.Scheme, "DPoP", StringComparison.OrdinalIgnoreCase)
-                && c.Parameter?.Contains("error=\"use_dpop_nonce\"", StringComparison.Ordinal) == true);
         }
     }
 }

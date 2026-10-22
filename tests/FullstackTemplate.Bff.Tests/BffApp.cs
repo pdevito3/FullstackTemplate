@@ -52,6 +52,10 @@ public sealed class BffApp : WebApplicationFactory<Program>
     // start at the same time can freeze the same logger, which fails the second host.
     private static readonly Lock StartLock = new();
 
+    // WebApplicationFactory adds each client to a List, which is not safe for parallel tests. A lost add leaves a
+    // null in the list, and DisposeAsync then throws.
+    private readonly Lock _clientLock = new();
+
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
     private Action<IServiceCollection>? _services;
     private bool _ownsDependencies;
@@ -200,19 +204,28 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// <summary>
     /// A client with its own cookie container, that does not follow redirects.
     /// </summary>
-    public HttpClient CreateBrowser() => CreateClient(new WebApplicationFactoryClientOptions
+    public HttpClient CreateBrowser()
     {
-        AllowAutoRedirect = false,
-        BaseAddress = Origin,
-        HandleCookies = true,
-    });
+        lock (_clientLock)
+        {
+            return CreateClient(new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false,
+                BaseAddress = Origin,
+                HandleCookies = true,
+            });
+        }
+    }
 
     /// <summary>
     /// A client on the cookies of <paramref name="cookies"/>, that does not follow redirects. Two clients of two
     /// BFF instances with the same container act as one browser.
     /// </summary>
-    public HttpClient CreateBrowser(CookieContainer cookies) =>
-        CreateDefaultClient(Origin, new Microsoft.AspNetCore.Mvc.Testing.Handlers.CookieContainerHandler(cookies));
+    public HttpClient CreateBrowser(CookieContainer cookies)
+    {
+        lock (_clientLock)
+            return CreateDefaultClient(Origin, new Microsoft.AspNetCore.Mvc.Testing.Handlers.CookieContainerHandler(cookies));
+    }
 
     /// <summary>
     /// Runs the full login: <c>/bff/login</c>, the authorize endpoint of the fake provider, and the

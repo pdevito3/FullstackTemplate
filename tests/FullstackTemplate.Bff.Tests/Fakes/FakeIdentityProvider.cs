@@ -19,9 +19,10 @@ using Microsoft.IdentityModel.Tokens;
 /// talk to it over HTTP as they talk to a real provider.
 /// <para>
 /// The authorize endpoint reads test-only query parameters, so that each test chooses its own user:
-/// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_session_state</c>, <c>test_error</c>, and
-/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>). A refresh response has no
-/// <c>id_token</c>.
+/// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_session_state</c>, <c>test_error</c>,
+/// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>), and <c>test_revoke</c> (<c>fail</c>
+/// makes each revocation of a refresh token of the user return 500, and <c>drop</c> closes the connection).
+/// A refresh response has no <c>id_token</c>.
 /// </para>
 /// </summary>
 public sealed class FakeIdentityProvider : IAsyncDisposable
@@ -42,6 +43,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
     private readonly ConcurrentDictionary<string, RefreshGate> _refreshGates = new();
     private readonly ConcurrentQueue<IssuedTokens> _issued = new();
+    private readonly ConcurrentDictionary<string, string> _revokeModes = new();
 
     private FakeIdentityProvider(WebApplication app) => _app = app;
 
@@ -195,6 +197,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 ExpiresIn: int.TryParse(query["test_expires_in"], out var expiresIn) ? expiresIn : 3600,
                 FailRefresh: query["test_refresh"] == "fail");
 
+            if (query["test_revoke"].FirstOrDefault() is { } revokeMode)
+                _revokeModes[grant.Subject] = revokeMode;
+
             var code = NewToken("code");
             _codes[code] = grant;
 
@@ -238,11 +243,23 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 : Results.Unauthorized();
         });
 
-        _app.MapPost("/revoke", async (HttpRequest request) =>
+        _app.MapPost("/revoke", async (HttpContext context) =>
         {
-            var form = await request.ReadFormAsync();
-            RevokedTokens.Add(form["token"].ToString());
-            return Results.Ok();
+            var form = await context.Request.ReadFormAsync();
+            var token = form["token"].ToString();
+            RevokedTokens.Add(token);
+
+            var mode = _refreshTokens.TryGetValue(token, out var grant) ? _revokeModes.GetValueOrDefault(grant.Subject) : null;
+            switch (mode)
+            {
+                case "fail":
+                    return Results.StatusCode(StatusCodes.Status500InternalServerError);
+                case "drop":
+                    context.Abort();
+                    return Results.Empty;
+                default:
+                    return Results.Ok();
+            }
         });
     }
 

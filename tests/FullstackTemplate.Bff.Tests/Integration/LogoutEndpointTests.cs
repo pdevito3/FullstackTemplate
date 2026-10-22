@@ -42,6 +42,27 @@ public class LogoutEndpointTests
     }
 
     [Test]
+    [Arguments("fail")]
+    [Arguments("drop")]
+    public async Task a_revocation_error_does_not_stop_the_logout(string revokeMode)
+    {
+        var app = BffApp.Instance;
+        var provider = app.IdentityProvider;
+        var subject = $"user-logout-revoke-{revokeMode}";
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_revoke={revokeMode}"))!;
+
+        var response = await browser.GetAsync("/bff/logout");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location!.GetLeftPart(UriPartial.Path).ShouldBe($"{provider.Issuer}/endsession");
+        provider.WasRefreshTokenRevoked(subject).ShouldBeTrue();
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
+        response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task a_session_with_no_sid_needs_no_sid()
     {
         using var browser = BffApp.Instance.CreateBrowser();

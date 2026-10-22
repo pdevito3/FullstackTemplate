@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,9 +73,17 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
             try
             {
                 using var response = await HealthClient.SendAsync(request, cancellationToken);
-                return response.IsSuccessStatusCode
+                if (!response.IsSuccessStatusCode)
+                    return HealthCheckResult.Unhealthy($"Kickstart has not created the test user yet ({(int)response.StatusCode}).");
+
+                // FusionAuth can serve the old issuer from its tenant cache for a few seconds after Kickstart
+                // changes it, so wait until the discovery document has the new issuer.
+                using var discovery = JsonDocument.Parse(await HealthClient.GetStringAsync(
+                    $"{fusionAuthHttp.Url}/.well-known/openid-configuration", cancellationToken));
+                var issuer = discovery.RootElement.TryGetProperty("issuer", out var value) ? value.GetString() : null;
+                return string.Equals(issuer?.TrimEnd('/'), fusionAuthHttp.Url.TrimEnd('/'), StringComparison.Ordinal)
                     ? HealthCheckResult.Healthy()
-                    : HealthCheckResult.Unhealthy($"Kickstart has not created the test user yet ({(int)response.StatusCode}).");
+                    : HealthCheckResult.Unhealthy($"The discovery document still has the issuer {issuer}.");
             }
             catch (HttpRequestException exception)
             {

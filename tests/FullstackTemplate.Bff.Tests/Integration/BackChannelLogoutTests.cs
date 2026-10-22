@@ -8,6 +8,7 @@ using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using Shouldly;
 
 public class BackChannelLogoutTests
@@ -221,6 +222,124 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task two_inserts_of_the_same_jti_at_the_same_time_let_exactly_one_win()
+    {
+        var jti = Guid.NewGuid().ToString();
+        var expires = DateTimeOffset.UtcNow.AddMinutes(5);
+        await using var first = NewDbContext();
+        await using var second = NewDbContext();
+        await second.Database.OpenConnectionAsync();
+        var secondProcessId = ((NpgsqlConnection)second.Database.GetDbConnection()).ProcessID;
+
+        await using var transaction = await first.Database.BeginTransactionAsync();
+        (await new LogoutTokenReplayCache(first).TryAddAsync(jti, expires, CancellationToken.None)).ShouldBeTrue();
+        var secondAdd = new LogoutTokenReplayCache(second).TryAddAsync(jti, expires, CancellationToken.None);
+
+        // The second insert is in the database and waits for the uncommitted row of the first insert
+        await WaitUntilAsync(() => IsWaitingOnALockAsync(secondProcessId));
+        secondAdd.IsCompleted.ShouldBeFalse();
+        await transaction.CommitAsync();
+
+        (await secondAdd).ShouldBeFalse();
+        await using var check = NewDbContext();
+        (await check.UsedLogoutTokens.CountAsync(t => t.Jti == jti)).ShouldBe(1);
+    }
+
+    [Test]
+    public async Task a_failed_write_of_the_jti_gets_400_and_ends_no_session()
+    {
+        await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(new FailingCommandInterceptor("bff_used_logout_tokens.add"))));
+        var subject = NewSubject();
+        var jti = Guid.NewGuid().ToString();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; });
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        var response = await PostAsync(app, logoutToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldHaveNoStoreHeaders(response);
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).Count.ShouldBe(1);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        app.IdentityProvider.WasRefreshTokenRevoked(subject).ShouldBeFalse();
+        (await UsedLogoutTokenAsync(jti)).ShouldBeNull();
+
+        // The identity provider sends the token again to a BFF that can write the jti
+        (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task a_failed_delete_of_a_session_gets_500_and_lets_the_same_token_pass_again()
+    {
+        await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(new FailingCommandInterceptor("bff_sessions.delete"))));
+        var subject = NewSubject();
+        var jti = Guid.NewGuid().ToString();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; });
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        var response = await PostAsync(app, logoutToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await UsedLogoutTokenAsync(jti)).ShouldBeNull();
+
+        // The identity provider sends the token again to a BFF that can delete the row
+        (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task a_failed_revocation_does_not_stop_the_other_sessions_from_ending()
+    {
+        await using var app = BffApp.StartAnotherInstance(services: FailingRevocation.Register);
+        var subject = NewSubject();
+        using var first = app.CreateBrowser();
+        using var second = app.CreateBrowser();
+        await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
+        await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
+
+        var response = await PostAsync(app, Token(c => { c["sub"] = subject; c.Remove("sid"); }));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
+        issued.Count.ShouldBe(2);
+        issued.Count(token => app.IdentityProvider.RevokedTokens.Contains(token)).ShouldBe(1);
+    }
+
+    [Test]
+    public async Task a_request_that_aborts_during_the_logout_still_ends_all_the_sessions()
+    {
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        using var first = app.CreateBrowser();
+        using var second = app.CreateBrowser();
+        await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
+        await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
+        var gate = app.IdentityProvider.HoldRevocations(subject);
+        using var abort = new CancellationTokenSource();
+
+        var post = PostAsync(app, Token(c => { c["sub"] = subject; c.Remove("sid"); }), abort.Token);
+        await gate.Arrived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await abort.CancelAsync();
+        (await Should.ThrowAsync<Exception>(post)).ShouldBeAssignableTo<OperationCanceledException>();
+        gate.Released.SetResult();
+
+        var issued = app.IdentityProvider.IssuedRefreshTokens(subject);
+        issued.Count.ShouldBe(2);
+        await WaitUntilAsync(() => Task.FromResult(issued.All(token => app.IdentityProvider.RevokedTokens.Contains(token))));
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task a_rejected_logout_token_is_not_kept_in_the_replay_cache()
     {
         var jti = Guid.NewGuid().ToString();
@@ -263,10 +382,44 @@ public class BackChannelLogoutTests
             .SingleOrDefaultAsync(t => t.Jti == jti);
     }
 
-    public static async Task<HttpResponseMessage> PostAsync(string logoutToken)
+    public static Task<HttpResponseMessage> PostAsync(string logoutToken) => PostAsync(BffApp.Instance, logoutToken);
+
+    private static async Task<HttpResponseMessage> PostAsync(BffApp app, string logoutToken,
+        CancellationToken cancellationToken = default)
     {
-        using var client = BffApp.Instance.CreateBrowser();
-        return await client.PostAsync("/bff/backchannel", new FormUrlEncodedContent([new("logout_token", logoutToken)]));
+        using var client = app.CreateBrowser();
+        return await client.PostAsync("/bff/backchannel", new FormUrlEncodedContent([new("logout_token", logoutToken)]),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// A context on <c>bffdb</c> with no retries, so that a test can open its own transaction.
+    /// </summary>
+    private static BffDbContext NewDbContext()
+    {
+        var options = new DbContextOptionsBuilder<BffDbContext>();
+        BffSessionExtensions.ConfigureBffDb(options, BffApp.Database.ConnectionString);
+        return new BffDbContext(options.Options);
+    }
+
+    private static async Task<bool> IsWaitingOnALockAsync(int processId)
+    {
+        await using var connection = new NpgsqlConnection(BffApp.Database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("SELECT wait_event_type FROM pg_stat_activity WHERE pid = @pid", connection);
+        command.Parameters.AddWithValue("pid", processId);
+        return await command.ExecuteScalarAsync() is "Lock";
+    }
+
+    private static async Task WaitUntilAsync(Func<Task<bool>> condition)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+        while (!await condition())
+        {
+            if (DateTimeOffset.UtcNow > deadline)
+                throw new TimeoutException("The condition did not become true in 10 seconds.");
+            await Task.Delay(20);
+        }
     }
 
     private static void ShouldHaveNoStoreHeaders(HttpResponseMessage response)

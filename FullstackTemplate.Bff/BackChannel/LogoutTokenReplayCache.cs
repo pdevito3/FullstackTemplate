@@ -32,6 +32,15 @@ public sealed class LogoutTokenReplayCache(BffDbContext dbContext)
             cancellationToken) > 0;
 
     /// <summary>
+    /// Removes <paramref name="jti"/>, so that the same logout token can pass again.
+    /// </summary>
+    public Task<int> RemoveAsync(string jti, CancellationToken cancellationToken) =>
+        dbContext.UsedLogoutTokens
+            .TagWith("bff_used_logout_tokens.remove")
+            .Where(t => t.Jti == jti)
+            .ExecuteDeleteAsync(cancellationToken);
+
+    /// <summary>
     /// Deletes at most <paramref name="batchSize"/> rows that expired at or before <paramref name="now"/>, and
     /// returns the number of rows that it deleted.
     /// </summary>

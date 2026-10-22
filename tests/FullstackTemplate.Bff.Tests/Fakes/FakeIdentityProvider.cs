@@ -41,7 +41,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Grant> _codes = new();
     private readonly ConcurrentDictionary<string, Grant> _accessTokens = new();
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
-    private readonly ConcurrentDictionary<string, RefreshGate> _refreshGates = new();
+    private readonly ConcurrentDictionary<string, RequestGate> _refreshGates = new();
+    private readonly ConcurrentDictionary<string, RequestGate> _revocationGates = new();
     private readonly ConcurrentQueue<IssuedTokens> _issued = new();
     private readonly ConcurrentDictionary<string, string> _revokeModes = new();
 
@@ -151,7 +152,13 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// Holds each refresh request of <paramref name="subject"/> until the test releases the gate. The gate tells
     /// the test when a refresh request arrives.
     /// </summary>
-    public RefreshGate HoldRefreshes(string subject) => _refreshGates.GetOrAdd(subject, _ => new RefreshGate());
+    public RequestGate HoldRefreshes(string subject) => _refreshGates.GetOrAdd(subject, _ => new RequestGate());
+
+    /// <summary>
+    /// Holds each revocation request for a refresh token of <paramref name="subject"/> until the test releases the
+    /// gate. The gate tells the test when a revocation request arrives.
+    /// </summary>
+    public RequestGate HoldRevocations(string subject) => _revocationGates.GetOrAdd(subject, _ => new RequestGate());
 
     public ValueTask DisposeAsync() => _app.DisposeAsync();
 
@@ -247,9 +254,16 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         {
             var form = await context.Request.ReadFormAsync();
             var token = form["token"].ToString();
+            _refreshTokens.TryGetValue(token, out var grant);
+            if (grant is not null && _revocationGates.TryGetValue(grant.Subject, out var gate))
+            {
+                gate.Arrived.TrySetResult();
+                await gate.Released.Task;
+            }
+
             RevokedTokens.Add(token);
 
-            var mode = _refreshTokens.TryGetValue(token, out var grant) ? _revokeModes.GetValueOrDefault(grant.Subject) : null;
+            var mode = grant is null ? null : _revokeModes.GetValueOrDefault(grant.Subject);
             switch (mode)
             {
                 case "fail":
@@ -310,9 +324,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private sealed record IssuedTokens(string Subject, string RefreshToken, string? IdToken);
 
     /// <summary>
-    /// See <see cref="HoldRefreshes"/>.
+    /// See <see cref="HoldRefreshes"/> and <see cref="HoldRevocations"/>.
     /// </summary>
-    public sealed class RefreshGate
+    public sealed class RequestGate
     {
         public TaskCompletionSource Arrived { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 

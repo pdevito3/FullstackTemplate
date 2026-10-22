@@ -19,7 +19,8 @@ namespace FullstackTemplate.Bff.BackChannel;
 /// <para>
 /// The endpoint validates the logout token, rejects a replay of its <c>jti</c>, and ends the BFF sessions of the
 /// IdP session: the rows with the <c>sid</c> of the token, or all the rows of its <c>sub</c> when it has no
-/// <c>sid</c>. It answers 200, or 400 for a missing, invalid, or replayed token.
+/// <c>sid</c>. It answers 200, or 400 for a missing, invalid, or replayed token, or when the replay cache cannot take
+/// the <c>jti</c>. It answers 500 when a row delete fails.
 /// </para>
 /// </summary>
 public static class BackChannelLogoutEndpoint
@@ -58,28 +59,61 @@ public static class BackChannelLogoutEndpoint
             return;
         }
 
-        // The jti goes into the replay cache only after the BFF sessions ended. A failure on the way then lets the
-        // identity provider send the same token again.
-        if (await replayCache.IsUsedAsync(token.Jti, cancellationToken))
+        // From here on, the work does not stop when the identity provider drops the request. A logout that stops
+        // half way leaves BFF sessions alive that the identity provider thinks have ended.
+
+        // The jti goes into the replay cache before any BFF session ends, so that a lost write cannot let the same
+        // token in again until it expires. When the write fails, no BFF session ends and the 400 lets the identity
+        // provider send the token again.
+        bool added;
+        try
+        {
+            added = await replayCache.TryAddAsync(token.Jti, token.Expires, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Logger.Here().Error(ex, "Could not add the logout token {LogoutTokenId} to the replay cache, so no BFF session ended",
+                Fingerprint.Of(token.Jti));
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        if (!added)
         {
             Logger.Here().Information("Rejected a replay of the logout token {LogoutTokenId}", Fingerprint.Of(token.Jti));
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
 
-        var ended = await EndSessionsAsync(token, store, ticketStore, revocation, cancellationToken);
-
-        if (!await replayCache.TryAddAsync(token.Jti, token.Expires, cancellationToken))
+        // The row delete is the logout. The revocation after it is best effort.
+        var deleted = new List<BffSession>();
+        Exception? deleteFailure = null;
+        try
         {
-            // Another request with the same token came first. It ended the same BFF sessions.
-            Logger.Here().Information("Rejected a replay of the logout token {LogoutTokenId}", Fingerprint.Of(token.Jti));
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await DeleteSessionsAsync(token, store, deleted);
+        }
+        catch (Exception ex)
+        {
+            deleteFailure = ex;
+        }
+
+        await RevokeAsync(deleted, ticketStore, revocation);
+
+        if (deleteFailure is not null)
+        {
+            // Some rows of the IdP session can still be alive. Take the jti out of the replay cache, so that the
+            // identity provider can send the token again to end them.
+            Logger.Here().Error(deleteFailure,
+                "Could not end all the BFF sessions for the logout token {LogoutTokenId}. Ended {Count} BFF sessions",
+                Fingerprint.Of(token.Jti), deleted.Count);
+            await ForgetAsync(replayCache, token.Jti);
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             return;
         }
 
         Logger.Here().Information(
             "Ended {Count} BFF sessions for the logout token {LogoutTokenId} with sub {Subject} and sid {SessionId}",
-            ended, Fingerprint.Of(token.Jti), token.Subject, token.SessionId);
+            deleted.Count, Fingerprint.Of(token.Jti), token.Subject, token.SessionId);
         context.Response.StatusCode = StatusCodes.Status200OK;
     }
 
@@ -105,32 +139,56 @@ public static class BackChannelLogoutEndpoint
     }
 
     /// <summary>
-    /// Deletes the rows of the IdP session and revokes their refresh tokens. A revocation error does not change
-    /// the result. Returns the number of rows that this request deleted.
+    /// Deletes the rows of the IdP session, and adds each row that this request deleted to <paramref name="deleted"/>.
     /// </summary>
-    private static async Task<int> EndSessionsAsync(LogoutToken token, IBffSessionStore store, BffTicketStore ticketStore,
-        RefreshTokenRevocation revocation, CancellationToken cancellationToken)
+    private static async Task DeleteSessionsAsync(LogoutToken token, IBffSessionStore store, List<BffSession> deleted)
     {
         var sessions = token.SessionId is { } sessionId
-            ? await store.FindBySessionIdAsync(sessionId, cancellationToken)
-            : await store.FindBySubjectAsync(token.Subject!, cancellationToken);
+            ? await store.FindBySessionIdAsync(sessionId, CancellationToken.None)
+            : await store.FindBySubjectAsync(token.Subject!, CancellationToken.None);
 
-        var ended = 0;
         foreach (var session in sessions)
         {
-            // Delete the row first, so that a late write of a request that runs now cannot bring it back.
-            if (await store.DeleteAsync(session.Key, cancellationToken) is null)
+            // Delete the row first, so that a late write of a request that runs now cannot bring it back
+            if (await store.DeleteAsync(session.Key, CancellationToken.None) is null)
                 continue;
 
-            ended++;
+            deleted.Add(session);
             Telemetry.RecordSessionsEnded(SessionEndReason.BackChannelLogout);
             Logger.Here().Information("Deleted the BFF session {SessionKey} for a back-channel logout", Fingerprint.Of(session.Key));
-
-            if (ticketStore.TokensOf(session)?.RefreshToken is { Length: > 0 } refreshToken)
-                await revocation.RevokeAsync(refreshToken, cancellationToken);
         }
+    }
 
-        return ended;
+    /// <summary>
+    /// Revokes the refresh token of each deleted row. A failed revocation is logged and does not stop the others.
+    /// </summary>
+    private static async Task RevokeAsync(List<BffSession> deleted, BffTicketStore ticketStore, RefreshTokenRevocation revocation)
+    {
+        foreach (var session in deleted)
+        {
+            try
+            {
+                if (ticketStore.TokensOf(session)?.RefreshToken is { Length: > 0 } refreshToken)
+                    await revocation.RevokeAsync(refreshToken, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Logger.Here().Warning(ex, "Could not revoke the refresh token of the BFF session {SessionKey} for a back-channel logout",
+                    Fingerprint.Of(session.Key));
+            }
+        }
+    }
+
+    private static async Task ForgetAsync(LogoutTokenReplayCache replayCache, string jti)
+    {
+        try
+        {
+            await replayCache.RemoveAsync(jti, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Logger.Here().Error(ex, "Could not remove the logout token {LogoutTokenId} from the replay cache", Fingerprint.Of(jti));
+        }
     }
 
     /// <summary>

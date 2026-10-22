@@ -48,8 +48,8 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
     public static PostgresTestDatabase Database { get; private set; } = null!;
 
-    // Program.cs sets the static Serilog bootstrap logger, and the host freezes it. Two hosts that start at the
-    // same time can freeze the logger of the other, so the instances start one at a time.
+    // Program.cs assigns a new bootstrap logger to the static Log.Logger and the host freezes it. Two hosts that
+    // start at the same time can freeze the same logger, which fails the second host.
     private static readonly Lock StartLock = new();
 
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
@@ -77,15 +77,15 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
         var app = new BffApp { IdentityProvider = identityProvider, Api = api, _ownsDependencies = true };
         // Start the host now, so that a startup failure fails the assembly hook with its own message
-        _ = app.Server;
+        app.StartHost();
         BindStaticLoggers();
         Instance = app;
     }
 
     /// <summary>
     /// Starts one more BFF on the same identity provider, API, and <c>bffdb</c>, with the extra
-    /// <paramref name="settings"/>. <paramref name="services"/> can replace services of the app, for example the
-    /// <see cref="TimeProvider"/>. The caller disposes it.
+    /// <paramref name="settings"/>, and the changes of <paramref name="services"/> after the services of the app.
+    /// The caller disposes it.
     /// </summary>
     public static BffApp StartAnotherInstance(IReadOnlyDictionary<string, string?>? settings = null,
         Action<IServiceCollection>? services = null)
@@ -99,8 +99,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
         };
         try
         {
-            lock (StartLock)
-                _ = app.Server;
+            app.StartHost();
         }
         catch
         {
@@ -110,6 +109,12 @@ public sealed class BffApp : WebApplicationFactory<Program>
         }
 
         return app;
+    }
+
+    private void StartHost()
+    {
+        lock (StartLock)
+            _ = Server;
     }
 
     /// <summary>

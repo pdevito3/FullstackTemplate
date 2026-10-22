@@ -184,14 +184,16 @@ Decision: [Session storage](https://github.com/pdevito3/FullstackTemplate/issues
 - If a renew finds no row, it does not create one. If the refresh token in the ticket is not the one that the request read at its start, a refresh ran in this request. The BFF then revokes that new refresh token.
 - A refresh writes inside the refresh lock, with the `xmin` of the row that the lock read (section 3.7). Thus the new tokens always reach the row.
 - A renew that changes only the expiry never replaces newer tokens. If it loses the `xmin` race, it reads the row again and applies only its expiry change.
-- A new login always gets a new key. In `OnTicketReceived`, if a BFF session exists, the BFF deletes its row and signs out the cookie before the new sign-in. Thus a renew never puts the ticket of a new login, with a new `sub` or `sid`, on an old key.
+- A renew never moves `Renewed` or `Expires` back. It writes the later of its own value and the value in the row that it read, also after it loses the `xmin` race.
+- A renew tries at most 3 times. After 3 lost races, it logs the failure and stops. A token write that stops this way is dropped, and the BFF revokes its new refresh token, as for a missing row.
+- A new login always gets a new key. In `OnTicketReceived`, if a BFF session exists, the BFF deletes its row, deletes the cookie and all its chunks in the browser, and signs out the cookie before the new sign-in. Thus a renew never puts the ticket of a new login, with a new `sub` or `sid`, on an old key.
 - The store adds to `bff.sessions.started` when it creates a row.
 
 **The `id_token` on a refresh.** If a refresh response has no `id_token`, the store keeps the stored `id_token` in the renewed ticket. `Duende.AccessTokenManagement` writes `null` in that case. All four providers send a new `id_token` today, so this rule is defensive ([Test id_token retention](https://github.com/pdevito3/FullstackTemplate/issues/23)).
 
 **Data Protection.** The keys persist in the same `DbContext` through `PersistKeysToDbContext`, with one application name for all BFF instances. A deploy then does not log out every user. Encryption of the keys at rest is a deployment decision.
 
-**Cleanup.** A hosted service in each instance deletes the expired rows in batches. `Bff:Session:CleanupInterval`, default 10 minutes. The delete is idempotent, so it needs no lock. Each delete adds to the `bff.sessions.ended` count with `reason=expiry`.
+**Cleanup.** A hosted service in each instance deletes the expired rows in batches. Each batch comes in the order of `Expires` or of `AbsoluteExpires`, from the index on that column, so the batch query stops at the batch size. `Bff:Session:CleanupInterval`, default 10 minutes. The delete is idempotent, so it needs no lock. Each delete adds to the `bff.sessions.ended` count with `reason=expiry`.
 
 **Scale.** The design is for many BFF instances. The BFF session store, the Data Protection keys, the refresh lock, and the replay cache of the logout tokens are all in `bffdb`. A Redis or `HybridCache` adapter can come later behind the same seam.
 

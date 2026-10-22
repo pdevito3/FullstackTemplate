@@ -17,13 +17,15 @@ public class BffTicketStoreTests
 {
     private readonly TestClock _clock = new();
     private readonly InMemoryBffSessionStore _store;
+    private readonly ContendedStore _contended;
     private readonly ServiceProvider _services;
 
     public BffTicketStoreTests()
     {
         _store = new InMemoryBffSessionStore(_clock);
+        _contended = new ContendedStore(_store);
         _services = new ServiceCollection()
-            .AddSingleton<IBffSessionStore>(_store)
+            .AddSingleton<IBffSessionStore>(_contended)
             .AddScoped<BffSessionRequest>()
             .BuildServiceProvider();
     }
@@ -84,12 +86,12 @@ public class BffTicketStoreTests
         await ticketStore.RenewAsync(key, WithTokens(refreshTicket, "rt-2"), refresh, CancellationToken.None);
         _clock.Advance(TimeSpan.FromMinutes(5));
         slideTicket.Properties.IssuedUtc = _clock.Now;
-        slideTicket.Properties.ExpiresUtc = _clock.Now.AddDays(1);
+        slideTicket.Properties.ExpiresUtc = _clock.Now.AddDays(14);
         await ticketStore.RenewAsync(key, slideTicket, slide, CancellationToken.None);
 
         var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
         read.Properties.GetTokenValue("refresh_token").ShouldBe("rt-2");
-        read.Properties.ExpiresUtc.ShouldBe(_clock.Now.AddDays(1));
+        read.Properties.ExpiresUtc.ShouldBe(_clock.Now.AddDays(14));
     }
 
     [Test]
@@ -108,6 +110,77 @@ public class BffTicketStoreTests
 
         var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
         read.Properties.GetTokenValue("refresh_token").ShouldBe("rt-2");
+    }
+
+    [Test]
+    public async Task a_token_write_that_loses_the_race_to_a_later_expiry_keeps_the_later_expiry()
+    {
+        var ticketStore = TicketStore();
+        var key = await ticketStore.StoreAsync(Ticket("rt-1"), NewRequest(), CancellationToken.None);
+        var slide = NewRequest();
+        var refresh = NewRequest();
+        var slideTicket = (await ticketStore.RetrieveAsync(key, slide, CancellationToken.None))!;
+        var refreshTicket = (await ticketStore.RetrieveAsync(key, refresh, CancellationToken.None))!;
+
+        slideTicket.Properties.IssuedUtc = _clock.Now.AddMinutes(5);
+        slideTicket.Properties.ExpiresUtc = _clock.Now.AddDays(20);
+        await ticketStore.RenewAsync(key, slideTicket, slide, CancellationToken.None);
+        refreshTicket.Properties.IssuedUtc = _clock.Now;
+        refreshTicket.Properties.ExpiresUtc = _clock.Now.AddDays(14);
+        await ticketStore.RenewAsync(key, WithTokens(refreshTicket, "rt-2"), refresh, CancellationToken.None);
+
+        var row = (await _store.GetAsync(key, CancellationToken.None))!;
+        row.Expires.ShouldBe(_clock.Now.AddDays(20));
+        row.Renewed.ShouldBe(_clock.Now.AddMinutes(5));
+        var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
+        read.Properties.GetTokenValue("refresh_token").ShouldBe("rt-2");
+    }
+
+    [Test]
+    public async Task an_expiry_renewal_that_loses_the_race_to_a_later_expiry_does_not_move_it_back()
+    {
+        var ticketStore = TicketStore();
+        var key = await ticketStore.StoreAsync(Ticket("rt-1"), NewRequest(), CancellationToken.None);
+        var late = NewRequest();
+        var early = NewRequest();
+        var lateTicket = (await ticketStore.RetrieveAsync(key, late, CancellationToken.None))!;
+        var earlyTicket = (await ticketStore.RetrieveAsync(key, early, CancellationToken.None))!;
+
+        lateTicket.Properties.IssuedUtc = _clock.Now.AddMinutes(5);
+        lateTicket.Properties.ExpiresUtc = _clock.Now.AddDays(20);
+        await ticketStore.RenewAsync(key, lateTicket, late, CancellationToken.None);
+        earlyTicket.Properties.IssuedUtc = _clock.Now.AddMinutes(1);
+        earlyTicket.Properties.ExpiresUtc = _clock.Now.AddDays(15);
+        await ticketStore.RenewAsync(key, earlyTicket, early, CancellationToken.None);
+
+        var row = (await _store.GetAsync(key, CancellationToken.None))!;
+        row.Expires.ShouldBe(_clock.Now.AddDays(20));
+        row.Renewed.ShouldBe(_clock.Now.AddMinutes(5));
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task a_write_that_keeps_losing_the_race_stops_after_three_tries(bool newTokens)
+    {
+        var ticketStore = TicketStore();
+        var key = await ticketStore.StoreAsync(Ticket("rt-1"), NewRequest(), CancellationToken.None);
+        var request = NewRequest();
+        var ticket = (await ticketStore.RetrieveAsync(key, request, CancellationToken.None))!;
+        var before = (await _store.GetAsync(key, CancellationToken.None))!;
+
+        _contended.Contend = 10;
+        ticket.Properties.ExpiresUtc = _clock.Now.AddDays(20);
+        if (newTokens)
+            // The same refresh token, so that there is no new refresh token to revoke
+            ticket.Properties.UpdateTokenValue("access_token", "at-2");
+        await ticketStore.RenewAsync(key, ticket, request, CancellationToken.None);
+
+        _contended.Writes.ShouldBe(3);
+        var row = (await _store.GetAsync(key, CancellationToken.None))!;
+        row.Expires.ShouldBe(before.Expires);
+        var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
+        read.Properties.GetTokenValue("access_token").ShouldBe("at-1");
     }
 
     [Test]
@@ -201,6 +274,59 @@ public class BffTicketStoreTests
             new AuthenticationToken { Name = "id_token", Value = "id-1" },
         ]);
         return new AuthenticationTicket(principal, properties, "Cookies");
+    }
+
+    /// <summary>
+    /// A store in which another request writes the row just before each write of the test, while
+    /// <see cref="Contend"/> is above zero. Each such write of the test thus finds a new version.
+    /// </summary>
+    private sealed class ContendedStore(InMemoryBffSessionStore inner) : IBffSessionStore
+    {
+        public int Contend { get; set; }
+
+        public int Writes { get; private set; }
+
+        public Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken) =>
+            inner.CreateAsync(session, cancellationToken);
+
+        public Task<BffSession?> GetAsync(string key, CancellationToken cancellationToken) => inner.GetAsync(key, cancellationToken);
+
+        public async Task<BffSessionWrite> RenewAsync(string key, byte[] ticket, DateTimeOffset renewed, DateTimeOffset expires,
+            uint expectedVersion, CancellationToken cancellationToken)
+        {
+            await ContendAsync(key, cancellationToken);
+            return await inner.RenewAsync(key, ticket, renewed, expires, expectedVersion, cancellationToken);
+        }
+
+        public async Task<BffSessionWrite> RenewExpiryAsync(string key, DateTimeOffset renewed, DateTimeOffset expires,
+            uint expectedVersion, CancellationToken cancellationToken)
+        {
+            await ContendAsync(key, cancellationToken);
+            return await inner.RenewExpiryAsync(key, renewed, expires, expectedVersion, cancellationToken);
+        }
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken) => inner.DeleteAsync(key, cancellationToken);
+
+        public Task<IReadOnlyList<BffSession>> FindBySubjectAsync(string subjectId, CancellationToken cancellationToken) =>
+            inner.FindBySubjectAsync(subjectId, cancellationToken);
+
+        public Task<IReadOnlyList<BffSession>> FindBySessionIdAsync(string sessionId, CancellationToken cancellationToken) =>
+            inner.FindBySessionIdAsync(sessionId, cancellationToken);
+
+        public Task<int> DeleteEndedAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken) =>
+            inner.DeleteEndedAsync(now, batchSize, cancellationToken);
+
+        private async Task ContendAsync(string key, CancellationToken cancellationToken)
+        {
+            Writes++;
+            if (Contend <= 0)
+                return;
+
+            Contend--;
+            // The other write changes only the version. Its times are the same as the stored times.
+            var current = (await inner.GetAsync(key, cancellationToken))!;
+            await inner.RenewExpiryAsync(key, current.Renewed, current.Expires, current.Version, cancellationToken);
+        }
     }
 
     private static AuthenticationTicket WithTokens(AuthenticationTicket ticket, string refreshToken)

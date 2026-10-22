@@ -5,6 +5,7 @@ using System.Net;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
 using FullstackTemplate.Bff.User;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -99,6 +100,70 @@ public class BffSessionTests
     }
 
     [Test]
+    public async Task a_token_write_that_races_a_sliding_renewal_keeps_the_later_expiry()
+    {
+        // Two BFF instances on one bffdb. The clock of the second is 6 minutes ahead, so a request there is past
+        // half of the sliding expiry. The same race occurs with any clock skew, or any delay between the time that
+        // a write takes and the write itself.
+        var behind = new TestClock(DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        var ahead = new TestClock(behind.Now.AddMinutes(6));
+        var settings = new Dictionary<string, string?> { ["Bff:Session:SlidingExpiration"] = "00:10:00" };
+        await using var refreshing = BffApp.StartAnotherInstance(settings, services => services.AddSingleton<TimeProvider>(behind));
+        await using var sliding = BffApp.StartAnotherInstance(settings, services => services.AddSingleton<TimeProvider>(ahead));
+        var cookies = new CookieContainer();
+        using var refreshingBrowser = refreshing.CreateBrowser(cookies);
+        using var slidingBrowser = sliding.CreateBrowser(cookies);
+        var provider = refreshing.IdentityProvider;
+        var subject = NewSubject();
+        var key = refreshing.SessionKeyIn(await BffApp.SignInAsync(refreshingBrowser, providerQuery: $"test_sub={subject}&test_expires_in=60"))!;
+        var gate = provider.HoldRefreshes(subject);
+
+        // The API call reads the row, and then its refresh waits at the identity provider
+        var apiCall = refreshingBrowser.GetApiAsync("/api/v1/weather");
+        await gate.Arrived.Task.WaitAsync(Timeout);
+        // The sliding renewal writes the row while the refresh waits
+        (await slidingBrowser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var slid = (await refreshing.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None)))!;
+        slid.Expires.ShouldBe(ahead.Now.AddMinutes(10));
+        gate.Released.SetResult();
+        (await apiCall.WaitAsync(Timeout)).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var row = (await refreshing.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None)))!;
+        row.Ticket.ShouldNotBe(slid.Ticket, "the token write did not land");
+        row.Expires.ShouldBe(slid.Expires);
+        row.Renewed.ShouldBe(slid.Renewed);
+    }
+
+    [Test]
+    public async Task a_new_login_deletes_the_chunks_of_the_old_cookie()
+    {
+        // A BFF with a small chunk size gives the first login a cookie in many chunks
+        await using var chunking = BffApp.StartAnotherInstance(services: services =>
+            services.PostConfigure<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme,
+                cookie => cookie.CookieManager = new ChunkingCookieManager { ChunkSize = 200 }));
+        var app = BffApp.Instance;
+        var cookies = new CookieContainer();
+        using var chunkingBrowser = chunking.CreateBrowser(cookies);
+        using var browser = app.CreateBrowser(cookies);
+        var oldLogin = await BffApp.SignInAsync(chunkingBrowser, providerQuery: $"test_sub={NewSubject()}");
+        var chunks = ChunkCookieNames(cookies);
+        chunks.Count.ShouldBeGreaterThan(2);
+        BffApp.SessionCookieValue(oldLogin).ShouldStartWith("chunks-");
+
+        var newLogin = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
+
+        var setCookies = newLogin.Headers.GetValues("Set-Cookie").ToList();
+        // A browser takes a __Host- cookie, also a delete, only with Secure and Path=/
+        foreach (var chunk in chunks)
+            setCookies.ShouldContain(c => c.StartsWith($"{chunk}=;", StringComparison.Ordinal)
+                    && c.Contains("expires=Thu, 01 Jan 1970") && c.Contains("; secure") && c.Contains("; path=/;"),
+                $"the callback does not delete {chunk}");
+        ChunkCookieNames(cookies).ShouldBeEmpty();
+        BffApp.SessionCookieValue(newLogin).ShouldNotStartWith("chunks-");
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
     public async Task a_refresh_with_no_id_token_keeps_the_id_token_for_logout()
     {
         var app = BffApp.Instance;
@@ -174,6 +239,9 @@ public class BffSessionTests
         (await app.WithStoreAsync(store => store.DeleteAsync(absoluteEnded.Key, CancellationToken.None))).ShouldBeFalse();
         (await app.WithStoreAsync(store => store.GetAsync(live.Key, CancellationToken.None))).ShouldNotBeNull();
     }
+
+    private static List<string> ChunkCookieNames(CookieContainer cookies) =>
+        cookies.GetAllCookies().Where(c => c.Name.StartsWith("__Host-bffC", StringComparison.Ordinal)).Select(c => c.Name).ToList();
 
     private static string NewSubject() => $"user-session-{Guid.NewGuid():N}";
 

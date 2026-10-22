@@ -65,16 +65,26 @@ public sealed class EfBffSessionStore(BffDbContext dbContext, TimeProvider timeP
             .ToListAsync(cancellationToken);
     }
 
-    public Task<int> DeleteEndedAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
+    /// <summary>
+    /// Two deletes, one for each expiry column. Each one takes its batch in the order of its column, so it reads
+    /// only the start of the index on that column and stops at the batch size.
+    /// </summary>
+    public async Task<int> DeleteEndedAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
     {
-        var batch = dbContext.Sessions
-            .Where(s => s.Expires <= now || s.AbsoluteExpires <= now)
-            .OrderBy(s => s.Key)
-            .Take(batchSize)
-            .Select(s => s.Key);
+        var deleted = await DeleteBatchAsync(dbContext.Sessions.Where(s => s.Expires <= now).OrderBy(s => s.Expires),
+            "bff_sessions.delete_ended_sliding", batchSize, cancellationToken);
+        if (deleted < batchSize)
+            deleted += await DeleteBatchAsync(
+                dbContext.Sessions.Where(s => s.AbsoluteExpires <= now).OrderBy(s => s.AbsoluteExpires),
+                "bff_sessions.delete_ended_absolute", batchSize - deleted, cancellationToken);
+        return deleted;
+    }
 
+    private Task<int> DeleteBatchAsync(IQueryable<BffSession> ended, string tag, int batchSize, CancellationToken cancellationToken)
+    {
+        var batch = ended.Take(batchSize).Select(s => s.Key);
         return dbContext.Sessions
-            .TagWith("bff_sessions.delete_ended")
+            .TagWith(tag)
             .Where(s => batch.Contains(s.Key))
             .ExecuteDeleteAsync(cancellationToken);
     }

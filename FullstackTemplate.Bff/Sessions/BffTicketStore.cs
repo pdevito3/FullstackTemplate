@@ -20,6 +20,10 @@ namespace FullstackTemplate.Bff.Sessions;
 ///   version forward.</item>
 ///   <item>A renewal that changes only the expiry writes only the expiry, so it never replaces newer tokens. If it
 ///   loses the race, it reads the row again and applies only its expiry.</item>
+///   <item>A write never moves the renewal time or the expiry of the row back. It keeps the later of its own value
+///   and the value in the row, also when another request wrote the row after this request read it.</item>
+///   <item>A write that loses the race <see cref="WriteAttempts"/> times stops and logs the failure. A token write
+///   that stops this way is dropped, and its new refresh token is revoked, because no BFF session holds it.</item>
 ///   <item>If a write with new tokens finds no row, the BFF session ended during the request. The new refresh token
 ///   is then revoked, because no BFF session holds it.</item>
 ///   <item>A refresh response with no <c>id_token</c> keeps the stored <c>id_token</c>.</item>
@@ -31,8 +35,10 @@ public sealed class BffTicketStore(
     IOptionsMonitor<BffSessionOptions> options,
     TimeProvider timeProvider) : ITicketStore
 {
-    // A renewal of the expiry retries at most this many times when other writes change the row at the same time.
-    private const int ExpiryRenewalAttempts = 3;
+    /// <summary>
+    /// A write tries at most this many times when other writes change the row at the same time.
+    /// </summary>
+    private const int WriteAttempts = 3;
 
     private static readonly ILogger Logger = Log.ForContext<BffTicketStore>();
 
@@ -102,8 +108,10 @@ public sealed class BffTicketStore(
         }
 
         var now = timeProvider.GetUtcNow();
-        var renewed = ticket.Properties.IssuedUtc ?? now;
-        var expires = Earlier(ticket.Properties.ExpiresUtc ?? now + options.CurrentValue.SlidingExpiration, request.AbsoluteExpires);
+        var renewed = Later(ticket.Properties.IssuedUtc ?? now, request.Renewed);
+        var expires = Later(
+            Earlier(ticket.Properties.ExpiresUtc ?? now + options.CurrentValue.SlidingExpiration, request.AbsoluteExpires),
+            request.Expires);
 
         KeepStoredIdToken(ticket.Properties, request.Tokens);
         var tokens = SessionTokens.From(ticket.Properties);
@@ -126,25 +134,29 @@ public sealed class BffTicketStore(
         DateTimeOffset renewed, DateTimeOffset expires, CancellationToken cancellationToken)
     {
         var version = request.Version;
-        for (var attempt = 0; attempt < ExpiryRenewalAttempts; attempt++)
+        for (var attempt = 0; attempt < WriteAttempts; attempt++)
         {
             switch (await store.RenewExpiryAsync(key, renewed, expires, version, cancellationToken))
             {
                 case BffSessionWrite.Written written:
-                    request.Written(written.Version);
+                    request.Written(written.Version, renewed, expires);
                     return;
                 case BffSessionWrite.Missing:
                     request.Forget();
                     return;
+                case BffSessionWrite.Conflict conflict when conflict.Current.Expires >= expires:
+                    // Another request moved the expiry as far or farther. There is nothing to write.
+                    return;
                 case BffSessionWrite.Conflict conflict:
                     // Another request wrote the row, maybe with newer tokens. Keep them, and apply only the expiry.
                     version = conflict.Current.Version;
+                    renewed = Later(renewed, conflict.Current.Renewed);
                     break;
             }
         }
 
         Logger.Here().Warning("Skipped the expiry renewal of the BFF session {SessionKey} after {Attempts} conflicts",
-            Fingerprint.Of(key), ExpiryRenewalAttempts);
+            Fingerprint.Of(key), WriteAttempts);
     }
 
     private async Task RenewTokensAsync(IBffSessionStore store, BffSessionRequest request, HttpContext httpContext,
@@ -153,12 +165,12 @@ public sealed class BffTicketStore(
     {
         var protectedTicket = Protect(ticket);
         var version = request.Version;
-        while (true)
+        for (var attempt = 0; attempt < WriteAttempts; attempt++)
         {
             switch (await store.RenewAsync(key, protectedTicket, renewed, expires, version, cancellationToken))
             {
                 case BffSessionWrite.Written written:
-                    request.Written(written.Version, tokens);
+                    request.Written(written.Version, renewed, expires, tokens);
                     return;
 
                 case BffSessionWrite.Missing:
@@ -166,14 +178,15 @@ public sealed class BffTicketStore(
                     request.Forget();
                     Logger.Here().Information("Dropped the token write of the BFF session {SessionKey}, because the BFF session ended",
                         Fingerprint.Of(key));
-                    if (tokens.RefreshToken is { } newRefreshToken && newRefreshToken != startRefreshToken)
-                        await httpContext.RequestServices.GetRequiredService<RefreshTokenRevocation>()
-                            .RevokeAsync(newRefreshToken, cancellationToken);
+                    await RevokeNewRefreshTokenAsync(httpContext, tokens, startRefreshToken, cancellationToken);
                     return;
 
                 case BffSessionWrite.Conflict conflict when TokensOf(conflict.Current) == request.Tokens:
-                    // The other write changed only the expiry. The tokens of this request are still the newest.
+                    // The other write changed only the expiry. The tokens of this request are still the newest. Keep
+                    // the later times, so that the write does not move the expiry of the other write back.
                     version = conflict.Current.Version;
+                    renewed = Later(renewed, conflict.Current.Renewed);
+                    expires = Later(expires, conflict.Current.Expires);
                     break;
 
                 case BffSessionWrite.Conflict:
@@ -184,6 +197,24 @@ public sealed class BffTicketStore(
                     return;
             }
         }
+
+        // The row keeps the tokens that the request read. If the identity provider rotated the refresh token, the
+        // next refresh fails and ends the BFF session under the refresh failure rules.
+        Logger.Here().Error("Dropped the token write of the BFF session {SessionKey} after {Attempts} conflicts",
+            Fingerprint.Of(key), WriteAttempts);
+        await RevokeNewRefreshTokenAsync(httpContext, tokens, request.Tokens.RefreshToken, cancellationToken);
+    }
+
+    /// <summary>
+    /// Revokes the refresh token of a dropped token write, if a refresh in this request got a new one. No BFF
+    /// session holds it.
+    /// </summary>
+    private static async Task RevokeNewRefreshTokenAsync(HttpContext httpContext, SessionTokens tokens,
+        string? startRefreshToken, CancellationToken cancellationToken)
+    {
+        if (tokens.RefreshToken is { } newRefreshToken && newRefreshToken != startRefreshToken)
+            await httpContext.RequestServices.GetRequiredService<RefreshTokenRevocation>()
+                .RevokeAsync(newRefreshToken, cancellationToken);
     }
 
     /// <summary>
@@ -220,6 +251,8 @@ public sealed class BffTicketStore(
     }
 
     private static DateTimeOffset Earlier(DateTimeOffset a, DateTimeOffset b) => a < b ? a : b;
+
+    private static DateTimeOffset Later(DateTimeOffset a, DateTimeOffset b) => a > b ? a : b;
 
     private static (IBffSessionStore Store, BffSessionRequest Request) Services(HttpContext httpContext) =>
         (httpContext.RequestServices.GetRequiredService<IBffSessionStore>(),

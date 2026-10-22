@@ -44,7 +44,12 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
     public static PostgresTestDatabase Database { get; private set; } = null!;
 
+    // Program.cs sets the static Serilog bootstrap logger, and the host freezes it. Two hosts that start at the
+    // same time can freeze the logger of the other, so the instances start one at a time.
+    private static readonly Lock StartLock = new();
+
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
+    private Action<IServiceCollection>? _services;
     private bool _ownsDependencies;
 
     public static async Task StartAsync()
@@ -74,17 +79,21 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
     /// <summary>
     /// Starts one more BFF on the same identity provider, API, and <c>bffdb</c>, with the extra
-    /// <paramref name="settings"/>. The caller disposes it.
+    /// <paramref name="settings"/>. <paramref name="services"/> can replace services of the app, for example the
+    /// <see cref="TimeProvider"/>. The caller disposes it.
     /// </summary>
-    public static BffApp StartAnotherInstance(IReadOnlyDictionary<string, string?>? settings = null)
+    public static BffApp StartAnotherInstance(IReadOnlyDictionary<string, string?>? settings = null,
+        Action<IServiceCollection>? services = null)
     {
         var app = new BffApp
         {
             IdentityProvider = Instance.IdentityProvider,
             Api = Instance.Api,
             _settings = settings ?? new Dictionary<string, string?>(),
+            _services = services,
         };
-        _ = app.Server;
+        lock (StartLock)
+            _ = app.Server;
         return app;
     }
 
@@ -110,6 +119,8 @@ public sealed class BffApp : WebApplicationFactory<Program>
             services.AddSingleton<ILogEventSink>(Logs);
             services.AddTestAuthorization();
         });
+        if (_services is not null)
+            builder.ConfigureTestServices(_services);
     }
 
     /// <summary>
@@ -155,6 +166,13 @@ public sealed class BffApp : WebApplicationFactory<Program>
         BaseAddress = Origin,
         HandleCookies = true,
     });
+
+    /// <summary>
+    /// A client on the cookies of <paramref name="cookies"/>, that does not follow redirects. Two clients of two
+    /// BFF instances with the same container act as one browser.
+    /// </summary>
+    public HttpClient CreateBrowser(CookieContainer cookies) =>
+        CreateDefaultClient(Origin, new Microsoft.AspNetCore.Mvc.Testing.Handlers.CookieContainerHandler(cookies));
 
     /// <summary>
     /// Runs the full login: <c>/bff/login</c>, the authorize endpoint of the fake provider, and the

@@ -12,7 +12,8 @@ namespace FullstackTemplate.Bff.Sessions;
 /// <para>
 /// The cookie handler signs in on the key of the request cookie when that key has a row, and it keeps that key
 /// after a sign-out in the same request. Thus the callback must end the existing BFF session before the cookie
-/// handler reads the cookie: delete its row, remove the cookie from the request, and sign out the cookie.
+/// handler reads the cookie: delete its row, delete the cookie and its chunks in the browser, remove the cookie
+/// from the request, and sign out the cookie.
 /// </para>
 /// </summary>
 public static class NewLogin
@@ -35,6 +36,10 @@ public static class NewLogin
         if (key is not null)
             await httpContext.RequestServices.GetRequiredService<IBffSessionStore>().DeleteAsync(key, httpContext.RequestAborted);
 
+        // The cookie manager finds the chunks to delete in the request cookie, so delete them before the request
+        // cookie goes. The sign-out after that deletes only the cookie itself, and a new cookie in fewer chunks
+        // would leave the other chunks in the browser.
+        cookieOptions.CookieManager.DeleteCookie(httpContext, cookieName, cookieOptions.Cookie.Build(httpContext));
         RemoveRequestCookie(httpContext.Request, cookieName);
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }

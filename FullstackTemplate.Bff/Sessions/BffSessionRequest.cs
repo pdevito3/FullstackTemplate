@@ -3,15 +3,19 @@ using Microsoft.AspNetCore.Authentication;
 namespace FullstackTemplate.Bff.Sessions;
 
 /// <summary>
-/// What one request knows about its BFF session: the key, the version of the row that it read, and the tokens
-/// in that row. A conditional write uses the version, and the version moves forward after each write that
-/// succeeds. Scoped, so each request has its own.
+/// What one request knows about its BFF session: the key, the version of the row that it read, and the times and
+/// the tokens in that row. A conditional write uses the version, and the version moves forward after each write
+/// that succeeds. Scoped, so each request has its own.
 /// </summary>
 public sealed class BffSessionRequest
 {
     public string? Key { get; private set; }
 
     public uint Version { get; private set; }
+
+    public DateTimeOffset Renewed { get; private set; }
+
+    public DateTimeOffset Expires { get; private set; }
 
     public DateTimeOffset AbsoluteExpires { get; private set; }
 
@@ -21,17 +25,24 @@ public sealed class BffSessionRequest
     {
         Key = session.Key;
         Version = session.Version;
+        Renewed = session.Renewed;
+        Expires = session.Expires;
         AbsoluteExpires = session.AbsoluteExpires;
         Tokens = tokens;
     }
 
-    public void Written(uint version, SessionTokens tokens)
+    public void Written(uint version, DateTimeOffset renewed, DateTimeOffset expires, SessionTokens tokens)
     {
-        Version = version;
+        Written(version, renewed, expires);
         Tokens = tokens;
     }
 
-    public void Written(uint version) => Version = version;
+    public void Written(uint version, DateTimeOffset renewed, DateTimeOffset expires)
+    {
+        Version = version;
+        Renewed = renewed;
+        Expires = expires;
+    }
 
     public void Forget()
     {

@@ -1,7 +1,5 @@
 // Feature: secure-weather. The JWT that the BFF holds reaches the server. See features/secure-weather.md.
 export default async ({ page, step, capture, expect, login }) => {
-  // The greeting also shows the name, so count only the badges on the cards.
-  const userBadges = page.locator('[data-slot="badge"]').filter({ hasText: 'Bob Smith' })
   await step('anonymous: no API mode button, GET /api/v1/weather/secure is 401', async () => {
     await page.goto('/')
     await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
@@ -10,7 +8,9 @@ export default async ({ page, step, capture, expect, login }) => {
     expect(status).toBe(401)
   })
 
-  await step('log in as bob', () => login('bob'))
+  const { name } = await step('log in', () => login())
+  // The greeting also shows the name, so count only the badges on the cards.
+  const userBadges = page.locator('[data-slot="badge"]').filter({ hasText: name })
   await capture('public-mode')
 
   const forecast = await step('choose Public API: it becomes Secure API and GET /api/v1/weather/secure is 200', async () => {
@@ -24,7 +24,7 @@ export default async ({ page, step, capture, expect, login }) => {
 
   await step('each card shows the requestedBy badge from the server', async () => {
     expect(forecast).toHaveLength(5)
-    for (const f of forecast) expect(f.requestedBy).toBe('Bob Smith')
+    for (const f of forecast) expect(f.requestedBy).toBe(name)
     await expect(page.getByText('Showing authenticated data')).toBeVisible()
     await expect(userBadges).toHaveCount(5)
     for (const f of forecast) {

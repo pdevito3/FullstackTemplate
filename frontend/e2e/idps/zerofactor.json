@@ -1,0 +1,7 @@
+{
+  "name": "ZeroFactor",
+  "resource": "zerofactor",
+  "email": "admin@example.com",
+  "usernameSelector": "#email",
+  "submitSelector": "#continue"
+}

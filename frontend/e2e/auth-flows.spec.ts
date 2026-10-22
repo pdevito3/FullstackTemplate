@@ -11,6 +11,7 @@ import { loadIdp, type IdpConfig } from './idps.ts'
  * Test users (from docs/authentication.md):
  * - Keycloak/FusionAuth/Authentik/Cognito: admin@example.com / password123!
  * - Duende Demo: bob / bob
+ * - ZeroFactor: admin@example.com, with no password
  *
  * Run with: pnpm test:e2e:stack (against the IdP of the running stack, see docs/authentication.md)
  * Debug with: pnpm test:e2e:stack --debug
@@ -60,14 +61,16 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
     await page.click(idp.submitSelector)
 
     // Fill password on the second page. fill waits for the field
-    await page.fill(idp.passwordSelector, idp.password)
+    await page.fill(idp.passwordSelector!, idp.password!)
 
     // Use secondStepSubmitSelector if defined, otherwise use submitSelector
     const secondSubmit = idp.secondStepSubmitSelector || idp.submitSelector
     await page.click(secondSubmit)
   } else {
-    // Single-page login: fill password and submit
-    await page.fill(idp.passwordSelector, idp.password)
+    // Single-page login: fill password, if the IdP has one, and submit
+    if (idp.passwordSelector) {
+      await page.fill(idp.passwordSelector, idp.password!)
+    }
     await page.click(idp.submitSelector)
   }
 

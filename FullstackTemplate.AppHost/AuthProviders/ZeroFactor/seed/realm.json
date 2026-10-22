@@ -1,0 +1,37 @@
+{
+  "realm": "aspire",
+  "lenient": true,
+  "registrationAllowed": true,
+  "clients": [
+    {
+      "clientId": "aspire-app",
+      "audience": ["aspire-app"]
+    }
+  ],
+  "users": [
+    {
+      "id": "154c705b-f83d-4657-a9dd-af6ad1d36796",
+      "username": "admin@example.com",
+      "email": "admin@example.com",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "pinned": true,
+      "realmRoles": ["admin", "user"],
+      "claims": { "roles": ["admin", "user"] },
+      "agentNotes": "Admin. Has the same sub as admin@example.com in the Keycloak seed."
+    },
+    {
+      "id": "09d798af-976f-416a-8a28-001db736ab59",
+      "username": "user@example.com",
+      "email": "user@example.com",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "pinned": true,
+      "realmRoles": ["user"],
+      "claims": { "roles": ["user"] },
+      "agentNotes": "User without admin rights. Has the same sub as user@example.com in the Keycloak seed."
+    }
+  ]
+}

@@ -132,7 +132,10 @@
           "protocol": "openid-connect",
           "protocolMapper": "oidc-sub-mapper",
           "consentRequired": false,
-          "config": {}
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
         }
       ]
     },
@@ -368,6 +371,7 @@
   ],
   "users": [
     {
+      "id": "154c705b-f83d-4657-a9dd-af6ad1d36796",
       "username": "admin@example.com",
       "email": "admin@example.com",
       "emailVerified": true,
@@ -384,6 +388,7 @@
       "realmRoles": ["admin", "user", "default-roles-aspire"]
     },
     {
+      "id": "09d798af-976f-416a-8a28-001db736ab59",
       "username": "user@example.com",
       "email": "user@example.com",
       "emailVerified": true,

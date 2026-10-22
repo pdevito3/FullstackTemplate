@@ -5,7 +5,7 @@ description: Launches the FullstackTemplate stack (Aspire, server, BFF, React SP
 
 # Verify FullstackTemplate
 
-The primary surface is the React SPA in a browser. All browser traffic goes through the Vite dev server to the BFF (`/bff/*`, `/api/*`, `/signin-oidc`). The BFF holds the tokens and calls the server with a JWT. Login uses the public Duende demo IdP (`https://demo.duendesoftware.com`, users `bob`/`bob` and `alice`/`alice`). `launch.sh` sets `AuthProvider=DuendeDemo` for its stack, because the login recipes fill the Duende form. If an app deletes the `DuendeDemo` provider folder, the login recipes cannot run.
+The primary surface is the React SPA in a browser. All browser traffic goes through the Vite dev server to the BFF (`/bff/*`, `/api/*`, `/signin-oidc`). The BFF holds the tokens and calls the server with a JWT. Login uses ZeroFactor by default. ZeroFactor is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider that runs in the stack. Its login page lists the users (`admin@example.com` and `user@example.com`), and one click signs in. To test an interaction with a real IdP, start the stack with `--auth-provider <Name>`. `login()` supports `ZeroFactor` and `DuendeDemo`. For another provider, drive its login form from `frontend/e2e/idps/<name>.json`.
 
 Other surfaces, not in the feature map yet:
 
@@ -23,7 +23,7 @@ S=.agents/skills/verify-fullstack-template
 - `launch.sh` always starts an `--isolated` stack: random ports, an empty database, and a copy of the user secrets. A stack in another worktree does not conflict.
 - Each checkout can run one stack for its AppHost path. If a stack runs for this checkout and this skill did not start it, `launch.sh` stops with an error. Do not drive that stack and do not stop it. It belongs to the user. Ask the user, or work in a git worktree.
 - Each recipe run gets a new Chromium context. No cookies or `localStorage` carry over between recipes.
-- The Duende demo IdP is shared and public. Use only the demo users. Do not change data on it.
+- If you use `--auth-provider DuendeDemo`, the IdP is shared and public. Use only the demo users. Do not change data on it.
 
 ## Launch
 
@@ -33,7 +33,13 @@ S=.agents/skills/verify-fullstack-template
    $S/scripts/launch.sh            # or: $S/scripts/launch.sh <RUN_ID>
    ```
 
-2. Read the last lines of the output. They give `RUN_DIR`, the `web` URL (the app), the `server` URL, and the `dashboard` URL.
+   The stack uses ZeroFactor. To test an interaction with a real IdP, give the provider:
+
+   ```bash
+   $S/scripts/launch.sh --auth-provider DuendeDemo
+   ```
+
+2. Read the last lines of the output. They give `RUN_DIR`, the `authProvider`, the `web` URL (the app), the `server` URL, and the `dashboard` URL.
 
 The stack is ready when the output ends with `launch: ready.` and the URLs. The run state is in `artifacts/verify/<RUN_ID>/stack.json`. The file `artifacts/verify/.current` holds the RUN_ID of the live stack.
 
@@ -53,7 +59,7 @@ Each line starts with `ok` or `FAIL`. Exit code 0 means the stack is worth drivi
 - The AppHost pid of this checkout is the pid that `launch.sh` recorded. Thus the stack is ours.
 - Each resource is `Running` and `Healthy`.
 - The web URL is unchanged, `/api/v1/weather` is 200, `/bff/user` is 401 or 200, and the server `/health` is 200.
-- The Duende demo IdP is reachable. If it is not, no login recipe can pass.
+- If the stack uses `DuendeDemo`, the Duende demo IdP is reachable. If it is not, no login recipe can pass. A local provider, such as ZeroFactor, is a resource of the stack, so the health check above examines it.
 - `HEAD` is the commit of the launch. If it moved, the doctor prints `warn`. Frontend code hot-reloads. For server or BFF code, run `dotnet aspire resource server rebuild --apphost FullstackTemplate.AppHost` (or `bff`).
 
 ## Drive
@@ -85,8 +91,8 @@ To prove a new change, write a new recipe in the scratch folder of your run (for
 | `step(name, fn)` | Runs `fn` and logs `ok` or `FAIL` with the name. Put each user action and its assertion in one step. |
 | `capture(name, { fullPage })` | Waits for `settle()`, then saves a screenshot and an ARIA snapshot. The screenshot is full-page by default. For an open overlay, give `{ fullPage: false }`, because the resize for a full-page screenshot closes a Drawer. In a full-page screenshot of a scrolled page, the fixed sidebar shows at the scroll offset. This is normal. |
 | `settle()` | Waits two frames, then waits for all finite animations to end. Call it before a click in an animated overlay. Playwright retries a click on a moving element with a scroll, and React Aria closes a popover on scroll. |
-| `login(user)` | Logs in through the real BFF and Duende flow. `user` is `bob` (default) or `alice`. It tolerates a slow IdP (see `features/login-logout.md`). |
-| `logout()` | Logs out and follows the Duende return link. |
+| `login(user)` | Logs in through the real BFF and the IdP of the stack. It returns `{ name }`, the `name` claim of the session. Compare the screen with this name. Without `user`, the first user of the IdP signs in: `admin@example.com` (`Admin User`) for ZeroFactor, `bob` (`Bob Smith`) for DuendeDemo. The other users are `user@example.com` and `alice`. |
+| `logout()` | Logs out. For DuendeDemo, it follows the return link of Duende. |
 | `stack` | The content of `stack.json` (`stack.urls.web`, `stack.urls.server`, and more). |
 
 Minimal recipe:
@@ -136,9 +142,9 @@ Proof standards:
 - Capture the action and the result. A recipe needs a capture before and after the change of state, not only the last screen.
 - Prove side effects next to the visible result. Examples: the HTTP status and the JSON of the API response, the `__Host-bff` cookie, the `ui-theme` value in `localStorage`.
 - Compare the screen with the data. For example, each weather card must show the `summary` and the temperature of the API row, not only "5 cards".
-- Read `console.log` and `network.log` after each run. These lines are normal: one `401 /bff/user` for each anonymous page load, the 401 lines from the anonymous probes that a recipe makes on purpose, and the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
+- Read `console.log` and `network.log` after each run. These lines are normal: one `401 /bff/user` for each anonymous page load, the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
 - Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
-- Do not mock. The only external system is the Duende demo IdP. The recipes use it for real.
+- Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
 
 ## Cleanup
 

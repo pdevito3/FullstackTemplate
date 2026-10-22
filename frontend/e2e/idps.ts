@@ -10,10 +10,11 @@ export interface IdpConfig {
   resource?: string
   email?: string
   username?: string
-  password: string
+  // A passwordless IdP, such as 0factor, has no password and no password field
+  password?: string
   // Selectors for login form (vary by IDP)
   usernameSelector: string
-  passwordSelector: string
+  passwordSelector?: string
   submitSelector: string
   // Some IDPs need special handling
   needsOtpSkip?: boolean

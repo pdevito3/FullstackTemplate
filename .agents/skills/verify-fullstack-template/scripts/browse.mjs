@@ -126,11 +126,38 @@ async function capture(name, { fullPage = true } = {}) {
   log('steps.log', `cap   ${base} ${page.url()}`)
 }
 
-// Logs in through the real BFF and Duende demo flow. Users: bob/bob, alice/alice.
+// Logs in through the real BFF and the IdP of the stack, then returns the user's `name` claim from the BFF.
+// `user` is a user of that IdP. Without it, the IdP's first user signs in.
+//   ZeroFactor (default): admin@example.com (Admin User), user@example.com (Test User). One click signs in.
+//   DuendeDemo: bob (Bob Smith), alice (Alice Smith). The password is the user name.
+async function login(user) {
+  await page.getByRole('button', { name: 'Login' }).click()
+  switch (stack.authProvider.toLowerCase()) {
+    case 'zerofactor':
+      await signInAtZeroFactor(user ?? 'admin@example.com')
+      break
+    case 'duendedemo':
+      await signInAtDuendeDemo(user ?? 'bob')
+      break
+    default:
+      throw new Error(`login() cannot sign in at ${stack.authProvider}. See frontend/e2e/idps/ for its login form.`)
+  }
+  await page.waitForURL((u) => u.origin === new URL(stack.urls.web).origin, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+  await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible({ timeout: 15_000 })
+  const claims = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).json())
+  const name = claims.find((c) => c.type === 'name')?.value
+  if (!name) throw new Error(`The BFF session of ${stack.authProvider} has no name claim.`)
+  return { name }
+}
+
+// The 0factor login page lists the seeded users. A click on a user signs in.
+async function signInAtZeroFactor(email) {
+  await page.locator(`[data-testid="user-${email}"]`).click({ timeout: 30_000 })
+}
+
 // The demo IdP sometimes serves its CSS and scripts very slowly, so the page `load` event can take
 // more than 30 s. Wait for the DOM and the form fields, never for `load`.
-async function login(user = 'bob') {
-  await page.getByRole('button', { name: 'Login' }).click()
+async function signInAtDuendeDemo(user) {
   await page.waitForURL(/demo\.duendesoftware\.com\/Account\/Login/, { waitUntil: 'domcontentloaded', timeout: 60_000 })
   const username = page.locator('#Input_Username')
   const password = page.locator('#Input_Password')
@@ -140,11 +167,10 @@ async function login(user = 'bob') {
   await expect(username).toHaveValue(user)
   await expect(password).toHaveValue(user)
   await page.locator('button[value="login"]').click()
-  await page.waitForURL((u) => u.origin === new URL(stack.urls.web).origin, { waitUntil: 'domcontentloaded', timeout: 60_000 })
-  await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible({ timeout: 15_000 })
 }
 
-// Logs out through the BFF. Duende shows a "return to the application" page, which this follows.
+// Logs out through the BFF. 0factor sends the browser back at once. Duende shows a "return to the application"
+// page, which this follows.
 async function logout() {
   await page.getByRole('button', { name: 'Logout' }).click()
   const back = page.locator('a[href*="signout-callback-oidc"]')

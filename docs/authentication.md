@@ -27,6 +27,23 @@ The `AuthProvider` setting in `FullstackTemplate.AppHost/appsettings.json` selec
   AuthProvider=Keycloak dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
   ```
 
+- To use another provider for one run, you can also give the setting as an AppHost argument after `--`:
+
+  ```bash
+  dotnet aspire run -- --AuthProvider ZeroFactor
+  ```
+
+The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is for local development only.
+
+### Change the provider of a database that has users
+
+The app finds a user by the `sub` claim, which it stores in `User.Identifier`. Each provider gives its own `sub`. If you change the provider of a normal run, the database volume keeps the users of the old provider. Then a login with the new provider does not find the old user.
+
+An isolated run starts with an empty database, so it does not have this problem.
+
+- The Keycloak seed and the ZeroFactor seed give the test users the same IDs. You can change between these two providers and keep your data.
+- To use the user of another provider with ZeroFactor, register a user on the ZeroFactor login page. Enter the `sub` of the old user as the User ID.
+
 ### Add a provider
 
 1. Add the folder `FullstackTemplate.AppHost/AuthProviders/<Name>/`.

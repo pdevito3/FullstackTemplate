@@ -269,6 +269,8 @@ public static partial class [EntityName]Mapper
 
 ## 6. Features
 
+Each command checks a permission first (see `docs/backend/features-and-cqrs.md#permission-checks`). The templates use `Permission.Manage[EntityName]s()`. Add it to `Domain/Users/Permission.cs`, and add a migration that gives it to the admins that exist (see `docs/backend.md#add-a-permission`). A query has no permission check.
+
 **File:** `Domain/[EntityName]s/Features/Add[EntityName]/Add[EntityName].cs`
 
 ```csharp
@@ -276,16 +278,20 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
+using FullstackTemplate.Server.Domain.Users;
 using MediatR;
 
 public static class Add[EntityName]
 {
     public sealed record Command([EntityName]ForCreationDto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
+
             var forCreation = request.Dto.To[EntityName]ForCreation();
             var entity = [EntityName].Create(forCreation);
 
@@ -305,16 +311,20 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
+using FullstackTemplate.Server.Domain.Users;
 using MediatR;
 
 public static class Update[EntityName]
 {
     public sealed record Command(string Id, [EntityName]ForUpdateDto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
+
             var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
 
             var forUpdate = request.Dto.To[EntityName]ForUpdate();
@@ -333,16 +343,20 @@ public static class Update[EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using FullstackTemplate.Server.Domain.Users;
 using MediatR;
 
 public static class Delete[EntityName]
 {
     public sealed record Command(string Id) : IRequest;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Command>
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
+
             var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
 
             dbContext.[EntityName]s.Remove(entity);
@@ -516,7 +530,7 @@ public sealed class Add[EntityName]Endpoint : IEndpoint
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
         .ProducesValidationProblem()
-        // Declare a 403 if the handler can throw ForbiddenAccessException
+        // The handler checks a permission, so it can return 403
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
         // Declare a 409 if this write can add or change a unique value
@@ -554,7 +568,7 @@ public sealed class Update[EntityName]Endpoint : IEndpoint
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
-        // Declare a 403 if the handler can throw ForbiddenAccessException
+        // The handler checks a permission, so it can return 403
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesValidationProblem()
@@ -594,7 +608,7 @@ public sealed class Delete[EntityName]Endpoint : IEndpoint
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
-        // Declare a 403 if the handler can throw ForbiddenAccessException
+        // The handler checks a permission, so it can return 403
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
@@ -885,16 +899,20 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
+using FullstackTemplate.Server.Domain.Users;
 using MediatR;
 
 public static class [Action][EntityName]
 {
     public sealed record Command(string Id) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
+
             var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
 
             entity.[Action]();  // Call domain method
@@ -916,16 +934,20 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
+using FullstackTemplate.Server.Domain.Users;
 using MediatR;
 
 public static class [Action][EntityName]
 {
     public sealed record Command(string Id, [Action][EntityName]Dto Dto) : IRequest<[EntityName]Dto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, [EntityName]Dto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Command, [EntityName]Dto>
     {
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
+
             var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
 
             entity.[Action](request.Dto.Parameter1, request.Dto.Parameter2);

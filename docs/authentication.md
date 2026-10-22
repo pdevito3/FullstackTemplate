@@ -48,6 +48,8 @@ The BFF builds `redirect_uri` and `post_logout_redirect_uri` from `Bff:PublicOri
 
 The BFF reads `X-Forwarded-For` and `X-Forwarded-Proto`. It does not read `X-Forwarded-Host`. The host filter accepts the host of `Bff:PublicOrigin` and the hosts in `Bff:AdditionalAllowedHosts`, and it gives a 400 for other hosts. In the local stack, the AppHost adds the container host of the BFF, `host.docker.internal`, and `localhost`.
 
+The BFF accepts `X-Forwarded-For` and `X-Forwarded-Proto` from any source, because the address of the proxy in front of the BFF is not known. Thus a client can set its own client address. Today only the telemetry uses the client address: the request logs and the request spans. Before a deployment behind a proxy uses the client address for a decision, for example a rate limit or an IP allow list, set `KnownProxies` or `KnownIPNetworks` of `ForwardedHeadersOptions` in `FullstackTemplate.Bff/HostTrust/HostTrustExtensions.cs` to the proxy.
+
 ## BFF sessions
 
 The BFF keeps each BFF session as one row in the `bffdb` database. The row holds the tokens, encrypted with Data Protection. The Data Protection keys, the refresh locks, and the replay cache of the logout tokens are also in `bffdb`. Thus many BFF instances can share one `bffdb`, and a deploy does not log out the users.
@@ -118,7 +120,7 @@ These are the active features for each provider with `Auto`. The e2e tests have 
 |---|---|---|---|---|---|---|
 | Revocation | yes | no | yes | yes | no | yes (a no-op) |
 | `iss` parameter | yes | yes | no | yes | no | yes |
-| Back-channel logout | yes | no | yes | no (it cannot reach the BFF) | no | no |
+| Back-channel logout | yes | no | yes | yes (the demo cannot reach the local BFF, so no test calls the receiver) | no | no |
 | `end_session_endpoint` | yes | yes | yes | yes | no (the BFF uses `/cognito-idp/logout`) | yes |
 | PAR | yes | no | no | yes | no | no |
 | Refresh token rotation | yes | yes | yes | no | no | no (the old token stays valid) |
@@ -207,7 +209,16 @@ The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the Rea
    pnpm test:e2e:stack
    ```
 
-The script `frontend/e2e/run-against-stack.ts` reads the `webfrontend` and `server` URLs from `dotnet aspire describe`. It finds the IdP whose `resource` is in the stack, or the IdP with no `resource` if the stack has none. Then it sets `BASE_URL`, `SERVER_URL`, `AUTHORITY`, and `IDP`, and runs `playwright test`. To override the IdP, set `IDP` to the name of a file in `frontend/e2e/idps/`. Extra arguments go to Playwright, for example `pnpm test:e2e:stack --repeat-each=5`.
+The script `frontend/e2e/run-against-stack.ts` reads the stack from `dotnet aspire describe`. Then it sets these variables and runs `playwright test`:
+
+| Variable | Value |
+|---|---|
+| `BASE_URL` | The `http` URL of `webfrontend` |
+| `SERVER_URL` | The `https` URL of `server` |
+| `AUTHORITY` | The `Auth__Authority` of the BFF. The live discovery test reads the discovery document from it, and skips when it is not set. |
+| `IDP` | The name of a file in `frontend/e2e/idps/`. The default is the IdP whose `resource` is in the stack, or the IdP with no `resource` if the stack has none. Set it to override the IdP. |
+
+Extra arguments go to Playwright, for example `pnpm test:e2e:stack --repeat-each=5`.
 
 The script also gives the tests the client id and the client secret of the BFF, and the admin credentials of the provider. It never prints them.
 
@@ -227,7 +238,7 @@ The OpenID Foundation conformance suite tests the BFF as a relying party. In thi
 | `oidcc-client-back-channel-logout-rp-basic` | Passes |
 | `oidcc-client-refreshtoken-test-plan` | Passes. It is not part of the certification program. The BFF does not call the user info endpoint after a refresh, but the server does, because it checks the opaque access tokens of the suite there. |
 
-`frontend/conformance/accepted-results.json` lists each accepted warning with its reason. The header of `frontend/conformance/run-conformance.ts` tells how to start the stack and the suite. The `conformance` job of CI runs the same plans. The `Conformance` provider of the AppHost is only in this repository. `scripts/init.cs` deletes it, and the rest of the conformance suite, when it renames the app.
+[`frontend/conformance/accepted-results.json`](https://github.com/pdevito3/FullstackTemplate/blob/main/frontend/conformance/accepted-results.json) lists each accepted warning with its reason. The header of [`frontend/conformance/run-conformance.ts`](https://github.com/pdevito3/FullstackTemplate/blob/main/frontend/conformance/run-conformance.ts) tells how to start the stack and the suite. The `conformance` workflow of this repository runs the same plans. The `Conformance` provider of the AppHost, the `frontend/conformance` folder, the conformance scripts, and the `conformance` workflow are only in this repository. `scripts/init.cs` deletes them when it renames the app.
 
 ### Certify your own deployment
 
@@ -261,7 +272,7 @@ The OpenID Foundation certifies a deployment, not this repository. To certify yo
    - `Auth__UseAudienceAsScope`: `false`
    - `Auth__MetadataRefreshInterval`: `00:00:01`, because each test module has new signing keys
 6. For each test module, start the module, then restart the BFF. The suite gives the discovery document only while a module runs, and the BFF reads it at startup.
-7. Do the login, or the login and the logout, in a browser. `run-conformance.ts` shows the steps for each plan.
+7. Do the login, or the login and the logout, in a browser. [`run-conformance.ts`](https://github.com/pdevito3/FullstackTemplate/blob/main/frontend/conformance/run-conformance.ts) of the FullstackTemplate repository shows the steps for each plan.
 8. Export the results of each plan. Follow the instructions at <https://openid.net/certification/> to submit them.
 
 Use a separate deployment for the test run. The suite is the identity provider of that deployment while the test runs.

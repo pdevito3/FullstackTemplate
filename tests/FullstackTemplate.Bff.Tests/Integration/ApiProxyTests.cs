@@ -1,7 +1,11 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using System.Net.Sockets;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shouldly;
+using Yarp.ReverseProxy.Forwarder;
 
 public class ApiProxyTests
 {
@@ -76,5 +80,87 @@ public class ApiProxyTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.ReadJsonAsync()).GetProperty("message").GetString().ShouldBe("Hello from BFF!");
+    }
+
+    [Test]
+    public async Task the_api_root_goes_to_the_api_root_of_the_server()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var response = await browser.GetApiAsync("/api");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.ReadEchoAsync()).Path.ShouldBe("/api");
+    }
+
+    [Test]
+    public async Task an_unreachable_server_gives_502()
+    {
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["services:server:http:0"] = $"http://127.0.0.1:{ClosedPort()}",
+        });
+        using var browser = app.CreateBrowser();
+
+        var response = await browser.GetApiAsync("/api/v1/weather");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
+    }
+
+    [Test]
+    public async Task a_server_that_does_not_answer_in_time_gives_504()
+    {
+        await using var app = BffApp.StartAnotherInstance(services: services =>
+            services.Replace(ServiceDescriptor.Singleton<IForwarderHttpClientFactory, ShortTimeoutForwarderHttpClientFactory>()));
+        using var browser = app.CreateBrowser();
+
+        var response = await browser.GetApiAsync("/api/test/hang").WaitAsync(TimeSpan.FromSeconds(15));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.GatewayTimeout);
+    }
+
+    [Test]
+    public async Task a_post_that_fails_at_the_server_is_not_sent_again()
+    {
+        await using var app = BffApp.StartAnotherInstance();
+        using var browser = app.CreateBrowser();
+        // A pooled connection to the server first, so that the POST goes on a reused connection, the case in which
+        // an HTTP client can send a request again after the server closed the connection
+        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var id = Guid.NewGuid().ToString("N");
+
+        var response = await browser.SendApiAsync(HttpMethod.Post, $"/api/test/drop/{id}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
+        app.Api.DropCount(id).ShouldBe(1);
+    }
+
+    // A port with no listener: the OS gives a free port, and the listener stops at once
+    private static int ClosedPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+
+    /// <summary>
+    /// The forwarder client with a timeout of 300 ms on each request, in place of the activity timeout of 100 s, so
+    /// that a test of a hung server does not wait 100 s. The forwarder sees the same cancellation as from its own
+    /// activity timeout.
+    /// </summary>
+    private sealed class ShortTimeoutForwarderHttpClientFactory : ForwarderHttpClientFactory
+    {
+        protected override HttpMessageHandler WrapHandler(ForwarderHttpClientContext context, HttpMessageHandler handler) =>
+            new TimeoutHandler { InnerHandler = base.WrapHandler(context, handler) };
+
+        private sealed class TimeoutHandler : DelegatingHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromMilliseconds(300));
+                return await base.SendAsync(request, timeout.Token);
+            }
+        }
     }
 }

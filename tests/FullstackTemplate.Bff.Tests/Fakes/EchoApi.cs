@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Bff.Tests.Fakes;
 
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -12,14 +13,24 @@ using Microsoft.Extensions.Logging;
 /// <summary>
 /// A stand-in for the server API on a real port. Each request gets its method, path, and headers back as JSON,
 /// so a test sees exactly what the BFF proxy forwarded.
+/// <para>
+/// Two paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away, and
+/// <c>/api/test/drop/{id}</c> counts the request and then drops the connection with no response.
+/// </para>
 /// </summary>
 public sealed class EchoApi : IAsyncDisposable
 {
     private readonly WebApplication _app;
+    private readonly ConcurrentDictionary<string, int> _drops = new();
 
     private EchoApi(WebApplication app) => _app = app;
 
     public string Url { get; private set; } = "";
+
+    /// <summary>
+    /// The number of requests to <c>/api/test/drop/{id}</c> with <paramref name="id"/>.
+    /// </summary>
+    public int DropCount(string id) => _drops.GetValueOrDefault(id);
 
     public static async Task<EchoApi> StartAsync()
     {
@@ -27,6 +38,27 @@ public sealed class EchoApi : IAsyncDisposable
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         var app = builder.Build();
+        var api = new EchoApi(app);
+
+        app.Map("/api/test/hang", async (HttpContext context) =>
+        {
+            try
+            {
+                await Task.Delay(Timeout.Infinite, context.RequestAborted);
+            }
+            catch (OperationCanceledException)
+            {
+                // The caller went away
+            }
+
+            return Results.Empty;
+        });
+        app.Map("/api/test/drop/{id}", (HttpContext context, string id) =>
+        {
+            api._drops.AddOrUpdate(id, 1, (_, count) => count + 1);
+            context.Abort();
+            return Results.Empty;
+        });
 
         app.Map("/{**path}", (HttpRequest request) => Results.Json(new EchoedRequest(
             request.Method,
@@ -34,11 +66,8 @@ public sealed class EchoApi : IAsyncDisposable
             request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase))));
 
         await app.StartAsync();
-        var api = new EchoApi(app)
-        {
-            Url = app.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>()
-                .Addresses.Single().TrimEnd('/'),
-        };
+        api.Url = app.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>()
+            .Addresses.Single().TrimEnd('/');
         return api;
     }
 

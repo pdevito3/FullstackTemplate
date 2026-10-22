@@ -126,7 +126,7 @@ public class TenantAccessTests : TestBase
             ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}", version = tenant.Version });
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
+        await ShouldBeForbiddenAsync(result, "You need the manage_tenant permission to do this.");
         var name = await ExecuteDbContextAsync(db => db.Tenants
             .Where(t => t.Id == tenant.Id).Select(t => t.Name).SingleAsync());
         name.ShouldBe(tenant.Name);
@@ -193,7 +193,7 @@ public class TenantAccessTests : TestBase
         var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
+        await ShouldBeForbiddenAsync(result, "You need the manage_tenant permission to do this.");
         var exists = await ExecuteDbContextAsync(db => db.Tenants.AnyAsync(t => t.Id == tenant.Id));
         exists.ShouldBeTrue();
     }
@@ -280,8 +280,8 @@ public class TenantAccessTests : TestBase
         var deleted = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
 
         // Assert
-        await ShouldBeForbiddenAsync(updated, "Only an admin can do this.");
-        await ShouldBeForbiddenAsync(deleted, "Only an admin can do this.");
+        await ShouldBeForbiddenAsync(updated, "This client cannot change data.");
+        await ShouldBeForbiddenAsync(deleted, "This client cannot change data.");
         var exists = await ExecuteDbContextAsync(db => db.Tenants.AnyAsync(t => t.Id == tenant.Id));
         exists.ShouldBeTrue();
     }

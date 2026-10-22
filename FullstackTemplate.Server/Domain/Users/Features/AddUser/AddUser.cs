@@ -9,15 +9,19 @@ using Microsoft.EntityFrameworkCore;
 
 public static class AddUser
 {
-    public sealed record Command(UserForCreationDto Dto) : IRequest<UserDto>, IRequireTenantAdmin;
+    public sealed record Command(UserForCreationDto Dto) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
         // The key in the errors of the problem is the name of the request field
         private const string TenantIdField = "tenantId";
 
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ManageUsers());
+            caller.Require(UserRole.Of(request.Dto.Role).GetDefaultPermissions());
+
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
 
             // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.

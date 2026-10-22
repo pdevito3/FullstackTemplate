@@ -21,6 +21,11 @@ public sealed class TestFixture : IAsyncDisposable
     /// </summary>
     public const string TrustedMachineClientId = "trusted-machine";
 
+    /// <summary>
+    /// The one machine client that the test configuration lets see all tenants, but not manage them.
+    /// </summary>
+    public const string ReadOnlyMachineClientId = "read-only-machine";
+
     public static IServiceScopeFactory BaseScopeFactory { get; private set; } = null!;
     public static TestSeed Seed { get; private set; } = null!;
     public static Tenant DefaultTenant => Seed.Tenant;
@@ -46,6 +51,7 @@ public sealed class TestFixture : IAsyncDisposable
         builder.Configuration["Auth:Authority"] = "https://localhost";
         builder.Configuration["Auth:Audience"] = "test-api";
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
+        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ReadAllTenantsClientIds)}:0"] = ReadOnlyMachineClientId;
 
         // Configure services
         builder.ConfigureServices();

@@ -7,16 +7,14 @@ using MediatR;
 
 public static class UpdateUser
 {
-    // A user can update their own record. The role is not in the DTO, so this cannot make a user an admin.
-    public sealed record Command(string Id, UserForUpdateDto Dto) : IRequest<UserDto>, IRequireTenantAdmin, IAllowSelf
-    {
-        public string SelfUserId => Id;
-    }
+    public sealed record Command(string Id, UserForUpdateDto Dto) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireSelfOrAsync(request.Id, Permission.ManageUsers(), cancellationToken);
+
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update.load")
                 .GetById(request.Id, cancellationToken);

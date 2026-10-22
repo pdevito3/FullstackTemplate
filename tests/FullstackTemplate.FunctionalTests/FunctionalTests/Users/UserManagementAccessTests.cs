@@ -13,8 +13,8 @@ using Shouldly;
 using TestUtilities;
 
 /// <summary>
-/// Only an admin of the tenant can delete a user. A user can update their own record, and an admin can
-/// update any user of the tenant.
+/// A user with the manage_users permission can delete a user and update any user of the tenant. The permission
+/// row decides, not the role. A user can update their own record.
 /// </summary>
 public class UserManagementAccessTests : TestBase
 {
@@ -46,6 +46,52 @@ public class UserManagementAccessTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Test]
+    public async Task admin_without_manage_users_gets_a_forbidden_problem_on_delete()
+    {
+        // Arrange
+        var (admin, other) = await AddTwoUsersAsync("Admin", "User",
+            first => first.RemovePermission(Permission.ManageUsers()));
+        SignInAs(admin);
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(other.Id));
+
+        // Assert
+        var problem = await ShouldBeForbiddenAsync(result);
+        problem.Detail.ShouldBe("You need the manage_users permission to do this.");
+        var exists = await ExecuteDbContextAsync(db => db.Users.AnyAsync(u => u.Id == other.Id));
+        exists.ShouldBeTrue();
+    }
+
+    [Test]
+    public async Task user_role_member_granted_manage_users_can_delete_a_user()
+    {
+        // Arrange
+        var (member, other) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ManageUsers()));
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(other.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Test]
+    public async Task delete_with_no_token_is_unauthorized_not_forbidden()
+    {
+        // Arrange
+        var (_, other) = await AddTwoUsersAsync("Admin", "User");
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(other.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -121,18 +167,21 @@ public class UserManagementAccessTests : TestBase
     private void SignInAs(User user)
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
 
-    private static async Task ShouldBeForbiddenAsync(HttpResponseMessage result)
+    private static async Task<ProblemDetails> ShouldBeForbiddenAsync(HttpResponseMessage result)
     {
         result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
+        return problem;
     }
 
-    private static async Task<(User First, User Second)> AddTwoUsersAsync(string firstRole, string secondRole)
+    private static async Task<(User First, User Second)> AddTwoUsersAsync(
+        string firstRole, string secondRole, Action<User>? changeFirst = null)
     {
         TestGraph.Start(out _)
             .AddTenant(out var tenant)
             .AddUsers(out var users, u => u.Role = firstRole, u => u.Role = secondRole);
+        changeFirst?.Invoke(users[0]);
         await InsertAsync(tenant);
         foreach (var user in users)
             await InsertAsync(user);

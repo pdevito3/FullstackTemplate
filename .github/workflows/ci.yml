@@ -137,7 +137,8 @@ jobs:
       - name: Run the tests
         run: dotnet test --solution FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
 
-  # A path filter, not paths: on the trigger, so that a skipped BFF job still reports a status
+  # A path filter, not paths: on the trigger, so that a skipped BFF job still reports a status.
+  # A skipped e2e job reports one status under its raw name, e2e (${{ matrix.provider }}), not one for each provider.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5

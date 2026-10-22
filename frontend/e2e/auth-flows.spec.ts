@@ -1,4 +1,5 @@
 import { test, expect, Locator, Page } from '@playwright/test'
+import { loadIdp, type IdpConfig } from './idps.ts'
 
 /**
  * Authentication flow tests for all supported Identity Providers.
@@ -11,95 +12,13 @@ import { test, expect, Locator, Page } from '@playwright/test'
  * - Keycloak/FusionAuth/Authentik/Cognito: admin@example.com / password123!
  * - Duende Demo: bob / bob
  *
- * Run with: pnpm test:e2e:keycloak (against Keycloak in the stack, see docs/authentication.md)
- * Debug with: pnpm exec playwright test --debug
- * UI mode: pnpm exec playwright test --ui
+ * Run with: pnpm test:e2e:stack (against the IdP of the running stack, see docs/authentication.md)
+ * Debug with: pnpm test:e2e:stack --debug
+ * UI mode: pnpm test:e2e:stack --ui
  */
 
-// Configuration for different IDPs
-interface IdpConfig {
-  name: string
-  email?: string
-  username?: string
-  password: string
-  // Selectors for login form (vary by IDP)
-  usernameSelector: string
-  passwordSelector: string
-  submitSelector: string
-  // Some IDPs need special handling
-  needsOtpSkip?: boolean
-  // Authentik uses a two-step login (username first, then password)
-  twoStepLogin?: boolean
-  // Second step submit selector for two-step login (if different from submitSelector)
-  secondStepSubmitSelector?: string
-  // Consent page needs approval. Authentik always shows one when the request has the offline_access scope,
-  // even with the implicit-consent flow. The BFF asks for offline_access, and Swagger UI does not.
-  hasConsentPage?: boolean
-  consentSelector?: string
-}
-
-// Current IDP config - change this when switching IDPs
-// This is determined by which IDP is currently running in Aspire
-const currentIdp: IdpConfig = getIdpConfig()
-
-function getIdpConfig(): IdpConfig {
-  // Detect IDP based on environment variable or default to Keycloak
-  const idp = process.env.IDP || 'keycloak'
-
-  switch (idp.toLowerCase()) {
-    case 'keycloak':
-      return {
-        name: 'Keycloak',
-        email: 'admin@example.com',
-        password: 'password123!',
-        usernameSelector: '#username',
-        passwordSelector: '#password',
-        submitSelector: '#kc-login',
-      }
-    case 'fusionauth':
-      return {
-        name: 'FusionAuth',
-        email: 'admin@example.com',
-        password: 'password123!',
-        usernameSelector: 'input[name="loginId"]',
-        passwordSelector: 'input[name="password"]',
-        submitSelector: 'button:has-text("Submit")',
-      }
-    case 'authentik':
-      return {
-        name: 'Authentik',
-        email: 'admin@example.com',
-        password: 'password123!',
-        usernameSelector: '[placeholder="Email or Username"]',
-        passwordSelector: '[placeholder="Please enter your password"]',
-        submitSelector: 'button:has-text("Log in")',
-        twoStepLogin: true,
-        secondStepSubmitSelector: 'button:has-text("Continue")',
-        hasConsentPage: true,
-        consentSelector: 'button:has-text("Continue")',
-      }
-    case 'cognito':
-      return {
-        name: 'Cognito',
-        email: 'admin@example.com',
-        password: 'password123!',
-        usernameSelector: '#username',
-        passwordSelector: '#password',
-        submitSelector: 'button:has-text("Sign in")',
-      }
-    case 'duende':
-      return {
-        name: 'Duende Demo',
-        username: 'bob',
-        password: 'bob',
-        usernameSelector: '#Input_Username',
-        passwordSelector: '#Input_Password',
-        submitSelector: 'button[value="login"]',
-      }
-    default:
-      throw new Error(`Unknown IDP: ${idp}`)
-  }
-}
+// pnpm test:e2e:stack sets IDP to the provider of the running stack. See e2e/idps.ts.
+const currentIdp = loadIdp(process.env.IDP)
 
 /**
  * True when the locator becomes visible within the timeout. `locator.isVisible()` does not wait, and it ignores

@@ -1,0 +1,13 @@
+{
+  "name": "Authentik",
+  "resource": "authentik",
+  "email": "admin@example.com",
+  "password": "password123!",
+  "usernameSelector": "[placeholder=\"Email or Username\"]",
+  "passwordSelector": "[placeholder=\"Please enter your password\"]",
+  "submitSelector": "button:has-text(\"Log in\")",
+  "twoStepLogin": true,
+  "secondStepSubmitSelector": "button:has-text(\"Continue\")",
+  "hasConsentPage": true,
+  "consentSelector": "button:has-text(\"Continue\")"
+}

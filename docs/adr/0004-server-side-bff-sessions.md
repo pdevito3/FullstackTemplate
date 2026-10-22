@@ -1,5 +1,7 @@
 # Server-side BFF sessions in `bffdb`
 
+> Superseded in part by [ADR 0007](0007-regular-repo-instead-of-template.md): `northflank.json` is deleted.
+
 The BFF stores each BFF session on the server, in a new `bffdb` database on the same Postgres server as `appdb`. The cookie holds only an opaque key. A store seam has an EF Core adapter for production and an in-memory adapter for tests. The same `DbContext` holds the Data Protection keys and the replay cache of the logout tokens, and a Postgres advisory lock in `bffdb` stops two BFF instances from refreshing one refresh token at the same time. As a result, back-channel logout can end a BFF session with no browser present, and the BFF can run as many instances. The design is in [the home-rolled BFF spec](../specs/home-rolled-bff.md#31-bff-sessions-and-the-store).
 
 ## Considered options

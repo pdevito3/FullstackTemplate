@@ -32,6 +32,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 
 EXPOSE 8080
 
-# The aspnet image has no curl, so the image has no HEALTHCHECK. Northflank probes /health itself.
+# The aspnet image has no curl, so the image has no HEALTHCHECK. The host probes /health itself.
 
 ENTRYPOINT ["dotnet", "FullstackTemplate.Bff.dll"]

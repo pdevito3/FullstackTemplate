@@ -1,0 +1,9 @@
+{
+  "name": "Cognito",
+  "resource": "cognito",
+  "email": "admin@example.com",
+  "password": "password123!",
+  "usernameSelector": "#username",
+  "passwordSelector": "#password",
+  "submitSelector": "button:has-text(\"Sign in\")"
+}

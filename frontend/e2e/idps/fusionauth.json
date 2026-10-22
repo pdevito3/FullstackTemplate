@@ -1,0 +1,9 @@
+{
+  "name": "FusionAuth",
+  "resource": "fusionauth",
+  "email": "admin@example.com",
+  "password": "password123!",
+  "usernameSelector": "input[name=\"loginId\"]",
+  "passwordSelector": "input[name=\"password\"]",
+  "submitSelector": "button:has-text(\"Submit\")"
+}

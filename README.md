@@ -3,59 +3,34 @@
 A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
 - **Backend-For-Frontend (BFF)** pattern using Duende BFF
-- **Configurable authentication** (Keycloak, FusionAuth, Authentik, Cognito, or Duende Demo)
+- **Configurable authentication** - one setting selects the auth provider, and a new provider is one folder in the AppHost
 - **Multi-tenant architecture** with data isolation
 - **OpenTelemetry** observability built-in
 - **.NET 10** with Aspire 13.1
 
-## Installation
+<!-- init:start - scripts/init.cs deletes this section when it renames the app -->
+## Create a New App
 
-```bash
-dotnet new install FullstackTemplate
-```
+1. Clone the repo, or use the GitHub "Use this template" button.
+2. In the root of the clone, run the init script:
 
-## Create a New Project
+   ```bash
+   dotnet run scripts/init.cs --name MyProject --auth-provider Keycloak
+   ```
 
-### With Duende Demo (default)
-```bash
-dotnet new fullstack-aspire -n MyProject
-```
+3. Commit the result.
 
-### With Keycloak
-```bash
-dotnet new fullstack-aspire -n MyProject --AuthProvider Keycloak
-```
+The script works on all platforms. It changes only a clean git tree. A second run with the same arguments changes nothing.
 
-### With FusionAuth
-```bash
-dotnet new fullstack-aspire -n MyProject --AuthProvider FusionAuth
-```
+All auth providers stay in the app, and the `AuthProvider` setting selects one at runtime. To delete a provider that you do not use, see [docs/authentication.md](docs/authentication.md#delete-a-provider).
 
-### With Authentik
-```bash
-dotnet new fullstack-aspire -n MyProject --AuthProvider Authentik
-```
+| Option | Description |
+|--------|-------------|
+| `--name` | Renames `FullstackTemplate` to this name in file names, folder names, and file contents. Use a C# namespace, for example `Acme.Shop`. |
+| `--auth-provider` | Sets the default `AuthProvider` of the AppHost. The value is the name of a folder in `FullstackTemplate.AppHost/AuthProviders/`. |
 
-### With Cognito (emulated by Floci)
-```bash
-dotnet new fullstack-aspire -n MyProject --AuthProvider Cognito
-```
-
-## Template Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--name` / `-n` | (required) | Project name |
-| `--AuthProvider` | `DuendeDemo` | Auth provider: `DuendeDemo`, `Keycloak`, `FusionAuth`, `Authentik`, or `Cognito` |
-| `--no-restore` | `false` | Do not restore the NuGet packages after the project is created |
-
-## Publish the Template
-
-The package holds only the files that git tracks. Before you publish, run the smoke test. It packs the template, creates a project from the package, and fails if a local file that git ignores got into the package or the project.
-
-```bash
-./scripts/template-smoke-test.sh
-```
+See [ADR 0007](docs/adr/0007-regular-repo-instead-of-template.md) for the reasons.
+<!-- init:end -->
 
 ## What You Get
 
@@ -106,7 +81,7 @@ This starts:
 - **Backend API** - .NET API server
 - **BFF Proxy** - Handles auth and proxies to API
 - **React Dev Server** - Vite with hot reload
-- **Auth Provider** - Keycloak/FusionAuth/Authentik/Cognito (Docker) or Duende Demo (external)
+- **Auth Provider** - the provider that the `AuthProvider` setting selects
 
 ### Run several stacks at the same time
 
@@ -119,19 +94,9 @@ dotnet aspire run --isolated --apphost MyProject.AppHost
 
 An isolated run gives each endpoint a random port and uses a copy of the user secrets. It also starts Postgres with no data volume, so each run gets an empty database. A normal run keeps port 5173 for the frontend and keeps a separate data volume for each checkout path.
 
-## Test Users
+## Auth Provider
 
-### Keycloak / FusionAuth / Authentik / Cognito
-| Email | Password | Roles |
-|-------|----------|-------|
-| admin@example.com | password123! | admin, user |
-| user@example.com | password123! | user |
-
-### Duende Demo
-| Username | Password |
-|----------|----------|
-| bob | bob |
-| alice | alice |
+To select the auth provider, add a provider, or find the test users, see [docs/authentication.md](docs/authentication.md).
 
 ## Authentication Flow
 
@@ -171,7 +136,7 @@ After creating your project:
 This template includes comprehensive Claude Code integration:
 
 - **`AGENTS.md`** - Main agent guide with the architecture and an index of `docs/`
-- **`docs/`** - Guides for the backend, telemetry, multi-tenancy, auth, frontend, and deployment
+- **`docs/`** - Guides for the backend, telemetry, multi-tenancy, auth, and frontend
 - **`docs/backend/`** - Backend pattern rules: entities, features, DTOs, endpoints (HTTP, gRPC, MCP), domain events, and EF configurations
 - **`docs/frontend/`** - Frontend pattern rules: server state, client state, and code style
 - **`.claude/skills/`** - Automated scaffolding skills

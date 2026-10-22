@@ -1,5 +1,7 @@
 # Provider features by discovery
 
+> Superseded in part by [ADR 0007](0007-regular-repo-instead-of-template.md): `AuthProviders.cs` is now one folder for each provider in `AuthProviders/`, and the repo is no longer a template.
+
 The BFF reads the discovery document of the identity provider to decide which optional features it uses. Each feature has a setting with three values: `Auto` uses the feature if discovery lists it, `Require` stops the BFF at startup if discovery does not list it, and `Disable` never uses it. The features are revocation, the RFC 9207 `iss` parameter, back-channel logout, the `end_session_endpoint`, PAR, and (in phase 2) DPoP. A missing feature under `Auto` gets a safe fallback and a startup warning. As a result, "compliant" is a property of the BFF: the BFF obeys each rule whenever the identity provider offers the feature, and it never uses an unsafe fallback. The design is in [the home-rolled BFF spec](../specs/home-rolled-bff.md#33-provider-features-and-settings).
 
 ## Considered options

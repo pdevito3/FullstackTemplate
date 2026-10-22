@@ -8,11 +8,4 @@
     <!-- CA1707 forbids underscores in names. The test names use underscores to separate the parts of a scenario. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
-  <!--#if (LOCAL_DEV) -->
-  <PropertyGroup>
-    <!-- Define LOCAL_DEV for local development/testing -->
-    <!-- The template engine removes this group from the template output -->
-    <DefineConstants>$(DefineConstants);LOCAL_DEV</DefineConstants>
-  </PropertyGroup>
-  <!--#endif -->
 </Project>

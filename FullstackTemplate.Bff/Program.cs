@@ -41,11 +41,11 @@ try
 
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
 
-    // Configure forwarded headers for reverse proxy (Northflank, AWS, Azure, etc.)
+    // Configure forwarded headers for reverse proxy (for example AWS or Azure)
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-        // Trust all proxies in production if, for example, Northflank, AWS, Azure, etc. handles the external TLS
+        // Trust all proxies in production if a proxy, for example on AWS or Azure, handles the external TLS
         options.KnownIPNetworks.Clear();
         options.KnownProxies.Clear();
     });

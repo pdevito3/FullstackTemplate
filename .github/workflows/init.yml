@@ -1,0 +1,80 @@
+name: Init
+
+# Runs scripts/init.cs as a new app does, and then builds the renamed app and runs its unit tests.
+# The unit tests of the AppHost build the resources of each provider, and they make sure that each provider has its
+# seed folder and its e2e file. The rename touches every file, so this job has no paths filter.
+# The init script deletes this file when it renames the app, because the script renames only FullstackTemplate.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # set -e ignores a command after "!", so each expected failure uses "if"
+      - name: Fail if the script accepts bad input or a tree with changes
+        run: |
+          if dotnet run scripts/init.cs --name 1Bad; then exit 1; fi
+          if dotnet run scripts/init.cs --auth-provider Nope; then exit 1; fi
+          echo "change" >> README.md
+          if dotnet run scripts/init.cs --name Acme.Shop; then exit 1; fi
+          git checkout README.md
+          git diff --exit-code --stat
+
+      # A name that holds the template name must not get the template name replaced twice
+      - name: Build an app whose name holds the template name
+        run: |
+          git worktree add --detach ../holds-name
+          cd ../holds-name
+          dotnet run scripts/init.cs --name Acme.FullstackTemplate
+          dotnet build Acme.FullstackTemplate.AppHost/Acme.FullstackTemplate.AppHost.csproj
+
+      # The rename uses a dotted name, because Aspire turns the dots of a project name into underscores
+      - name: Run the init script
+        run: dotnet run scripts/init.cs --name Acme.Shop --auth-provider Keycloak
+
+      - name: Fail if a second run changes a file or a second rename runs
+        run: |
+          git add --all
+          dotnet run scripts/init.cs --name Acme.Shop --auth-provider Keycloak
+          git diff --exit-code --stat
+          if dotnet run scripts/init.cs --name Other.App; then exit 1; fi
+
+      # The links to the upstream repo keep the template name, and the README loses its init section
+      - name: Fail if the template name is left or an upstream link changed
+        run: |
+          if git grep -inP '(?<!pdevito3/)fullstacktemplate' -- ':!scripts/init.cs'; then exit 1; fi
+          git grep -q 'github.com/pdevito3/FullstackTemplate/issues' -- docs
+          if git grep -n 'init.cs' -- README.md; then exit 1; fi
+
+      # docs/authentication.md: to delete a provider, delete its folder and its e2e file
+      - name: Delete the providers other than Keycloak
+        run: |
+          find Acme.Shop.AppHost/AuthProviders -mindepth 1 -maxdepth 1 -type d ! -name Keycloak -exec rm -rf {} +
+          find frontend/e2e/idps -name '*.json' ! -name keycloak.json -delete
+
+      - name: Build the app
+        run: dotnet build Acme.Shop.slnx -p:OpenApiGenerateDocuments=false
+
+      - name: Run the unit tests
+        run: dotnet test --project tests/Acme.Shop.UnitTests/Acme.Shop.UnitTests.csproj --no-build

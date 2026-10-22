@@ -1,0 +1,8 @@
+{
+  "name": "Duende Demo",
+  "username": "bob",
+  "password": "bob",
+  "usernameSelector": "#Input_Username",
+  "passwordSelector": "#Input_Password",
+  "submitSelector": "button[value=\"login\"]"
+}

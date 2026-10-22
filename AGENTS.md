@@ -4,7 +4,7 @@ Guidance for coding agents that work in this repository.
 
 ## Overview
 
-This is a .NET Aspire application with a React frontend. It uses the Backend-For-Frontend (BFF) pattern. It has multi-tenancy, a CQRS architecture, and a configurable auth provider (Keycloak, FusionAuth, Authentik, Cognito, or Duende Demo).
+This is a .NET Aspire application with a React frontend. It uses the Backend-For-Frontend (BFF) pattern. It has multi-tenancy, a CQRS architecture, and a configurable auth provider. The `AuthProvider` setting of the AppHost selects it. See [docs/authentication.md](docs/authentication.md).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -43,7 +43,6 @@ Read the doc for an area before you change code in that area.
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
 | [docs/frontend/](docs/frontend/) | Rules for server state, client state, and code style |
-| [docs/deployment-northflank.md](docs/deployment-northflank.md) | Northflank deployment and auth provider setup |
 | [docs/csharp-repl.md](docs/csharp-repl.md) | CSharpRepl in the running server: the hook wiring and the Development-only guards |
 
 The pattern rules are in `docs/backend/` and `docs/frontend/`. Before you write code in an area, read its rule doc. Obey the rules in it.

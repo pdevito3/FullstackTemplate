@@ -15,6 +15,6 @@ The user's signed-in state at the identity provider. One IdP session can back ma
 _Avoid_: SSO session, provider session
 
 **Identity provider**:
-The external OpenID Connect server that authenticates the user (Keycloak, FusionAuth, Authentik, Cognito, or the Duende Demo).
+The external OpenID Connect server that authenticates the user, for example Keycloak.
 The `AuthProvider` setting selects it.
 _Avoid_: OP, IdP server

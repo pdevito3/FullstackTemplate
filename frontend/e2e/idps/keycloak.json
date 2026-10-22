@@ -1,0 +1,9 @@
+{
+  "name": "Keycloak",
+  "resource": "keycloak",
+  "email": "admin@example.com",
+  "password": "password123!",
+  "usernameSelector": "#username",
+  "passwordSelector": "#password",
+  "submitSelector": "#kc-login"
+}

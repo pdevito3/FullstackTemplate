@@ -20,7 +20,7 @@ The ADRs for this effort:
 5. [The compliance matrix](#5-the-compliance-matrix)
 6. [Provider and seed changes](#6-provider-and-seed-changes)
 7. [The test plan and CI](#7-the-test-plan-and-ci)
-8. [Template and doc changes](#8-template-and-doc-changes)
+8. [Repo and doc changes](#8-repo-and-doc-changes)
 9. [Phase 2: DPoP](#9-phase-2-dpop)
 10. [The build order](#10-the-build-order)
 
@@ -228,7 +228,7 @@ Keep the two trace events of `LoginTraceLink` (`OnRedirectToIdentityProvider` an
 - Do not rewrite `redirect_uri` in `OnRedirectToIdentityProvider`. The handler stores the value before the event runs, and it sends the stored value on the code exchange.
 
 - In development, the AppHost gives the BFF its own `https` URL. The Vite proxy changes the origin, so the providers already register the BFF URL.
-- `northflank.json` gives `https://bff--${PROJECT_NAME}.${PROJECT_REGION}.northflank.app`.
+- In a deployment, the deployment config gives the public URL of the BFF.
 
 **The `prompt` parameter.** `/bff/login` stores `prompt` in the authentication properties. `OnRedirectToIdentityProvider` copies it to the authorize request (parity).
 
@@ -283,7 +283,7 @@ Each feature has a three-state setting under `Auth:Features`. The values are `Au
 - If the discovery read fails at startup, the BFF stops with an error. The AppHost already waits for the provider.
 - `Auth:Features:Revocation` replaces `Auth:RevokeRefreshTokenOnLogout`.
 
-`AuthProviders.cs` passes these settings to the BFF. The `RevokeRefreshTokenOnLogout` property of `AuthProviderConfig` goes away. The capability table of the e2e tests (section 7) holds the expected features of each provider.
+`WithBffAuth` in `AuthProviders/AuthProviderConfig.cs` passes these settings to the BFF. The `RevokeRefreshTokenOnLogout` property of `AuthProviderConfig` goes away. The capability table of the e2e tests (section 7) holds the expected features of each provider.
 
 ### 3.4 Logout and back-channel logout
 
@@ -415,7 +415,7 @@ Decisions: [Session cookie SameSite](https://github.com/pdevito3/FullstackTempla
 **The host filter.** `AllowedHosts` holds the host of `Bff:PublicOrigin`, plus the hosts in `Bff:AdditionalAllowedHosts`. A request with another `Host` header gets a 400.
 
 - The identity provider containers and the conformance suite call `/bff/backchannel` at `host.docker.internal`. The AppHost and the conformance job add this host.
-- The health probes call the BFF at its internal host. The AppHost adds `localhost`. Slice 6 of the build finds the probe host on Northflank and adds it to `northflank.json`.
+- The health probes call the BFF at its internal host. The AppHost adds `localhost`. A deployment adds the host of its probes.
 
 **CORS.** No change. The default policy allows the Vite origin with credentials.
 
@@ -539,16 +539,16 @@ Each rule, where the design meets it, and the test that proves it. "Default" mea
 
 Decision: [Provider seed and version changes](https://github.com/pdevito3/FullstackTemplate/issues/19).
 
-- **Version policy.** Each provider image gets an exact patch tag in a constant in `FullstackTemplate.AppHost/Config.cs`, as `PostgresImageTag` does today. `northflank.json` uses the same values. Today the tags float: Keycloak `26.0`, Authentik `2024.12`, and FusionAuth `latest`. The research found 26.0.8, 2024.12.5, and 1.69.4 behind them.
+- **Version policy.** Each provider image gets an exact patch tag in a constant in `FullstackTemplate.AppHost/Config.cs`, as `PostgresImageTag` does today. Today the tags float: Keycloak `26.0`, Authentik `2024.12`, and FusionAuth `latest`. The research found 26.0.8, 2024.12.5, and 1.69.4 behind them.
 - **Authentik.** Upgrade from 2024.12.5 to the latest stable 2026.8.x. Read the release notes between the two versions for changes to the worker and the Redis setup.
-- **Authentik logout flow.** The seed in `FullstackTemplate.AppHost/authentik/default.yaml` uses an invalidation flow with a user logout stage. RP-initiated logout then also ends the IdP session.
+- **Authentik logout flow.** The seed in `FullstackTemplate.AppHost/AuthProviders/Authentik/seed/default.yaml` uses an invalidation flow with a user logout stage. RP-initiated logout then also ends the IdP session.
 - **Back-channel URLs.** Register `<BFF URL>/bff/backchannel` in the Keycloak and Authentik seeds. The container must reach the BFF, for example through `host.docker.internal`. Find out how Aspire exposes the BFF endpoint to a container. FusionAuth and the Duende Demo cannot take part. Back-channel logout in Authentik is a preview feature since 2025.8, so the seed can need to turn it on.
 - **Keycloak password grant.** Set `directAccessGrantsEnabled` to `false`. Nothing in the repo uses it.
 - **Refresh token rotation.** Turn on one-time use in Keycloak (`revokeRefreshToken`, max reuse `0`) and in FusionAuth.
-- **Feature settings.** `AuthProviders.cs` gives `Auth__Features__*` to the BFF. The defaults (`Auto`) are correct for the four providers.
+- **Feature settings.** `WithBffAuth` in `AuthProviders/AuthProviderConfig.cs` gives `Auth__Features__*` to the BFF. The defaults (`Auto`) are correct for the four providers.
 - **Public origin.** `WithBffAuth` gives `Bff__PublicOrigin` from the BFF `https` endpoint.
 - **`bffdb`.** The AppHost adds the database and gives it to the BFF.
-- **The conformance provider.** `AuthProviders.cs` gets a `Conformance` provider for the conformance job. Its authority is the suite, and its `Bff:PublicOrigin` is the BFF `https` URL. The suite client config registers `<BFF https URL>/signin-oidc`, `/signout-callback-oidc`, and `/bff/backchannel` at `host.docker.internal`.
+- **The conformance provider.** The folder `AuthProviders/Conformance/` gets a `ConformanceAuthProvider` for the conformance job. Its authority is the suite, and its `Bff:PublicOrigin` is the BFF `https` URL. The suite client config registers `<BFF https URL>/signin-oidc`, `/signout-callback-oidc`, and `/bff/backchannel` at `host.docker.internal`.
 
 The capability table (section 7) holds the expected result of these changes:
 
@@ -627,7 +627,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 - **Reports.** Each job uploads the exported suite results, the Playwright traces and screenshots, and the stack logs as artifacts, kept for 30 days. The job summary lists each plan with its pass, warning, and fail counts.
 - **Scripts.** The scripts for the stacks and the suite go in the repo, so that a developer can run the same commands locally.
 
-## 8. Template and doc changes
+## 8. Repo and doc changes
 
 | File | Change |
 |---|---|
@@ -635,16 +635,13 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | `FullstackTemplate.Bff/FullstackTemplate.Bff.csproj` | The same package changes. |
 | `FullstackTemplate.Bff/appsettings*.json` | Replace the `Duende` log level overrides. Add the new keys with their defaults. |
 | `FullstackTemplate.AppHost/AppHost.cs` | Add `bffdb`. |
-| `FullstackTemplate.AppHost/AuthProviders.cs` | Remove `RevokeRefreshTokenOnLogout`. Add the feature settings, `Bff__PublicOrigin`, `Bff__AdditionalAllowedHosts`, and the `Conformance` provider. |
+| `FullstackTemplate.AppHost/AuthProviders/AuthProviderConfig.cs` | Remove `RevokeRefreshTokenOnLogout`. Add the feature settings, `Bff__PublicOrigin`, and `Bff__AdditionalAllowedHosts`. |
+| `FullstackTemplate.AppHost/AuthProviders/Conformance/` | The new `ConformanceAuthProvider`. It also needs `frontend/e2e/idps/conformance.json`, because a unit test makes sure that each provider has an e2e file. |
 | `FullstackTemplate.AppHost/Config.cs` | The provider image tags. |
-| `northflank.json` | The provider tags, `Bff__PublicOrigin`, and the `bffdb` connection. |
-| `.template.config/template.json` | No change. It names only the Duende Demo provider. |
-| `template.csproj` | The description lists all four providers and no Duende BFF. |
-| `README.md` | Remove "using Duende BFF". List all four providers (today it lists three): in the feature list, in the `--AuthProvider` row, and in the "Auth Provider" line. Change the project tree line to "BFF proxy (YARP, OIDC)". |
+| `README.md` | Remove "using Duende BFF". Change the project tree line to "BFF proxy (YARP, OIDC)". |
 | `AGENTS.md` | The `FullstackTemplate.Bff` row: "BFF proxy (YARP and OIDC auth)". |
 | `docs/authentication.md` | The new login and logout flows, the BFF sessions in `bffdb`, the feature settings with a table of the active features for each provider, the back-channel logout, and how a team certifies its own deployment with the same conformance plans. |
 | `docs/telemetry.md` | The BFF now has custom metrics (section 3.9). |
-| `docs/deployment-northflank.md` | `Bff__PublicOrigin`, `bffdb`, and the back-channel URL for each provider. |
 | `.agents/skills/**` | No change. The skills name only the Duende demo IdP. |
 | `frontend/src/routes/index.tsx` | The subtitle ".NET Aspire + React with Duende BFF" becomes ".NET Aspire + React with a BFF". |
 | `frontend/src/routes/about.tsx` | "Duende BFF" becomes "BFF (YARP and OIDC)". |

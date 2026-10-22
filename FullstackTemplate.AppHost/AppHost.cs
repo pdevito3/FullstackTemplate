@@ -1,5 +1,6 @@
 using System.Globalization;
 using FullstackTemplate.AppHost;
+using FullstackTemplate.AppHost.AuthProviders;
 using Serilog;
 using Serilog.Events;
 
@@ -55,32 +56,9 @@ try
 
     var authClientUrls = new AuthClientUrls(
         webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"));
-#if LOCAL_DEV
-    // The AuthProvider setting selects the provider, for example the environment variable AuthProvider=Keycloak.
-    // The default is the public Duende demo. The e2e tests use Keycloak, which runs in the stack.
-    var authProvider = builder.Configuration["AuthProvider"] switch
-    {
-        null or "" or "DuendeDemo" => AuthProviders.DuendeDemo(),
-        "Keycloak" => AuthProviders.Keycloak(builder, authClientUrls),
-        "FusionAuth" => AuthProviders.FusionAuth(builder, authClientUrls),
-        "Authentik" => AuthProviders.Authentik(builder, authClientUrls),
-        "Cognito" => AuthProviders.Cognito(builder, authClientUrls),
-        var other => throw new InvalidOperationException(
-            $"AuthProvider '{other}' is not known. Use DuendeDemo, Keycloak, FusionAuth, Authentik, or Cognito."),
-    };
-#else
-    //#if (UseFusionAuth)
-    var authProvider = AuthProviders.FusionAuth(builder, authClientUrls);
-    //#elseif (UseKeycloak)
-    var authProvider = AuthProviders.Keycloak(builder, authClientUrls);
-    //#elseif (UseAuthentik)
-    var authProvider = AuthProviders.Authentik(builder, authClientUrls);
-    //#elseif (UseCognito)
-    var authProvider = AuthProviders.Cognito(builder, authClientUrls);
-    //#else
-    var authProvider = AuthProviders.DuendeDemo();
-    //#endif
-#endif
+    // The AuthProvider setting selects the provider. appsettings.json gives the default, and the environment
+    // variable AuthProvider=Keycloak overrides it. The e2e tests find the provider from the running stack.
+    var authProvider = AuthProviderCatalog.Select(builder.Configuration).AddTo(builder, authClientUrls);
     server.WithServerAuth(authProvider);
     bff.WithBffAuth(authProvider);
 

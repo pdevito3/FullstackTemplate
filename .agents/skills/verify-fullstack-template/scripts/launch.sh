@@ -21,7 +21,8 @@ mkdir -p "$RUN_DIR"
 
 echo "launch: starting the isolated stack (run $RUN_ID)..."
 (cd "$ROOT" && dotnet tool restore >/dev/null)
-start_json="$(aspire start --isolated --format Json --apphost "$APPHOST_DIR")"
+# The login recipes fill the Duende demo form, so the stack uses Duende Demo whatever the default AuthProvider is
+start_json="$(AuthProvider=DuendeDemo aspire start --isolated --format Json --apphost "$APPHOST_DIR")"
 echo "$start_json" > "$RUN_DIR/aspire-start.json"
 echo "$RUN_ID" > "$CURRENT_FILE"
 

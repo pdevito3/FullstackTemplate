@@ -40,11 +40,8 @@ public static class WebAppServiceConfiguration
 
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
-            // use this to account for malformed DATABASE_URL from Northflank. Please remove it if you don't need it
-            var connectionString = ConnectionStringHelper
-                .ConvertPostgresUri(builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName));
-            // var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
-            
+            var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+
             options.UseNpgsql(connectionString, npgsql => npgsql.ConfigureDataSource(dataSource =>
                     dataSource.ConfigureTracing(tracing => tracing
                         // A command with no recorded ambient activity has no exported request or TraceRoot

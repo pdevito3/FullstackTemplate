@@ -6,7 +6,7 @@ using FullstackTemplate.Bff.Tests.Fakes;
 using Shouldly;
 
 /// <summary>
-/// The checks on the discovery document and the signing keys, which the conformance config plan also tests.
+/// The checks on the discovery document and the signing keys.
 /// </summary>
 public class IdentityProviderMetadataTests
 {

@@ -45,7 +45,7 @@ public class UserErrorResponseTests : TestBase
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
         var dto = new FakeUserForUpdateDto()
             .RuleFor(x => x.Email, _ => "")
-            .Generate();
+            .Generate() with { Version = user.Version };
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(user.Id), dto);

@@ -20,7 +20,7 @@ public class UpdateUserCommandTests : TestBase
         var updateDto = new FakeUserForUpdateDto()
             .RuleFor(x => x.FirstName, _ => "UpdatedFirst")
             .RuleFor(x => x.LastName, _ => "UpdatedLast")
-            .Generate();
+            .Generate() with { Version = fakeUser.Version };
 
         // Act
         var command = new UpdateUser.Command(fakeUser.Id, updateDto);
@@ -48,7 +48,7 @@ public class UpdateUserCommandTests : TestBase
 
         var updateDto = new FakeUserForUpdateDto()
             .RuleFor(x => x.Email, _ => "newemail@example.com")
-            .Generate();
+            .Generate() with { Version = fakeUser.Version };
 
         // Act
         var command = new UpdateUser.Command(fakeUser.Id, updateDto);

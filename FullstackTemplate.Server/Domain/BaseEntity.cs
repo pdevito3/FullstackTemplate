@@ -66,6 +66,16 @@ public abstract class BaseEntity
         IsDeleted = isDeleted;
     }
     
+    /// <summary>
+    /// Stops a change that the caller based on an old load of the record. Call it first in each method that applies
+    /// the values of a caller.
+    /// </summary>
+    protected void GuardVersion(uint expectedVersion)
+    {
+        if (expectedVersion != Version)
+            throw new Exceptions.ConcurrencyConflictException();
+    }
+
     /// <summary>Replaces the generated ID. The new ID must have the prefix of this entity type.</summary>
     protected void SetId(string id)
     {

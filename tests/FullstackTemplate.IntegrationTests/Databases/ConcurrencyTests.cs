@@ -25,8 +25,8 @@ public class ConcurrencyTests : TestBase
         var (first, second, tenantId) = await TwoScopesForANewTenantAsync();
         var firstTenant = await first.GetService<AppDbContext>().Tenants.GetById(tenantId);
         var secondTenant = await second.GetService<AppDbContext>().Tenants.GetById(tenantId);
-        firstTenant.Update(new TenantForUpdate { Name = $"Tenant {Guid.NewGuid():N}" });
-        secondTenant.Update(new TenantForUpdate { Name = $"Tenant {Guid.NewGuid():N}" });
+        firstTenant.Update(new TenantForUpdate { Name = $"Tenant {Guid.NewGuid():N}", Version = firstTenant.Version });
+        secondTenant.Update(new TenantForUpdate { Name = $"Tenant {Guid.NewGuid():N}", Version = secondTenant.Version });
         await first.GetService<AppDbContext>().SaveChangesAsync();
 
         // Act
@@ -36,6 +36,25 @@ public class ConcurrencyTests : TestBase
         var exception = await act.ShouldThrowAsync<ConcurrencyConflictException>();
         exception.Property.ShouldBe("version");
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
+    }
+
+    [Test]
+    public async Task two_updates_from_one_loaded_version_give_one_success_and_one_conflict()
+    {
+        // Arrange
+        var (first, second, tenantId) = await TwoScopesForANewTenantAsync();
+        var loaded = await first.SendAsync(new GetTenant.Query(tenantId));
+
+        // Act
+        var outcomes = await Task.WhenAll(
+            OutcomeOf(first.SendAsync(new UpdateTenant.Command(tenantId,
+                new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }))),
+            OutcomeOf(second.SendAsync(new UpdateTenant.Command(tenantId,
+                new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }))));
+
+        // Assert
+        outcomes.Count(o => o is null).ShouldBe(1);
+        outcomes.Count(o => o is ConcurrencyConflictException).ShouldBe(1);
     }
 
     [Test]
@@ -93,7 +112,7 @@ public class ConcurrencyTests : TestBase
 
         // Act
         var updated = await scope.SendAsync(new UpdateTenant.Command(tenantId,
-            new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}" }));
+            new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }));
 
         // Assert
         updated.Version.ShouldNotBe(0u);
@@ -115,6 +134,20 @@ public class ConcurrencyTests : TestBase
         first.SetUserWithDefaults(identifier: admin.Identifier);
         second.SetUserWithDefaults(identifier: admin.Identifier);
         return (first, second, tenant.Id);
+    }
+
+    // Null when the update succeeded
+    private static async Task<Exception?> OutcomeOf(Task<TenantDto> update)
+    {
+        try
+        {
+            await update;
+            return null;
+        }
+        catch (Exception exception)
+        {
+            return exception;
+        }
     }
 
     private static Task<User> LoadWithPermissionsAsync(TestingServiceScope scope, string userId)

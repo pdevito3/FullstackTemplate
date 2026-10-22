@@ -26,6 +26,7 @@ public class Tenant : BaseEntity
 
     public Tenant Update(TenantForUpdate tenantForUpdate)
     {
+        GuardVersion(tenantForUpdate.Version);
         Name = tenantForUpdate.Name;
 
         ValidateTenant(this);

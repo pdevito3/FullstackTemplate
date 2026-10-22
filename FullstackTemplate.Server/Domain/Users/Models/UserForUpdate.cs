@@ -6,4 +6,5 @@ public sealed record UserForUpdate
     public string LastName { get; init; } = default!;
     public string Email { get; init; } = default!;
     public string Username { get; init; } = default!;
+    public uint Version { get; init; }
 }

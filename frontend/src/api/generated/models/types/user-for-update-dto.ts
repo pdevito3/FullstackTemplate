@@ -8,4 +8,11 @@ export type UserForUpdateDto = {
     lastName: string;
     email: string;
     username: string;
+    /**
+     * @description The version of the user that the caller loaded. A stale version gives 409.
+     *
+     * Format: `uint32`
+     * @type integer
+    */
+    version: number;
 };

@@ -16,7 +16,8 @@ public sealed class AddUserPermissionEndpoint : IEndpoint
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesValidationProblem()
-        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// Adds a permission to a User.

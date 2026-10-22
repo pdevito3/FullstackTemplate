@@ -20,6 +20,8 @@ export type RemoveUserPermissionStatus403 = ProblemDetails;
 
 export type RemoveUserPermissionStatus404 = ProblemDetails;
 
+export type RemoveUserPermissionStatus409 = ValidationProblemDetails;
+
 export type RemoveUserPermissionStatus422 = ValidationProblemDetails;
 
 export type RemoveUserPermissionOptions = {
@@ -34,6 +36,7 @@ export type RemoveUserPermissionResponses = {
     "401": RemoveUserPermissionStatus401;
     "403": RemoveUserPermissionStatus403;
     "404": RemoveUserPermissionStatus404;
+    "409": RemoveUserPermissionStatus409;
     "422": RemoveUserPermissionStatus422;
 };
 

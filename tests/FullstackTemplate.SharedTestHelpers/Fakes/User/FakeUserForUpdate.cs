@@ -11,5 +11,7 @@ public sealed class FakeUserForUpdate : AutoFaker<UserForUpdate>
         RuleFor(x => x.LastName, UserRules.LastName);
         RuleFor(x => x.Email, UserRules.Email);
         RuleFor(x => x.Username, UserRules.Username);
+        // A test sets the version of the record that it loaded. No row has version 0, so a test that does not set it gets 409.
+        RuleFor(x => x.Version, _ => 0u);
     }
 }

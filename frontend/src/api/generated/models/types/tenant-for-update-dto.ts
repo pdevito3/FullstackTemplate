@@ -5,4 +5,11 @@
 
 export type TenantForUpdateDto = {
     name: string;
+    /**
+     * @description The version of the tenant that the caller loaded. A stale version gives 409.
+     *
+     * Format: `uint32`
+     * @type integer
+    */
+    version: number;
 };

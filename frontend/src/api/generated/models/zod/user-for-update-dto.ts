@@ -10,4 +10,5 @@ export const userForUpdateDtoSchema = z.object({
   lastName: z.string(),
   email: z.string(),
   username: z.string(),
+  version: z.uint32().describe('The version of the user that the caller loaded. A stale version gives 409.'),
 })

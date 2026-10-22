@@ -20,8 +20,10 @@ export const removeUserPermissionStatus403Schema = problemDetailsSchema
 
 export const removeUserPermissionStatus404Schema = problemDetailsSchema
 
+export const removeUserPermissionStatus409Schema = validationProblemDetailsSchema
+
 export const removeUserPermissionStatus422Schema = validationProblemDetailsSchema
 
 export const removeUserPermissionResponseSchema = removeUserPermissionStatus200Schema
 
-export const removeUserPermissionErrorSchema = z.union([removeUserPermissionStatus401Schema, removeUserPermissionStatus403Schema, removeUserPermissionStatus404Schema, removeUserPermissionStatus422Schema])
+export const removeUserPermissionErrorSchema = z.union([removeUserPermissionStatus401Schema, removeUserPermissionStatus403Schema, removeUserPermissionStatus404Schema, removeUserPermissionStatus409Schema, removeUserPermissionStatus422Schema])

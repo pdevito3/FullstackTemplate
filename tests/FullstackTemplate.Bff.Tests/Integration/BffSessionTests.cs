@@ -75,6 +75,45 @@ public class BffSessionTests
     }
 
     [Test]
+    [Arguments(null, null)]
+    [Arguments("sid-old", null)]
+    [Arguments("sid-old", "sid-new")]
+    public async Task a_new_login_revokes_the_refresh_token_of_the_old_session(string? oldSessionId, string? newSessionId)
+    {
+        var app = BffApp.Instance;
+        var provider = app.IdentityProvider;
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: SignInQuery(subject, oldSessionId));
+
+        await BffApp.SignInAsync(browser, providerQuery: SignInQuery(subject, newSessionId));
+
+        var issued = provider.IssuedRefreshTokens(subject);
+        issued.Count.ShouldBe(2);
+        provider.RevokedTokens.ShouldContain(issued[0]);
+        provider.RevokedTokens.ShouldNotContain(issued[1]);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_new_login_in_the_same_idp_session_keeps_the_old_refresh_token()
+    {
+        // With Keycloak, a revoke of the old refresh token would also end the client session of the new tokens
+        var app = BffApp.Instance;
+        var provider = app.IdentityProvider;
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+        var oldKey = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: SignInQuery(subject, "sid-same")))!;
+
+        await BffApp.SignInAsync(browser, providerQuery: SignInQuery(subject, "sid-same"));
+
+        provider.IssuedRefreshTokens(subject).Count.ShouldBe(2);
+        provider.WasRefreshTokenRevoked(subject).ShouldBeFalse();
+        (await app.WithStoreAsync(store => store.GetAsync(oldKey, CancellationToken.None))).ShouldBeNull();
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
     public async Task a_refresh_that_ends_after_logout_does_not_bring_the_session_back_and_revokes_its_refresh_token()
     {
         var app = BffApp.Instance;
@@ -320,6 +359,9 @@ public class BffSessionTests
         cookies.GetAllCookies().Where(c => c.Name.StartsWith("__Host-bffC", StringComparison.Ordinal)).Select(c => c.Name).ToList();
 
     private static string NewSubject() => $"user-session-{Guid.NewGuid():N}";
+
+    private static string SignInQuery(string subject, string? sessionId) =>
+        sessionId is null ? $"test_sub={subject}" : $"test_sub={subject}&test_sid={sessionId}";
 
     private static string ClaimValue(System.Text.Json.JsonElement claims, string type) =>
         claims.EnumerateArray()

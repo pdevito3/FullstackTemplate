@@ -1,3 +1,4 @@
+using FullstackTemplate.Bff.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -12,8 +13,8 @@ namespace FullstackTemplate.Bff.Sessions;
 /// <para>
 /// The cookie handler signs in on the key of the request cookie when that key has a row, and it keeps that key
 /// after a sign-out in the same request. Thus the callback must end the existing BFF session before the cookie
-/// handler reads the cookie: delete its row, delete the cookie and its chunks in the browser, remove the cookie
-/// from the request, and sign out the cookie.
+/// handler reads the cookie: delete its row, revoke its refresh token, delete the cookie and its chunks in the
+/// browser, remove the cookie from the request, and sign out the cookie.
 /// </para>
 /// </summary>
 public static class NewLogin
@@ -33,8 +34,10 @@ public static class NewLogin
             return;
 
         var key = cookieOptions.TicketDataFormat.Unprotect(cookie)?.Principal.FindFirst(SessionKey.ClaimType)?.Value;
-        if (key is not null)
-            await httpContext.RequestServices.GetRequiredService<IBffSessionStore>().DeleteAsync(key, httpContext.RequestAborted);
+        if (key is not null
+            && await httpContext.RequestServices.GetRequiredService<IBffSessionStore>().DeleteAsync(key, httpContext.RequestAborted)
+                is { } deleted)
+            await RevokeRefreshTokenAsync(context, deleted);
 
         // The cookie manager finds the chunks to delete in the request cookie, so delete them before the request
         // cookie goes. The sign-out after that deletes only the cookie itself, and a new cookie in fewer chunks
@@ -42,6 +45,24 @@ public static class NewLogin
         cookieOptions.CookieManager.DeleteCookie(httpContext, cookieName, cookieOptions.Cookie.Build(httpContext));
         RemoveRequestCookie(httpContext.Request, cookieName);
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>
+    /// Revokes the refresh token of the old BFF session, as logout does, because no BFF session holds it now.
+    /// <para>
+    /// If the new login has the same <c>sid</c>, the old and the new tokens belong to one IdP session. With
+    /// Keycloak, a revoke of one refresh token ends the client session, and thus also the new tokens. The BFF then
+    /// keeps the old token, and the end of the IdP session ends it.
+    /// </para>
+    /// </summary>
+    private static async Task RevokeRefreshTokenAsync(TicketReceivedContext context, BffSession old)
+    {
+        if (old.SessionId is not null && old.SessionId == context.Principal?.FindFirst("sid")?.Value)
+            return;
+
+        var services = context.HttpContext.RequestServices;
+        if (services.GetRequiredService<BffTicketStore>().RefreshTokenOf(old) is { Length: > 0 } refreshToken)
+            await services.GetRequiredService<RefreshTokenRevocation>().RevokeAsync(refreshToken, context.HttpContext.RequestAborted);
     }
 
     /// <summary>

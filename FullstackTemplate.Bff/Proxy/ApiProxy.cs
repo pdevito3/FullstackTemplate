@@ -98,6 +98,12 @@ public static class ApiProxy
 
             context.ProxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken.ToString());
         }
+        catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested)
+        {
+            // The client left. That is not a fault of the BFF.
+            Logger.Here().Debug("The client aborted {Path} while the BFF attached the access token", path);
+            throw;
+        }
         catch (Exception ex)
         {
             // YARP turns the exception into a 502.

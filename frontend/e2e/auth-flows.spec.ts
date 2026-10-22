@@ -657,3 +657,31 @@ test.describe(`BFF refresh - ${currentIdp.name}`, () => {
     expect(iat, 'the iat of the stored ID token is from the refresh of the second call').toBeGreaterThanOrEqual(secondCallStart - 1)
   })
 })
+
+/**
+ * The refresh lock (section 3.7 of docs/specs/home-rolled-bff.md). The stack refreshes on each API call, and the
+ * provider rejects a reused refresh token. So two API calls at the same time need the same refresh. With the lock, one
+ * call refreshes, and the other gets the new tokens. With no lock, both calls send the same refresh token, the provider
+ * rejects the second one with invalid_grant, and the BFF ends the session.
+ */
+test.describe(`Refresh lock - ${currentIdp.name}`, () => {
+  test('two API calls at the same time both succeed, and the session still works after them', async ({ page }) => {
+    test.skip(
+      !currentIdp.sessionFeatures.refreshRotation,
+      `${currentIdp.name} does not rotate refresh tokens, so two refreshes with one refresh token also pass (section 6 of the spec).`,
+    )
+    test.skip(!refreshesOnEachCall(process.env.BFF_REFRESH_BEFORE_EXPIRATION_SECONDS), refreshMarginHint)
+
+    await signInThroughSpa(page)
+
+    const statuses = await page.evaluate(async () => {
+      // no-store, because Chrome holds a second GET of the same URL until the first one ends, for its cache
+      const call = async () =>
+        (await fetch('/api/v1/weather/secure', { headers: { 'X-CSRF': '1' }, cache: 'no-store' })).status
+      return Promise.all([call(), call()])
+    })
+    expect(statuses, 'the two API calls at the same time').toEqual([200, 200])
+    expect(await bffUserStatus(page), 'the BFF session after the two calls').toBe(200)
+    expect(await bffApiStatus(page, '/api/v1/weather/secure'), 'an API call after the two calls').toBe(200)
+  })
+})

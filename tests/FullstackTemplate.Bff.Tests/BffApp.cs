@@ -60,7 +60,6 @@ public sealed class BffApp : WebApplicationFactory<Program>
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
     private Action<IServiceCollection>? _services;
     private bool _ownsDependencies;
-    private readonly Lock _clientsLock = new();
 
     public static async Task StartAsync()
     {
@@ -211,13 +210,12 @@ public sealed class BffApp : WebApplicationFactory<Program>
             : null;
 
     /// <summary>
-    /// <see cref="WebApplicationFactory{TEntryPoint}.CreateClient(WebApplicationFactoryClientOptions)"/> under a
-    /// lock. The factory adds each client to a plain list, and the tests run in parallel. Two adds at the same time
-    /// can leave a null item in the list, and then <see cref="DisposeAsync"/> fails with a NullReferenceException.
+    /// <see cref="WebApplicationFactory{TEntryPoint}.CreateClient(WebApplicationFactoryClientOptions)"/> under the
+    /// client lock.
     /// </summary>
     public new HttpClient CreateClient(WebApplicationFactoryClientOptions options)
     {
-        lock (_clientsLock)
+        lock (_clientLock)
         {
             return base.CreateClient(options);
         }
@@ -228,15 +226,12 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// </summary>
     public HttpClient CreateBrowser()
     {
-        lock (_clientLock)
+        return CreateClient(new WebApplicationFactoryClientOptions
         {
-            return CreateClient(new WebApplicationFactoryClientOptions
-            {
-                AllowAutoRedirect = false,
-                BaseAddress = Origin,
-                HandleCookies = true,
-            });
-        }
+            AllowAutoRedirect = false,
+            BaseAddress = Origin,
+            HandleCookies = true,
+        });
     }
 
     /// <summary>

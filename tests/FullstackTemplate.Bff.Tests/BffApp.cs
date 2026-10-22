@@ -92,8 +92,18 @@ public sealed class BffApp : WebApplicationFactory<Program>
             _settings = settings ?? new Dictionary<string, string?>(),
             _services = services,
         };
-        lock (StartLock)
-            _ = app.Server;
+        try
+        {
+            lock (StartLock)
+                _ = app.Server;
+        }
+        catch
+        {
+            // A test of a startup failure gets no instance to dispose, so dispose the factory and its host here
+            app.Dispose();
+            throw;
+        }
+
         return app;
     }
 

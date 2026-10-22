@@ -106,6 +106,11 @@ const expectations: { variable: string; feature: string; actual: boolean }[] = [
     feature: 'a BFF refresh on each API call (Auth__RefreshBeforeExpirationSeconds above the access token lifetime)',
     actual: refreshesOnEachCall(env.BFF_REFRESH_BEFORE_EXPIRATION_SECONDS),
   },
+  {
+    variable: 'EXPECT_DPOP',
+    feature: 'DPoP-bound tokens (AppHost setting DPoP=true)',
+    actual: env.DPOP === 'true',
+  },
 ]
 let mismatch = false
 for (const { variable, feature, actual } of expectations) {

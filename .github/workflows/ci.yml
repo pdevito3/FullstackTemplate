@@ -249,6 +249,8 @@ jobs:
       AuthProvider: ${{ matrix.provider }}
       IDP: ${{ matrix.idp }}
       DPoP: ${{ matrix.dpop == true }}
+      # run-against-stack.ts fails when the stack does not have the DPoP of the matrix
+      EXPECT_DPOP: ${{ matrix.dpop == true }}
       # Longer than the access token lifetime of each provider, so that each API call refreshes. The BFF refresh test
       # in auth-flows.spec.ts needs it. The public Duende service gets no margin, so that the job does not refresh on
       # each call to it, and the test skips there.

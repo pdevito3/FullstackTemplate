@@ -285,7 +285,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 FailRefresh: Parameter("test_refresh") == "fail",
                 ExtraAudience: Parameter("test_aud"),
                 AuthorizedParty: Parameter("test_azp"),
-                WrongAtHash: Parameter("test_at_hash") == "wrong");
+                WrongAtHash: Parameter("test_at_hash") == "wrong",
+                RedirectUri: redirectUri,
+                CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null);
 
             if (Parameter("test_revoke") is { } revokeMode)
                 _revokeModes[grant.Subject] = revokeMode;
@@ -314,6 +316,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             switch (grantType)
             {
                 case "authorization_code" when _codes.TryRemove(form["code"].ToString(), out var grant):
+                    // RFC 6749 section 4.1.3 and RFC 7636 section 4.6: the code is bound to its redirect_uri and its S256 challenge
+                    if (form["redirect_uri"].ToString() != grant.RedirectUri
+                        || grant.CodeChallenge is null
+                        || CodeChallenge(form["code_verifier"].ToString()) != grant.CodeChallenge)
+                        return Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest);
+
                     return IssueTokens(grant, includeIdToken: true);
 
                 case "refresh_token" when _refreshTokens.TryGetValue(form["refresh_token"].ToString(), out var grant):
@@ -455,8 +463,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private static string AtHash(string accessToken) =>
         Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(accessToken))[..16]);
 
+    // RFC 7636 section 4.2: S256 is the base64url-encoded SHA-256 hash of the ASCII code_verifier
+    private static string CodeChallenge(string codeVerifier) =>
+        Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
+
     private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh, string? ExtraAudience,
-        string? AuthorizedParty, bool WrongAtHash);
+        string? AuthorizedParty, bool WrongAtHash, string RedirectUri, string? CodeChallenge);
 
     /// <summary>
     /// One request to the token endpoint.

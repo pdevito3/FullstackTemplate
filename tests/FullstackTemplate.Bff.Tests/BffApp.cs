@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Bff.Tests;
 
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Web;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog.AspNetCore;
 using Serilog.Core;
 
 /// <summary>
@@ -37,8 +39,10 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// Each log event of the BFF. Filter by a value that is unique to the test.
     /// </summary>
     /// <remarks>
-    /// Each host sets the static Serilog logger and logs through it, so a host logs to the sinks of the host that
-    /// started last. All instances share one sink, so that the events of each instance arrive here.
+    /// Each host replaces the static Serilog logger when it starts, and Program.cs closes it when the host stops, at
+    /// a time that the tests do not control. So the static loggers of the BFF use the logger of the first host, and
+    /// the request log of each host uses the logger of that host. All instances share one sink, so that the events
+    /// of each instance arrive here.
     /// </remarks>
     public static CapturedLogs Logs { get; } = new();
 
@@ -74,6 +78,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
         var app = new BffApp { IdentityProvider = identityProvider, Api = api, _ownsDependencies = true };
         // Start the host now, so that a startup failure fails the assembly hook with its own message
         _ = app.Server;
+        BindStaticLoggers();
         Instance = app;
     }
 
@@ -107,6 +112,22 @@ public sealed class BffApp : WebApplicationFactory<Program>
         return app;
     }
 
+    /// <summary>
+    /// Runs the type initializer of each BFF type that has a static Serilog logger, while the first host is the only
+    /// host. A <c>Log.ForContext</c> logger keeps the static logger of the moment it is made, so a first use after
+    /// another host stops would keep a closed, silent logger for the rest of the run.
+    /// </summary>
+    private static void BindStaticLoggers()
+    {
+        const System.Reflection.BindingFlags statics =
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+        foreach (var type in typeof(Program).Assembly.GetTypes())
+        {
+            if (!type.ContainsGenericParameters && type.GetFields(statics).Any(f => f.FieldType == typeof(Serilog.ILogger)))
+                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+        }
+    }
+
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
@@ -127,6 +148,10 @@ public sealed class BffApp : WebApplicationFactory<Program>
         {
             // Serilog reads the sinks from the services (ReadFrom.Services)
             services.AddSingleton<ILogEventSink>(Logs);
+            // Without a logger, the request log uses the static logger at each request, which another host can have
+            // closed
+            services.AddOptions<RequestLoggingOptions>()
+                .Configure<Serilog.ILogger>((options, logger) => options.Logger = logger);
             services.AddTestAuthorization();
         });
         if (_services is not null)

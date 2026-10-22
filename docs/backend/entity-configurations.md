@@ -9,9 +9,10 @@ Each entity has one EF Core configuration class in `Databases/EntityConfiguratio
 3. Give `Id` and each ID foreign key `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`.
 4. Give each string property a `HasMaxLength`. Use 320 for an email.
 5. Map each value object with `ComplexProperty`. Give its column a snake case name with `HasColumnName`. The naming convention makes the other names snake case.
-6. Set `OnDelete` on each relationship. Use `Restrict` for a link to another aggregate. Use `Cascade` for a child that the entity owns.
+6. Set `OnDelete` on each relationship. Use `Restrict` for a link to another aggregate. Use `Cascade` for a child that the entity owns. `Cascade` also tells the context that a change to the child updates the owner row, so that the version of the owner guards the child. See [backend.md](../backend.md#concurrency).
 7. Add an index for each property that queries filter or sort on.
 8. After you change a configuration, add a migration. See [backend.md](../backend.md#migrations).
+9. Do not configure `Version`. `MapVersionToXmin` maps it to the `xmin` column of each entity.
 
 ## Example
 
@@ -82,3 +83,20 @@ builder.HasIndex(e => e.Email)
     .IsUnique()
     .HasFilter("is_deleted = false");
 ```
+
+Give each unique index its request field in `ConstraintConflictException.ConstraintFields`, so that a duplicate gives a 409 on that field.
+
+## Exclusion constraints
+
+An exclusion constraint stops two rows that overlap, for example two appointments of one provider at the same time. EF Core cannot configure one, so add it with SQL in the migration. A constraint with `=` on a scalar column in a `gist` index needs the `btree_gist` extension:
+
+```csharp
+migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS btree_gist;");
+migrationBuilder.Sql("""
+    ALTER TABLE appointments ADD CONSTRAINT ex_appointments_provider_time
+    EXCLUDE USING gist (provider_id WITH =, tstzrange(starts_at, ends_at) WITH &&)
+    WHERE (is_deleted = false);
+    """);
+```
+
+Then give the constraint its request field in `ConstraintConflictException.ConstraintFields`, for example `["ex_appointments_provider_time"] = "startsAt"`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field, the same as a unique index.

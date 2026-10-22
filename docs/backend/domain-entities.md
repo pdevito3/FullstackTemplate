@@ -11,6 +11,7 @@ A domain entity holds its data and its business rules. Code outside the entity c
 5. Queue a domain event in each method that changes the state. See [domain-events.md](domain-events.md).
 6. Keep collections private. Expose an `IReadOnlyCollection<T>`, and change it only with entity methods.
 7. Use a value object for a domain concept, such as an email or a role. Do not use a bare `string`.
+8. In a method that applies the fields of an edit form, call `GuardVersion` first. See [Versions](#versions).
 
 ## IDs
 
@@ -73,6 +74,25 @@ public class User : BaseEntity, ITenantable
 
 The creation model has an `Id` only for tests. If the model has an `Id`, call `SetId` before you add child rows, because each child copies the parent ID. See [dtos-and-mappings.md](dtos-and-mappings.md#models).
 
+## Versions
+
+`BaseEntity.Version` is the version of the row that the entity came from. A method that replaces fields from an edit form gets the version that the caller edited in its update model. It calls `GuardVersion` before it changes a value. When the versions are not the same, `GuardVersion` throws a `ConcurrencyConflictException`, which gives 409. Thus a stale form cannot overwrite the change of another user.
+
+```csharp
+public Tenant Update(TenantForUpdate tenantForUpdate)
+{
+    GuardVersion(tenantForUpdate.Version);
+    Name = tenantForUpdate.Name;
+
+    ValidateTenant(this);
+    QueueDomainEvent(new TenantUpdated(Id));
+
+    return this;
+}
+```
+
+A method for one intent, such as `UpdateRole` or `AddPermission`, gets no version. The context still checks the loaded version when it saves. See [backend.md](../backend.md#concurrency).
+
 ## Guards
 
 When a rule blocks a change in some states, put the rule in a private guard method. Call the guard at the start of each method that it protects.
@@ -134,3 +154,4 @@ To map a value object to a column, see [entity-configurations.md](entity-configu
 - Do not give an entity public setters.
 - Do not change an entity from a handler or a service. Add a method to the entity.
 - Do not expose a `List<T>` that callers can change.
+- Do not change a child entity without its owner. Load the owner and call a method of the owner. The save of a changed child also updates the owner row, and it throws when the owner is not loaded.

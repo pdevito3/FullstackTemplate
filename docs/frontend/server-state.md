@@ -88,18 +88,19 @@ retry: (failureCount, error) => {
 
 ## Forms with server data
 
-Do not copy the data into state. Give it to the form:
+Do not copy the data into state. Give it to the form. An edit form also keeps the `version` of the record that it shows, and sends it in the PUT body:
 
 ```typescript
-const { data: user } = useUser(userId)
-
+// The parent renders this form only after useUser has data
 const form = useForm<UserFormData>({
   resolver: zodResolver(userSchema),
-  values: user ? { firstName: user.firstName, lastName: user.lastName } : undefined,
+  defaultValues: { firstName: user.firstName, lastName: user.lastName, version: user.version },
 })
 ```
 
-When the form shows only after the data loads, `defaultValues` is also correct.
+Use `defaultValues` in an edit form, not `values`. With `values`, a refetch can put the new version under the edits of the user. The save then overwrites a change that the user did not see.
+
+When another user saved the record first, the PUT gets a 409 with `errors.version`, and the toast shows the `detail`. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new data. Do not send the PUT again with the new version, because that overwrites the other change.
 
 ## Do not
 

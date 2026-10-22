@@ -45,7 +45,7 @@ public static class UpdateUser
 }
 ```
 
-`GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404.
+`GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404. `user.Update` throws a `ConcurrencyConflictException` when the DTO has an old version, and `SaveChangesAsync` throws it when another request saved the row after the load. Both give 409. Do not catch it or retry the command, because a retry with the new version overwrites a change that the caller did not see.
 
 A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. A command that has no result implements `IRequest`, not `IRequest<T>`.
 

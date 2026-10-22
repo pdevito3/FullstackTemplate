@@ -79,9 +79,7 @@ jobs:
         run: pnpm lint
 
       # The component tests (*.test.tsx) run in a headless Chromium with Vitest browser mode.
-      - name: Install Chromium for the component tests
-        working-directory: frontend
-        run: pnpm exec playwright install --with-deps chromium
+      - uses: ./.github/actions/install-chromium
 
       - name: Test the frontend
         working-directory: frontend
@@ -174,6 +172,7 @@ jobs:
               - 'frontend/vite.config.ts'
               - 'frontend/src/**'
               - '.github/workflows/ci.yml'
+              - '.github/actions/install-chromium/**'
 
   bff-tests:
     needs: changes
@@ -304,9 +303,7 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Install Chromium
-        working-directory: frontend
-        run: pnpm exec playwright install --with-deps chromium
+      - uses: ./.github/actions/install-chromium
 
       - name: Start the stack
         run: dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost

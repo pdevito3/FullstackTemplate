@@ -45,6 +45,7 @@ jobs:
               - 'frontend/pnpm-lock.yaml'
               - 'frontend/conformance/**'
               - '.github/workflows/conformance.yml'
+              - '.github/actions/install-chromium/**'
 
   conformance:
     needs: changes
@@ -92,9 +93,7 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Install Chromium
-        working-directory: frontend
-        run: pnpm exec playwright install --with-deps chromium
+      - uses: ./.github/actions/install-chromium
 
       # The BFF has an explicit start. The driver starts the suite, then starts the BFF for each test module.
       - name: Start the stack

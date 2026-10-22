@@ -1,0 +1,25 @@
+name: Install Chromium
+description: >-
+  Installs the Playwright Chromium of frontend/package.json, from a cache when one exists. Run it after the frontend
+  packages are installed.
+
+runs:
+  using: composite
+  steps:
+    - name: Read the Playwright version
+      id: playwright
+      shell: bash
+      working-directory: frontend
+      run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+    # No --with-deps: the runner image has the system libraries of Chromium, and the apt mirrors can hang the job
+    # for its full timeout. The timeout stops a hung download.
+    - name: Install Chromium
+      shell: bash
+      working-directory: frontend
+      run: timeout 5m pnpm exec playwright install chromium

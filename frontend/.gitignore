@@ -29,3 +29,7 @@ dist-ssr
 
 # Vitest browser mode output (failure screenshots)
 /.vitest/
+
+# Conformance suite: the exported certificate and the results of run-conformance.ts
+/conformance/.suite/
+/conformance/results/

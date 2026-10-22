@@ -7,6 +7,10 @@
   "passwordSelector": "#password",
   "submitSelector": "button:has-text(\"Sign in\")",
   "capabilities": {
+    "revocation": false,
+    "issuerParameter": false,
+    "backChannelLogout": false,
+    "endSession": false,
     "pushedAuthorization": false
   }
 }

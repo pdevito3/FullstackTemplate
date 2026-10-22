@@ -1,0 +1,17 @@
+# Overrides for docker-compose-prebuilt.yml, the unchanged compose file of the OpenID conformance suite at
+# https://gitlab.com/openid/conformance-suite/-/blob/release-v5.3.3/docker-compose-prebuilt.yml
+# run-conformance.ts starts the suite with both files. To update the suite, copy the compose file of the new
+# release and change the image tags and digests here.
+services:
+  mongodb:
+    image: mongo:6.0.13@sha256:b415b12f638e2685d06c58ab7fb5943577c50fadec6d9340ef67d21aeac72070
+    # No data folder: each run starts with an empty suite
+    volumes: !reset []
+  nginx:
+    image: registry.gitlab.com/openid/conformance-suite/nginx:release-v5.3.3@sha256:d80183af68cb51c72c86b498780d94d6192cbc6adcc70a7d28ac6a01eff0d0db
+  server:
+    image: registry.gitlab.com/openid/conformance-suite:release-v5.3.3@sha256:377ab51f011d821c4b6f7729053e85adf062d691e51a3615f40507fd900a2436
+    # The suite sends the back-channel logout token to the BFF on the host. Docker Desktop knows this name.
+    # On Linux, host-gateway maps it to the host.
+    extra_hosts:
+      - host.docker.internal:host-gateway

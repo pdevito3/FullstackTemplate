@@ -76,6 +76,7 @@ try
     var authProvider = AuthProviderCatalog.Select(builder.Configuration).AddTo(builder, authClientUrls);
     server.WithServerAuth(authProvider);
     bff.WithBffAuth(authProvider);
+    authProvider.ConfigureBff?.Invoke(bff);
 
     webfrontend.WithReference(bff);
 

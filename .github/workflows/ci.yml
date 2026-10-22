@@ -4,11 +4,15 @@ name: CI
 # To correct a failure, build the Server, run `pnpm generate:api` in frontend/, and commit the result.
 # The job also builds, lints, and tests the frontend against the contract. The test job runs the .NET tests.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
+# The BFF jobs (bff-tests, e2e) run only when the changes job finds a BFF change, and on workflow_dispatch.
+# There is no nightly run. conformance.yml runs the OpenID conformance suite. See section 7 of
+# docs/specs/home-rolled-bff.md.
 
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -124,5 +128,171 @@ jobs:
 
       # The integration and functional tests start Postgres with Testcontainers on the runner's Docker.
       # The api-contract job checks the OpenAPI document, so this build does not write it again.
+      # The bff-tests job runs the BFF tests, so this job skips them.
       - name: Run the tests
-        run: dotnet test --solution FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false
+        run: dotnet test --solution FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
+
+  # A path filter, not paths: on the trigger, so that a skipped BFF job still reports a status
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      bff: ${{ steps.filter.outputs.bff }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            bff:
+              - 'FullstackTemplate.Bff/**'
+              - 'tests/FullstackTemplate.Bff.Tests/**'
+              - 'FullstackTemplate.AppHost/**'
+              - 'Directory.Packages.props'
+              - 'Directory.Build.props'
+              - 'frontend/e2e/**'
+              - 'frontend/playwright.config.ts'
+              - '.github/workflows/ci.yml'
+
+  bff-tests:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.bff == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # The integration tests start Postgres with Testcontainers. The refresh lock tests run two BFF hosts on it.
+      - name: Run the BFF tests
+        run: dotnet test --project tests/FullstackTemplate.Bff.Tests/FullstackTemplate.Bff.Tests.csproj
+
+      - name: Upload the test report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bff-tests
+          path: TestResults/
+          retention-days: 30
+
+  e2e:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.bff == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - idp: keycloak
+            provider: Keycloak
+          - idp: fusionauth
+            provider: FusionAuth
+          - idp: authentik
+            provider: Authentik
+          - idp: cognito
+            provider: Cognito
+          - idp: zerofactor
+            provider: ZeroFactor
+          # A public service, so its failure does not block a merge
+          - idp: duendedemo
+            provider: DuendeDemo
+            public: true
+    continue-on-error: ${{ matrix.public == true }}
+    name: e2e (${{ matrix.provider }})
+    env:
+      AuthProvider: ${{ matrix.provider }}
+      IDP: ${{ matrix.idp }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Restore the .NET tools
+        run: dotnet tool restore
+
+      # The BFF calls the Server over https with the development certificate. On Linux, OpenSSL trusts it through
+      # SSL_CERT_DIR.
+      - name: Trust the development certificate
+        run: |
+          dotnet dev-certs https --trust
+          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
+
+      - name: Install the frontend packages
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start the stack
+        run: dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+
+      # The BFF waits for the identity provider and reads its discovery document at startup
+      - name: Wait for healthy resources
+        run: |
+          for resource in server bff webfrontend; do
+            dotnet aspire wait "$resource" --status healthy --timeout 900 --non-interactive --apphost FullstackTemplate.AppHost
+          done
+
+      - name: Run the e2e tests
+        working-directory: frontend
+        run: pnpm test:e2e:stack
+
+      - name: Save the stack logs
+        if: always()
+        run: |
+          mkdir -p stack-logs
+          dotnet aspire logs --timestamps --non-interactive --apphost FullstackTemplate.AppHost > stack-logs/aspire.log 2>&1 || true
+
+      - name: Stop the stack
+        if: always()
+        run: dotnet aspire stop --non-interactive --apphost FullstackTemplate.AppHost || true
+
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-${{ matrix.idp }}
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            stack-logs/
+          retention-days: 30
+          if-no-files-found: ignore

@@ -7,6 +7,10 @@
   "passwordSelector": "#password",
   "submitSelector": "#kc-login",
   "capabilities": {
+    "revocation": true,
+    "issuerParameter": true,
+    "backChannelLogout": true,
+    "endSession": true,
     "pushedAuthorization": true
   }
 }

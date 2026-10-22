@@ -69,12 +69,13 @@ public class AuthProviderCatalogTests
         // Arrange
         var appHost = AppHostSourceDirectory();
         var root = Path.GetDirectoryName(appHost)!;
+        var provider = AuthProviderCatalog.Select(Settings(name));
 
         // Assert
         File.Exists(Path.Combine(appHost, "AuthProviders", name, $"{name}AuthProvider.cs")).ShouldBeTrue(
             $"The class {name}AuthProvider must be in AuthProviders/{name}/, because scripts/init.cs finds the providers by folder.");
-        File.Exists(Path.Combine(root, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json")).ShouldBeTrue(
-            $"The e2e tests need the login form of {name} in frontend/e2e/idps/{name.ToLowerInvariant()}.json.");
+        File.Exists(Path.Combine(root, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json")).ShouldBe(provider.RunsE2eTests,
+            $"The e2e tests need the login form of {name} in frontend/e2e/idps/{name.ToLowerInvariant()}.json, but only if RunsE2eTests is true.");
     }
 
     [Test]

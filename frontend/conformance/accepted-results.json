@@ -1,0 +1,8 @@
+[
+  {
+    "plan": "oidcc-client-basic-certification-test-plan",
+    "module": "oidcc-client-test",
+    "result": "WARNING",
+    "reason": "CheckNonceMaximumLength: the nonce of the ASP.NET Core OIDC handler is longer than 43 characters. No OIDC or OAuth spec limits the nonce length. The suite warns only for interoperability, and each provider of the template accepts the nonce."
+  }
+]

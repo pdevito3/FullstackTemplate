@@ -64,6 +64,17 @@ public sealed record AuthProviderConfig
     /// The BFF sends client_id and logout_uri to it, as Cognito requires.
     /// </summary>
     public string? LogoutPath { get; init; }
+
+    /// <summary>
+    /// More environment variables for the BFF only, for a provider that needs a BFF setting that no other provider needs.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> BffSettings { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// Changes the BFF resource after the AppHost has given it the auth settings, for a provider that must change how
+    /// the BFF starts or listens.
+    /// </summary>
+    public Action<IResourceBuilder<ProjectResource>>? ConfigureBff { get; init; }
 }
 
 /// <summary>
@@ -192,6 +203,11 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__Features__EndSession", authProvider.Features.EndSession)
             .WithEnvironment("Auth__Features__PushedAuthorization", authProvider.Features.PushedAuthorization)
             .WithEnvironment("Auth__Features__DPoP", authProvider.Features.DPoP);
+
+        foreach (var (name, value) in authProvider.BffSettings)
+        {
+            resource.WithEnvironment(name, value);
+        }
 
         if (authProvider is { LogoutPath: not null, AuthResource: not null })
         {

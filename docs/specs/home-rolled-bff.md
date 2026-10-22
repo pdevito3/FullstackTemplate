@@ -646,7 +646,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | `FullstackTemplate.Bff/appsettings*.json` | Replace the `Duende` log level overrides. Add the new keys with their defaults. |
 | `FullstackTemplate.AppHost/AppHost.cs` | Add `bffdb`. |
 | `FullstackTemplate.AppHost/AuthProviders/AuthProviderConfig.cs` | Remove `RevokeRefreshTokenOnLogout`. Add the feature settings, `Bff__PublicOrigin`, and `Bff__AdditionalAllowedHosts`. |
-| `FullstackTemplate.AppHost/AuthProviders/Conformance/` | The new `ConformanceAuthProvider`. It also needs `frontend/e2e/idps/conformance.json`, because a unit test makes sure that each provider has an e2e file. |
+| `FullstackTemplate.AppHost/AuthProviders/Conformance/` | The new `ConformanceAuthProvider`. It sets `RunsE2eTests` to false, so it needs no file in `frontend/e2e/idps/`. The suite logs in with no login form. |
 | `FullstackTemplate.AppHost/Config.cs` | The provider image tags. |
 | `README.md` | Remove "using Duende BFF". Change the project tree line to "BFF proxy (YARP, OIDC)". |
 | `AGENTS.md` | The `FullstackTemplate.Bff` row: "BFF proxy (YARP and OIDC auth)". |

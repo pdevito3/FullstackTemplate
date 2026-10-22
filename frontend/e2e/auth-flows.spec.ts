@@ -1,5 +1,5 @@
 import { test, expect, Locator, Page, Request } from '@playwright/test'
-import { loadIdp, type IdpConfig } from './idps.ts'
+import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
 
 /**
  * Authentication flow tests for all supported Identity Providers.
@@ -398,5 +398,27 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     // requestedBy in the body proves that the token reached the API
     const responseBody = secureEndpoint.locator('.live-responses-table pre.microlight').first()
     await expect(responseBody).toContainText('requestedBy', { timeout: 5000 })
+  })
+})
+
+// The live discovery document of the provider must match the capabilities in its e2e/idps/ file, so that a provider
+// upgrade that adds or drops a feature fails here and not in a feature test
+test.describe(`Provider discovery - ${currentIdp.name}`, () => {
+  test('live discovery matches the capabilities of the IdP file', async ({ request }) => {
+    const authority = process.env.AUTHORITY
+    test.skip(!authority, 'AUTHORITY is not set. pnpm test:e2e:stack sets it from the stack.')
+
+    const response = await request.get(`${authority!.replace(/\/$/, '')}/.well-known/openid-configuration`)
+    expect(response.status()).toBe(200)
+    const discovery = (await response.json()) as Record<string, unknown>
+
+    const live: IdpCapabilities = {
+      revocation: typeof discovery.revocation_endpoint === 'string',
+      issuerParameter: discovery.authorization_response_iss_parameter_supported === true,
+      backChannelLogout: discovery.backchannel_logout_supported === true,
+      endSession: typeof discovery.end_session_endpoint === 'string',
+      pushedAuthorization: typeof discovery.pushed_authorization_request_endpoint === 'string',
+    }
+    expect(live).toEqual(currentIdp.capabilities)
   })
 })

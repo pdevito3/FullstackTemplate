@@ -6,6 +6,10 @@
   "passwordSelector": "#Input_Password",
   "submitSelector": "button[value=\"login\"]",
   "capabilities": {
+    "revocation": true,
+    "issuerParameter": true,
+    "backChannelLogout": true,
+    "endSession": true,
     "pushedAuthorization": true
   }
 }

@@ -9,6 +9,10 @@
   "twoStepLogin": true,
   "secondStepSubmitSelector": "button:has-text(\"Continue\")",
   "capabilities": {
+    "revocation": true,
+    "issuerParameter": false,
+    "backChannelLogout": true,
+    "endSession": true,
     "pushedAuthorization": false
   }
 }

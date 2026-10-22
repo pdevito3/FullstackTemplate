@@ -20,6 +20,17 @@ const described = JSON.parse(
   }),
 ) as { resources: DescribedResource[] }
 
+// The authority of the BFF. Read only this variable: the environment of the BFF also holds its client secret.
+function bffAuthority(): string {
+  const environment = (described.resources.find((r) => r.displayName === 'bff') as { environment?: Record<string, string> } | undefined)
+    ?.environment
+  const authority = environment?.Auth__Authority
+  if (!authority) {
+    throw new Error('The stack has no Auth__Authority for the BFF.')
+  }
+  return authority
+}
+
 function endpointUrl(resource: string, endpoint: string): string {
   const url = described.resources
     .find((r) => r.displayName === resource)
@@ -47,8 +58,9 @@ const env = {
   IDP: process.env.IDP ?? idpOfStack(),
   BASE_URL: endpointUrl('webfrontend', 'http'),
   SERVER_URL: endpointUrl('server', 'https'),
+  AUTHORITY: bffAuthority(),
 }
-console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} IDP=${env.IDP}`)
+console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP}`)
 
 const result = spawnSync('pnpm', ['exec', 'playwright', 'test', ...process.argv.slice(2)], { stdio: 'inherit', env })
 process.exit(result.status ?? 1)

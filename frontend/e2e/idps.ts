@@ -30,6 +30,14 @@ export interface IdpConfig {
  * A feature test runs only for a provider that has the feature. For the other providers, a test proves the fallback.
  */
 export interface IdpCapabilities {
+  // Discovery lists revocation_endpoint (RFC 7009)
+  revocation: boolean
+  // Discovery lists authorization_response_iss_parameter_supported (RFC 9207)
+  issuerParameter: boolean
+  // Discovery lists backchannel_logout_supported. The Duende Demo lists it, but it cannot reach the BFF.
+  backChannelLogout: boolean
+  // Discovery lists end_session_endpoint
+  endSession: boolean
   // Discovery lists pushed_authorization_request_endpoint, so the BFF pushes the authorize request (RFC 9126)
   pushedAuthorization: boolean
 }

@@ -7,6 +7,10 @@
   "passwordSelector": "input[name=\"password\"]",
   "submitSelector": "button:has-text(\"Submit\")",
   "capabilities": {
+    "revocation": false,
+    "issuerParameter": true,
+    "backChannelLogout": false,
+    "endSession": true,
     "pushedAuthorization": false
   }
 }

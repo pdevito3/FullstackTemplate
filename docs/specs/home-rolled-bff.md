@@ -560,7 +560,7 @@ The capability table (section 7) holds the expected result of these changes:
 | `end_session_endpoint` | yes | yes | yes | yes |
 | PAR | yes | no | no | yes |
 | Refresh rotation | yes | yes | yes | no |
-| DPoP (phase 2) | `--features=dpop` | no | skipped (added in 2026.8, not tested) | yes |
+| DPoP (phase 2) | `--features=dpop` | Enterprise plan only | skipped (added in 2026.8, not tested) | yes |
 
 The live discovery test (section 7) makes sure that the table is correct.
 

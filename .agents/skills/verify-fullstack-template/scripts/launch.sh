@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Starts an isolated stack for this checkout, waits until it is healthy, and writes stack.json.
-# Usage: launch.sh [RUN_ID]
+# Usage: launch.sh [--auth-provider <Name>] [RUN_ID]
+# The auth provider is ZeroFactor by default: a local mock IdP that signs in with one click. To test an
+# interaction with a real IdP, give its name, for example --auth-provider DuendeDemo.
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
@@ -15,14 +17,22 @@ if [[ -n "$(ps_entry)" ]]; then
   exit 1
 fi
 
-RUN_ID="${1:-$(date +%Y%m%d-%H%M%S)}"
+AUTH_PROVIDER="ZeroFactor"
+RUN_ID=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --auth-provider) AUTH_PROVIDER="${2:?launch: --auth-provider needs a name}"; shift 2 ;;
+    *) RUN_ID="$1"; shift ;;
+  esac
+done
+RUN_ID="${RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
 RUN_DIR="$VERIFY_DIR/$RUN_ID"
 mkdir -p "$RUN_DIR"
 
-echo "launch: starting the isolated stack (run $RUN_ID)..."
+echo "launch: starting the isolated stack with AuthProvider=$AUTH_PROVIDER (run $RUN_ID)..."
 (cd "$ROOT" && dotnet tool restore >/dev/null)
-# The login recipes fill the Duende demo form, so the stack uses Duende Demo whatever the default AuthProvider is
-start_json="$(AuthProvider=DuendeDemo aspire start --isolated --format Json --apphost "$APPHOST_DIR")"
+# login() in browse.mjs signs in at this provider, whatever the default AuthProvider in appsettings.json is
+start_json="$(AuthProvider="$AUTH_PROVIDER" aspire start --isolated --format Json --apphost "$APPHOST_DIR")"
 echo "$start_json" > "$RUN_DIR/aspire-start.json"
 echo "$RUN_ID" > "$CURRENT_FILE"
 
@@ -42,16 +52,17 @@ done
 
 jq -n \
   --arg runId "$RUN_ID" \
+  --arg authProvider "$AUTH_PROVIDER" \
   --arg gitRev "$(git -C "$ROOT" rev-parse HEAD)" \
   --arg dirty "$(git -C "$ROOT" status --porcelain | wc -l | tr -d ' ')" \
   --argjson start "$start_json" \
   --arg web "$web" \
   --arg bff "$(url_of bff https)" \
   --arg server "$(url_of server https)" \
-  '{runId: $runId, gitRev: $gitRev, dirtyFiles: ($dirty | tonumber), appHostPath: $start.appHostPath,
+  '{runId: $runId, authProvider: $authProvider, gitRev: $gitRev, dirtyFiles: ($dirty | tonumber), appHostPath: $start.appHostPath,
     appHostPid: $start.appHostPid, dashboardUrl: $start.dashboardUrl,
     urls: {web: $web, bff: $bff, server: $server}}' > "$RUN_DIR/stack.json"
 
 echo "launch: ready."
 echo "RUN_DIR=$RUN_DIR"
-jq -r '"web=\(.urls.web)\nserver=\(.urls.server)\ndashboard=\(.dashboardUrl)"' "$RUN_DIR/stack.json"
+jq -r '"authProvider=\(.authProvider)\nweb=\(.urls.web)\nserver=\(.urls.server)\ndashboard=\(.dashboardUrl)"' "$RUN_DIR/stack.json"

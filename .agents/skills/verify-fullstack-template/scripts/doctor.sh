@@ -45,9 +45,13 @@ code="$(curl -s -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/bff/user")"
 code="$(curl -sk -o /dev/null -w '%{http_code}' "$server/health")"
 [[ "$code" == "200" ]] && ok "GET $server/health -> 200" || fail "GET $server/health -> $code"
 
-# The local auth provider is the public Duende demo server. Login fails without it.
-code="$(curl -s -o /dev/null -m 10 -w '%{http_code}' https://demo.duendesoftware.com/.well-known/openid-configuration)"
-[[ "$code" == "200" ]] && ok "Duende demo IdP reachable" || fail "Duende demo IdP -> $code. Login recipes cannot pass."
+# A local provider is a resource of the stack, and the loop above examines it. The Duende demo is a public server.
+auth_provider="$(jq -r .authProvider "$stack")"
+ok "AuthProvider $auth_provider"
+if [[ "$auth_provider" == "DuendeDemo" ]]; then
+  code="$(curl -s -o /dev/null -m 10 -w '%{http_code}' https://demo.duendesoftware.com/.well-known/openid-configuration)"
+  [[ "$code" == "200" ]] && ok "Duende demo IdP reachable" || fail "Duende demo IdP -> $code. Login recipes cannot pass."
+fi
 
 rev="$(git -C "$ROOT" rev-parse HEAD)"
 [[ "$rev" == "$(jq -r .gitRev "$stack")" ]] && ok "HEAD $rev matches the launch" \

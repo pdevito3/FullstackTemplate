@@ -7,13 +7,13 @@ This directory is the maintained source for the proof of user-facing behavior in
 - `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
 - The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
 - The database is empty. No feature in this map reads or writes app data. The weather endpoints make random data at each request.
-- The Duende demo IdP at `https://demo.duendesoftware.com` is reachable. The users are `bob`/`bob` (name `Bob Smith`) and `alice`/`alice` (name `Alice Smith`).
+- The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.
 
 ## Driving conventions
 
 - Run each recipe with `node .agents/skills/verify-fullstack-template/scripts/browse.mjs .agents/skills/verify-fullstack-template/recipes/<feature>.mjs`.
-- Each recipe starts from the baseline state. A recipe that needs a login calls `login('bob')` itself.
+- Each recipe starts from the baseline state. A recipe that needs a login calls `login()` itself and uses the `name` that it returns. Do not write a fixed user name in a recipe, because each IdP has other users.
 - Use ARIA roles and accessible names. Use CSS only where a feature file names it.
 - Copy the quoted names and commands exactly.
 - The weather data is random. Assert that the screen matches the API response of the same run, never a fixed value.
@@ -24,7 +24,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 - UI proof is a screenshot and an ARIA snapshot from `capture()`, with the URL in the `.aria.txt` file.
 - Proof of a side effect is a second, read-only view: the API response, the BFF session, or `localStorage`.
 - Record the feature ID and the entry point for each artifact. The `steps.log` step names do this.
-- If a path is not reachable, report the command and the precondition that failed. For example, the Duende IdP is down.
+- If a path is not reachable, report the command and the precondition that failed. For example, the Duende demo IdP is down.
 - Do not report an entry point as verified when you used a different entry point.
 
 ## Feature entry contract
@@ -41,7 +41,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 ## Features
 
 - [Weather forecast](./weather-forecast.md) covers the public forecast cards, the °F/°C toggle, and Refresh.
-- [Login and logout](./login-logout.md) covers the BFF login through the Duende demo IdP, the session, and logout.
+- [Login and logout](./login-logout.md) covers the BFF login through the IdP of the stack, the session, and logout.
 - [Secure weather](./secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
 - [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the Demos submenu, the breadcrumb, sidebar collapse, and the light/dark/system theme.
 - [Filter builder](./filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.

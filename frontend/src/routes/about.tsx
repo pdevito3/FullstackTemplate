@@ -40,7 +40,7 @@ function About() {
                 <strong className="text-foreground">React Aria Components + shadcn</strong> - Component library, animated with Animate UI
               </li>
               <li>
-                <strong className="text-foreground">Duende BFF</strong> - Backend-for-Frontend security
+                <strong className="text-foreground">BFF</strong> - Backend-for-Frontend security
               </li>
             </ul>
           </CardContent>

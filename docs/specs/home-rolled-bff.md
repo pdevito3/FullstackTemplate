@@ -636,13 +636,18 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 ### CI jobs
 
 - **No nightly run.** The BFF jobs run only on a BFF change, and on `workflow_dispatch`.
-- **The `changes` job.** A path filter. The BFF jobs depend on it. Do not use `paths:` on the trigger, because a skipped job then reports no status. These paths count as a BFF change:
+- **The `changes` job.** A path filter. The BFF jobs depend on it. Do not use `paths:` on the trigger, because a skipped job then reports no status. These paths count as a BFF change in `ci.yml` and in `conformance.yml`:
   - `FullstackTemplate.Bff/**`
-  - `tests/FullstackTemplate.Bff.Tests/**`
   - `FullstackTemplate.AppHost/**`
-  - `Directory.Packages.props` and `Directory.Build.props`
-  - The e2e and conformance scripts
+  - `FullstackTemplate.Server/Resources/Entrypoints/**`, the token check of the Server
+  - `Directory.Packages.props`, `Directory.Build.props`, `global.json`, and `dotnet-tools.json`
+  - `frontend/package.json` and `frontend/pnpm-lock.yaml`
   - The workflow file
+- `ci.yml` also counts these paths:
+  - `tests/FullstackTemplate.Bff.Tests/**`
+  - `frontend/e2e/**` and `frontend/playwright.config.ts`
+  - `frontend/vite.config.ts` and `frontend/src/**`, the SPA and the dev server proxy that the e2e tests drive
+- `conformance.yml` also counts `frontend/conformance/**`.
 - **`bff-tests`.** The BFF unit and integration tests, with the two-host lock tests.
 - **`e2e`.** A matrix of the four providers. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The Duende Demo leg uses `continue-on-error`, because it is a public service. The other three legs block a merge.
 - **`conformance`.** The job runs `dotnet aspire start --isolated` with the `Conformance` provider. The suite starts with `docker-compose-prebuilt.yml` and an override file with `extra_hosts: host.docker.internal:host-gateway`. The BFF trusts the self-signed suite certificate. The job sets `Auth:MetadataRefreshInterval` to 1 s, so that each test module gets fresh signing keys.

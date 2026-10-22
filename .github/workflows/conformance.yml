@@ -35,6 +35,8 @@ jobs:
             bff:
               - 'FullstackTemplate.Bff/**'
               - 'FullstackTemplate.AppHost/**'
+              # The userinfo token check of the Server, which the refresh plan calls through the BFF
+              - 'FullstackTemplate.Server/Resources/Entrypoints/**'
               - 'Directory.Packages.props'
               - 'Directory.Build.props'
               - 'global.json'

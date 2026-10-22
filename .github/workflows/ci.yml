@@ -159,6 +159,8 @@ jobs:
               - 'FullstackTemplate.Bff/**'
               - 'tests/FullstackTemplate.Bff.Tests/**'
               - 'FullstackTemplate.AppHost/**'
+              # The token check of the Server, which the e2e tests call through the BFF
+              - 'FullstackTemplate.Server/Resources/Entrypoints/**'
               - 'Directory.Packages.props'
               - 'Directory.Build.props'
               - 'global.json'
@@ -167,6 +169,9 @@ jobs:
               - 'frontend/pnpm-lock.yaml'
               - 'frontend/e2e/**'
               - 'frontend/playwright.config.ts'
+              # The SPA and the dev server proxy, which the e2e tests drive
+              - 'frontend/vite.config.ts'
+              - 'frontend/src/**'
               - '.github/workflows/ci.yml'
 
   bff-tests:

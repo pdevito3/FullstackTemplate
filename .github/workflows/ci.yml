@@ -213,14 +213,19 @@ jobs:
         include:
           - idp: keycloak
             provider: Keycloak
+            refresh-margin: '86400'
           - idp: fusionauth
             provider: FusionAuth
+            refresh-margin: '86400'
           - idp: authentik
             provider: Authentik
+            refresh-margin: '86400'
           - idp: cognito
             provider: Cognito
+            refresh-margin: '86400'
           - idp: zerofactor
             provider: ZeroFactor
+            refresh-margin: '86400'
           # A public service, so its failure does not block a merge
           - idp: duendedemo
             provider: DuendeDemo
@@ -231,8 +236,9 @@ jobs:
       AuthProvider: ${{ matrix.provider }}
       IDP: ${{ matrix.idp }}
       # Longer than the access token lifetime of each provider, so that each API call refreshes. The BFF refresh test
-      # in auth-flows.spec.ts needs it.
-      BffRefreshBeforeExpirationSeconds: '86400'
+      # in auth-flows.spec.ts needs it. The public Duende service gets no margin, so that the job does not refresh on
+      # each call to it, and the test skips there.
+      BffRefreshBeforeExpirationSeconds: ${{ matrix.refresh-margin }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:

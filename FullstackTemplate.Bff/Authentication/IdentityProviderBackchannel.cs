@@ -6,7 +6,7 @@ namespace FullstackTemplate.Bff.Authentication;
 
 /// <summary>
 /// The settings of the calls from the BFF to the identity provider: discovery, the signing keys, and the token
-/// endpoint. Only the conformance job changes them (section 7 of docs/specs/home-rolled-bff.md).
+/// endpoint. Only a conformance test run changes them, see the Conformance section of docs/authentication.md.
 /// </summary>
 public static class IdentityProviderBackchannel
 {

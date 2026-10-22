@@ -24,7 +24,7 @@ public sealed class CsrfHeaderMiddleware(RequestDelegate next)
         if (context.IsBffApiEndpoint() && !HasCsrfHeader(context.Request))
         {
             Logger.Here().Warning("Rejected a request to {Path} with no valid {Header} header",
-                context.Request.Path.Value, HeaderName);
+                LogValue.Clean(context.Request.Path.Value), HeaderName);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return Task.CompletedTask;
         }

@@ -60,11 +60,19 @@ try
     app.UseSerilogRequestLogging(options =>
     {
         options.GetLevel = Extensions.RequestLogLevel;
+        // The Serilog default, with the browser path cleaned of CR, LF, and the other control characters
+        options.GetMessageTemplateProperties = (httpContext, requestPath, elapsed, statusCode) =>
+        [
+            new LogEventProperty("RequestMethod", new ScalarValue(httpContext.Request.Method)),
+            new LogEventProperty("RequestPath", new ScalarValue(LogValue.Clean(requestPath))),
+            new LogEventProperty("StatusCode", new ScalarValue(statusCode)),
+            new LogEventProperty("Elapsed", new ScalarValue(elapsed)),
+        ];
         options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
         {
-            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+            diagnosticContext.Set("RequestHost", LogValue.Clean(httpContext.Request.Host.Value));
             diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
-            diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+            diagnosticContext.Set("UserAgent", LogValue.Clean(httpContext.Request.Headers.UserAgent.ToString()));
         };
     });
 

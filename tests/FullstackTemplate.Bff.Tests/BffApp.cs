@@ -5,7 +5,10 @@ using System.Web;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Core;
 
 /// <summary>
 /// The BFF on a test server, with the <see cref="FakeIdentityProvider"/> as its identity provider and the
@@ -24,6 +27,11 @@ public sealed class BffApp : WebApplicationFactory<Program>
     public FakeIdentityProvider IdentityProvider { get; private set; } = null!;
 
     public EchoApi Api { get; private set; } = null!;
+
+    /// <summary>
+    /// Each log event of the BFF. Filter by a value that is unique to the test.
+    /// </summary>
+    public CapturedLogs Logs { get; } = new();
 
     public static async Task StartAsync()
     {
@@ -57,6 +65,11 @@ public sealed class BffApp : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Development");
         builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.ConfigureTestServices(services =>
+        {
+            // Serilog reads the sinks from the services (ReadFrom.Services)
+            services.AddSingleton<ILogEventSink>(Logs);
+        });
     }
 
     /// <summary>

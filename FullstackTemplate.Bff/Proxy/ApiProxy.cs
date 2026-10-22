@@ -54,14 +54,14 @@ public static class ApiProxy
             if (!result.WasSuccessful(out var token, out var failure))
             {
                 Logger.Here().Warning("Forwarded {Path} with no access token, because the token request failed with {Error}",
-                    httpContext.Request.Path.Value, failure.Error);
+                    LogValue.Clean(httpContext.Request.Path.Value), failure.Error);
                 return;
             }
 
             if (string.Equals(token.AccessTokenType?.ToString(), "DPoP", StringComparison.OrdinalIgnoreCase))
             {
                 Logger.Here().Error("Forwarded {Path} with no access token, because the BFF does not send DPoP tokens yet",
-                    httpContext.Request.Path.Value);
+                    LogValue.Clean(httpContext.Request.Path.Value));
                 return;
             }
 
@@ -70,7 +70,7 @@ public static class ApiProxy
         catch (Exception ex)
         {
             // YARP turns the exception into a 502.
-            Logger.Here().Error(ex, "Failed to attach the access token to {Path}", httpContext.Request.Path.Value);
+            Logger.Here().Error(ex, "Failed to attach the access token to {Path}", LogValue.Clean(httpContext.Request.Path.Value));
             throw;
         }
     }

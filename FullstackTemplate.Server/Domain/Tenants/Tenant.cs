@@ -19,7 +19,7 @@ public class Tenant : BaseEntity
             tenant.SetId(tenantForCreation.Id);
 
         ValidateTenant(tenant);
-        tenant.QueueDomainEvent(new TenantCreated(tenant));
+        tenant.QueueDomainEvent(new TenantCreated(tenant.Id));
 
         return tenant;
     }

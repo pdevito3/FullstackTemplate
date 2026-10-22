@@ -2,11 +2,11 @@
 
 A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
-- **Backend-For-Frontend (BFF)** pattern using Duende BFF
+- **Backend-For-Frontend (BFF)** pattern with YARP and OIDC, and server-side sessions in PostgreSQL
 - **Configurable authentication** - one setting selects the auth provider, and a new provider is one folder in the AppHost
 - **Multi-tenant architecture** with data isolation
 - **OpenTelemetry** observability built-in
-- **.NET 10** with Aspire 13.1
+- **.NET 10** with Aspire 13.6
 
 <!-- init:start - scripts/init.cs deletes this section when it renames the app -->
 ## Create a New App
@@ -38,7 +38,7 @@ See [ADR 0007](docs/adr/0007-regular-repo-instead-of-template.md) for the reason
 MyProject/
 ├── MyProject.AppHost/     # Aspire orchestration (start here)
 ├── MyProject.Server/      # Backend API (.NET 10, CQRS, MediatR)
-├── MyProject.Bff/         # BFF proxy (Duende BFF + YARP)
+├── MyProject.Bff/         # BFF proxy (YARP, OIDC)
 ├── frontend/              # React SPA (React 19, TanStack, Tailwind)
 ├── tests/                 # Test projects
 ├── docs/                  # Development guides (backend, telemetry, auth, ...)

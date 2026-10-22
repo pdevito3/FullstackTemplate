@@ -74,9 +74,13 @@ The host also collects these framework meters:
 
 The BFF has these custom metrics on the `FullstackTemplate.Bff` meter. Its HTTP, YARP, and auth meters measure each request. The BFF keeps `app.errors` for `RecordError`.
 
-- `bff.sessions.started` - a counter of the BFF sessions that a login created. It has no tags.
-- `bff.sessions.ended` - a counter of the BFF sessions that ended. The `reason` tag is `logout`, `backchannel_logout`, `refresh_failure`, or `expiry`.
-- `bff.refresh.failures` - a counter of the failed token refreshes. The `kind` tag is `permanent` (`invalid_grant`, or an ID token in the refresh response that fails the checks) or `temporary` (any other failure).
+| Counter | Unit | Tags | Content |
+|---|---|---|---|
+| `bff.sessions.started` | `{session}` | none | The BFF sessions that a login created |
+| `bff.sessions.ended` | `{session}` | `reason`: `logout`, `backchannel_logout`, `refresh_failure`, or `expiry` | The BFF sessions that ended |
+| `bff.refresh.failures` | `{failure}` | `kind`: `permanent` or `temporary` | The failed token refreshes |
+
+A `permanent` failure is an `invalid_grant`, or an ID token in the refresh response that fails the checks. The BFF then ends the BFF session with `reason=refresh_failure`. A `temporary` failure is any other failure, also a refresh lock that is not free within `Bff:Refresh:LockTimeout`. The BFF session then stays.
 
 ## Resource attributes
 

@@ -96,6 +96,21 @@ public class OpenApiDocumentTests
     }
 
     [Test]
+    public async Task number_formats_are_formats_that_openapi_defines()
+    {
+        var root = await LoadDocumentAsync();
+
+        // A client generator drops a format that OpenAPI does not define, so a uint gives its range in place of uint32
+        var formats = Descendants(root)
+            .OfType<JsonObject>()
+            .Where(node => TypesOf(node).Any(type => type is "integer" or "number") && node.ContainsKey("format"))
+            .Select(node => node["format"]!.GetValue<string>())
+            .Distinct();
+
+        formats.ShouldBeSubsetOf(["int32", "int64", "float", "double"]);
+    }
+
+    [Test]
     public async Task non_nullable_dto_properties_are_required()
     {
         var root = await LoadDocumentAsync();

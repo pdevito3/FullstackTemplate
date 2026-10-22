@@ -7,8 +7,8 @@ export type TenantForUpdateDto = {
     name: string;
     /**
      * @description The version of the tenant that the caller loaded. A stale version gives 409.
-     *
-     * Format: `uint32`
+     * @minLength 0
+     * @maxLength 4294967295
      * @type integer
     */
     version: number;

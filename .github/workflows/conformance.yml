@@ -76,8 +76,10 @@ jobs:
 
       - name: Trust the development certificate
         run: |
+          # Without SSL_CERT_DIR in this process, the command adds the OpenSSL trust but exits with 4
+          export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
           dotnet dev-certs https --trust
-          echo "SSL_CERT_DIR=$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs" >> "$GITHUB_ENV"
+          echo "SSL_CERT_DIR=$SSL_CERT_DIR" >> "$GITHUB_ENV"
 
       - name: Install the frontend packages
         working-directory: frontend

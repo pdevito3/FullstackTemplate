@@ -111,6 +111,8 @@ public class BackChannelLogoutTests
         yield return () => new("unsigned", () => Token(withoutSignature: true));
         yield return () => new("another key", () => Token(credentials: new SigningCredentials(
             new RsaSecurityKey(RSA.Create(2048)) { KeyId = "test-key" }, SecurityAlgorithms.RsaSha256)));
+        yield return () => new("a key of the provider with another alg than the registered RS256",
+            () => Token(credentials: BffApp.Instance.IdentityProvider.EcSigningCredentials));
         yield return () => new("another issuer", () => Token(c => c["iss"] = "https://other.example"));
         yield return () => new("another audience", () => Token(c => c["aud"] = "other-client"));
         yield return () => new("expired", () => Token(c => c["exp"] = Now() - 600));

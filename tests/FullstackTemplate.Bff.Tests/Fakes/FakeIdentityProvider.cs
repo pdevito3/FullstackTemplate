@@ -51,7 +51,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly FakeProviderOptions _options;
     // A key from parameters, not from one RSA instance: each signature provider then gets its own RSA instance,
     // so that parallel tests do not sign with one RSA instance at the same time, which can give a bad signature
-    private readonly RsaSecurityKey _signingKey = new(CreateRsaParameters()) { KeyId = "test-key" };
+    private volatile RsaSecurityKey _signingKey = new(CreateRsaParameters()) { KeyId = "test-key" };
+    // A second key in the JWKS, with another algorithm than the RS256 of the client registration
+    private readonly ECDsaSecurityKey _ecKey = new(ECDsa.Create(ECCurve.NamedCurves.nistP256)) { KeyId = "test-ec-key" };
     private readonly ConcurrentDictionary<string, Grant> _codes = new();
     private readonly ConcurrentDictionary<string, Grant> _accessTokens = new();
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
@@ -99,6 +101,18 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     }
 
     public SigningCredentials SigningCredentials => new(_signingKey, SecurityAlgorithms.RsaSha256);
+
+    /// <summary>
+    /// ES256 with an EC key that the JWKS also lists.
+    /// </summary>
+    public SigningCredentials EcSigningCredentials => new(_ecKey, SecurityAlgorithms.EcdsaSha256);
+
+    /// <summary>
+    /// Replaces the signing key with a new key that has a new <c>kid</c>, as a key rollover does (Core 10.1.1).
+    /// The JWKS then lists only the new key.
+    /// </summary>
+    public void RotateSigningKey() =>
+        _signingKey = new RsaSecurityKey(CreateRsaParameters()) { KeyId = $"test-key-{Guid.NewGuid():N}" };
 
     public static async Task<FakeIdentityProvider> StartAsync(FakeProviderOptions? options = null)
     {
@@ -208,7 +222,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         {
             var discovery = new Dictionary<string, object>
             {
-                ["issuer"] = Issuer,
+                ["issuer"] = _options.MismatchedDiscoveryIssuer ? $"{Issuer}INVALID" : Issuer,
                 ["authorization_endpoint"] = $"{Issuer}/authorize",
                 ["token_endpoint"] = $"{Issuer}/token",
                 ["userinfo_endpoint"] = $"{Issuer}/userinfo",
@@ -253,9 +267,14 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _app.MapGet("/jwks", () =>
         {
             var jwk = JsonWebKeyConverter.ConvertFromRSASecurityKey(_signingKey);
+            var ec = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(_ecKey);
             return Results.Json(new
             {
-                keys = new[] { new { kty = jwk.Kty, use = "sig", kid = jwk.Kid, alg = "RS256", n = jwk.N, e = jwk.E } },
+                keys = new object[]
+                {
+                    new { kty = jwk.Kty, use = "sig", kid = jwk.Kid, alg = "RS256", n = jwk.N, e = jwk.E },
+                    new { kty = ec.Kty, use = "sig", kid = ec.Kid, crv = ec.Crv, x = ec.X, y = ec.Y },
+                },
             });
         });
 

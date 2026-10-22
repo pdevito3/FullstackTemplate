@@ -204,6 +204,8 @@ public static class BackChannelLogoutEndpoint
             ValidAudience = options.ClientId,
             IssuerSigningKeys = configuration.SigningKeys,
             RequireSignedTokens = true,
+            // BCL 2.6: the signature check of an ID token, so also its algorithm (Core 3.1.3.7 step 7)
+            ValidAlgorithms = options.TokenValidationParameters.ValidAlgorithms,
             NameClaimType = "name",
             RoleClaimType = "role",
         };

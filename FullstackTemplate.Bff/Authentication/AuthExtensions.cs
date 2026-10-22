@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace FullstackTemplate.Bff.Authentication;
 
@@ -20,6 +21,17 @@ public static class AuthExtensions
     /// The name of the BFF session cookie. The SPA and the e2e tests depend on it.
     /// </summary>
     public const string SessionCookieName = "__Host-bff";
+
+    /// <summary>
+    /// The algorithm of the ID tokens and logout tokens, as the client registration sets it. The default is RS256.
+    /// </summary>
+    public const string IdTokenSigningAlgorithmKey = "Auth:IdTokenSigningAlgorithm";
+
+    /// <summary>
+    /// The AppContext switch of Microsoft.IdentityModel that makes a refresh of the discovery document and the
+    /// signing keys block the caller, instead of a refresh in the background.
+    /// </summary>
+    public const string UpdateConfigAsBlockingSwitch = "Switch.Microsoft.IdentityModel.UpdateConfigAsBlocking";
 
     /// <summary>
     /// Adds the cookie and OIDC handlers, token management, and the BFF API status code rules.
@@ -46,6 +58,14 @@ public static class AuthExtensions
         var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
         var requestOfflineAccess = configuration.GetValue("Auth:RequestOfflineAccess", true);
         var refreshBeforeExpirationSeconds = configuration.GetValue("Auth:RefreshBeforeExpirationSeconds", 120);
+        // The id_token_signed_response_alg of the client registration. Core 3.1.3.7 step 7: the ID token alg is
+        // this value, by default RS256. The logout tokens get the same check.
+        var idTokenSigningAlgorithm = configuration[IdTokenSigningAlgorithmKey] ?? SecurityAlgorithms.RsaSha256;
+
+        // Signing key rollover (Core 10.1.1): an ID token with an unknown key makes the token handler refresh the
+        // keys and validate again. By default the ConfigurationManager refreshes in the background, so the retry
+        // still has the old keys and the first login after a rollover fails. With this switch the refresh blocks.
+        AppContext.SetSwitch(UpdateConfigAsBlockingSwitch, true);
 
         services.AddAuthentication(options =>
             {
@@ -113,7 +133,8 @@ public static class AuthExtensions
                 options.TokenValidationParameters = new()
                 {
                     NameClaimType = nameClaimType,
-                    RoleClaimType = roleClaimType
+                    RoleClaimType = roleClaimType,
+                    ValidAlgorithms = [idTokenSigningAlgorithm],
                 };
 
                 // Front-channel logout is off: the handler maps no /signout-oidc. Only back-channel logout tells the
@@ -177,6 +198,14 @@ public static class AuthExtensions
                     return Task.CompletedTask;
                 };
             });
+
+        // Auth:MetadataRefreshInterval and Auth:PinnedCertificatePath. Before token management, because it wraps the
+        // backchannel handler that this sets.
+        services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
+            .Configure<IConfiguration>(IdentityProviderBackchannel.Configure);
+
+        // After the post-configure of the OIDC handler, which makes the ConfigurationManager
+        services.PostConfigure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, DiscoveryIssuerCheck.Install);
 
         // After the OIDC options, because it wraps the OIDC events and the backchannel handler.
         services.AddOpenIdConnectAccessTokenManagement(options =>

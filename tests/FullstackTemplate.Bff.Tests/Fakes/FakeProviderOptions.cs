@@ -19,5 +19,10 @@ public sealed record FakeProviderOptions
 
     public bool PushedAuthorization { get; init; }
 
+    /// <summary>
+    /// The discovery document has an <c>issuer</c> that is not the issuer URL of the provider (OIDC Discovery 4.3).
+    /// </summary>
+    public bool MismatchedDiscoveryIssuer { get; init; }
+
     public string[] TokenEndpointAuthMethods { get; init; } = ["client_secret_basic", "client_secret_post"];
 }

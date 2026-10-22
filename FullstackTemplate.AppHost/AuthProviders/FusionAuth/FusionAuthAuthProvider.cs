@@ -17,6 +17,8 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
     // The values of the variables apiKey and testUserEmail in seed/kickstart.json.
     private const string KickstartApiKey = "super-secret-api-key-for-development-only";
     private const string KickstartTestUserEmail = "user@example.com";
+    // The ENV variable of seed/kickstart.json for the issuer of the tenant
+    private const string UrlVariable = "APP_FUSIONAUTH_URL";
 
     private static readonly HttpClient HealthClient = new() { Timeout = TimeSpan.FromSeconds(5) };
 
@@ -59,6 +61,9 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
         // The BFF reads the discovery document and the signing keys at startup. /api/status is healthy before
         // Kickstart has run, so the health check waits for the test user, the last item that Kickstart creates.
         var fusionAuthHttp = fusionAuth.GetEndpoint("http");
+        // Kickstart sets the issuer of the tenant to the URL that the BFF and the Server use as the authority (the
+        // host view). OIDC Discovery 4.3 requires them to be identical, and the BFF checks it at startup.
+        fusionAuth.WithEnvironment(context => context.EnvironmentVariables[UrlVariable] = fusionAuthHttp.Url);
         builder.Services.AddHealthChecks().AddAsyncCheck(KickstartHealthCheck, async cancellationToken =>
         {
             using var request = new HttpRequestMessage(HttpMethod.Get,

@@ -26,6 +26,7 @@ public sealed class UserinfoAuthenticationOptions : AuthenticationSchemeOptions
 /// the userinfo response. Only for a test identity provider whose access tokens are opaque, not JWTs: the OpenID
 /// conformance suite. Its refresh test plan also needs a userinfo call with the refreshed access token. Development
 /// only, see <see cref="AuthExtensions.AddJwtBearerAuthentication"/>.
+/// scripts/init.cs deletes this file when it renames the app.
 /// </summary>
 public sealed class UserinfoAuthenticationHandler(
     IOptionsMonitor<UserinfoAuthenticationOptions> options,
@@ -34,6 +35,19 @@ public sealed class UserinfoAuthenticationHandler(
     IHttpClientFactory httpClientFactory)
     : AuthenticationHandler<UserinfoAuthenticationOptions>(options, logger, encoder)
 {
+    /// <summary>
+    /// <c>Jwt</c> (the default) or <c>Userinfo</c>. With <c>Userinfo</c>, this handler checks each access token at
+    /// the userinfo endpoint of the identity provider. Only the OpenID conformance suite provider of the AppHost sets
+    /// it, because the suite issues opaque access tokens. Development only.
+    /// </summary>
+    public const string AccessTokenValidationKey = "Auth:AccessTokenValidation";
+
+    /// <summary>
+    /// A PEM file with the one certificate that the userinfo check accepts from the identity provider, such as the
+    /// self-signed certificate of the conformance suite.
+    /// </summary>
+    public const string PinnedCertificatePathKey = "Auth:PinnedCertificatePath";
+
     public const string HttpClientName = "userinfo-authentication";
 
     /// <summary>

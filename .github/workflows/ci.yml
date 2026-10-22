@@ -5,8 +5,10 @@ name: CI
 # The job also builds, lints, and tests the frontend against the contract. The test job runs the .NET tests.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
 # The BFF jobs (bff-tests, e2e) run only when the changes job finds a BFF change, and on workflow_dispatch.
-# There is no nightly run. conformance.yml runs the OpenID conformance suite. See section 7 of
-# docs/specs/home-rolled-bff.md.
+# There is no nightly run. See section 7 of docs/specs/home-rolled-bff.md.
+# init:start - scripts/init.cs deletes these lines and conformance.yml when it renames the app
+# conformance.yml runs the OpenID conformance suite.
+# init:end
 
 on:
   pull_request:

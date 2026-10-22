@@ -4,6 +4,7 @@ name: Init
 # The unit tests of the AppHost build the resources of each provider, and they make sure that each provider has its
 # seed folder and its e2e file. The rename touches every file, so this job has no paths filter.
 # The init script deletes this file when it renames the app, because the script renames only FullstackTemplate.
+# It also makes sure that the rename deletes the conformance suite and the userinfo check of the server.
 
 on:
   pull_request:
@@ -36,6 +37,7 @@ jobs:
         run: |
           if dotnet run scripts/init.cs --name 1Bad; then exit 1; fi
           if dotnet run scripts/init.cs --auth-provider Nope; then exit 1; fi
+          if dotnet run scripts/init.cs --auth-provider Conformance; then exit 1; fi
           echo "change" >> README.md
           if dotnet run scripts/init.cs --name Acme.Shop; then exit 1; fi
           git checkout README.md
@@ -59,6 +61,22 @@ jobs:
           dotnet run scripts/init.cs --name Acme.Shop --auth-provider Keycloak
           git diff --exit-code --stat
           if dotnet run scripts/init.cs --name Other.App; then exit 1; fi
+
+      # The rename deletes the files that only this repo uses: this workflow and the OpenID conformance suite with its
+      # provider and the userinfo check of the server. The BFF and the docs name the suite as the reason for some BFF
+      # settings, so the last grep skips them.
+      - name: Fail if a file that only this repo uses is left
+        run: |
+          for path in .github/workflows/init.yml .github/workflows/conformance.yml frontend/conformance \
+            Acme.Shop.AppHost/AuthProviders/Conformance \
+            Acme.Shop.Server/Resources/Entrypoints/UserinfoAuthenticationHandler.cs \
+            tests/Acme.Shop.UnitTests/Resources/UserinfoAuthenticationTests.cs; do
+            if [ -e "$path" ]; then echo "$path is left"; exit 1; fi
+          done
+          if git grep -nI -e 'init:start' -e 'init:end' -e 'UserinfoAuthentication' -e 'AccessTokenValidation' \
+            -e 'test:conformance' -e 'conformance:down' -- ':!docs' ':!scripts/init.cs'; then exit 1; fi
+          if git grep -nIi 'conformance' -- ':!docs' ':!*.md' ':!scripts/init.cs' ':!Acme.Shop.Bff' ':!tests/Acme.Shop.Bff.Tests'; then exit 1; fi
+          node -e "JSON.parse(require('fs').readFileSync('frontend/package.json', 'utf8'))"
 
       # The links to the upstream repo keep the template name, and the README loses its init section
       - name: Fail if the template name is left or an upstream link changed

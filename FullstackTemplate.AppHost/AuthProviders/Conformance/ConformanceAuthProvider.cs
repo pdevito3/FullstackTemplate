@@ -12,6 +12,7 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 /// <para>The suite sends no <c>expires_in</c>, so the BFF gives each access token a lifetime of 1 s, and refreshes it
 /// on the next API call. The access tokens of the suite are opaque, so the server checks them at the userinfo endpoint
 /// of the suite, with the same pinned certificate. The refresh plan needs that userinfo call.</para>
+/// <para>Only this repo runs the suite. scripts/init.cs deletes this folder when it renames the app.</para>
 /// </summary>
 public sealed class ConformanceAuthProvider : IAuthProvider
 {

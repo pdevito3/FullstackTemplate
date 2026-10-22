@@ -25,7 +25,7 @@ public class UserinfoAuthenticationTests
     {
         var exception = Should.Throw<InvalidOperationException>(() => BuildServices(Environments.Production));
 
-        exception.Message.ShouldContain(AuthExtensions.AccessTokenValidationKey);
+        exception.Message.ShouldContain(UserinfoAuthenticationHandler.AccessTokenValidationKey);
     }
 
     [Test]
@@ -72,7 +72,7 @@ public class UserinfoAuthenticationTests
             {
                 ["Auth:Authority"] = Authority,
                 ["Auth:Audience"] = "client",
-                [AuthExtensions.AccessTokenValidationKey] = "Userinfo",
+                [UserinfoAuthenticationHandler.AccessTokenValidationKey] = "Userinfo",
             })
             .Build();
         var environment = Substitute.For<IHostEnvironment>();

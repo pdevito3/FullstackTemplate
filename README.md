@@ -20,7 +20,7 @@ A production-ready .NET Aspire template featuring:
 
 3. Commit the result.
 
-The script works on all platforms. It changes only a clean git tree. A second run with the same arguments changes nothing.
+The script works on all platforms. It changes only a clean git tree. A second run with the same arguments changes nothing. The rename also deletes the files that only this repo uses: the CI job of the init script, and the OpenID conformance suite with its provider and the userinfo check of the server.
 
 All auth providers stay in the app, and the `AuthProvider` setting selects one at runtime. To delete a provider that you do not use, see [docs/authentication.md](docs/authentication.md#delete-a-provider).
 

@@ -30,6 +30,8 @@ dist-ssr
 # Vitest browser mode output (failure screenshots)
 /.vitest/
 
+# init:start - scripts/init.cs deletes these lines and frontend/conformance/ when it renames the app
 # Conformance suite: the exported certificate and the results of run-conformance.ts
 /conformance/.suite/
 /conformance/results/
+# init:end

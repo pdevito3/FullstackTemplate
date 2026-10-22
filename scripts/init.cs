@@ -16,6 +16,9 @@ const string Usage = """
       --auth-provider <Provider>  Set the default AuthProvider of the AppHost. <Provider> is the name of a folder
                                   in <Name>.AppHost/AuthProviders/, for example Keycloak.
 
+    The rename also deletes the files that only this repo uses: the CI job of this script, and the OpenID
+    conformance suite with its provider and the userinfo check of the server.
+
     The script changes only a clean git tree, so that `git reset --hard && git clean -fd` undoes a failed run.
     """;
 
@@ -96,11 +99,21 @@ internal sealed partial class AppRepo(string root)
     // This script holds the template name, and it must find it again on a second run, so the rename skips it.
     private const string ThisScript = "scripts/init.cs";
 
-    // The CI job that runs this script. It can run only before the rename.
-    private const string InitWorkflow = ".github/workflows/init.yml";
+    // The files and folders that only this repo uses, with the paths before the rename. The CI job of this script can
+    // run only before the rename. The OpenID conformance suite tests the BFF of this repo, and it needs a provider and
+    // a userinfo check in the server that an app has no use for.
+    private static readonly string[] RepoOnlyPaths =
+    [
+        ".github/workflows/init.yml",
+        ".github/workflows/conformance.yml",
+        "FullstackTemplate.AppHost/AuthProviders/Conformance",
+        "FullstackTemplate.Server/Resources/Entrypoints/UserinfoAuthenticationHandler.cs",
+        "tests/FullstackTemplate.UnitTests/Resources/UserinfoAuthenticationTests.cs",
+        "frontend/conformance",
+    ];
 
-    // The README section that tells how to run this script. A renamed app has no use for it.
-    private const string Readme = "README.md";
+    // The provider of the conformance suite. The rename deletes it, so it cannot be the default.
+    private const string RepoOnlyProvider = "Conformance";
 
     public string Name => Path.GetFileNameWithoutExtension(
         Directory.GetFiles(root, "*.slnx") is [var solution]
@@ -128,6 +141,9 @@ internal sealed partial class AppRepo(string root)
     // Returns the folder name of the provider, which is the exact value of the setting
     public string KnownProvider(string provider)
     {
+        if (string.Equals(provider, RepoOnlyProvider, StringComparison.OrdinalIgnoreCase))
+            throw new InitException($"{RepoOnlyProvider} is the provider of the OpenID conformance suite, which only this repo runs. Use one of these: {string.Join(", ", Providers())}.");
+
         var known = Providers();
         return known.FirstOrDefault(p => string.Equals(p, provider, StringComparison.OrdinalIgnoreCase))
             ?? throw new InitException($"'{provider}' is not a folder in {AuthProvidersPath}. Use one of these: {string.Join(", ", known)}.");
@@ -141,13 +157,20 @@ internal sealed partial class AppRepo(string root)
 
     public void Rename(string newName)
     {
-        ReplaceInFile(Path.Combine(root, Readme), text => InitSectionPattern().Replace(text, ""));
-        var files = GitFiles().Where(file => file != ThisScript).ToList();
+        foreach (var path in RepoOnlyPaths.Select(path => Path.Combine(root, path)))
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+            File.Delete(path);
+        }
+
+        // git lists a deleted file until the next commit, so skip each file that is gone
+        var files = GitFiles().Where(file => file != ThisScript && File.Exists(Path.Combine(root, file))).ToList();
         var userSecretsId = Guid.NewGuid().ToString();
         var changed = 0;
         foreach (var file in files)
         {
-            if (ReplaceInFile(Path.Combine(root, file), text => ReplaceName(text, newName).Replace(TemplateUserSecretsId, userSecretsId, StringComparison.Ordinal)))
+            if (ReplaceInFile(Path.Combine(root, file), text => RemoveRepoOnlyText(ReplaceName(text, newName)).Replace(TemplateUserSecretsId, userSecretsId, StringComparison.Ordinal)))
                 changed++;
         }
 
@@ -172,7 +195,6 @@ internal sealed partial class AppRepo(string root)
                 File.Move(source, target);
         }
 
-        File.Delete(Path.Combine(root, InitWorkflow));
         Console.WriteLine($"Renamed {TemplateName} to {newName} in {changed} files.");
     }
 
@@ -187,6 +209,7 @@ internal sealed partial class AppRepo(string root)
         .Where(folder => Directory.GetFiles(folder, "*AuthProvider.cs").Length > 0)
         .Select(Path.GetFileName)
         .OfType<string>()
+        .Where(provider => provider != RepoOnlyProvider)
         .Order(StringComparer.Ordinal)
         .ToList();
 
@@ -199,6 +222,12 @@ internal sealed partial class AppRepo(string root)
         "fullstacktemplate" => newName.ToLowerInvariant(),
         _ => $"Projects.{newName.Replace('.', '_')}_",
     });
+
+    // Removes each section between init:start and init:end comments, such as the README section that tells how to run
+    // this script, with the blank line before it, so that no double blank line stays. Then removes the package.json
+    // scripts of the conformance suite.
+    private static string RemoveRepoOnlyText(string text) =>
+        RepoOnlyScriptPattern().Replace(InitSectionPattern().Replace(text, ""), "");
 
     private static IEnumerable<string> Ancestors(string file)
     {
@@ -252,8 +281,13 @@ internal sealed partial class AppRepo(string root)
     [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate")]
     private static partial Regex NameFormsPattern();
 
-    [GeneratedRegex(@"<!-- init:start .*?<!-- init:end -->\r?\n(\r?\n)?", RegexOptions.Singleline)]
+    // The comment can be <!-- -->, //, or #, so that a section works in Markdown, C#, YAML, and .gitignore
+    [GeneratedRegex(@"(?:^[ \t]*\r?\n)?^[ \t]*(?:<!--|//|#) init:start\b.*?^[ \t]*(?:<!--|//|#) init:end\b[^\n]*\n", RegexOptions.Singleline | RegexOptions.Multiline)]
     private static partial Regex InitSectionPattern();
+
+    // JSON has no comments, so the package.json scripts of the conformance suite have a pattern of their own
+    [GeneratedRegex(@"^[ \t]*""(?:test:conformance|conformance:down)"":[^\n]*\n", RegexOptions.Multiline)]
+    private static partial Regex RepoOnlyScriptPattern();
 
     [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$")]
     private static partial Regex NamePattern();

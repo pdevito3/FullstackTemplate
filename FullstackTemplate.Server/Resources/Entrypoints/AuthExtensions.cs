@@ -9,20 +9,6 @@ using Microsoft.IdentityModel.Tokens;
 public static class AuthExtensions
 {
     /// <summary>
-    /// <c>Jwt</c> (the default) or <c>Userinfo</c>. With <c>Userinfo</c>, the userinfo endpoint of the identity
-    /// provider checks each access token, see <see cref="UserinfoAuthenticationHandler"/>. Only the OpenID
-    /// conformance suite provider of the AppHost sets it, because the suite issues opaque access tokens. Development
-    /// only.
-    /// </summary>
-    public const string AccessTokenValidationKey = "Auth:AccessTokenValidation";
-
-    /// <summary>
-    /// A PEM file with the one certificate that the userinfo check accepts from the identity provider, such as the
-    /// self-signed certificate of the conformance suite.
-    /// </summary>
-    public const string PinnedCertificatePathKey = "Auth:PinnedCertificatePath";
-
-    /// <summary>
     /// Adds JWT Bearer authentication using configuration from environment variables.
     /// Reads Auth:Authority, Auth:Audience, Auth:RequireHttpsMetadata,
     /// Auth:NameClaimType, and Auth:RoleClaimType from configuration.
@@ -45,12 +31,14 @@ public static class AuthExtensions
         var audienceClaimType = configuration["Auth:AudienceClaimType"] ?? "aud";
         var validatesAud = audienceClaimType == "aud";
 
-        if (string.Equals(configuration[AccessTokenValidationKey], "Userinfo", StringComparison.OrdinalIgnoreCase))
+        // init:start - scripts/init.cs deletes the userinfo check of the conformance suite when it renames the app
+        const string accessTokenValidationKey = UserinfoAuthenticationHandler.AccessTokenValidationKey;
+        if (string.Equals(configuration[accessTokenValidationKey], "Userinfo", StringComparison.OrdinalIgnoreCase))
         {
             if (!environment.IsDevelopment())
-                throw new InvalidOperationException($"{AccessTokenValidationKey}=Userinfo is only for the conformance tests in Development.");
+                throw new InvalidOperationException($"{accessTokenValidationKey}=Userinfo is only for the conformance tests in Development.");
 
-            UserinfoAuthenticationHandler.AddHttpClient(services, configuration[PinnedCertificatePathKey]);
+            UserinfoAuthenticationHandler.AddHttpClient(services, configuration[UserinfoAuthenticationHandler.PinnedCertificatePathKey]);
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddScheme<UserinfoAuthenticationOptions, UserinfoAuthenticationHandler>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
@@ -61,6 +49,7 @@ public static class AuthExtensions
             services.AddAuthorization();
             return services;
         }
+        // init:end
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>

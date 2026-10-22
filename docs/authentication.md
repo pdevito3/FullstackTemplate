@@ -143,7 +143,7 @@ DPoP (RFC 9449) binds the access token and the refresh token to a key of the BFF
 | Setting | Content |
 |---|---|
 | `Auth:Features:DPoP` | `Disable` (the default), `Auto`, or `Require`. `Auto` uses DPoP if the key is set and discovery lists its algorithm. Otherwise the BFF logs one warning and uses Bearer tokens. `Require` stops the BFF at startup if the key is missing, or if discovery does not list its algorithm. |
-| `Auth:DPoPJsonWebKey` | The one DPoP key of the BFF, as a private JSON Web Key with an `alg`, for example an EC P-256 key with `"alg": "ES256"`. It is a secret. |
+| `Auth:DPoPJsonWebKey` | The one DPoP key of the BFF, as a private JSON Web Key with an `alg`, for example an EC P-256 key with `"alg": "ES256"`. The `alg` must be an EC or RSA signature algorithm that fits the key type and curve. The BFF checks this and signs a test value at startup. It is a secret. |
 
 How the BFF uses the key:
 

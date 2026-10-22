@@ -13,9 +13,25 @@ public static class DPoPKey
 {
     public const string ConfigurationKey = "Auth:DPoPJsonWebKey";
 
+    // The asymmetric algorithms of a proof (RFC 9449 section 4.2), with the key type and curve that each one needs
+    // (RFC 7518 section 3.1). Token management makes proofs with EC and RSA keys only.
+    private static readonly Dictionary<string, (string KeyType, string? Curve)> Algorithms = new(StringComparer.Ordinal)
+    {
+        [SecurityAlgorithms.EcdsaSha256] = (JsonWebAlgorithmsKeyTypes.EllipticCurve, JsonWebKeyECTypes.P256),
+        [SecurityAlgorithms.EcdsaSha384] = (JsonWebAlgorithmsKeyTypes.EllipticCurve, JsonWebKeyECTypes.P384),
+        [SecurityAlgorithms.EcdsaSha512] = (JsonWebAlgorithmsKeyTypes.EllipticCurve, JsonWebKeyECTypes.P521),
+        [SecurityAlgorithms.RsaSha256] = (JsonWebAlgorithmsKeyTypes.RSA, null),
+        [SecurityAlgorithms.RsaSha384] = (JsonWebAlgorithmsKeyTypes.RSA, null),
+        [SecurityAlgorithms.RsaSha512] = (JsonWebAlgorithmsKeyTypes.RSA, null),
+        [SecurityAlgorithms.RsaSsaPssSha256] = (JsonWebAlgorithmsKeyTypes.RSA, null),
+        [SecurityAlgorithms.RsaSsaPssSha384] = (JsonWebAlgorithmsKeyTypes.RSA, null),
+        [SecurityAlgorithms.RsaSsaPssSha512] = (JsonWebAlgorithmsKeyTypes.RSA, null),
+    };
+
     /// <summary>
     /// The key, or null when <c>Auth:Features:DPoP</c> is <c>Disable</c> or the setting is empty. Throws when the
-    /// key is not a private key with an <c>alg</c>. The message never has the key.
+    /// key is not a private key with an <c>alg</c>, when the <c>alg</c> is not asymmetric or does not fit the key
+    /// type and curve, or when a test signature fails. The message never has the key.
     /// </summary>
     public static DPoPProofKey? Read(IConfiguration configuration)
     {
@@ -38,8 +54,51 @@ public static class DPoPKey
             throw new InvalidOperationException($"{ConfigurationKey} must be a private key.");
         if (string.IsNullOrEmpty(jwk.Alg))
             throw new InvalidOperationException($"{ConfigurationKey} must have an alg, for example ES256.");
+        if (!Algorithms.TryGetValue(jwk.Alg, out var fit))
+            throw new InvalidOperationException(
+                $"{ConfigurationKey} has alg {jwk.Alg}, which is not an asymmetric algorithm for a DPoP proof. Use one of {string.Join(", ", Algorithms.Keys)}.");
+        if (jwk.Kty != fit.KeyType || (fit.Curve is not null && jwk.Crv != fit.Curve))
+            throw new InvalidOperationException(
+                $"{ConfigurationKey} has alg {jwk.Alg}, which needs a {fit.KeyType} key{(fit.Curve is null ? "" : $" on curve {fit.Curve}")}, but the key has kty {jwk.Kty}{(string.IsNullOrEmpty(jwk.Crv) ? "" : $" and crv {jwk.Crv}")}.");
 
+        CheckTestSignature(jwk);
         return DPoPProofKey.Parse(value);
+    }
+
+    /// <summary>
+    /// Signs a test value with the private key and verifies it with the public members alone, as a provider does
+    /// with the <c>jwk</c> of a proof. It fails for a private part that does not match the public part.
+    /// </summary>
+    private static void CheckTestSignature(JsonWebKey jwk)
+    {
+        var publicKey = jwk.Kty == JsonWebAlgorithmsKeyTypes.RSA
+            ? new JsonWebKey { Kty = jwk.Kty, N = jwk.N, E = jwk.E }
+            : new JsonWebKey { Kty = jwk.Kty, Crv = jwk.Crv, X = jwk.X, Y = jwk.Y };
+        var data = "dpop key check"u8.ToArray();
+
+        bool verified;
+        try
+        {
+            var signer = CryptoProviderFactory.Default.CreateForSigning(jwk, jwk.Alg);
+            var verifier = CryptoProviderFactory.Default.CreateForVerifying(publicKey, jwk.Alg);
+            try
+            {
+                verified = verifier.Verify(data, signer.Sign(data));
+            }
+            finally
+            {
+                CryptoProviderFactory.Default.ReleaseSignatureProvider(signer);
+                CryptoProviderFactory.Default.ReleaseSignatureProvider(verifier);
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // No inner exception: its message can have parts of the key
+            throw new InvalidOperationException($"{ConfigurationKey} cannot sign with alg {jwk.Alg}: {ex.GetType().Name}.");
+        }
+
+        if (!verified)
+            throw new InvalidOperationException($"{ConfigurationKey} has a private part that does not match its public part.");
     }
 
     /// <summary>

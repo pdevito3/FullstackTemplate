@@ -24,6 +24,9 @@ public static partial class BindingProblem
         if (IsMissingBody(exception))
             return new() { [string.Empty] = [MissingBodyMessage] };
 
+        if (MissingMembersOf(exception) is { Length: > 0 } missing)
+            return missing.ToDictionary(name => name, name => new[] { MissingMemberMessage(name) });
+
         // A JSON body error names the JSON path, for example "$.name", the same as MVC
         if (exception.InnerException is JsonException jsonException)
             return new() { [jsonException.Path ?? "$"] = [jsonException.Message] };
@@ -39,6 +42,8 @@ public static partial class BindingProblem
     {
         if (IsMissingBody(exception))
             return MissingBodyMessage;
+        if (MissingMembersOf(exception) is { Length: > 0 } missing)
+            return string.Join(" ", missing.Select(MissingMemberMessage));
         return exception.InnerException is JsonException jsonException ? jsonException.Message : MessageFor(exception);
     }
 
@@ -47,6 +52,16 @@ public static partial class BindingProblem
         => ValueInMessage().Match(exception.Message) is { Success: true } match
             ? $"The value '{match.Groups["value"].Value}' is not valid for {match.Groups["name"].Value}."
             : exception.Message;
+
+    // A body without a required member gives "JSON deserialization for type 'TenantForUpdateDto' was missing
+    // required properties including: 'version'." The message names the C# type, so the caller gets the JSON names only.
+    private static string[] MissingMembersOf(BadHttpRequestException exception)
+        => exception.InnerException is JsonException jsonException
+           && MissingMembersInMessage().Match(jsonException.Message) is { Success: true } match
+            ? match.Groups["name"].Captures.Select(c => c.Value).ToArray()
+            : [];
+
+    private static string MissingMemberMessage(string name) => $"The {name} field is required.";
 
     // An empty body and a JSON null give "Implicit body inferred for parameter "dto" but no body was provided."
     // An explicit [FromBody] gives "Required parameter "TenantForCreationDto dto" was not provided from body."
@@ -58,6 +73,9 @@ public static partial class BindingProblem
 
     [GeneratedRegex(@"^Failed to bind parameter ""(?:[^""]* )?(?<name>[^"" ]+)"" from ""(?<value>.*)""\.$", RegexOptions.CultureInvariant)]
     private static partial Regex ValueInMessage();
+
+    [GeneratedRegex(@"was missing required properties including: (?:'(?<name>[^']+)'[^']*)+$", RegexOptions.CultureInvariant)]
+    private static partial Regex MissingMembersInMessage();
 
     [GeneratedRegex(@"but no body was provided|was not provided from body", RegexOptions.CultureInvariant)]
     private static partial Regex MissingBodyInMessage();

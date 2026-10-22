@@ -73,7 +73,7 @@ public class TenantConcurrencyTests : TestBase
     }
 
     [Test]
-    public async Task put_with_no_version_is_a_bad_request()
+    public async Task put_with_no_version_is_a_bad_request_on_the_version()
     {
         // Arrange
         var tenant = await AddTenantAndSignInAsAdminAsync();
@@ -83,6 +83,11 @@ public class TenantConcurrencyTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("The version field is required.");
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe("version");
+        error.Value.ShouldBe(["The version field is required."]);
         (await GetTenantAsync(tenant.Id)).Name.ShouldBe(tenant.Name);
     }
 

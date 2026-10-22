@@ -188,13 +188,13 @@ A unit test in `AuthProviderCatalogTests` makes sure that each provider has its 
 
 The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the React app and through Swagger UI. They run against the provider of the running stack. A test for a feature runs only for a provider that has the feature. For the other providers, a test proves the fallback.
 
-1. Start the stack, as shown in [Select a provider](#select-a-provider). For the BFF refresh test, also set `BffRefreshBeforeExpirationSeconds`, as the CI e2e job does:
+1. Start the stack, as shown in [Select a provider](#select-a-provider). For the BFF refresh test and the refresh lock test, also set `BffRefreshBeforeExpirationSeconds`, as the CI e2e job does:
 
    ```bash
    AuthProvider=Keycloak BffRefreshBeforeExpirationSeconds=86400 dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
    ```
 
-   The AppHost gives the value to the BFF as `Auth:RefreshBeforeExpirationSeconds`. It is longer than the access token lifetime of each provider, so each API call makes the BFF refresh. Do not set it for a normal run. Without it, the BFF refresh test is skipped.
+   The AppHost gives the value to the BFF as `Auth:RefreshBeforeExpirationSeconds`. It is longer than the access token lifetime of each provider, so each API call makes the BFF refresh. Do not set it for a normal run. Without it, the BFF refresh test and the refresh lock test are skipped.
 2. Wait until the server, the BFF, and the webfrontend are healthy:
 
    ```bash
@@ -220,10 +220,13 @@ The script `frontend/e2e/run-against-stack.ts` reads the stack from `dotnet aspi
 
 Extra arguments go to Playwright, for example `pnpm test:e2e:stack --repeat-each=5`.
 
+CI also sets an `EXPECT_*` variable for each feature that a leg must test, for example `EXPECT_REFRESH_MARGIN=true`. The script stops with an error when the variable and the stack disagree. Thus a leg cannot pass while its main test skips. An unset variable checks nothing.
+
 The script also gives the tests the client id and the client secret of the BFF, and the admin credentials of the provider. It never prints them.
 
 - The refresh rotation test uses the client of the BFF for its own code flow. It proves that the provider rejects the old refresh token after one refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik.
 - The BFF refresh test makes two API calls through the BFF, and each call refreshes. The second call succeeds only if the BFF stored the rotated refresh token of the first call. Then the test logs out, and the `id_token_hint` proves that the BFF stored the ID token of the second refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik. On a provider that does not reject a reused refresh token, the test cannot prove the rotation.
+- The refresh lock test makes two API calls through the BFF at the same time, and both need the same refresh. Both calls must succeed, and the BFF session must still work after them. With no refresh lock, both calls send the same refresh token, and the provider rejects the second one. It runs on the same providers as the BFF refresh test.
 - The back-channel logout test ends the session at the provider through its admin API, and expects a 401 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database.
 
 ## Conformance

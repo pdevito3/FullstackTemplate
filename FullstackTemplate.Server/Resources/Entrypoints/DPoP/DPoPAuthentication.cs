@@ -147,7 +147,7 @@ public static class DPoPAuthentication
     private static void Fail(TokenValidatedContext context, DPoPValidationResult result)
     {
         Logger.Here().Information("Rejected a request to {Path} with {Error}: {Description}",
-            context.Request.Path.Value, result.Error, result.Description);
+            LogValue.Clean(context.Request.Path.Value), result.Error, result.Description);
         context.Fail(new DPoPAuthenticationException(result));
     }
 

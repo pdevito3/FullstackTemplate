@@ -162,6 +162,21 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task a_logout_token_with_only_a_sid_ends_the_session_of_that_sid()
+    {
+        var app = BffApp.Instance;
+        var sessionId = NewSessionId();
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_sid={sessionId}"))!;
+
+        var response = await PostAsync(Token(c => { c.Remove("sub"); c["sid"] = sessionId; }));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task a_logout_token_with_only_a_sub_ends_all_the_sessions_of_that_sub()
     {
         var app = BffApp.Instance;

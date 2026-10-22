@@ -17,6 +17,11 @@ using Microsoft.IdentityModel.Tokens;
 public sealed record DPoPRequest(string Method, Uri Url, string AccessToken, string AccessTokenJkt);
 
 /// <summary>
+/// The public key of a DPoP proof, built from the members of its thumbprint only, and the thumbprint (RFC 7638).
+/// </summary>
+public sealed record DPoPPublicKey(JsonWebKey Key, string Jkt);
+
+/// <summary>
 /// The result of a proof check. <see cref="Error"/> is the <c>error</c> value of the <c>WWW-Authenticate</c> header
 /// (RFC 9449 section 7.1).
 /// </summary>
@@ -54,6 +59,10 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
     // The members of a JWK that hold private key material (RFC 7518 sections 6.2.2, 6.3.2, and 6.4)
     private static readonly string[] PrivateKeyMembers = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"];
 
+    // The members of a JWK that name a key or point to a certificate (RFC 7517 section 4). IdentityModel can verify
+    // with the certificate of x5c in place of n and e, so a proof must carry only the key itself.
+    private static readonly string[] KeyReferenceMembers = ["x5c", "x5u", "x5t", "x5t#S256", "kid"];
+
     public async Task<DPoPValidationResult> ValidateAsync(string proof, DPoPRequest request, CancellationToken cancellationToken)
     {
         // Rules 2 and 3: a well-formed JWT
@@ -78,22 +87,10 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
         // Rules 6 and 7: the key
         if (!jwt.TryGetHeaderValue<JsonElement>("jwk", out var jwkElement) || jwkElement.ValueKind != JsonValueKind.Object)
             return DPoPValidationResult.Proof("The jwk header is missing.");
-        if (PrivateKeyMembers.Any(member => jwkElement.TryGetProperty(member, out _)))
-            return DPoPValidationResult.Proof("The jwk header must not contain a private key.");
-
-        JsonWebKey key;
-        string jkt;
-        try
-        {
-            key = new JsonWebKey(jwkElement.GetRawText());
-            if (key.Kty is not ("EC" or "RSA"))
-                return DPoPValidationResult.Proof("The jwk header must be an EC or an RSA key.");
-            jkt = Base64UrlEncoder.Encode(key.ComputeJwkThumbprint());
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or JsonException or CryptographicException)
-        {
-            return DPoPValidationResult.Proof("The jwk header is not a valid key.");
-        }
+        var (publicKey, keyError) = ReadPublicKey(jwkElement);
+        if (publicKey is null)
+            return DPoPValidationResult.Proof(keyError!);
+        var (key, jkt) = publicKey;
 
         var validation = await new JsonWebTokenHandler().ValidateTokenAsync(proof, new TokenValidationParameters
         {
@@ -147,6 +144,47 @@ public sealed class DPoPProofValidator(IOptions<DPoPOptions> options, TimeProvid
 
         return DPoPValidationResult.Success(jkt);
     }
+
+    /// <summary>
+    /// Reads the public key of a <c>jwk</c> header, and its RFC 7638 thumbprint. The key has only the members of the
+    /// thumbprint, so the signature check uses the same key that the thumbprint names. The checks of the member names
+    /// ignore case, because IdentityModel reads the members of a JWK without case.
+    /// </summary>
+    public static (DPoPPublicKey? Key, string? Error) ReadPublicKey(JsonElement jwk)
+    {
+        foreach (var member in jwk.EnumerateObject())
+        {
+            if (PrivateKeyMembers.Contains(member.Name, StringComparer.OrdinalIgnoreCase))
+                return (null, "The jwk header must not contain a private key.");
+            if (KeyReferenceMembers.Contains(member.Name, StringComparer.OrdinalIgnoreCase))
+                return (null, "The jwk header must contain only the key, without a certificate or a key ID.");
+        }
+
+        var key = Member(jwk, "kty") switch
+        {
+            "EC" when Member(jwk, "crv") is { } crv && Member(jwk, "x") is { } x && Member(jwk, "y") is { } y =>
+                new JsonWebKey { Kty = "EC", Crv = crv, X = x, Y = y },
+            "RSA" when Member(jwk, "n") is { } n && Member(jwk, "e") is { } e =>
+                new JsonWebKey { Kty = "RSA", N = n, E = e },
+            _ => null,
+        };
+        if (key is null)
+            return (null, "The jwk header must be an EC or an RSA public key.");
+
+        try
+        {
+            return (new DPoPPublicKey(key, Base64UrlEncoder.Encode(key.ComputeJwkThumbprint())), null);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or CryptographicException)
+        {
+            return (null, "The jwk header is not a valid key.");
+        }
+    }
+
+    private static string? Member(JsonElement jwk, string name) =>
+        jwk.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && value.GetString() is { Length: > 0 } text
+            ? text
+            : null;
 
     /// <summary>
     /// True when the two URLs are the same without the query and the fragment. The scheme and the host compare

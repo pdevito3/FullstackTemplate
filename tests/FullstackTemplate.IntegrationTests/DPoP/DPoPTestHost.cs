@@ -38,7 +38,7 @@ public sealed class DPoPTestHost : IAsyncDisposable
         Client = app.GetTestClient();
     }
 
-    public static async Task<DPoPTestHost> StartAsync()
+    public static async Task<DPoPTestHost> StartAsync(bool useSecurityTokenValidators = false)
     {
         var time = new TestTimeProvider(Now);
         var builder = WebApplication.CreateBuilder();
@@ -48,6 +48,8 @@ public sealed class DPoPTestHost : IAsyncDisposable
             .AddJwtBearer(options =>
             {
                 options.MapInboundClaims = false;
+                // The legacy validators give a JwtSecurityToken, not a JsonWebToken
+                options.UseSecurityTokenValidators = useSecurityTokenValidators;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = false,
@@ -137,6 +139,9 @@ public sealed class DPoPProofBuilder : IDisposable
     /// <summary>The key that signs the proof. The default is <see cref="Key"/>, the key of the jwk header.</summary>
     public ECDsa? SigningKey { get; set; }
 
+    /// <summary>The key that signs a proof with an RS256 alg.</summary>
+    public RSA? RsaSigningKey { get; set; }
+
     public DPoPProofBuilder(string accessToken, string method = "GET", string url = DPoPTestHost.BaseUrl + DPoPTestHost.ProtectedPath)
     {
         Header = new Dictionary<string, object?>
@@ -174,7 +179,9 @@ public sealed class DPoPProofBuilder : IDisposable
             ? (SigningKey ?? Key).SignData(Encoding.ASCII.GetBytes(signingInput), HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation)
             : alg == "HS256"
                 ? HMACSHA256.HashData(Encoding.UTF8.GetBytes("a-test-signing-key-of-at-least-32-bytes!"), Encoding.ASCII.GetBytes(signingInput))
-                : [];
+                : alg == "RS256" && RsaSigningKey is not null
+                    ? RsaSigningKey.SignData(Encoding.ASCII.GetBytes(signingInput), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+                    : [];
         return $"{signingInput}.{Base64UrlEncoder.Encode(signature)}";
     }
 
@@ -184,5 +191,6 @@ public sealed class DPoPProofBuilder : IDisposable
     {
         Key.Dispose();
         SigningKey?.Dispose();
+        RsaSigningKey?.Dispose();
     }
 }

@@ -93,7 +93,16 @@ public static class DPoPAuthentication
     {
         var httpContext = context.HttpContext;
         var usedDPoPScheme = httpContext.Items.ContainsKey(SchemeItemKey);
-        var boundJkt = BoundKeyThumbprint(context.SecurityToken as JsonWebToken);
+
+        // Fail closed: the code reads cnf.jkt from a JsonWebToken only. Another token type would hide the binding,
+        // and a DPoP-bound token would pass as a bearer token.
+        if (context.SecurityToken is not JsonWebToken token)
+        {
+            Fail(context, DPoPValidationResult.Token("The access token is not a JWT that the server can check for a DPoP binding."));
+            return;
+        }
+
+        var boundJkt = BoundKeyThumbprint(token);
 
         if (!usedDPoPScheme)
         {
@@ -145,9 +154,8 @@ public static class DPoPAuthentication
     /// <summary>
     /// The <c>cnf.jkt</c> claim of the access token (RFC 9449 section 6.1), or null when the token is not DPoP-bound.
     /// </summary>
-    public static string? BoundKeyThumbprint(JsonWebToken? token) =>
-        token is not null
-        && DPoPProofValidator.PayloadOf(token).TryGetProperty("cnf", out var cnf)
+    public static string? BoundKeyThumbprint(JsonWebToken token) =>
+        DPoPProofValidator.PayloadOf(token).TryGetProperty("cnf", out var cnf)
         && cnf.ValueKind == JsonValueKind.Object
         && cnf.TryGetProperty("jkt", out var jkt)
         && jkt.ValueKind == JsonValueKind.String

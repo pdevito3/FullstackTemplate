@@ -2,6 +2,8 @@ namespace FullstackTemplate.IntegrationTests.DPoP;
 
 using System.Net;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using Shouldly;
 
 /// <summary>
@@ -249,6 +251,92 @@ public class DPoPAuthenticationTests : TestBase
         await ShouldBeRejectedAsync(response, InvalidProof);
     }
 
+    [Test]
+    public async Task a_jwk_with_a_private_key_member_in_another_case_is_rejected()
+    {
+        // IdentityModel reads the members of a JWK without case, so it reads "D" as the private key "d"
+        await using var c = await Case.CreateAsync();
+        var jwk = DPoPProofBuilder.PublicJwk(c.Proof.Key);
+        jwk["D"] = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(c.Proof.Key.ExportParameters(true).D);
+        c.Proof.Header["jwk"] = jwk;
+
+        var response = await c.SendAsync();
+
+        await ShouldBeRejectedAsync(response, InvalidProof);
+    }
+
+    [Test]
+    [Arguments("x5c")]
+    [Arguments("x5u")]
+    [Arguments("x5t")]
+    [Arguments("x5t#S256")]
+    [Arguments("kid")]
+    [Arguments("X5C")]
+    public async Task a_jwk_with_a_member_that_names_or_points_to_another_key_is_rejected(string member)
+    {
+        await using var c = await Case.CreateAsync();
+        var jwk = DPoPProofBuilder.PublicJwk(c.Proof.Key);
+        jwk[member] = member.Equals("x5c", StringComparison.OrdinalIgnoreCase) ? new[] { "MIIB" } : "value";
+        c.Proof.Header["jwk"] = jwk;
+
+        var response = await c.SendAsync();
+
+        await ShouldBeRejectedAsync(response, InvalidProof);
+    }
+
+    [Test]
+    public async Task a_jwk_with_the_n_and_e_of_the_bound_key_and_the_x5c_of_another_key_is_rejected()
+    {
+        // The attack: the thumbprint comes from n and e, so it matches the access token. A signature check that
+        // uses the certificate of x5c lets the attacker sign with a key of their own.
+        await using var c = await Case.CreateAsync();
+        using var victim = RSA.Create(2048);
+        var attacker = RSA.Create(2048);
+        using var certificate = new CertificateRequest("CN=attacker", attacker, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+            .CreateSelfSigned(DPoPTestHost.Now.AddDays(-1), DPoPTestHost.Now.AddDays(1));
+        var victimKey = victim.ExportParameters(false);
+        var victimJwk = new Dictionary<string, object?>
+        {
+            ["kty"] = "RSA",
+            ["n"] = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(victimKey.Modulus),
+            ["e"] = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(victimKey.Exponent),
+        };
+        c.AccessToken = DPoPTestHost.AccessToken(Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(
+            new Microsoft.IdentityModel.Tokens.JsonWebKey(JsonSerializer.Serialize(victimJwk)).ComputeJwkThumbprint()));
+        c.Rebuild();
+        c.Proof.Header["alg"] = "RS256";
+        c.Proof.Header["jwk"] = new Dictionary<string, object?>(victimJwk) { ["x5c"] = new[] { Convert.ToBase64String(certificate.RawData) } };
+        c.Proof.RsaSigningKey = attacker;
+
+        var response = await c.SendAsync();
+
+        await ShouldBeRejectedAsync(response, InvalidProof);
+    }
+
+    [Test]
+    public async Task a_proof_with_an_RSA_jwk_passes()
+    {
+        await using var c = await Case.CreateAsync();
+        var key = RSA.Create(2048);
+        var parameters = key.ExportParameters(false);
+        var jwk = new Dictionary<string, object?>
+        {
+            ["kty"] = "RSA",
+            ["n"] = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(parameters.Modulus),
+            ["e"] = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(parameters.Exponent),
+        };
+        c.AccessToken = DPoPTestHost.AccessToken(Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(
+            new Microsoft.IdentityModel.Tokens.JsonWebKey(JsonSerializer.Serialize(jwk)).ComputeJwkThumbprint()));
+        c.Rebuild();
+        c.Proof.Header["alg"] = "RS256";
+        c.Proof.Header["jwk"] = jwk;
+        c.Proof.RsaSigningKey = key;
+
+        var response = await c.SendAsync();
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
     // Rule 8
     [Test]
     public async Task an_htm_that_is_not_the_method_of_the_request_is_rejected()
@@ -401,6 +489,20 @@ public class DPoPAuthenticationTests : TestBase
         c.Rebuild();
 
         var response = await c.SendAsync();
+
+        await ShouldBeRejectedAsync(response, InvalidToken);
+    }
+
+    [Test]
+    public async Task a_DPoP_bound_token_that_the_handler_gives_as_another_token_type_is_rejected()
+    {
+        // The legacy validators give a JwtSecurityToken. The code cannot read its cnf.jkt, so it must not let the
+        // token pass as a bearer token.
+        await using var host = await DPoPTestHost.StartAsync(useSecurityTokenValidators: true);
+        using var proof = new DPoPProofBuilder("unused");
+        using var request = host.Request("Bearer", DPoPTestHost.AccessToken(proof.Thumbprint), proof: null);
+
+        var response = await host.Client.SendAsync(request);
 
         await ShouldBeRejectedAsync(response, InvalidToken);
     }

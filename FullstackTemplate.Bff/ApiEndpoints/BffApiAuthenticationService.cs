@@ -35,7 +35,10 @@ public sealed class BffApiAuthenticationService(IAuthenticationService inner) : 
 
     private static void RewriteRedirect(HttpContext context, int statusCode)
     {
-        if (context.Response.StatusCode != StatusCodes.Status302Found || !context.IsBffApiEndpoint())
+        // Since .NET 10 the cookie handler does not redirect on an endpoint with API metadata, such as a minimal
+        // API that returns an object. It sets the 401 or 403 itself, but keeps the Location header.
+        var status = context.Response.StatusCode;
+        if ((status != StatusCodes.Status302Found && status != statusCode) || !context.IsBffApiEndpoint())
             return;
 
         context.Response.StatusCode = statusCode;

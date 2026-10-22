@@ -58,6 +58,19 @@ public class BffApiAuthenticationServiceTests
         context.Response.StatusCode.ShouldBe(StatusCodes.Status302Found);
     }
 
+    [Test]
+    public async Task a_forbid_that_is_already_403_on_a_bff_api_endpoint_loses_its_location_and_cookies()
+    {
+        var context = ContextFor(new EndpointMetadataCollection(BffApiEndpointMetadata.Instance));
+        var service = new BffApiAuthenticationService(new RedirectingAuthenticationService(StatusCodes.Status403Forbidden));
+
+        await service.ForbidAsync(context, null, null);
+
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        context.Response.Headers.Location.ShouldBeEmpty();
+        context.Response.Headers.SetCookie.ShouldBeEmpty();
+    }
+
     private static DefaultHttpContext ContextFor(EndpointMetadataCollection metadata)
     {
         var context = new DefaultHttpContext();
@@ -66,9 +79,10 @@ public class BffApiAuthenticationServiceTests
     }
 
     /// <summary>
-    /// A challenge and a forbid as the cookie and OIDC handlers do them: a 302 with a Location and cookies.
+    /// A challenge and a forbid as the cookie and OIDC handlers do them: a 302 with a Location and cookies. On an
+    /// endpoint with API metadata, the .NET 10 cookie handler gives the 401 or 403 with the Location instead.
     /// </summary>
-    private sealed class RedirectingAuthenticationService : IAuthenticationService
+    private sealed class RedirectingAuthenticationService(int statusCode = StatusCodes.Status302Found) : IAuthenticationService
     {
         public const string Location = "https://idp.example/authorize";
 
@@ -84,9 +98,9 @@ public class BffApiAuthenticationServiceTests
 
         public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties) => Task.CompletedTask;
 
-        private static Task Redirect(HttpContext context)
+        private Task Redirect(HttpContext context)
         {
-            context.Response.StatusCode = StatusCodes.Status302Found;
+            context.Response.StatusCode = statusCode;
             context.Response.Headers.Location = Location;
             context.Response.Headers.Append("Set-Cookie", ".AspNetCore.Correlation.x=1; path=/signin-oidc");
             context.Response.Headers.Append("Set-Cookie", ".AspNetCore.OpenIdConnect.Nonce.x=1; path=/signin-oidc");

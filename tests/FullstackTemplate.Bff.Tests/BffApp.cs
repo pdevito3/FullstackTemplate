@@ -69,6 +69,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
         {
             // Serilog reads the sinks from the services (ReadFrom.Services)
             services.AddSingleton<ILogEventSink>(Logs);
+            services.AddTestAuthorization();
         });
     }
 

@@ -100,6 +100,7 @@ public sealed class BffMetricsTests : IDisposable
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Bff:Refresh:LockTimeout"] = "00:00:00.300",
+            ["Bff:Refresh:TokenRequestTimeout"] = "00:00:00.200",
         });
         var (cookie, key) = await RefreshLockTests.SignInAsync(app, $"test_sub={NewSubject()}&test_expires_in=60");
         await using var holder = await RefreshLockTests.HoldLockAsync(key);

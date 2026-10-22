@@ -1,5 +1,6 @@
 using Duende.AccessTokenManagement;
 using Duende.AccessTokenManagement.OpenIdConnect;
+using Microsoft.Extensions.Options;
 
 namespace FullstackTemplate.Bff.Authentication;
 
@@ -44,8 +45,8 @@ public sealed class RefreshFailureMetrics(IOpenIdConnectUserTokenEndpoint inner)
             : RefreshFailureKind.Temporary;
 
     /// <summary>
-    /// Wraps the token endpoint that token management registered. Call it after
-    /// <c>AddOpenIdConnectAccessTokenManagement</c>.
+    /// Wraps the token endpoint that token management registered, with the <see cref="RefreshTimeout"/> inside, so
+    /// that a timeout counts as a temporary failure. Call it after <c>AddOpenIdConnectAccessTokenManagement</c>.
     /// </summary>
     public static void Register(IServiceCollection services)
     {
@@ -56,7 +57,9 @@ public sealed class RefreshFailureMetrics(IOpenIdConnectUserTokenEndpoint inner)
         services.Remove(registered);
         services.Add(ServiceDescriptor.Describe(
             typeof(IOpenIdConnectUserTokenEndpoint),
-            sp => new RefreshFailureMetrics((IOpenIdConnectUserTokenEndpoint)ActivatorUtilities.CreateInstance(sp, implementation)),
+            sp => new RefreshFailureMetrics(new RefreshTimeout(
+                (IOpenIdConnectUserTokenEndpoint)ActivatorUtilities.CreateInstance(sp, implementation),
+                sp.GetRequiredService<IOptionsMonitor<RefreshOptions>>())),
             registered.Lifetime));
     }
 }

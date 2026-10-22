@@ -383,14 +383,14 @@ Decisions: [Refresh lock across BFF instances](https://github.com/pdevito3/Fulls
 | Anonymous | Forward with no token. |
 | Signed in, the token is valid or the refresh worked | `Authorization: Bearer <token>`. The token type compare is case-insensitive. |
 | Refresh failed with `invalid_grant` (permanent) | End the BFF session: delete the row, add to `bff.sessions.ended` with `reason=refresh_failure`, and sign out the cookie. Then forward with no token. |
-| Refresh failed for a temporary cause (network error, timeout, 5xx, or a lock timeout) | Keep the BFF session. If the current access token is still valid, send it. If not, forward with no token. |
+| Refresh failed for a temporary cause (network error, timeout, 5xx, a token request timeout, or a lock timeout) | Keep the BFF session. If the current access token is still valid, send it. If not, forward with no token. |
 | Token type `DPoP` | The transform reads the token type of the stored token in phase 1. With `Auth:Features:DPoP` at `Disable`, a `DPoP` token cannot occur. If one occurs, the transform logs an error and forwards with no token. Phase 2 adds the DPoP branch (section 9). |
 
 Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The refresh has no retry inside the call. The next request that needs a token tries again. A retry inside the call can send a rotated refresh token two times, after the identity provider used it but the response got lost, and then the session ends. A retry also holds the refresh lock and its `bffdb` connection longer. The refresh goes through the backchannel `HttpClient` of the OIDC handler, which does not come from `IHttpClientFactory`, so the standard resilience handler of the service defaults does not apply to it.
 
 **The refresh lock.** Our own `IUserTokenRequestConcurrencyControl` replaces the default. It has two layers:
 
-1. **In process.** Keep the merge by refresh token, so that one instance takes the database lock only one time for each refresh.
+1. **In process.** Keep the merge by refresh token, so that one instance takes the database lock only one time for each refresh. The first request runs the refresh. Each other request waits at most `Bff:Refresh:LockTimeout`, and stops its wait when its own client goes away. A wait that reaches the limit is a temporary failure.
 2. **Across instances.** In a `bffdb` transaction, take `pg_advisory_xact_lock` with a 64-bit hash of the BFF session key. Then read the BFF session row again.
    - If the stored refresh token is not the one that the caller has, return the stored tokens. Do not call the identity provider.
    - If it is the same, run the refresh. The delegate of `ExecuteWithConcurrencyControlAsync` runs `RefreshAccessTokenAsync` and then `StoreTokenAsync`, so the lock wraps the refresh and the write. The write uses the `xmin` of the row that the lock read. Thus a waiter always reads the new tokens.
@@ -399,6 +399,10 @@ Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kin
 The lock releases itself when the transaction ends, also if the instance stops. It does not block a plain read of the row.
 
 **The wait.** `Bff:Refresh:LockTimeout`, default 10 s. If the wait reaches the limit, the BFF treats it as a temporary failure.
+
+**The token request.** The lock transaction holds a `bffdb` connection during the call to the identity provider, so a hung identity provider must not hold it long. `Bff:Refresh:TokenRequestTimeout`, default 5 s, limits the refresh call. It must be less than `Bff:Refresh:LockTimeout`, so that a request that waits for the lock gets the result of the refresh. A call that reaches the limit is a temporary failure.
+
+**Cancellation.** The shared refresh and its commit do not stop when a client goes away. The identity provider can have rotated the refresh token already. A rollback then leaves the used refresh token in the row, and the next refresh gets `invalid_grant`. Thus the token attach does not give `RequestAborted` to token management, and the token write ignores it. The request that runs the refresh waits for its end, because the refresh uses the scoped `DbContext` of that request.
 
 ### 3.8 Cookies and host trust
 

@@ -21,7 +21,9 @@ namespace FullstackTemplate.Bff.Authentication;
 /// default <see cref="IUserTokenRequestConcurrencyControl"/> of token management, and it has two layers.
 /// <list type="number">
 ///   <item>In process: the requests that need a refresh with the same refresh token share one refresh, so that
-///   one instance takes the database lock only one time for each refresh.</item>
+///   one instance takes the database lock only one time for each refresh. The first request runs it. Each other
+///   request waits at most <see cref="RefreshOptions.LockTimeout"/>, and stops its wait when its own client goes
+///   away.</item>
 ///   <item>Across instances: a <c>bffdb</c> transaction takes <c>pg_advisory_xact_lock</c> on a 64-bit hash of
 ///   the BFF session key, and then reads the row again. If another request already refreshed, the tokens in the
 ///   row are the result, and the identity provider gets no call. If not, the refresh and the write of its tokens
@@ -32,6 +34,14 @@ namespace FullstackTemplate.Bff.Authentication;
 /// inside the lock transaction. The lock releases itself when the transaction ends, also if the instance stops.
 /// A refresh that fails with <c>invalid_grant</c> deletes the row inside the lock, so that a waiter reads no row
 /// and does not send the rejected refresh token again.
+/// </para>
+/// <para>
+/// The shared refresh and its commit do not stop when a client goes away: the identity provider can have rotated
+/// the refresh token already, and a rollback then leaves a used refresh token in the row. For this reason, the
+/// caller must not give <c>RequestAborted</c> to token management, because token management gives its token to
+/// the shared refresh too. The request that runs the refresh waits for its end, because the refresh uses the
+/// scoped services of that request. <see cref="RefreshOptions.TokenRequestTimeout"/> limits the call to the
+/// identity provider.
 /// </para>
 /// </summary>
 public sealed class RefreshLock(
@@ -60,23 +70,46 @@ public sealed class RefreshLock(
 
     private static readonly ILogger Logger = Log.ForContext<RefreshLock>();
 
-    private readonly ConcurrentDictionary<string, Lazy<Task<TokenResult<UserToken>>>> _inFlight = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<TokenResult<UserToken>>> _inFlight = new(StringComparer.Ordinal);
 
+    private int _waiting;
+
+    /// <summary>
+    /// The number of requests in this instance that wait now for the refresh of another request.
+    /// </summary>
+    public int WaitingRequests => Volatile.Read(ref _waiting);
+
+    /// <summary>
+    /// Runs <paramref name="tokenRetriever"/> one time for all the requests with the same refresh token. It does not
+    /// use <paramref name="ct"/>: a waiter stops at the <c>RequestAborted</c> of its own request.
+    /// </summary>
     public async Task<TokenResult<UserToken>> ExecuteWithConcurrencyControlAsync(UserRefreshToken key,
         Func<Task<TokenResult<UserToken>>> tokenRetriever, CancellationToken ct = default)
     {
         var refreshToken = key.RefreshToken.ToString();
-        // The first request runs the refresh. The others with the same refresh token wait for its result.
-        var refresh = _inFlight.GetOrAdd(refreshToken,
-            _ => new Lazy<Task<TokenResult<UserToken>>>(() => RefreshInLockAsync(tokenRetriever, ct)));
+        var own = new TaskCompletionSource<TokenResult<UserToken>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refresh = _inFlight.GetOrAdd(refreshToken, own);
+        if (!ReferenceEquals(refresh, own))
+            return await WaitForRefreshAsync(refresh.Task);
+
+        // This request runs the refresh, in its own scope and HttpContext.
         try
         {
-            return await refresh.Value;
+            var result = await RefreshInLockAsync(tokenRetriever);
+            own.SetResult(result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            own.SetException(ex);
+            // Observed here, so that a refresh with no waiters does not raise UnobservedTaskException.
+            _ = own.Task.Exception;
+            throw;
         }
         finally
         {
             // Only this refresh. A later refresh with the same token can have its own entry by now.
-            _inFlight.TryRemove(new KeyValuePair<string, Lazy<Task<TokenResult<UserToken>>>>(refreshToken, refresh));
+            _inFlight.TryRemove(new KeyValuePair<string, TaskCompletionSource<TokenResult<UserToken>>>(refreshToken, own));
         }
     }
 
@@ -95,11 +128,38 @@ public sealed class RefreshLock(
         RefreshFailureMetrics.KindOf(error) == RefreshFailureKind.Permanent
         || string.Equals(error, SessionEndedError, StringComparison.Ordinal);
 
-    private async Task<TokenResult<UserToken>> RefreshInLockAsync(Func<Task<TokenResult<UserToken>>> tokenRetriever,
-        CancellationToken ct)
+    /// <summary>
+    /// Waits for the refresh of another request in this instance, at most <see cref="RefreshOptions.LockTimeout"/>,
+    /// as a wait for the lock of another instance does. The wait stops when the client of this request goes away.
+    /// </summary>
+    private async Task<TokenResult<UserToken>> WaitForRefreshAsync(Task<TokenResult<UserToken>> refresh)
     {
-        var services = (httpContextAccessor.HttpContext
-            ?? throw new InvalidOperationException("The refresh lock needs the HttpContext of the request.")).RequestServices;
+        var httpContext = CurrentHttpContext();
+        var lockTimeout = options.CurrentValue.LockTimeout;
+        Interlocked.Increment(ref _waiting);
+        try
+        {
+            return await refresh.WaitAsync(lockTimeout, httpContext.RequestAborted);
+        }
+        catch (TimeoutException)
+        {
+            Telemetry.RecordRefreshFailure(RefreshFailureKind.Temporary);
+            Logger.Here().Warning("Kept the BFF session {SessionKey} with no refresh, because the refresh of another request did not end within {LockTimeout}",
+                Fingerprint.Of(httpContext.RequestServices.GetRequiredService<BffSessionRequest>().Key ?? ""), lockTimeout);
+            return TokenResult.Failure(LockTimeoutError);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _waiting);
+        }
+    }
+
+    private HttpContext CurrentHttpContext() => httpContextAccessor.HttpContext
+        ?? throw new InvalidOperationException("The refresh lock needs the HttpContext of the request.");
+
+    private async Task<TokenResult<UserToken>> RefreshInLockAsync(Func<Task<TokenResult<UserToken>>> tokenRetriever)
+    {
+        var services = CurrentHttpContext().RequestServices;
         var request = services.GetRequiredService<BffSessionRequest>();
         if (request.Key is not { } sessionKey)
             return TokenResult.Failure(SessionEndedError);
@@ -111,7 +171,7 @@ public sealed class RefreshLock(
         var refreshCalled = false;
 
         // The Aspire integration turns on EF retries, and a retrying strategy runs a user transaction only as one
-        // unit. A retry starts again with the lock and the reread.
+        // unit. A retry starts again with the lock and the reread. No cancellation: see the remarks of the class.
         var outcome = await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(
             async cancellation =>
             {
@@ -148,7 +208,7 @@ public sealed class RefreshLock(
                 await transaction.CommitAsync(cancellation);
                 return new Outcome(OutcomeKind.Refreshed, result, ended);
             },
-            ct);
+            CancellationToken.None);
 
         Report(outcome, sessionKey, lockTimeout);
         return outcome.Result;

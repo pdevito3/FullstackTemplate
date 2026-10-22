@@ -68,6 +68,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, string> _revokeModes = new();
     private readonly ConcurrentDictionary<string, Dictionary<string, string>> _pushedRequests = new();
     private readonly ConcurrentQueue<(string Token, string ClientAuthentication)> _revocations = new();
+    private volatile RequestGate? _revocationGate;
+    private volatile RequestGate? _jwksGate;
 
     private FakeIdentityProvider(WebApplication app, FakeProviderOptions options)
     {
@@ -219,6 +221,18 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// </summary>
     public RequestGate HoldRefreshes(string subject) => _refreshGates.GetOrAdd(subject, _ => new RequestGate());
 
+    /// <summary>
+    /// Holds each request to the revocation endpoint until the test releases the gate. It holds the revocations of
+    /// all users, so a test that uses it starts its own provider.
+    /// </summary>
+    public RequestGate HoldRevocations() => _revocationGate = new RequestGate();
+
+    /// <summary>
+    /// Holds each request to the JWKS endpoint until the test releases the gate. It holds the requests of all BFF
+    /// instances, so a test that uses it starts its own provider.
+    /// </summary>
+    public RequestGate HoldJwks() => _jwksGate = new RequestGate();
+
     public ValueTask DisposeAsync() => _app.DisposeAsync();
 
     private void MapEndpoints()
@@ -269,8 +283,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             return Results.Json(new { request_uri = requestUri, expires_in = 60 }, statusCode: StatusCodes.Status201Created);
         });
 
-        _app.MapGet("/jwks", () =>
+        _app.MapGet("/jwks", async () =>
         {
+            await WaitAtAsync(_jwksGate);
             var jwk = JsonWebKeyConverter.ConvertFromRSASecurityKey(_signingKey);
             var ec = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(_ecKey);
             return Results.Json(new
@@ -398,6 +413,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             if (method is null)
                 return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
 
+            await WaitAtAsync(_revocationGate);
             var token = form["token"].ToString();
             RevokedTokens.Add(token);
             _revocations.Enqueue((token, method));
@@ -414,6 +430,15 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                     return Results.Ok();
             }
         });
+    }
+
+    private static async Task WaitAtAsync(RequestGate? gate)
+    {
+        if (gate is null)
+            return;
+
+        gate.Arrived.TrySetResult();
+        await gate.Released.Task;
     }
 
     /// <summary>

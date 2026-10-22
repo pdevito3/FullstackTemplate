@@ -1,6 +1,8 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using FullstackTemplate.Bff.Authentication;
+using FullstackTemplate.Bff.Tests.Fakes;
 using Shouldly;
 
 /// <summary>
@@ -72,6 +74,70 @@ public class RefreshIdTokenTests
         provider.RevokedTokens.ShouldContain(provider.IssuedRefreshTokens(subject)[1]);
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
+
+    [Test]
+    public async Task a_slow_revocation_after_a_rejected_id_token_still_ends_the_session()
+    {
+        await using var provider = await FakeIdentityProvider.StartAsync();
+        await using var app = BffApp.StartAnotherInstance(
+            new Dictionary<string, string?> { ["Bff:Refresh:TokenRequestTimeout"] = "00:00:00.300" },
+            identityProvider: provider);
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser,
+            providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token=wrong_sub"))!;
+        var gate = provider.HoldRevocations();
+        try
+        {
+            var response = await browser.GetApiAsync("/api/v1/weather").WaitAsync(Timeout);
+
+            gate.Arrived.Task.IsCompleted.ShouldBeTrue();
+            (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
+            BffApp.SessionCookieValue(response).ShouldBe("");
+            (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
+        }
+        finally
+        {
+            gate.Released.TrySetResult();
+        }
+    }
+
+    [Test]
+    public async Task a_refresh_id_token_with_a_new_key_ends_the_session_when_the_keys_do_not_load_in_time()
+    {
+        await using var provider = await FakeIdentityProvider.StartAsync();
+        await using var app = BffApp.StartAnotherInstance(
+            new Dictionary<string, string?>
+            {
+                ["Bff:Refresh:TokenRequestTimeout"] = "00:00:00.300",
+                [IdentityProviderBackchannel.MetadataRefreshIntervalKey] = "00:00:01",
+            },
+            identityProvider: provider);
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser,
+            providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token=valid"))!;
+        provider.RotateSigningKey();
+        // The shortest time between two refreshes of the keys
+        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        var gate = provider.HoldJwks();
+        try
+        {
+            var response = await browser.GetApiAsync("/api/v1/weather").WaitAsync(Timeout);
+
+            gate.Arrived.Task.IsCompleted.ShouldBeTrue();
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+            (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
+            BffApp.SessionCookieValue(response).ShouldBe("");
+            (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
+        }
+        finally
+        {
+            gate.Released.TrySetResult();
+        }
+    }
+
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
     private static string NewSubject() => $"user-refresh-id-token-{Guid.NewGuid():N}";
 }

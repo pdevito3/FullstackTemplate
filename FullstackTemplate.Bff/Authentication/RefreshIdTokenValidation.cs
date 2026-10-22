@@ -30,12 +30,23 @@ namespace FullstackTemplate.Bff.Authentication;
 /// wrong ID token is a sign of a wrong or attacked identity provider, so a retry must not use it. The new refresh
 /// token is revoked, when revocation is active, because no BFF session holds it.
 /// </para>
+/// <para>
+/// The checks and the revocation do not use the token of the refresh call. <see cref="RefreshTimeout"/> cancels
+/// it at <see cref="RefreshOptions.TokenRequestTimeout"/>, and a cancellation gives the temporary
+/// <see cref="RefreshTimeout.TimeoutError"/>, so the BFF session would stay. The checks and the revocation each get
+/// their own limit of <see cref="RefreshOptions.TokenRequestTimeout"/>. Signing keys that do not load within the
+/// limit fail the checks. A revocation that does not end within the limit is logged. Thus a request that waits for
+/// this refresh can reach <see cref="RefreshOptions.LockTimeout"/> and get a temporary failure, but the refresh
+/// lock still ends the BFF session.
+/// </para>
 /// </summary>
 public sealed class RefreshIdTokenValidation(
     IOpenIdConnectUserTokenEndpoint inner,
     IHttpContextAccessor httpContextAccessor,
     IOptionsMonitor<OpenIdConnectOptions> oidcOptions,
-    ProviderFeatures features) : IOpenIdConnectUserTokenEndpoint
+    IOptionsMonitor<RefreshOptions> refreshOptions,
+    ProviderFeatures features,
+    TimeProvider timeProvider) : IOpenIdConnectUserTokenEndpoint
 {
     /// <summary>
     /// The error of a refresh whose response has an ID token that fails the checks. It ends the BFF session.
@@ -55,7 +66,8 @@ public sealed class RefreshIdTokenValidation(
 
         var httpContext = httpContextAccessor.HttpContext
             ?? throw new InvalidOperationException("The refresh ID token check needs the HttpContext of the request.");
-        var failure = await CheckAsync(idToken.ToString(), httpContext.User, ct);
+        var limit = refreshOptions.CurrentValue.TokenRequestTimeout;
+        var failure = await CheckAsync(idToken.ToString(), httpContext.User, limit);
         if (failure is null)
             return result;
 
@@ -64,7 +76,7 @@ public sealed class RefreshIdTokenValidation(
             Fingerprint.Of(idToken.ToString()), sessionKey is null ? null : Fingerprint.Of(sessionKey), failure);
 
         if (token.RefreshToken is { } refreshToken)
-            await new RefreshTokenRevocation(features, inner).RevokeAsync(refreshToken.ToString(), ct);
+            await RevokeAsync(refreshToken.ToString(), limit);
 
         return TokenResult.Failure(InvalidIdTokenError, failure);
     }
@@ -78,20 +90,61 @@ public sealed class RefreshIdTokenValidation(
             inner,
             provider.GetRequiredService<IHttpContextAccessor>(),
             provider.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>(),
-            provider.GetRequiredService<ProviderFeatures>()));
+            provider.GetRequiredService<IOptionsMonitor<RefreshOptions>>(),
+            provider.GetRequiredService<ProviderFeatures>(),
+            provider.GetRequiredService<TimeProvider>()));
 
     public Task RevokeRefreshTokenAsync(UserRefreshToken userToken, UserTokenRequestParameters parameters,
         CancellationToken ct = default) =>
         inner.RevokeRefreshTokenAsync(userToken, parameters, ct);
 
     /// <summary>
-    /// The checks of <paramref name="idToken"/> against the BFF session <paramref name="session"/>. Null when it
-    /// passes, or the reason, with no token value.
+    /// Revokes the refresh token of a rejected refresh response, with a limit of <paramref name="limit"/>. A
+    /// revocation that fails or does not end within the limit is logged and does not change the result of the
+    /// refresh.
     /// </summary>
-    private async Task<string?> CheckAsync(string idToken, ClaimsPrincipal session, CancellationToken ct)
+    private async Task RevokeAsync(string refreshToken, TimeSpan limit)
+    {
+        using var timeout = new CancellationTokenSource(limit, timeProvider);
+        try
+        {
+            await new RefreshTokenRevocation(features, inner).RevokeAsync(refreshToken, timeout.Token);
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            Logger.Here().Warning("Could not revoke the refresh token {TokenFingerprint} within {Limit}",
+                Fingerprint.Of(refreshToken), limit);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Token management throws it when it cannot load the discovery document, also at the limit
+            Logger.Here().Warning(ex, "Could not revoke the refresh token {TokenFingerprint}", Fingerprint.Of(refreshToken));
+        }
+    }
+
+    /// <summary>
+    /// The checks of <paramref name="idToken"/> against the BFF session <paramref name="session"/>. Null when it
+    /// passes, or the reason, with no token value. A load of the signing keys that takes longer than
+    /// <paramref name="limit"/> fails the checks.
+    /// </summary>
+    private async Task<string?> CheckAsync(string idToken, ClaimsPrincipal session, TimeSpan limit)
     {
         var options = oidcOptions.Get(OpenIdConnectDefaults.AuthenticationScheme);
-        var result = await ValidateAsync(idToken, options, ct);
+        // The load of the signing keys does not stop at a cancellation, so the wait stops instead
+        var validation = ValidateAsync(idToken, options);
+        TokenValidationResult result;
+        try
+        {
+            result = await validation.WaitAsync(limit, timeProvider);
+        }
+        catch (TimeoutException)
+        {
+            // Observed here, so that a later failure of the load does not raise UnobservedTaskException
+            _ = validation.ContinueWith(t => _ = t.Exception, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            return $"the signing keys did not load within {limit}";
+        }
+
         if (!result.IsValid || result.SecurityToken is not JsonWebToken jwt)
             return $"the ID token failed validation: {result.Exception?.GetType().Name ?? "unknown error"}";
 
@@ -121,21 +174,21 @@ public sealed class RefreshIdTokenValidation(
     /// The signature, <c>iss</c>, <c>aud</c>, and lifetime checks. An unknown key refreshes the signing keys one
     /// time and validates again, as at the login (Core 10.1.1).
     /// </summary>
-    private static async Task<TokenValidationResult> ValidateAsync(string idToken, OpenIdConnectOptions options, CancellationToken ct)
+    private static async Task<TokenValidationResult> ValidateAsync(string idToken, OpenIdConnectOptions options)
     {
         var handler = new JsonWebTokenHandler();
-        var result = await handler.ValidateTokenAsync(idToken, await ParametersAsync(options, ct));
+        var result = await handler.ValidateTokenAsync(idToken, await ParametersAsync(options));
         if (result.Exception is not SecurityTokenSignatureKeyNotFoundException || options.ConfigurationManager is null)
             return result;
 
         options.ConfigurationManager.RequestRefresh();
-        return await handler.ValidateTokenAsync(idToken, await ParametersAsync(options, ct));
+        return await handler.ValidateTokenAsync(idToken, await ParametersAsync(options));
     }
 
-    private static async Task<TokenValidationParameters> ParametersAsync(OpenIdConnectOptions options, CancellationToken ct)
+    private static async Task<TokenValidationParameters> ParametersAsync(OpenIdConnectOptions options)
     {
         var configuration = options.Configuration
-            ?? (options.ConfigurationManager is { } manager ? await manager.GetConfigurationAsync(ct) : null)
+            ?? (options.ConfigurationManager is { } manager ? await manager.GetConfigurationAsync(CancellationToken.None) : null)
             ?? throw new InvalidOperationException("The OIDC handler has no discovery document.");
         return new TokenValidationParameters
         {

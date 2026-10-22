@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { RotateClockwiseIcon, CloudIcon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+import { RotateClockwiseIcon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
@@ -226,6 +226,20 @@ interface WeatherCardProps {
   formatDate: (date: string) => string
 }
 
+// The server picks the summary from the temperature, so the icon goes from cold to hot.
+const SUMMARY_ICONS: Record<string, typeof CloudIcon> = {
+  Freezing: SnowIcon,
+  Bracing: CloudSnowIcon,
+  Chilly: CloudFastWindIcon,
+  Cool: CloudIcon,
+  Mild: SunCloud02Icon,
+  Warm: Sun03Icon,
+  Balmy: Sun03Icon,
+  Hot: Sun01Icon,
+  Sweltering: Sun01Icon,
+  Scorching: FireIcon,
+}
+
 function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCardProps) {
   return (
     <Card className={`transition-shadow hover:shadow-md ${isSecure ? 'border-green-500/30' : ''}`}>
@@ -237,7 +251,7 @@ function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCard
             </p>
             <CardTitle className="mt-1">{forecast.summary}</CardTitle>
           </div>
-          <HugeiconsIcon icon={CloudIcon} className="w-6 h-6 text-muted-foreground" />
+          <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>

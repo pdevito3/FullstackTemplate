@@ -454,16 +454,21 @@ public class DPoPAuthenticationTests : TestBase
     }
 
     [Test]
-    public async Task a_proof_passes_again_in_a_new_form_after_the_replay_window()
+    public async Task a_replay_after_the_replay_window_fails_the_iat_check_and_a_new_proof_passes()
     {
         await using var c = await Case.CreateAsync();
         var proof = c.Proof.Build();
         (await c.SendAsync(proof)).StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        // Another request with a new jti is not a replay
+        // After the window the replay cache can forget the jti, so the iat check must reject the old proof
+        c.Host.Time.Advance(new Server.Resources.Entrypoints.DPoP.DPoPOptions().ReplayWindow + TimeSpan.FromSeconds(1));
+        var replay = await c.SendAsync(proof);
         c.Proof.Payload["jti"] = Guid.NewGuid().ToString("N");
+        c.Proof.Payload["iat"] = c.Host.Time.GetUtcNow().ToUnixTimeSeconds();
         var next = await c.SendAsync();
 
+        await ShouldBeRejectedAsync(replay, InvalidProof);
+        Challenge(replay).ShouldContain("iat");
         next.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 

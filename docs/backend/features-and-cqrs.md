@@ -12,6 +12,7 @@ Each feature is one folder in `Domain/[EntityName]s/Features/`, for example `Fea
 6. In a command, put the business logic in the entity. The handler loads the entity, calls an entity method, and calls `SaveChangesAsync`.
 7. In a query, do not change data. Use `AsNoTracking()` for lists.
 8. Return a DTO. Never return an entity.
+9. In a command that changes the data of a tenant, make a permission check the first statement of the handler. See [Permission checks](#permission-checks).
 
 ## Validation
 
@@ -27,10 +28,13 @@ public static class UpdateUser
 {
     public sealed record Command(string Id, UserForUpdateDto Dto) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Command, UserDto>
     {
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireSelfOrAsync(request.Id, Permission.ManageUsers(), cancellationToken);
+
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update.load")
                 .GetById(request.Id, cancellationToken);
@@ -92,9 +96,45 @@ public static class GetUserList
 }
 ```
 
-## Request markers
+## Permission checks
 
-- `IRequireTenantAdmin`: only a tenant admin can send the command.
-- `IAllowSelf`: the user that the command is about can also send it.
+A handler checks the permission of the caller with one call to `IPermissionGuard`. The call is the first statement of `Handle`, so a reader of the handler sees the rule. There is no marker interface and no pipeline behavior for access.
 
-See [backend.md](../backend.md#admin-requests).
+```csharp
+public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
+{
+    public async Task Handle(Command request, CancellationToken cancellationToken)
+    {
+        await permissionGuard.RequireAsync(Permission.ManageUsers(), cancellationToken);
+
+        var user = await dbContext.Users
+            .TagWithOperationCallSite("users.delete.load")
+            .GetById(request.Id, cancellationToken);
+        // ...
+    }
+}
+```
+
+`IPermissionGuard` has these methods:
+
+| Method | Passes when |
+|--------|-------------|
+| `RequireAsync(permission, cancellationToken)` | The caller has the permission |
+| `RequireSelfOrAsync(userId, permission, cancellationToken)` | The caller is the user with `userId`, or the caller has the permission |
+
+`GetCallerAsync(cancellationToken)` does not throw. It gives the `Caller`, with `Permissions`, a read-only set of each permission that the caller has, and `Has(permission)`. Use it in two cases:
+
+- A rule needs the set, for example an entity method that lets only a caller with a given permission lower a critical defect. Give `caller.Permissions` to the entity method.
+- The handler makes more than one check. Load the `Caller` once, then call `caller.Require(permission)` or `caller.Require(permissions)` for each check. `RequireAsync` does the same check, so there is no second rule.
+
+If the check fails, the guard throws `ForbiddenAccessException`. HTTP returns 403 with problem details, gRPC returns `PermissionDenied`, and MCP returns a `permission_denied` tool error. A request with no valid token gets 401 before the handler runs. Declare the 403 on the endpoint with `.ProducesProblem(StatusCodes.Status403Forbidden)`.
+
+Obey these rules:
+
+1. Put the check before the first load. Then a caller without the permission gets 403 for each ID, and does not learn which IDs exist.
+2. Do not throw `ForbiddenAccessException` for a missing permission yourself, and do not read `User.Role` for access. The role gives only the default permissions of a user.
+3. A caller can give or take away only the permissions that it has. When a command changes the permissions of a user, also require each permission that it gives or takes away. `AddUser` gives the default permissions of the role. `AddUserPermission` and `RemoveUserPermission` give or take away one permission. `UpdateUserRole` takes away each permission of the user and gives the defaults of the new role. `DeleteUser` takes away each permission of the user.
+4. A query has no permission check. The tenant filter limits the rows that it reads. Add a check to a query only when a part of the data of the tenant needs a permission.
+5. Do not add a permission check to an adapter. The HTTP endpoint, the gRPC method, and the MCP tool send the same request, so the check in the handler applies to each of them.
+
+For the permissions, the callers that pass, and how to add a permission, see [backend.md](../backend.md#permissions).

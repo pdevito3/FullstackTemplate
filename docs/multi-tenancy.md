@@ -102,7 +102,7 @@ The scope tells which rows a caller sees. It does not tell what a caller can do.
 
 These rules stop a caller from joining a tenant that is not theirs:
 
-- `POST /api/v1/users` needs an admin (see [backend.md](backend.md#admin-requests)). The server puts the new user in the tenant of the caller. The request body does not need a tenant. A `tenantId` that is empty or has only spaces is the same as no `tenantId`.
+- `POST /api/v1/users` needs the `manage_users` permission, and each default permission of the new role (see [backend.md](backend.md#permissions)). The server puts the new user in the tenant of the caller. The request body does not need a tenant. A `tenantId` that is empty or has only spaces is the same as no `tenantId`.
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must be able to manage all tenants. Other requests get 403.
@@ -112,7 +112,7 @@ These rules stop a caller from joining a tenant that is not theirs:
 
 The tenant filter also applies to `Tenant`, so the `/api/v1/tenants` endpoints obey the scope:
 
-- A user can get only their own tenant. An admin can update and delete only their own tenant. For other tenants, the endpoints return 404. A user who is not an admin gets 403 for an update or a delete.
+- A user can get only their own tenant. A user with the `manage_tenant` permission can update and delete only their own tenant. For other tenants, the endpoints return 404. A user without `manage_tenant` gets 403 for an update or a delete.
 - The list shows only the tenant of the caller. A caller with `TenantScope.NoTenant` gets an empty list.
 - Only a caller that can manage all tenants can add a tenant with `POST /api/v1/tenants`. Other requests get 403. A user starts their own tenant with `POST /api/v1/users/initiate`.
 
@@ -123,7 +123,7 @@ A machine client gets a token with no `sub` claim. The issuer can give such a to
 | Setting | The client can |
 |---------|----------------|
 | `Tenancy:ReadAllTenantsClientIds` | Read the rows of all tenants. It cannot add, change, or delete anything. |
-| `Tenancy:ManageAllTenantsClientIds` | Read the rows of all tenants, add a tenant, start a tenant for another user, and do the work of an admin in any tenant. |
+| `Tenancy:ManageAllTenantsClientIds` | Read the rows of all tenants, add a tenant, start a tenant for another user, and pass each permission check in any tenant. |
 
 Put a client on the read list unless it must change data. For example, a reporting service only reads.
 

@@ -129,7 +129,6 @@ public partial class UserRole : ValueObject
     }
 
     public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
-    public bool IsAdmin() => _role == UserRoleEnum.Admin;
 
     public static UserRole Of(string value) => new(value);
     public static UserRole Admin() => new(UserRoleEnum.Admin.Name);
@@ -141,7 +140,7 @@ public partial class UserRole : ValueObject
 
         private class AdminType() : UserRoleEnum("Admin", 0)
         {
-            public override Permission[] GetDefaultPermissions() => [Permission.DoSomethingSpecial()];
+            public override Permission[] GetDefaultPermissions() => [.. Permission.GetAll()];
         }
     }
 }

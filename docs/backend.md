@@ -43,7 +43,7 @@ Do these steps in sequence. Each step has a doc in `docs/backend/`.
 1. Create the domain entity ([domain-entities.md](backend/domain-entities.md)).
 2. Add the entity configuration, then add a migration ([entity-configurations.md](backend/entity-configurations.md)).
 3. Create the DTOs and the Mapperly mapper ([dtos-and-mappings.md](backend/dtos-and-mappings.md)).
-4. Add the commands and queries ([features-and-cqrs.md](backend/features-and-cqrs.md)).
+4. Add the commands and queries ([features-and-cqrs.md](backend/features-and-cqrs.md)). Give each command a permission check. If no permission fits, add one (see [Permissions](#permissions)).
 5. Add the endpoint, and the gRPC method and the MCP tool if the feature needs them ([endpoints.md](backend/endpoints.md)).
 6. Add the domain events and their handlers ([domain-events.md](backend/domain-events.md)).
 7. Tag each EF query with `TagWithOperationCallSite` (see [telemetry.md](telemetry.md)).
@@ -61,7 +61,7 @@ The document transformers in `Resources/Entrypoints/Http/OpenApi/` set these rul
 - A property that is not nullable is required.
 - A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema. `PaginationHeaderFilter` sets this header on each `PagedList<T>` result. It is an endpoint filter on the versioned group, so each endpoint that `EndpointDiscovery` maps has it.
 - An endpoint that returns a `PagedList<T>` must have a name that ends in `List`. Other endpoints must not have a name that ends in `List`. If not, the Debug build fails. The frontend list clients use this name to return the full response.
-- An endpoint that requires authentication documents a 401 with no body. An endpoint with `[AllowAnonymous]` or no authorization metadata gets no 401. Authorization has no roles or policies, so it cannot return 403. Declare a 403 with `.ProducesProblem(StatusCodes.Status403Forbidden)` on each endpoint that throws `ForbiddenAccessException`.
+- An endpoint that requires authentication documents a 401 with no body. An endpoint with `[AllowAnonymous]` or no authorization metadata gets no 401. The endpoints have no authorization policies, so the transformer cannot know which endpoints return 403. A 403 comes from the handler (see [Permissions](#permissions)). Declare a 403 with `.ProducesProblem(StatusCodes.Status403Forbidden)` on each endpoint whose handler can throw `ForbiddenAccessException`.
 - Requests and success responses use only `application/json`. Error responses with a `ProblemDetails` body use only `application/problem+json`, as the Server sends them. The document types numbers only as numbers. The Server still accepts the lenient forms (`text/json` and `application/*+json` request bodies, and numbers in JSON strings), but the contract states only the canonical form.
 
 ## Service registration
@@ -138,13 +138,45 @@ Do not catch these exceptions in an endpoint. Throw them from the entity or the 
 
 Before you add a row with a unique value, check for the value in the handler and throw a `ConflictException` on the property. The check gives a clear message. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 409. Give each new unique index and each new exclusion constraint its request field in `ConstraintConflictException.ConstraintFields`. A test fails if one has no entry.
 
-## Admin requests
+## Permissions
 
-A request that manages the users or the settings of a tenant implements `IRequireTenantAdmin` on its command. `TenantAdminBehavior` runs before the handler. It returns 403 if the current user is not an `Admin` in their tenant. A caller that can manage all tenants passes: a client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope. See [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability).
+A command checks a permission in its handler with `IPermissionGuard` (see [features-and-cqrs.md](backend/features-and-cqrs.md#permission-checks)). A permission is a value of `Permission` in `Domain/Users/Permission.cs`. A user has a permission when they have a `UserPermission` row for it.
 
-These commands need an admin: `AddUser`, `UpdateUser`, `DeleteUser`, `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission`, `UpdateTenant`, and `DeleteTenant`.
+| Permission | Handlers that require it |
+|------------|--------------------------|
+| `manage_users` | `AddUser`, `UpdateUser` for another user, `DeleteUser` |
+| `manage_user_access` | `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission` |
+| `manage_tenant` | `UpdateTenant`, `DeleteTenant` |
 
-A command can also implement `IAllowSelf`. Then the user that the command is about also passes. `UpdateUser` uses it, so a user can update their own record. The update DTO has no role, so a user cannot make themselves an admin.
+The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.
+
+A caller can give or take away a permission only if they have it. Thus a user with only `manage_users` cannot add or delete an `Admin`, and a user with only `manage_user_access` cannot give or take away `manage_tenant` or change the role of an `Admin`. As a result, a user with only some of the permissions cannot take access away from an admin. `manage_tenant` gives both the rename and the delete of the tenant, so give it only to a user who can delete the tenant.
+
+### The callers that pass
+
+| Caller | Result of a permission check |
+|--------|------------------------------|
+| A user with a user record | Passes if the user has the permission |
+| The user that the command is about, for `RequireSelfOrAsync` | Passes. `UpdateUser` uses it, so that a user can update their own record. The update DTO has no role, so a user cannot give themselves access. |
+| A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
+| A client in `Tenancy:ReadAllTenantsClientIds`, or a machine client on no list | 403 |
+| A signed-in user with no user record, or an anonymous principal | 403 |
+
+`AddTenant` and `InitiateUserAndTenant` act outside one tenant. They do not check a permission. They check `ITenantScopeProvider.CanManageAllTenants()` in the handler (see [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability)). Do not make this capability a permission, because an admin could then give it to themselves.
+
+### Where the permissions come from
+
+The guard reads the user and their permission rows from the database in each command that checks. It does not cache them and does not read them from the token. As a result, a removed permission or a deleted user is denied on the next request on each server instance. The cost is one indexed query in each command that checks. The reasons are in [ADR 0009](adr/0009-permission-checks-in-the-handler.md).
+
+### Add a permission
+
+1. Add a value to `PermissionEnum` in `Permission.cs`, and a static method that returns it, for example `Permission.ManageOrders()`. Use a snake case name, for example `manage_orders`.
+2. Add an EF Core migration that gives the permission to the admins that exist (see [Migrations](#migrations)). Call `migrationBuilder.GrantPermissionToRole("Admin", "manage_orders")` in `Up`. Write the name as a string, so that the migration does not change when `Permission` changes. New admins get the permission from the role defaults.
+3. Call `permissionGuard.RequireAsync(Permission.ManageOrders(), cancellationToken)` first in each handler that needs it.
+4. Declare the 403 on each HTTP endpoint of these handlers.
+5. Add an integration test for a user with the permission and a user without it.
+
+To remove a permission, remove its value and add a migration that calls `DeletePermission`. A row with a name that `Permission` does not know stops each load of its user.
 
 ## Database
 

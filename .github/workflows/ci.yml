@@ -247,6 +247,9 @@ jobs:
       # in auth-flows.spec.ts needs it. The public Duende service gets no margin, so that the job does not refresh on
       # each call to it, and the test skips there.
       BffRefreshBeforeExpirationSeconds: ${{ matrix.refresh-margin }}
+      # run-against-stack.ts fails the leg when the stack does not match an EXPECT_* variable. Thus a leg with a margin
+      # cannot pass while the BFF refresh tests skip.
+      EXPECT_REFRESH_MARGIN: ${{ matrix.refresh-margin && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:

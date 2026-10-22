@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { test, expect, Locator, Page, Request } from '@playwright/test'
 import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
+import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
 
 /**
  * Authentication flow tests for all supported Identity Providers.
@@ -629,11 +630,7 @@ test.describe(`BFF refresh - ${currentIdp.name}`, () => {
       !currentIdp.sessionFeatures.refreshRotation,
       `${currentIdp.name} does not rotate refresh tokens, so a BFF that keeps the old refresh token also passes (section 6 of the spec).`,
     )
-    const margin = Number(process.env.BFF_REFRESH_BEFORE_EXPIRATION_SECONDS ?? '0')
-    test.skip(
-      !(margin > 3600),
-      'The BFF refreshes on each API call only when the stack starts with BffRefreshBeforeExpirationSeconds above the access token lifetime of 3600 s, for example BffRefreshBeforeExpirationSeconds=86400 (docs/authentication.md).',
-    )
+    test.skip(!refreshesOnEachCall(process.env.BFF_REFRESH_BEFORE_EXPIRATION_SECONDS), refreshMarginHint)
 
     const discovery = await readDiscovery()
     await signInThroughSpa(page)

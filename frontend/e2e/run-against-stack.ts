@@ -3,10 +3,12 @@
  * An isolated stack has random ports, so this script reads the URLs from `dotnet aspire describe`.
  * The IDP is the one whose resource is in the stack, or the Duende demo if the stack has no IdP resource.
  * Set IDP to override it. Extra arguments go to `playwright test`, for example `pnpm test:e2e:stack --repeat-each=5`.
+ * CI sets EXPECT_* variables, and the script stops when the stack does not match them. See the expectations below.
  * See docs/authentication.md for the command that starts the stack.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { idpNames, loadIdp } from './idps.ts'
+import { refreshesOnEachCall } from './stack-features.ts'
 
 interface DescribedResource {
   displayName: string
@@ -91,6 +93,34 @@ if (idp === 'keycloak') {
 } else if (idp === 'authentik') {
   env.IDP_URL = endpointUrl('authentik', 'http')
   env.IDP_ADMIN_TOKEN = appHostSecret('Parameters:authentik-bootstrap-token')
+}
+
+// CI sets an EXPECT_* variable for each feature that its leg must test, so that a leg cannot pass while its main test
+// skips. The script stops when an expectation and the value from the stack disagree. An unset variable checks
+// nothing. To check one more feature, add an entry.
+const expectations: { variable: string; feature: string; actual: boolean }[] = [
+  {
+    variable: 'EXPECT_REFRESH_MARGIN',
+    feature: 'a BFF refresh on each API call (Auth__RefreshBeforeExpirationSeconds above the access token lifetime)',
+    actual: refreshesOnEachCall(env.BFF_REFRESH_BEFORE_EXPIRATION_SECONDS),
+  },
+]
+let mismatch = false
+for (const { variable, feature, actual } of expectations) {
+  const expected = process.env[variable]
+  if (expected === undefined || expected === '') {
+    continue
+  }
+  if (expected !== 'true' && expected !== 'false') {
+    throw new Error(`${variable} must be true or false, not '${expected}'.`)
+  }
+  if ((expected === 'true') !== actual) {
+    console.error(`${variable}=${expected}, but the stack has ${actual ? '' : 'no '}${feature}.`)
+    mismatch = true
+  }
+}
+if (mismatch) {
+  process.exit(1)
 }
 
 console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP}`)

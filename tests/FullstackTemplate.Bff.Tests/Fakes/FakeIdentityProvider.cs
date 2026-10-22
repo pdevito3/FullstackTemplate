@@ -29,9 +29,10 @@ using Microsoft.IdentityModel.Tokens;
 /// closes the connection),
 /// <c>test_iss</c> (the <c>iss</c> of the callback, or <c>omit</c> for none), <c>test_aud</c> (one more audience in
 /// the ID token), <c>test_azp</c> (the <c>azp</c> of the ID token), <c>test_nonce=wrong</c> (an ID token
-/// <c>nonce</c> that is not the one of the authorize request), and <c>test_at_hash=wrong</c> (an <c>at_hash</c> that
-/// is not the hash of the access token). The ID token has the correct <c>at_hash</c> by default. A refresh response
-/// has no <c>id_token</c>. Refresh tokens rotate: each one works one time, and a reuse gets <c>invalid_grant</c>.
+/// <c>nonce</c> that is not the one of the authorize request), <c>test_at_hash=wrong</c> (an <c>at_hash</c> that
+/// is not the hash of the access token), and <c>test_id_token</c> (<c>unsigned</c> gives an ID token with
+/// <c>alg=none</c>). The ID token has the correct <c>at_hash</c> by default. A refresh response has no <c>id_token</c>.
+/// Refresh tokens rotate: each one works one time, and a reuse gets <c>invalid_grant</c>.
 /// </para>
 /// <para>
 /// <see cref="FakeProviderOptions"/> chooses the optional features in its discovery document. The token and PAR
@@ -315,6 +316,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 ExtraAudience: Parameter("test_aud"),
                 AuthorizedParty: Parameter("test_azp"),
                 WrongAtHash: Parameter("test_at_hash") == "wrong",
+                UnsignedIdToken: Parameter("test_id_token") == "unsigned",
                 RedirectUri: redirectUri,
                 CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null);
 
@@ -481,7 +483,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             if (grant.AuthorizedParty is not null)
                 claims["azp"] = grant.AuthorizedParty;
 
-            idToken = CreateJwt(claims, "JWT");
+            idToken = CreateJwt(claims, "JWT", withoutSignature: grant.UnsignedIdToken);
             response["id_token"] = idToken;
         }
 
@@ -502,7 +504,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     /// <param name="Refresh">The <c>test_refresh</c> mode: null, <c>fail</c>, or <c>unavailable</c>.</param>
     private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, int? RefreshExpiresIn, string? Refresh,
-        string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, string RedirectUri, string? CodeChallenge);
+        string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, bool UnsignedIdToken, string RedirectUri, string? CodeChallenge);
 
     /// <summary>
     /// One request to the token endpoint.

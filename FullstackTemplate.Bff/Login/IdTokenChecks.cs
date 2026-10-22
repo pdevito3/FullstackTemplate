@@ -9,9 +9,20 @@ namespace FullstackTemplate.Bff.Login;
 public static class IdTokenChecks
 {
     public const string AudienceClaim = "aud";
+    public const string AlgorithmHeader = "alg";
 
     public static Task ValidateAsync(TokenValidatedContext context)
     {
+        // The handler turns off RequireSignedTokens for an ID token from the token endpoint (Core 3.1.3.7 lets TLS
+        // stand in for the signature). The client is registered for one algorithm, so alg=none is never valid.
+        // The at_hash check below needs a hash algorithm from alg, so this check runs first.
+        var algorithmFailure = CheckAlgorithm(context.SecurityToken.Header.Alg, context.Options.TokenValidationParameters.ValidAlgorithms);
+        if (algorithmFailure is not null)
+        {
+            context.Fail(new CallbackRejectedException(AlgorithmHeader, algorithmFailure));
+            return Task.CompletedTask;
+        }
+
         // The code redemption of TokenClientAuthentication makes the handler skip these checks: the ID token and
         // access token are present, the ID token claims (Core 3.1.3.7), the nonce, and at_hash.
         if (context.TokenEndpointResponse is not null)
@@ -31,6 +42,14 @@ public static class IdTokenChecks
 
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// The ID token must have one of the valid algorithms of the client registration. Null when it passes.
+    /// </summary>
+    public static string? CheckAlgorithm(string? algorithm, IEnumerable<string>? validAlgorithms) =>
+        validAlgorithms?.Contains(algorithm, StringComparer.Ordinal) == true
+            ? null
+            : $"The ID token has the algorithm '{algorithm}', which the client registration does not allow.";
 
     /// <summary>
     /// The strict audience check: the <c>aud</c> of the ID token holds only the client id (Core 3.1.3.7, no

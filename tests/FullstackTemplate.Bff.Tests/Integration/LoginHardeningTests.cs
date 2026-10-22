@@ -86,6 +86,18 @@ public class LoginHardeningTests
     }
 
     [Test]
+    public async Task an_unsigned_id_token_gets_400_problem_and_no_session()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_id_token=unsigned");
+
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, IdTokenChecks.AlgorithmHeader);
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
     public async Task an_id_token_with_another_audience_gets_400_problem_and_no_session()
     {
         using var browser = BffApp.Instance.CreateBrowser();

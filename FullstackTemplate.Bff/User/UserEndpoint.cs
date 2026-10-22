@@ -22,7 +22,7 @@ public static class UserEndpoint
     // The OIDC handler stores the session_state of the authorize response under this key.
     private const string SessionStateItem = ".sessionState";
 
-    public static async Task HandleAsync(HttpContext context)
+    public static async Task HandleAsync(HttpContext context, TimeProvider timeProvider)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (!result.Succeeded)
@@ -38,7 +38,7 @@ public static class UserEndpoint
             claims.Add(new ClaimRecord(LogoutUrlClaim, LogoutUrl(context.Request.PathBase, result.Principal.FindFirst("sid")?.Value)));
 
         if (result.Properties.ExpiresUtc is { } expiresUtc)
-            claims.Add(new ClaimRecord(SessionExpiresInClaim, Math.Round((expiresUtc - DateTimeOffset.UtcNow).TotalSeconds)));
+            claims.Add(new ClaimRecord(SessionExpiresInClaim, Math.Round((expiresUtc - timeProvider.GetUtcNow()).TotalSeconds)));
 
         if (result.Properties.Items.TryGetValue(SessionStateItem, out var sessionState) && sessionState is not null)
             claims.Add(new ClaimRecord(SessionStateClaim, sessionState));

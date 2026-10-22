@@ -71,6 +71,12 @@ public sealed record AuthProviderConfig
     public IReadOnlyDictionary<string, string> BffSettings { get; init; } = new Dictionary<string, string>();
 
     /// <summary>
+    /// More environment variables for the server only, for a provider that needs a server setting that no other
+    /// provider needs.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ServerSettings { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
     /// Changes the BFF resource after the AppHost has given it the auth settings, for a provider that must change how
     /// the BFF starts or listens.
     /// </summary>
@@ -132,6 +138,11 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
             .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
             .WithEnvironment("Auth__AudienceClaimType", authProvider.AudienceClaimType);
+
+        foreach (var (name, value) in authProvider.ServerSettings)
+        {
+            resource.WithEnvironment(name, value);
+        }
 
         // Apply authority - either static URL or container endpoint
         if (authProvider.Authority is not null)

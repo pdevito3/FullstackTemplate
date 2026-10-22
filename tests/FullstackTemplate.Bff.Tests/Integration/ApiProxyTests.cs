@@ -64,6 +64,39 @@ public class ApiProxyTests
     }
 
     [Test]
+    public async Task a_token_with_no_expires_in_is_not_refreshed_by_default()
+    {
+        var provider = BffApp.Instance.IdentityProvider;
+        using var browser = BffApp.Instance.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-no-expires-in&test_expires_in=omit");
+
+        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        provider.RefreshCount("user-no-expires-in").ShouldBe(0);
+    }
+
+    [Test]
+    public async Task the_default_access_token_lifetime_applies_to_the_login_and_to_each_refresh_with_no_expires_in()
+    {
+        // 60 seconds is less than the 120 seconds of RefreshBeforeExpiration, so each call refreshes
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["Auth:DefaultAccessTokenLifetime"] = "00:01:00",
+        });
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-default-lifetime&test_expires_in=omit");
+
+        var first = await browser.GetApiAsync("/api/v1/weather");
+        app.IdentityProvider.RefreshCount("user-default-lifetime").ShouldBe(1);
+        var second = await browser.GetApiAsync("/api/v1/weather");
+
+        // The second refresh proves that the refreshed token got the lifetime too, not "never expires"
+        app.IdentityProvider.RefreshCount("user-default-lifetime").ShouldBe(2);
+        (await second.ReadEchoAsync()).Headers["Authorization"].ShouldNotBe((await first.ReadEchoAsync()).Headers["Authorization"]);
+    }
+
+    [Test]
     public async Task a_browser_authorization_or_dpop_header_never_reaches_the_api_for_an_anonymous_request()
     {
         using var browser = BffApp.Instance.CreateBrowser();

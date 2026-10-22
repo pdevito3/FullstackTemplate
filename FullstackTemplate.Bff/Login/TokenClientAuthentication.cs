@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Duende.AccessTokenManagement.OpenIdConnect;
 using Duende.IdentityModel.Client;
+using FullstackTemplate.Bff.Authentication;
 using FullstackTemplate.Bff.Features;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
@@ -77,6 +78,7 @@ public sealed class TokenClientAuthentication(IOptions<UserTokenManagementOption
                 $"The token endpoint returned {(int)response.StatusCode} with error '{tokenResponse.Error}', error_description '{tokenResponse.ErrorDescription}', and error_uri '{tokenResponse.ErrorUri}'.");
         }
 
+        DefaultAccessTokenLifetime.ApplyTo(tokenResponse, context.HttpContext.RequestServices.GetRequiredService<IConfiguration>());
         context.HandleCodeRedemption(tokenResponse);
     }
 

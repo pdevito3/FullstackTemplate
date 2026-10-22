@@ -213,6 +213,7 @@ public static class AuthExtensions
             options.RefreshBeforeExpiration = TimeSpan.FromSeconds(refreshBeforeExpirationSeconds);
         });
         RefreshFailureMetrics.Register(services);
+        DefaultAccessTokenLifetime.AddToRefresh(services);
         services.AddOptions<RefreshOptions>()
             .BindConfiguration(RefreshOptions.SectionName)
             .ValidateDataAnnotations()

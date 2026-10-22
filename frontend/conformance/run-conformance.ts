@@ -11,9 +11,11 @@
  * for each test module, after the module waits for the RP. A Playwright browser then goes through /bff/login, and
  * through /bff/logout for the logout plans. The suite pages need no user input.
  *
- * Each FAILED result fails the run. Each WARNING or REVIEW result, and each module that does not finish, fails the
- * run, unless accepted-results.json lists it with a reason. The results of a report-only plan never fail the run.
- * The results, the HTML export of each plan, and the screenshots go to conformance/results/.
+ * Each FAILED result fails the run. Each WARNING or REVIEW result fails the run, unless accepted-results.json lists
+ * it with a reason. The FAILED, WARNING, and REVIEW results of a report-only plan do not fail the run. Each module
+ * that does not finish is "not run" and fails the run, also in a report-only plan: it has no result, so a green run
+ * would hide a plan that tests nothing. The results, the HTML export of each plan, and the screenshots go to
+ * conformance/results/.
  *
  * Arguments: the names of the plans to run (default: all). CONFORMANCE_SUITE_URL changes the suite URL.
  */
@@ -51,12 +53,16 @@ interface PlanDefinition {
 const staticClient = { client_registration: 'static_client', request_type: 'plain_http_request' }
 const codeFlow = { ...staticClient, client_auth_type: 'client_secret_basic', response_mode: 'default' }
 
+const finishedResults = ['PASSED', 'SKIPPED', 'WARNING', 'REVIEW', 'FAILED']
+
 const plans: PlanDefinition[] = [
   { name: 'oidcc-client-basic-certification-test-plan', variant: staticClient, flow: 'login' },
   { name: 'oidcc-client-config-certification-test-plan', variant: codeFlow, flow: 'login' },
   { name: 'oidcc-client-rp-initiated-logout-rp-basic', variant: codeFlow, flow: 'login-logout' },
   { name: 'oidcc-client-back-channel-logout-rp-basic', variant: codeFlow, flow: 'login-logout' },
-  // Not part of the certification program. The BFF does not call the userinfo endpoint after a refresh.
+  // Not part of the certification program. The happy path module finishes on a userinfo call with the refreshed
+  // access token. The BFF does not make it, but the server does, because it checks the opaque access tokens of the
+  // suite at the userinfo endpoint (Auth:AccessTokenValidation in ConformanceAuthProvider).
   { name: 'oidcc-client-refreshtoken-test-plan', variant: { ...codeFlow, response_type: 'code' }, flow: 'login-refresh', reportOnly: true },
 ]
 
@@ -184,6 +190,13 @@ async function warmUp(api: APIRequestContext) {
 async function drive(browser: Browser, bff: string, flow: Flow, screenshot: string, steps: string[]) {
   const context = await browser.newContext({ ignoreHTTPSErrors: true })
   const page = await context.newPage()
+  // The SPA calls the API on its own after the login, on the origin of the Vite dev server. Each API call can make a
+  // refresh, and the server checks the token at the userinfo endpoint of the suite. A request after the module
+  // finished fails it. So only the driver calls the API, with context.request, which this route does not stop.
+  await page.route(
+    (url) => url.pathname.startsWith('/api/') && url.origin !== new URL(suiteUrl).origin,
+    (route) => route.abort(),
+  )
   const step = async (name: string, action: () => Promise<string>) => {
     try {
       steps.push(`${name}: ${await action()}`)
@@ -263,20 +276,25 @@ async function runPlan(api: APIRequestContext, browser: Browser, bff: string, pl
       }
       const info = await waitForStatus(api, result.id, ['FINISHED', 'INTERRUPTED'], finishTimeoutMs)
       result.status = info.status
-      result.result = info.status === 'FINISHED' ? (info.result ?? 'UNKNOWN') : `NOT_FINISHED (${info.status})`
+      // A failure in the suite interrupts the module with the result FAILED. That module ran.
+      const ran = info.status === 'FINISHED' || (info.status === 'INTERRUPTED' && info.result === 'FAILED')
+      result.result = ran ? (info.result ?? 'UNKNOWN') : `NOT_FINISHED (${info.status})`
       if (info.status !== 'FINISHED') await api.delete(`api/runner/${result.id}`)
     } catch (error) {
       result.steps.push(`error: ${(error as Error).message.split('\n')[0]}`)
     }
-    if (!['PASSED', 'SKIPPED'].includes(result.result)) {
-      // Only a WARNING or a REVIEW can be accepted. Each FAILED and each unfinished module fails the run.
+    if (!finishedResults.includes(result.result)) {
+      // Not run: no result, so it fails the run in each plan
+      result.blocking = true
+    } else if (!['PASSED', 'SKIPPED'].includes(result.result)) {
+      // Only a WARNING or a REVIEW can be accepted. Each FAILED fails the run.
       const entry = ['WARNING', 'REVIEW'].includes(result.result)
         ? accepted.find((a) => a.plan === plan.name && a.module === testModule && a.result === result.result)
         : undefined
       result.accepted = entry?.reason
       result.blocking = !plan.reportOnly && !entry
     }
-    const mark = result.blocking ? 'FAIL' : result.accepted ? 'accepted' : plan.reportOnly && result.result !== 'PASSED' ? 'report only' : 'ok'
+    const mark = result.blocking ? 'FAIL' : result.accepted ? 'accepted' : plan.reportOnly && !['PASSED', 'SKIPPED'].includes(result.result) ? 'report only' : 'ok'
     console.log(`  ${result.result.padEnd(9)} ${testModule} [${mark}] ${result.steps.join('; ')}`)
     results.push(result)
   }
@@ -291,20 +309,36 @@ async function runPlan(api: APIRequestContext, browser: Browser, bff: string, pl
 }
 
 function summarize(results: ModuleResult[]) {
-  const lines = ['## OpenID conformance suite', '', '| Plan | Passed | Skipped | Warning | Review | Failed | Not finished | Blocking |', '|---|---|---|---|---|---|---|---|']
-  for (const plan of plans) {
+  const lines = [
+    '## OpenID conformance suite',
+    '',
+    '| Plan | Status | Passed | Skipped | Warning | Review | Failed | Not run | Blocking |',
+    '|---|---|---|---|---|---|---|---|---|',
+  ]
+  for (const plan of plans.filter((p) => results.some((r) => r.plan === p.name))) {
     const planResults = results.filter((r) => r.plan === plan.name)
-    if (planResults.length === 0) continue
     const count = (predicate: (r: ModuleResult) => boolean) => planResults.filter(predicate).length
+    const notRun = count((r) => !finishedResults.includes(r.result))
+    const status = notRun === 0 ? 'ran' : notRun === planResults.length ? 'NOT RUN' : 'INCOMPLETE'
     const name = plan.reportOnly ? `${plan.name} (report only)` : plan.name
     lines.push(
-      `| ${name} | ${count((r) => r.result === 'PASSED')} | ${count((r) => r.result === 'SKIPPED')} | ${count((r) => r.result === 'WARNING')} | ${count((r) => r.result === 'REVIEW')} | ${count((r) => r.result === 'FAILED')} | ${count((r) => !['PASSED', 'SKIPPED', 'WARNING', 'REVIEW', 'FAILED'].includes(r.result))} | ${count((r) => r.blocking)} |`,
+      `| ${name} | ${status} | ${count((r) => r.result === 'PASSED')} | ${count((r) => r.result === 'SKIPPED')} | ${count((r) => r.result === 'WARNING')} | ${count((r) => r.result === 'REVIEW')} | ${count((r) => r.result === 'FAILED')} | ${notRun} | ${count((r) => r.blocking)} |`,
     )
   }
-  const notes = results.filter((r) => r.blocking || r.accepted)
+  const reportOnly = new Set(plans.filter((p) => p.reportOnly).map((p) => p.name))
+  const notes = results.filter((r) => r.blocking || r.accepted || (reportOnly.has(r.plan) && !['PASSED', 'SKIPPED'].includes(r.result)))
   if (notes.length > 0) {
     lines.push('', '| Plan | Module | Result | Note |', '|---|---|---|---|')
-    for (const r of notes) lines.push(`| ${r.plan} | ${r.module} | ${r.result} | ${r.accepted ? `Accepted: ${r.accepted}` : 'Blocking'} |`)
+    for (const r of notes) {
+      const note = !finishedResults.includes(r.result)
+        ? `Blocking: not run. ${r.steps.join('; ').replaceAll('|', '\\|')}`
+        : r.blocking
+          ? 'Blocking'
+          : r.accepted
+            ? `Accepted: ${r.accepted}`
+            : 'Report only'
+      lines.push(`| ${r.plan} | ${r.module} | ${r.result} | ${note} |`)
+    }
   }
   return lines.join('\n') + '\n'
 }

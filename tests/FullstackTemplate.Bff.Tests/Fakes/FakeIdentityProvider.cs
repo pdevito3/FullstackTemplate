@@ -22,8 +22,9 @@ using Microsoft.IdentityModel.Tokens;
 /// talk to it over HTTP as they talk to a real provider.
 /// <para>
 /// The authorize endpoint reads test-only query parameters, so that each test chooses its own user:
-/// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_refresh_expires_in</c> (the <c>expires_in</c> of a
-/// refresh response, by default <c>test_expires_in</c>), <c>test_session_state</c>, <c>test_error</c>,
+/// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c> (<c>omit</c> for no <c>expires_in</c> in each token
+/// response), <c>test_refresh_expires_in</c> (the <c>expires_in</c> of a refresh response, by default
+/// <c>test_expires_in</c>), <c>test_session_state</c>, <c>test_error</c>,
 /// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>, and <c>unavailable</c> a 503),
 /// <c>test_revoke</c> (<c>fail</c> makes each revocation of a refresh token of the user return 500, and <c>drop</c>
 /// closes the connection),
@@ -317,6 +318,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 AuthorizedParty: Parameter("test_azp"),
                 WrongAtHash: Parameter("test_at_hash") == "wrong",
                 UnsignedIdToken: Parameter("test_id_token") == "unsigned",
+                OmitExpiresIn: Parameter("test_expires_in") == "omit",
                 RedirectUri: redirectUri,
                 CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null);
 
@@ -461,9 +463,10 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         {
             ["access_token"] = accessToken,
             ["token_type"] = "Bearer",
-            ["expires_in"] = includeIdToken ? grant.ExpiresIn : grant.RefreshExpiresIn ?? grant.ExpiresIn,
             ["refresh_token"] = refreshToken,
         };
+        if (!grant.OmitExpiresIn)
+            response["expires_in"] = includeIdToken ? grant.ExpiresIn : grant.RefreshExpiresIn ?? grant.ExpiresIn;
 
         if (includeIdToken)
         {
@@ -504,7 +507,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     /// <param name="Refresh">The <c>test_refresh</c> mode: null, <c>fail</c>, or <c>unavailable</c>.</param>
     private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, int? RefreshExpiresIn, string? Refresh,
-        string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, bool UnsignedIdToken, string RedirectUri, string? CodeChallenge);
+        string? ExtraAudience, string? AuthorizedParty, bool WrongAtHash, bool UnsignedIdToken, bool OmitExpiresIn,
+        string RedirectUri, string? CodeChallenge);
 
     /// <summary>
     /// One request to the token endpoint.

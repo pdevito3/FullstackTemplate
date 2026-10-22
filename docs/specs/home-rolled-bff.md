@@ -374,7 +374,7 @@ YARP `MapForwarder("/api/{**catch-all}", "<server>/api", ...)`. The server URL c
 
 Decisions: [Refresh lock across BFF instances](https://github.com/pdevito3/FullstackTemplate/issues/24), [Behavior when a token refresh fails](https://github.com/pdevito3/FullstackTemplate/issues/20).
 
-**Registration.** Call `AddOpenIdConnectAccessTokenManagement` one time, after the OIDC options. `RefreshBeforeExpiration` comes from `Auth:RefreshBeforeExpirationSeconds`, default 120 (parity). `IUserTokenStore` keeps its default, `AuthenticationSessionUserAccessTokenStore`. Its sign-in writes through the BFF session store.
+**Registration.** Call `AddOpenIdConnectAccessTokenManagement` one time, after the OIDC options. `RefreshBeforeExpiration` comes from `Auth:RefreshBeforeExpirationSeconds`, default 120 (parity). If a token response has no `expires_in`, token management treats the access token as one that does not expire, and never refreshes it. `Auth:DefaultAccessTokenLifetime` gives such a token a lifetime, at the code exchange and at each refresh. It has no default. Only the conformance job sets it (section 7). `IUserTokenStore` keeps its default, `AuthenticationSessionUserAccessTokenStore`. Its sign-in writes through the BFF session store.
 
 **The token attach.** A YARP request transform gets the user token through `GetUserAccessTokenAsync`:
 
@@ -632,8 +632,11 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 - **`bff-tests`.** The BFF unit and integration tests, with the two-host lock tests.
 - **`e2e`.** A matrix of the four providers. Each leg runs `dotnet aspire start --isolated` and waits for healthy resources. The Duende Demo leg uses `continue-on-error`, because it is a public service. The other three legs block a merge.
 - **`conformance`.** The job runs `dotnet aspire start --isolated` with the `Conformance` provider. The suite starts with `docker-compose-prebuilt.yml` and an override file with `extra_hosts: host.docker.internal:host-gateway`. The BFF trusts the self-signed suite certificate. The job sets `Auth:MetadataRefreshInterval` to 1 s, so that each test module gets fresh signing keys.
+  - The suite sends no `expires_in`, so the job sets `Auth:DefaultAccessTokenLifetime` to 1 s. Then the next API call refreshes the token.
+  - The access tokens of the suite are opaque. So the server, with `Auth:AccessTokenValidation=Userinfo` (Development only), checks each token at the userinfo endpoint of the suite. The happy path module of the refresh plan finishes on that userinfo call with the refreshed token. The driver stops the API calls of the SPA, because a call after a module finished fails it.
   - Each `FAILED` result fails the job.
   - Each `WARNING` or `REVIEW` result fails the job, unless it is in a committed list of accepted results. Each entry in the list gives a reason.
+  - The results of the report-only plan do not fail the job. But each module that does not finish, in each plan, is "not run" and fails the job. A plan with no result must not give a green job.
 - **Reports.** Each job uploads the exported suite results, the Playwright traces and screenshots, and the stack logs as artifacts, kept for 30 days. The job summary lists each plan with its pass, warning, and fail counts.
 - **Scripts.** The scripts for the stacks and the suite go in the repo, so that a developer can run the same commands locally.
 

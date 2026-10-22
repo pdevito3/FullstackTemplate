@@ -45,7 +45,7 @@ public class UpdateUserRoleCommandTests : TestBase
 
         // Assert
         userReturned.Role.ShouldBe("Admin");
-        userReturned.Permissions.ShouldContain("do_something_special");
+        userReturned.Permissions.ShouldContain("manage_tenant");
     }
 
     [Test]
@@ -69,7 +69,7 @@ public class UpdateUserRoleCommandTests : TestBase
 
         userInDb.ShouldNotBeNull();
         userInDb.Role.Value.ShouldBe("Admin");
-        userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
+        userInDb.HasPermission(Permission.ManageTenant()).ShouldBeTrue();
     }
 
     [Test]
@@ -131,8 +131,7 @@ public class UpdateUserRoleCommandTests : TestBase
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert - Should have exactly the default admin permissions
-        userReturned.Permissions.Count.ShouldBe(1);
-        userReturned.Permissions.ShouldContain("do_something_special");
+        userReturned.Permissions.ShouldBe(Permission.ListNames(), ignoreOrder: true);
     }
 
     [Test]
@@ -174,17 +173,17 @@ public class UpdateUserRoleCommandTests : TestBase
 
         // Remove permission via command
         await testingServiceScope.SendAsync(
-            new RemoveUserPermission.Command(createdUser.Id, "do_something_special"));
+            new RemoveUserPermission.Command(createdUser.Id, "manage_tenant"));
 
         // Verify permission was removed
         var userAfterRemove = await testingServiceScope.SendAsync(new GetUser.Query(createdUser.Id));
-        userAfterRemove.Permissions.ShouldBeEmpty();
+        userAfterRemove.Permissions.ShouldNotContain("manage_tenant");
 
         // Act - Set to Admin again
         var command = new UpdateUserRole.Command(createdUser.Id, "Admin");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert - Permission should be restored
-        userReturned.Permissions.ShouldContain("do_something_special");
+        userReturned.Permissions.ShouldContain("manage_tenant");
     }
 }

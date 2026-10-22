@@ -33,12 +33,16 @@ public partial class Permission : ValueObject
     public static List<Permission> GetAll()
         => PermissionEnum.List.Select(x => new Permission(x.Name)).ToList();
 
-    public static Permission DoSomethingSpecial() => new(PermissionEnum.DoSomethingSpecial.Name);
+    public static Permission ManageUsers() => new(PermissionEnum.ManageUsers.Name);
+    public static Permission ManageUserAccess() => new(PermissionEnum.ManageUserAccess.Name);
+    public static Permission ManageTenant() => new(PermissionEnum.ManageTenant.Name);
 
     protected Permission() { } // EF Core
 
     private sealed class PermissionEnum(string name, int value) : SmartEnum<PermissionEnum>(name, value)
     {
-        public static readonly PermissionEnum DoSomethingSpecial = new("do_something_special", 0);
+        public static readonly PermissionEnum ManageUsers = new("manage_users", 0);
+        public static readonly PermissionEnum ManageUserAccess = new("manage_user_access", 1);
+        public static readonly PermissionEnum ManageTenant = new("manage_tenant", 2);
     }
 }

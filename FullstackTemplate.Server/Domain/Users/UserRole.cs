@@ -53,10 +53,7 @@ public partial class UserRole : ValueObject
 
         private sealed class AdminType() : UserRoleEnum("Admin", 0)
         {
-            public override Permission[] GetDefaultPermissions() =>
-            [
-                Permission.DoSomethingSpecial()
-            ];
+            public override Permission[] GetDefaultPermissions() => [.. Permission.GetAll()];
         }
 
         private sealed class UserType() : UserRoleEnum("User", 1)

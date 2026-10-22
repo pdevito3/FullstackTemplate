@@ -38,7 +38,7 @@ public class UserListQueryTests : TestBase
             .Replace("{identifier}", target.Identifier)
             .Replace("{id}", target.Id.ToString())
             .Replace("{role}", target.Role.Value)
-            .Replace("{permission}", Permission.DoSomethingSpecial().Value);
+            .Replace("{permission}", Permission.ManageTenant().Value);
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?filters={Uri.EscapeDataString(filters)}");
@@ -211,7 +211,7 @@ public class UserListQueryTests : TestBase
         await InsertAsync(tenant);
         var target = User.Create(FakeUserInTenant(tenant.Id, "a").Generate());
         target.UpdateRole(UserRole.Admin());
-        target.AddPermission(Permission.DoSomethingSpecial());
+        target.AddPermission(Permission.ManageTenant());
         var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate());
         caller.UpdateRole(UserRole.User());
         await InsertAsync(target, caller);

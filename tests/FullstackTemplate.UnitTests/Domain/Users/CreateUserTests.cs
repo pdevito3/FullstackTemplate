@@ -94,8 +94,7 @@ public class CreateUserTests
 
         // Assert
         user.Role.Value.ShouldBe("Admin");
-        user.UserPermissions.ShouldNotBeEmpty();
-        user.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
+        user.UserPermissions.Select(p => p.Permission).ShouldBe(Permission.GetAll(), ignoreOrder: true);
     }
 
     [Test]

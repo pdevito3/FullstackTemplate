@@ -12,7 +12,7 @@
     "backChannelLogout": false,
     "endSession": true,
     "pushedAuthorization": false,
-    "dpop": false
+    "dpop": true
   },
   "sessionFeatures": {
     "backChannelLogoutReachesBff": false,

@@ -43,7 +43,8 @@ export interface IdpCapabilities {
   // Discovery lists pushed_authorization_request_endpoint, so the BFF pushes the authorize request (RFC 9126)
   pushedAuthorization: boolean
   // Discovery lists dpop_signing_alg_values_supported, so the BFF can bind the tokens to its key (RFC 9449). Keycloak
-  // lists it because the AppHost starts it with --features=dpop.
+  // lists it because the AppHost starts it with --features=dpop. FusionAuth and Authentik list it too, but the AppHost
+  // runs DPoP only with a provider that sets TestedWithDPoP, so the DPoP tests do not run against them.
   dpop: boolean
 }
 

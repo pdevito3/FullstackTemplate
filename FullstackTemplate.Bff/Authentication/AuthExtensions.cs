@@ -128,6 +128,7 @@ public static class AuthExtensions
                     return context.Result is null ? LoginPrompt.RedirectOnPromptError(context) : Task.CompletedTask;
                 };
 
+                options.Events.OnPushAuthorization = TokenClientAuthentication.PushAuthorizationAsync;
                 options.Events.OnAuthorizationCodeReceived = TokenClientAuthentication.RedeemCodeAsync;
                 options.Events.OnTokenValidated = IdTokenChecks.ValidateAsync;
                 options.Events.OnRemoteFailure = CallbackRejection.WriteProblemAsync;

@@ -261,6 +261,7 @@ Keep the two trace events of `LoginTraceLink` (`OnRedirectToIdentityProvider` an
   - It calls `context.HandleCodeRedemption` with the response.
 - The Microsoft default is `client_secret_post`.
 - Refresh and revocation use the same method through `ClientCredentialStyle` of `Duende.AccessTokenManagement`. Its default is already `AuthorizationHeader`.
+- The PAR request uses the same method (RFC 9126 section 2). The handler always sends `client_secret_post` to the PAR endpoint, so for `client_secret_basic` a hook in `OnPushAuthorization` pushes the request itself through the backchannel and calls `context.HandlePush`.
 
 **The signing keys.** The OIDC handler owns the `ConfigurationManager` for discovery and the signing keys. The back-channel receiver uses the same instance. `RefreshOnIssuerKeyNotFound` stays `true`, so a new key causes a refresh. `Auth:MetadataRefreshInterval` sets only `RefreshInterval`, the shortest time between two refreshes (minimum 1 s). `AutomaticRefreshInterval` keeps the handler default, because its minimum is 5 minutes. The default of `Auth:MetadataRefreshInterval` is the handler default. Only the conformance job sets a short value (section 7).
 

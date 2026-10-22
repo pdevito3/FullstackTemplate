@@ -25,8 +25,11 @@ using Microsoft.IdentityModel.Tokens;
 /// <c>test_sub</c>, <c>test_sid</c>, <c>test_expires_in</c>, <c>test_session_state</c>, <c>test_error</c>,
 /// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>), <c>test_revoke</c> (<c>fail</c>
 /// makes each revocation of a refresh token of the user return 500, and <c>drop</c> closes the connection),
-/// <c>test_iss</c> (the <c>iss</c> of the callback, or <c>omit</c> for none), and <c>test_aud</c> (one more audience
-/// in the ID token). A refresh response has no <c>id_token</c>.
+/// <c>test_iss</c> (the <c>iss</c> of the callback, or <c>omit</c> for none), <c>test_aud</c> (one more audience in
+/// the ID token), <c>test_azp</c> (the <c>azp</c> of the ID token), <c>test_nonce=wrong</c> (an ID token
+/// <c>nonce</c> that is not the one of the authorize request), and <c>test_at_hash=wrong</c> (an <c>at_hash</c> that
+/// is not the hash of the access token). The ID token has the correct <c>at_hash</c> by default. A refresh response
+/// has no <c>id_token</c>.
 /// </para>
 /// <para>
 /// <see cref="FakeProviderOptions"/> chooses the optional features in its discovery document. The token and PAR
@@ -54,6 +57,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentQueue<IssuedTokens> _issued = new();
     private readonly ConcurrentDictionary<string, string> _revokeModes = new();
     private readonly ConcurrentDictionary<string, Dictionary<string, string>> _pushedRequests = new();
+    private readonly ConcurrentQueue<(string Token, string ClientAuthentication)> _revocations = new();
 
     private FakeIdentityProvider(WebApplication app, FakeProviderOptions options)
     {
@@ -78,6 +82,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// <c>sub</c> of its grant (null when the code or token is unknown).
     /// </summary>
     public ConcurrentQueue<TokenRequest> TokenRequests { get; } = new();
+
+    /// <summary>
+    /// The client authentication of each request to the PAR endpoint, with the <c>request_uri</c> that it got
+    /// (null when the client authentication failed).
+    /// </summary>
+    public ConcurrentQueue<PushedRequest> PushedAuthorizationRequests { get; } = new();
 
     private static RSAParameters CreateRsaParameters()
     {
@@ -150,6 +160,14 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         RevokedTokens.Any(t => _refreshTokens.TryGetValue(t, out var grant) && grant.Subject == subject);
 
     /// <summary>
+    /// The client authentication of each accepted revocation of a refresh token that the provider issued to
+    /// <paramref name="subject"/>, in order.
+    /// </summary>
+    public IReadOnlyList<string> RevocationClientAuthentications(string subject) =>
+        _revocations.Where(r => _refreshTokens.TryGetValue(r.Token, out var grant) && grant.Subject == subject)
+            .Select(r => r.ClientAuthentication).ToList();
+
+    /// <summary>
     /// The number of refresh requests for the refresh tokens of <paramref name="subject"/>.
     /// </summary>
     public int RefreshCount(string subject) =>
@@ -208,10 +226,15 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _app.MapPost("/par", async (HttpRequest request) =>
         {
             var form = await request.ReadFormAsync();
-            if (Authenticate(request, form) is null)
+            var method = Authenticate(request, form);
+            if (method is null)
+            {
+                PushedAuthorizationRequests.Enqueue(new PushedRequest(null, null));
                 return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
+            }
 
             var requestUri = $"urn:ietf:params:oauth:request_uri:{Guid.NewGuid():N}";
+            PushedAuthorizationRequests.Enqueue(new PushedRequest(requestUri, method));
             _pushedRequests[requestUri] = form
                 .Where(f => f.Key is not "client_secret")
                 .ToDictionary(f => f.Key, f => f.Value.ToString());
@@ -257,10 +280,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
             var grant = new Grant(
                 Subject: Parameter("test_sub") ?? "user-1",
                 SessionId: Parameter("test_sid"),
-                Nonce: Parameter("nonce") ?? "",
+                Nonce: Parameter("test_nonce") == "wrong" ? "wrong-nonce" : Parameter("nonce") ?? "",
                 ExpiresIn: int.TryParse(Parameter("test_expires_in"), out var expiresIn) ? expiresIn : 3600,
                 FailRefresh: Parameter("test_refresh") == "fail",
-                ExtraAudience: Parameter("test_aud"));
+                ExtraAudience: Parameter("test_aud"),
+                AuthorizedParty: Parameter("test_azp"),
+                WrongAtHash: Parameter("test_at_hash") == "wrong");
 
             if (Parameter("test_revoke") is { } revokeMode)
                 _revokeModes[grant.Subject] = revokeMode;
@@ -319,11 +344,13 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         _app.MapPost("/revoke", async (HttpContext context) =>
         {
             var form = await context.Request.ReadFormAsync();
-            if (Authenticate(context.Request, form) is null)
+            var method = Authenticate(context.Request, form);
+            if (method is null)
                 return Results.Json(new { error = "invalid_client" }, statusCode: StatusCodes.Status401Unauthorized);
 
             var token = form["token"].ToString();
             RevokedTokens.Add(token);
+            _revocations.Enqueue((token, method));
 
             var mode = _refreshTokens.TryGetValue(token, out var grant) ? _revokeModes.GetValueOrDefault(grant.Subject) : null;
             switch (mode)
@@ -404,11 +431,14 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 ["aud"] = grant.ExtraAudience is { } extra ? new[] { ClientId, extra } : ClientId,
                 ["sub"] = grant.Subject,
                 ["nonce"] = grant.Nonce,
+                ["at_hash"] = AtHash(grant.WrongAtHash ? NewToken("at") : accessToken),
                 ["iat"] = now,
                 ["exp"] = now + 300,
             };
             if (grant.SessionId is not null)
                 claims["sid"] = grant.SessionId;
+            if (grant.AuthorizedParty is not null)
+                claims["azp"] = grant.AuthorizedParty;
 
             idToken = CreateJwt(claims, "JWT");
             response["id_token"] = idToken;
@@ -421,7 +451,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     private static string NewToken(string prefix) => $"{prefix}-{Guid.NewGuid():N}";
 
-    private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh, string? ExtraAudience);
+    // Core 3.1.3.6: the left half of the SHA-256 hash of the access token, base64url-encoded
+    private static string AtHash(string accessToken) =>
+        Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(accessToken))[..16]);
+
+    private sealed record Grant(string Subject, string? SessionId, string Nonce, int ExpiresIn, bool FailRefresh, string? ExtraAudience,
+        string? AuthorizedParty, bool WrongAtHash);
 
     /// <summary>
     /// One request to the token endpoint.
@@ -431,6 +466,15 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     /// client authentication failed.</param>
     /// <param name="Subject">The <c>sub</c> of the code or refresh token, or null when it is unknown.</param>
     public sealed record TokenRequest(string GrantType, string? ClientAuthentication, string? Subject);
+
+    /// <summary>
+    /// One request to the PAR endpoint.
+    /// </summary>
+    /// <param name="RequestUri">The <c>request_uri</c> of the pushed request, or null when the client
+    /// authentication failed.</param>
+    /// <param name="ClientAuthentication"><c>client_secret_basic</c>, <c>client_secret_post</c>, or null when the
+    /// client authentication failed.</param>
+    public sealed record PushedRequest(string? RequestUri, string? ClientAuthentication);
 
     private sealed record IssuedTokens(string Subject, string RefreshToken, string? IdToken);
 

@@ -97,27 +97,57 @@ public class LoginHardeningTests
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    /// <summary>
+    /// The custom code redemption makes the handler skip its checks of the token response, so
+    /// <see cref="IdTokenChecks"/> runs them: the nonce, at_hash, and azp (Core 3.1.3.7).
+    /// </summary>
     [Test]
-    [MethodDataSource(nameof(CallbackPosts))]
-    public async Task a_callback_that_is_not_a_get_gets_400(HttpMethod method, string path, HttpContent? content)
+    [Arguments("test_nonce=wrong")]
+    [Arguments("test_at_hash=wrong")]
+    [Arguments("test_azp=other-client")]
+    public async Task an_id_token_that_fails_a_token_response_check_gets_400_problem_and_no_session(string providerQuery)
     {
         using var browser = BffApp.Instance.CreateBrowser();
-        var login = await browser.GetAsync("/bff/login");
-        var callback = await BffApp.AuthorizeAsync(login.Headers.Location!, $"test_sub={NewSubject()}");
 
-        var response = await browser.SendAsync(new HttpRequestMessage(method, path + callback.Query) { Content = content });
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&{providerQuery}");
+
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// A valid authorization response, in the query and in a form body. Without the guard, the handler reads the
+    /// form of a POST to <c>/signin-oidc</c> and signs in. The handler also fails the other cases without the guard
+    /// (no form, no correlation cookie on the upper-case path, or not a POST), so they only keep the 400.
+    /// </summary>
+    [Test]
+    [MethodDataSource(nameof(CallbackMethods))]
+    public async Task a_callback_that_is_not_a_get_gets_400_and_the_code_is_not_redeemed(HttpMethod method, string path, bool withForm)
+    {
+        var subject = NewSubject();
+        using var browser = BffApp.Instance.CreateBrowser();
+        var login = await browser.GetAsync("/bff/login");
+        var callback = await BffApp.AuthorizeAsync(login.Headers.Location!, $"test_sub={subject}");
+        var parameters = BffApp.Query(callback);
+        var form = withForm
+            ? new FormUrlEncodedContent(parameters.AllKeys.Select(k => new KeyValuePair<string, string>(k!, parameters[k]!)))
+            : null;
+
+        var response = await browser.SendAsync(new HttpRequestMessage(method, path + callback.Query) { Content = form });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         BffApp.SessionCookieValue(response).ShouldBeNull();
+        BffApp.Instance.IdentityProvider.TokenRequests.ShouldNotContain(r => r.Subject == subject);
     }
 
-    public static IEnumerable<Func<(HttpMethod, string, HttpContent?)>> CallbackPosts()
+    public static IEnumerable<Func<(HttpMethod, string, bool)>> CallbackMethods()
     {
-        yield return () => (HttpMethod.Post, "/signin-oidc", null);
-        yield return () => (HttpMethod.Post, "/signin-oidc", new FormUrlEncodedContent([new("code", "x"), new("state", "y")]));
-        yield return () => (HttpMethod.Post, "/SIGNIN-OIDC", new FormUrlEncodedContent([new("code", "x")]));
-        yield return () => (HttpMethod.Put, "/signin-oidc", null);
-        yield return () => (HttpMethod.Head, "/signin-oidc", null);
+        yield return () => (HttpMethod.Post, "/signin-oidc", true);
+        yield return () => (HttpMethod.Post, "/SIGNIN-OIDC", true);
+        yield return () => (HttpMethod.Post, "/signin-oidc", false);
+        yield return () => (HttpMethod.Put, "/signin-oidc", true);
+        yield return () => (HttpMethod.Head, "/signin-oidc", false);
     }
 
     [Test]
@@ -137,8 +167,7 @@ public class LoginHardeningTests
             ("authorization_code", "client_secret_basic"),
             ("refresh_token", "client_secret_basic"),
         ]);
-        // The fake accepts a revocation only with a valid client authentication of a listed method
-        provider.WasRefreshTokenRevoked(subject).ShouldBeTrue();
+        provider.RevocationClientAuthentications(subject).ShouldBe(["client_secret_basic"]);
     }
 
     [Test]
@@ -153,7 +182,9 @@ public class LoginHardeningTests
 
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
+        app.IdentityProvider.RevocationClientAuthentications(subject).ShouldBe(["client_secret_post"]);
         app.IdentityProvider.TokenRequests.Where(r => r.Subject == subject).Select(r => (r.GrantType, r.ClientAuthentication)).ShouldBe(
         [
             ("authorization_code", "client_secret_post"),

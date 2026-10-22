@@ -55,11 +55,35 @@ public class ProviderFeatureTests
         var query = BffApp.Query(authorize);
         query.AllKeys.Order().ShouldBe(["client_id", "request_uri"]);
         query["client_id"].ShouldBe(FakeIdentityProvider.ClientId);
+        // RFC 9126 section 2: the PAR request uses the client authentication of the token endpoint
+        _parProvider.PushedAuthorizationRequests.Single(r => r.RequestUri == query["request_uri"])
+            .ClientAuthentication.ShouldBe("client_secret_basic");
 
         var callback = await browser.GetAsync((await BffApp.AuthorizeAsync(authorize, $"test_sub={NewSubject()}")).PathAndQuery);
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe("/weather");
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task with_par_and_client_authentication_post_the_par_request_sends_the_secret_in_the_body()
+    {
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["Auth:ClientAuthentication"] = nameof(ClientAuthenticationMethod.Post),
+        }, identityProvider: _parProvider);
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+
+        var login = await browser.GetAsync("/bff/login");
+
+        var requestUri = BffApp.Query(login.Headers.Location!)["request_uri"];
+        requestUri.ShouldNotBeNull();
+        _parProvider.PushedAuthorizationRequests.Single(r => r.RequestUri == requestUri)
+            .ClientAuthentication.ShouldBe("client_secret_post");
+        var callback = await browser.GetAsync((await BffApp.AuthorizeAsync(login.Headers.Location!, $"test_sub={subject}")).PathAndQuery);
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        _parProvider.TokenRequests.Single(r => r.Subject == subject).ClientAuthentication.ShouldBe("client_secret_post");
     }
 
     [Test]

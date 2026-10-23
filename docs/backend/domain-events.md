@@ -92,6 +92,7 @@ The context finds each handler in the DI container. You do not register a handle
 - The events run in the order that the entities queued them.
 - A handler can change an entity whose method queues a new event. The new event runs in the same save. After 10 rounds of new events, the save throws an exception, because the handlers then form a cycle.
 - A query in a handler reads the committed rows. It does not see the rows that this save adds. To get an entity that this save adds, use `FindAsync` or `DbSet.Local`. These two do not apply the tenant filter to the entities that the context tracks. If the save can have entities of more than one tenant, compare the `TenantId` of the entity with the tenant of the event.
+- To change a child of an aggregate, such as a `UserPermission` of a `User`, load the root with a tracked query and change the child through the root. The save then changes the version of the root, so a caller that loaded the root before gets a 409. If the context does not track the root, the save throws an `InvalidOperationException` and writes nothing. See [Concurrency](../backend.md#concurrency).
 - To refuse the change, throw a domain exception, for example a `ValidationException`. The save then writes nothing.
 
 ## Errors
@@ -108,6 +109,7 @@ The context refuses these saves with an exception that names the fix:
 | An entity that gets its tenant through `ApplyTenanting` queues a domain event | `NotSupportedException` |
 | A call to `SaveChanges`, the sync version | `NotSupportedException`. Use `SaveChangesAsync`. |
 | Handlers queue new events for more than 10 rounds | `InvalidOperationException`. The message names the event types. |
+| A handler changes a child of a root that the context does not track | `InvalidOperationException`. Load the root, then change the child through it. |
 
 A failed save ends the context, also a failure of EF's own save, such as a 409 conflict. The change tracker still has the handler changes of the failed try. A second save could keep a change that a handler made from old data, or run the handlers again and double the effect. So do not catch the exception and save again. The caller sends the request again, and the new request runs in a new DI scope.
 

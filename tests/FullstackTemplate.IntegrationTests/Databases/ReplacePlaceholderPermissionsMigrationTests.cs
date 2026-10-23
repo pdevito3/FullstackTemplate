@@ -5,11 +5,11 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Utilities;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using NSubstitute;
 using Shouldly;
@@ -108,7 +108,7 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
             .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ITenantScopeProvider>(), Substitute.For<IMediator>());
+            Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 
     private static IEnumerable<string> UpSqlOf(AppDbContext context)

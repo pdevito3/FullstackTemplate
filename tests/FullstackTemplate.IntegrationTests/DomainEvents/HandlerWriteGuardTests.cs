@@ -58,7 +58,7 @@ public class HandlerWriteGuardTests : TestBase
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         var act = () => db.SaveChangesAsync();
 
         // Assert
@@ -92,7 +92,7 @@ public class HandlerWriteGuardTests : TestBase
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         await db.SaveChangesAsync();
 
         // Assert
@@ -121,7 +121,7 @@ public class HandlerWriteGuardTests : TestBase
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         var act = () => db.SaveChangesAsync();
 
         // Assert

@@ -24,7 +24,7 @@ public class DomainEventTracingTests : TestBase
         var traceId = ActivityTraceId.CreateRandom();
         using var request = new HttpRequestMessage(HttpMethod.Put, ApiRoutes.Tenants.Put(tenant.Id))
         {
-            Content = JsonContent.Create(new { name = $"renamed-{Guid.NewGuid()}" }),
+            Content = JsonContent.Create(new { name = $"renamed-{Guid.NewGuid()}", version = tenant.Version }),
         };
         request.Headers.Add("traceparent", $"00-{traceId}-{ActivitySpanId.CreateRandom()}-01");
 

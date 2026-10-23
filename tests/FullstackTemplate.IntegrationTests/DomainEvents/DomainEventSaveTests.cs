@@ -31,7 +31,7 @@ public class DomainEventSaveTests : TestBase
         var newName = $"renamed-{Guid.NewGuid()}";
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = newName });
+        tenant.Update(new TenantForUpdate { Name = newName, Version = tenant.Version });
         await db.SaveChangesAsync();
 
         // Assert
@@ -62,7 +62,7 @@ public class DomainEventSaveTests : TestBase
         var newName = $"renamed-{Guid.NewGuid()}";
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = newName });
+        tenant.Update(new TenantForUpdate { Name = newName, Version = tenant.Version });
         var act = () => db.SaveChangesAsync();
 
         // Assert
@@ -77,7 +77,8 @@ public class DomainEventSaveTests : TestBase
         var retryScope = new TestingServiceScope(services);
         retryScope.SetUserWithDefaults(identifier: scenario.Admin.Identifier);
         var retryDb = retryScope.GetService<AppDbContext>();
-        (await retryDb.Tenants.SingleAsync(t => t.Id == tenant.Id)).Update(new TenantForUpdate { Name = newName });
+        var retryTenant = await retryDb.Tenants.SingleAsync(t => t.Id == tenant.Id);
+        retryTenant.Update(new TenantForUpdate { Name = newName, Version = retryTenant.Version });
         await retryDb.SaveChangesAsync();
         (await ReadAsync(read => read.Tenants.Where(t => t.Id == tenant.Id).Select(t => t.Name).SingleAsync()))
             .ShouldBe(newName);
@@ -95,7 +96,7 @@ public class DomainEventSaveTests : TestBase
 
         // Act
         var act = () => scope.SendAsync(new UpdateTenant.Command(scenario.Tenant.Id,
-            new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}" }));
+            new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}", Version = scenario.Tenant.Version }));
 
         // Assert
         var exception = await act.ShouldThrowAsync<ValidationException>();
@@ -132,7 +133,7 @@ public class DomainEventSaveTests : TestBase
 
         // Act
         secondUser.UpdateRole(UserRole.User());
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         firstUser.UpdateRole(UserRole.User());
         await db.SaveChangesAsync();
 
@@ -154,7 +155,7 @@ public class DomainEventSaveTests : TestBase
         {
             runs++;
             var tenant = await db.Tenants.SingleAsync(t => t.Id == e.Id, ct);
-            tenant.Update(new TenantForUpdate { Name = tenant.Name });
+            tenant.Update(new TenantForUpdate { Name = tenant.Name, Version = tenant.Version });
         }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
@@ -162,7 +163,7 @@ public class DomainEventSaveTests : TestBase
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         var act = () => db.SaveChangesAsync();
 
         // Assert
@@ -189,7 +190,7 @@ public class DomainEventSaveTests : TestBase
         using var cancellation = new CancellationTokenSource();
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         await db.SaveChangesAsync(cancellation.Token);
         var runsAfterFirstSave = runs;
         await db.SaveChangesAsync(cancellation.Token);
@@ -214,7 +215,7 @@ public class DomainEventSaveTests : TestBase
         var db = scope.GetService<AppDbContext>();
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
         var newName = $"renamed-{Guid.NewGuid()}";
-        tenant.Update(new TenantForUpdate { Name = newName });
+        tenant.Update(new TenantForUpdate { Name = newName, Version = tenant.Version });
 
         // Act
         await using (await db.Database.BeginTransactionAsync())

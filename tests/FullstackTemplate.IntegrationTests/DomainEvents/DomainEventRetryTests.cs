@@ -41,7 +41,7 @@ public class DomainEventRetryTests : TestBase
         failFirstWrite.Arm();
 
         // Act
-        tenant.Update(new TenantForUpdate { Name = newName });
+        tenant.Update(new TenantForUpdate { Name = newName, Version = tenant.Version });
         await db.SaveChangesAsync();
 
         // Assert
@@ -70,13 +70,13 @@ public class DomainEventRetryTests : TestBase
             .AddUser(out var blocker, u => u.Identifier = effectIdentifier)
             .BuildAsync();
         var scenario = await scope.StartTenantScenarioAsync();
-        var command = new UpdateTenant.Command(scenario.Tenant.Id, new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}" });
+        var command = new UpdateTenant.Command(scenario.Tenant.Id, new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}", Version = scenario.Tenant.Version });
 
         // Act
         var send = () => scope.SendAsync(command);
 
         // Assert
-        (await send.ShouldThrowAsync<UniqueIndexException>()).Index.ShouldBe("ix_users_identifier");
+        (await send.ShouldThrowAsync<ConstraintConflictException>()).Constraint.ShouldBe("ix_users_identifier");
         runs.ShouldBe(1);
         (await ReadAsync(read => read.Tenants.Where(t => t.Id == scenario.Tenant.Id).Select(t => t.Name).SingleAsync()))
             .ShouldBe(scenario.Tenant.Name);

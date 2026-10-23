@@ -74,7 +74,7 @@ public class DomainEventTelemetryTests : TestBase
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
         await scope.SendAsync(new UpdateTenant.Command(scenario.Tenant.Id,
-            new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}" }));
+            new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}", Version = scenario.Tenant.Version }));
     }
 
     private sealed class TenantUpdatedProbe(Func<Task> handle) : IDomainEventHandler<TenantUpdated>

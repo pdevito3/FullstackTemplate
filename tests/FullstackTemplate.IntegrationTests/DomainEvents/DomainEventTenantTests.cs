@@ -91,7 +91,7 @@ public class DomainEventTenantTests : TestBase
     {
         (await db.Tenants.CountAsync()).ShouldBeGreaterThan(1);
         var tenant = await db.Tenants.SingleAsync(t => t.Id == tenantId);
-        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}" });
+        tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
         await db.SaveChangesAsync();
     }
 }

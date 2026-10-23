@@ -141,6 +141,20 @@ public class EntityGraphTests
     }
 
     [Test]
+    public void agent_gets_tenant_from_its_parent()
+    {
+        // Act
+        TestGraph.Start(out var seed)
+            .AddTenant(out var tenant)
+            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant]);
+
+        // Assert
+        agent.TenantId.ShouldBe(tenant.Id);
+        agent.TenantId.ShouldNotBe(seed.Tenant.Id);
+        agent.Permissions.ShouldHaveSingleItem().AgentId.ShouldBe(agent.Id);
+    }
+
+    [Test]
     public void children_fan_out_per_parent()
     {
         // Act

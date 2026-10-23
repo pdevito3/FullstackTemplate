@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases;
 
 using Domain;
+using Domain.Agents;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ public class AppDbContext(
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+    public DbSet<Agent> Agents => Set<Agent>();
+    public DbSet<AgentPermission> AgentPermissions => Set<AgentPermission>();
     #endregion
 
     private TenantScope? _tenantScope;

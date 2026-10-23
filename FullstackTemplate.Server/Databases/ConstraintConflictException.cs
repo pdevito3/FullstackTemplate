@@ -22,6 +22,8 @@ public sealed class ConstraintConflictException(
     {
         ["ix_tenants_name"] = "name",
         ["ix_users_identifier"] = "identifier",
+        ["ix_agents_tenant_id_client_id"] = "clientId",
+        ["ix_agents_client_id"] = "clientId",
     };
 
     public string Constraint { get; } = constraint;

@@ -26,3 +26,18 @@ public sealed class UserInput
     /// <summary>A <c>UserRole</c> name, for example "Admin" or "User". Role defaults give the permissions.</summary>
     public string? Role { get; set; }
 }
+
+public sealed class AgentInput
+{
+    /// <summary>An <c>agt_</c> ID. Null by default, so the entity makes the ID. Set it to give a fixed ID.</summary>
+    public string? Id { get; set; }
+
+    public string? Name { get; set; }
+    public string? ClientId { get; set; }
+
+    /// <summary>An <c>AgentMode</c> value, "delegated" or "machine". The default is "delegated".</summary>
+    public string? Mode { get; set; }
+
+    /// <summary>The permission names of the first grant. The default is no permission.</summary>
+    public IReadOnlyList<string>? Permissions { get; set; }
+}

@@ -22,26 +22,22 @@ public static class TenantQueryFilterExtension
         {
             if (TenantIdPathOf(entityType) is { } tenantIdPath)
                 entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
+
+            // A migration snapshot cannot hold the lambda of the path. The filter holds it now.
+            entityType.RemoveAnnotation(TenantingExtension.NavigationPathAnnotation);
         }
     }
 
-    public static string? TenantIdOfDomainEvent(EntityEntry<BaseEntity> queuedBy)
+    public static string? TenantIdOfDomainEvent(EntityEntry<BaseEntity> queuedBy) => queuedBy.Entity switch
     {
-        if (queuedBy.Metadata.FindAnnotation(TenantingExtension.NavigationPathAnnotation) is not null)
-        {
-            var entityName = queuedBy.Metadata.ClrType.Name;
+        Tenant tenant => tenant.Id,
+        ITenantable tenantable => tenantable.TenantId,
+        _ when queuedBy.Metadata.GetRootType().FindDeclaredQueryFilter(QueryFilterNames.Tenant) is not null =>
             throw new NotSupportedException(
-                $"{entityName} gets its tenant through ApplyTenanting, so the save cannot find the tenant of its domain event. " +
-                $"Implement ITenantable on {entityName}, or queue the event on its tenanted owner.");
-        }
-
-        return queuedBy.Entity switch
-        {
-            Tenant tenant => tenant.Id,
-            ITenantable tenantable => tenantable.TenantId,
-            _ => null,
-        };
-    }
+                $"{queuedBy.Metadata.ClrType.Name} gets its tenant through ApplyTenanting, so the save cannot find the tenant of its domain event. " +
+                $"Implement ITenantable on {queuedBy.Metadata.ClrType.Name}, or queue the event on its tenanted owner."),
+        _ => null,
+    };
 
     private static LambdaExpression? TenantIdPathOf(IReadOnlyEntityType entityType)
     {

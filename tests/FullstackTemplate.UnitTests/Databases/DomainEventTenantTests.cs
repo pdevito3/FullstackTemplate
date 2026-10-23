@@ -66,34 +66,4 @@ public class DomainEventTenantTests
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
             Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
-
-    private sealed class Order(string tenantId) : BaseEntity("ord"), ITenantable
-    {
-        public string TenantId { get; private set; } = tenantId;
-    }
-
-    private sealed class OrderLine : BaseEntity
-    {
-        public OrderLine(Order order) : this() => Order = order;
-
-        private OrderLine() : base("oln")
-        {
-        }
-
-        public Order Order { get; private set; } = null!;
-    }
-
-    private sealed class NavigationTenantedContext : DbContext
-    {
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-            => optionsBuilder.UseNpgsql("Host=unused");
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<Order>().HasKey(order => order.Id);
-            modelBuilder.Entity<OrderLine>().HasKey(line => line.Id);
-            modelBuilder.Entity<OrderLine>().ApplyTenanting(line => line.Order.TenantId);
-            modelBuilder.MapEntityIdToField();
-        }
-    }
 }

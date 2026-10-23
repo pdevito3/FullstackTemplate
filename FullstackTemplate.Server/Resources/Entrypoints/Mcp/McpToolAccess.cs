@@ -74,8 +74,8 @@ public static class McpToolAccess
         {
             { PermissionName: { } permission } when Permission.ListNames().Contains(permission, StringComparer.Ordinal)
                 => new ToolRequirement.Needs(Permission.Of(permission)),
-            { PermissionName: null, Kind: ToolAccessKind.Read } => new ToolRequirement.Read(),
-            { PermissionName: null, Kind: ToolAccessKind.ManageAllTenants } => new ToolRequirement.ManageAllTenants(),
+            { Kind: ToolAccessKind.Read } => new ToolRequirement.Read(),
+            { Kind: ToolAccessKind.ManageAllTenants } => new ToolRequirement.ManageAllTenants(),
             _ => null,
         };
 

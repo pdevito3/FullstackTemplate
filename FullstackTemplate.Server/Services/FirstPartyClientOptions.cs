@@ -18,7 +18,8 @@ public sealed class FirstPartyClientOptions
             ?? throw new InvalidOperationException("Auth:ClientId configuration is required.");
 
         var clientIds = new HashSet<string>(StringComparer.Ordinal) { authClientId };
-        if (configuration["Swagger:ClientId"] is { } swaggerClientId)
+        // An empty value would make a token with an empty client claim first-party.
+        if (configuration["Swagger:ClientId"] is { } swaggerClientId && !string.IsNullOrWhiteSpace(swaggerClientId))
             clientIds.Add(swaggerClientId);
 
         return new FirstPartyClientOptions { ClientIds = clientIds };

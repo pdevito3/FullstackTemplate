@@ -22,9 +22,9 @@ public abstract record Caller
     public bool Has(Permission permission) => Permissions.Contains(permission);
 
     /// <summary>
-    /// False for a client that no tenant registered and for a request with no authenticated principal. Such a caller
-    /// sees no rows, so the MCP filters hide even the read tools from it, and its calls say why. Each other caller can
-    /// read, and the tenant filter decides the rows.
+    /// False for a client that no tenant registered and for a request with no authenticated principal. The MCP filters
+    /// hide even the read tools from such a caller, and its calls say why. Each other caller can call a read tool, and
+    /// the tenant filter decides the rows. A user with no user record is recognized and sees no rows.
     /// </summary>
     public bool IsRecognized => this is not Outsider { Kind: OutsiderKind.UnknownClient or OutsiderKind.Anonymous };
 
@@ -148,8 +148,8 @@ public abstract record Caller
     /// <exception cref="ForbiddenAccessException">The caller is not <see cref="IsRecognized"/>.</exception>
     public void RequireRecognized()
     {
-        if (!IsRecognized)
-            throw new ForbiddenAccessException(((Outsider)this).Denial);
+        if (this is Outsider { Kind: OutsiderKind.UnknownClient or OutsiderKind.Anonymous } outsider)
+            throw new ForbiddenAccessException(outsider.Denial);
     }
 
     /// <summary>Passes for the member with <paramref name="userId"/>. Any other caller needs the permission.</summary>

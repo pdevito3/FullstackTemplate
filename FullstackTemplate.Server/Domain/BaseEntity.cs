@@ -35,18 +35,24 @@ public abstract class BaseEntity
     /// </summary>
     public uint Version { get; private set; }
 
-    private readonly List<DomainEvent> _domainEvents = [];
-    [NotMapped]
-    public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    private static long _lastDomainEventSequence;
+    private List<QueuedDomainEvent> _domainEvents = [];
 
-    public void QueueDomainEvent(DomainEvent domainEvent)
+    /// <summary>The events that this entity queued and that no save has taken yet.</summary>
+    [NotMapped]
+    public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.Select(queued => queued.Event).ToList();
+
+    /// <summary>Queues an event for the next save, which runs its handlers before it commits.</summary>
+    protected void QueueDomainEvent(DomainEvent domainEvent)
     {
-        _domainEvents.Add(domainEvent);
+        _domainEvents.Add(new QueuedDomainEvent(Interlocked.Increment(ref _lastDomainEventSequence), domainEvent));
     }
 
-    public void ClearDomainEvents()
+    internal IReadOnlyList<QueuedDomainEvent> TakeDomainEvents()
     {
-        _domainEvents.Clear();
+        var taken = _domainEvents;
+        _domainEvents = [];
+        return taken;
     }
 
     public void UpdateCreationProperties(DateTimeOffset createdOn, string? createdBy)

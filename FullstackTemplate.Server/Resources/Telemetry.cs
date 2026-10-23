@@ -43,9 +43,18 @@ public static class Telemetry
     /// </summary>
     public static void RecordError(Activity? activity, Exception ex)
     {
+        MarkFailed(activity, ex);
+        Errors.Add(1, new KeyValuePair<string, object?>("exception.type", ex.GetType().Name));
+    }
+
+    /// <summary>
+    /// Gives the span the error status and the exception, and does not count the error in <see cref="Errors"/>.
+    /// Use it for a span inside a span that records the same exception with <see cref="RecordError"/>.
+    /// </summary>
+    public static void MarkFailed(Activity? activity, Exception ex)
+    {
         activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
         activity?.AddException(ex);
-        Errors.Add(1, new KeyValuePair<string, object?>("exception.type", ex.GetType().Name));
     }
 
     /// <summary>

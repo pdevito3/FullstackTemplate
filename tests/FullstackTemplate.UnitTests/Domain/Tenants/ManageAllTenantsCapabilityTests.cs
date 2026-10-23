@@ -8,8 +8,8 @@ using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Shouldly;
 
@@ -35,7 +35,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
             .UseSnakeCaseNamingConvention()
             .Options;
         _dbContext = new AppDbContext(options, TimeProvider.System, _currentUserService, _tenantScopeProvider,
-            Substitute.For<IMediator>());
+            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 
     public void Dispose() => _dbContext.Dispose();

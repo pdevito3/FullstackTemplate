@@ -2,8 +2,9 @@ namespace FullstackTemplate.UnitTests.Databases;
 
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Services;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Shouldly;
 
@@ -19,7 +20,15 @@ public sealed class AppDbContextSaveTests
         exception.Message.ShouldContain("SaveChangesAsync");
     }
 
-    // The tests in this class do not connect to a database.
+    [Test]
+    public void contexts_with_the_handler_write_guard_share_one_internal_service_provider()
+    {
+        using var first = CreateContext();
+        using var second = CreateContext();
+
+        second.GetService<IModelSource>().ShouldBeSameAs(first.GetService<IModelSource>());
+    }
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -27,6 +36,6 @@ public sealed class AppDbContextSaveTests
             .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ITenantScopeProvider>(), Substitute.For<IMediator>());
+            Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 }

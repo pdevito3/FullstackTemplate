@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 public static class TenantingExtension
 {
+    internal const string NavigationPathAnnotation = "TenantNavigationPath";
+
     /// <summary>
     /// Applies tenant filtering through a navigation path.
     /// Use this for entities that don't directly implement ITenantable but have
@@ -22,8 +24,7 @@ public static class TenantingExtension
         Expression<Func<TEntity, string>> tenantIdPath)
         where TEntity : class
     {
-        // Store the expression as metadata for the query filter to use
-        builder.Metadata.AddAnnotation("TenantNavigationPath", tenantIdPath);
+        builder.Metadata.AddAnnotation(NavigationPathAnnotation, tenantIdPath);
         return builder;
     }
 }

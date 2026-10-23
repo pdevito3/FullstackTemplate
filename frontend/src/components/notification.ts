@@ -38,6 +38,11 @@ export const toastQueue = new ToastQueue<ToastMessage>({
 
 function createToast(message: string, type: ToastType, options?: NotificationOptions): string {
   const { description, duration = type === 'error' ? 6000 : 5000 } = options ?? {}
+  // A query that retries shows its error once for each attempt. The user needs to read the same toast only once.
+  const shown = toastQueue.visibleToasts.find(
+    ({ content }) => content.message === message && content.type === type && content.description === description,
+  )
+  if (shown) return shown.key
   return toastQueue.add({ message, type, description }, { timeout: duration })
 }
 

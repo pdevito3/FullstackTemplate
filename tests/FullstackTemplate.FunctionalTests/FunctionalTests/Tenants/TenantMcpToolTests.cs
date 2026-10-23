@@ -211,7 +211,12 @@ public class TenantMcpToolTests : TestBase
 
         // Act
         var result = await client.CallToolAsync("update_tenant",
-            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
+            new Dictionary<string, object?>
+            {
+                ["id"] = tenant.Id,
+                ["name"] = $"Renamed {Guid.NewGuid()}",
+                ["version"] = await VersionOfAsync(tenant.Id)
+            });
 
         // Assert
         ShouldBeToolError(result, "permission_denied");
@@ -231,11 +236,43 @@ public class TenantMcpToolTests : TestBase
 
         // Act
         var result = await client.CallToolAsync("update_tenant",
-            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = name });
+            new Dictionary<string, object?>
+            {
+                ["id"] = tenant.Id,
+                ["name"] = name,
+                ["version"] = await VersionOfAsync(tenant.Id)
+            });
 
         // Assert
         result.IsError.ShouldNotBe(true);
         result.StructuredContent.ShouldNotBeNull().GetProperty("name").GetString().ShouldBe(name);
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(name);
+    }
+
+    [Test]
+    public async Task rename_with_a_stale_version_is_the_aborted_tool_error()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        await using var client = await CreateMcpClientAsync();
+        var loaded = await VersionOfAsync(tenant.Id);
+        var name = $"Renamed {Guid.NewGuid()}";
+        var first = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = name, ["version"] = loaded });
+        first.IsError.ShouldNotBe(true);
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?>
+            {
+                ["id"] = tenant.Id,
+                ["name"] = $"Renamed {Guid.NewGuid()}",
+                ["version"] = loaded
+            });
+
+        // Assert
+        ShouldBeToolError(result, "aborted");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(name);
     }
 
@@ -252,7 +289,12 @@ public class TenantMcpToolTests : TestBase
 
         // Act
         var result = await client.CallToolAsync("update_tenant",
-            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
+            new Dictionary<string, object?>
+            {
+                ["id"] = tenant.Id,
+                ["name"] = $"Renamed {Guid.NewGuid()}",
+                ["version"] = await VersionOfAsync(tenant.Id)
+            });
 
         // Assert
         ShouldBeToolError(result, "permission_denied");
@@ -310,6 +352,9 @@ public class TenantMcpToolTests : TestBase
         result.StructuredContent.ShouldNotBeNull().GetProperty("code").GetString().ShouldBe(code);
         result.Content.OfType<TextContentBlock>().ShouldHaveSingleItem().Text.ShouldStartWith($"{code}: ");
     }
+
+    private static async Task<uint> VersionOfAsync(string tenantId)
+        => (await FindAsync<Tenant>(tenantId)).ShouldNotBeNull().Version;
 
     private void SignInAs(User user)
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });

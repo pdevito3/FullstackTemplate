@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FullstackTemplate.Server.Databases.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261022200108_ReplacePlaceholderPermissions")]
+    [Migration("20261023131355_ReplacePlaceholderPermissions")]
     partial class ReplacePlaceholderPermissions
     {
         /// <inheritdoc />
@@ -80,6 +80,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_tenants");
@@ -149,6 +155,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("username");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Email", "FullstackTemplate.Server.Domain.Users.User.Email#EmailAddress", b1 =>
                         {
@@ -222,6 +234,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("user_id")
                         .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Users.UserPermission.Permission#Permission", b1 =>
                         {

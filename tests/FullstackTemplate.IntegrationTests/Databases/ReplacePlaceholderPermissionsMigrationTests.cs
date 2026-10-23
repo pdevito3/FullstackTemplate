@@ -20,8 +20,8 @@ using Shouldly;
 /// </summary>
 public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposable
 {
-    private const string PreviousMigration = "20261022022230_AddUsedDPoPProofs";
-    private const string ThisMigration = "20261022200108_ReplacePlaceholderPermissions";
+    private const string PreviousMigration = "20261022195039_AddXminConcurrencyTokens";
+    private const string ThisMigration = "20261023131355_ReplacePlaceholderPermissions";
     private static readonly string[] NewPermissions = ["manage_users", "manage_user_access", "manage_tenant"];
 
     private readonly PostgresTestDatabase _database = new();

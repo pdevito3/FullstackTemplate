@@ -65,14 +65,16 @@ public class PermissionGuardTests : TestBase
     {
         // Arrange
         var (scope, member, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUsers());
-        await scope.SendAsync(new UpdateUser.Command(target.Id, new FakeUserForUpdateDto().Generate()));
+        var updated = await scope.SendAsync(
+            new UpdateUser.Command(target.Id, new FakeUserForUpdateDto().Generate() with { Version = target.Version }));
         await new TestingServiceScope().SendAsync(new RemoveUserPermission.Command(member.Id, "manage_users"));
 
         var nextRequest = new TestingServiceScope();
         nextRequest.SetUserWithDefaults(identifier: member.Identifier);
 
         // Act
-        var act = () => nextRequest.SendAsync(new UpdateUser.Command(target.Id, new FakeUserForUpdateDto().Generate()));
+        var act = () => nextRequest.SendAsync(
+            new UpdateUser.Command(target.Id, new FakeUserForUpdateDto().Generate() with { Version = updated.Version }));
 
         // Assert
         await act.ShouldThrowAsync<ForbiddenAccessException>();
@@ -160,7 +162,7 @@ public class PermissionGuardTests : TestBase
     {
         // Arrange
         var (scope, member, _) = await ArrangeCallerWithOnlyAsync("User");
-        var dto = new FakeUserForUpdateDto().Generate();
+        var dto = new FakeUserForUpdateDto().Generate() with { Version = member.Version };
 
         // Act
         var updated = await scope.SendAsync(new UpdateUser.Command(member.Id, dto));

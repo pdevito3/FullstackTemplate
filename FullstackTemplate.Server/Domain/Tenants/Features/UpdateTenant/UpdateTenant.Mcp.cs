@@ -19,6 +19,9 @@ public static class UpdateTenantTool
         IMediator mediator,
         [Description("The tenant ID, for example ten_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f.")] string id,
         [Description("The new unique name of the tenant.")] string name,
+        [Description("The version of the tenant that get_tenant gave. If the tenant changed after that, the tool gives the aborted error.")] uint version,
         CancellationToken cancellationToken)
-        => mediator.Send(new UpdateTenant.Command(id, new TenantForUpdateDto { Name = name }), cancellationToken);
+        => mediator.Send(
+            new UpdateTenant.Command(id, new TenantForUpdateDto { Name = name, Version = version }),
+            cancellationToken);
 }

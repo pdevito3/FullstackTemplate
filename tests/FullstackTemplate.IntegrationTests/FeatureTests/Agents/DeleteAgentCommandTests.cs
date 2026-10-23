@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 /// <summary>
-/// A delete needs manage_agents, and it takes away each permission of the grant, so the caller must hold each one.
+/// A delete needs only manage_agents, so a tenant admin can remove an agent that holds more than the admin.
 /// </summary>
 public class DeleteAgentCommandTests : TestBase
 {
@@ -50,22 +50,22 @@ public class DeleteAgentCommandTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_agents_cannot_delete_an_agent_that_holds_more()
+    public async Task holder_of_only_manage_agents_deletes_an_agent_that_holds_more()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _)
-            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant])
+            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant, Permission.Names.ManageUsers])
             .BuildAsync();
         await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents());
 
         // Act
-        var act = () => testingServiceScope.SendAsync(new DeleteAgent.Command(agent.Id));
+        await testingServiceScope.SendAsync(new DeleteAgent.Command(agent.Id));
 
         // Assert
-        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
-            .ShouldBe("You need the manage_tenant permission to do this.");
-        (await RowsOfAsync(agent.Id)).Agent.ShouldBeFalse();
+        var rows = await RowsOfAsync(agent.Id);
+        rows.Agent.ShouldBeTrue();
+        rows.Grant.ShouldBe([true, true]);
     }
 
     [Test]

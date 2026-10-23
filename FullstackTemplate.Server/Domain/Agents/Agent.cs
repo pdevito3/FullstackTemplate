@@ -82,13 +82,12 @@ public class Agent : BaseEntity, ITenantable
     }
 
     /// <summary>
-    /// Takes the permission out of the grant. The grantor must hold it, the same rule as <see cref="Grant"/>. A
-    /// permission that is not in the grant changes nothing.
+    /// Takes the permission out of the grant. Unlike <see cref="Grant"/>, it needs no grantor who holds the
+    /// permission: a smaller grant cannot raise anyone's access, and a tenant admin must be able to contain an agent
+    /// that holds more than the admin. A permission that is not in the grant changes nothing.
     /// </summary>
-    /// <exception cref="ForbiddenAccessException">The grantor does not hold the permission.</exception>
-    public Agent Revoke(Permission permission, Caller grantor)
+    public Agent Revoke(Permission permission)
     {
-        grantor.Require(permission);
         if (_permissions.RemoveAll(p => p.Permission == permission) > 0)
             QueueDomainEvent(new AgentUpdated(Id));
 

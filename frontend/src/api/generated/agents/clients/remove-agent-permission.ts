@@ -8,7 +8,7 @@ import type { RemoveAgentPermissionOptions, RemoveAgentPermissionResponses } fro
 import { client, unwrapResult } from '../../.kubb/client'
 
 /**
- * @summary Removes a permission from the grant of an Agent. The caller must hold the permission.
+ * @summary Removes a permission from the grant of an Agent. The caller needs the manage_agents permission.
  * {@link /api/v1/agents/:id/permissions/:permission}
  */
 export function removeAgentPermission<ThrowOnError extends boolean = true>(options: Options<RemoveAgentPermissionOptions, ThrowOnError>): Promise<UnwrappedResult<RemoveAgentPermissionResponses, ThrowOnError>> {

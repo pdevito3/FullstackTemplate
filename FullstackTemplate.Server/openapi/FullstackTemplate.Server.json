@@ -352,7 +352,7 @@
         "tags": [
           "Agents"
         ],
-        "summary": "Removes a permission from the grant of an Agent. The caller must hold the permission.",
+        "summary": "Removes a permission from the grant of an Agent. The caller needs the manage_agents permission.",
         "operationId": "RemoveAgentPermission",
         "parameters": [
           {

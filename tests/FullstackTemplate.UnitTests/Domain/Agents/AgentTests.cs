@@ -9,8 +9,8 @@ using FullstackTemplate.Server.Exceptions;
 using Shouldly;
 
 /// <summary>
-/// A grantor can give or take away only the permissions that it holds, and only a caller that manages all tenants
-/// can bind a machine client to a tenant.
+/// A grantor can give only the permissions that it holds, and only a caller that manages all tenants can bind a
+/// machine client to a tenant. A revoke needs no grantor.
 /// </summary>
 public class AgentTests
 {
@@ -120,26 +120,10 @@ public class AgentTests
         }, TenantAdmin);
 
         // Act
-        agent.Revoke(Permission.ManageTenant(), TenantAdmin);
+        agent.Revoke(Permission.ManageTenant());
 
         // Assert
         agent.Permissions.Select(p => p.Permission).ShouldBe([Permission.ManageUsers()]);
-    }
-
-    [Test]
-    public void revoke_of_a_permission_that_the_grantor_lacks_is_denied_and_changes_nothing()
-    {
-        // Arrange
-        var agent = Agent.Create(ForCreation() with { Permissions = [Permission.Names.ManageTenant] }, TenantAdmin);
-        var grantor = new Caller.Member("usr_member", [Permission.ManageAgents()]);
-
-        // Act
-        var act = () => agent.Revoke(Permission.ManageTenant(), grantor);
-
-        // Assert
-        act.ShouldThrow<ForbiddenAccessException>().Message
-            .ShouldBe("You need the manage_tenant permission to do this.");
-        agent.Permissions.Select(p => p.Permission).ShouldBe([Permission.ManageTenant()]);
     }
 
     [Test]

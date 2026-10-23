@@ -7,7 +7,10 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
-/// <summary>A revoke needs manage_agents, and the caller must hold the permission that it takes away.</summary>
+/// <summary>
+/// A revoke needs only manage_agents, so a tenant admin can take a permission away from an agent that holds more than
+/// the admin.
+/// </summary>
 public class RemoveAgentPermissionCommandTests : TestBase
 {
     [Test]
@@ -47,22 +50,21 @@ public class RemoveAgentPermissionCommandTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_agents_cannot_revoke_a_permission_that_they_lack()
+    public async Task holder_of_only_manage_agents_revokes_a_permission_that_they_lack()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _)
-            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant])
+            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant, Permission.Names.ManageUsers])
             .BuildAsync();
         await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents());
 
         // Act
-        var act = () => testingServiceScope.SendAsync(
-            new RemoveAgentPermission.Command(agent.Id, Permission.Names.ManageTenant));
+        var agentReturned = await testingServiceScope.SendAsync(
+            new RemoveAgentPermission.Command(agent.Id, Permission.Names.ManageUsers));
 
         // Assert
-        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
-            .ShouldBe("You need the manage_tenant permission to do this.");
+        agentReturned.Permissions.ShouldBe([Permission.Names.ManageTenant]);
         (await LiveGrantOfAsync(agent.Id)).ShouldBe([Permission.Names.ManageTenant]);
     }
 

@@ -15,8 +15,7 @@ public static class RemoveAgentPermission
     {
         public async Task<AgentDto> Handle(Command request, CancellationToken cancellationToken)
         {
-            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageAgents());
+            await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
             var permission = Permission.Of(request.Permission);
 
             var agent = await dbContext.Agents
@@ -26,7 +25,7 @@ public static class RemoveAgentPermission
 
             var existingPermissions = agent.Permissions.ToList();
 
-            agent.Revoke(permission, caller);
+            agent.Revoke(permission);
 
             // Explicitly remove permissions that were removed from the collection
             var remainingIds = agent.Permissions.Select(p => p.Id).ToHashSet();

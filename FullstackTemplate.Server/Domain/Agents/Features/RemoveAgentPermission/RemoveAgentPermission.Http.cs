@@ -18,7 +18,7 @@ public sealed class RemoveAgentPermissionEndpoint : IEndpoint
         .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
     /// <summary>
-    /// Removes a permission from the grant of an Agent. The caller must hold the permission.
+    /// Removes a permission from the grant of an Agent. The caller needs the manage_agents permission.
     /// </summary>
     public static async Task<Ok<AgentDto>> Handle(
         string id,

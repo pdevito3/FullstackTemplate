@@ -13,15 +13,12 @@ public static class DeleteAgent
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
-            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageAgents());
+            await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.delete.load")
                 .Include(a => a.Permissions)
                 .GetById(request.Id, cancellationToken);
-            // A delete takes away each permission of the grant.
-            caller.Require(agent.Permissions.Select(p => p.Permission));
 
             // Remove permissions first (due to PropertyAccessMode.Field)
             foreach (var permission in agent.Permissions.ToList())

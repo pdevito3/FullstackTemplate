@@ -6,6 +6,18 @@
     {
       "clientId": "aspire-app",
       "audience": ["aspire-app"]
+    },
+    {
+      "clientId": "fleet-sync",
+      "secret": "zerofactor-accepts-any-secret",
+      "serviceAccountsEnabled": true,
+      "audience": ["aspire-app"]
+    },
+    {
+      "clientId": "clinic-assistant",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "audience": ["aspire-app"]
     }
   ],
   "users": [
@@ -32,6 +44,13 @@
       "realmRoles": ["user"],
       "claims": { "roles": ["user"] },
       "agentNotes": "User without admin rights. Has the same sub as user@example.com in the Keycloak seed."
+    },
+    {
+      "id": "02489941-fe24-443c-b18d-42944bb21210",
+      "username": "service-account-fleet-sync",
+      "emailVerified": false,
+      "hidden": true,
+      "agentNotes": "The service account of the fleet-sync client. A client_credentials token has this sub. Hidden, because nobody signs in as it."
     }
   ]
 }

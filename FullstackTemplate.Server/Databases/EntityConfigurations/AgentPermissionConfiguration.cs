@@ -28,5 +28,7 @@ public sealed class AgentPermissionConfiguration : IEntityTypeConfiguration<Agen
         });
 
         builder.HasIndex(e => e.AgentId);
+
+        builder.ApplyTenanting(e => e.Agent.TenantId);
     }
 }

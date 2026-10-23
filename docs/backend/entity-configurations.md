@@ -64,12 +64,18 @@ An entity keeps a child collection in a private field. Tell EF Core to use the f
 
 ```csharp
 builder.HasMany(e => e.UserPermissions)
-    .WithOne()
+    .WithOne(up => up.User)
     .HasForeignKey(up => up.UserId)
     .OnDelete(DeleteBehavior.Cascade);
 
 builder.Navigation(e => e.UserPermissions)
     .UsePropertyAccessMode(PropertyAccessMode.Field);
+```
+
+Give the child a navigation to its parent, and get its tenant through the parent. See [multi-tenancy.md](../multi-tenancy.md#make-a-child-entity-multi-tenant).
+
+```csharp
+builder.ApplyTenanting(up => up.User.TenantId);
 ```
 
 When you delete the parent, load the children and remove each child in the handler. See `Domain/Users/Features/DeleteUser/DeleteUser.cs`.

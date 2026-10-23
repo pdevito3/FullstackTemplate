@@ -98,6 +98,8 @@ A `permanent` failure is an `invalid_grant`, or an ID token in the refresh respo
 
 Traces, metrics, and logs share the same resource attributes: `service.name`, `service.version`, `service.instance.id`, `deployment.environment`, and `host.name`. Serilog exports logs with its own OTLP sink, not with the OpenTelemetry SDK. For this reason, `HostExtensions.ResourceAttributes` gives the one list to both. As a result, the dashboard shows one resource for all three signals.
 
+The values in `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` win over the defaults in the code. Aspire sets `service.name` to the resource name (`server` or `bff`) and `service.instance.id` to the replica id. The dashboard finds the telemetry of a resource by these two values. Thus `dotnet aspire otel traces server` finds the traces of the server. With no such variables, as in a deployment that does not set them, `service.name` is the application name, for example `FullstackTemplate.Server`.
+
 ## Feature slice spans
 
 `RequestTracingBehavior` wraps each MediatR request in a span. The span name is the feature class plus the request type, for example `GetUser.Query`. You do not have to add code to a new slice to get this span or the `app.request.duration` metric.

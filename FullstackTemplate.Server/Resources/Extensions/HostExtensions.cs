@@ -115,15 +115,29 @@ public static class HostExtensions
     /// The resource attributes for traces, metrics, and logs. Serilog exports logs on its own, not
     /// through the OpenTelemetry SDK, so both read this one source. Then a filter on version or
     /// environment finds all three signals.
+    /// <para>
+    /// The values of <c>OTEL_SERVICE_NAME</c> and <c>OTEL_RESOURCE_ATTRIBUTES</c> win over the defaults. Aspire
+    /// sets them to the resource name (<c>server</c>) and its replica id, and the dashboard finds the telemetry
+    /// of a resource by these two values. If a default replaces them, the traces and the metrics go to a
+    /// second resource, apart from the logs.
+    /// </para>
     /// </summary>
-    private static Dictionary<string, object> ResourceAttributes(IHostApplicationBuilder builder) => new()
+    private static Dictionary<string, object> ResourceAttributes(IHostApplicationBuilder builder)
     {
-        ["service.name"] = builder.Environment.ApplicationName,
-        ["service.version"] = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0",
-        ["service.instance.id"] = Environment.MachineName,
-        ["deployment.environment"] = builder.Environment.EnvironmentName,
-        ["host.name"] = Environment.MachineName,
-    };
+        Dictionary<string, object> attributes = new()
+        {
+            ["service.name"] = builder.Environment.ApplicationName,
+            ["service.version"] = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "1.0.0",
+            ["service.instance.id"] = Environment.MachineName,
+            ["deployment.environment"] = builder.Environment.EnvironmentName,
+            ["host.name"] = Environment.MachineName,
+        };
+
+        foreach (var (key, value) in ResourceBuilder.CreateEmpty().AddEnvironmentVariableDetector().Build().Attributes)
+            attributes[key] = value;
+
+        return attributes;
+    }
 
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {

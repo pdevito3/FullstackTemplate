@@ -9,7 +9,7 @@ The frontend has four test suites. Put a test in the lowest suite that can prove
 | functional | `pnpm test:e2e` | Playwright | `tests/features/**/*.spec.ts` | A real page of the SPA against a mocked BFF. |
 | stack | `pnpm test:e2e:stack` | Playwright | `e2e/*.spec.ts` | The login flows against a live Aspire stack and a real IdP. See [authentication.md](../authentication.md). |
 
-CI runs the unit, component, and functional suites on each pull request. CI runs the stack suite only when the BFF changes.
+CI runs the unit, component, and functional suites on each pull request. CI runs the stack suite when the `changes` job finds a change on the login path: the BFF, the AppHost, the SPA, or the stack suite. See the `bff` filter in `.github/workflows/ci.yml`.
 
 ## The functional suite
 

@@ -1,7 +1,7 @@
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
 import type { WeatherForecast } from '@/api/generated/models/types/weather-forecast'
 
-// A counter, not a random source: a failing test names the same forecast on every run.
+// A counter, not a random source. In one worker, the same tests in the same order give the same forecasts.
 let seed = 0
 const next = () => ++seed
 

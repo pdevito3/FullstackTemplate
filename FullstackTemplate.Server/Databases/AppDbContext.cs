@@ -57,7 +57,13 @@ public class AppDbContext(
         modelBuilder.MapEntityIdToField();
         modelBuilder.MapVersionToXmin();
         modelBuilder.FilterSoftDeletedRecords();
-        modelBuilder.FilterByTenant(this);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+
+        configurationBuilder.FilterByTenant(this);
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

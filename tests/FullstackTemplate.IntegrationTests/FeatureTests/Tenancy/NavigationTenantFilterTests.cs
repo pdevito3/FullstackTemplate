@@ -84,7 +84,6 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // AppDbContext adds the tenant filters at the end of its model, so the note must be in the model first.
             modelBuilder.Entity<Note>(note =>
             {
                 note.HasKey(n => n.Id);

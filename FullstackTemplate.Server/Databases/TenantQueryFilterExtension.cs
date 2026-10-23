@@ -6,25 +6,34 @@ using Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Resources;
 using Services;
 
 public static class TenantQueryFilterExtension
 {
     /// <summary>
-    /// Applies the tenant filter to each entity type that has a tenant.
+    /// Applies the tenant filter to each entity type that has a tenant, when the model is complete.
     /// Filter logic: scope.IncludesAllTenants OR (scope.TenantId != null AND tenant ID of the row == scope.TenantId).
     /// For <see cref="TenantScope.NoTenant"/> both sides are false, so the filter matches no rows.
     /// </summary>
-    public static void FilterByTenant(this ModelBuilder modelBuilder, AppDbContext context)
-    {
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            if (TenantIdPathOf(entityType) is { } tenantIdPath)
-                entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
+    public static void FilterByTenant(this ModelConfigurationBuilder configurationBuilder, AppDbContext context)
+        => configurationBuilder.Conventions.Add(_ => new TenantQueryFilterConvention(context));
 
-            // A migration snapshot cannot hold the lambda of the path. The filter holds it now.
-            entityType.RemoveAnnotation(TenantingExtension.NavigationPathAnnotation);
+    private sealed class TenantQueryFilterConvention(AppDbContext context) : IModelFinalizingConvention
+    {
+        public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder,
+            IConventionContext<IConventionModelBuilder> conventionContext)
+        {
+            foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
+            {
+                if (TenantIdPathOf(entityType) is { } tenantIdPath)
+                    entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
+
+                // A migration snapshot cannot hold the lambda of the path. The filter holds it now.
+                entityType.RemoveAnnotation(TenantingExtension.NavigationPathAnnotation);
+            }
         }
     }
 

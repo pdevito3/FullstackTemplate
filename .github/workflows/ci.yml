@@ -324,6 +324,8 @@ jobs:
         run: |
           mkdir -p stack-logs
           dotnet aspire logs --timestamps --non-interactive --apphost FullstackTemplate.AppHost > stack-logs/aspire.log 2>&1 || true
+          # The logs of the Aspire CLI and the AppHost process
+          cp -r ~/.aspire/logs stack-logs/aspire-cli || true
 
       - name: Stop the stack
         if: always()

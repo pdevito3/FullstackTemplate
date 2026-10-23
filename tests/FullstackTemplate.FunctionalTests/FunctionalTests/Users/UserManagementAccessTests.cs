@@ -165,7 +165,7 @@ public class UserManagementAccessTests : TestBase
     }
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
 
     private static async Task<ProblemDetails> ShouldBeForbiddenAsync(HttpResponseMessage result)
     {

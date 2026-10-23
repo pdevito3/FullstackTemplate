@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users;
 
+using System.Diagnostics;
 using Databases;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -32,8 +33,7 @@ public interface IPermissionGuard
 
 public sealed class PermissionGuard(
     AppDbContext dbContext,
-    ICurrentUserService currentUserService,
-    ITenantScopeProvider tenantScopeProvider) : IPermissionGuard
+    ICallerIdentityResolver callerIdentityResolver) : IPermissionGuard
 {
     public async Task RequireAsync(Permission permission, CancellationToken cancellationToken)
         => (await GetCallerAsync(cancellationToken)).Require(permission);
@@ -42,14 +42,18 @@ public sealed class PermissionGuard(
         => (await GetCallerAsync(cancellationToken)).RequireSelfOr(userId, permission);
 
     public async Task<Caller> GetCallerAsync(CancellationToken cancellationToken)
+        => await callerIdentityResolver.GetAsync(cancellationToken) switch
+        {
+            CallerIdentity.System or CallerIdentity.AllTenantsClient { CanManage: true } => Caller.AllTenantsManager.Instance,
+            CallerIdentity.AllTenantsClient => new Caller.Outsider(OutsiderKind.MachineClient),
+            CallerIdentity.User user => await LoadMemberAsync(user.Subject, cancellationToken),
+            CallerIdentity.UnknownClient => new Caller.Outsider(OutsiderKind.UnknownClient),
+            CallerIdentity.Anonymous => new Caller.Outsider(OutsiderKind.Anonymous),
+            _ => throw new UnreachableException(),
+        };
+
+    private async Task<Caller> LoadMemberAsync(string identifier, CancellationToken cancellationToken)
     {
-        if (tenantScopeProvider.CanManageAllTenants())
-            return Caller.AllTenantsManager.Instance;
-
-        var identifier = currentUserService.UserIdentifier;
-        if (identifier is null)
-            return new Caller.Outsider(currentUserService.IsMachine ? OutsiderKind.MachineClient : OutsiderKind.Anonymous);
-
         // No tracking: a tracked copy would be shared with a handler that loads this user to change it.
         var user = await dbContext.Users
             .TagWithOperationCallSite("users.permission_guard.load")

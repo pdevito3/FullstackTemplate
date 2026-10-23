@@ -18,7 +18,7 @@ public class TenantIsolationTests : TestBase
         // Arrange
         var (_, user) = await AddTenantWithUserAsync();
         var (_, otherUser) = await AddTenantWithUserAsync();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
@@ -35,7 +35,7 @@ public class TenantIsolationTests : TestBase
     {
         // Arrange
         await AddTenantWithUserAsync();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = $"unknown-{Guid.NewGuid()}" });
+        FactoryClient.SignInAsAppUser($"unknown-{Guid.NewGuid()}");
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
@@ -51,7 +51,7 @@ public class TenantIsolationTests : TestBase
     {
         // Arrange
         var identifier = $"new-{Guid.NewGuid()}";
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = identifier });
+        FactoryClient.SignInAsAppUser(identifier);
         var before = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
         before.StatusCode.ShouldBe(HttpStatusCode.OK);
         var (_, user) = await AddTenantWithUserAsync(identifier);

@@ -70,7 +70,7 @@ Rules for submissions:
 | Helper | What it does |
 |--------|--------------|
 | `Send(request)` | Sends a MediatR request in a new system scope, with no user. |
-| `SendAs("<sub>", request)` | Sends a MediatR request as the user with this `sub` claim. |
+| `SendAs("<sub>", request)` | Sends a MediatR request as the user with this `sub` claim, signed in through the app (`Auth:ClientId`). The user has all of their permissions. |
 | `InScope<TService, TResult>(service => ...)` | Runs code against one scoped service, in a new system scope. |
 
 `Send` goes through the full MediatR pipeline: `RequestTracingBehavior`, the handler, and the domain events. Commands write to the development database.

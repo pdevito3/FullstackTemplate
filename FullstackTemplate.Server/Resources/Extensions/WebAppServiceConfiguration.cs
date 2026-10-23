@@ -3,6 +3,7 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 using System.Diagnostics;
 using Databases;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Services;
 using ZiggyCreatures.Caching.Fusion;
 
@@ -24,6 +25,7 @@ public static class WebAppServiceConfiguration
                 options.FailSafeThrottleDuration = TimeSpan.FromSeconds(30);
             });
         builder.Services.Configure<TenancyOptions>(builder.Configuration.GetSection(TenancyOptions.SectionName));
+        builder.Services.AddSingleton(Options.Create(FirstPartyClientOptions.FromConfiguration(builder.Configuration)));
         builder.Services.AddApplicationServices();
         builder.Services.AddScoped<SystemTenantAccess>();
         builder.Services.AddMediatR(cfg =>

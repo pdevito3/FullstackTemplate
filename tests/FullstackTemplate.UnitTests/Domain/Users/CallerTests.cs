@@ -12,6 +12,9 @@ public class CallerTests
     private const string SelfId = "usr_self";
     private const string OtherId = "usr_other";
 
+    private const string UnknownClientDenial =
+        "This client is not a registered agent of your tenant. A tenant admin can register it.";
+
     private static Caller.Member MemberWith(params Permission[] permissions)
         => new Caller.Member(SelfId, permissions);
 
@@ -28,6 +31,7 @@ public class CallerTests
             "This client cannot change data.");
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord),
             "You need a user record in a tenant to do this.");
+        yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), UnknownClientDenial);
     }
 
     public static IEnumerable<Func<(string Case, Caller Caller, string UserId, string? Denial)>> RequireSelfOrManageUsersCases()
@@ -43,6 +47,8 @@ public class CallerTests
             "This client cannot change data.");
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord), SelfId,
             "You need a user record in a tenant to do this.");
+        yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), SelfId,
+            UnknownClientDenial);
     }
 
     [Test]
@@ -124,6 +130,7 @@ public class CallerTests
         yield return () => ("member with no permission", MemberWith(), []);
         yield return () => ("anonymous", new Caller.Outsider(OutsiderKind.Anonymous), []);
         yield return () => ("machine client", new Caller.Outsider(OutsiderKind.MachineClient), []);
+        yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), []);
     }
 
     [Test]
@@ -160,8 +167,32 @@ public class CallerTests
         Caller.Member => $"You need the {permission.Value} permission to do this.",
         Caller.Outsider { Kind: OutsiderKind.Anonymous } => "Sign in to do this.",
         Caller.Outsider { Kind: OutsiderKind.MachineClient } => "This client cannot change data.",
+        Caller.Outsider { Kind: OutsiderKind.UnknownClient } => UnknownClientDenial,
         _ => throw new ArgumentOutOfRangeException(nameof(caller)),
     };
+
+    public static IEnumerable<Func<(string Case, Caller Caller, string? Denial)>> RecognizedCases()
+    {
+        yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, null);
+        yield return () => ("member with no permission", MemberWith(), null);
+        yield return () => ("read-only machine client", new Caller.Outsider(OutsiderKind.MachineClient), null);
+        yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord), null);
+        yield return () => ("anonymous", new Caller.Outsider(OutsiderKind.Anonymous), "Sign in to do this.");
+        yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), UnknownClientDenial);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(RecognizedCases))]
+    public void only_an_unknown_client_and_an_anonymous_caller_are_not_recognized(
+        string @case, Caller caller, string? denial)
+    {
+        // Act
+        var act = caller.RequireRecognized;
+
+        // Assert
+        caller.IsRecognized.ShouldBe(denial is null);
+        ShouldDenyWith(act, denial);
+    }
 
     private static void ShouldDenyWith(Action act, string? denial)
     {

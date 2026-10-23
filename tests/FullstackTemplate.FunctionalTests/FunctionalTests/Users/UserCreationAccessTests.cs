@@ -23,7 +23,7 @@ public class UserCreationAccessTests : TestBase
         TestGraph.Start(out _).AddTenant(out var tenant);
         await InsertAsync(tenant);
         var identifier = $"outsider-{Guid.NewGuid()}";
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = identifier });
+        FactoryClient.SignInAsAppUser(identifier);
         var dto = new FakeUserForCreationDto()
             .RuleFor(x => x.TenantId, _ => tenant.Id)
             .RuleFor(x => x.Identifier, _ => identifier)
@@ -75,7 +75,7 @@ public class UserCreationAccessTests : TestBase
     public async Task user_cannot_start_a_tenant_for_another_identifier()
     {
         // Arrange
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = $"new-{Guid.NewGuid()}" });
+        FactoryClient.SignInAsAppUser($"new-{Guid.NewGuid()}");
         var dto = new FakeInitiateUserAndTenantDto().Generate();
 
         // Act
@@ -97,7 +97,7 @@ public class UserCreationAccessTests : TestBase
 
         // Assert
         await ShouldBeForbiddenAsync(result,
-            "A caller with no user identifier must be a trusted tenant management client to start a tenant.");
+            "Only a user who signs in through this app, or a trusted tenant management client, can start a tenant.");
     }
 
     [Test]
@@ -105,7 +105,7 @@ public class UserCreationAccessTests : TestBase
     {
         // Arrange
         var dto = new FakeInitiateUserAndTenantDto().Generate();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = dto.Identifier });
+        FactoryClient.SignInAsAppUser(dto.Identifier);
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto);
@@ -246,7 +246,7 @@ public class UserCreationAccessTests : TestBase
     }
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
 
     private void SignInAsTrustedMachineClient()
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>

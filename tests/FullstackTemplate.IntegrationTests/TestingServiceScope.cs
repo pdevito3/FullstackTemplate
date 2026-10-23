@@ -41,7 +41,7 @@ public class TestingServiceScope
     }
 
     /// <summary>
-    /// Sets up ICurrentUserService mock with the default user's identifier.
+    /// Sets up ICurrentUserService mock with the default user's identifier, signed in through the first-party client.
     /// The real ITenantIdProvider will look up this user to get their tenant.
     /// </summary>
     public void SetUserWithDefaults(
@@ -56,16 +56,15 @@ public class TestingServiceScope
         // Use the default user's identifier so ITenantIdProvider can look them up
         var userIdentifier = identifier ?? TestFixture.DefaultUser.Identifier;
 
-        currentUserService.User.Returns(new ClaimsPrincipal(
-            new ClaimsIdentity([new Claim("sub", userIdentifier)], AuthenticationType)));
+        currentUserService.User.Returns(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", userIdentifier), new Claim("azp", TestFixture.FirstPartyClientId)], AuthenticationType)));
         currentUserService.UserIdentifier.Returns(userIdentifier);
-        currentUserService.ClientId.Returns((string?)null);
+        currentUserService.ClientId.Returns(TestFixture.FirstPartyClientId);
         currentUserService.Email.Returns(email ?? faker.Internet.Email());
         currentUserService.FirstName.Returns(firstName ?? faker.Person.FirstName);
         currentUserService.LastName.Returns(lastName ?? faker.Person.LastName);
         currentUserService.Username.Returns(faker.Internet.UserName());
         currentUserService.IsAuthenticated.Returns(true);
-        currentUserService.IsMachine.Returns(false);
         currentUserService.Roles.Returns(new List<string>());
         RefreshTenantScope();
     }
@@ -95,7 +94,6 @@ public class TestingServiceScope
         currentUserService.IsAuthenticated.Returns(false);
         currentUserService.UserIdentifier.Returns((string?)null);
         currentUserService.ClientId.Returns((string?)null);
-        currentUserService.IsMachine.Returns(false);
         RefreshTenantScope();
     }
 
@@ -108,7 +106,6 @@ public class TestingServiceScope
 
         currentUserService.User.Returns(new ClaimsPrincipal(
             new ClaimsIdentity([new Claim("client_id", clientId)], AuthenticationType)));
-        currentUserService.IsMachine.Returns(true);
         currentUserService.ClientId.Returns(clientId);
         currentUserService.UserIdentifier.Returns((string?)null);
         currentUserService.IsAuthenticated.Returns(true);

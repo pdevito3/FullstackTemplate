@@ -13,6 +13,7 @@ public sealed class TenantScopeProviderTests : IDisposable
 {
     private const string TrustedClientId = "trusted-machine";
     private const string ReadOnlyClientId = "read-only-machine";
+    private const string FirstPartyClientId = "app";
 
     private readonly ICurrentPrincipalAccessor _principalAccessor = Substitute.For<ICurrentPrincipalAccessor>();
     private readonly ITenantIdProvider _tenantIdProvider = Substitute.For<ITenantIdProvider>();
@@ -30,8 +31,10 @@ public sealed class TenantScopeProviderTests : IDisposable
             ManageAllTenantsClientIds = [TrustedClientId],
             ReadAllTenantsClientIds = [ReadOnlyClientId]
         }));
+        services.AddSingleton(Options.Create(new FirstPartyClientOptions { ClientIds = new HashSet<string> { FirstPartyClientId } }));
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<SystemTenantAccess>();
+        services.AddScoped<ICallerIdentityResolver, CallerIdentityResolver>();
         services.AddScoped<ITenantScopeProvider, TenantScopeProvider>();
         _services = services.BuildServiceProvider();
 
@@ -56,7 +59,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     {
         var tenantId = EntityId.New(Tenant.IdPrefix);
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns(tenantId);
-        SetCaller(new Claim("sub", "user-1"));
+        SetCaller(new Claim("sub", "user-1"), new Claim("azp", FirstPartyClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
     }
@@ -65,7 +68,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     public void user_with_no_user_record_gets_no_tenant()
     {
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns((string?)null);
-        SetCaller(new Claim("sub", "user-1"));
+        SetCaller(new Claim("sub", "user-1"), new Claim("azp", FirstPartyClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
     }
@@ -106,7 +109,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     public void user_with_a_user_record_cannot_manage_all_tenants()
     {
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns(EntityId.New(Tenant.IdPrefix));
-        SetCaller(new Claim("sub", "user-1"));
+        SetCaller(new Claim("sub", "user-1"), new Claim("azp", FirstPartyClientId));
 
         _sut.CanManageAllTenants().ShouldBeFalse();
     }
@@ -150,6 +153,26 @@ public sealed class TenantScopeProviderTests : IDisposable
         SetCaller(new Claim("client_id", TrustedClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
+    }
+
+    [Test]
+    public void service_account_token_on_the_allow_list_gets_all_tenants_and_can_manage_them()
+    {
+        // Keycloak, ZeroFactor, and Cognito give a client_credentials token a service-account sub with no user record.
+        _tenantIdProvider.GetTenantIdAsync("service-account-1").Returns((string?)null);
+        SetCaller(new Claim("sub", "service-account-1"), new Claim("azp", TrustedClientId));
+
+        _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
+        _sut.CanManageAllTenants().ShouldBeTrue();
+    }
+
+    [Test]
+    public void user_through_an_unknown_client_gets_no_tenant()
+    {
+        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(EntityId.New(Tenant.IdPrefix));
+        SetCaller(new Claim("sub", "user-1"), new Claim("azp", "some-agent"));
+
+        _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
     }
 
     [Test]

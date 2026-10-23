@@ -65,7 +65,7 @@ public class TenantLookupCacheTests : TestBase
     {
         // Arrange
         var dto = new FakeInitiateUserAndTenantDto().Generate();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = dto.Identifier });
+        FactoryClient.SignInAsAppUser(dto.Identifier);
         var miss = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageSize=500");
         (await miss.Content.ReadFromJsonAsync<List<object>>()).ShouldNotBeNull().ShouldBeEmpty();
 
@@ -107,5 +107,5 @@ public class TenantLookupCacheTests : TestBase
     }
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
 }

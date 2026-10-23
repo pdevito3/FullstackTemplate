@@ -36,7 +36,7 @@ public class PaginationHeaderTests : TestBase
             .Select(_ => User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate()))
             .ToArray();
         await InsertAsync(users);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = users[0].Identifier });
+        FactoryClient.SignInAsAppUser(users[0].Identifier);
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageNumber=1&pageSize=1");

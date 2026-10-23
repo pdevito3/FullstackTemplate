@@ -26,6 +26,11 @@ public sealed class TestFixture : IAsyncDisposable
     /// </summary>
     public const string ReadOnlyMachineClientId = "read-only-machine";
 
+    /// <summary>
+    /// The client ID of the app (the BFF). A user token from this client acts as its user.
+    /// </summary>
+    public const string FirstPartyClientId = "test-app";
+
     public static IServiceScopeFactory BaseScopeFactory { get; private set; } = null!;
     private static string _connectionString = null!;
     public static TestSeed Seed { get; private set; } = null!;
@@ -79,6 +84,7 @@ public sealed class TestFixture : IAsyncDisposable
 
         builder.Configuration["Auth:Authority"] = "https://localhost";
         builder.Configuration["Auth:Audience"] = "test-api";
+        builder.Configuration["Auth:ClientId"] = FirstPartyClientId;
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ReadAllTenantsClientIds)}:0"] = ReadOnlyMachineClientId;
 

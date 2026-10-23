@@ -95,9 +95,9 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    [Arguments(TestFixture.ReadOnlyMachineClientId)]
-    [Arguments("untrusted-machine")]
-    public async Task machine_client_that_cannot_manage_all_tenants_cannot_delete_a_user(string clientId)
+    [Arguments(TestFixture.ReadOnlyMachineClientId, "This client cannot change data.")]
+    [Arguments("untrusted-machine", "This client is not a registered agent of your tenant. A tenant admin can register it.")]
+    public async Task machine_client_that_cannot_manage_all_tenants_cannot_delete_a_user(string clientId, string denial)
     {
         // Arrange
         var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User");
@@ -107,7 +107,7 @@ public class PermissionGuardTests : TestBase
         var act = () => scope.SendAsync(new DeleteUser.Command(target.Id));
 
         // Assert
-        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe("This client cannot change data.");
+        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(denial);
         (await UserExistsAsync(target.Id)).ShouldBeTrue();
     }
 

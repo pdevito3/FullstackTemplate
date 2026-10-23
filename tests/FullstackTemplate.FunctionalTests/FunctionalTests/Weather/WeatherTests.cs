@@ -25,7 +25,7 @@ public class WeatherTests : TestBase
     public async Task the_secure_forecast_names_the_caller()
     {
         // Arrange
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = "weather-user" });
+        FactoryClient.SignInAsAppUser("weather-user");
 
         // Act
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Weather.GetSecure);

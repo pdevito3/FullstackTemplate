@@ -22,6 +22,13 @@ public abstract record Caller
     public bool Has(Permission permission) => Permissions.Contains(permission);
 
     /// <summary>
+    /// False for a client that no tenant registered and for a request with no authenticated principal. Such a caller
+    /// sees no rows, so the MCP filters hide even the read tools from it, and its calls say why. Each other caller can
+    /// read, and the tenant filter decides the rows.
+    /// </summary>
+    public bool IsRecognized => this is not Outsider { Kind: OutsiderKind.UnknownClient or OutsiderKind.Anonymous };
+
+    /// <summary>
     /// System work in a system scope, or a machine client in <c>ManageAllTenantsClientIds</c>. It holds every
     /// permission. The tenant filter still decides which rows it sees.
     /// </summary>
@@ -54,6 +61,16 @@ public abstract record Caller
     public sealed record Outsider(OutsiderKind Kind) : Caller
     {
         public override IReadOnlySet<Permission> Permissions => FrozenSet<Permission>.Empty;
+
+        internal string Denial => Kind switch
+        {
+            OutsiderKind.Anonymous => "Sign in to do this.",
+            OutsiderKind.MachineClient => "This client cannot change data.",
+            OutsiderKind.NoUserRecord => "You need a user record in a tenant to do this.",
+            OutsiderKind.UnknownClient =>
+                "This client is not a registered agent of your tenant. A tenant admin can register it.",
+            _ => throw new UnreachableException(),
+        };
     }
 
     /// <exception cref="ForbiddenAccessException">The caller does not hold <paramref name="permission"/>.</exception>
@@ -71,6 +88,13 @@ public abstract record Caller
         }
     }
 
+    /// <exception cref="ForbiddenAccessException">The caller is not <see cref="IsRecognized"/>.</exception>
+    public void RequireRecognized()
+    {
+        if (!IsRecognized)
+            throw new ForbiddenAccessException(((Outsider)this).Denial);
+    }
+
     /// <summary>Passes for the member with <paramref name="userId"/>. Any other caller needs the permission.</summary>
     /// <exception cref="ForbiddenAccessException">The caller is another user and does not hold the permission.</exception>
     public void RequireSelfOr(string userId, Permission permission)
@@ -84,9 +108,7 @@ public abstract record Caller
     private string DenialFor(Permission permission) => this switch
     {
         Member => $"You need the {permission.Value} permission to do this.",
-        Outsider { Kind: OutsiderKind.Anonymous } => "Sign in to do this.",
-        Outsider { Kind: OutsiderKind.MachineClient } => "This client cannot change data.",
-        Outsider { Kind: OutsiderKind.NoUserRecord } => "You need a user record in a tenant to do this.",
+        Outsider outsider => outsider.Denial,
         _ => throw new UnreachableException(),
     };
 }
@@ -94,12 +116,18 @@ public abstract record Caller
 /// <summary>Why a caller holds no permission.</summary>
 public enum OutsiderKind
 {
-    /// <summary>The request has no signed-in user and no machine client.</summary>
+    /// <summary>The request has no authenticated principal.</summary>
     Anonymous,
 
-    /// <summary>A machine client that is not in <c>ManageAllTenantsClientIds</c>, for example a read-only client.</summary>
+    /// <summary>A client on <c>ReadAllTenantsClientIds</c> only.</summary>
     MachineClient,
 
-    /// <summary>A signed-in user with no live user record in a tenant.</summary>
+    /// <summary>A signed-in user of a first-party client with no live user record in a tenant.</summary>
     NoUserRecord,
+
+    /// <summary>
+    /// A token from a client that is not first-party, is on no allow-list, and has no agent registered for the token.
+    /// Also a token with no client claim.
+    /// </summary>
+    UnknownClient,
 }

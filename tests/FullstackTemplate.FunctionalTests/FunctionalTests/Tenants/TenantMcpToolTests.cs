@@ -13,6 +13,7 @@ using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using Shouldly;
+using TestUtilities;
 
 /// <summary>
 /// The MCP entrypoint sends the same MediatR requests as HTTP, so it has the same tenant scope and the
@@ -357,7 +358,7 @@ public class TenantMcpToolTests : TestBase
         => (await FindAsync<Tenant>(tenantId)).ShouldNotBeNull().Version;
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
 
     private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role = "User")
     {

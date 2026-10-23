@@ -6,6 +6,7 @@ using System.Threading;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Services;
@@ -18,6 +19,7 @@ async Task<T> Send<T>(IRequest<T> request)
 }
 
 // Sends a MediatR request as the user with this "sub" claim. The tenant filter uses this user's tenant.
+// The "client_id" claim is the app (Auth:ClientId), because the server gives a token from an unknown client no data.
 // A "sub" with no user record stops here, because the server shows no tenant data to this user.
 // It uses a plain scope, not a system scope: a system scope sees all tenants, whatever the user.
 async Task<T> SendAs<T>(string sub, IRequest<T> request)
@@ -31,7 +33,8 @@ async Task<T> SendAs<T>(string sub, IRequest<T> request)
     var accessor = Get<IHttpContextAccessor>();
     accessor.HttpContext = new DefaultHttpContext
     {
-        User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", sub)], "csharprepl"))
+        User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", sub), new Claim("client_id", Get<IConfiguration>()["Auth:ClientId"]!)], "csharprepl"))
     };
     try
     {

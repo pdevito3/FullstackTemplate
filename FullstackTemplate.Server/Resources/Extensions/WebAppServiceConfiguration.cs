@@ -34,6 +34,7 @@ public static class WebAppServiceConfiguration
             // Outermost behavior, so its span covers every later behavior and the handler itself.
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
             cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(CallerIdentityBehavior<,>));
         });
 
         builder.Services.AddSingleton<TenantLookupInterceptor>();

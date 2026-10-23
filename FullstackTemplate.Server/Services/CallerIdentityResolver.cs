@@ -6,12 +6,17 @@ public interface ICallerIdentityResolver
 {
     /// <summary>
     /// The identity of the current caller. It is synchronous, because EF Core reads the tenant query filter
-    /// synchronously. The first read in a DI scope resolves the identity and blocks on its lookups. Later reads give
-    /// the kept value, unless the caller of the scope changed.
+    /// synchronously. <see cref="Resources.CallerIdentityBehavior{TRequest,TResponse}"/> awaits <see cref="GetAsync"/> before
+    /// each MediatR handler, so in a handler this reads a finished resolution. It blocks on the lookups only when it is
+    /// the first read in a DI scope, for example in code that queries outside a MediatR request, or when the caller of
+    /// the scope changed since the last read.
     /// </summary>
     CallerIdentity Current { get; }
 
-    /// <summary>The same value as <see cref="Current"/>, without a block.</summary>
+    /// <summary>
+    /// The same value as <see cref="Current"/>, without a block. The first read in a DI scope gives
+    /// <paramref name="cancellationToken"/> to the lookups.
+    /// </summary>
     Task<CallerIdentity> GetAsync(CancellationToken cancellationToken);
 }
 
@@ -45,14 +50,15 @@ public sealed class CallerIdentityResolver(
 {
     private (Token Token, Task<CallerIdentity> Resolution)? _kept;
 
-    public CallerIdentity Current => Resolution().GetAwaiter().GetResult();
+    public CallerIdentity Current => Resolution(CancellationToken.None).GetAwaiter().GetResult();
 
     public Task<CallerIdentity> GetAsync(CancellationToken cancellationToken)
-        => Resolution().WaitAsync(cancellationToken);
+        => Resolution(cancellationToken).WaitAsync(cancellationToken);
 
     // A DI scope serves one caller, but a test can switch the caller of its scope. The facts of the token are the key,
-    // so a new caller gets a new resolution.
-    private Task<CallerIdentity> Resolution()
+    // so a new caller gets a new resolution. A resolution that its first reader canceled is not an answer, so the next
+    // read resolves again.
+    private Task<CallerIdentity> Resolution(CancellationToken cancellationToken)
     {
         var token = new Token(
             systemTenantAccess.IsGranted,
@@ -60,16 +66,16 @@ public sealed class CallerIdentityResolver(
             currentUserService.UserIdentifier,
             currentUserService.ClientId);
 
-        if (_kept is not { } kept || kept.Token != token)
+        if (_kept is not { } kept || kept.Token != token || kept.Resolution.IsCanceled)
         {
-            kept = (token, ResolveAsync(token));
+            kept = (token, ResolveAsync(token, cancellationToken));
             _kept = kept;
         }
 
         return kept.Resolution;
     }
 
-    private async Task<CallerIdentity> ResolveAsync(Token token)
+    private async Task<CallerIdentity> ResolveAsync(Token token, CancellationToken cancellationToken)
     {
         if (token.IsSystem)
             return new CallerIdentity.System();
@@ -82,7 +88,7 @@ public sealed class CallerIdentityResolver(
             return new CallerIdentity.UnknownClient(null);
 
         if (token.Subject is { } subject && firstPartyClients.Value.Contains(clientId))
-            return new CallerIdentity.User(subject, await tenantIdProvider.GetTenantIdAsync(subject));
+            return new CallerIdentity.User(subject, await tenantIdProvider.GetTenantIdAsync(subject, cancellationToken));
 
         var tenancy = tenancyOptions.Value;
         if (tenancy.ManageAllTenantsClientIds.Contains(clientId, StringComparer.Ordinal))
@@ -91,12 +97,12 @@ public sealed class CallerIdentityResolver(
         if (tenancy.ReadAllTenantsClientIds.Contains(clientId, StringComparer.Ordinal))
             return new CallerIdentity.AllTenantsClient(clientId, CanManage: false);
 
-        if (await agentDirectory.FindMachineAgentAsync(clientId) is { } machineAgent)
+        if (await agentDirectory.FindMachineAgentAsync(clientId, cancellationToken) is { } machineAgent)
             return new CallerIdentity.MachineAgent(machineAgent.AgentId, clientId, machineAgent.TenantId);
 
         if (token.Subject is { } delegatingUser
-            && await tenantIdProvider.GetTenantIdAsync(delegatingUser) is { } tenantId
-            && await agentDirectory.FindDelegatedAgentAsync(tenantId, clientId) is { } agentId)
+            && await tenantIdProvider.GetTenantIdAsync(delegatingUser, cancellationToken) is { } tenantId
+            && await agentDirectory.FindDelegatedAgentAsync(tenantId, clientId, cancellationToken) is { } agentId)
             return new CallerIdentity.DelegatedAgent(agentId, clientId, delegatingUser, tenantId);
 
         return new CallerIdentity.UnknownClient(clientId);

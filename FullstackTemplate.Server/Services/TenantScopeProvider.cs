@@ -19,7 +19,8 @@ public interface ITenantScopeProvider
 /// </summary>
 public sealed class TenantScopeProvider(ICallerIdentityResolver callerIdentityResolver) : ITenantScopeProvider
 {
-    // EF Core reads the query filter parameters synchronously, so this blocks on the async identity lookups.
-    // AppDbContext calls this method once and keeps the scope. FusionCache usually has the tenant of a user in memory.
+    // EF Core reads the query filter parameters synchronously, so this reads ICallerIdentityResolver.Current. In a
+    // MediatR handler the identity is already resolved. Outside one, the first read blocks on the identity lookups.
+    // AppDbContext calls this method once and keeps the scope.
     public TenantScope GetCurrentScope() => callerIdentityResolver.Current.Scope;
 }

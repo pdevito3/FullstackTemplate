@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- Test-only types that break the entrypoint boundary on purpose. EntrypointBoundaryTests scans this assembly
-         to prove that each rule finds each kind of violation. -->
+    <!-- Test-only types that break an architecture rule on purpose. EntrypointBoundaryTests and DomainEventShapeTests
+         scan this assembly to prove that each rule finds each kind of violation. -->
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>

@@ -107,7 +107,9 @@ public class TenantGrpcTests : TestBase
     }
 
     [Test]
-    public async Task bad_filter_is_an_invalid_argument()
+    [Arguments("Name @= ")]
+    [Arguments("version > 5")]
+    public async Task bad_filter_is_an_invalid_argument(string filters)
     {
         // Arrange
         var (_, user) = await AddTenantWithUserAsync();
@@ -117,7 +119,7 @@ public class TenantGrpcTests : TestBase
 
         // Act
         var exception = await Should.ThrowAsync<RpcException>(async () =>
-            await client.ListTenantsAsync(new ListTenantsRequest { Filters = "Name @= " }));
+            await client.ListTenantsAsync(new ListTenantsRequest { Filters = filters }));
 
         // Assert
         exception.StatusCode.ShouldBe(StatusCode.InvalidArgument);

@@ -7,7 +7,7 @@ using Shouldly;
 
 public class QueryKitInputExtensionsTests
 {
-    private sealed record Row(string Name);
+    private sealed record Row(string Name, uint Version = 0);
 
     private static readonly IQueryable<Row> Rows = new[] { new Row("a") }.AsQueryable();
 
@@ -45,5 +45,32 @@ public class QueryKitInputExtensionsTests
         exception.Parameter.ShouldBe("filters");
         exception.Message.ShouldBe("The filters value is not valid.");
         exception.InnerException.ShouldBeAssignableTo<ArgumentException>();
+    }
+
+    [Test]
+    [Arguments("version == 5")]
+    [Arguments("VERSION > 5")]
+    [Arguments("Name == \"a\" || Version != 5")]
+    public void filter_on_the_version_is_refused(string filters)
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("filters");
+        exception.Message.ShouldBe("The filters value cannot use version. A version is opaque.");
+    }
+
+    [Test]
+    [Arguments("version")]
+    [Arguments("Name, -Version")]
+    public void sort_on_the_version_is_refused(string sortOrder)
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplySortOrder(sortOrder, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("sortOrder");
+        exception.Message.ShouldBe("The sortOrder value cannot use version. A version is opaque.");
     }
 }

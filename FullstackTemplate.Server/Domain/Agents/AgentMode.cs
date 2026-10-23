@@ -9,7 +9,10 @@ public partial class AgentMode : ValueObject
     // The key in the errors of the problem is the name of the request field
     private const string RequestField = "mode";
 
-    /// <summary>The stored value of a machine agent, for a query or an index filter that names the mode.</summary>
+    /// <summary>The stored values, for a query or an index filter that names the mode.</summary>
+    public const string DelegatedValue = "delegated";
+
+    /// <inheritdoc cref="DelegatedValue"/>
     public const string MachineValue = "machine";
 
     private AgentModeEnum _mode = null!;
@@ -49,7 +52,7 @@ public partial class AgentMode : ValueObject
 
     private sealed class AgentModeEnum(string name, int value) : SmartEnum<AgentModeEnum>(name, value)
     {
-        public static readonly AgentModeEnum Delegated = new("delegated", 0);
+        public static readonly AgentModeEnum Delegated = new(DelegatedValue, 0);
         public static readonly AgentModeEnum Machine = new(MachineValue, 1);
     }
 }

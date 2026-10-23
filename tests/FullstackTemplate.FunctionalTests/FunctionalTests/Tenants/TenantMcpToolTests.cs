@@ -3,6 +3,7 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Entrypoints;
@@ -30,6 +31,10 @@ public class TenantMcpToolTests : TestBase
         yield return () => ("manage-all client", ["add_tenant", "get_tenant", "list_tenants", "update_tenant"]);
         yield return () => ("read-only client", ["get_tenant", "list_tenants"]);
         yield return () => ("unregistered client with a user sub", []);
+        yield return () => ("admin through a delegated agent with no grant", ["get_tenant", "list_tenants"]);
+        yield return () => ("admin through a delegated agent granted manage_tenant",
+            ["get_tenant", "list_tenants", "update_tenant"]);
+        yield return () => ("machine agent granted manage_tenant", ["get_tenant", "list_tenants", "update_tenant"]);
     }
 
     [Test]
@@ -62,6 +67,48 @@ public class TenantMcpToolTests : TestBase
         ShouldBeToolError(result, "permission_denied");
         result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString()
             .ShouldBe("This client is not a registered agent of your tenant. A tenant admin can register it.");
+    }
+
+    [Test]
+    public async Task admin_through_a_delegated_agent_cannot_rename_beyond_the_grant()
+    {
+        // Arrange
+        var (tenant, admin, agent) = await AddTenantWithAgentAsync("delegated");
+        SignInThroughAgent(admin, agent);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
+
+        // Assert
+        ShouldBeToolError(result, "permission_denied");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldBe(
+            $"The agent {agent.ClientId} is not granted the manage_tenant permission. A tenant admin can grant it.");
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
+    }
+
+    [Test]
+    public async Task machine_agent_with_a_service_account_sub_lists_only_its_tenant()
+    {
+        // Arrange
+        var (tenant, _, agent) = await AddTenantWithAgentAsync("machine");
+        await AddTenantWithUserAsync();
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = $"service-account-{agent.ClientId}",
+            ["azp"] = agent.ClientId,
+        });
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?> { ["pageSize"] = 500 });
+
+        // Assert
+        result.IsError.ShouldNotBe(true);
+        var content = result.StructuredContent.ShouldNotBeNull();
+        content.GetProperty("items").EnumerateArray().ShouldHaveSingleItem().GetProperty("id").GetString().ShouldBe(tenant.Id);
+        content.GetProperty("pagination").GetProperty("totalCount").GetInt32().ShouldBe(1);
     }
 
     [Test]
@@ -388,6 +435,16 @@ public class TenantMcpToolTests : TestBase
     private void SignInAs(User user)
         => FactoryClient.SignInAsAppUser(user.Identifier);
 
+    private void SignInThroughAgent(User user, Agent agent)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = user.Identifier,
+            ["azp"] = agent.ClientId,
+        });
+
+    private void SignInAsMachineAgent(Agent agent)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["client_id"] = agent.ClientId });
+
     private void SignInThroughUnregisteredClient(User user)
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
         {
@@ -420,9 +477,43 @@ public class TenantMcpToolTests : TestBase
             case "unregistered client with a user sub":
                 SignInThroughUnregisteredClient((await AddTenantWithUserAsync("Admin")).User);
                 break;
+            case "admin through a delegated agent with no grant":
+            {
+                var (_, admin, agent) = await AddTenantWithAgentAsync("delegated");
+                SignInThroughAgent(admin, agent);
+                break;
+            }
+            case "admin through a delegated agent granted manage_tenant":
+            {
+                var (_, admin, agent) = await AddTenantWithAgentAsync("delegated", Permission.Names.ManageTenant);
+                SignInThroughAgent(admin, agent);
+                break;
+            }
+            case "machine agent granted manage_tenant":
+                SignInAsMachineAgent((await AddTenantWithAgentAsync("machine", Permission.Names.ManageTenant)).Agent);
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(caller), caller, "No sign-in for this caller.");
         }
+    }
+
+    // The user is an admin, so a narrower tool list comes from the grant of the agent.
+    private static async Task<(Tenant Tenant, User Admin, Agent Agent)> AddTenantWithAgentAsync(
+        string mode, params string[] grant)
+    {
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = "Admin")
+            .Under(tenant)
+            .AddAgent(out var agent, a =>
+            {
+                a.Mode = mode;
+                a.Permissions = grant;
+            });
+        await InsertAsync(tenant);
+        await InsertAsync(admin);
+        await InsertAsync(agent);
+        return (tenant, admin, agent);
     }
 
     private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role = "User")

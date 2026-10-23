@@ -1,6 +1,7 @@
 namespace FullstackTemplate.UnitTests.Services;
 
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
 using System.Security.Claims;
 using FullstackTemplate.Server.Services;
@@ -17,15 +18,22 @@ public sealed class TenantScopeProviderTests : IDisposable
 
     private readonly ICurrentPrincipalAccessor _principalAccessor = Substitute.For<ICurrentPrincipalAccessor>();
     private readonly ITenantIdProvider _tenantIdProvider = Substitute.For<ITenantIdProvider>();
+    private readonly IAgentDirectory _agentDirectory = Substitute.For<IAgentDirectory>();
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
     private readonly ITenantScopeProvider _sut;
 
     public TenantScopeProviderTests()
     {
+        _agentDirectory.FindDelegatedAgentAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _agentDirectory.FindMachineAgentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((AgentBinding?)null);
+
         var services = new ServiceCollection();
         services.AddSingleton(_principalAccessor);
         services.AddSingleton(_tenantIdProvider);
+        services.AddSingleton(_agentDirectory);
         services.AddSingleton(Options.Create(new TenancyOptions
         {
             ManageAllTenantsClientIds = [TrustedClientId],
@@ -173,6 +181,29 @@ public sealed class TenantScopeProviderTests : IDisposable
         SetCaller(new Claim("sub", "user-1"), new Claim("azp", "some-agent"));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
+    }
+
+    [Test]
+    public void user_through_a_delegated_agent_gets_the_tenant_of_the_user_and_cannot_manage_all_tenants()
+    {
+        var tenantId = EntityId.New(Tenant.IdPrefix);
+        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(tenantId);
+        _agentDirectory.FindDelegatedAgentAsync(tenantId, "clinic-assistant").Returns(EntityId.New(Agent.IdPrefix));
+        SetCaller(new Claim("sub", "user-1"), new Claim("azp", "clinic-assistant"));
+
+        _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
+        _sut.CanManageAllTenants().ShouldBeFalse();
+    }
+
+    [Test]
+    public void machine_agent_gets_the_tenant_of_its_record_and_cannot_manage_all_tenants()
+    {
+        var tenantId = EntityId.New(Tenant.IdPrefix);
+        _agentDirectory.FindMachineAgentAsync("fleet-sync").Returns(new AgentBinding(EntityId.New(Agent.IdPrefix), tenantId));
+        SetCaller(new Claim("client_id", "fleet-sync"));
+
+        _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
+        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Test]

@@ -46,23 +46,49 @@ public sealed class PermissionGuard(
         {
             CallerIdentity.System or CallerIdentity.AllTenantsClient { CanManage: true } => Caller.AllTenantsManager.Instance,
             CallerIdentity.AllTenantsClient => new Caller.Outsider(OutsiderKind.MachineClient),
-            CallerIdentity.User user => await LoadMemberAsync(user.Subject, cancellationToken),
+            CallerIdentity.User user => await LoadUserAsync(user.Subject, cancellationToken) is { } member
+                ? new Caller.Member(member.Id, member.UserPermissions.Select(p => p.Permission))
+                : new Caller.Outsider(OutsiderKind.NoUserRecord),
+            CallerIdentity.DelegatedAgent agent => await LoadDelegatedAgentAsync(agent, cancellationToken),
+            CallerIdentity.MachineAgent agent => await LoadGrantAsync(agent.AgentId, cancellationToken) is { } grant
+                ? new Caller.MachineAgent(agent.AgentId, agent.ClientId, grant)
+                : new Caller.Outsider(OutsiderKind.UnknownClient),
             CallerIdentity.UnknownClient => new Caller.Outsider(OutsiderKind.UnknownClient),
             CallerIdentity.Anonymous => new Caller.Outsider(OutsiderKind.Anonymous),
             _ => throw new UnreachableException(),
         };
 
-    private async Task<Caller> LoadMemberAsync(string identifier, CancellationToken cancellationToken)
+    private async Task<Caller> LoadDelegatedAgentAsync(
+        CallerIdentity.DelegatedAgent agent, CancellationToken cancellationToken)
     {
-        // No tracking: a tracked copy would be shared with a handler that loads this user to change it.
-        var user = await dbContext.Users
+        if (await LoadUserAsync(agent.Subject, cancellationToken) is not { } user)
+            return new Caller.Outsider(OutsiderKind.NoUserRecord);
+
+        if (await LoadGrantAsync(agent.AgentId, cancellationToken) is not { } grant)
+            return new Caller.Outsider(OutsiderKind.UnknownClient);
+
+        return new Caller.DelegatedAgent(
+            agent.AgentId, agent.ClientId, user.Id, user.UserPermissions.Select(p => p.Permission), grant);
+    }
+
+    // No tracking: a tracked copy would be shared with a handler that loads this user to change it.
+    private Task<User?> LoadUserAsync(string identifier, CancellationToken cancellationToken)
+        => dbContext.Users
             .TagWithOperationCallSite("users.permission_guard.load")
             .AsNoTracking()
             .Include(u => u.UserPermissions)
             .FirstOrDefaultAsync(u => u.Identifier == identifier, cancellationToken);
 
-        return user is null
-            ? new Caller.Outsider(OutsiderKind.NoUserRecord)
-            : new Caller.Member(user.Id, user.UserPermissions.Select(p => p.Permission));
+    // Null when the agent or its tenant is deleted. The identity of the scope can be older than this check.
+    private async Task<IEnumerable<Permission>?> LoadGrantAsync(string agentId, CancellationToken cancellationToken)
+    {
+        var agent = await dbContext.Agents
+            .TagWithOperationCallSite("agents.permission_guard.load")
+            .AsNoTracking()
+            .Include(a => a.Permissions)
+            .Where(a => a.Id == agentId && dbContext.Tenants.Any(t => t.Id == a.TenantId))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return agent?.Permissions.Select(p => p.Permission);
     }
 }

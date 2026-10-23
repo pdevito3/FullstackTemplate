@@ -25,6 +25,18 @@ public abstract record CallerIdentity
     public sealed record User(string Subject, string? TenantId) : CallerIdentity;
 
     /// <summary>
+    /// A client that the tenant of the user registered as a delegated agent, in a token for a live app user of that
+    /// tenant.
+    /// </summary>
+    public sealed record DelegatedAgent(string AgentId, string ClientId, string Subject, string TenantId) : CallerIdentity;
+
+    /// <summary>
+    /// A client registered as a machine agent, in a token with no app user. The token names no tenant, so the agent
+    /// gives the tenant.
+    /// </summary>
+    public sealed record MachineAgent(string AgentId, string ClientId, string TenantId) : CallerIdentity;
+
+    /// <summary>
     /// A client that is not first-party, not on an allow-list, and not registered for this token. Also a token with
     /// no client claim. <paramref name="ClientId"/> is null for such a token.
     /// </summary>
@@ -38,6 +50,8 @@ public abstract record CallerIdentity
     {
         System or AllTenantsClient => TenantScope.AllTenants,
         User { TenantId: { } tenantId } => TenantScope.ForTenant(tenantId),
+        DelegatedAgent agent => TenantScope.ForTenant(agent.TenantId),
+        MachineAgent agent => TenantScope.ForTenant(agent.TenantId),
         _ => TenantScope.NoTenant,
     };
 

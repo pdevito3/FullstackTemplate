@@ -5,7 +5,7 @@ using System.Diagnostics;
 using Exceptions;
 
 /// <summary>
-/// The sender of the current request, as far as permissions go. Each kind of caller is one of three variants.
+/// The sender of the current request, as far as permissions go. Each kind of caller is one variant.
 /// <see cref="IPermissionGuard"/> loads it. <see cref="Has"/> is the one decision, so a check that throws and a
 /// check that only asks give the same answer.
 /// </summary>
@@ -59,6 +59,50 @@ public abstract record Caller
         }
 
         public string UserId { get; }
+
+        public override IReadOnlySet<Permission> Permissions { get; }
+    }
+
+    /// <summary>
+    /// A registered delegated agent that acts for a member. It holds only the permissions that both the member and the
+    /// grant of the agent have, so it is never stronger than its user or its grant. It is not a <see cref="Member"/>,
+    /// so <see cref="RequireSelfOr"/> gives it no exception for the record of its user.
+    /// </summary>
+    public sealed record DelegatedAgent : Caller
+    {
+        public DelegatedAgent(
+            string agentId, string clientId, string userId,
+            IEnumerable<Permission> userPermissions, IEnumerable<Permission> grant)
+        {
+            AgentId = agentId;
+            ClientId = clientId;
+            UserId = userId;
+            UserPermissions = userPermissions.ToFrozenSet();
+            Permissions = UserPermissions.Intersect(grant).ToFrozenSet();
+        }
+
+        public string AgentId { get; }
+        public string ClientId { get; }
+        public string UserId { get; }
+
+        /// <summary>The rows of the user in <c>user_permissions</c>. A denial names the side that lacks it.</summary>
+        public IReadOnlySet<Permission> UserPermissions { get; }
+
+        public override IReadOnlySet<Permission> Permissions { get; }
+    }
+
+    /// <summary>A registered machine agent. It holds its grant, in the tenant of its record.</summary>
+    public sealed record MachineAgent : Caller
+    {
+        public MachineAgent(string agentId, string clientId, IEnumerable<Permission> grant)
+        {
+            AgentId = agentId;
+            ClientId = clientId;
+            Permissions = grant.ToFrozenSet();
+        }
+
+        public string AgentId { get; }
+        public string ClientId { get; }
 
         public override IReadOnlySet<Permission> Permissions { get; }
     }
@@ -120,10 +164,18 @@ public abstract record Caller
 
     private string DenialFor(Permission permission) => this switch
     {
-        Member => $"You need the {permission.Value} permission to do this.",
+        Member => UserLacks(permission),
+        DelegatedAgent agent when !agent.UserPermissions.Contains(permission) => UserLacks(permission),
+        DelegatedAgent agent => GrantLacks(agent.ClientId, permission),
+        MachineAgent agent => GrantLacks(agent.ClientId, permission),
         Outsider outsider => outsider.Denial,
         _ => throw new UnreachableException(),
     };
+
+    private static string UserLacks(Permission permission) => $"You need the {permission.Value} permission to do this.";
+
+    private static string GrantLacks(string clientId, Permission permission)
+        => $"The agent {clientId} is not granted the {permission.Value} permission. A tenant admin can grant it.";
 }
 
 /// <summary>Why a caller holds no permission.</summary>
@@ -140,7 +192,7 @@ public enum OutsiderKind
 
     /// <summary>
     /// A token from a client that is not first-party, is on no allow-list, and has no agent registered for the token.
-    /// Also a token with no client claim.
+    /// Also a token with no client claim, and an agent whose record or tenant is deleted during the request.
     /// </summary>
     UnknownClient,
 }

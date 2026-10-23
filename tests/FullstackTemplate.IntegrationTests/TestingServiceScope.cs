@@ -98,16 +98,31 @@ public class TestingServiceScope
     }
 
     /// <summary>
-    /// Sets up a machine-to-machine client: an authenticated principal with a "client_id" claim and no "sub".
+    /// Sets up a machine-to-machine client: an authenticated principal with a "client_id" claim. It has no "sub",
+    /// or the <paramref name="serviceAccountSubject"/> that Keycloak, ZeroFactor, and Cognito put in such a token.
     /// </summary>
-    public void SetMachineClient(string clientId)
+    public void SetMachineClient(string clientId, string? serviceAccountSubject = null)
+    {
+        Claim[] claims = serviceAccountSubject is null
+            ? [new Claim("client_id", clientId)]
+            : [new Claim("client_id", clientId), new Claim("sub", serviceAccountSubject)];
+        SetToken(claims, serviceAccountSubject, clientId);
+    }
+
+    /// <summary>
+    /// Sets up a user token that a client that is not first-party got for the user with this identifier, as an agent
+    /// that acts for the user sends it.
+    /// </summary>
+    public void SetDelegatedClient(string userIdentifier, string clientId)
+        => SetToken([new Claim("sub", userIdentifier), new Claim("azp", clientId)], userIdentifier, clientId);
+
+    private void SetToken(Claim[] claims, string? subject, string clientId)
     {
         var currentUserService = GetService<ICurrentUserService>();
 
-        currentUserService.User.Returns(new ClaimsPrincipal(
-            new ClaimsIdentity([new Claim("client_id", clientId)], AuthenticationType)));
+        currentUserService.User.Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, AuthenticationType)));
         currentUserService.ClientId.Returns(clientId);
-        currentUserService.UserIdentifier.Returns((string?)null);
+        currentUserService.UserIdentifier.Returns(subject);
         currentUserService.IsAuthenticated.Returns(true);
         RefreshTenantScope();
     }

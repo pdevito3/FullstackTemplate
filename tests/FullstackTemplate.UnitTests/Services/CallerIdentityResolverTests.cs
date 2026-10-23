@@ -2,6 +2,7 @@ namespace FullstackTemplate.UnitTests.Services;
 
 using System.Security.Claims;
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,13 +19,19 @@ public sealed class CallerIdentityResolverTests : IDisposable
     private const string SwaggerClientId = "swagger";
     private const string ManageClientId = "tenant-admin-sync";
     private const string ReadClientId = "reporting";
+    private const string DelegatedClientId = "clinic-assistant";
+    private const string MachineClientId = "fleet-sync";
     private const string AppUser = "user-1";
     private const string ServiceAccount = "service-account-1";
 
     private static readonly string AppUserTenantId = EntityId.New(Tenant.IdPrefix);
+    private static readonly string MachineTenantId = EntityId.New(Tenant.IdPrefix);
+    private static readonly string DelegatedAgentId = EntityId.New(Agent.IdPrefix);
+    private static readonly string MachineAgentId = EntityId.New(Agent.IdPrefix);
 
     private readonly ICurrentPrincipalAccessor _principalAccessor = Substitute.For<ICurrentPrincipalAccessor>();
     private readonly ITenantIdProvider _tenantIdProvider = Substitute.For<ITenantIdProvider>();
+    private readonly IAgentDirectory _agentDirectory = Substitute.For<IAgentDirectory>();
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
     private readonly ICallerIdentityResolver _sut;
@@ -33,10 +40,19 @@ public sealed class CallerIdentityResolverTests : IDisposable
     {
         _tenantIdProvider.GetTenantIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((string?)null);
         _tenantIdProvider.GetTenantIdAsync(AppUser, Arg.Any<CancellationToken>()).Returns(AppUserTenantId);
+        _agentDirectory.FindDelegatedAgentAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _agentDirectory.FindDelegatedAgentAsync(AppUserTenantId, DelegatedClientId, Arg.Any<CancellationToken>())
+            .Returns(DelegatedAgentId);
+        _agentDirectory.FindMachineAgentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((AgentBinding?)null);
+        _agentDirectory.FindMachineAgentAsync(MachineClientId, Arg.Any<CancellationToken>())
+            .Returns(new AgentBinding(MachineAgentId, MachineTenantId));
 
         var services = new ServiceCollection();
         services.AddSingleton(_principalAccessor);
         services.AddSingleton(_tenantIdProvider);
+        services.AddSingleton(_agentDirectory);
         services.AddSingleton(Options.Create(new TenancyOptions
         {
             ManageAllTenantsClientIds = [ManageClientId],
@@ -96,6 +112,21 @@ public sealed class CallerIdentityResolverTests : IDisposable
         yield return () => ("app user with no client claim",
             [new("sub", AppUser)],
             new CallerIdentity.UnknownClient(null));
+        yield return () => ("app user through a delegated agent of their tenant",
+            [new("sub", AppUser), new("azp", DelegatedClientId)],
+            new CallerIdentity.DelegatedAgent(DelegatedAgentId, DelegatedClientId, AppUser, AppUserTenantId));
+        yield return () => ("delegated agent client with no app user",
+            [new("client_id", DelegatedClientId)],
+            new CallerIdentity.UnknownClient(DelegatedClientId));
+        yield return () => ("Keycloak service account of a machine agent",
+            [new("sub", ServiceAccount), new("azp", MachineClientId)],
+            new CallerIdentity.MachineAgent(MachineAgentId, MachineClientId, MachineTenantId));
+        yield return () => ("Duende client_credentials token of a machine agent",
+            [new("client_id", MachineClientId)],
+            new CallerIdentity.MachineAgent(MachineAgentId, MachineClientId, MachineTenantId));
+        yield return () => ("app user through the client of a machine agent",
+            [new("sub", AppUser), new("azp", MachineClientId)],
+            new CallerIdentity.UnknownClient(MachineClientId));
         yield return () => ("client_id wins over azp",
             [new("sub", AppUser), new("client_id", "claude-desktop"), new("azp", AppClientId)],
             new CallerIdentity.UnknownClient("claude-desktop"));

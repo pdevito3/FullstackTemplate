@@ -1,0 +1,49 @@
+namespace FullstackTemplate.UnitTests.Databases;
+
+using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+
+/// <summary>
+/// The model of <see cref="AppDbContext"/> plus an <see cref="OrderLine"/> that gets its tenant through its order.
+/// </summary>
+internal sealed class NavigationTenantedContext() : AppDbContext(Options, TimeProvider.System,
+    Substitute.For<ICurrentUserService>(), Substitute.For<ITenantScopeProvider>(),
+    new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+{
+    private static readonly DbContextOptions<AppDbContext> Options = new DbContextOptionsBuilder<AppDbContext>()
+        .UseNpgsql("Host=unused")
+        .UseSnakeCaseNamingConvention()
+        .Options;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // AppDbContext adds the tenant filters at the end of its model, so the order line must be in the model first.
+        modelBuilder.Entity<Order>().HasKey(order => order.Id);
+        modelBuilder.Entity<OrderLine>(line =>
+        {
+            line.HasKey(l => l.Id);
+            line.ApplyTenanting(l => l.Order.TenantId);
+        });
+        base.OnModelCreating(modelBuilder);
+    }
+}
+
+internal sealed class Order(string tenantId) : BaseEntity("ord"), ITenantable
+{
+    public string TenantId { get; private set; } = tenantId;
+}
+
+internal sealed class OrderLine : BaseEntity
+{
+    public OrderLine(Order order) : this() => Order = order;
+
+    private OrderLine() : base("oln")
+    {
+    }
+
+    public Order Order { get; private set; } = null!;
+}

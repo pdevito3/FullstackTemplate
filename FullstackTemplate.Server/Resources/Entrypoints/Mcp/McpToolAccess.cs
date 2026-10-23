@@ -50,34 +50,32 @@ public static class McpToolAccess
         };
 
     /// <summary>
-    /// Stops startup when a tool has no <see cref="ToolAccessAttribute"/> or names a permission that does not exist.
+    /// Stops startup when a tool has no <see cref="ToolAccessAttribute"/>, a kind that is not defined, or a permission
+    /// that does not exist.
     /// </summary>
     /// <exception cref="InvalidOperationException">A tool has no valid declaration. The message names each one.</exception>
     public static void Validate(IEnumerable<McpServerTool> tools)
     {
-        var problems = tools.Select(ProblemOf).OfType<string>().ToList();
+        var problems = tools
+            .Where(tool => RequirementOf(tool) is null)
+            .Select(tool => $"The MCP tool {tool.ProtocolTool.Name} has no valid [ToolAccess] attribute. "
+                + "Declare a ToolAccessKind or a Permission.Names constant.")
+            .ToList();
         if (problems.Count > 0)
             throw new InvalidOperationException(string.Join(Environment.NewLine, problems));
     }
 
-    private static string? ProblemOf(McpServerTool tool)
-    {
-        var name = tool.ProtocolTool.Name;
-        return tool.Metadata.OfType<ToolAccessAttribute>().SingleOrDefault() switch
-        {
-            null => $"The MCP tool {name} has no [ToolAccess] attribute. Declare what a caller needs to use it.",
-            { PermissionName: { } permission } when !Permission.ListNames().Contains(permission, StringComparer.Ordinal) =>
-                $"The MCP tool {name} needs the permission {permission}, which does not exist. Use a Permission.Names constant.",
-            _ => null,
-        };
-    }
-
+    /// <summary>
+    /// The one parse of the <see cref="ToolAccessAttribute"/> of a tool. Null when the attribute is missing, its kind
+    /// is not defined, or its permission does not exist.
+    /// </summary>
     private static ToolRequirement? RequirementOf(McpServerTool tool)
         => tool.Metadata.OfType<ToolAccessAttribute>().SingleOrDefault() switch
         {
-            { PermissionName: { } permission } => new ToolRequirement.Needs(Permission.Of(permission)),
-            { Kind: ToolAccessKind.Read } => new ToolRequirement.Read(),
-            { Kind: ToolAccessKind.ManageAllTenants } => new ToolRequirement.ManageAllTenants(),
+            { PermissionName: { } permission } when Permission.ListNames().Contains(permission, StringComparer.Ordinal)
+                => new ToolRequirement.Needs(Permission.Of(permission)),
+            { PermissionName: null, Kind: ToolAccessKind.Read } => new ToolRequirement.Read(),
+            { PermissionName: null, Kind: ToolAccessKind.ManageAllTenants } => new ToolRequirement.ManageAllTenants(),
             _ => null,
         };
 

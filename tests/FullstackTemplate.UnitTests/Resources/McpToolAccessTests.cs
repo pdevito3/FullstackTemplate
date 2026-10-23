@@ -41,7 +41,7 @@ public class McpToolAccessTests
         var act = () => McpToolAccess.Validate([tool]);
 
         // Assert
-        act.ShouldThrow<InvalidOperationException>().Message.ShouldContain("ping has no [ToolAccess] attribute");
+        act.ShouldThrow<InvalidOperationException>().Message.ShouldBe(InvalidDeclaration("ping"));
     }
 
     [Test]
@@ -55,7 +55,21 @@ public class McpToolAccessTests
         var act = () => McpToolAccess.Validate([tool]);
 
         // Assert
-        act.ShouldThrow<InvalidOperationException>().Message.ShouldContain("manage_everything, which does not exist");
+        act.ShouldThrow<InvalidOperationException>().Message.ShouldBe(InvalidDeclaration("ping"));
+    }
+
+    [Test]
+    public void tool_with_a_kind_that_is_not_defined_stops_startup()
+    {
+        // Arrange
+        var tool = McpServerTool.Create([ToolAccess((ToolAccessKind)99)] () => "pong",
+            new McpServerToolCreateOptions { Name = "ping" });
+
+        // Act
+        var act = () => McpToolAccess.Validate([tool]);
+
+        // Assert
+        act.ShouldThrow<InvalidOperationException>().Message.ShouldBe(InvalidDeclaration("ping"));
     }
 
     [Test]
@@ -71,4 +85,8 @@ public class McpToolAccessTests
         // Assert
         act.ShouldNotThrow();
     }
+
+    private static string InvalidDeclaration(string toolName)
+        => $"The MCP tool {toolName} has no valid [ToolAccess] attribute. "
+            + "Declare a ToolAccessKind or a Permission.Names constant.";
 }

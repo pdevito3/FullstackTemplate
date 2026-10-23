@@ -22,10 +22,10 @@ public class CallerTests
         => new Caller.Member(SelfId, permissions);
 
     private static Caller.DelegatedAgent DelegatedAgentOf(Permission[] userPermissions, Permission[] grant)
-        => new("agt_delegated", DelegatedClientId, SelfId, userPermissions, grant);
+        => new(DelegatedClientId, userPermissions, grant);
 
     private static Caller.MachineAgent MachineAgentWith(params Permission[] grant)
-        => new("agt_machine", MachineClientId, grant);
+        => new(MachineClientId, grant);
 
     public static IEnumerable<Func<(string Case, Caller Caller, string? Denial)>> RequireManageUsersCases()
     {

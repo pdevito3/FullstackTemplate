@@ -70,20 +70,14 @@ public abstract record Caller
     /// </summary>
     public sealed record DelegatedAgent : Caller
     {
-        public DelegatedAgent(
-            string agentId, string clientId, string userId,
-            IEnumerable<Permission> userPermissions, IEnumerable<Permission> grant)
+        public DelegatedAgent(string clientId, IEnumerable<Permission> userPermissions, IEnumerable<Permission> grant)
         {
-            AgentId = agentId;
             ClientId = clientId;
-            UserId = userId;
             UserPermissions = userPermissions.ToFrozenSet();
             Permissions = UserPermissions.Intersect(grant).ToFrozenSet();
         }
 
-        public string AgentId { get; }
         public string ClientId { get; }
-        public string UserId { get; }
 
         /// <summary>The rows of the user in <c>user_permissions</c>. A denial names the side that lacks it.</summary>
         public IReadOnlySet<Permission> UserPermissions { get; }
@@ -94,14 +88,12 @@ public abstract record Caller
     /// <summary>A registered machine agent. It holds its grant, in the tenant of its record.</summary>
     public sealed record MachineAgent : Caller
     {
-        public MachineAgent(string agentId, string clientId, IEnumerable<Permission> grant)
+        public MachineAgent(string clientId, IEnumerable<Permission> grant)
         {
-            AgentId = agentId;
             ClientId = clientId;
             Permissions = grant.ToFrozenSet();
         }
 
-        public string AgentId { get; }
         public string ClientId { get; }
 
         public override IReadOnlySet<Permission> Permissions { get; }

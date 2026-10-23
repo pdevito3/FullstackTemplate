@@ -51,7 +51,7 @@ public sealed class PermissionGuard(
                 : new Caller.Outsider(OutsiderKind.NoUserRecord),
             CallerIdentity.DelegatedAgent agent => await LoadDelegatedAgentAsync(agent, cancellationToken),
             CallerIdentity.MachineAgent agent => await LoadGrantAsync(agent.AgentId, cancellationToken) is { } grant
-                ? new Caller.MachineAgent(agent.AgentId, agent.ClientId, grant)
+                ? new Caller.MachineAgent(agent.ClientId, grant)
                 : new Caller.Outsider(OutsiderKind.UnknownClient),
             CallerIdentity.UnknownClient => new Caller.Outsider(OutsiderKind.UnknownClient),
             CallerIdentity.Anonymous => new Caller.Outsider(OutsiderKind.Anonymous),
@@ -67,8 +67,7 @@ public sealed class PermissionGuard(
         if (await LoadGrantAsync(agent.AgentId, cancellationToken) is not { } grant)
             return new Caller.Outsider(OutsiderKind.UnknownClient);
 
-        return new Caller.DelegatedAgent(
-            agent.AgentId, agent.ClientId, user.Id, user.UserPermissions.Select(p => p.Permission), grant);
+        return new Caller.DelegatedAgent(agent.ClientId, user.UserPermissions.Select(p => p.Permission), grant);
     }
 
     // No tracking: a tracked copy would be shared with a handler that loads this user to change it.

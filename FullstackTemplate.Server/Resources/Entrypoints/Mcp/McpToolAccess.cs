@@ -65,10 +65,6 @@ public static class McpToolAccess
             throw new InvalidOperationException(string.Join(Environment.NewLine, problems));
     }
 
-    /// <summary>
-    /// The one parse of the <see cref="ToolAccessAttribute"/> of a tool. Null when the attribute is missing, its kind
-    /// is not defined, or its permission does not exist.
-    /// </summary>
     private static ToolRequirement? RequirementOf(McpServerTool tool)
         => tool.Metadata.OfType<ToolAccessAttribute>().SingleOrDefault() switch
         {
@@ -86,12 +82,10 @@ public static class McpToolAccess
         return services.GetRequiredService<IPermissionGuard>().GetCallerAsync(cancellationToken);
     }
 
-    /// <summary>The parsed declaration. <see cref="Allows"/> and <see cref="Demand"/> ask the same member of Caller.</summary>
     private abstract record ToolRequirement
     {
         public abstract bool Allows(Caller caller);
 
-        /// <exception cref="ForbiddenAccessException">The caller cannot use the tool. Caller gives the text.</exception>
         public abstract void Demand(Caller caller);
 
         public sealed record Read : ToolRequirement

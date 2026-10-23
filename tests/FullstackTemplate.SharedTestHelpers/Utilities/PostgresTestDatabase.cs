@@ -16,8 +16,14 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 {
     private static readonly bool ReuseContainer = Environment.GetEnvironmentVariable("CI") is null;
 
+    // A pool grows with the number of tests that run at once. The Npgsql default of 100 let one test run use all the
+    // connections of a default Postgres.
+    private const int MaxPoolSize = 20;
+
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
         .WithReuse(ReuseContainer)
+        // The test runs of all worktrees on the machine share this container
+        .WithCommand("-c", "max_connections=400")
         .WithLabel("fullstacktemplate.reuse", "test-postgres")
         .Build();
 
@@ -38,7 +44,8 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
         await ExecuteOnServerAsync($"""CREATE DATABASE "{_databaseName}" """);
         ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
-            Database = _databaseName
+            Database = _databaseName,
+            MaxPoolSize = MaxPoolSize
         }.ConnectionString;
     }
 

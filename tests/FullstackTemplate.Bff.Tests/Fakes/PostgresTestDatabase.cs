@@ -15,8 +15,11 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 {
     private static readonly bool ReuseContainer = Environment.GetEnvironmentVariable("CI") is null;
 
+    private const int MaxPoolSize = 20;
+
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
         .WithReuse(ReuseContainer)
+        .WithCommand("-c", "max_connections=400")
         .WithLabel("fullstacktemplate.reuse", "test-postgres")
         .Build();
 
@@ -37,7 +40,8 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
         await ExecuteOnServerAsync($"""CREATE DATABASE "{_databaseName}" """);
         ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
-            Database = _databaseName
+            Database = _databaseName,
+            MaxPoolSize = MaxPoolSize
         }.ConnectionString;
     }
 

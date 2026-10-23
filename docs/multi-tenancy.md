@@ -66,7 +66,7 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 | Current caller | Scope | Rows that the filter shows |
 |--------------|-------|----------------------------|
 | System work in a system scope (see below) | `TenantScope.AllTenants` | The rows of all tenants |
-| A client on one of the two allow-lists, with no user of the app in the token | `TenantScope.AllTenants` | The rows of all tenants |
+| A client on one of the two allow-lists, whatever the `sub` of the token | `TenantScope.AllTenants` | The rows of all tenants |
 | A user of a first-party client with a user record | `TenantScope.ForTenant(id)` | The rows of this user's tenant |
 | A delegated agent (see [Agents](authentication.md#agents)) | `TenantScope.ForTenant(id)` | The rows of the tenant of its user |
 | A machine agent | `TenantScope.ForTenant(id)` | The rows of the tenant of its agent record |
@@ -74,7 +74,7 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 | No HTTP request and no system scope | `TenantScope.NoTenant` | No rows |
 | Any other caller (an unknown client, an anonymous request) | `TenantScope.NoTenant` | No rows |
 
-`CallerIdentityResolver` decides the caller once for each DI scope. `TenantScopeProvider`, the permission guard, and `InitiateUserAndTenant` read the same answer.
+`CallerIdentityResolver` decides the caller once for each DI scope. `TenantScopeProvider`, the permission guard, and `InitiateUserAndTenant` read the same answer. EF Core reads the tenant filter synchronously, so `CallerIdentityBehavior` resolves the caller before each MediatR handler. A query outside a MediatR request blocks a thread on the lookups if it is the first read in its scope.
 
 ## System work
 
@@ -104,9 +104,9 @@ A domain event handler runs in the tenant of the `ITenantable` entity or the `Te
 
 ## Row scope and capability
 
-The scope tells which rows a caller sees. It does not tell what a caller can do. For an access decision, use `ITenantScopeProvider.CanManageAllTenants()`, not `TenantScope.IncludesAllTenants`.
+The scope tells which rows a caller sees. It does not tell what a caller can do. For an access decision, load the caller with `IPermissionGuard.GetCallerAsync` and use `Caller.ManagesAllTenants` or `Caller.RequireManagesAllTenants()`, not `TenantScope.IncludesAllTenants`.
 
-`CanManageAllTenants()` is true for a client in `ManageAllTenantsClientIds` and for system work in a system scope. It is false for all other callers, including a client in `ReadAllTenantsClientIds`.
+`ManagesAllTenants` is true for a client in `ManageAllTenantsClientIds` and for system work in a system scope. It is false for all other callers, including a client in `ReadAllTenantsClientIds`.
 
 ## Add a user to a tenant
 
@@ -146,4 +146,15 @@ Put a client on the read list unless it must change data. For example, a reporti
 }
 ```
 
-The server compares the client ID of the token (`client_id`, then `azp`, then `applicationId`) with the lists. The comparison is case-sensitive. A list matches only a token with no user of the app: a token with no `sub`, or with a `sub` that no live user has. Keycloak, ZeroFactor, and Cognito give a client credentials token a service-account `sub`, so their tokens match. A token with the `sub` of a user of the app never matches a list, so a user who signs in through a listed client does not get all tenants.
+The server compares the client ID of the token (`client_id`, then `azp`, then `applicationId`) with the lists. The comparison is case-sensitive. A list is a fact about the client, so it matches each token of the client, whatever its `sub`. Thus a client credentials token with a service-account `sub` from Keycloak or ZeroFactor matches, and a tenant cannot take the client over with a user record that has the same `sub`.
+
+Put only a confidential client that allows only the client credentials grant on a list. If the client also allows a user sign-in, each user who signs in through it acts for the operator in all tenants.
+
+On Cognito, the lists do not work: the server accepts only tokens of the first-party client (see [Providers](authentication.md#providers)).
+
+### Upgrade from a service account with a user record
+
+Before agents, the server took a Keycloak service account token as a user, so the docs told you to give the service account a user record. Such a token is now an unknown client and sees no rows. Do one of these:
+
+- To give the client one tenant, bind it as a machine agent of that tenant (see [Register an agent](authentication.md#register-an-agent)), and delete its user record.
+- To give the client all tenants, put it on a list.

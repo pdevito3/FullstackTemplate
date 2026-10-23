@@ -8,12 +8,14 @@ An agent is an OAuth client other than this app that calls the server, usually t
 2. A request with no authenticated principal is anonymous.
 3. A token with no client ID is an unknown client.
 4. A token from a first-party client (`Auth:ClientId`, or `Swagger:ClientId` when it is set) with a `sub` is a user.
-5. A token whose `sub` is a live user of the app is a delegated agent, if the tenant of the user has a live delegated `Agent` record for the client ID. Otherwise it is an unknown client.
-6. A token with no live user of the app is an all-tenants client if its client ID is on a `Tenancy` allow-list, or a machine agent if a live machine `Agent` record has the client ID. Otherwise it is an unknown client.
+5. A token whose client ID is on a `Tenancy` allow-list is an all-tenants client, whatever its `sub`.
+6. A token whose client ID has a live machine `Agent` record is a machine agent, whatever its `sub`.
+7. A token whose `sub` is a live user of the app is a delegated agent, if the tenant of the user has a live delegated `Agent` record for the client ID.
+8. Any other token is an unknown client.
 
 An unknown client sees no rows, holds no permission, and sees no MCP tool.
 
-An `Agent` record is in one tenant. Its grant is `AgentPermission` rows. A delegated agent holds the permissions that both its user and its grant have. A machine agent holds its grant, and it sees the rows of the tenant of its record. The permission guard reads the user rows and the agent rows from the database in each check, as [ADR 0009](0009-permission-checks-in-the-handler.md) does for users. A caller with `manage_agents` registers an agent and changes its grant. `Agent.Create`, `Agent.Grant`, and `Agent.Revoke` call `Require` on the caller, so a caller cannot give an agent a permission that the caller does not have. Only a caller that can manage all tenants can create a machine agent.
+An `Agent` record is in one tenant. Its grant is `AgentPermission` rows. A delegated agent holds the permissions that both its user and its grant have. A machine agent holds its grant, and it sees the rows of the tenant of its record. The permission guard reads the user rows and the agent rows from the database in each check, as [ADR 0009](0009-permission-checks-in-the-handler.md) does for users. A caller with `manage_agents` registers an agent and changes its grant. `Agent.Create` and `Agent.Grant` call `Require` on the caller, so a caller cannot give an agent a permission that the caller does not have. A revoke and a delete need only `manage_agents`. Only a caller that can manage all tenants can create a machine agent.
 
 Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permission, the capability to manage all tenants, or a read. The filter of `tools/list` hides a tool that the caller cannot use. The filter of `tools/call` denies such a tool with a `permission_denied` tool error. Both filters ask `Caller`, the same type that the handler asks through `IPermissionGuard`. The handler still checks the permission.
 
@@ -39,8 +41,14 @@ Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permis
 
 - **A delegated client ID is unique in each tenant.** The user gives the tenant, so many tenants can register one public MCP client.
 - **A machine client ID is unique in all tenants.** A machine token names no tenant, so the record must give exactly one tenant.
+- **The `sub` of the token decides before the client ID.** We did not choose this option. A tenant admin writes the identifier of a user record. A tenant could add a user with the service-account `sub` of the machine agent of another tenant, and then register that client as its own delegated agent. The job of the other tenant would then read and write the first tenant. The allow-lists and the machine agents are facts of the operator about a client, so they decide first.
 - **A tenant admin binds a machine client.** We did not choose this option. Tenant A could bind the client ID of the sync job of tenant B before B does. The job of B would then write into A. The operator creates the client at the identity provider, so the operator binds it. After that, an admin of the tenant narrows, widens, or deletes it.
 - **Pin the service-account `sub` on a machine record.** We did not choose this option. The client credentials grant needs a confidential client (RFC 6749, section 4.4). A user can get a token for a machine client only if the operator binds a client that also allows a user sign-in, and each holder of its secret can get a machine token anyway. The operator binds only a client that allows only client credentials.
+
+### Who can take a grant away
+
+- **The caller must hold each permission that it takes away**, the rule for a user. We did not choose this option. A tenant admin who lacks a permission of an agent could then not stop the agent, for example a machine agent that the operator bound with `manage_users`. A revoke cannot raise the access of anyone.
+- **`manage_agents` is enough to revoke or delete.** We chose this option.
 
 ### How a tool declares its need
 
@@ -61,6 +69,8 @@ Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permis
 - The tool attribute repeats the permission that the handler checks. If the two differ, the tool is hidden from a caller who could use it, or the handler denies the call. Neither gives more access.
 - A delegated agent does not get the exception of `RequireSelfOrAsync` for its own user.
 - ADR 0009 said that a machine client cannot have a part of the permissions. A machine agent now can.
-- A user token from a client that the operator bound as a machine acts as that machine if the user has no record in the app. The operator must bind only a confidential client that allows only client credentials.
+- Each token of a client on an allow-list or bound as a machine acts as that client, whatever its `sub`. The operator must use only a confidential client that allows only client credentials for both.
+- A service account that has a user record, as the docs told Keycloak operators to make before, is now an unknown client. The operator binds it as a machine agent or puts it on a list.
+- On MCP, an unknown client gets a `permission_denied` tool error for a read tool, which tells it to ask for a registration. Over HTTP and gRPC, the same caller gets an empty list or 404.
 - Cognito accepts only the first-party client as the audience, so agents do not work with Cognito.
 - The server does not yet publish OAuth protected resource metadata (RFC 9728) for `/mcp`. A standard MCP client needs it to find the identity provider. [Issue 68](https://github.com/pdevito3/FullstackTemplate/issues/68) tracks it.

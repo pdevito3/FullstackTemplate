@@ -157,13 +157,15 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 |---|---|---|
 | `[ToolAccess(ToolAccessKind.Read)]` | A read with no permission check, for example `get_tenant` | The caller is recognized: each caller except an unknown client and an anonymous request. The tenant filter decides the rows. |
 | `[ToolAccess(Permission.Names.ManageTenant)]` | A tool whose handler calls `RequireAsync` with that permission, for example `update_tenant` | `Caller.Has` gives true for the permission |
-| `[ToolAccess(ToolAccessKind.ManageAllTenants)]` | A tool whose handler checks `CanManageAllTenants()`, for example `add_tenant` | The caller can manage all tenants |
+| `[ToolAccess(ToolAccessKind.ManageAllTenants)]` | A tool whose handler checks `Caller.ManagesAllTenants`, for example `add_tenant` | The caller can manage all tenants |
 
-Use a `Permission.Names` constant, so that the compiler checks the name. If the handler checks more than one permission, name the permission that each call needs. The handler checks the others.
+Use a `Permission.Names` constant, so that the compiler checks the name. If the handler checks more than one permission, name the permission that each call needs. The handler checks the others. If the handler lets a user act on their own record with `RequireSelfOrAsync`, use `ToolAccessKind.Read`, so that the handler decides. A permission in the attribute would hide the tool from that user.
+
+`ToolAccessKind.Read` is stricter on MCP than on HTTP and gRPC. An unknown client gets a `permission_denied` tool error that tells it to ask for a registration. Over HTTP and gRPC, the same caller gets an empty list or 404, because the tenant filter shows it no rows.
 
 `McpToolAccess.ListFilter` removes from `tools/list` each tool that the caller cannot use. `McpToolAccess.CallFilter` denies a call to such a tool. It runs inside `McpDomainErrors.Filter`, so the denial is a `permission_denied` tool error with the message of `Caller`. Both filters load the caller with `IPermissionGuard.GetCallerAsync` and ask `Caller`, so the list, the call, and the handler give the same answer. For an agent, the caller holds only the permissions of its grant. See [Agents](../authentication.md#agents).
 
-At startup, `McpToolAccess.Validate` stops the server if a tool has no `[ToolAccess]` or names a permission that does not exist. A unit test runs the same check on each tool of the Server.
+At startup, `McpToolAccess.Validate` stops the server if a tool has no `[ToolAccess]`, has a `ToolAccessKind` that is not defined, or names a permission that does not exist. A unit test runs the same check on each tool of the Server.
 
 The attribute repeats the permission of the handler. If the two differ, the result fails closed: the list hides the tool from a caller who could use it, or the handler denies the call.
 

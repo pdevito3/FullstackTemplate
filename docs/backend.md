@@ -168,7 +168,7 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 
 [Agents](authentication.md#agents) tells how the server identifies an agent and how a tenant registers it.
 
-`AddTenant` and `InitiateUserAndTenant` act outside one tenant. They do not check a permission. They check `ITenantScopeProvider.CanManageAllTenants()` in the handler (see [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability)). Do not make this capability a permission, because an admin could then give it to themselves.
+`AddTenant` and `InitiateUserAndTenant` act outside one tenant. They do not check a permission. They check in the handler that the caller can manage all tenants (see [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability)). Do not make this capability a permission, because an admin could then give it to themselves.
 
 ### Where the permissions come from
 

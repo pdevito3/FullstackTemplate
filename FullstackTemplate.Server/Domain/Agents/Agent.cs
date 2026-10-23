@@ -9,8 +9,8 @@ using Users;
 /// <summary>
 /// An OAuth client that a tenant lets act in the tenant, and the permissions that the tenant grants it. The client
 /// signs in at the identity provider. This record is the decision of the tenant about it. A tenant has at most one
-/// live agent for each client ID. A machine client ID has at most one live agent in all tenants, because its token
-/// names no tenant: the agent gives the tenant.
+/// live agent for each client ID. A client ID has at most one live machine agent in all tenants, because the token of
+/// a machine names no tenant: the agent gives the tenant.
 /// </summary>
 /// <remarks>
 /// <see cref="ClientId"/> and <see cref="Mode"/> do not change after creation, because a different trust is a new

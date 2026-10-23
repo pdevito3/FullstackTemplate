@@ -40,7 +40,7 @@ Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permis
 ### How a client ID maps to tenants
 
 - **A delegated client ID is unique in each tenant.** The user gives the tenant, so many tenants can register one public MCP client.
-- **A machine client ID is unique in all tenants.** A machine token names no tenant, so the record must give exactly one tenant.
+- **A client ID has one machine agent in all tenants.** A machine token names no tenant, so the record must give exactly one tenant.
 - **The `sub` of the token decides before the client ID.** We did not choose this option. A tenant admin writes the identifier of a user record. A tenant could add a user with the service-account `sub` of the machine agent of another tenant, and then register that client as its own delegated agent. The job of the other tenant would then read and write the first tenant. The allow-lists and the machine agents are facts of the operator about a client, so they decide first.
 - **A tenant admin binds a machine client.** We did not choose this option. Tenant A could bind the client ID of the sync job of tenant B before B does. The job of B would then write into A. The operator creates the client at the identity provider, so the operator binds it. After that, an admin of the tenant narrows, widens, or deletes it.
 - **Pin the service-account `sub` on a machine record.** We did not choose this option. The client credentials grant needs a confidential client (RFC 6749, section 4.4). A user can get a token for a machine client only if the operator binds a client that also allows a user sign-in, and each holder of its secret can get a machine token anyway. The operator binds only a client that allows only client credentials.

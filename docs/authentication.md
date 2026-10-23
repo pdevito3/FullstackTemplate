@@ -250,7 +250,7 @@ An unknown client sees no MCP tool, and each of its calls gets a `permission_den
 4. To grant a permission, send `POST /api/v1/agents/{id}/permissions` with `{ "permission": "manage_tenant" }`. The caller must have the permission. To take it away, send `DELETE /api/v1/agents/{id}/permissions/{permission}`. That needs only `manage_agents`, so an admin can always stop an agent. A machine agent gets its first grant from the operator in step 3 or from an admin of its tenant.
 5. To remove the agent, send `DELETE /api/v1/agents/{id}`. That needs only `manage_agents`.
 
-A delegated client ID can have one agent in each tenant, so many tenants can register one MCP client. A machine client ID can have one agent in all tenants, because the token of a machine names no tenant. A duplicate gets 409, and so does a delegated agent for a client that is bound as a machine agent. An agent for a first-party client or for a client on an allow-list gets 422, because the server would never use it.
+A delegated client ID can have one agent in each tenant, so many tenants can register one MCP client. A client ID can have one machine agent in all tenants, because the token of a machine names no tenant. A duplicate gets 409, and so does a delegated agent for a client that is bound as a machine agent. An agent for a first-party client or for a client on an allow-list gets 422, because the server would never use it.
 
 The permission guard reads the agent and its grant from the database in each check. A removed permission, a deleted agent, or a deleted tenant applies on the next request. A delegated agent does not get the exception of `RequireSelfOrAsync`, so it cannot update its own user without `manage_users`.
 

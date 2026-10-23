@@ -33,7 +33,7 @@ public sealed class AgentDirectory(IServiceScopeFactory scopeFactory) : IAgentDi
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        return await LiveAgents(dbContext)
+        return await LiveAgentsOfAllTenants(dbContext)
             .TagWithOperationCallSite("agents.directory.find_machine")
             .Where(a => a.ClientId == clientId && a.Mode.Value == AgentMode.MachineValue)
             .Select(a => new AgentBinding(a.Id, a.TenantId))
@@ -46,14 +46,14 @@ public sealed class AgentDirectory(IServiceScopeFactory scopeFactory) : IAgentDi
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        return await LiveAgents(dbContext)
+        return await LiveAgentsOfAllTenants(dbContext)
             .TagWithOperationCallSite("agents.directory.find_delegated")
             .Where(a => a.TenantId == tenantId && a.ClientId == clientId && a.Mode.Value == AgentMode.DelegatedValue)
             .Select(a => a.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private static IQueryable<Agent> LiveAgents(AppDbContext dbContext)
+    private static IQueryable<Agent> LiveAgentsOfAllTenants(AppDbContext dbContext)
         => dbContext.Agents
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Join(dbContext.Tenants, a => a.TenantId, t => t.Id, (a, _) => a);

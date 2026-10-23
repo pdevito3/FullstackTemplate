@@ -27,9 +27,9 @@ public class DeleteAgentCommandTests : TestBase
         // Assert
         var get = () => new TestingServiceScope().SendAsync(new GetAgent.Query(agent.Id));
         await get.ShouldThrowAsync<NotFoundException>();
-        var rows = await RowsOfAsync(agent.Id);
-        rows.Agent.ShouldBeTrue();
-        rows.Grant.ShouldBe([true]);
+        var isDeleted = await IsDeletedFlagsOfAsync(agent.Id);
+        isDeleted.Agent.ShouldBeTrue();
+        isDeleted.Grant.ShouldBe([true]);
     }
 
     [Test]
@@ -46,7 +46,7 @@ public class DeleteAgentCommandTests : TestBase
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
             .ShouldBe("You need the manage_agents permission to do this.");
-        (await RowsOfAsync(agent.Id)).Agent.ShouldBeFalse();
+        (await IsDeletedFlagsOfAsync(agent.Id)).Agent.ShouldBeFalse();
     }
 
     [Test]
@@ -63,9 +63,9 @@ public class DeleteAgentCommandTests : TestBase
         await testingServiceScope.SendAsync(new DeleteAgent.Command(agent.Id));
 
         // Assert
-        var rows = await RowsOfAsync(agent.Id);
-        rows.Agent.ShouldBeTrue();
-        rows.Grant.ShouldBe([true, true]);
+        var isDeleted = await IsDeletedFlagsOfAsync(agent.Id);
+        isDeleted.Agent.ShouldBeTrue();
+        isDeleted.Grant.ShouldBe([true, true]);
     }
 
     [Test]
@@ -80,10 +80,10 @@ public class DeleteAgentCommandTests : TestBase
 
         // Assert
         await act.ShouldThrowAsync<NotFoundException>();
-        (await RowsOfAsync(otherTenantAgent.Id)).Agent.ShouldBeFalse();
+        (await IsDeletedFlagsOfAsync(otherTenantAgent.Id)).Agent.ShouldBeFalse();
     }
 
-    private static Task<(bool Agent, List<bool> Grant)> RowsOfAsync(string agentId)
+    private static Task<(bool Agent, List<bool> Grant)> IsDeletedFlagsOfAsync(string agentId)
         => new TestingServiceScope().ExecuteDbContextAsync(async db => (
             await db.Agents.IgnoreQueryFilters().Where(a => a.Id == agentId).Select(a => a.IsDeleted).SingleAsync(),
             await db.AgentPermissions.IgnoreQueryFilters().Where(p => p.AgentId == agentId).Select(p => p.IsDeleted)

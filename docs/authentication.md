@@ -302,7 +302,7 @@ The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the Rea
    pnpm test:e2e:stack
    ```
 
-The script `frontend/e2e/run-against-stack.ts` reads the stack from `dotnet aspire describe`. Then it sets these variables and runs `playwright test`:
+The script `frontend/e2e/run-against-stack.ts` reads the stack from `dotnet aspire describe`. Then it sets these variables and runs `playwright test --config playwright.stack.config.ts`:
 
 | Variable | Value |
 |---|---|

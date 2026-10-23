@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
+using System.Diagnostics;
 using System.Security.Claims;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
@@ -9,6 +10,9 @@ using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Services;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Shouldly;
 
 /// <summary>
@@ -84,5 +88,71 @@ public sealed class CallerIdentityBehaviorTests
         // Assert
         await Should.ThrowAsync<TaskCanceledException>(firstRead);
         _resolver.Current.ShouldBe(new CallerIdentity.User(AppUser, tenantId));
+    }
+
+    [Test]
+    public async Task feature_span_and_handler_logs_get_the_ids_of_the_caller()
+    {
+        // Arrange
+        var caller = new CallerIdentity.DelegatedAgent("agent_1", "agent-client", "user-1", "tenant_1");
+        var behavior = BehaviorFor(caller);
+        var sink = new CollectingSink();
+        using var logger = new LoggerConfiguration().Enrich.FromLogContext().WriteTo.Sink(sink).CreateLogger();
+        using var featureSpan = new Activity("GetTenant.Query").Start();
+
+        // Act
+        await behavior.Handle(new GetTenant.Query("ten_1"), _ =>
+        {
+            logger.Information("Read tenant {TenantId}", "ten_1");
+            return Task.FromResult(new TenantDto());
+        }, CancellationToken.None);
+
+        // Assert
+        featureSpan.GetTagItem("app.caller.kind").ShouldBe("delegated_agent");
+        featureSpan.GetTagItem("app.caller.subject").ShouldBe("user-1");
+        featureSpan.GetTagItem("app.caller.client_id").ShouldBe("agent-client");
+        featureSpan.GetTagItem("app.caller.agent_id").ShouldBe("agent_1");
+        featureSpan.GetTagItem("app.caller.tenant_id").ShouldBe("tenant_1");
+
+        var properties = sink.Events.ShouldHaveSingleItem().Properties;
+        Scalar(properties, "CallerKind").ShouldBe("delegated_agent");
+        Scalar(properties, "CallerSubject").ShouldBe("user-1");
+        Scalar(properties, "CallerClientId").ShouldBe("agent-client");
+        Scalar(properties, "CallerAgentId").ShouldBe("agent_1");
+        Scalar(properties, "CallerTenantId").ShouldBe("tenant_1");
+    }
+
+    [Test]
+    public async Task caller_with_no_tenant_gets_no_tenant_tag()
+    {
+        // Arrange
+        var behavior = BehaviorFor(new CallerIdentity.User("user-1", TenantId: null));
+        using var featureSpan = new Activity("GetTenant.Query").Start();
+
+        // Act
+        await behavior.Handle(new GetTenant.Query("ten_1"), _ => Task.FromResult(new TenantDto()), CancellationToken.None);
+
+        // Assert
+        featureSpan.GetTagItem("app.caller.kind").ShouldBe("user");
+        featureSpan.GetTagItem("app.caller.subject").ShouldBe("user-1");
+        featureSpan.GetTagItem("app.caller.tenant_id").ShouldBeNull();
+        featureSpan.GetTagItem("app.caller.client_id").ShouldBeNull();
+    }
+
+    private static CallerIdentityBehavior<GetTenant.Query, TenantDto> BehaviorFor(CallerIdentity caller)
+    {
+        var resolver = Substitute.For<ICallerIdentityResolver>();
+        resolver.GetAsync(Arg.Any<CancellationToken>()).Returns(caller);
+        return new CallerIdentityBehavior<GetTenant.Query, TenantDto>(resolver);
+    }
+
+    private static object? Scalar(IReadOnlyDictionary<string, LogEventPropertyValue> properties, string name) =>
+        properties[name].ShouldBeOfType<ScalarValue>().Value;
+
+    private sealed class CollectingSink : ILogEventSink
+    {
+        public List<LogEvent> Events { get; } = [];
+
+        public void Emit(LogEvent logEvent) => Events.Add(logEvent);
     }
 }

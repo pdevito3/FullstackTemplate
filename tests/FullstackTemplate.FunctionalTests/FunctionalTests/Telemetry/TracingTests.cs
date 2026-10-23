@@ -52,6 +52,25 @@ public class TracingTests : TestBase
     }
 
     [Test]
+    public async Task feature_slice_span_has_the_caller()
+    {
+        // Arrange
+        TestGraph.Start(out _).AddTenant(out var tenant);
+        await AddAsync(tenant);
+        using var parent = Telemetry.Source.StartActivity("test.parent").ShouldNotBeNull();
+
+        // Act
+        await SendAsync(new GetTenant.Query(tenant.Id));
+        parent.Stop();
+
+        // Assert
+        var slice = ExportedSpans()
+            .Where(a => a.TraceId == parent.TraceId && a.DisplayName == "GetTenant.Query")
+            .ShouldHaveSingleItem();
+        slice.GetTagItem("app.caller.kind").ShouldBe("system");
+    }
+
+    [Test]
     public async Task untagged_query_keeps_the_default_span_name()
     {
         // Arrange

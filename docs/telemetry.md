@@ -44,6 +44,8 @@ Server   PUT api/v{version}/tenants/{id}
 
 ## Log, span, or event
 
+For the rules on what each backend feature must emit, see [backend/feature-telemetry.md](backend/feature-telemetry.md).
+
 Each signal answers a different question. Pick the signal from the question:
 
 | Question | Signal | Helper |
@@ -105,6 +107,20 @@ The values in `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` win over the de
 `RequestTracingBehavior` wraps each MediatR request in a span. The span name is the feature class plus the request type, for example `GetUser.Query`. You do not have to add code to a new slice to get this span or the `app.request.duration` metric.
 
 The behavior tags an exception type as `error.type`. A client error does not mark the span as failed. A client error is an exception for which `DomainError.IsClientError` is true. These are the domain exceptions that each entrypoint maps to a client error, for example a 4xx response (see the error table in [backend.md](backend.md#error-responses)). All other exceptions mark the span with the `Error` status and increment `app.errors`.
+
+## Caller tags
+
+`CallerIdentityBehavior` resolves the caller before the handler runs. It then tags the feature slice span with the caller, and adds the caller to the log context of the handler. Thus each log that the handler writes has the caller too. A value that the caller does not have is not added.
+
+| Span tag | Log property | Value |
+|---|---|---|
+| `app.caller.kind` | `CallerKind` | `user`, `delegated_agent`, `machine_agent`, `all_tenants_client`, `unknown_client`, `anonymous`, or `system` |
+| `app.caller.subject` | `CallerSubject` | The `sub` claim of a user, also the user for whom a delegated agent acts |
+| `app.caller.client_id` | `CallerClientId` | The client of an agent or of a machine client |
+| `app.caller.agent_id` | `CallerAgentId` | The id of the registered agent |
+| `app.caller.tenant_id` | `CallerTenantId` | The tenant of the caller |
+
+The values are ids only. The request log of `UseSerilogRequestLogging` runs outside the MediatR pipeline, so it does not have the caller properties. Use its trace id to find the feature slice span.
 
 ## Domain event handler spans
 

@@ -63,14 +63,18 @@ The cache is in the memory of each server instance. There is no distributed cach
 
 A `TenantScope` has one of three values. The filter makes the decision for each value. It does not depend on the data in the rows.
 
-| Current user | Scope | Rows that the filter shows |
+| Current caller | Scope | Rows that the filter shows |
 |--------------|-------|----------------------------|
 | System work in a system scope (see below) | `TenantScope.AllTenants` | The rows of all tenants |
-| A machine client on one of the two allow-lists | `TenantScope.AllTenants` | The rows of all tenants |
-| A user with a user record | `TenantScope.ForTenant(id)` | The rows of this user's tenant |
-| A signed-in user with no user record | `TenantScope.NoTenant` | No rows |
+| A client on one of the two allow-lists, with no user of the app in the token | `TenantScope.AllTenants` | The rows of all tenants |
+| A user of a first-party client with a user record | `TenantScope.ForTenant(id)` | The rows of this user's tenant |
+| A delegated agent (see [Agents](authentication.md#agents)) | `TenantScope.ForTenant(id)` | The rows of the tenant of its user |
+| A machine agent | `TenantScope.ForTenant(id)` | The rows of the tenant of its agent record |
+| A user of a first-party client with no user record | `TenantScope.NoTenant` | No rows |
 | No HTTP request and no system scope | `TenantScope.NoTenant` | No rows |
-| Any other caller (a machine client on no allow-list, an anonymous request) | `TenantScope.NoTenant` | No rows |
+| Any other caller (an unknown client, an anonymous request) | `TenantScope.NoTenant` | No rows |
+
+`CallerIdentityResolver` decides the caller once for each DI scope. `TenantScopeProvider`, the permission guard, and `InitiateUserAndTenant` read the same answer.
 
 ## System work
 
@@ -111,7 +115,7 @@ These rules stop a caller from joining a tenant that is not theirs:
 - `POST /api/v1/users` needs the `manage_users` permission, and each default permission of the new role (see [backend.md](backend.md#permissions)). The server puts the new user in the tenant of the caller. The request body does not need a tenant. A `tenantId` that is empty or has only spaces is the same as no `tenantId`.
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
-- `POST /api/v1/users/initiate` creates a tenant and its first user. A signed-in user can do this only for their own `sub`. A caller with no `sub` must be able to manage all tenants. Other requests get 403.
+- `POST /api/v1/users/initiate` creates a tenant and its first user. A user of a first-party client can do this only for their own `sub`. Any other caller, an agent included, must be able to manage all tenants. Other requests get 403.
 - If a user already has the identifier, `POST /api/v1/users` and `initiate` return 422. A user belongs to one tenant only.
 
 ## Tenant endpoints
@@ -122,14 +126,14 @@ The tenant filter also applies to `Tenant`, so the `/api/v1/tenants` endpoints o
 - The list shows only the tenant of the caller. A caller with `TenantScope.NoTenant` gets an empty list.
 - Only a caller that can manage all tenants can add a tenant with `POST /api/v1/tenants`. Other requests get 403. A user starts their own tenant with `POST /api/v1/users/initiate`.
 
-## Machine clients
+## Clients for all tenants
 
-A machine client gets a token with no `sub` claim. The issuer can give such a token to any client that it knows, so a missing `sub` does not make a caller trusted. Only the clients on one of two allow-lists are trusted. Both lists are empty by default.
+A client on one of two allow-lists acts for the operator in all tenants. Both lists are empty by default. To give a client the rows of one tenant only, register it as a machine agent instead (see [Agents](authentication.md#agents)).
 
 | Setting | The client can |
 |---------|----------------|
 | `Tenancy:ReadAllTenantsClientIds` | Read the rows of all tenants. It cannot add, change, or delete anything. |
-| `Tenancy:ManageAllTenantsClientIds` | Read the rows of all tenants, add a tenant, start a tenant for another user, and pass each permission check in any tenant. |
+| `Tenancy:ManageAllTenantsClientIds` | Read the rows of all tenants, add a tenant, start a tenant for another user, add a machine agent, and pass each permission check in any tenant. |
 
 Put a client on the read list unless it must change data. For example, a reporting service only reads.
 
@@ -142,6 +146,4 @@ Put a client on the read list unless it must change data. For example, a reporti
 }
 ```
 
-The server compares the `client_id` claim (or `azp`) with the lists. The comparison is case-sensitive.
-
-Keycloak gives a service account token a `sub` claim. The server handles this token as a user, so the service account needs a user record in a tenant.
+The server compares the client ID of the token (`client_id`, then `azp`, then `applicationId`) with the lists. The comparison is case-sensitive. A list matches only a token with no user of the app: a token with no `sub`, or with a `sub` that no live user has. Keycloak, ZeroFactor, and Cognito give a client credentials token a service-account `sub`, so their tokens match. A token with the `sub` of a user of the app never matches a list, so a user who signs in through a listed client does not get all tenants.

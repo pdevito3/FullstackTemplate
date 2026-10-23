@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Dtos;
 using MediatR;
 using ModelContextProtocol.Server;
+using Resources.Entrypoints.Mcp;
 
 /// <summary>
 /// The MCP tool of <see cref="GetTenant"/>. The SDK resolves <see cref="IMediator"/> from the request services,
@@ -13,6 +14,7 @@ using ModelContextProtocol.Server;
 public static class GetTenantTool
 {
     [McpServerTool(Name = "get_tenant", ReadOnly = true, UseStructuredContent = true)]
+    [ToolAccess(ToolAccessKind.Read)]
     [Description("Gets one tenant by its ID. The caller sees only their own tenant.")]
     public static Task<TenantDto> Handle(
         IMediator mediator,

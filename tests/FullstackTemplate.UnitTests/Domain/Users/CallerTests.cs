@@ -171,6 +171,26 @@ public class CallerTests
         _ => throw new ArgumentOutOfRangeException(nameof(caller)),
     };
 
+    public static IEnumerable<Func<(string Case, Caller Caller, bool Manages)>> ManagesAllTenantsCases()
+    {
+        yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, true);
+        yield return () => ("member with every permission", MemberWith([.. Permission.GetAll()]), false);
+        yield return () => ("read-only machine client", new Caller.Outsider(OutsiderKind.MachineClient), false);
+        yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), false);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(ManagesAllTenantsCases))]
+    public void only_an_all_tenants_manager_manages_all_tenants(string @case, Caller caller, bool manages)
+    {
+        // Act
+        var act = caller.RequireManagesAllTenants;
+
+        // Assert
+        caller.ManagesAllTenants.ShouldBe(manages);
+        ShouldDenyWith(act, manages ? null : "Only a client that can manage all tenants can do this.");
+    }
+
     public static IEnumerable<Func<(string Case, Caller Caller, string? Denial)>> RecognizedCases()
     {
         yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, null);

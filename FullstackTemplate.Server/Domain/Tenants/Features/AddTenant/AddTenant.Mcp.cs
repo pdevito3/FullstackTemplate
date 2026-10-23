@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Dtos;
 using MediatR;
 using ModelContextProtocol.Server;
+using Resources.Entrypoints.Mcp;
 
 /// <summary>
 /// The MCP tool of <see cref="AddTenant"/>. The SDK resolves <see cref="IMediator"/> from the request services,
@@ -13,6 +14,7 @@ using ModelContextProtocol.Server;
 public static class AddTenantTool
 {
     [McpServerTool(Name = "add_tenant", Destructive = false, UseStructuredContent = true)]
+    [ToolAccess(ToolAccessKind.ManageAllTenants)]
     [Description("Adds a tenant. Only a trusted client that can manage all tenants can do this.")]
     public static Task<TenantDto> Handle(
         IMediator mediator,

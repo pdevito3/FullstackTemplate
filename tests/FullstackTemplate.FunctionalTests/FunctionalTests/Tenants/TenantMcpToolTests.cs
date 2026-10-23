@@ -21,19 +21,47 @@ using TestUtilities;
 /// </summary>
 public class TenantMcpToolTests : TestBase
 {
+    private const string UnregisteredClientId = "unregistered-agent";
+
+    public static IEnumerable<Func<(string Caller, string[] Tools)>> ToolsOfEachCaller()
+    {
+        yield return () => ("member", ["get_tenant", "list_tenants"]);
+        yield return () => ("admin", ["get_tenant", "list_tenants", "update_tenant"]);
+        yield return () => ("manage-all client", ["add_tenant", "get_tenant", "list_tenants", "update_tenant"]);
+        yield return () => ("read-only client", ["get_tenant", "list_tenants"]);
+        yield return () => ("unregistered client with a user sub", []);
+    }
+
     [Test]
-    public async Task tools_list_has_the_tenant_tools()
+    [MethodDataSource(nameof(ToolsOfEachCaller))]
+    public async Task tools_list_shows_only_the_tools_that_the_caller_can_use(string caller, string[] expected)
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
-        SignInAs(user);
+        await SignInAsync(caller);
         await using var client = await CreateMcpClientAsync();
 
         // Act
         var tools = await client.ListToolsAsync();
 
         // Assert
-        tools.Select(t => t.Name).ShouldBe(["add_tenant", "get_tenant", "list_tenants", "update_tenant"], ignoreOrder: true);
+        tools.Select(t => t.Name).ShouldBe(expected, ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task unregistered_client_with_a_user_sub_cannot_read_the_tenant_of_the_user()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInThroughUnregisteredClient(admin);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("get_tenant", new Dictionary<string, object?> { ["id"] = tenant.Id });
+
+        // Assert
+        ShouldBeToolError(result, "permission_denied");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString()
+            .ShouldBe("This client is not a registered agent of your tenant. A tenant admin can register it.");
     }
 
     [Test]
@@ -359,6 +387,43 @@ public class TenantMcpToolTests : TestBase
 
     private void SignInAs(User user)
         => FactoryClient.SignInAsAppUser(user.Identifier);
+
+    private void SignInThroughUnregisteredClient(User user)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = user.Identifier,
+            ["azp"] = UnregisteredClientId,
+        });
+
+    private async Task SignInAsync(string caller)
+    {
+        switch (caller)
+        {
+            case "member":
+                SignInAs((await AddTenantWithUserAsync()).User);
+                break;
+            case "admin":
+                SignInAs((await AddTenantWithUserAsync("Admin")).User);
+                break;
+            case "manage-all client":
+                FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+                {
+                    ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+                });
+                break;
+            case "read-only client":
+                FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+                {
+                    ["client_id"] = TestingWebApplicationFactory.ReadOnlyMachineClientId
+                });
+                break;
+            case "unregistered client with a user sub":
+                SignInThroughUnregisteredClient((await AddTenantWithUserAsync("Admin")).User);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(caller), caller, "No sign-in for this caller.");
+        }
+    }
 
     private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role = "User")
     {

@@ -151,6 +151,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - For HTTP: `.MapToApiVersion`, `.WithName`, `.WithTags`, and the error statuses
    - For HTTP: an XML `<summary>` on the public static `Handle` method for OpenAPI
    - For gRPC and MCP: one file each, only for the features that need them
+   - For MCP: exactly one `[ToolAccess]` on the tool, with the permission that the handler requires (a `Permission.Names` constant), `ToolAccessKind.Read`, or `ToolAccessKind.ManageAllTenants`
    - See: `docs/backend/endpoints.md`
 
 8. **Generate Entity Configuration**
@@ -397,7 +398,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Put validation in the entity, and put database checks such as unique values in the handler
-- [ ] Add the permission of the commands to `Permission.cs`, with a migration that gives it to the admins that exist
+- [ ] Add the permission of the commands to `Permission.cs` (a `Permission.Names` constant, a `PermissionEnum` entry, and a factory method), with a migration that gives it to the admins that exist
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -424,6 +425,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses
+- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler
 - [ ] Additional DTOs created if needed
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract

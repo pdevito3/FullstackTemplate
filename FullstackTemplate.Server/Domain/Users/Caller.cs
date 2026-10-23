@@ -29,6 +29,12 @@ public abstract record Caller
     public bool IsRecognized => this is not Outsider { Kind: OutsiderKind.UnknownClient or OutsiderKind.Anonymous };
 
     /// <summary>
+    /// True only for <see cref="AllTenantsManager"/>: it can act outside one tenant, for example add a tenant. It is a
+    /// capability, not a permission (ADR 0009).
+    /// </summary>
+    public bool ManagesAllTenants => this is AllTenantsManager;
+
+    /// <summary>
     /// System work in a system scope, or a machine client in <c>ManageAllTenantsClientIds</c>. It holds every
     /// permission. The tenant filter still decides which rows it sees.
     /// </summary>
@@ -86,6 +92,13 @@ public abstract record Caller
             if (!Has(permission))
                 throw new ForbiddenAccessException(DenialFor(permission));
         }
+    }
+
+    /// <exception cref="ForbiddenAccessException">The caller cannot act outside one tenant.</exception>
+    public void RequireManagesAllTenants()
+    {
+        if (!ManagesAllTenants)
+            throw new ForbiddenAccessException("Only a client that can manage all tenants can do this.");
     }
 
     /// <exception cref="ForbiddenAccessException">The caller is not <see cref="IsRecognized"/>.</exception>

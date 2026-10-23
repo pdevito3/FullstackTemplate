@@ -65,7 +65,7 @@ Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permis
 ## Consequences
 
 - A new MCP client needs an `Agent` record in each tenant that uses it. A client that registers itself dynamically gets a new client ID for each installation, so a tenant cannot register it ahead. A pre-registered client, or a client that uses a Client ID Metadata Document URL as its client ID, can be registered.
-- A removed grant row, a deleted agent, a deleted tenant, or a removed user permission applies on the next request on each instance. Only agent tokens pay the query of the agent record.
+- A removed grant row, a deleted agent, a deleted tenant, or a removed user permission applies on the next request on each instance. Each token from a client that is not first-party and not on an allow-list pays the query of the agent records, also a token from an unknown client. Nothing caches a negative answer.
 - The tool attribute repeats the permission that the handler checks. If the two differ, the tool is hidden from a caller who could use it, or the handler denies the call. Neither gives more access.
 - A delegated agent does not get the exception of `RequireSelfOrAsync` for its own user.
 - ADR 0009 said that a machine client cannot have a part of the permissions. A machine agent now can.

@@ -40,7 +40,7 @@ public class User : BaseEntity, ITenantable
         user.ResetPermissionsToDefault();
 
         ValidateUser(user);
-        user.QueueDomainEvent(new UserCreated(user));
+        user.QueueDomainEvent(new UserCreated(user.Id));
 
         return user;
     }

@@ -9,7 +9,7 @@ using ZiggyCreatures.Caching.Fusion;
 public static class WebAppServiceConfiguration
 {
     /// <summary>
-    /// Adds the core services: the database, MediatR, the caches, and the tenant scope. It adds no transport.
+    /// Adds the core services: the database, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
     /// The integration tests call only this method. <c>AddEntrypoints</c> adds HTTP, gRPC, and MCP.
     /// </summary>
     public static void ConfigureServices(this WebApplicationBuilder builder)
@@ -34,6 +34,7 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
         });
 
+        builder.Services.AddSingleton<TenantLookupInterceptor>();
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
@@ -46,8 +47,11 @@ public static class WebAppServiceConfiguration
                         .ConfigureCommandFilter(_ => Activity.Current is { IsAllDataRequested: true })
                         .ConfigureCommandEnrichmentCallback((activity, command) =>
                             QueryTagEnrichment.Enrich(activity, command.CommandText)))))
-                .UseSnakeCaseNamingConvention();
+                .UseSnakeCaseNamingConvention()
+                .AddInterceptors(serviceProvider.GetRequiredService<TenantLookupInterceptor>());
         });
         builder.EnrichNpgsqlDbContext<AppDbContext>();
+
+        builder.Services.AddDomainEvents(typeof(Program).Assembly);
     }
 }

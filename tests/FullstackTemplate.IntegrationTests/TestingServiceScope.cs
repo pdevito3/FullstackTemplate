@@ -18,9 +18,17 @@ public class TestingServiceScope
 
     private readonly IServiceScope _scope;
 
-    public TestingServiceScope()
+    public TestingServiceScope() : this(TestFixture.BaseScopeFactory)
     {
-        _scope = TestFixture.BaseScopeFactory.CreateScope();
+    }
+
+    public TestingServiceScope(IServiceProvider services) : this(services.GetRequiredService<IServiceScopeFactory>())
+    {
+    }
+
+    private TestingServiceScope(IServiceScopeFactory scopeFactory)
+    {
+        _scope = scopeFactory.CreateScope();
 
         // Set up ICurrentUserService mock to use the default user's identifier
         // The real ITenantIdProvider will look up this user and return their tenant

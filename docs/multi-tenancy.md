@@ -47,15 +47,17 @@ The foreign key to `tenants.id` must have the same collation as `tenants.id`.
 
 The provider keeps a missing user for 30 seconds, with no fail-safe. This stops a signed-in user with no user record from causing a database lookup for each query.
 
-These writes remove the cached result after the save:
+`AppDbContext.SaveChangesAsync` removes the stale cached results after the commit, before it returns. `TenantLookupInterceptor` does this step. You do not call the cache in a feature. The context finds the stale results in the change tracker:
 
-- When a user is added, `UserCreatedHandler` removes the cached result. The new user sees their tenant on the next request.
-- When a user is deleted, `DeleteUser` removes the cached tenant. The user loses access on the next request.
-- When a tenant is deleted, `DeleteTenant` removes the cached tenant of each user of the tenant. The users lose access on the next request.
+- When a user is added, the context removes the cached result of its identifier. The new user sees their tenant on the next request.
+- When a user is deleted, or its identifier or its tenant changes, the context removes the cached result of the old and the new identifier. The user loses access on the next request.
+- When a tenant is deleted, the context removes the cached result of each user of the tenant. The users lose access on the next request.
+
+When the context removes stale results, it adds a `tenant_lookup.removed` event to the current span. The `app.tenant_lookup.removed_count` tag has the number of identifiers. If the cache fails to remove a result, the context logs an error and the save still returns its result. The old result then stays until it expires.
 
 A lookup can start before the save and finish after the removal. Each removal moves the identifier to a new cache key, so the late result goes to an old key that no request reads.
 
-If you add a user, or change the identifier or the tenant of a user, in a different way, call `ITenantIdProvider.InvalidateCacheAsync`.
+A write that does not go through `SaveChangesAsync`, such as `ExecuteUpdateAsync` or raw SQL, does not remove the cached results. If such a write adds a user, or changes the identifier, the tenant, or the deleted state of a user or a tenant, call `ITenantIdProvider.InvalidateCacheAsync` after the write.
 
 The cache is in the memory of each server instance. There is no distributed cache and no backplane. The removals and the "next request" behavior above are true for one server instance only. If you run more than one instance, the other instances keep the old result until it expires. Add a backplane to FusionCache before you run more than one instance.
 
@@ -91,6 +93,10 @@ These callers use a system scope:
 - The design-time `AppDbContextFactory` for the EF Core tools.
 
 The migration hosted service does not use a system scope. Migrations do not read through the tenant filter.
+
+## Domain event handlers
+
+A domain event handler runs in the tenant of the `ITenantable` entity or the `Tenant` that queued the event. While the handler runs, the scope of the context is `TenantScope.ForTenant` of that tenant, so the filter shows the rows of this tenant only. This is also true when the caller has `TenantScope.AllTenants` or `TenantScope.NoTenant`. After the handler, the context uses the scope of the caller again. The handler of an event from an entity with no tenant runs in the scope of the caller. See [domain-events.md](backend/domain-events.md#handlers).
 
 ## Row scope and capability
 

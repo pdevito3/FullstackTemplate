@@ -13,7 +13,6 @@ public class UpdateTenantTests
     {
         // Arrange
         TestGraph.Start(out _).AddTenant(out var tenant, t => t.Name = "Before");
-        tenant.ClearDomainEvents();
 
         // Act
         Action act = () => tenant.Update(new TenantForUpdate { Name = "After", Version = tenant.Version + 1 });
@@ -21,7 +20,7 @@ public class UpdateTenantTests
         // Assert
         act.ShouldThrow<StaleVersionException>();
         tenant.Name.ShouldBe("Before");
-        tenant.DomainEvents.ShouldBeEmpty();
+        tenant.DomainEvents.OfType<TenantUpdated>().ShouldBeEmpty();
     }
 
     [Test]

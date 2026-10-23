@@ -122,6 +122,8 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 3. **Generate Domain Events**
    - Created and Updated events (no deleted event, because deletes are soft)
    - Additional business-specific events as needed
+   - Each event carries IDs and values, never an entity
+   - A handler, only when a feature needs one: `IDomainEventHandler<TEvent>`, which runs in the save transaction
    - See: `docs/backend/domain-events.md`
 
 4. **Generate DTOs and Models**

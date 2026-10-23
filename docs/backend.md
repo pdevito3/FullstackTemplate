@@ -33,7 +33,7 @@ Each entrypoint file is optional. A feature has only the entrypoints that its ca
 - **Mapperly** generates the DTO mapping code at compile time.
 - **QueryKit** does the filters and sorts for list endpoints. They run on the DTO projection, so a caller can query only the fields that the contract shows. `CustomQueryKitConfiguration` limits the length and the nesting depth of a filter.
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
-- **Domain events** queue in the entity. `SaveChangesAsync` dispatches them.
+- **Domain events** queue in the entity. `SaveChangesAsync` runs their handlers in the save transaction. See [domain-events.md](backend/domain-events.md).
 - **Prefixed string IDs**: each entity has a `public const string IdPrefix`, for example `usr`. `EntityId.New` makes IDs like `usr_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f` (the prefix and a UUIDv7). The build gives an error when an entity has no prefix, an invalid prefix, or a prefix that another entity uses. It also gives an error when a constructor does not call `base(IdPrefix)` with the prefix of its own type, or when an entity derives from another entity. A UUIDv7 ID shows the creation time to the millisecond. Thus, if you hide the `CreatedOn` field, the creation time is not secret.
 
 ## Add a new feature
@@ -185,7 +185,7 @@ To remove a permission, remove its value and add a migration that calls `DeleteP
 - **Soft delete**: the context filters out entities with `IsDeleted` automatically.
 - **Audit fields**: the context sets `CreatedOn`, `CreatedBy`, `LastModifiedOn`, and `LastModifiedBy`.
 - **Tenant filter**: see [multi-tenancy.md](multi-tenancy.md).
-- **Domain events**: the context dispatches them after `SaveChangesAsync`.
+- **Domain events**: the context runs the handlers before it sends the SQL, so the handler changes commit with the save.
 - **Optimistic concurrency**: each update checks the version of the row. See [Concurrency](#concurrency).
 
 Entity configurations are in `Databases/EntityConfigurations/`. Database names use snake case.

@@ -27,6 +27,7 @@ public sealed class TestFixture : IAsyncDisposable
     public const string ReadOnlyMachineClientId = "read-only-machine";
 
     public static IServiceScopeFactory BaseScopeFactory { get; private set; } = null!;
+    private static string _connectionString = null!;
     public static TestSeed Seed { get; private set; } = null!;
     public static Tenant DefaultTenant => Seed.Tenant;
     public static User DefaultUser => Seed.User;
@@ -39,31 +40,10 @@ public sealed class TestFixture : IAsyncDisposable
         // Tests never reload configuration. A file watcher on appsettings can hang on macOS when the system is busy.
         Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
 
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-        {
-            EnvironmentName = TestingConsts.IntegrationTestingEnvName
-        });
-
         await _database.StartAsync();
-        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = _database.ConnectionString;
+        _connectionString = _database.ConnectionString;
 
-        // Configure auth for testing (these values are not used since auth is mocked)
-        builder.Configuration["Auth:Authority"] = "https://localhost";
-        builder.Configuration["Auth:Audience"] = "test-api";
-        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
-        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ReadAllTenantsClientIds)}:0"] = ReadOnlyMachineClientId;
-
-        // Configure services
-        builder.ConfigureServices();
-
-        var services = builder.Services;
-
-        // Mock ICurrentUserService for simplified user management in tests.
-        // The mock is scoped, so each TestingServiceScope has its own current user.
-        // This lets tests run in parallel.
-        services.ReplaceServiceWithScopedMock<ICurrentUserService>();
-
-        var provider = services.BuildServiceProvider();
+        var provider = AddServices().BuildServiceProvider();
         BaseScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
         // Run migrations and seed in a system scope. With no opt-in, a scope with no HTTP request sees no tenant.
@@ -80,6 +60,33 @@ public sealed class TestFixture : IAsyncDisposable
 
         // Set TestContext so the DTO fakers use the seed tenant by default
         TestContext.DefaultTenantId = Seed.Tenant.Id;
+    }
+
+    public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices)
+    {
+        var services = AddServices();
+        addTestServices(services);
+        return services.BuildServiceProvider();
+    }
+
+    private static IServiceCollection AddServices()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = TestingConsts.IntegrationTestingEnvName
+        });
+        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = _connectionString;
+
+        builder.Configuration["Auth:Authority"] = "https://localhost";
+        builder.Configuration["Auth:Audience"] = "test-api";
+        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
+        builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ReadAllTenantsClientIds)}:0"] = ReadOnlyMachineClientId;
+
+        builder.ConfigureServices();
+
+        builder.Services.ReplaceServiceWithScopedMock<ICurrentUserService>();
+
+        return builder.Services;
     }
 
     public async ValueTask DisposeAsync()

@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using Domain;
 using Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Query;
 using Resources;
 using Services;
@@ -24,7 +25,7 @@ public static class TenantQueryFilterExtension
             var entityType = mutableEntityType.ClrType;
 
             // Check for navigation path annotation first
-            var tenantPathAnnotation = mutableEntityType.FindAnnotation("TenantNavigationPath");
+            var tenantPathAnnotation = mutableEntityType.FindAnnotation(TenantingExtension.NavigationPathAnnotation);
             if (tenantPathAnnotation?.Value is LambdaExpression pathExpr)
             {
                 // Build filter using navigation path
@@ -40,6 +41,24 @@ public static class TenantQueryFilterExtension
         }
 
         modelBuilder.Entity<Tenant>().HasQueryFilter(QueryFilterNames.Tenant, BuildTenantFilter(context));
+    }
+
+    public static string? TenantIdOfDomainEvent(EntityEntry<BaseEntity> queuedBy)
+    {
+        if (queuedBy.Metadata.FindAnnotation(TenantingExtension.NavigationPathAnnotation) is not null)
+        {
+            var entityName = queuedBy.Metadata.ClrType.Name;
+            throw new NotSupportedException(
+                $"{entityName} gets its tenant through ApplyTenanting, so the save cannot find the tenant of its domain event. " +
+                $"Implement ITenantable on {entityName}, or queue the event on its tenanted owner.");
+        }
+
+        return queuedBy.Entity switch
+        {
+            Tenant tenant => tenant.Id,
+            ITenantable tenantable => tenantable.TenantId,
+            _ => null,
+        };
     }
 
     private static Expression<Func<Tenant, bool>> BuildTenantFilter(AppDbContext context)

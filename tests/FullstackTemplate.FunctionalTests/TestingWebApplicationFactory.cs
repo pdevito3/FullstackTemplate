@@ -3,6 +3,8 @@ namespace FullstackTemplate.FunctionalTests;
 using System.Diagnostics;
 using AutoBogus;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -67,6 +69,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
             // Add migration hosted service
             services.AddHostedService<MigrationHostedService<AppDbContext>>();
 
+            services.AddScoped<IDomainEventHandler<TenantUpdated>>(_ => new NoOpTenantUpdatedHandler());
+
             // Capture the exported spans so tests can make assertions on the real trace pipeline
             services.AddOpenTelemetry()
                 .WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities))
@@ -112,4 +116,10 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         await base.DisposeAsync();
         await _database.DisposeAsync();
     }
+}
+
+public sealed class NoOpTenantUpdatedHandler : IDomainEventHandler<TenantUpdated>
+{
+    public Task Handle(TenantUpdated domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }

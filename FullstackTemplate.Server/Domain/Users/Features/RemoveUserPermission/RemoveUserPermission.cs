@@ -8,12 +8,17 @@ using Microsoft.EntityFrameworkCore;
 
 public static class RemoveUserPermission
 {
-    public sealed record Command(string Id, string Permission) : IRequest<UserDto>, IRequireTenantAdmin;
+    public sealed record Command(string Id, string Permission) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ManageUserAccess());
+            var permission = Permission.Of(request.Permission);
+            caller.Require(permission);
+
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.remove_permission.load")
                 .Include(u => u.UserPermissions)
@@ -21,7 +26,6 @@ public static class RemoveUserPermission
 
             var existingPermissions = user.UserPermissions.ToList();
 
-            var permission = Permission.Of(request.Permission);
             user.RemovePermission(permission);
 
             // Explicitly remove permissions that were removed from the collection

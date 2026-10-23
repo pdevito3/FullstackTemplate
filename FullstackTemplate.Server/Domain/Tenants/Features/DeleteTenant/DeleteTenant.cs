@@ -8,12 +8,15 @@ using Users;
 
 public static class DeleteTenant
 {
-    public sealed record Command(string Id) : IRequest, IRequireTenantAdmin;
+    public sealed record Command(string Id) : IRequest;
 
-    public sealed class Handler(AppDbContext dbContext, ITenantIdProvider tenantIdProvider) : IRequestHandler<Command>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, ITenantIdProvider tenantIdProvider)
+        : IRequestHandler<Command>
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
+
             var tenant = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.delete.load")
                 .GetById(request.Id, cancellationToken);

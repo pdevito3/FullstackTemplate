@@ -19,7 +19,7 @@ Domain/Tenants/
         └── TenantGrpcMappings.cs  # The maps from the DTOs to the messages
 ```
 
-Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Tenants, Users, and Weather features have HTTP, and only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC and MCP.
+Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Tenants, Users, and Weather features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `GetTenant`, `GetTenantList`, `AddTenant`, and `UpdateTenant` have MCP.
 
 The reason for this layout is in [ADR 0002](../adr/0002-colocate-entrypoints-with-features.md).
 
@@ -146,6 +146,7 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 3. Take `IMediator` and `CancellationToken` as method parameters. The SDK resolves a registered service from the request services, so the service is not in the input schema.
 4. Give each other parameter a `[Description]`. These parameters are the input schema.
 5. Return the DTO. For a list, return `McpPage.From(result)`, so that the result has the page data.
+6. Put no access check in the tool. If the handler checks a permission, name the permission in the `[Description]`, so that the model knows why a call can fail. The example is `Domain/Tenants/Features/UpdateTenant/UpdateTenant.Mcp.cs`. A read tool, such as `get_tenant`, has no permission. Each caller sees each tool in `tools/list`, and a call without the permission gets a `permission_denied` tool error.
 
 `McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. The `code` has the name of the gRPC status, for example `already_exists` for a conflict and `aborted` for a stale version. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field.
 

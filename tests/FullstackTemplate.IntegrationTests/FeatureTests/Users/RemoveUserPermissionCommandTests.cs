@@ -20,14 +20,14 @@ public class RemoveUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Verify permission exists first
-        createdUser.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
+        createdUser.HasPermission(Permission.ManageTenant()).ShouldBeTrue();
 
         // Act
-        var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new RemoveUserPermission.Command(createdUser.Id, "manage_tenant");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert
-        userReturned.Permissions.ShouldNotContain("do_something_special");
+        userReturned.Permissions.ShouldNotContain("manage_tenant");
     }
 
     [Test]
@@ -40,7 +40,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new RemoveUserPermission.Command(createdUser.Id, "manage_tenant");
         await testingServiceScope.SendAsync(command);
 
         // Assert
@@ -50,8 +50,9 @@ public class RemoveUserPermissionCommandTests : TestBase
                 .FirstOrDefaultAsync(u => u.Id == createdUser.Id));
 
         userInDb.ShouldNotBeNull();
-        userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeFalse();
-        userInDb.UserPermissions.ShouldBeEmpty();
+        userInDb.HasPermission(Permission.ManageTenant()).ShouldBeFalse();
+        userInDb.UserPermissions.Select(p => p.Permission.Value)
+            .ShouldBe(["manage_users", "manage_user_access"], ignoreOrder: true);
     }
 
     [Test]
@@ -64,7 +65,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act - Try to remove a permission that doesn't exist
-        var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new RemoveUserPermission.Command(createdUser.Id, "manage_tenant");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert - Should succeed without error
@@ -80,7 +81,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         var nonExistentId = EntityId.New(User.IdPrefix);
 
         // Act & Assert
-        var command = new RemoveUserPermission.Command(nonExistentId, "do_something_special");
+        var command = new RemoveUserPermission.Command(nonExistentId, "manage_tenant");
         await Should.ThrowAsync<Exception>(async () =>
             await testingServiceScope.SendAsync(command));
     }
@@ -110,7 +111,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var removeCommand = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
+        var removeCommand = new RemoveUserPermission.Command(createdUser.Id, "manage_tenant");
         await testingServiceScope.SendAsync(removeCommand);
 
         // Verify via GetUser
@@ -118,7 +119,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         var userFromGet = await testingServiceScope.SendAsync(getQuery);
 
         // Assert
-        userFromGet.Permissions.ShouldNotContain("do_something_special");
+        userFromGet.Permissions.ShouldNotContain("manage_tenant");
     }
 
     [Test]
@@ -131,7 +132,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var command = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new RemoveUserPermission.Command(createdUser.Id, "manage_tenant");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert - Role should remain Admin even though permissions were removed
@@ -148,12 +149,12 @@ public class RemoveUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act - Add permission
-        var addCommand = new AddUserPermission.Command(createdUser.Id, "do_something_special");
+        var addCommand = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         var afterAdd = await testingServiceScope.SendAsync(addCommand);
-        afterAdd.Permissions.ShouldContain("do_something_special");
+        afterAdd.Permissions.ShouldContain("manage_tenant");
 
         // Act - Remove permission
-        var removeCommand = new RemoveUserPermission.Command(createdUser.Id, "do_something_special");
+        var removeCommand = new RemoveUserPermission.Command(createdUser.Id, "manage_tenant");
         var afterRemove = await testingServiceScope.SendAsync(removeCommand);
 
         // Assert

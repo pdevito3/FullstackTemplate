@@ -20,12 +20,12 @@ public class AddUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert
         userReturned.ShouldNotBeNull();
-        userReturned.Permissions.ShouldContain("do_something_special");
+        userReturned.Permissions.ShouldContain("manage_tenant");
     }
 
     [Test]
@@ -38,7 +38,7 @@ public class AddUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         await testingServiceScope.SendAsync(command);
 
         // Assert
@@ -48,20 +48,20 @@ public class AddUserPermissionCommandTests : TestBase
                 .FirstOrDefaultAsync(u => u.Id == createdUser.Id));
 
         userInDb.ShouldNotBeNull();
-        userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
+        userInDb.HasPermission(Permission.ManageTenant()).ShouldBeTrue();
     }
 
     [Test]
     public async Task adding_duplicate_permission_is_idempotent()
     {
-        // Arrange - Admin already has do_something_special by default
+        // Arrange - Admin already has manage_tenant by default
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _)
             .AddUser(out var createdUser, u => u.Role = "Admin")
             .BuildAsync();
 
         // Act - Add the same permission again
-        var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert - Should still have exactly one instance of the permission
@@ -72,7 +72,7 @@ public class AddUserPermissionCommandTests : TestBase
 
         userInDb.ShouldNotBeNull();
         userInDb.UserPermissions
-            .Count(p => p.Permission.Value == "do_something_special")
+            .Count(p => p.Permission.Value == "manage_tenant")
             .ShouldBe(1);
     }
 
@@ -84,7 +84,7 @@ public class AddUserPermissionCommandTests : TestBase
         var nonExistentId = EntityId.New(User.IdPrefix);
 
         // Act & Assert
-        var command = new AddUserPermission.Command(nonExistentId, "do_something_special");
+        var command = new AddUserPermission.Command(nonExistentId, "manage_tenant");
         await Should.ThrowAsync<Exception>(async () =>
             await testingServiceScope.SendAsync(command));
     }
@@ -114,12 +114,12 @@ public class AddUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var command = new AddUserPermission.Command(createdUser.Id, "do_something_special");
+        var command = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         var userReturned = await testingServiceScope.SendAsync(command);
 
         // Assert
         userReturned.Permissions.Count.ShouldBe(1);
-        userReturned.Permissions.ShouldContain("do_something_special");
+        userReturned.Permissions.ShouldContain("manage_tenant");
     }
 
     [Test]
@@ -132,7 +132,7 @@ public class AddUserPermissionCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var addCommand = new AddUserPermission.Command(createdUser.Id, "do_something_special");
+        var addCommand = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         await testingServiceScope.SendAsync(addCommand);
 
         // Verify via GetUser
@@ -140,6 +140,6 @@ public class AddUserPermissionCommandTests : TestBase
         var userFromGet = await testingServiceScope.SendAsync(getQuery);
 
         // Assert
-        userFromGet.Permissions.ShouldContain("do_something_special");
+        userFromGet.Permissions.ShouldContain("manage_tenant");
     }
 }

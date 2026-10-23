@@ -62,7 +62,7 @@ public class UserRoleTests
     }
 
     [Test]
-    public void admin_role_has_default_permissions()
+    public void admin_role_has_every_permission_by_default()
     {
         // Arrange
         var adminRole = UserRole.Admin();
@@ -71,8 +71,7 @@ public class UserRoleTests
         var permissions = adminRole.GetDefaultPermissions();
 
         // Assert
-        permissions.ShouldNotBeEmpty();
-        permissions.ShouldContain(p => p.Value == "do_something_special");
+        permissions.ShouldBe(Permission.GetAll(), ignoreOrder: true);
     }
 
     [Test]
@@ -98,18 +97,5 @@ public class UserRoleTests
         names.ShouldContain("Admin");
         names.ShouldContain("User");
         names.Count.ShouldBe(2);
-    }
-
-    [Test]
-    [Arguments("Admin", true)]
-    [Arguments("admin", true)]
-    [Arguments("User", false)]
-    public void is_admin_is_true_only_for_the_admin_role(string role, bool expected)
-    {
-        // Arrange & Act
-        var isAdmin = UserRole.Of(role).IsAdmin();
-
-        // Assert
-        isAdmin.ShouldBe(expected);
     }
 }

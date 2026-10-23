@@ -2,7 +2,6 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
 using Databases;
-using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Services;
 using ZiggyCreatures.Caching.Fusion;
@@ -32,10 +31,7 @@ public static class WebAppServiceConfiguration
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
             // Outermost behavior, so its span covers every later behavior and the handler itself.
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
-            // Before the access check, so that a malformed request is a 400 for each caller, the same as model binding.
             cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
-            // Runs only for requests that have IRequireTenantAdmin, because of its generic constraint.
-            cfg.AddOpenBehavior(typeof(TenantAdminBehavior<,>));
         });
 
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>

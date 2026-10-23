@@ -32,8 +32,6 @@ public partial class UserRole : ValueObject
 
     public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
 
-    public bool IsAdmin() => _role == UserRoleEnum.Admin;
-
     public static UserRole Of(string value) => new(value);
     public static implicit operator string(UserRole value) => value.Value;
     public static List<string> ListNames() => UserRoleEnum.List.Select(x => x.Name).ToList();
@@ -53,10 +51,7 @@ public partial class UserRole : ValueObject
 
         private sealed class AdminType() : UserRoleEnum("Admin", 0)
         {
-            public override Permission[] GetDefaultPermissions() =>
-            [
-                Permission.DoSomethingSpecial()
-            ];
+            public override Permission[] GetDefaultPermissions() => [.. Permission.GetAll()];
         }
 
         private sealed class UserType() : UserRoleEnum("User", 1)

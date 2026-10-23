@@ -10,12 +10,14 @@ using Users;
 
 public static class UpdateTenant
 {
-    public sealed record Command(string Id, TenantForUpdateDto Dto) : IRequest<TenantDto>, IRequireTenantAdmin;
+    public sealed record Command(string Id, TenantForUpdateDto Dto) : IRequest<TenantDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, TenantDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, TenantDto>
     {
         public async Task<TenantDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
+
             var tenant = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.update.load")
                 .GetById(request.Id, cancellationToken);

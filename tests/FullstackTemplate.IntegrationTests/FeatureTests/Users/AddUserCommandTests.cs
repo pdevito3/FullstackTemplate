@@ -59,7 +59,7 @@ public class AddUserCommandTests : TestBase
         userInDb.ShouldNotBeNull();
         userInDb.Role.Value.ShouldBe("Admin");
         userInDb.UserPermissions.ShouldNotBeEmpty();
-        userInDb.HasPermission(Permission.DoSomethingSpecial()).ShouldBeTrue();
+        userInDb.HasPermission(Permission.ManageTenant()).ShouldBeTrue();
     }
 
     [Test]

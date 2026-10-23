@@ -7,33 +7,32 @@ using Shouldly;
 public class PermissionTests
 {
     [Test]
-    public void can_create_do_something_special_permission()
+    public void each_factory_gives_its_permission_name()
     {
-        // Arrange & Act
-        var permission = Permission.DoSomethingSpecial();
-
-        // Assert
-        permission.Value.ShouldBe("do_something_special");
+        // Arrange & Act & Assert
+        Permission.ManageUsers().Value.ShouldBe("manage_users");
+        Permission.ManageUserAccess().Value.ShouldBe("manage_user_access");
+        Permission.ManageTenant().Value.ShouldBe("manage_tenant");
     }
 
     [Test]
     public void can_create_permission_from_string()
     {
         // Arrange & Act
-        var permission = Permission.Of("do_something_special");
+        var permission = Permission.Of("manage_users");
 
         // Assert
-        permission.Value.ShouldBe("do_something_special");
+        permission.Value.ShouldBe("manage_users");
     }
 
     [Test]
     public void permission_is_case_insensitive()
     {
         // Arrange & Act
-        var permission = Permission.Of("DO_SOMETHING_SPECIAL");
+        var permission = Permission.Of("MANAGE_USERS");
 
         // Assert
-        permission.Value.ShouldBe("do_something_special");
+        permission.Value.ShouldBe("manage_users");
     }
 
     [Test]
@@ -45,16 +44,23 @@ public class PermissionTests
     }
 
     [Test]
+    public void the_removed_placeholder_permission_is_invalid()
+    {
+        // Arrange & Act & Assert
+        Should.Throw<ValidationException>(() => Permission.Of("do_something_special"));
+    }
+
+    [Test]
     public void permission_can_be_implicitly_converted_to_string()
     {
         // Arrange
-        var permission = Permission.DoSomethingSpecial();
+        var permission = Permission.ManageTenant();
 
         // Act
         string permissionString = permission;
 
         // Assert
-        permissionString.ShouldBe("do_something_special");
+        permissionString.ShouldBe("manage_tenant");
     }
 
     [Test]
@@ -64,7 +70,7 @@ public class PermissionTests
         var names = Permission.ListNames();
 
         // Assert
-        names.ShouldContain("do_something_special");
+        names.ShouldBe(["manage_users", "manage_user_access", "manage_tenant"], ignoreOrder: true);
     }
 
     [Test]
@@ -74,18 +80,18 @@ public class PermissionTests
         var permissions = Permission.GetAll();
 
         // Assert
-        permissions.ShouldNotBeEmpty();
-        permissions.ShouldContain(p => p.Value == "do_something_special");
+        permissions.Select(p => p.Value).ShouldBe(["manage_users", "manage_user_access", "manage_tenant"], ignoreOrder: true);
     }
 
     [Test]
     public void permission_equality_works_correctly()
     {
         // Arrange
-        var permission1 = Permission.DoSomethingSpecial();
-        var permission2 = Permission.DoSomethingSpecial();
+        var permission1 = Permission.ManageUsers();
+        var permission2 = Permission.Of("manage_users");
 
         // Assert
         permission1.Equals(permission2).ShouldBeTrue();
+        permission1.Equals(Permission.ManageTenant()).ShouldBeFalse();
     }
 }

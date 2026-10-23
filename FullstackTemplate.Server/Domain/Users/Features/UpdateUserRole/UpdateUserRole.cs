@@ -10,21 +10,27 @@ using Resources;
 public static class UpdateUserRole
 {
     // The endpoint sends the role of UpdateUserRoleDto, so the rule of the DTO is also on the command
-    public sealed record Command(string Id, [property: RequiredField] string Role) : IRequest<UserDto>, IRequireTenantAdmin;
+    public sealed record Command(string Id, [property: RequiredField] string Role) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ManageUserAccess());
+            var newRole = UserRole.Of(request.Role);
+            caller.Require(newRole.GetDefaultPermissions());
+
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update_role.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
+            // The new role replaces each permission row of the user, so the caller also takes those away.
+            caller.Require(user.UserPermissions.Select(p => p.Permission));
 
             var existingPermissions = user.UserPermissions.ToList();
             var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
 
-            var newRole = UserRole.Of(request.Role);
             user.UpdateRole(newRole);
 
             // Handle permission changes: remove old, add new

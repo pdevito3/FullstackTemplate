@@ -63,9 +63,9 @@ public class UserMalformedIdTests : TestBase
         "DELETE" => FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(id)),
         "role" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(id), new { role = "Admin" }),
         "add-permission" => FactoryClient.PostJsonRequestAsync(
-            ApiRoutes.Users.AddPermission(id), new { permission = "do_something_special" }),
+            ApiRoutes.Users.AddPermission(id), new { permission = "manage_tenant" }),
         "remove-permission" => FactoryClient.DeleteRequestAsync(
-            ApiRoutes.Users.RemovePermission(id, "do_something_special")),
+            ApiRoutes.Users.RemovePermission(id, "manage_tenant")),
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 

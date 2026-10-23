@@ -93,8 +93,8 @@ public class ConcurrencyTests : TestBase
         // Act
         Task<Exception?>[] adds =
         [
-            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "do_something_special"))),
-            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "do_something_special"))),
+            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "manage_users"))),
+            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "manage_users"))),
         ];
         await WaitUntilBlockedAsync(rowLock.ProcessID, adds);
         await rowLock.CloseAsync();
@@ -104,7 +104,7 @@ public class ConcurrencyTests : TestBase
         outcomes.Count(o => o is null).ShouldBe(1);
         outcomes.Count(o => o is StaleVersionException).ShouldBe(1);
         var saved = await LoadWithPermissionsAsync(new TestingServiceScope(), user.Id);
-        saved.UserPermissions.ShouldHaveSingleItem().Permission.Value.ShouldBe("do_something_special");
+        saved.UserPermissions.ShouldHaveSingleItem().Permission.Value.ShouldBe("manage_users");
     }
 
     [Test]
@@ -117,7 +117,7 @@ public class ConcurrencyTests : TestBase
             .BuildAsync();
         var dbContext = testingServiceScope.GetService<AppDbContext>();
         var untrackedUser = await dbContext.Users.AsNoTracking().GetById(user.Id);
-        dbContext.UserPermissions.Add(UserPermission.Create(untrackedUser, Permission.DoSomethingSpecial()));
+        dbContext.UserPermissions.Add(UserPermission.Create(untrackedUser, Permission.ManageUsers()));
 
         // Act
         Func<Task> act = () => dbContext.SaveChangesAsync();
@@ -216,7 +216,7 @@ public class ConcurrencyTests : TestBase
 
     private static void AddPermission(TestingServiceScope scope, User user)
     {
-        user.AddPermission(Permission.DoSomethingSpecial());
+        user.AddPermission(Permission.ManageUsers());
         scope.GetService<AppDbContext>().UserPermissions.Add(user.UserPermissions.Single());
     }
 }

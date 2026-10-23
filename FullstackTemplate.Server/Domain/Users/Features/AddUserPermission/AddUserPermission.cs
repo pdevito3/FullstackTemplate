@@ -10,12 +10,17 @@ using Resources;
 public static class AddUserPermission
 {
     // The endpoint sends the permission of UserPermissionDto, so the rule of the DTO is also on the command
-    public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<UserDto>, IRequireTenantAdmin;
+    public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ManageUserAccess());
+            var permission = Permission.Of(request.Permission);
+            caller.Require(permission);
+
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.add_permission.load")
                 .Include(u => u.UserPermissions)
@@ -23,7 +28,6 @@ public static class AddUserPermission
 
             var existingPermissionIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
 
-            var permission = Permission.Of(request.Permission);
             user.AddPermission(permission);
 
             // Explicitly track new permissions (needed due to PropertyAccessMode.Field)

@@ -60,7 +60,7 @@ public class GetUserByIdentifierQueryTests : TestBase
         userReturned.ShouldNotBeNull();
         userReturned.Role.ShouldBe("Admin");
         userReturned.Permissions.ShouldNotBeEmpty();
-        userReturned.Permissions.ShouldContain("do_something_special");
+        userReturned.Permissions.ShouldContain("manage_tenant");
     }
 
     [Test]

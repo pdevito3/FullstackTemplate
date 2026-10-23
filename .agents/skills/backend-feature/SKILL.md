@@ -277,10 +277,13 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    {
        public sealed record Command(string Id) : IRequest<OrderDto>;
 
-       public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, OrderDto>
+       public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+           : IRequestHandler<Command, OrderDto>
        {
            public async Task<OrderDto> Handle(Command request, CancellationToken ct)
            {
+               await permissionGuard.RequireAsync(Permission.ManageOrders(), ct);
+
                var order = await dbContext.Orders.GetById(request.Id, ct);
 
                order.Submit();
@@ -304,6 +307,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
            .WithTags("Orders")
            .MapToApiVersion(ApiVersions.V1)
            .RequireAuthorization()
+           .ProducesProblem(StatusCodes.Status403Forbidden)
            .ProducesProblem(StatusCodes.Status404NotFound)
            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
@@ -391,6 +395,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Put validation in the entity, and put database checks such as unique values in the handler
+- [ ] Add the permission of the commands to `Permission.cs`, with a migration that gives it to the admins that exist
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -413,6 +418,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Domain method added to entity with proper guards
 - [ ] Domain event created (if state change is significant)
 - [ ] Feature folder created with the Command/Query and Handler file
+- [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses

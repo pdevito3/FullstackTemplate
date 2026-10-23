@@ -3,7 +3,6 @@ namespace FullstackTemplate.UnitTests.Domain.Tenants;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Services;
@@ -65,14 +64,15 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
     }
 
     [Test]
-    public async Task caller_that_sees_all_tenants_without_the_capability_does_not_pass_the_admin_check()
+    public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_user()
     {
-        var behavior = new TenantAdminBehavior<AddUser.Command, UserDto>(
-            _dbContext, _currentUserService, _tenantScopeProvider);
+        _currentUserService.IsMachine.Returns(true);
+        var permissionGuard = new PermissionGuard(_dbContext, _currentUserService, _tenantScopeProvider);
+        var handler = new AddUser.Handler(_dbContext, permissionGuard);
 
-        var act = () => behavior.Handle(new AddUser.Command(new FakeUserForCreationDto().Generate()),
-            _ => Task.FromResult(new UserDto()), CancellationToken.None);
+        var act = () => handler.Handle(new AddUser.Command(new FakeUserForCreationDto().Generate()),
+            CancellationToken.None);
 
-        await act.ShouldThrowAsync<ForbiddenAccessException>();
+        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe("This client cannot change data.");
     }
 }

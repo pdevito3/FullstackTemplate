@@ -645,7 +645,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
   - The workflow file
 - `ci.yml` also counts these paths:
   - `tests/FullstackTemplate.Bff.Tests/**`
-  - `frontend/e2e/**` and `frontend/playwright.config.ts`
+  - `frontend/e2e/**` and `frontend/playwright.stack.config.ts`
   - `frontend/vite.config.ts` and `frontend/src/**`, the SPA and the dev server proxy that the e2e tests drive
 - `conformance.yml` also counts `frontend/conformance/**`.
 - **`bff-tests`.** The BFF unit and integration tests, with the two-host lock tests.

@@ -31,7 +31,10 @@ export default tseslint.config(
         'error',
         {
           groups: ['builtin', 'external', 'internal', ['parent', 'sibling', 'index']],
-          pathGroups: [{ pattern: '@/**', group: 'internal', patternOptions: { dot: true } }],
+          pathGroups: [
+            { pattern: '@/**', group: 'internal', patternOptions: { dot: true } },
+            { pattern: '@tests/**', group: 'internal' },
+          ],
           pathGroupsExcludedImportTypes: [],
           'newlines-between': 'ignore',
         },

@@ -5,42 +5,24 @@ using Domain;
 using Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Resources;
 using Services;
 
 public static class TenantQueryFilterExtension
 {
     /// <summary>
-    /// Applies tenant filtering to all entities implementing ITenantable.
-    /// Filter logic: scope.IncludesAllTenants OR (scope.TenantId != null AND entity.TenantId == scope.TenantId).
+    /// Applies the tenant filter to each entity type that has a tenant.
+    /// Filter logic: scope.IncludesAllTenants OR (scope.TenantId != null AND tenant ID of the row == scope.TenantId).
     /// For <see cref="TenantScope.NoTenant"/> both sides are false, so the filter matches no rows.
-    /// <see cref="Tenant"/> gets the same filter on its own ID, so a caller sees only their own tenant.
     /// </summary>
     public static void FilterByTenant(this ModelBuilder modelBuilder, AppDbContext context)
     {
-        foreach (var mutableEntityType in modelBuilder.Model.GetEntityTypes()
-                     .Where(m => m.ClrType.IsAssignableTo(typeof(ITenantable))))
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            var entityType = mutableEntityType.ClrType;
-
-            // Check for navigation path annotation first
-            var tenantPathAnnotation = mutableEntityType.FindAnnotation(TenantingExtension.NavigationPathAnnotation);
-            if (tenantPathAnnotation?.Value is LambdaExpression pathExpr)
-            {
-                // Build filter using navigation path
-                var filterLambda = BuildNavigationFilter(entityType, pathExpr, context);
-                mutableEntityType.SetQueryFilter(QueryFilterNames.Tenant, filterLambda);
-            }
-            else
-            {
-                // Direct ITenantable implementation
-                var filterLambda = BuildDirectFilter(entityType, context);
-                mutableEntityType.SetQueryFilter(QueryFilterNames.Tenant, filterLambda);
-            }
+            if (TenantIdPathOf(entityType) is { } tenantIdPath)
+                entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
         }
-
-        modelBuilder.Entity<Tenant>().HasQueryFilter(QueryFilterNames.Tenant, BuildTenantFilter(context));
     }
 
     public static string? TenantIdOfDomainEvent(EntityEntry<BaseEntity> queuedBy)
@@ -61,38 +43,22 @@ public static class TenantQueryFilterExtension
         };
     }
 
-    private static Expression<Func<Tenant, bool>> BuildTenantFilter(AppDbContext context)
+    private static LambdaExpression? TenantIdPathOf(IReadOnlyEntityType entityType)
     {
-        var parameter = Expression.Parameter(typeof(Tenant), "t");
+        if (entityType.FindAnnotation(TenantingExtension.NavigationPathAnnotation)?.Value is LambdaExpression navigationPath)
+            return navigationPath;
 
-        // t.Id
-        var idProperty = Expression.Property(parameter, nameof(Tenant.Id));
+        var row = Expression.Parameter(entityType.ClrType, "e");
+        if (entityType.ClrType == typeof(Tenant))
+            return Expression.Lambda(Expression.Property(row, nameof(Tenant.Id)), row);
+        if (entityType.ClrType.IsAssignableTo(typeof(ITenantable)))
+            return Expression.Lambda(Expression.Property(row, nameof(ITenantable.TenantId)), row);
 
-        return Expression.Lambda<Func<Tenant, bool>>(BuildFilterBody(idProperty, context), parameter);
+        return null;
     }
 
-    private static LambdaExpression BuildDirectFilter(Type entityType, AppDbContext context)
-    {
-        var parameter = Expression.Parameter(entityType, "e");
-
-        // e.TenantId
-        var tenantIdProperty = Expression.Property(parameter, nameof(ITenantable.TenantId));
-
-        return Expression.Lambda(BuildFilterBody(tenantIdProperty, context), parameter);
-    }
-
-    private static LambdaExpression BuildNavigationFilter(Type entityType, LambdaExpression pathExpr, AppDbContext context)
-    {
-        var parameter = Expression.Parameter(entityType, "e");
-
-        // Rewrite the path expression to use new parameter
-        var navigationBody = ReplacingExpressionVisitor.Replace(
-            pathExpr.Parameters[0],
-            parameter,
-            pathExpr.Body);
-
-        return Expression.Lambda(BuildFilterBody(navigationBody, context), parameter);
-    }
+    private static LambdaExpression BuildFilter(LambdaExpression tenantIdPath, AppDbContext context)
+        => Expression.Lambda(BuildFilterBody(tenantIdPath.Body, context), tenantIdPath.Parameters);
 
     private static BinaryExpression BuildFilterBody(Expression entityTenantId, AppDbContext context)
     {

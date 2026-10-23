@@ -14,8 +14,8 @@ using NSubstitute;
 using Shouldly;
 
 /// <summary>
-/// No entity of the server gets its tenant through <see cref="TenantingExtension.ApplyTenanting{TEntity}"/> yet, so the
-/// test adds one to a context of its own, on a database of its own.
+/// The test adds an entity of its own that uses <see cref="TenantingExtension.ApplyTenanting{TEntity}"/>, so it needs
+/// a model and a database of its own.
 /// </summary>
 public sealed class NavigationTenantFilterTests : IAsyncDisposable
 {

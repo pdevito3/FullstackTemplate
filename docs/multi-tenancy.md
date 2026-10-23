@@ -4,8 +4,8 @@ The server keeps the data of each tenant separate.
 
 ## How it works
 
-1. An entity implements `ITenantable`, so it has a `TenantId`.
-2. `AppDbContext` adds a query filter on `TenantId` for each tenantable entity. `Tenant` gets the same filter on its `Id`.
+1. An entity gets its tenant in one of two ways. It implements `ITenantable`, so it has a `TenantId`. Or it has no `TenantId`, and its configuration calls `ApplyTenanting` with a navigation path to a `TenantId`.
+2. `AppDbContext` adds a query filter to each entity that has a tenant. The filter compares the `TenantId` or the navigation path with the scope of the caller. `Tenant` gets the same filter on its `Id`.
 3. `TenantScopeProvider` finds the `TenantScope` of the current request. `AppDbContext` gets this scope once and keeps it. The filter reads the kept scope for each query. If code changes the caller of a live DI scope, for example a test, call `AppDbContext.RefreshTenantScope()`.
 4. The context does not set the `TenantId` of a new entity. Set it when you create the entity.
 
@@ -40,6 +40,25 @@ builder.HasIndex(e => e.TenantId);
 ```
 
 The foreign key to `tenants.id` must have the same collation as `tenants.id`.
+
+## Make a child entity multi-tenant
+
+A child entity can get its tenant through its owner. In the configuration of the child, give the path to the `TenantId` of the owner:
+
+```csharp
+builder.ApplyTenanting(line => line.Order.TenantId);
+```
+
+The filter then shows a row only if the owner is in the tenant of the caller. The path must go through navigation properties. A child that gets its tenant this way cannot queue a domain event. The save throws a `NotSupportedException`. See [domain-events.md](backend/domain-events.md#handlers).
+
+## Entities with no tenant filter
+
+`TenantQueryFilterTests` checks the model of `AppDbContext`. Each entity must have the tenant filter, or be on a list in the test that gives the reason why it has no tenant filter. A new entity with no filter fails the test, so you must make a decision for it:
+
+- If the entity holds the data of a tenant, implement `ITenantable` or call `ApplyTenanting`.
+- If the entity has no tenant, add it to the list for its reason. The lists are the children that a query reaches only through their owner, and the entities with no tenant data, such as the replay cache of the DPoP check.
+
+A query on an entity with no tenant filter shows the rows of all tenants. Thus, do not query a child on the list directly. Load it through its owner.
 
 ## Tenant lookup
 

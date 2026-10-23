@@ -17,6 +17,17 @@ BFF   GET /api/v1/users
       └─ SQL: users.list               (Npgsql span, tagged query)
 ```
 
+A command whose save runs a domain event handler has one more level. The handler span is a child of the feature slice span:
+
+```
+Server   PUT api/v{version}/tenants/{id}
+└─ UpdateTenant.Command                (RequestTracingBehavior)
+   ├─ SQL: tenants.update.load
+   ├─ domain_event.handle              (one span for each handler)
+   │  └─ SQL: <the queries of the handler>
+   └─ SQL: <the save>
+```
+
 ## Where the code is
 
 | File | Purpose |
@@ -26,6 +37,7 @@ BFF   GET /api/v1/users
 | `FullstackTemplate.Server/Resources/LoggerExtensions.cs` | `Here()`, which adds the call site to a log event |
 | `FullstackTemplate.Server/Databases/QueryTagging.cs` | `TagWithOperationCallSite`, which names an EF query |
 | `FullstackTemplate.Server/Databases/QueryTagEnrichment.cs` | Copies the query tags into the Npgsql span |
+| `FullstackTemplate.Server/Databases/DomainEventDispatcher.cs` | Runs each domain event handler in its `domain_event.handle` span |
 | `FullstackTemplate.Server/Resources/Extensions/HostExtensions.cs` | OpenTelemetry and Serilog registration, resource attributes, framework meters, request log level |
 | `FullstackTemplate.Bff/Telemetry.cs`, `FullstackTemplate.Bff/LoginTraceLink.cs` | BFF telemetry and the login trace link |
 | `FullstackTemplate.Bff/LoggerExtensions.cs`, `FullstackTemplate.Bff/Extensions.cs` | The BFF copies of `Here()` and of the registration |
@@ -91,6 +103,12 @@ Traces, metrics, and logs share the same resource attributes: `service.name`, `s
 `RequestTracingBehavior` wraps each MediatR request in a span. The span name is the feature class plus the request type, for example `GetUser.Query`. You do not have to add code to a new slice to get this span or the `app.request.duration` metric.
 
 The behavior tags an exception type as `error.type`. A client error does not mark the span as failed. A client error is an exception for which `DomainError.IsClientError` is true. These are the domain exceptions that each entrypoint maps to a client error, for example a 4xx response (see the error table in [backend.md](backend.md#error-responses)). All other exceptions mark the span with the `Error` status and increment `app.errors`.
+
+## Domain event handler spans
+
+`AppDbContext.SaveChangesAsync` runs each domain event handler in a `domain_event.handle` span. The span is a child of the current activity, which is the feature slice span in a request. The tags are `app.domain_event.type` and `app.domain_event.handler`. They have the type names only, never the data of the event.
+
+The handler span tags the type of an exception as `error.type`, the same as the feature slice span. A server error also marks the span with the `Error` status and adds the exception. The handler span writes no log and does not increment `app.errors`. The exception fails the save, and the code that called the save counts it one time. In a request, the feature slice span counts it.
 
 ## Named queries
 

@@ -48,7 +48,7 @@ public class [EntityName] : BaseEntity
             entity.SetId(forCreation.Id);
 
         Validate[EntityName](entity);
-        entity.QueueDomainEvent(new [EntityName]Created(entity));
+        entity.QueueDomainEvent(new [EntityName]Created(entity.Id));
 
         return entity;
     }
@@ -106,7 +106,7 @@ public class [EntityName] : BaseEntity
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName]Created([EntityName] [EntityName]) : DomainEvent;
+public sealed record [EntityName]Created(string [EntityName]Id) : DomainEvent;
 ```
 
 **File:** `Domain/[EntityName]s/DomainEvents/[EntityName]Updated.cs`
@@ -117,7 +117,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 public sealed record [EntityName]Updated(string Id) : DomainEvent;
 ```
 
-Do not add a deleted event. The context does soft deletes, and no handler needs the event.
+An event carries IDs and values, never an entity. Do not add a deleted event. The context does soft deletes, and no handler needs the event. Add a handler only when a feature needs one. See `docs/backend/domain-events.md`.
 
 ## 3. DTOs
 
@@ -727,9 +727,7 @@ Ensure these packages are installed:
 ```csharp
 namespace FullstackTemplate.Server.Domain;
 
-using MediatR;
-
-public abstract record DomainEvent : INotification;
+public abstract record DomainEvent;
 ```
 
 ### PagedList

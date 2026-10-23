@@ -42,6 +42,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -53,6 +57,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -120,6 +128,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -131,6 +143,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -189,6 +205,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -200,6 +220,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -239,6 +263,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -262,6 +290,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -342,6 +374,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -353,6 +389,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")

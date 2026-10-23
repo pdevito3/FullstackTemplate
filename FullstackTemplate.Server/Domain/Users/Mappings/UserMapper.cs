@@ -11,6 +11,8 @@ public static partial class UserMapper
 {
     [MapperIgnoreSource(nameof(User.CreatedBy))]
     [MapperIgnoreSource(nameof(User.LastModifiedBy))]
+    [MapperIgnoreSource(nameof(User.CreatedByClient))]
+    [MapperIgnoreSource(nameof(User.LastModifiedByClient))]
     [MapperIgnoreSource(nameof(User.CreatedOn))]
     [MapperIgnoreSource(nameof(User.LastModifiedOn))]
     [MapperIgnoreSource(nameof(User.IsDeleted))]

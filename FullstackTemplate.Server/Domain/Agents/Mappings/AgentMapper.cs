@@ -10,6 +10,8 @@ public static partial class AgentMapper
 {
     [MapperIgnoreSource(nameof(Agent.CreatedBy))]
     [MapperIgnoreSource(nameof(Agent.LastModifiedBy))]
+    [MapperIgnoreSource(nameof(Agent.CreatedByClient))]
+    [MapperIgnoreSource(nameof(Agent.LastModifiedByClient))]
     [MapperIgnoreSource(nameof(Agent.CreatedOn))]
     [MapperIgnoreSource(nameof(Agent.LastModifiedOn))]
     [MapperIgnoreSource(nameof(Agent.IsDeleted))]

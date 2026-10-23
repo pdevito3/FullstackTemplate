@@ -176,17 +176,17 @@ public class AppDbContext(
             switch (entry.State)
             {
                 case EntityState.Added:
-                    entry.Entity.UpdateCreationProperties(now, currentUserService.UserIdentifier);
-                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
+                    entry.Entity.UpdateCreationProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
+                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
                     break;
 
                 case EntityState.Modified:
-                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
+                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
                     break;
 
                 case EntityState.Deleted:
                     entry.State = EntityState.Modified;
-                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
+                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
                     entry.Entity.UpdateIsDeleted(true);
                     break;
             }

@@ -24,8 +24,18 @@ public abstract class BaseEntity
 
     public DateTimeOffset CreatedOn { get; private set; }
     public string? CreatedBy { get; private set; }
+
+    /// <summary>
+    /// The OAuth client of the token, next to the <c>sub</c> in <see cref="CreatedBy"/>: the app for a signed-in user,
+    /// or the agent that acts for a user or for itself. Null only with no token, for example system work.
+    /// </summary>
+    public string? CreatedByClient { get; private set; }
+
     public DateTimeOffset? LastModifiedOn { get; private set; }
     public string? LastModifiedBy { get; private set; }
+
+    /// <inheritdoc cref="CreatedByClient"/>
+    public string? LastModifiedByClient { get; private set; }
 
     public bool IsDeleted { get; private set; }
 
@@ -55,16 +65,19 @@ public abstract class BaseEntity
         return taken;
     }
 
-    public void UpdateCreationProperties(DateTimeOffset createdOn, string? createdBy)
+    public void UpdateCreationProperties(DateTimeOffset createdOn, string? createdBy, string? createdByClient)
     {
         CreatedOn = createdOn;
         CreatedBy = createdBy;
+        CreatedByClient = createdByClient;
     }
 
-    public void UpdateModifiedProperties(DateTimeOffset? lastModifiedOn, string? lastModifiedBy)
+    public void UpdateModifiedProperties(
+        DateTimeOffset? lastModifiedOn, string? lastModifiedBy, string? lastModifiedByClient)
     {
         LastModifiedOn = lastModifiedOn;
         LastModifiedBy = lastModifiedBy;
+        LastModifiedByClient = lastModifiedByClient;
     }
     
     public void UpdateIsDeleted(bool isDeleted)

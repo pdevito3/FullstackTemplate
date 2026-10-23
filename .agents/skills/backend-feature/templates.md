@@ -134,8 +134,10 @@ public sealed record [EntityName]Dto
     public string? Description { get; init; }
     public DateTimeOffset CreatedOn { get; init; }
     public string? CreatedBy { get; init; }
+    public string? CreatedByClient { get; init; }
     public DateTimeOffset? LastModifiedOn { get; init; }
     public string? LastModifiedBy { get; init; }
+    public string? LastModifiedByClient { get; init; }
 }
 ```
 

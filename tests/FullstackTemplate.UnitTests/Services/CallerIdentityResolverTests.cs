@@ -44,6 +44,8 @@ public sealed class CallerIdentityResolverTests : IDisposable
             .Returns((string?)null);
         _agentDirectory.FindDelegatedAgentAsync(AppUserTenantId, DelegatedClientId, Arg.Any<CancellationToken>())
             .Returns(DelegatedAgentId);
+        _agentDirectory.FindDelegatedAgentAsync(AppUserTenantId, MachineClientId, Arg.Any<CancellationToken>())
+            .Returns(EntityId.New(Agent.IdPrefix));
         _agentDirectory.FindMachineAgentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((AgentBinding?)null);
         _agentDirectory.FindMachineAgentAsync(MachineClientId, Arg.Any<CancellationToken>())
@@ -106,9 +108,12 @@ public sealed class CallerIdentityResolverTests : IDisposable
         yield return () => ("unknown client with an app user sub",
             [new("sub", AppUser), new("azp", "claude-desktop")],
             new CallerIdentity.UnknownClient("claude-desktop"));
-        yield return () => ("app user through a client on the manage list",
+        yield return () => ("client on the manage list with the sub of an app user",
             [new("sub", AppUser), new("azp", ManageClientId)],
-            new CallerIdentity.UnknownClient(ManageClientId));
+            new CallerIdentity.AllTenantsClient(ManageClientId, CanManage: true));
+        yield return () => ("client on the read list with the sub of an app user",
+            [new("sub", AppUser), new("azp", ReadClientId)],
+            new CallerIdentity.AllTenantsClient(ReadClientId, CanManage: false));
         yield return () => ("app user with no client claim",
             [new("sub", AppUser)],
             new CallerIdentity.UnknownClient(null));
@@ -124,9 +129,9 @@ public sealed class CallerIdentityResolverTests : IDisposable
         yield return () => ("Duende client_credentials token of a machine agent",
             [new("client_id", MachineClientId)],
             new CallerIdentity.MachineAgent(MachineAgentId, MachineClientId, MachineTenantId));
-        yield return () => ("app user through the client of a machine agent",
+        yield return () => ("machine agent client with the sub of an app user whose tenant registered it as delegated",
             [new("sub", AppUser), new("azp", MachineClientId)],
-            new CallerIdentity.UnknownClient(MachineClientId));
+            new CallerIdentity.MachineAgent(MachineAgentId, MachineClientId, MachineTenantId));
         yield return () => ("client_id wins over azp",
             [new("sub", AppUser), new("client_id", "claude-desktop"), new("azp", AppClientId)],
             new CallerIdentity.UnknownClient("claude-desktop"));

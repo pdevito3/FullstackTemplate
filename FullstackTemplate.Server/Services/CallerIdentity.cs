@@ -14,7 +14,7 @@ public abstract record CallerIdentity
 
     /// <summary>
     /// A client on <see cref="TenancyOptions.ReadAllTenantsClientIds"/> or
-    /// <see cref="TenancyOptions.ManageAllTenantsClientIds"/>, in a token with no app user.
+    /// <see cref="TenancyOptions.ManageAllTenantsClientIds"/>, whatever the <c>sub</c> of the token.
     /// </summary>
     public sealed record AllTenantsClient(string ClientId, bool CanManage) : CallerIdentity;
 
@@ -31,8 +31,8 @@ public abstract record CallerIdentity
     public sealed record DelegatedAgent(string AgentId, string ClientId, string Subject, string TenantId) : CallerIdentity;
 
     /// <summary>
-    /// A client registered as a machine agent, in a token with no app user. The token names no tenant, so the agent
-    /// gives the tenant.
+    /// A client registered as a machine agent, whatever the <c>sub</c> of the token. The token names no tenant, so the
+    /// agent gives the tenant.
     /// </summary>
     public sealed record MachineAgent(string AgentId, string ClientId, string TenantId) : CallerIdentity;
 

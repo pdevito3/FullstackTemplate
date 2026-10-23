@@ -11,7 +11,8 @@ using Shouldly;
 
 /// <summary>
 /// A tenant admin registers a delegated agent in their own tenant. Only a caller that manages all tenants binds a
-/// machine agent, and a client ID has at most one live agent in a tenant and one live machine agent in all tenants.
+/// machine agent. A client ID has at most one live agent in a tenant, and a new agent cannot take a client ID that has a
+/// live machine agent. The client of the app and the clients on the allow-lists cannot be agents.
 /// </summary>
 public class AddAgentCommandTests : TestBase
 {
@@ -210,6 +211,101 @@ public class AddAgentCommandTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ConflictException>()).Property.ShouldBe("clientId");
+    }
+
+    [Test]
+    public async Task delegated_agent_cannot_take_the_client_of_a_machine_agent_of_another_tenant()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out _).AddAgent(out var machineAgent, a => a.Mode = "machine")
+            .BuildAsync();
+        var dto = new FakeAgentForCreationDto().Generate() with { ClientId = machineAgent.ClientId, Mode = "delegated" };
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddAgent.Command(dto));
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<ConflictException>();
+        exception.Property.ShouldBe("clientId");
+        exception.Message.ShouldBe("An agent with this client ID already exists.");
+        (await AgentCountAsync(dto.ClientId)).ShouldBe(1);
+    }
+
+    [Test]
+    public async Task operator_binds_a_machine_client_that_other_tenants_registered_as_delegated()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _).AddTenant(out _).AddAgent(out var delegatedAgent).BuildAsync();
+        testingServiceScope.SetMachineClient(TestFixture.TrustedMachineClientId);
+        var dto = new FakeAgentForCreationDto().Generate() with
+        {
+            Mode = "machine",
+            ClientId = delegatedAgent.ClientId,
+            TenantId = TestFixture.DefaultTenant.Id
+        };
+
+        // Act
+        var agentReturned = await testingServiceScope.SendAsync(new AddAgent.Command(dto));
+
+        // Assert
+        agentReturned.Mode.ShouldBe("machine");
+        (await AgentCountAsync(dto.ClientId)).ShouldBe(2);
+    }
+
+    [Test]
+    [Arguments("delegated")]
+    [Arguments("machine")]
+    public async Task client_of_the_app_cannot_be_an_agent(string mode)
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        testingServiceScope.SetMachineClient(TestFixture.TrustedMachineClientId);
+        var dto = new FakeAgentForCreationDto().Generate() with
+        {
+            Mode = mode,
+            ClientId = TestFixture.FirstPartyClientId,
+            TenantId = TestFixture.DefaultTenant.Id
+        };
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddAgent.Command(dto));
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<ValidationException>();
+        exception.Property.ShouldBe("clientId");
+        exception.Message.ShouldBe(
+            "This is the client of the app. Its users act with their own permissions, so it cannot be an agent.");
+        (await AgentCountAsync(dto.ClientId)).ShouldBe(0);
+    }
+
+    [Test]
+    [Arguments(TestFixture.TrustedMachineClientId, "delegated")]
+    [Arguments(TestFixture.TrustedMachineClientId, "machine")]
+    [Arguments(TestFixture.ReadOnlyMachineClientId, "delegated")]
+    [Arguments(TestFixture.ReadOnlyMachineClientId, "machine")]
+    public async Task client_that_acts_for_all_tenants_cannot_be_an_agent(string clientId, string mode)
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        testingServiceScope.SetMachineClient(TestFixture.TrustedMachineClientId);
+        var dto = new FakeAgentForCreationDto().Generate() with
+        {
+            Mode = mode,
+            ClientId = clientId,
+            TenantId = TestFixture.DefaultTenant.Id
+        };
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddAgent.Command(dto));
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<ValidationException>();
+        exception.Property.ShouldBe("clientId");
+        exception.Message.ShouldBe("This client acts for all tenants, so it cannot be an agent of one tenant.");
+        (await AgentCountAsync(dto.ClientId)).ShouldBe(0);
     }
 
     [Test]

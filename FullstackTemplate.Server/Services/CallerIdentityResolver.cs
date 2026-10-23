@@ -20,16 +20,20 @@ public interface ICallerIdentityResolver
 /// <list type="number">
 /// <item>A system scope is <see cref="CallerIdentity.System"/>.</item>
 /// <item>A request with no authenticated principal is <see cref="CallerIdentity.Anonymous"/>.</item>
+/// <item>A token with no client claim is an <see cref="CallerIdentity.UnknownClient"/> with no client ID.</item>
 /// <item>A token from a first-party client with a <c>sub</c> is <see cref="CallerIdentity.User"/>.</item>
-/// <item>A token whose <c>sub</c> names a live app user in tenant T is a <see cref="CallerIdentity.DelegatedAgent"/>
-/// when T has a live delegated agent for its client, else an <see cref="CallerIdentity.UnknownClient"/>. It never
-/// takes the allow-list path or the machine path.</item>
-/// <item>A token with no app user (no <c>sub</c>, or a service-account <c>sub</c>) on an allow-list is an
-/// <see cref="CallerIdentity.AllTenantsClient"/>. Next, a live machine agent for its client gives a
-/// <see cref="CallerIdentity.MachineAgent"/>. Any other token is an <see cref="CallerIdentity.UnknownClient"/>.</item>
+/// <item>A client on <see cref="TenancyOptions.ManageAllTenantsClientIds"/> or
+/// <see cref="TenancyOptions.ReadAllTenantsClientIds"/> is an <see cref="CallerIdentity.AllTenantsClient"/>, whatever
+/// the <c>sub</c>.</item>
+/// <item>A client with a live machine agent in a live tenant is a <see cref="CallerIdentity.MachineAgent"/>, whatever
+/// the <c>sub</c>.</item>
+/// <item>A token whose <c>sub</c> names a live app user in tenant T is a
+/// <see cref="CallerIdentity.DelegatedAgent"/> when T has a live delegated agent for its client.</item>
+/// <item>Any other token is an <see cref="CallerIdentity.UnknownClient"/>.</item>
 /// </list>
-/// The rule does not depend on a missing <c>sub</c>, so a client_credentials token from Keycloak, ZeroFactor, or
-/// Cognito, which carries a service-account <c>sub</c>, also matches an allow-list.
+/// The operator's bindings (the allow-lists and the machine agents) come before the <c>sub</c>, because a tenant admin
+/// writes the identifiers of users. A user record with the service-account <c>sub</c> of a client cannot take the
+/// client from its binding.
 /// </summary>
 public sealed class CallerIdentityResolver(
     ICurrentUserService currentUserService,
@@ -77,18 +81,8 @@ public sealed class CallerIdentityResolver(
         if (token.ClientId is not { } clientId)
             return new CallerIdentity.UnknownClient(null);
 
-        if (token.Subject is { } subject)
-        {
-            if (firstPartyClients.Value.Contains(clientId))
-                return new CallerIdentity.User(subject, await tenantIdProvider.GetTenantIdAsync(subject));
-
-            if (await tenantIdProvider.GetTenantIdAsync(subject) is { } tenantId)
-            {
-                return await agentDirectory.FindDelegatedAgentAsync(tenantId, clientId) is { } agentId
-                    ? new CallerIdentity.DelegatedAgent(agentId, clientId, subject, tenantId)
-                    : new CallerIdentity.UnknownClient(clientId);
-            }
-        }
+        if (token.Subject is { } subject && firstPartyClients.Value.Contains(clientId))
+            return new CallerIdentity.User(subject, await tenantIdProvider.GetTenantIdAsync(subject));
 
         var tenancy = tenancyOptions.Value;
         if (tenancy.ManageAllTenantsClientIds.Contains(clientId, StringComparer.Ordinal))
@@ -97,9 +91,15 @@ public sealed class CallerIdentityResolver(
         if (tenancy.ReadAllTenantsClientIds.Contains(clientId, StringComparer.Ordinal))
             return new CallerIdentity.AllTenantsClient(clientId, CanManage: false);
 
-        return await agentDirectory.FindMachineAgentAsync(clientId) is { } machineAgent
-            ? new CallerIdentity.MachineAgent(machineAgent.AgentId, clientId, machineAgent.TenantId)
-            : new CallerIdentity.UnknownClient(clientId);
+        if (await agentDirectory.FindMachineAgentAsync(clientId) is { } machineAgent)
+            return new CallerIdentity.MachineAgent(machineAgent.AgentId, clientId, machineAgent.TenantId);
+
+        if (token.Subject is { } delegatingUser
+            && await tenantIdProvider.GetTenantIdAsync(delegatingUser) is { } tenantId
+            && await agentDirectory.FindDelegatedAgentAsync(tenantId, clientId) is { } agentId)
+            return new CallerIdentity.DelegatedAgent(agentId, clientId, delegatingUser, tenantId);
+
+        return new CallerIdentity.UnknownClient(clientId);
     }
 
     private sealed record Token(bool IsSystem, bool IsAuthenticated, string? Subject, string? ClientId);

@@ -7,6 +7,7 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.Agent;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Shouldly;
@@ -130,6 +131,34 @@ public class AgentCallerTests : TestBase
         // Assert
         tenants.Select(t => t.Id).ShouldBe([tenantA.Id]);
         await getTenantB.ShouldThrowAsync<NotFoundException>();
+    }
+
+    [Test]
+    public async Task tenant_that_gives_a_user_the_service_account_of_a_machine_agent_cannot_take_the_machine()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out var tenantA)
+            .AddAgent(out var machineAgent, a => a.Mode = "machine")
+            .BuildAsync();
+        var serviceAccount = $"service-account-{machineAgent.ClientId}";
+        var tenantBAdmin = new TestingServiceScope();
+        await tenantBAdmin.SendAsync(new AddUser.Command(
+            new FakeUserForCreationDto().Generate() with { Identifier = serviceAccount }));
+
+        // Act
+        var register = () => tenantBAdmin.SendAsync(new AddAgent.Command(
+            new FakeAgentForCreationDto().Generate() with { ClientId = machineAgent.ClientId, Mode = "delegated" }));
+        var conflict = await register.ShouldThrowAsync<ConflictException>();
+
+        var machine = new TestingServiceScope();
+        machine.SetMachineClient(machineAgent.ClientId, serviceAccountSubject: serviceAccount);
+        var tenants = await machine.SendAsync(new GetTenantList.Query(AllTenantsPage()));
+
+        // Assert
+        conflict.Property.ShouldBe("clientId");
+        tenants.Select(t => t.Id).ShouldBe([tenantA.Id]);
     }
 
     [Test]

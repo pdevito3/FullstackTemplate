@@ -49,7 +49,8 @@ public static partial class McpDomainErrors
         DomainErrorKind.NotFound => "not_found",
         DomainErrorKind.Forbidden => "permission_denied",
         DomainErrorKind.Conflict => "already_exists",
-        _ => "internal",
+        DomainErrorKind.StaleVersion => "aborted",
+        DomainErrorKind.Unexpected => "internal",
     };
 
     private static CallToolResult ToToolError(DomainError error)

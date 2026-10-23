@@ -84,7 +84,8 @@ public sealed class DomainErrorInterceptor : Interceptor
         DomainErrorKind.NotFound => StatusCode.NotFound,
         DomainErrorKind.Forbidden => StatusCode.PermissionDenied,
         DomainErrorKind.Conflict => StatusCode.AlreadyExists,
-        _ => null,
+        DomainErrorKind.StaleVersion => StatusCode.Aborted,
+        DomainErrorKind.Unexpected => null,
     };
 
     private static RpcException? ToRpcException(Exception exception)

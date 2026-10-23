@@ -24,6 +24,11 @@ public class QueryInputErrorTests : TestBase
         ("filters", "Name ^^ \"x\""),
         ("sortOrder", "Unknown desc,,"),
         ("sortOrder", "Name foo"),
+        // A version is opaque, so a list cannot filter or sort on it
+        ("filters", "version > 5"),
+        ("filters", "Version == 5"),
+        ("sortOrder", "version"),
+        ("sortOrder", "Name, -version"),
         // Model binding gives these, so the key comes from the name of the query parameter
         ("pageNumber", "abc"),
         ("pageSize", "abc"),

@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
@@ -108,6 +109,9 @@ public class TenantErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status409Conflict);
+        problem.Type.ShouldBe("https://tools.ietf.org/html/rfc9110#section-15.5.10");
+        problem.Type.ShouldNotBe(DomainProblemDetails.StaleVersionType);
+        problem.Title.ShouldBe("The request conflicts with a record that exists.");
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 

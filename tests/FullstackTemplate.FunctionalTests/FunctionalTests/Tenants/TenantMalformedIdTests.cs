@@ -27,11 +27,12 @@ public class TenantMalformedIdTests : TestBase
     public async Task malformed_tenant_id_returns_not_found_problem(string method, string kind)
     {
         // Arrange
-        var id = MalformedIds.From(kind, await AddTenantAsync(), User.IdPrefix);
+        var tenant = await AddTenantAsync();
+        var id = MalformedIds.From(kind, tenant.Id, User.IdPrefix);
         SignInAsTrustedClient();
 
         // Act
-        var result = await SendAsync(method, id);
+        var result = await SendAsync(method, id, tenant.Version);
 
         // Assert
         await MalformedIds.ShouldBeNotFoundAsync(result, "Tenant was not found.");
@@ -42,20 +43,20 @@ public class TenantMalformedIdTests : TestBase
     public async Task correct_tenant_id_finds_the_record(string method, HttpStatusCode expected)
     {
         // Arrange
-        var id = await AddTenantAsync();
+        var tenant = await AddTenantAsync();
         SignInAsTrustedClient();
 
         // Act
-        var result = await SendAsync(method, id);
+        var result = await SendAsync(method, tenant.Id, tenant.Version);
 
         // Assert
         result.StatusCode.ShouldBe(expected);
     }
 
-    private Task<HttpResponseMessage> SendAsync(string method, string id) => method switch
+    private Task<HttpResponseMessage> SendAsync(string method, string id, uint version) => method switch
     {
         "GET" => FactoryClient.GetRequestAsync(ApiRoutes.Tenants.GetRecord(id)),
-        "PUT" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(id), new { name = TenantRules.Name(new Faker()) }),
+        "PUT" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(id), new { name = TenantRules.Name(new Faker()), version }),
         "DELETE" => FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(id)),
         _ => throw new ArgumentOutOfRangeException(nameof(method), method, null),
     };
@@ -66,10 +67,10 @@ public class TenantMalformedIdTests : TestBase
             ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
         });
 
-    private static async Task<string> AddTenantAsync()
+    private static async Task<Tenant> AddTenantAsync()
     {
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
         await InsertAsync(tenant);
-        return tenant.Id;
+        return tenant;
     }
 }

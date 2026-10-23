@@ -30,11 +30,12 @@ public class UserMalformedIdTests : TestBase
     public async Task malformed_user_id_returns_not_found_problem(string target, string kind)
     {
         // Arrange
-        var id = MalformedIds.From(kind, await AddUserAsync(), Tenant.IdPrefix);
+        var user = await AddUserAsync();
+        var id = MalformedIds.From(kind, user.Id, Tenant.IdPrefix);
         SignInAsTrustedClient();
 
         // Act
-        var result = await SendAsync(target, id);
+        var result = await SendAsync(target, id, user.Version);
 
         // Assert
         await MalformedIds.ShouldBeNotFoundAsync(result, "User was not found.");
@@ -45,20 +46,20 @@ public class UserMalformedIdTests : TestBase
     public async Task correct_user_id_finds_the_record(string target, HttpStatusCode expected)
     {
         // Arrange
-        var id = await AddUserAsync();
+        var user = await AddUserAsync();
         SignInAsTrustedClient();
 
         // Act
-        var result = await SendAsync(target, id);
+        var result = await SendAsync(target, user.Id, user.Version);
 
         // Assert
         result.StatusCode.ShouldBe(expected);
     }
 
-    private Task<HttpResponseMessage> SendAsync(string target, string id) => target switch
+    private Task<HttpResponseMessage> SendAsync(string target, string id, uint version) => target switch
     {
         "GET" => FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(id)),
-        "PUT" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(id), new FakeUserForUpdateDto().Generate()),
+        "PUT" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(id), new FakeUserForUpdateDto().Generate() with { Version = version }),
         "DELETE" => FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(id)),
         "role" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(id), new { role = "Admin" }),
         "add-permission" => FactoryClient.PostJsonRequestAsync(
@@ -74,12 +75,12 @@ public class UserMalformedIdTests : TestBase
             ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
         });
 
-    private static async Task<string> AddUserAsync()
+    private static async Task<User> AddUserAsync()
     {
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
         var user = User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate());
         await InsertAsync(tenant);
         await InsertAsync(user);
-        return user.Id;
+        return user;
     }
 }

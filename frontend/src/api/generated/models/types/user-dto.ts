@@ -14,4 +14,10 @@ export type UserDto = {
     username: string;
     role: string;
     permissions: string[];
+    /**
+     * @minLength 0
+     * @maxLength 4294967295
+     * @type integer
+    */
+    version: number;
 };

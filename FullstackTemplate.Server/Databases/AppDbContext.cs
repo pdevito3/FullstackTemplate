@@ -5,6 +5,7 @@ using Domain.Tenants;
 using Domain.Users;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Services;
 
 public class AppDbContext(
@@ -44,6 +45,7 @@ public class AppDbContext(
         // Automatically discovers and applies all IEntityTypeConfiguration<T> implementations in the assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         modelBuilder.MapEntityIdToField();
+        modelBuilder.MapVersionToXmin();
         modelBuilder.FilterSoftDeletedRecords();
         modelBuilder.FilterByTenant(this);
     }
@@ -64,7 +66,7 @@ public class AppDbContext(
         {
             result = base.SaveChanges(acceptAllChangesOnSuccess);
         }
-        catch (DbUpdateException exception) when (UniqueIndexException.From(exception) is { } conflict)
+        catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {
             throw conflict;
         }
@@ -89,7 +91,7 @@ public class AppDbContext(
         {
             result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
-        catch (DbUpdateException exception) when (UniqueIndexException.From(exception) is { } conflict)
+        catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {
             throw conflict;
         }
@@ -115,6 +117,8 @@ public class AppDbContext(
 
     private void UpdateAuditFields()
     {
+        GuardOwnerVersionsOfChangedChildren();
+
         var now = timeProvider.GetUtcNow();
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -134,6 +138,35 @@ public class AppDbContext(
                     entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
                     entry.Entity.UpdateIsDeleted(true);
                     break;
+            }
+        }
+    }
+
+    private void GuardOwnerVersionsOfChangedChildren()
+    {
+        var entries = ChangeTracker.Entries<BaseEntity>().ToList();
+        var changed = new Queue<EntityEntry<BaseEntity>>(entries.Where(e =>
+            e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted));
+
+        while (changed.TryDequeue(out var child))
+        {
+            foreach (var ownership in child.Metadata.GetForeignKeys().Where(fk =>
+                         fk.DeleteBehavior == DeleteBehavior.Cascade
+                         && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity))))
+            {
+                var ownerIdProperty = child.Property(ownership.Properties.Single().Name);
+                var ownerId = child.State == EntityState.Deleted
+                    ? ownerIdProperty.OriginalValue
+                    : ownerIdProperty.CurrentValue;
+                var owner = entries.SingleOrDefault(e =>
+                                e.Metadata == ownership.PrincipalEntityType && Equals(e.Entity.Id, ownerId))
+                            ?? throw new InvalidOperationException(
+                                $"A {child.Metadata.ClrType.Name} changed, but its {ownership.PrincipalEntityType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownership.PrincipalEntityType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
+                if (owner.State != EntityState.Unchanged)
+                    continue;
+
+                owner.Property(e => e.LastModifiedOn).IsModified = true;
+                changed.Enqueue(owner);
             }
         }
     }

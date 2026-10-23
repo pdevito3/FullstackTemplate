@@ -14,7 +14,8 @@ public sealed class DeleteTenantEndpoint : IEndpoint
         .RequireAuthorization()
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// Deletes a Tenant.

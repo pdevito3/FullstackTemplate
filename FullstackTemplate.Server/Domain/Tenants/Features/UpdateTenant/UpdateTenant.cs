@@ -20,6 +20,10 @@ public static class UpdateTenant
                 .TagWithOperationCallSite("tenants.update.load")
                 .GetById(request.Id, cancellationToken);
 
+            // The update checks the version first, so a stale form gets the stale version and not a name conflict
+            var forUpdate = request.Dto.ToTenantForUpdate();
+            tenant.Update(forUpdate);
+
             // Ignore all filters: the unique index on Name also covers deleted tenants and the tenants of other users.
             var nameInUse = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.update.name_in_use")
@@ -27,9 +31,6 @@ public static class UpdateTenant
                 .AnyAsync(t => t.Id != tenant.Id && t.Name == request.Dto.Name, cancellationToken);
             if (nameInUse)
                 throw new ConflictException("name", "A tenant with this name already exists.");
-
-            var forUpdate = request.Dto.ToTenantForUpdate();
-            tenant.Update(forUpdate);
 
             await dbContext.SaveChangesAsync(cancellationToken);
 

@@ -81,7 +81,7 @@ public static class InitiateUserAndTenant
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
             // Two requests can pass the check at the same time. Then the index stops the second save.
-            catch (UniqueIndexException exception) when (exception.Index == "ix_tenants_name")
+            catch (ConstraintConflictException exception) when (exception.Constraint == "ix_tenants_name")
             {
                 throw new ConflictException(TenantNameField, TenantNameTaken);
             }

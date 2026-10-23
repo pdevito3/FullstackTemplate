@@ -58,6 +58,8 @@ public class [EntityName] : BaseEntity
     /// </summary>
     public [EntityName] Update([EntityName]ForUpdate forUpdate)
     {
+        // The caller edited the version that it loaded. A newer version gives 409
+        GuardVersion(forUpdate.Version);
         Name = forUpdate.Name;
         Description = forUpdate.Description;
 
@@ -127,6 +129,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 public sealed record [EntityName]Dto
 {
     public string Id { get; init; } = default!;
+    public uint Version { get; init; }
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
     public DateTimeOffset CreatedOn { get; init; }
@@ -161,6 +164,9 @@ using Resources;
 
 public sealed record [EntityName]ForUpdateDto
 {
+    // The version from the [EntityName]Dto that the caller edited. A missing value is a 400
+    public required uint Version { get; init; }
+
     // A missing value is a 400. An empty value goes to the domain rules, which give a 422
     [RequiredField]
     public string Name { get; init; } = default!;
@@ -221,6 +227,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Models;
 
 public sealed record [EntityName]ForUpdate
 {
+    public uint Version { get; init; }
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
 }
@@ -552,7 +559,7 @@ public sealed class Update[EntityName]Endpoint : IEndpoint
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesValidationProblem()
         .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
-        // Declare a 409 if this write can add or change a unique value
+        // A stale version, a lost race, or a duplicate unique value
         .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
@@ -590,7 +597,9 @@ public sealed class Delete[EntityName]Endpoint : IEndpoint
         // Declare a 403 if the handler can throw ForbiddenAccessException
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        // The delete is an update of the row, so it can lose a race with another save
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// Deletes a [EntityName].

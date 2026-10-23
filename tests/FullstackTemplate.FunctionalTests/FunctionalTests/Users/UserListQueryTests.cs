@@ -181,6 +181,25 @@ public class UserListQueryTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(parameter);
     }
 
+    // A version is opaque, so a list cannot filter or sort on it
+    [Test]
+    [Arguments("filters", "version > 5")]
+    [Arguments("filters", "Version == 5")]
+    [Arguments("sortOrder", "version")]
+    public async Task query_on_the_version_returns_bad_request(string parameter, string value)
+    {
+        // Arrange
+        await ArrangeTwoUsersAsync();
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?{parameter}={Uri.EscapeDataString(value)}");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(parameter);
+    }
+
     // Makes a new tenant with two users, signs in as the second user, and returns the first user.
     // The first user is an admin with a permission, and the second user is not an admin and has no permission.
     // So a filter on the role or on the permissions matches only the first user.

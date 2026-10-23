@@ -29,6 +29,12 @@ public abstract class BaseEntity
 
     public bool IsDeleted { get; private set; }
 
+    /// <summary>
+    /// The Postgres <c>xmin</c> of the row, which changes on each write. It is opaque: compare it only for equality.
+    /// It is 0 before the first save.
+    /// </summary>
+    public uint Version { get; private set; }
+
     private readonly List<DomainEvent> _domainEvents = [];
     [NotMapped]
     public IReadOnlyList<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
@@ -60,6 +66,12 @@ public abstract class BaseEntity
         IsDeleted = isDeleted;
     }
     
+    protected void GuardVersion(uint expectedVersion)
+    {
+        if (expectedVersion != Version)
+            throw new Exceptions.StaleVersionException();
+    }
+
     /// <summary>Replaces the generated ID. The new ID must have the prefix of this entity type.</summary>
     protected void SetId(string id)
     {

@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -161,6 +162,8 @@ public class UserCreationAccessTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status409Conflict);
+        problem.Type.ShouldNotBe(DomainProblemDetails.StaleVersionType);
+        problem.Title.ShouldBe("The request conflicts with a record that exists.");
         problem.Detail.ShouldBe("A user with this identifier already exists.");
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("identifier");
     }

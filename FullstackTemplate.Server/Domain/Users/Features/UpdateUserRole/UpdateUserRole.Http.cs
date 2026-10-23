@@ -16,7 +16,8 @@ public sealed class UpdateUserRoleEndpoint : IEndpoint
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesValidationProblem()
-        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// Updates a User's role. This resets all permissions to the new role's defaults.

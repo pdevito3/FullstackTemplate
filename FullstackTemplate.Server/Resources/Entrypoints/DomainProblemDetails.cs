@@ -12,8 +12,13 @@ using Http;
 /// </summary>
 public static class DomainProblemDetails
 {
+    /// <summary>
+    /// The <c>type</c> of the problem for a stale version. A 409 for a value that conflicts with a record that exists
+    /// keeps the default type, so the type is what tells the two cases apart.
+    /// </summary>
+    public const string StaleVersionType = "urn:fullstacktemplate:problem:stale-version";
+
     // A validation failure is 422: the request is well-formed, but it breaks a business rule.
-    // A duplicate unique value is 409: the request conflicts with a record that exists.
     public static int StatusCodeFor(Exception exception)
     {
         if (exception is BadHttpRequestException badRequest)
@@ -25,8 +30,8 @@ public static class DomainProblemDetails
             DomainErrorKind.InvalidInput => StatusCodes.Status400BadRequest,
             DomainErrorKind.NotFound => StatusCodes.Status404NotFound,
             DomainErrorKind.Forbidden => StatusCodes.Status403Forbidden,
-            DomainErrorKind.Conflict => StatusCodes.Status409Conflict,
-            _ => StatusCodes.Status500InternalServerError,
+            DomainErrorKind.Conflict or DomainErrorKind.StaleVersion => StatusCodes.Status409Conflict,
+            DomainErrorKind.Unexpected => StatusCodes.Status500InternalServerError,
         };
     }
 
@@ -53,6 +58,8 @@ public static class DomainProblemDetails
         var problem = context.ProblemDetails;
         problem.Title = error.Title;
         problem.Detail = error.Detail;
+        if (error.Kind == DomainErrorKind.StaleVersion)
+            problem.Type = StaleVersionType;
         if (error.Errors is not null)
             problem.Extensions["errors"] = error.Errors;
     }

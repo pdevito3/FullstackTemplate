@@ -6,4 +6,10 @@
 export type TenantDto = {
     id: string;
     name: string;
+    /**
+     * @minLength 0
+     * @maxLength 4294967295
+     * @type integer
+    */
+    version: number;
 };

@@ -47,6 +47,7 @@ public class User : BaseEntity, ITenantable
 
     public User Update(UserForUpdate userForUpdate)
     {
+        GuardVersion(userForUpdate.Version);
         FirstName = userForUpdate.FirstName;
         LastName = userForUpdate.LastName;
         Email = EmailAddress.Of(userForUpdate.Email);

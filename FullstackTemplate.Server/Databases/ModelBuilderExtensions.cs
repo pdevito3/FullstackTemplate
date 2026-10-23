@@ -40,4 +40,18 @@ public static class ModelBuilderExtensions
             idProperty.SetPropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
         }
     }
+
+    /// <summary>Postgres has the <c>xmin</c> system column on each table, so the migration has no DDL.</summary>
+    public static void MapVersionToXmin(this ModelBuilder modelBuilder)
+    {
+        foreach (var mutableEntityType in modelBuilder.Model.GetEntityTypes()
+                     .Where(m => m.ClrType.IsAssignableTo(typeof(BaseEntity))))
+        {
+            modelBuilder.Entity(mutableEntityType.ClrType)
+                .Property(nameof(BaseEntity.Version))
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .IsRowVersion();
+        }
+    }
 }

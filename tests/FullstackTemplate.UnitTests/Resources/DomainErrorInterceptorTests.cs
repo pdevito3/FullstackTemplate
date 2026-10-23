@@ -82,6 +82,28 @@ public class DomainErrorInterceptorTests
     }
 
     [Test]
+    public async Task a_stale_version_is_aborted_with_a_bad_request_detail_on_the_version()
+    {
+        var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
+            "request", _context, (_, _) => throw new StaleVersionException()));
+
+        exception.StatusCode.ShouldBe(StatusCode.Aborted);
+        exception.Status.Detail.ShouldBe("This record changed after you loaded it. Reload it, then make your change again.");
+        exception.GetRpcStatus().ShouldNotBeNull().GetDetail<BadRequest>().ShouldNotBeNull()
+            .FieldViolations.ShouldHaveSingleItem().Field.ShouldBe("version");
+    }
+
+    [Test]
+    public async Task a_conflict_with_a_record_that_exists_is_already_exists()
+    {
+        var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
+            "request", _context, (_, _) => throw new ConflictException("name", "A tenant with this name already exists.")));
+
+        exception.StatusCode.ShouldBe(StatusCode.AlreadyExists);
+        exception.Status.Detail.ShouldBe("A tenant with this name already exists.");
+    }
+
+    [Test]
     public async Task a_server_fault_is_not_mapped()
     {
         await Should.ThrowAsync<InvalidOperationException>(() => _interceptor.ServerStreamingServerHandler<string, string>(

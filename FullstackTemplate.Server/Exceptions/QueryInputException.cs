@@ -5,8 +5,8 @@ namespace FullstackTemplate.Server.Exceptions;
 /// </summary>
 /// <param name="parameter">The name of the query parameter, which is the key in the errors of the problem.</param>
 /// <param name="message">The message that the problem shows in <c>detail</c>.</param>
-/// <param name="innerException">The QueryKit or .NET exception. It stays on the Server.</param>
-public class QueryInputException(string parameter, string message, Exception innerException)
+/// <param name="innerException">The QueryKit or .NET exception, if there is one. It stays on the Server.</param>
+public class QueryInputException(string parameter, string message, Exception? innerException = null)
     : Exception(message, innerException)
 {
     public string Parameter { get; } = parameter;

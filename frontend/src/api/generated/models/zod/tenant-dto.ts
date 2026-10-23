@@ -8,4 +8,5 @@ import * as z from 'zod'
 export const tenantDtoSchema = z.object({
   id: z.string(),
   name: z.string(),
+  version: z.int().min(0).max(4294967295),
 })

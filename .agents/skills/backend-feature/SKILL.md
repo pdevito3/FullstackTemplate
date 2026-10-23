@@ -333,7 +333,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 ### Domain Entity Design
 - Use private setters for all properties
 - Create static factory method `Create()` for entity creation
-- Use `Update()` method for modifications
+- Use `Update()` method for modifications. Its first line is `GuardVersion(forUpdate.Version)`, so that a stale edit form gives 409
 - Implement guard methods for business rules
 - Use value objects for complex domain concepts
 - Queue domain events on state changes
@@ -400,7 +400,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Factory method updated (if set at creation)
 - [ ] Update method updated (if updatable)
 - [ ] Internal models updated (ForCreation/ForUpdate)
-- [ ] DTOs updated (Dto, ForCreationDto, ForUpdateDto as needed)
+- [ ] DTOs updated (Dto, ForCreationDto, ForUpdateDto as needed). The Dto has `Version`, and the ForUpdateDto has `required uint Version`
 - [ ] Mapper updated (custom mapping for value objects)
 - [ ] Entity configuration updated (constraints, value object mapping)
 - [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`

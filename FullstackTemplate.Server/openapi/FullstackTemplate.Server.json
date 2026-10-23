@@ -215,6 +215,16 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The request has no valid access token."
           }
@@ -591,6 +601,16 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The request has no valid access token."
           }
@@ -640,6 +660,16 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -764,6 +794,16 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -962,6 +1002,16 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The request has no valid access token."
           }
@@ -1038,6 +1088,16 @@
           },
           "422": {
             "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1279,7 +1339,8 @@
       "TenantDto": {
         "required": [
           "id",
-          "name"
+          "name",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1288,6 +1349,11 @@
           },
           "name": {
             "type": "string"
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
           }
         }
       },
@@ -1304,12 +1370,19 @@
       },
       "TenantForUpdateDto": {
         "required": [
-          "name"
+          "name",
+          "version"
         ],
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer",
+            "description": "The version of the tenant that the caller loaded. A stale version gives 409."
           }
         }
       },
@@ -1335,7 +1408,8 @@
           "email",
           "username",
           "role",
-          "permissions"
+          "permissions",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1371,6 +1445,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
           }
         }
       },
@@ -1417,7 +1496,8 @@
           "firstName",
           "lastName",
           "email",
-          "username"
+          "username",
+          "version"
         ],
         "type": "object",
         "properties": {
@@ -1432,6 +1512,12 @@
           },
           "username": {
             "type": "string"
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer",
+            "description": "The version of the user that the caller loaded. A stale version gives 409."
           }
         }
       },

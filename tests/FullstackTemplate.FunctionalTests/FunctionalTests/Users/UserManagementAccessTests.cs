@@ -57,7 +57,7 @@ public class UserManagementAccessTests : TestBase
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(
-            ApiRoutes.Users.Put(other.Id), new FakeUserForUpdateDto().Generate());
+            ApiRoutes.Users.Put(other.Id), new FakeUserForUpdateDto().Generate() with { Version = other.Version });
 
         // Assert
         await ShouldBeForbiddenAsync(result);
@@ -72,7 +72,7 @@ public class UserManagementAccessTests : TestBase
         // Arrange
         var (member, _) = await AddTwoUsersAsync("User", "User");
         SignInAs(member);
-        var dto = new FakeUserForUpdateDto().Generate();
+        var dto = new FakeUserForUpdateDto().Generate() with { Version = member.Version };
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(member.Id), dto);
@@ -88,7 +88,7 @@ public class UserManagementAccessTests : TestBase
         // Arrange
         var (admin, other) = await AddTwoUsersAsync("Admin", "User");
         SignInAs(admin);
-        var dto = new FakeUserForUpdateDto().Generate();
+        var dto = new FakeUserForUpdateDto().Generate() with { Version = other.Version };
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(other.Id), dto);
@@ -110,7 +110,7 @@ public class UserManagementAccessTests : TestBase
 
         // Act
         var updated = await FactoryClient.PutJsonRequestAsync(
-            ApiRoutes.Users.Put(other.Id), new FakeUserForUpdateDto().Generate());
+            ApiRoutes.Users.Put(other.Id), new FakeUserForUpdateDto().Generate() with { Version = other.Version });
         var deleted = await FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(other.Id));
 
         // Assert

@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using Microsoft.AspNetCore.Http;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -87,7 +88,7 @@ public class TenantAccessTests : TestBase
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(
-            ApiRoutes.Tenants.Put(otherTenant.Id), new { name = $"taken-{Guid.NewGuid()}" });
+            ApiRoutes.Tenants.Put(otherTenant.Id), new { name = $"taken-{Guid.NewGuid()}", version = otherTenant.Version });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -122,7 +123,7 @@ public class TenantAccessTests : TestBase
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(
-            ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}" });
+            ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}", version = tenant.Version });
 
         // Assert
         await ShouldBeForbiddenAsync(result, "Only an admin can do this.");
@@ -140,7 +141,7 @@ public class TenantAccessTests : TestBase
         var newName = $"renamed-{Guid.NewGuid()}";
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = newName });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = newName, version = tenant.Version });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -155,7 +156,7 @@ public class TenantAccessTests : TestBase
         SignInAs(admin);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = tenant.Name });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = tenant.Name, version = tenant.Version });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -170,12 +171,14 @@ public class TenantAccessTests : TestBase
         SignInAs(admin);
 
         // Act
-        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = otherTenant.Name });
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id), new { name = otherTenant.Name, version = tenant.Version });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status409Conflict);
+        problem.Type.ShouldNotBe(DomainProblemDetails.StaleVersionType);
+        problem.Title.ShouldBe("The request conflicts with a record that exists.");
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("name");
     }
 
@@ -273,7 +276,7 @@ public class TenantAccessTests : TestBase
 
         // Act
         var updated = await FactoryClient.PutJsonRequestAsync(
-            ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}" });
+            ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}", version = tenant.Version });
         var deleted = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
 
         // Assert

@@ -11,5 +11,6 @@ public sealed class FakeUserForUpdate : AutoFaker<UserForUpdate>
         RuleFor(x => x.LastName, UserRules.LastName);
         RuleFor(x => x.Email, UserRules.Email);
         RuleFor(x => x.Username, UserRules.Username);
+        RuleFor(x => x.Version, _ => 0u);
     }
 }

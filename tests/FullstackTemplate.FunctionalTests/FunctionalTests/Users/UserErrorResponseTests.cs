@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
@@ -45,7 +46,7 @@ public class UserErrorResponseTests : TestBase
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
         var dto = new FakeUserForUpdateDto()
             .RuleFor(x => x.Email, _ => "")
-            .Generate();
+            .Generate() with { Version = user.Version };
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(user.Id), dto);
@@ -127,6 +128,8 @@ public class UserErrorResponseTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Type.ShouldNotBe(DomainProblemDetails.StaleVersionType);
+        problem.Title.ShouldBe("The request conflicts with a record that exists.");
         problem.Detail.ShouldBe("A tenant with this name already exists.");
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("tenantName");
     }

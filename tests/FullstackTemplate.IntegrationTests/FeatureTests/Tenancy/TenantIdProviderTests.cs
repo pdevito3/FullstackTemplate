@@ -1,5 +1,6 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 
+using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
@@ -24,7 +25,6 @@ public class TenantIdProviderTests : TestBase
             .BuildAsync();
         (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
 
-        // A direct write raises no domain event, so nothing removes the cached miss.
         await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
             "UPDATE users SET identifier = {0} WHERE id = {1}", identifier, user.Id));
 
@@ -58,7 +58,6 @@ public class TenantIdProviderTests : TestBase
         // FusionCache sets the absolute expiration from the real clock, so the manual clock starts from the time of the miss.
         clock.SetToNow();
 
-        // A direct write raises no domain event, so nothing removes the cached miss.
         await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
             "UPDATE users SET identifier = {0} WHERE id = {1}", identifier, user.Id));
 
@@ -107,6 +106,28 @@ public class TenantIdProviderTests : TestBase
 
         // Assert
         (await provider.GetTenantIdAsync(user.Identifier)).ShouldBeNull();
+    }
+
+    [Test]
+    public async Task deleting_a_tenant_removes_the_cached_tenant_of_each_user()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        var provider = testingServiceScope.GetService<ITenantIdProvider>();
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUsers(out var users, u => u.Role = "Admin", _ => { })
+            .BuildAsync();
+        foreach (var user in users)
+            (await provider.GetTenantIdAsync(user.Identifier)).ShouldBe(tenant.Id);
+        testingServiceScope.SetUserWithDefaults(identifier: users[0].Identifier);
+
+        // Act
+        await testingServiceScope.SendAsync(new DeleteTenant.Command(tenant.Id));
+
+        // Assert
+        foreach (var user in users)
+            (await provider.GetTenantIdAsync(user.Identifier)).ShouldBeNull();
     }
 
     [Test]

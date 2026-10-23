@@ -3,14 +3,12 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 using Databases;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Services;
 
 public static class DeleteUser
 {
     public sealed record Command(string Id) : IRequest;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, ITenantIdProvider tenantIdProvider)
-        : IRequestHandler<Command>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
     {
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
@@ -32,9 +30,6 @@ public static class DeleteUser
 
             dbContext.Users.Remove(user);
             await dbContext.SaveChangesAsync(cancellationToken);
-
-            // The cache keeps the tenant of this identifier. Remove it, so the deleted user loses access now.
-            await tenantIdProvider.InvalidateCacheAsync(user.Identifier, cancellationToken);
         }
     }
 }

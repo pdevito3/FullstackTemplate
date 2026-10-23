@@ -34,6 +34,7 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
         });
 
+        builder.Services.AddSingleton<TenantLookupInterceptor>();
         builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             var connectionString = builder.Configuration.GetConnectionString(DatabaseConsts.DatabaseName);
@@ -46,7 +47,8 @@ public static class WebAppServiceConfiguration
                         .ConfigureCommandFilter(_ => Activity.Current is { IsAllDataRequested: true })
                         .ConfigureCommandEnrichmentCallback((activity, command) =>
                             QueryTagEnrichment.Enrich(activity, command.CommandText)))))
-                .UseSnakeCaseNamingConvention();
+                .UseSnakeCaseNamingConvention()
+                .AddInterceptors(serviceProvider.GetRequiredService<TenantLookupInterceptor>());
         });
         builder.EnrichNpgsqlDbContext<AppDbContext>();
     }

@@ -50,38 +50,16 @@ public class AppDbContext(
         modelBuilder.FilterByTenant(this);
     }
 
-    public override int SaveChanges()
-    {
-        UpdateAuditFields();
-        var result = base.SaveChanges();
-        DispatchDomainEvents().GetAwaiter().GetResult();
-        return result;
-    }
-
+    /// <summary>
+    /// Refuses the save. The save runs async work, so <see cref="AppDbContext"/> has no sync save.
+    /// <see cref="DbContext.SaveChanges()"/> also calls this overload.
+    /// </summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
-    {
-        UpdateAuditFields();
-        int result;
-        try
-        {
-            result = base.SaveChanges(acceptAllChangesOnSuccess);
-        }
-        catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
-        {
-            throw conflict;
-        }
-        DispatchDomainEvents().GetAwaiter().GetResult();
-        return result;
-    }
+        => throw new NotSupportedException("AppDbContext has no sync save. Call SaveChangesAsync.");
 
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        UpdateAuditFields();
-        var result = await base.SaveChangesAsync(cancellationToken);
-        await DispatchDomainEvents();
-        return result;
-    }
-
+    /// <summary>
+    /// Saves the changes. <see cref="DbContext.SaveChangesAsync(CancellationToken)"/> also calls this overload.
+    /// </summary>
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {

@@ -19,8 +19,9 @@ public interface ITenantIdProvider
     Task<string?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Invalidates the cached tenant ID for a user.
-    /// Call this after the change is saved, when a user or the tenant of a user changes.
+    /// Invalidates the cached tenant ID for a user. <see cref="TenantLookupInterceptor"/> calls it after each save that
+    /// makes a lookup stale (see <see cref="TenantLookupChange"/>). Call it yourself only after a write that bypasses the
+    /// change tracker, when a user or the tenant of a user changes.
     /// </summary>
     Task InvalidateCacheAsync(string userIdentifier, CancellationToken cancellationToken = default);
 }
@@ -62,9 +63,6 @@ public sealed class TenantIdProvider(
             {
                 var tenantId = await LookupTenantIdAsync(userIdentifier, ct);
 
-                // Cache a missing user for a short time only. Without this, each query from a signed-in user
-                // with no user record runs this lookup again. UserCreatedHandler removes the key when the user
-                // is added, so the short duration only limits a stale miss from some other write path.
                 // Fail-safe is off, so a stale miss never outlives this duration.
                 if (tenantId is null)
                 {

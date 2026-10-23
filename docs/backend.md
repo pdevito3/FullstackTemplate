@@ -166,7 +166,7 @@ Each entity has `Version`, the Postgres `xmin` of its row. `MapVersionToXmin` ma
 
 - A save that adds, changes, or removes an owned child also updates the owner row. Thus the version of the root guards the whole aggregate. An owned child is the dependent of a `Cascade` foreign key (see [entity-configurations.md](backend/entity-configurations.md)). Change a child only through its loaded owner. The save throws when the owner of a changed child is not tracked.
 - The read DTO of a root shows `version`. A PUT body that replaces the fields of an edit form has a required `version`, and the entity method calls `GuardVersion` first (see [domain-entities.md](backend/domain-entities.md#versions)). A command for one intent, such as a role change, a new permission, or a delete, has no version. The `xmin` check still stops its race between the load and the save.
-- `Version` is an opaque number. Compare it only for equality. A list cannot filter or sort on `version`, because the number is opaque and Postgres has no order for `xid`. `ApplyFilters` and `ApplySortOrder` return 400 for it.
+- `Version` is an opaque number. Compare it only for equality. A list cannot filter or sort on `version`, and `ApplyFilters` and `ApplySortOrder` return 400 for it. Postgres has no order for `xid`, so a range or a sort fails. An equality filter works in Postgres, but a list has no use for it, so it also gives 400.
 
 ### Migrations
 

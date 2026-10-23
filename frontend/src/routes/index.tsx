@@ -166,7 +166,7 @@ function Index() {
 
         {/* Error Message */}
         {currentError && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 mb-6">
+          <div role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 mb-6">
             <p className="font-medium">Error loading weather data</p>
             <p className="text-sm mt-1">
               {currentError instanceof Error ? currentError.message : 'Failed to fetch weather data'}
@@ -191,7 +191,7 @@ function Index() {
 
         {/* Weather Grid */}
         {displayData.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div role="list" aria-label="Forecast" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {displayData.map((forecast, index) => (
               <WeatherCard
                 key={index}
@@ -242,7 +242,7 @@ const SUMMARY_ICONS: Record<string, typeof CloudIcon> = {
 
 function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCardProps) {
   return (
-    <Card className={`transition-shadow hover:shadow-md ${isSecure ? 'border-green-500/30' : ''}`}>
+    <Card role="listitem" aria-label={formatDate(forecast.date)} className={`transition-shadow hover:shadow-md ${isSecure ? 'border-green-500/30' : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>

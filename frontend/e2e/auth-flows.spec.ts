@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { test, expect, Locator, Page, Request } from '@playwright/test'
+import { test, expect, type Locator, type Page, type Request } from '@playwright/test'
 import { loadIdp, type IdpCapabilities, type IdpConfig } from './idps.ts'
 import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
 

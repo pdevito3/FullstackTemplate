@@ -53,7 +53,7 @@ export default defineConfig({
     },
   },
   // Unit tests (*.test.ts) run in Node. Component tests (*.test.tsx) run in a real headless Chromium.
-  // Playwright runs the e2e tests in e2e/.
+  // Playwright runs the functional tests in tests/ (playwright.config.ts) and the stack tests in e2e/ (playwright.stack.config.ts).
   test: {
     projects: [
       {

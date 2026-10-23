@@ -10,6 +10,8 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * The script e2e/run-against-stack.ts reads the URLs from `dotnet aspire describe` and sets BASE_URL, SERVER_URL,
  * and IDP from the resources of the stack. See docs/authentication.md.
+ *
+ * The functional suite, with the BFF mocked in the browser, is in playwright.config.ts.
  */
 export default defineConfig({
   testDir: './e2e',

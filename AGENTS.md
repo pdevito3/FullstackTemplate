@@ -42,7 +42,7 @@ Read the doc for an area before you change code in that area.
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
-| [docs/frontend/](docs/frontend/) | Rules for server state, client state, and code style |
+| [docs/frontend/](docs/frontend/) | Rules for server state, client state, code style, and tests |
 | [docs/csharp-repl.md](docs/csharp-repl.md) | CSharpRepl in the running server: the hook wiring and the Development-only guards |
 
 The pattern rules are in `docs/backend/` and `docs/frontend/`. Before you write code in an area, read its rule doc. Obey the rules in it.
@@ -74,6 +74,7 @@ pnpm install
 pnpm build
 pnpm lint
 pnpm test
+pnpm test:e2e
 ```
 
 ## Rules

@@ -5,6 +5,7 @@ The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack
 - [server-state.md](frontend/server-state.md): TanStack Query, query keys, mutations, and forms with server data
 - [client-state.md](frontend/client-state.md): where to put UI state, effects, and memoization
 - [code-style.md](frontend/code-style.md): TypeScript, components, styles, files, and imports
+- [testing.md](frontend/testing.md): the test suites, mocks, builders, and selectors
 
 ## Commands
 
@@ -15,6 +16,7 @@ pnpm dev      # dev server
 pnpm build    # production build
 pnpm lint     # ESLint
 pnpm test     # Vitest: unit tests (src/**/*.test.ts) in Node, component tests (src/**/*.test.tsx) in headless Chromium
+pnpm test:e2e # Playwright: the functional suite (tests/), the SPA against a mocked BFF. See docs/frontend/testing.md
 pnpm generate:api  # API contract from the OpenAPI document
 ```
 

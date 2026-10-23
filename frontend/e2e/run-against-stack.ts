@@ -1,5 +1,5 @@
 /**
- * Runs the Playwright e2e tests against the Aspire stack of this checkout.
+ * Runs the Playwright e2e tests (playwright.stack.config.ts) against the Aspire stack of this checkout.
  * An isolated stack has random ports, so this script reads the URLs from `dotnet aspire describe`.
  * The IDP is the one whose resource is in the stack, or the Duende demo if the stack has no IdP resource.
  * Set IDP to override it. Extra arguments go to `playwright test`, for example `pnpm test:e2e:stack --repeat-each=5`.
@@ -132,5 +132,5 @@ if (mismatch) {
 
 console.log(`BASE_URL=${env.BASE_URL} SERVER_URL=${env.SERVER_URL} AUTHORITY=${env.AUTHORITY} IDP=${env.IDP} DPOP=${env.DPOP}`)
 
-const result = spawnSync('pnpm', ['exec', 'playwright', 'test', ...process.argv.slice(2)], { stdio: 'inherit', env })
+const result = spawnSync('pnpm', ['exec', 'playwright', 'test', '--config', 'playwright.stack.config.ts', ...process.argv.slice(2)], { stdio: 'inherit', env })
 process.exit(result.status ?? 1)

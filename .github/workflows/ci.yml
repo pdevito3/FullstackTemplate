@@ -2,7 +2,7 @@ name: CI
 
 # The api-contract job fails when the committed OpenAPI document or the generated frontend contract is not current.
 # To correct a failure, build the Server, run `pnpm generate:api` in frontend/, and commit the result.
-# The job also builds, lints, and tests the frontend against the contract. The test job runs the .NET tests.
+# The job also builds, lints, and tests the frontend against the contract, and runs the functional suite of the frontend. The test job runs the .NET tests.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
 # The BFF jobs (bff-tests, e2e) run only when the changes job finds a BFF change, and on workflow_dispatch.
 # There is no nightly run. See section 7 of docs/specs/home-rolled-bff.md.
@@ -84,6 +84,22 @@ jobs:
       - name: Test the frontend
         working-directory: frontend
         run: pnpm test
+
+      # The functional suite: the SPA in a headless Chromium, with each call to the BFF mocked in the browser.
+      - name: Run the functional tests
+        working-directory: frontend
+        run: pnpm test:e2e
+
+      - name: Upload the functional test report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: functional-tests
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   grpc-contract:
     runs-on: ubuntu-latest
@@ -167,7 +183,7 @@ jobs:
               - 'frontend/package.json'
               - 'frontend/pnpm-lock.yaml'
               - 'frontend/e2e/**'
-              - 'frontend/playwright.config.ts'
+              - 'frontend/playwright.stack.config.ts'
               # The SPA and the dev server proxy, which the e2e tests drive
               - 'frontend/vite.config.ts'
               - 'frontend/src/**'

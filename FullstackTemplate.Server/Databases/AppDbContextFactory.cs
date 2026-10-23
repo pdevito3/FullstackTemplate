@@ -42,6 +42,5 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     private sealed class DesignTimeTenantScopeProvider : ITenantScopeProvider
     {
         public TenantScope GetCurrentScope() => TenantScope.AllTenants;
-        public bool CanManageAllTenants() => true;
     }
 }

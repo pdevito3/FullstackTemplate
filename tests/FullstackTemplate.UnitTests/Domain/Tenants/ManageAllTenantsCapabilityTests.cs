@@ -44,7 +44,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_tenant()
     {
-        var handler = new AddTenant.Handler(_dbContext, _tenantScopeProvider);
+        var handler = new AddTenant.Handler(_dbContext, new PermissionGuard(_dbContext, _callerIdentityResolver));
 
         var act = () => handler.Handle(new AddTenant.Command(new FakeTenantForCreationDto().Generate()),
             CancellationToken.None);

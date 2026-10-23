@@ -87,11 +87,10 @@ public sealed class TenantScopeProviderTests : IDisposable
         _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
-        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Test]
-    public void system_scope_gets_all_tenants_and_can_manage_them()
+    public void system_scope_gets_all_tenants()
     {
         _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
 
@@ -99,7 +98,6 @@ public sealed class TenantScopeProviderTests : IDisposable
         var provider = systemScope.ServiceProvider.GetRequiredService<ITenantScopeProvider>();
 
         provider.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
-        provider.CanManageAllTenants().ShouldBeTrue();
     }
 
     [Test]
@@ -110,49 +108,14 @@ public sealed class TenantScopeProviderTests : IDisposable
         using var systemScope = _services.GetRequiredService<IServiceScopeFactory>().CreateSystemScope();
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
-        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Test]
-    public void user_with_a_user_record_cannot_manage_all_tenants()
-    {
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(EntityId.New(Tenant.IdPrefix));
-        SetCaller(new Claim("sub", "user-1"), new Claim("azp", FirstPartyClientId));
-
-        _sut.CanManageAllTenants().ShouldBeFalse();
-    }
-
-    [Test]
-    public void machine_client_on_the_allow_list_can_manage_all_tenants()
-    {
-        SetCaller(new Claim("client_id", TrustedClientId));
-
-        _sut.CanManageAllTenants().ShouldBeTrue();
-    }
-
-    [Test]
-    public void machine_client_not_on_the_allow_list_cannot_manage_all_tenants()
-    {
-        SetCaller(new Claim("client_id", "m2m"));
-
-        _sut.CanManageAllTenants().ShouldBeFalse();
-    }
-
-    [Test]
-    public void anonymous_request_cannot_manage_all_tenants()
-    {
-        SetCaller();
-
-        _sut.CanManageAllTenants().ShouldBeFalse();
-    }
-
-    [Test]
-    public void read_only_machine_client_gets_all_tenants_but_cannot_manage_them()
+    public void read_only_machine_client_gets_all_tenants()
     {
         SetCaller(new Claim("client_id", ReadOnlyClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
-        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Test]
@@ -164,14 +127,13 @@ public sealed class TenantScopeProviderTests : IDisposable
     }
 
     [Test]
-    public void service_account_token_on_the_allow_list_gets_all_tenants_and_can_manage_them()
+    public void service_account_token_on_the_allow_list_gets_all_tenants()
     {
         // Keycloak, ZeroFactor, and Cognito give a client_credentials token a service-account sub with no user record.
         _tenantIdProvider.GetTenantIdAsync("service-account-1").Returns((string?)null);
         SetCaller(new Claim("sub", "service-account-1"), new Claim("azp", TrustedClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
-        _sut.CanManageAllTenants().ShouldBeTrue();
     }
 
     [Test]
@@ -184,7 +146,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     }
 
     [Test]
-    public void user_through_a_delegated_agent_gets_the_tenant_of_the_user_and_cannot_manage_all_tenants()
+    public void user_through_a_delegated_agent_gets_the_tenant_of_the_user()
     {
         var tenantId = EntityId.New(Tenant.IdPrefix);
         _tenantIdProvider.GetTenantIdAsync("user-1").Returns(tenantId);
@@ -192,18 +154,16 @@ public sealed class TenantScopeProviderTests : IDisposable
         SetCaller(new Claim("sub", "user-1"), new Claim("azp", "clinic-assistant"));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
-        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Test]
-    public void machine_agent_gets_the_tenant_of_its_record_and_cannot_manage_all_tenants()
+    public void machine_agent_gets_the_tenant_of_its_record()
     {
         var tenantId = EntityId.New(Tenant.IdPrefix);
         _agentDirectory.FindMachineAgentAsync("fleet-sync").Returns(new AgentBinding(EntityId.New(Agent.IdPrefix), tenantId));
         SetCaller(new Claim("client_id", "fleet-sync"));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
-        _sut.CanManageAllTenants().ShouldBeFalse();
     }
 
     [Test]

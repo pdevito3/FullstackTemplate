@@ -49,16 +49,18 @@ A child entity can get its tenant through its owner. In the configuration of the
 builder.ApplyTenanting(line => line.Order.TenantId);
 ```
 
-The filter then shows a row only if the owner is in the tenant of the caller. The path must go through navigation properties. A child that gets its tenant this way cannot queue a domain event. The save throws a `NotSupportedException`. See [domain-events.md](backend/domain-events.md#handlers).
+The filter then shows a row only if the owner is in the tenant of the caller. The path must go through navigation properties, so give the child a navigation to its owner. `UserPermission` is an example. The context adds the tenant filter when the model is complete, so a context that calls `ApplyTenanting` after the model of `AppDbContext` also gets the tenant filter. A child that gets its tenant this way cannot queue a domain event. The save throws a `NotSupportedException`. See [domain-events.md](backend/domain-events.md#handlers).
 
 ## Entities with no tenant filter
 
 `TenantQueryFilterTests` checks the model of `AppDbContext`. Each entity must have the tenant filter, or be on a list in the test that gives the reason why it has no tenant filter. A new entity with no filter fails the test, so you must make a decision for it:
 
 - If the entity holds the data of a tenant, implement `ITenantable` or call `ApplyTenanting`.
-- If the entity has no tenant, add it to the list for its reason. The lists are the children that a query reaches only through their owner, and the entities with no tenant data, such as the replay cache of the DPoP check.
+- If the entity has no tenant data, such as the replay cache of the DPoP check, add it to the list in the test.
 
-A query on an entity with no tenant filter shows the rows of all tenants. Thus, do not query a child on the list directly. Load it through its owner.
+An entity with a foreign key to an entity that has the tenant filter holds the data of that tenant. The test fails for such an entity if it has no tenant filter, also when it is on the list.
+
+A query on an entity with no tenant filter shows the rows of all tenants.
 
 ## Tenant lookup
 

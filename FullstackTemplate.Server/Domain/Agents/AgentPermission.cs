@@ -8,6 +8,7 @@ public class AgentPermission : BaseEntity
     public const string IdPrefix = "aperm";
 
     public string AgentId { get; private set; } = default!;
+    public Agent Agent { get; private set; } = default!;
     public Permission Permission { get; private set; } = default!;
 
     internal static AgentPermission Create(Agent agent, Permission permission)

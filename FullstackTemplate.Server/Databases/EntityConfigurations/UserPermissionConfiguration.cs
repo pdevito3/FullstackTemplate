@@ -28,5 +28,7 @@ public sealed class UserPermissionConfiguration : IEntityTypeConfiguration<UserP
         });
 
         builder.HasIndex(e => e.UserId);
+
+        builder.ApplyTenanting(e => e.User.TenantId);
     }
 }

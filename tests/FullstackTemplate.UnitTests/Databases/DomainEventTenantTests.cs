@@ -35,11 +35,11 @@ public class DomainEventTenantTests
     [Test]
     public void event_from_an_entity_with_no_tenant_has_no_tenant_of_its_own()
     {
-        using var dbContext = CreateAppDbContext();
-        var admin = User.Create(new FakeUserForCreation().RuleFor(u => u.Role, _ => "Admin").Generate());
-        var permission = admin.UserPermissions.First();
+        using var dbContext = new NavigationTenantedContext();
+        var memo = new Memo();
+        dbContext.Attach(memo);
 
-        TenantQueryFilterExtension.TenantIdOfDomainEvent(dbContext.Entry<BaseEntity>(permission)).ShouldBeNull();
+        TenantQueryFilterExtension.TenantIdOfDomainEvent(dbContext.Entry<BaseEntity>(memo)).ShouldBeNull();
     }
 
     [Test]

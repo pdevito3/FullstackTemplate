@@ -43,7 +43,7 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
         });
 
         builder.HasMany(e => e.Permissions)
-            .WithOne()
+            .WithOne(ap => ap.Agent)
             .HasForeignKey(ap => ap.AgentId)
             .OnDelete(DeleteBehavior.Cascade);
 

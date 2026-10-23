@@ -70,7 +70,7 @@ public class PermissionTests
         var names = Permission.ListNames();
 
         // Assert
-        names.ShouldBe(["manage_users", "manage_user_access", "manage_tenant"], ignoreOrder: true);
+        names.ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents"], ignoreOrder: true);
     }
 
     [Test]
@@ -80,7 +80,7 @@ public class PermissionTests
         var permissions = Permission.GetAll();
 
         // Assert
-        permissions.Select(p => p.Value).ShouldBe(["manage_users", "manage_user_access", "manage_tenant"], ignoreOrder: true);
+        permissions.Select(p => p.Value).ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents"], ignoreOrder: true);
     }
 
     [Test]

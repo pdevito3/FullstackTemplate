@@ -269,31 +269,29 @@ public class CurrentUserServiceTests
     }
 
     [Test]
-    public void IsMachine_returns_true_when_client_id_present_and_no_user_identifier()
+    public void ClientId_returns_applicationId_claim_for_fusionauth()
     {
         // Arrange
-        SetupUserWithClaims(new Claim("client_id", "machine-client"));
+        SetupUserWithClaims(new Claim("applicationId", "fusionauth-app"));
 
         // Act
-        var isMachine = _sut.IsMachine;
+        var clientId = _sut.ClientId;
 
         // Assert
-        isMachine.ShouldBeTrue();
+        clientId.ShouldBe("fusionauth-app");
     }
 
     [Test]
-    public void IsMachine_returns_false_when_user_identifier_present()
+    public void ClientId_prefers_client_id_over_azp()
     {
         // Arrange
-        SetupUserWithClaims(
-            new Claim("client_id", "some-client"),
-            new Claim("sub", "user-123"));
+        SetupUserWithClaims(new Claim("azp", "authorized-party"), new Claim("client_id", "my-client"));
 
         // Act
-        var isMachine = _sut.IsMachine;
+        var clientId = _sut.ClientId;
 
         // Assert
-        isMachine.ShouldBeFalse();
+        clientId.ShouldBe("my-client");
     }
 
     [Test]

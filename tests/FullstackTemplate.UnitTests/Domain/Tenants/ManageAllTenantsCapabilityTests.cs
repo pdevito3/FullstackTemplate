@@ -19,23 +19,24 @@ using Shouldly;
 /// </summary>
 public sealed class ManageAllTenantsCapabilityTests : IDisposable
 {
-    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
-    private readonly ITenantScopeProvider _tenantScopeProvider = Substitute.For<ITenantScopeProvider>();
+    private readonly ICallerIdentityResolver _callerIdentityResolver = Substitute.For<ICallerIdentityResolver>();
+    private readonly TenantScopeProvider _tenantScopeProvider;
     private readonly AppDbContext _dbContext;
 
     public ManageAllTenantsCapabilityTests()
     {
-        _currentUserService.UserIdentifier.Returns((string?)null);
-        _tenantScopeProvider.GetCurrentScope().Returns(TenantScope.AllTenants);
-        _tenantScopeProvider.CanManageAllTenants().Returns(false);
+        var readOnlyClient = new CallerIdentity.AllTenantsClient("read-only-machine", CanManage: false);
+        _callerIdentityResolver.Current.Returns(readOnlyClient);
+        _callerIdentityResolver.GetAsync(Arg.Any<CancellationToken>()).Returns(readOnlyClient);
+        _tenantScopeProvider = new TenantScopeProvider(_callerIdentityResolver);
 
         // The access check runs before the handler uses the database, so the context never connects.
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql("Host=unused")
             .UseSnakeCaseNamingConvention()
             .Options;
-        _dbContext = new AppDbContext(options, TimeProvider.System, _currentUserService, _tenantScopeProvider,
-            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+        _dbContext = new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
+            _tenantScopeProvider, new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 
     public void Dispose() => _dbContext.Dispose();
@@ -43,7 +44,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_tenant()
     {
-        var handler = new AddTenant.Handler(_dbContext, _tenantScopeProvider);
+        var handler = new AddTenant.Handler(_dbContext, new PermissionGuard(_dbContext, _callerIdentityResolver));
 
         var act = () => handler.Handle(new AddTenant.Command(new FakeTenantForCreationDto().Generate()),
             CancellationToken.None);
@@ -54,7 +55,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_start_a_tenant()
     {
-        var handler = new InitiateUserAndTenant.Handler(_dbContext, _currentUserService, _tenantScopeProvider);
+        var handler = new InitiateUserAndTenant.Handler(_dbContext, _callerIdentityResolver);
 
         var act = () => handler.Handle(
             new InitiateUserAndTenant.Command(new FakeInitiateUserAndTenantDto().Generate()),
@@ -66,8 +67,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_user()
     {
-        _currentUserService.IsMachine.Returns(true);
-        var permissionGuard = new PermissionGuard(_dbContext, _currentUserService, _tenantScopeProvider);
+        var permissionGuard = new PermissionGuard(_dbContext, _callerIdentityResolver);
         var handler = new AddUser.Handler(_dbContext, permissionGuard);
 
         var act = () => handler.Handle(new AddUser.Command(new FakeUserForCreationDto().Generate()),

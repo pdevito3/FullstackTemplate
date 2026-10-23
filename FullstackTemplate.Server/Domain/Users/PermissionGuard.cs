@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users;
 
+using System.Diagnostics;
 using Databases;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -32,8 +33,7 @@ public interface IPermissionGuard
 
 public sealed class PermissionGuard(
     AppDbContext dbContext,
-    ICurrentUserService currentUserService,
-    ITenantScopeProvider tenantScopeProvider) : IPermissionGuard
+    ICallerIdentityResolver callerIdentityResolver) : IPermissionGuard
 {
     public async Task RequireAsync(Permission permission, CancellationToken cancellationToken)
         => (await GetCallerAsync(cancellationToken)).Require(permission);
@@ -42,23 +42,50 @@ public sealed class PermissionGuard(
         => (await GetCallerAsync(cancellationToken)).RequireSelfOr(userId, permission);
 
     public async Task<Caller> GetCallerAsync(CancellationToken cancellationToken)
+        => await callerIdentityResolver.GetAsync(cancellationToken) switch
+        {
+            { CanManageAllTenants: true } => Caller.AllTenantsManager.Instance,
+            CallerIdentity.AllTenantsClient => new Caller.Outsider(OutsiderKind.MachineClient),
+            CallerIdentity.User user => await LoadUserAsync(user.Subject, cancellationToken) is { } member
+                ? new Caller.Member(member.Id, member.UserPermissions.Select(p => p.Permission))
+                : new Caller.Outsider(OutsiderKind.NoUserRecord),
+            CallerIdentity.DelegatedAgent agent => await LoadDelegatedAgentAsync(agent, cancellationToken),
+            CallerIdentity.MachineAgent agent => await LoadGrantAsync(agent.AgentId, cancellationToken) is { } grant
+                ? new Caller.MachineAgent(agent.ClientId, grant)
+                : new Caller.Outsider(OutsiderKind.UnknownClient),
+            CallerIdentity.UnknownClient => new Caller.Outsider(OutsiderKind.UnknownClient),
+            CallerIdentity.Anonymous => new Caller.Outsider(OutsiderKind.Anonymous),
+            _ => throw new UnreachableException(),
+        };
+
+    private async Task<Caller> LoadDelegatedAgentAsync(
+        CallerIdentity.DelegatedAgent agent, CancellationToken cancellationToken)
     {
-        if (tenantScopeProvider.CanManageAllTenants())
-            return Caller.AllTenantsManager.Instance;
+        if (await LoadUserAsync(agent.Subject, cancellationToken) is not { } user)
+            return new Caller.Outsider(OutsiderKind.NoUserRecord);
 
-        var identifier = currentUserService.UserIdentifier;
-        if (identifier is null)
-            return new Caller.Outsider(currentUserService.IsMachine ? OutsiderKind.MachineClient : OutsiderKind.Anonymous);
+        if (await LoadGrantAsync(agent.AgentId, cancellationToken) is not { } grant)
+            return new Caller.Outsider(OutsiderKind.UnknownClient);
 
-        // No tracking: a tracked copy would be shared with a handler that loads this user to change it.
-        var user = await dbContext.Users
+        return new Caller.DelegatedAgent(agent.ClientId, user.UserPermissions.Select(p => p.Permission), grant);
+    }
+
+    private Task<User?> LoadUserAsync(string identifier, CancellationToken cancellationToken)
+        => dbContext.Users
             .TagWithOperationCallSite("users.permission_guard.load")
             .AsNoTracking()
             .Include(u => u.UserPermissions)
             .FirstOrDefaultAsync(u => u.Identifier == identifier, cancellationToken);
 
-        return user is null
-            ? new Caller.Outsider(OutsiderKind.NoUserRecord)
-            : new Caller.Member(user.Id, user.UserPermissions.Select(p => p.Permission));
+    private async Task<IEnumerable<Permission>?> LoadGrantAsync(string agentId, CancellationToken cancellationToken)
+    {
+        var agent = await dbContext.Agents
+            .TagWithOperationCallSite("agents.permission_guard.load")
+            .AsNoTracking()
+            .Include(a => a.Permissions)
+            .Where(a => a.Id == agentId && dbContext.Tenants.Any(t => t.Id == a.TenantId))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return agent?.Permissions.Select(p => p.Permission);
     }
 }

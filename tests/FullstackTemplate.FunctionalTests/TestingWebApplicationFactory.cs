@@ -34,6 +34,11 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     public const string ReadOnlyMachineClientId = "read-only-machine";
 
     /// <summary>
+    /// The client ID of the app (the BFF). A user token from this client acts as its user.
+    /// </summary>
+    public const string FirstPartyClientId = "test-app";
+
+    /// <summary>
     /// The running factory for the assembly. Set when the fixture starts.
     /// </summary>
     public static TestingWebApplicationFactory Instance { get; private set; } = null!;
@@ -92,6 +97,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         // Auth configuration required by AddJwtBearerAuthentication
         Environment.SetEnvironmentVariable("Auth__Authority", "https://localhost");
         Environment.SetEnvironmentVariable("Auth__Audience", "test-api");
+        Environment.SetEnvironmentVariable("Auth__ClientId", FirstPartyClientId);
         Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__0", TrustedMachineClientId);
         Environment.SetEnvironmentVariable("Tenancy__ReadAllTenantsClientIds__0", ReadOnlyMachineClientId);
 

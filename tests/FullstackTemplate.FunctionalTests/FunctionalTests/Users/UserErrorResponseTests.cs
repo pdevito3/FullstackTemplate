@@ -24,7 +24,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var dto = new FakeUserForCreationDto()
             .RuleFor(x => x.Email, _ => "")
             .Generate();
@@ -43,7 +43,7 @@ public class UserErrorResponseTests : TestBase
         TestGraph.Start(out _).AddTenant(out var tenant).AddUser(out var user);
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var dto = new FakeUserForUpdateDto()
             .RuleFor(x => x.Email, _ => "")
             .Generate() with { Version = user.Version };
@@ -78,7 +78,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var valid = new FakeUserForCreationDto().Generate();
         var dto = field switch
         {
@@ -102,7 +102,7 @@ public class UserErrorResponseTests : TestBase
     {
         // Arrange
         var dto = new FakeInitiateUserAndTenantDto().RuleFor(x => x.TenantName, _ => "").Generate();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = dto.Identifier });
+        FactoryClient.SignInAsAppUser(dto.Identifier);
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto);
@@ -120,7 +120,7 @@ public class UserErrorResponseTests : TestBase
         TestGraph.Start(out _).AddTenant(out var tenant);
         await InsertAsync(tenant);
         var dto = new FakeInitiateUserAndTenantDto().RuleFor(x => x.TenantName, _ => tenant.Name).Generate();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = dto.Identifier });
+        FactoryClient.SignInAsAppUser(dto.Identifier);
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto);
@@ -143,7 +143,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var dto = new FakeUserForCreationDto()
             .RuleFor(x => x.Email, _ => "not-an-email")
             .Generate();
@@ -169,7 +169,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var dto = new FakeUserForCreationDto()
             .RuleFor(x => x.Role, _ => "NotARole")
             .Generate();
@@ -193,7 +193,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.AddPermission(user.Id), new { permission = "NotAPermission" });
@@ -214,7 +214,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var dto = new FakeUserForCreationDto().Generate();
 
         // Act
@@ -242,7 +242,7 @@ public class UserErrorResponseTests : TestBase
             .AddUser(out var user, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
 
         // Act
         var result = field == "role"

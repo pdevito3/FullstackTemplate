@@ -147,6 +147,7 @@ A command checks a permission in its handler with `IPermissionGuard` (see [featu
 | `manage_users` | `AddUser`, `UpdateUser` for another user, `DeleteUser` |
 | `manage_user_access` | `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission` |
 | `manage_tenant` | `UpdateTenant`, `DeleteTenant` |
+| `manage_agents` | `AddAgent`, `DeleteAgent`, `AddAgentPermission`, `RemoveAgentPermission` |
 
 The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.
 
@@ -158,11 +159,16 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 |--------|------------------------------|
 | A user with a user record | Passes if the user has the permission |
 | The user that the command is about, for `RequireSelfOrAsync` | Passes. `UpdateUser` uses it, so that a user can update their own record. The update DTO has no role, so a user cannot give themselves access. |
+| A delegated agent | Passes if both its user and its grant have the permission. It does not get the exception of `RequireSelfOrAsync`. |
+| A machine agent | Passes if its grant has the permission |
 | A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
-| A client in `Tenancy:ReadAllTenantsClientIds`, or a machine client on no list | 403 |
-| A signed-in user with no user record, or an anonymous principal | 403 |
+| A client in `Tenancy:ReadAllTenantsClientIds` | 403 |
+| An unknown client: a client that is not first-party, on no list, and with no agent for the token | 403 |
+| A user of a first-party client with no user record, or an anonymous principal | 403 |
 
-`AddTenant` and `InitiateUserAndTenant` act outside one tenant. They do not check a permission. They check `ITenantScopeProvider.CanManageAllTenants()` in the handler (see [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability)). Do not make this capability a permission, because an admin could then give it to themselves.
+[Agents](authentication.md#agents) tells how the server identifies an agent and how a tenant registers it.
+
+`AddTenant` and `InitiateUserAndTenant` act outside one tenant. They do not check a permission. They check in the handler that the caller can manage all tenants (see [multi-tenancy.md](multi-tenancy.md#row-scope-and-capability)). Do not make this capability a permission, because an admin could then give it to themselves.
 
 ### Where the permissions come from
 
@@ -170,10 +176,10 @@ The guard reads the user and their permission rows from the database in each com
 
 ### Add a permission
 
-1. Add a value to `PermissionEnum` in `Permission.cs`, and a static method that returns it, for example `Permission.ManageOrders()`. Use a snake case name, for example `manage_orders`.
+1. Add a constant to `Permission.Names` in `Permission.cs`, a value of `PermissionEnum` with that constant as its name, and a static method that returns it, for example `Permission.ManageOrders()`. Use a snake case name, for example `manage_orders`.
 2. Add an EF Core migration that gives the permission to the admins that exist (see [Migrations](#migrations)). Call `migrationBuilder.GrantPermissionToRole("Admin", "manage_orders")` in `Up`. Write the name as a string, so that the migration does not change when `Permission` changes. New admins get the permission from the role defaults.
 3. Call `permissionGuard.RequireAsync(Permission.ManageOrders(), cancellationToken)` first in each handler that needs it.
-4. Declare the 403 on each HTTP endpoint of these handlers.
+4. Declare the 403 on each HTTP endpoint of these handlers. Give each MCP tool of these handlers `[ToolAccess(Permission.Names.ManageOrders)]` (see [endpoints.md](backend/endpoints.md#tool-access)).
 5. Add an integration test for a user with the permission and a user without it.
 
 To remove a permission, remove its value and add a migration that calls `DeletePermission`. A row with a name that `Permission` does not know stops each load of its user.
@@ -183,7 +189,7 @@ To remove a permission, remove its value and add a migration that calls `DeleteP
 `Databases/AppDbContext.cs` has these features:
 
 - **Soft delete**: the context filters out entities with `IsDeleted` automatically.
-- **Audit fields**: the context sets `CreatedOn`, `CreatedBy`, `LastModifiedOn`, and `LastModifiedBy`.
+- **Audit fields**: the context sets `CreatedOn`, `CreatedBy`, `CreatedByClient`, `LastModifiedOn`, `LastModifiedBy`, and `LastModifiedByClient`. `CreatedBy` has the `sub` of the token, and `CreatedByClient` has its client ID (see [Audit](authentication.md#audit)).
 - **Tenant filter**: see [multi-tenancy.md](multi-tenancy.md).
 - **Domain events**: the context runs the handlers before it sends the SQL, so the handler changes commit with the save.
 - **Optimistic concurrency**: each update checks the version of the row. See [Concurrency](#concurrency).

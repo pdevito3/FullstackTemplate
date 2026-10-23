@@ -23,6 +23,167 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("client_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Mode", "FullstackTemplate.Server.Domain.Agents.Agent.Mode#AgentMode", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("mode");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_agents");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agents_client_id")
+                        .HasFilter("mode = 'machine' AND is_deleted = false");
+
+                    b.HasIndex("TenantId", "ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agents_tenant_id_client_id")
+                        .HasFilter("is_deleted = false");
+
+                    b.HasIndex("TenantId", "Name", "Id")
+                        .HasDatabaseName("ix_agents_tenant_id_name_id");
+
+                    b.ToTable("agents", (string)null);
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.AgentPermission", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("agent_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Agents.AgentPermission.Permission#Permission", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("permission");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_agent_permissions");
+
+                    b.HasIndex("AgentId")
+                        .HasDatabaseName("ix_agent_permissions_agent_id");
+
+                    b.ToTable("agent_permissions", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.DPoPProofs.UsedDPoPProof", b =>
                 {
                     b.Property<string>("Id")
@@ -56,6 +217,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -67,6 +232,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -106,6 +275,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -129,6 +302,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -209,6 +386,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_client");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on");
@@ -220,6 +401,10 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasColumnType("text")
                         .HasColumnName("last_modified_by");
+
+                    b.Property<string>("LastModifiedByClient")
+                        .HasColumnType("text")
+                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -258,6 +443,26 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.ToTable("user_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agents_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.AgentPermission", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Agents.Agent", null)
+                        .WithMany("Permissions")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_permissions_agents_agent_id");
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>
                 {
                     b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
@@ -276,6 +481,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_permissions_users_user_id");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>
+                {
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>

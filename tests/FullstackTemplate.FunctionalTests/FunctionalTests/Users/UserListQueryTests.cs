@@ -92,7 +92,7 @@ public class UserListQueryTests : TestBase
         var second = UserNamed(ids[1], "a", "b");
         var first = UserNamed(ids[2], "a", "a");
         await InsertAsync(third, second, first);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = third.Identifier });
+        FactoryClient.SignInAsAppUser(third.Identifier);
 
         // Act
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetList);
@@ -126,7 +126,7 @@ public class UserListQueryTests : TestBase
             .ToArray();
         foreach (var user in users)
             await InsertAsync(user);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = users[0].Identifier });
+        FactoryClient.SignInAsAppUser(users[0].Identifier);
 
         // Act
         var pages = new List<string>();
@@ -215,7 +215,7 @@ public class UserListQueryTests : TestBase
         var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate());
         caller.UpdateRole(UserRole.User());
         await InsertAsync(target, caller);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = caller.Identifier });
+        FactoryClient.SignInAsAppUser(caller.Identifier);
         return target;
     }
 

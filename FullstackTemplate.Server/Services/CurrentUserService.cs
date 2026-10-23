@@ -45,14 +45,10 @@ public interface ICurrentUserService
     string? Username { get; }
 
     /// <summary>
-    /// The client ID for machine-to-machine authentication.
+    /// The ID of the OAuth client that got the token. A user token has it too, so it does not mean a machine caller.
+    /// <see cref="ICallerIdentityResolver"/> decides what the client is.
     /// </summary>
     string? ClientId { get; }
-
-    /// <summary>
-    /// True if this is a machine-to-machine (client credentials) authentication.
-    /// </summary>
-    bool IsMachine { get; }
 
     /// <summary>
     /// True if the user is authenticated.
@@ -115,11 +111,10 @@ public sealed class CurrentUserService(
     public string? Username => User?.FindFirstValue("preferred_username")
         ?? User?.FindFirstValue("username");
 
-    // "client_id" is the RFC 9068 claim. Keycloak uses "azp" (authorized party).
+    // "client_id" is the RFC 9068 claim. Keycloak uses "azp" (authorized party). FusionAuth uses "applicationId".
     public string? ClientId => User?.FindFirstValue("client_id")
-        ?? User?.FindFirstValue("azp");
-
-    public bool IsMachine => ClientId != null && UserIdentifier == null;
+        ?? User?.FindFirstValue("azp")
+        ?? User?.FindFirstValue("applicationId");
 
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
 

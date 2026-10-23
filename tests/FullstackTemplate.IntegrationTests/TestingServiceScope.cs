@@ -41,7 +41,7 @@ public class TestingServiceScope
     }
 
     /// <summary>
-    /// Sets up ICurrentUserService mock with the default user's identifier.
+    /// Sets up ICurrentUserService mock with the default user's identifier, signed in through the first-party client.
     /// The real ITenantIdProvider will look up this user to get their tenant.
     /// </summary>
     public void SetUserWithDefaults(
@@ -56,16 +56,15 @@ public class TestingServiceScope
         // Use the default user's identifier so ITenantIdProvider can look them up
         var userIdentifier = identifier ?? TestFixture.DefaultUser.Identifier;
 
-        currentUserService.User.Returns(new ClaimsPrincipal(
-            new ClaimsIdentity([new Claim("sub", userIdentifier)], AuthenticationType)));
+        currentUserService.User.Returns(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", userIdentifier), new Claim("azp", TestFixture.FirstPartyClientId)], AuthenticationType)));
         currentUserService.UserIdentifier.Returns(userIdentifier);
-        currentUserService.ClientId.Returns((string?)null);
+        currentUserService.ClientId.Returns(TestFixture.FirstPartyClientId);
         currentUserService.Email.Returns(email ?? faker.Internet.Email());
         currentUserService.FirstName.Returns(firstName ?? faker.Person.FirstName);
         currentUserService.LastName.Returns(lastName ?? faker.Person.LastName);
         currentUserService.Username.Returns(faker.Internet.UserName());
         currentUserService.IsAuthenticated.Returns(true);
-        currentUserService.IsMachine.Returns(false);
         currentUserService.Roles.Returns(new List<string>());
         RefreshTenantScope();
     }
@@ -95,22 +94,35 @@ public class TestingServiceScope
         currentUserService.IsAuthenticated.Returns(false);
         currentUserService.UserIdentifier.Returns((string?)null);
         currentUserService.ClientId.Returns((string?)null);
-        currentUserService.IsMachine.Returns(false);
         RefreshTenantScope();
     }
 
     /// <summary>
-    /// Sets up a machine-to-machine client: an authenticated principal with a "client_id" claim and no "sub".
+    /// Sets up a machine-to-machine client: an authenticated principal with a "client_id" claim. It has no "sub",
+    /// or the <paramref name="serviceAccountSubject"/> that Keycloak, ZeroFactor, and Cognito put in such a token.
     /// </summary>
-    public void SetMachineClient(string clientId)
+    public void SetMachineClient(string clientId, string? serviceAccountSubject = null)
+    {
+        Claim[] claims = serviceAccountSubject is null
+            ? [new Claim("client_id", clientId)]
+            : [new Claim("client_id", clientId), new Claim("sub", serviceAccountSubject)];
+        SetToken(claims, serviceAccountSubject, clientId);
+    }
+
+    /// <summary>
+    /// Sets up a user token that a client that is not first-party got for the user with this identifier, as an agent
+    /// that acts for the user sends it.
+    /// </summary>
+    public void SetDelegatedClient(string userIdentifier, string clientId)
+        => SetToken([new Claim("sub", userIdentifier), new Claim("azp", clientId)], userIdentifier, clientId);
+
+    private void SetToken(Claim[] claims, string? subject, string clientId)
     {
         var currentUserService = GetService<ICurrentUserService>();
 
-        currentUserService.User.Returns(new ClaimsPrincipal(
-            new ClaimsIdentity([new Claim("client_id", clientId)], AuthenticationType)));
-        currentUserService.IsMachine.Returns(true);
+        currentUserService.User.Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, AuthenticationType)));
         currentUserService.ClientId.Returns(clientId);
-        currentUserService.UserIdentifier.Returns((string?)null);
+        currentUserService.UserIdentifier.Returns(subject);
         currentUserService.IsAuthenticated.Returns(true);
         RefreshTenantScope();
     }

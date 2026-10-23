@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
 using Databases;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Users;
 
 public static class DeleteTenant
@@ -17,6 +18,17 @@ public static class DeleteTenant
             var tenant = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.delete.load")
                 .GetById(request.Id, cancellationToken);
+
+            var agents = await dbContext.Agents
+                .TagWithOperationCallSite("tenants.delete.load_agents")
+                .Include(a => a.Permissions)
+                .Where(a => a.TenantId == tenant.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var agent in agents)
+            {
+                dbContext.AgentPermissions.RemoveRange(agent.Permissions);
+                dbContext.Agents.Remove(agent);
+            }
 
             dbContext.Tenants.Remove(tenant);
             await dbContext.SaveChangesAsync(cancellationToken);

@@ -7,6 +7,7 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using global::Google.Rpc;
 using global::Grpc.Core;
 using Shouldly;
+using TestUtilities;
 using DomainTenant = FullstackTemplate.Server.Domain.Tenants.Tenant;
 
 /// <summary>
@@ -198,7 +199,7 @@ public class TenantGrpcTests : TestBase
     }
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
 
     private void SignInAsTrustedMachineClient()
         => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>

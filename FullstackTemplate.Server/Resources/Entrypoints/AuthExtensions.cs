@@ -38,12 +38,15 @@ public static class AuthExtensions
         {
             if (!environment.IsDevelopment())
                 throw new InvalidOperationException($"{accessTokenValidationKey}=Userinfo is only for the conformance tests in Development.");
+            var clientId = configuration["Auth:ClientId"]
+                ?? throw new InvalidOperationException("Auth:ClientId configuration is required.");
 
             UserinfoAuthenticationHandler.AddHttpClient(services, configuration[UserinfoAuthenticationHandler.PinnedCertificatePathKey]);
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddScheme<UserinfoAuthenticationOptions, UserinfoAuthenticationHandler>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
                     options.Authority = authAuthority;
+                    options.ClientId = clientId;
                     options.NameClaimType = nameClaimType;
                     options.RoleClaimType = roleClaimType;
                 });

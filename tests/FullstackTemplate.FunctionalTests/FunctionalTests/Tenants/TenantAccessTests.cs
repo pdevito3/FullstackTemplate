@@ -68,7 +68,7 @@ public class TenantAccessTests : TestBase
     {
         // Arrange
         await AddTenantWithUserAsync("User");
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = $"unknown-{Guid.NewGuid()}" });
+        FactoryClient.SignInAsAppUser($"unknown-{Guid.NewGuid()}");
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageSize=500");
@@ -296,7 +296,7 @@ public class TenantAccessTests : TestBase
         });
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
 
     private static async Task ShouldBeForbiddenAsync(HttpResponseMessage result, string detail)
     {

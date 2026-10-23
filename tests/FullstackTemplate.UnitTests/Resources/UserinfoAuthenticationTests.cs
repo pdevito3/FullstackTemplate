@@ -19,6 +19,7 @@ using Shouldly;
 public class UserinfoAuthenticationTests
 {
     private const string Authority = "https://idp.test/test/a/alias/";
+    private const string AppClientId = "app";
 
     [Test]
     public void userinfo_validation_outside_development_fails_at_startup()
@@ -36,6 +37,24 @@ public class UserinfoAuthenticationTests
         result.Succeeded.ShouldBeTrue();
         result.Principal!.Identity!.Name.ShouldBe("Ada");
         result.Principal.FindFirstValue("sub").ShouldBe("user-1");
+    }
+
+    [Test]
+    public async Task a_userinfo_response_with_no_client_claim_gets_the_client_of_the_app()
+    {
+        var result = await AuthenticateAsync("Bearer good-token");
+
+        result.Principal.ShouldNotBeNull().FindFirstValue("client_id").ShouldBe(AppClientId);
+    }
+
+    [Test]
+    public async Task a_userinfo_response_with_a_client_claim_keeps_it()
+    {
+        var result = await AuthenticateAsync("Bearer agent-token");
+
+        var principal = result.Principal.ShouldNotBeNull();
+        principal.FindFirstValue("azp").ShouldBe("other-client");
+        principal.FindFirstValue("client_id").ShouldBeNull();
     }
 
     [Test]
@@ -72,6 +91,7 @@ public class UserinfoAuthenticationTests
             {
                 ["Auth:Authority"] = Authority,
                 ["Auth:Audience"] = "client",
+                ["Auth:ClientId"] = AppClientId,
                 [UserinfoAuthenticationHandler.AccessTokenValidationKey] = "Userinfo",
             })
             .Build();
@@ -86,9 +106,6 @@ public class UserinfoAuthenticationTests
         return services.BuildServiceProvider();
     }
 
-    /// <summary>
-    /// The discovery document and a userinfo endpoint that accepts only <c>good-token</c>.
-    /// </summary>
     private sealed class FakeIdentityProvider : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -98,6 +115,8 @@ public class UserinfoAuthenticationTests
                 $"{Authority}.well-known/openid-configuration" => Json("""{"userinfo_endpoint":"https://idp.test/test/a/alias/userinfo"}"""),
                 $"{Authority}userinfo" when request.Headers.Authorization?.Parameter == "good-token" =>
                     Json("""{"sub":"user-1","name":"Ada","email_verified":true}"""),
+                $"{Authority}userinfo" when request.Headers.Authorization?.Parameter == "agent-token" =>
+                    Json("""{"sub":"user-1","azp":"other-client"}"""),
                 _ => new HttpResponseMessage(HttpStatusCode.Unauthorized),
             };
             return Task.FromResult(response);

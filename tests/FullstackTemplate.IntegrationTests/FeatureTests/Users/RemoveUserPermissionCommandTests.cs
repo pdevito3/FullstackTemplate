@@ -52,7 +52,7 @@ public class RemoveUserPermissionCommandTests : TestBase
         userInDb.ShouldNotBeNull();
         userInDb.HasPermission(Permission.ManageTenant()).ShouldBeFalse();
         userInDb.UserPermissions.Select(p => p.Permission.Value)
-            .ShouldBe(["manage_users", "manage_user_access"], ignoreOrder: true);
+            .ShouldBe(["manage_users", "manage_user_access", "manage_agents"], ignoreOrder: true);
     }
 
     [Test]

@@ -220,6 +220,63 @@ A unit test in `AuthProviderCatalogTests` makes sure that each provider has its 
 
 `AuthProviderConfig` holds each setting that can differ between providers, with the reason in its doc comments. The doc comments of each provider class give the differences of that provider and its test users.
 
+## Agents
+
+An agent is an OAuth client other than this app that calls the server, usually through MCP at `/mcp`. A tenant registers each agent that may act in the tenant, and grants it permissions. The reasons are in [ADR 0011](adr/0011-agents-are-tenant-records.md).
+
+### How the server identifies the caller
+
+The server reads the client ID of the token from `client_id`, then `azp`, then `applicationId` (FusionAuth). It never takes a missing `sub` to mean a machine. `CallerIdentityResolver` decides the caller once for each request:
+
+| Token | Caller | Permissions | Rows |
+|---|---|---|---|
+| A first-party client and a `sub` | The user | The `user_permissions` rows of the user | The tenant of the user |
+| A client on a `Tenancy` allow-list | An all-tenants client | Each permission for `ManageAllTenantsClientIds`, none for `ReadAllTenantsClientIds` | All tenants |
+| A client with a machine agent | A machine agent | The grant of the agent | The tenant of the agent |
+| Another client, and the `sub` of a user of the app, with a delegated agent for the client in the tenant of the user | A delegated agent | Each permission that both the user and the grant of the agent have | The tenant of the user |
+| Any other token, also a token with no client ID | An unknown client | None | None |
+
+The server applies the rows in this order, and the first match wins. The first-party clients are `Auth:ClientId`, which the BFF and Swagger UI use, and `Swagger:ClientId` when it is set. The server stops at startup if `Auth:ClientId` is missing.
+
+An allow-list and a machine agent are facts about the client that the operator sets, so they match each token of the client, whatever its `sub`. Thus a client credentials token with a service-account `sub` matches them, and a tenant cannot take such a client over with a user record that has the same `sub`.
+
+An unknown client sees no MCP tool, and each of its calls gets a `permission_denied` tool error with the message "This client is not a registered agent of your tenant. A tenant admin can register it."
+
+### Register an agent
+
+1. At the identity provider, create the client of the agent. Give its tokens the API audience (`Auth:Audience`), or the server rejects them.
+2. For a delegated agent, an admin of the tenant sends `POST /api/v1/agents` with `{ "name": "Clinic assistant", "clientId": "clinic-assistant", "mode": "delegated" }`. The caller needs `manage_agents`. To give a first grant, add `"permissions": ["manage_tenant"]`. With no `permissions`, the agent starts with an empty grant and can use only the read tools.
+3. For a machine agent, the operator sends the same request with `"mode": "machine"` and the `tenantId`. Only a caller that can manage all tenants can add a machine agent, for example the CSharpRepl `Send` helper or a client in `ManageAllTenantsClientIds`. Bind only a confidential client that allows only the client credentials grant. If the client also allows a user sign-in, each user who signs in through it acts as the machine.
+4. To grant a permission, send `POST /api/v1/agents/{id}/permissions` with `{ "permission": "manage_tenant" }`. The caller must have the permission. To take it away, send `DELETE /api/v1/agents/{id}/permissions/{permission}`. That needs only `manage_agents`, so an admin can always stop an agent. A machine agent gets its first grant from the operator in step 3 or from an admin of its tenant.
+5. To remove the agent, send `DELETE /api/v1/agents/{id}`. That needs only `manage_agents`.
+
+A delegated client ID can have one agent in each tenant, so many tenants can register one MCP client. A client ID can have one machine agent in all tenants, because the token of a machine names no tenant. A duplicate gets 409, and so does a delegated agent for a client that is bound as a machine agent. An agent for a first-party client or for a client on an allow-list gets 422, because the server would never use it.
+
+The permission guard reads the agent and its grant from the database in each check. A removed permission, a deleted agent, or a deleted tenant applies on the next request. A delegated agent does not get the exception of `RequireSelfOrAsync`, so it cannot update its own user without `manage_users`.
+
+### What an agent sees in MCP
+
+Each MCP tool declares what it needs with `[ToolAccess]` (see [endpoints.md](backend/endpoints.md#tool-access)). `tools/list` shows an agent only the tools that its permissions allow, and a call to another tool gets a `permission_denied` tool error. The denial names the side that lacks the permission. For example, an admin who acts through an agent with no `manage_tenant` grant gets "The agent clinic-assistant is not granted the manage_tenant permission. A tenant admin can grant it."
+
+When you add an MCP tool:
+
+1. Give it the `[ToolAccess]` of the check of its handler.
+2. Add a functional test for a caller who sees the tool and a caller who does not, in `TenantMcpToolTests` or a test class like it.
+
+### Audit
+
+Each entity records the `sub` of the token in `CreatedBy` and `LastModifiedBy`, and the client ID in `CreatedByClient` and `LastModifiedByClient`. A change by the BFF records the first-party client ID. A change by an agent records the client ID of the agent. A change with no token, for example a background job, records null.
+
+### Providers
+
+Agents need a provider that can give a client other than the first-party client a token with the API audience.
+
+- ZeroFactor: the seed has the delegated client `clinic-assistant` and the machine client `fleet-sync`. Both get the `aspire-app` audience. Send a token request to `{zerofactor}/realms/aspire/protocol/openid-connect/token`. For `clinic-assistant`, use `grant_type=password` with `username=admin@example.com` and any password. For `fleet-sync`, use `grant_type=client_credentials` with any client secret.
+- Keycloak: give the client an `oidc-audience-mapper` that includes the client `aspire-app`, as the seed in `realm-export.json` does for `aspire-app`. For a machine client, set `serviceAccountsEnabled`.
+- Cognito: agents do not work. The server checks the audience in `client_id`, so it accepts only the first-party client.
+
+The server does not publish OAuth protected resource metadata (RFC 9728) for `/mcp` yet, so an MCP client must know the authority of the provider. See [issue 68](https://github.com/pdevito3/FullstackTemplate/issues/68).
+
 ## E2E tests
 
 The Playwright tests in `frontend/e2e/auth-flows.spec.ts` log in through the React app and through Swagger UI. They run against the provider of the running stack. A test for a feature runs only for a provider that has the feature. For the other providers, a test proves the fallback.

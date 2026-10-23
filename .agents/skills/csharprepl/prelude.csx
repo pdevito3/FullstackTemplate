@@ -6,6 +6,7 @@ using System.Threading;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Services;
@@ -31,7 +32,8 @@ async Task<T> SendAs<T>(string sub, IRequest<T> request)
     var accessor = Get<IHttpContextAccessor>();
     accessor.HttpContext = new DefaultHttpContext
     {
-        User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", sub)], "csharprepl"))
+        User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", sub), new Claim("client_id", Get<IConfiguration>()["Auth:ClientId"]!)], "csharprepl"))
     };
     try
     {

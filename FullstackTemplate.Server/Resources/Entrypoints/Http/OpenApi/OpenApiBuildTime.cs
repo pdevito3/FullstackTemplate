@@ -24,6 +24,7 @@ public static class OpenApiBuildTime
             "--hostBuilder:reloadConfigOnChange=false",
             "--Auth:Authority=https://openapi-build.invalid",
             "--Auth:Audience=openapi-build",
+            "--Auth:ClientId=openapi-build",
         ]
         : args;
 

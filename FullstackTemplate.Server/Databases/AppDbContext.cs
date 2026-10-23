@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases;
 
 using Domain;
+using Domain.Agents;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ public class AppDbContext(
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+    public DbSet<Agent> Agents => Set<Agent>();
+    public DbSet<AgentPermission> AgentPermissions => Set<AgentPermission>();
     #endregion
 
     private TenantScope? _tenantScope;
@@ -173,17 +176,17 @@ public class AppDbContext(
             switch (entry.State)
             {
                 case EntityState.Added:
-                    entry.Entity.UpdateCreationProperties(now, currentUserService.UserIdentifier);
-                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
+                    entry.Entity.UpdateCreationProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
+                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
                     break;
 
                 case EntityState.Modified:
-                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
+                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
                     break;
 
                 case EntityState.Deleted:
                     entry.State = EntityState.Modified;
-                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier);
+                    entry.Entity.UpdateModifiedProperties(now, currentUserService.UserIdentifier, currentUserService.ClientId);
                     entry.Entity.UpdateIsDeleted(true);
                     break;
             }

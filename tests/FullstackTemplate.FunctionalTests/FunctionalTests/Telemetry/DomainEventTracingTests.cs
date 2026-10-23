@@ -7,7 +7,6 @@ using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
 using TestUtilities;
-using WebMotions.Fake.Authentication.JwtBearer;
 
 public class DomainEventTracingTests : TestBase
 {
@@ -20,7 +19,7 @@ public class DomainEventTracingTests : TestBase
             .AddUser(out var admin, u => u.Role = "Admin");
         await InsertAsync(tenant);
         await InsertAsync(admin);
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = admin.Identifier });
+        FactoryClient.SignInAsAppUser(admin.Identifier);
         var traceId = ActivityTraceId.CreateRandom();
         using var request = new HttpRequestMessage(HttpMethod.Put, ApiRoutes.Tenants.Put(tenant.Id))
         {

@@ -3,6 +3,7 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Entrypoints;
@@ -13,6 +14,7 @@ using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using Shouldly;
+using TestUtilities;
 
 /// <summary>
 /// The MCP entrypoint sends the same MediatR requests as HTTP, so it has the same tenant scope and the
@@ -20,19 +22,93 @@ using Shouldly;
 /// </summary>
 public class TenantMcpToolTests : TestBase
 {
+    private const string UnregisteredClientId = "unregistered-agent";
+
+    public static IEnumerable<Func<(string Caller, string[] Tools)>> ToolsOfEachCaller()
+    {
+        yield return () => ("member", ["get_tenant", "list_tenants"]);
+        yield return () => ("admin", ["get_tenant", "list_tenants", "update_tenant"]);
+        yield return () => ("manage-all client", ["add_tenant", "get_tenant", "list_tenants", "update_tenant"]);
+        yield return () => ("read-only client", ["get_tenant", "list_tenants"]);
+        yield return () => ("unregistered client with a user sub", []);
+        yield return () => ("admin through a delegated agent with no grant", ["get_tenant", "list_tenants"]);
+        yield return () => ("admin through a delegated agent granted manage_tenant",
+            ["get_tenant", "list_tenants", "update_tenant"]);
+        yield return () => ("machine agent granted manage_tenant", ["get_tenant", "list_tenants", "update_tenant"]);
+    }
+
     [Test]
-    public async Task tools_list_has_the_tenant_tools()
+    [MethodDataSource(nameof(ToolsOfEachCaller))]
+    public async Task tools_list_shows_only_the_tools_that_the_caller_can_use(string caller, string[] expected)
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
-        SignInAs(user);
+        await SignInAsync(caller);
         await using var client = await CreateMcpClientAsync();
 
         // Act
         var tools = await client.ListToolsAsync();
 
         // Assert
-        tools.Select(t => t.Name).ShouldBe(["add_tenant", "get_tenant", "list_tenants", "update_tenant"], ignoreOrder: true);
+        tools.Select(t => t.Name).ShouldBe(expected, ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task unregistered_client_with_a_user_sub_cannot_read_the_tenant_of_the_user()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInThroughUnregisteredClient(admin);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("get_tenant", new Dictionary<string, object?> { ["id"] = tenant.Id });
+
+        // Assert
+        ShouldBeToolError(result, "permission_denied");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString()
+            .ShouldBe("This client is not a registered agent of your tenant. A tenant admin can register it.");
+    }
+
+    [Test]
+    public async Task admin_through_a_delegated_agent_cannot_rename_beyond_the_grant()
+    {
+        // Arrange
+        var (tenant, admin, agent) = await AddTenantWithAgentAsync("delegated");
+        SignInThroughAgent(admin, agent);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
+
+        // Assert
+        ShouldBeToolError(result, "permission_denied");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldBe(
+            $"The agent {agent.ClientId} is not granted the manage_tenant permission. A tenant admin can grant it.");
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
+    }
+
+    [Test]
+    public async Task machine_agent_with_a_service_account_sub_lists_only_its_tenant()
+    {
+        // Arrange
+        var (tenant, _, agent) = await AddTenantWithAgentAsync("machine");
+        await AddTenantWithUserAsync();
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = $"service-account-{agent.ClientId}",
+            ["azp"] = agent.ClientId,
+        });
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?> { ["pageSize"] = 500 });
+
+        // Assert
+        result.IsError.ShouldNotBe(true);
+        var content = result.StructuredContent.ShouldNotBeNull();
+        content.GetProperty("items").EnumerateArray().ShouldHaveSingleItem().GetProperty("id").GetString().ShouldBe(tenant.Id);
+        content.GetProperty("pagination").GetProperty("totalCount").GetInt32().ShouldBe(1);
     }
 
     [Test]
@@ -357,7 +433,87 @@ public class TenantMcpToolTests : TestBase
         => (await FindAsync<Tenant>(tenantId)).ShouldNotBeNull().Version;
 
     private void SignInAs(User user)
-        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        => FactoryClient.SignInAsAppUser(user.Identifier);
+
+    private void SignInThroughAgent(User user, Agent agent)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = user.Identifier,
+            ["azp"] = agent.ClientId,
+        });
+
+    private void SignInAsMachineAgent(Agent agent)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["client_id"] = agent.ClientId });
+
+    private void SignInThroughUnregisteredClient(User user)
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = user.Identifier,
+            ["azp"] = UnregisteredClientId,
+        });
+
+    private async Task SignInAsync(string caller)
+    {
+        switch (caller)
+        {
+            case "member":
+                SignInAs((await AddTenantWithUserAsync()).User);
+                break;
+            case "admin":
+                SignInAs((await AddTenantWithUserAsync("Admin")).User);
+                break;
+            case "manage-all client":
+                FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+                {
+                    ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+                });
+                break;
+            case "read-only client":
+                FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+                {
+                    ["client_id"] = TestingWebApplicationFactory.ReadOnlyMachineClientId
+                });
+                break;
+            case "unregistered client with a user sub":
+                SignInThroughUnregisteredClient((await AddTenantWithUserAsync("Admin")).User);
+                break;
+            case "admin through a delegated agent with no grant":
+            {
+                var (_, admin, agent) = await AddTenantWithAgentAsync("delegated");
+                SignInThroughAgent(admin, agent);
+                break;
+            }
+            case "admin through a delegated agent granted manage_tenant":
+            {
+                var (_, admin, agent) = await AddTenantWithAgentAsync("delegated", Permission.Names.ManageTenant);
+                SignInThroughAgent(admin, agent);
+                break;
+            }
+            case "machine agent granted manage_tenant":
+                SignInAsMachineAgent((await AddTenantWithAgentAsync("machine", Permission.Names.ManageTenant)).Agent);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(caller), caller, "No sign-in for this caller.");
+        }
+    }
+
+    private static async Task<(Tenant Tenant, User Admin, Agent Agent)> AddTenantWithAgentAsync(
+        string mode, params string[] grant)
+    {
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = "Admin")
+            .Under(tenant)
+            .AddAgent(out var agent, a =>
+            {
+                a.Mode = mode;
+                a.Permissions = grant;
+            });
+        await InsertAsync(tenant);
+        await InsertAsync(admin);
+        await InsertAsync(agent);
+        return (tenant, admin, agent);
+    }
 
     private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string role = "User")
     {

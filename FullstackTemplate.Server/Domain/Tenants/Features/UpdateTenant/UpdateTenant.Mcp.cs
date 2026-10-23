@@ -4,6 +4,8 @@ using System.ComponentModel;
 using Dtos;
 using MediatR;
 using ModelContextProtocol.Server;
+using Resources.Entrypoints.Mcp;
+using Users;
 
 /// <summary>
 /// The MCP tool of <see cref="UpdateTenant"/>. The SDK resolves <see cref="IMediator"/> from the request services,
@@ -14,6 +16,7 @@ public static class UpdateTenantTool
 {
     // A rename overwrites the name, so the tool is not additive: the MCP spec says destructive.
     [McpServerTool(Name = "update_tenant", Destructive = true, Idempotent = true, UseStructuredContent = true)]
+    [ToolAccess(Permission.Names.ManageTenant)]
     [Description("Renames a tenant. The caller needs the manage_tenant permission in the tenant.")]
     public static Task<TenantDto> Handle(
         IMediator mediator,

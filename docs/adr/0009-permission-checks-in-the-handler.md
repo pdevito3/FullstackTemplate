@@ -22,7 +22,7 @@ A handler is shared by HTTP, gRPC, and MCP. A check in the handler thus applies 
 
 The placeholder `do_something_special` is replaced by `manage_users`, `manage_user_access`, and `manage_tenant`. `manage_user_access` is separate from `manage_users`, because it changes what a user can do. A caller can give or take away only the permissions that it has. Thus a user with only `manage_users` cannot add or delete an `Admin`, and a user with only `manage_user_access` cannot change the role of an `Admin`. Without the second half, such a user could take each permission away from each admin, and nobody in the tenant could give them back. `manage_tenant` gives both the rename and the delete of the tenant. If a rename must be given alone, it needs a permission of its own.
 
-`AddTenant` and `InitiateUserAndTenant` keep their check of `CanManageAllTenants()`. They act outside one tenant, and a permission row is in one tenant. If this capability were a permission, an admin could give it to themselves.
+`AddTenant` and `InitiateUserAndTenant` keep their check that the caller can manage all tenants. They act outside one tenant, and a permission row is in one tenant. If this capability were a permission, an admin could give it to themselves.
 
 ## Consequences
 

@@ -6,6 +6,8 @@ using Grpc;
 using Http;
 using Http.OpenApi;
 using Mcp;
+using Microsoft.Extensions.Options;
+using ModelContextProtocol.Server;
 using Services;
 
 /// <summary>
@@ -39,7 +41,13 @@ public static class EntrypointRegistration
         builder.Services.AddMcpServer()
             .WithHttpTransport(options => options.Stateless = true)
             .WithToolsFromAssembly(typeof(EntrypointRegistration).Assembly)
-            .WithRequestFilters(filters => filters.AddCallToolFilter(McpDomainErrors.Filter));
+            .WithRequestFilters(filters =>
+            {
+                filters.AddListToolsFilter(McpToolAccess.ListFilter);
+                // The first call filter is the outermost, so a denial of the access filter becomes a tool error.
+                filters.AddCallToolFilter(McpDomainErrors.Filter);
+                filters.AddCallToolFilter(McpToolAccess.CallFilter);
+            });
     }
 
     /// <summary>
@@ -72,6 +80,7 @@ public static class EntrypointRegistration
     {
         app.MapVersionedEndpoints();
         app.MapGrpcService<TenantsGrpcService>();
+        McpToolAccess.Validate(app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection ?? []);
         app.MapMcp(McpPath).RequireAuthorization();
     }
 }

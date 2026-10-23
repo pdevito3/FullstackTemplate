@@ -12,6 +12,10 @@ namespace FullstackTemplate.AppHost.AuthProviders;
 /// change between Keycloak and ZeroFactor. To sign in as a user from another provider, register it on the login page
 /// and enter its sub as the User ID. Manage the users at /_0factor/realms/aspire on the zerofactor endpoint.
 /// The realm is lenient: it accepts any redirect URI, so the seed needs no app URLs.
+/// Agent clients: fleet-sync gets a client_credentials token for its hidden service account, for a machine agent.
+/// clinic-assistant is a public client that gets a token for a test user with the password grant and any password, for
+/// a delegated agent. The app treats each as an unknown client until an agent record names it: a caller that manages
+/// all tenants binds fleet-sync to a tenant, and a tenant admin registers clinic-assistant.
 /// </summary>
 public sealed class ZeroFactorAuthProvider : IAuthProvider
 {

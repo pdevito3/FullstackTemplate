@@ -20,8 +20,7 @@ public static class InitiateUserAndTenant
 
     public sealed class Handler(
         AppDbContext dbContext,
-        ICurrentUserService currentUserService,
-        ITenantScopeProvider tenantScopeProvider)
+        ICallerIdentityResolver callerIdentityResolver)
         : IRequestHandler<Command, InitiateUserAndTenantResponseDto>
     {
         private const string TenantNameField = "tenantName";
@@ -31,7 +30,7 @@ public static class InitiateUserAndTenant
 
         public async Task<InitiateUserAndTenantResponseDto> Handle(Command request, CancellationToken cancellationToken)
         {
-            GuardCallerCanInitiateFor(request.Dto.Identifier);
+            await GuardCallerCanInitiateForAsync(request.Dto.Identifier, cancellationToken);
 
             // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.
             var identifierInUse = await dbContext.Users
@@ -97,20 +96,17 @@ public static class InitiateUserAndTenant
             };
         }
 
-        // A signed-in user can start a tenant only for themselves. A caller with no user identifier must be
-        // able to manage all tenants: a trusted tenant management client, or system work in a system scope.
-        private void GuardCallerCanInitiateFor(string identifier)
+        private async Task GuardCallerCanInitiateForAsync(string identifier, CancellationToken cancellationToken)
         {
-            var callerIdentifier = currentUserService.UserIdentifier;
-            if (callerIdentifier is null)
-            {
-                if (!tenantScopeProvider.CanManageAllTenants())
-                    throw new ForbiddenAccessException(
-                        "A caller with no user identifier must be a trusted tenant management client to start a tenant.");
+            var caller = await callerIdentityResolver.GetAsync(cancellationToken);
+            if (caller.CanManageAllTenants)
                 return;
-            }
 
-            if (callerIdentifier != identifier)
+            if (caller is not CallerIdentity.User user)
+                throw new ForbiddenAccessException(
+                    "Only a user who signs in through this app, or a trusted tenant management client, can start a tenant.");
+
+            if (user.Subject != identifier)
                 throw new ForbiddenAccessException("You can start a tenant only for yourself.");
         }
     }

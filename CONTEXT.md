@@ -28,3 +28,33 @@ _Avoid_: Row version, ETag, revision
 **Stale version**:
 A change that the caller based on a version that is no longer current. The caller loads the record again and repeats the change.
 _Avoid_: Concurrency conflict, already exists
+
+### Agents
+
+**First-party client**:
+The OAuth client of this app, which the BFF and Swagger UI use. A user who signs in through it acts with all of their own permissions.
+_Avoid_: App client, main client
+
+**Agent**:
+An OAuth client other than the first-party client that a tenant lets act in the tenant. It is either a delegated agent or a machine agent.
+_Avoid_: Bot, integration, app
+
+**Delegated agent**:
+An agent that acts for a signed-in user of its tenant. It holds only the permissions that both the user and its grant have.
+_Avoid_: Assistant, on-behalf-of client
+
+**Machine agent**:
+An agent that acts for itself in one tenant, with no user. It holds its grant. Only the operator binds a client to a tenant as a machine agent.
+_Avoid_: Service account, machine client
+
+**Grant**:
+The permissions that a tenant gives an agent. It is the most that the agent can hold. Nobody can grant a permission that they do not hold.
+_Avoid_: Scope, consent
+
+**All-tenants client**:
+An OAuth client that the operator trusts to read, or to manage, the data of all tenants. It acts for itself, with no user.
+_Avoid_: Admin client, super client
+
+**Unknown client**:
+An OAuth client that is not the first-party client, not an all-tenants client, and not an agent for the token. It sees no data and holds no permission.
+_Avoid_: Unregistered agent, guest

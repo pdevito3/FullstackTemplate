@@ -31,7 +31,6 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         public string? Name => null;
         public string? Username => null;
         public string? ClientId => null;
-        public bool IsMachine => false;
         public bool IsAuthenticated => false;
         public IReadOnlyList<string> Roles => [];
         public bool IsInRole(string role) => false;
@@ -43,6 +42,5 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     private sealed class DesignTimeTenantScopeProvider : ITenantScopeProvider
     {
         public TenantScope GetCurrentScope() => TenantScope.AllTenants;
-        public bool CanManageAllTenants() => true;
     }
 }

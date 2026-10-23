@@ -9,7 +9,7 @@ public sealed class TenancyOptions
 
     /// <summary>
     /// The client IDs of the machine clients that can read the rows of all tenants. These clients cannot
-    /// add, change, or delete anything. A token with no "sub" claim from any other client sees no tenant data.
+    /// add, change, or delete anything. Each token of a listed client matches, whatever its "sub" claim.
     /// </summary>
     public string[] ReadAllTenantsClientIds { get; init; } = [];
 

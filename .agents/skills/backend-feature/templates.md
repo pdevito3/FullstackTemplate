@@ -134,8 +134,10 @@ public sealed record [EntityName]Dto
     public string? Description { get; init; }
     public DateTimeOffset CreatedOn { get; init; }
     public string? CreatedBy { get; init; }
+    public string? CreatedByClient { get; init; }
     public DateTimeOffset? LastModifiedOn { get; init; }
     public string? LastModifiedBy { get; init; }
+    public string? LastModifiedByClient { get; init; }
 }
 ```
 
@@ -269,7 +271,7 @@ public static partial class [EntityName]Mapper
 
 ## 6. Features
 
-Each command checks a permission first (see `docs/backend/features-and-cqrs.md#permission-checks`). The templates use `Permission.Manage[EntityName]s()`. Add it to `Domain/Users/Permission.cs`, and add a migration that gives it to the admins that exist (see `docs/backend.md#add-a-permission`). A query has no permission check.
+Each command checks a permission first (see `docs/backend/features-and-cqrs.md#permission-checks`). The templates use `Permission.Manage[EntityName]s()`. Add it to `Domain/Users/Permission.cs` with its `Permission.Names` constant, and add a migration that gives it to the admins that exist (see `docs/backend.md#add-a-permission`). A query has no permission check.
 
 **File:** `Domain/[EntityName]s/Features/Add[EntityName]/Add[EntityName].cs`
 
@@ -623,6 +625,41 @@ public sealed class Delete[EntityName]Endpoint : IEndpoint
         await mediator.Send(new Delete[EntityName].Command(id), cancellationToken);
         return TypedResults.NoContent();
     }
+}
+```
+
+### MCP Tool
+
+Add this file only when an MCP caller needs the feature. Each tool has exactly one `[ToolAccess]`, or the server does not start. It decides who sees the tool in `tools/list` and who can call it. The handler still makes its own check.
+
+- `[ToolAccess(Permission.Names.X)]`: the same permission that the handler requires.
+- `[ToolAccess(ToolAccessKind.Read)]`: a read with no permission. The tenant filter decides the rows.
+- `[ToolAccess(ToolAccessKind.ManageAllTenants)]`: only a caller that manages all tenants.
+
+**File:** `Domain/[EntityName]s/Features/Update[EntityName]/Update[EntityName].Mcp.cs`
+
+```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using System.ComponentModel;
+using Dtos;
+using MediatR;
+using ModelContextProtocol.Server;
+using Resources.Entrypoints.Mcp;
+using Users;
+
+[McpServerToolType]
+public static class Update[EntityName]Tool
+{
+    [McpServerTool(Name = "update_[entity_name]", Destructive = true, Idempotent = true, UseStructuredContent = true)]
+    [ToolAccess(Permission.Names.Manage[EntityName]s)]
+    [Description("Changes a [EntityName]. The caller needs the manage_[entity_name]s permission in the tenant.")]
+    public static Task<[EntityName]Dto> Handle(
+        IMediator mediator,
+        [Description("The [EntityName] ID.")] string id,
+        [Description("The new name.")] string name,
+        CancellationToken cancellationToken)
+        => mediator.Send(new Update[EntityName].Command(id, new [EntityName]ForUpdateDto { Name = name }), cancellationToken);
 }
 ```
 

@@ -19,7 +19,7 @@ Domain/Tenants/
         └── TenantGrpcMappings.cs  # The maps from the DTOs to the messages
 ```
 
-Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Tenants, Users, and Weather features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `GetTenant`, `GetTenantList`, `AddTenant`, and `UpdateTenant` have MCP.
+Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, Tenants, Users, and Weather features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `GetTenant`, `GetTenantList`, `AddTenant`, and `UpdateTenant` have MCP.
 
 The reason for this layout is in [ADR 0002](../adr/0002-colocate-entrypoints-with-features.md).
 
@@ -146,7 +146,28 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 3. Take `IMediator` and `CancellationToken` as method parameters. The SDK resolves a registered service from the request services, so the service is not in the input schema.
 4. Give each other parameter a `[Description]`. These parameters are the input schema.
 5. Return the DTO. For a list, return `McpPage.From(result)`, so that the result has the page data.
-6. Put no access check in the tool. If the handler checks a permission, name the permission in the `[Description]`, so that the model knows why a call can fail. The example is `Domain/Tenants/Features/UpdateTenant/UpdateTenant.Mcp.cs`. A read tool, such as `get_tenant`, has no permission. Each caller sees each tool in `tools/list`, and a call without the permission gets a `permission_denied` tool error.
+6. Give the method exactly one `[ToolAccess]` attribute, next to `[McpServerTool]`. It names what the handler requires. See [Tool access](#tool-access).
+7. Put no other access check in the tool. If the handler checks a permission, also name the permission in the `[Description]`, so that the model knows why a call can fail. The example is `Domain/Tenants/Features/UpdateTenant/UpdateTenant.Mcp.cs`.
+
+### Tool access
+
+`[ToolAccess]` has three forms:
+
+| Attribute | Use it for | A caller sees and can call the tool if |
+|---|---|---|
+| `[ToolAccess(ToolAccessKind.Read)]` | A read with no permission check, for example `get_tenant` | The caller is recognized: each caller except an unknown client and an anonymous request. The tenant filter decides the rows. |
+| `[ToolAccess(Permission.Names.ManageTenant)]` | A tool whose handler calls `RequireAsync` with that permission, for example `update_tenant` | `Caller.Has` gives true for the permission |
+| `[ToolAccess(ToolAccessKind.ManageAllTenants)]` | A tool whose handler checks `Caller.ManagesAllTenants`, for example `add_tenant` | The caller can manage all tenants |
+
+Use a `Permission.Names` constant, so that the compiler checks the name. If the handler checks more than one permission, name the permission that each call needs. The handler checks the others. If the handler lets a user act on their own record with `RequireSelfOrAsync`, use `ToolAccessKind.Read`, so that the handler decides. A permission in the attribute would hide the tool from that user.
+
+`ToolAccessKind.Read` is stricter on MCP than on HTTP and gRPC. An unknown client gets a `permission_denied` tool error that tells it to ask for a registration. Over HTTP and gRPC, the same caller gets an empty list or 404, because the tenant filter shows it no rows.
+
+`McpToolAccess.ListFilter` removes from `tools/list` each tool that the caller cannot use. `McpToolAccess.CallFilter` denies a call to such a tool. It runs inside `McpDomainErrors.Filter`, so the denial is a `permission_denied` tool error with the message of `Caller`. Both filters load the caller with `IPermissionGuard.GetCallerAsync` and ask `Caller`, so the list, the call, and the handler give the same answer. For an agent, the caller holds only the permissions of its grant. See [Agents](../authentication.md#agents).
+
+At startup, `McpToolAccess.Validate` stops the server if a tool has no `[ToolAccess]`, has a `ToolAccessKind` that is not defined, or names a permission that does not exist. A unit test runs the same check on each tool of the Server.
+
+The attribute repeats the permission of the handler. If the two differ, the result fails closed: the list hides the tool from a caller who could use it, or the handler denies the call.
 
 `McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. The `code` has the name of the gRPC status, for example `already_exists` for a conflict and `aborted` for a stale version. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field.
 

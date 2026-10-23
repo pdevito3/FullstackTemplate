@@ -20,7 +20,6 @@ public static class DeleteAgent
                 .Include(a => a.Permissions)
                 .GetById(request.Id, cancellationToken);
 
-            // Remove permissions first (due to PropertyAccessMode.Field)
             foreach (var permission in agent.Permissions.ToList())
             {
                 dbContext.AgentPermissions.Remove(permission);

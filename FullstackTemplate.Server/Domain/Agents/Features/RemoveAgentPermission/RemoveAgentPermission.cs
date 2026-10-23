@@ -27,7 +27,6 @@ public static class RemoveAgentPermission
 
             agent.Revoke(permission);
 
-            // Explicitly remove permissions that were removed from the collection
             var remainingIds = agent.Permissions.Select(p => p.Id).ToHashSet();
             foreach (var existingPermission in existingPermissions)
             {

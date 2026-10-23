@@ -20,14 +20,12 @@ public static partial class AgentMapper
 
     public static partial IQueryable<AgentDto> ToAgentDtoQueryable(this IQueryable<Agent> queryable);
 
-    // The handler decides the tenant from the caller's scope. The tenant in the DTO is only a request.
     [MapperIgnoreSource(nameof(AgentForCreationDto.TenantId))]
     [MapperIgnoreTarget(nameof(AgentForCreation.Id))]
     public static partial AgentForCreation ToAgentForCreation(this AgentForCreationDto dto, string tenantId);
 
     private static string MapMode(AgentMode mode) => mode.Value;
     private static IReadOnlyList<string> MapFirstGrant(IReadOnlyList<string>? permissions) => permissions ?? [];
-    // Mapperly uses this method only when its return type is the type of AgentDto.Permissions.
     [SuppressMessage("Performance", "CA1859", Justification = "Mapperly matches on the exact target type.")]
     private static IReadOnlyList<string> MapPermissions(IReadOnlyCollection<AgentPermission> permissions)
         => permissions.Select(p => p.Permission.Value).ToList();

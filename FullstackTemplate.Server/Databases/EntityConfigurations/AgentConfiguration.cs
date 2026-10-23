@@ -29,7 +29,6 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
             .IsRequired()
             .HasMaxLength(200);
 
-        // A client ID is case-sensitive, so it compares bytes like an ID.
         builder.Property(e => e.ClientId)
             .IsRequired()
             .HasMaxLength(255)
@@ -51,18 +50,14 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
         builder.Navigation(e => e.Permissions)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Indexes
-        // A deleted agent frees its client ID, so the unique indexes cover only live rows.
         builder.HasIndex(e => new { e.TenantId, e.ClientId })
             .IsUnique()
             .HasFilter("is_deleted = false");
 
-        // The token of a machine client names no tenant, so its client ID has one live machine agent in all tenants.
         builder.HasIndex(e => e.ClientId)
             .IsUnique()
             .HasFilter($"mode = '{AgentMode.MachineValue}' AND is_deleted = false");
 
-        // The default sort of the agent list.
         builder.HasIndex(e => new { e.TenantId, e.Name, e.Id });
     }
 }

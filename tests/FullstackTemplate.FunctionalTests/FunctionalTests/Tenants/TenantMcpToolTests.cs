@@ -497,7 +497,6 @@ public class TenantMcpToolTests : TestBase
         }
     }
 
-    // The user is an admin, so a narrower tool list comes from the grant of the agent.
     private static async Task<(Tenant Tenant, User Admin, Agent Agent)> AddTenantWithAgentAsync(
         string mode, params string[] grant)
     {

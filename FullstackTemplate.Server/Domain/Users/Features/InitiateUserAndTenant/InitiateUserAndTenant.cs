@@ -96,8 +96,6 @@ public static class InitiateUserAndTenant
             };
         }
 
-        // A user of a first-party client can start a tenant only for themselves. Any other caller must be able to
-        // manage all tenants: a trusted tenant management client, or system work in a system scope.
         private async Task GuardCallerCanInitiateForAsync(string identifier, CancellationToken cancellationToken)
         {
             var caller = await callerIdentityResolver.GetAsync(cancellationToken);

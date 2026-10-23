@@ -13,12 +13,10 @@ public sealed class FirstPartyClientOptions
     /// <exception cref="InvalidOperationException"><c>Auth:ClientId</c> is missing.</exception>
     public static FirstPartyClientOptions FromConfiguration(IConfiguration configuration)
     {
-        // Without it, the server cannot tell the app from an agent, and each user token is an unknown client.
         var authClientId = configuration["Auth:ClientId"]
             ?? throw new InvalidOperationException("Auth:ClientId configuration is required.");
 
         var clientIds = new HashSet<string>(StringComparer.Ordinal) { authClientId };
-        // An empty value would make a token with an empty client claim first-party.
         if (configuration["Swagger:ClientId"] is { } swaggerClientId && !string.IsNullOrWhiteSpace(swaggerClientId))
             clientIds.Add(swaggerClientId);
 

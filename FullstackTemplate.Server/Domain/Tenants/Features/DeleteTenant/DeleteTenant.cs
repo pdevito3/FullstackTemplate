@@ -19,7 +19,6 @@ public static class DeleteTenant
                 .TagWithOperationCallSite("tenants.delete.load")
                 .GetById(request.Id, cancellationToken);
 
-            // A deleted agent frees its client ID, so the operator can bind a machine client to another tenant.
             var agents = await dbContext.Agents
                 .TagWithOperationCallSite("tenants.delete.load_agents")
                 .Include(a => a.Permissions)

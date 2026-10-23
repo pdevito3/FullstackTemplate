@@ -106,9 +106,6 @@ public class UserinfoAuthenticationTests
         return services.BuildServiceProvider();
     }
 
-    /// <summary>
-    /// The discovery document and a userinfo endpoint that accepts only <c>good-token</c> and <c>agent-token</c>.
-    /// </summary>
     private sealed class FakeIdentityProvider : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

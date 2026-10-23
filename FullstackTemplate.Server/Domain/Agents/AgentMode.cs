@@ -6,7 +6,6 @@ using Exceptions;
 /// <summary>How the server reads a token of the client of an agent. The column holds "delegated" or "machine".</summary>
 public partial class AgentMode : ValueObject
 {
-    // The key in the errors of the problem is the name of the request field
     private const string RequestField = "mode";
 
     /// <summary>The stored values, for a query or an index filter that names the mode.</summary>

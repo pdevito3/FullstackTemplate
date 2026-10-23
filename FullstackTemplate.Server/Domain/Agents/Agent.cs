@@ -55,7 +55,6 @@ public class Agent : BaseEntity, ITenantable
             ClientId = forCreation.ClientId,
             Mode = mode
         };
-        // Set the ID before the grant, because each permission copies the agent ID.
         if (forCreation.Id is not null)
             agent.SetId(forCreation.Id);
 
@@ -110,7 +109,6 @@ public class Agent : BaseEntity, ITenantable
         ValidationException.Must(EntityId.IsValid(agent.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.Name, "name", "Please provide a name.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.ClientId, "clientId", "Please provide a client ID.");
-        // A token never has a client ID with a space at an end, so such an agent could never match a token.
         ValidationException.Must(agent.ClientId == agent.ClientId.Trim(), "clientId",
             "A client ID cannot start or end with a space.");
     }

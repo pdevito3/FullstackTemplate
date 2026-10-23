@@ -83,7 +83,6 @@ public class DeleteAgentCommandTests : TestBase
         (await RowsOfAsync(otherTenantAgent.Id)).Agent.ShouldBeFalse();
     }
 
-    // The deleted flag of the agent row and of each grant row, read past every filter.
     private static Task<(bool Agent, List<bool> Grant)> RowsOfAsync(string agentId)
         => new TestingServiceScope().ExecuteDbContextAsync(async db => (
             await db.Agents.IgnoreQueryFilters().Where(a => a.Id == agentId).Select(a => a.IsDeleted).SingleAsync(),

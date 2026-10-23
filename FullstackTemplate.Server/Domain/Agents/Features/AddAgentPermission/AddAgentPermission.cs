@@ -10,7 +10,6 @@ using Users;
 
 public static class AddAgentPermission
 {
-    // The endpoint sends the permission of AgentPermissionDto, so the rule of the DTO is also on the command
     public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<AgentDto>;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, AgentDto>
@@ -30,7 +29,6 @@ public static class AddAgentPermission
 
             agent.Grant(permission, caller);
 
-            // Explicitly track new permissions (needed due to PropertyAccessMode.Field)
             foreach (var agentPermission in agent.Permissions)
             {
                 if (!existingPermissionIds.Contains(agentPermission.Id))

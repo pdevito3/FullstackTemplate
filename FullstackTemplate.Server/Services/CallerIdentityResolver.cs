@@ -55,9 +55,6 @@ public sealed class CallerIdentityResolver(
     public Task<CallerIdentity> GetAsync(CancellationToken cancellationToken)
         => Resolution(cancellationToken).WaitAsync(cancellationToken);
 
-    // A DI scope serves one caller, but a test can switch the caller of its scope. The facts of the token are the key,
-    // so a new caller gets a new resolution. A resolution that its first reader canceled is not an answer, so the next
-    // read resolves again.
     private Task<CallerIdentity> Resolution(CancellationToken cancellationToken)
     {
         var token = new Token(
@@ -83,7 +80,6 @@ public sealed class CallerIdentityResolver(
         if (!token.IsAuthenticated)
             return new CallerIdentity.Anonymous();
 
-        // A token with no client claim could come from any client of the issuer, so it fails closed.
         if (token.ClientId is not { } clientId)
             return new CallerIdentity.UnknownClient(null);
 

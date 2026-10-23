@@ -114,7 +114,7 @@ public sealed class UserinfoAuthenticationHandler(
                 .Select(p => new Claim(p.Name, p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()! : p.Value.GetRawText()))
                 .ToList();
             // A userinfo response names no client, and in this mode only the client of the app gets tokens from the
-            // issuer. Without a client claim, CallerIdentityResolver would make the user an unknown client.
+            // issuer.
             if (!claims.Any(c => c.Type is "client_id" or "azp" or "applicationId"))
                 claims.Add(new Claim("client_id", Options.ClientId));
             var identity = new ClaimsIdentity(claims, Scheme.Name, Options.NameClaimType, Options.RoleClaimType);

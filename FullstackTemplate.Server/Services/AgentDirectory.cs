@@ -53,8 +53,6 @@ public sealed class AgentDirectory(IServiceScopeFactory scopeFactory) : IAgentDi
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    // The tenant scope reads the result of these lookups, so they ignore the tenant filter, as TenantIdProvider does.
-    // The soft-delete filter still applies to the agents and to the joined tenants.
     private static IQueryable<Agent> LiveAgents(AppDbContext dbContext)
         => dbContext.Agents
             .IgnoreQueryFilters([QueryFilterNames.Tenant])

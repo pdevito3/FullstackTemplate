@@ -70,7 +70,6 @@ public sealed class PermissionGuard(
         return new Caller.DelegatedAgent(agent.ClientId, user.UserPermissions.Select(p => p.Permission), grant);
     }
 
-    // No tracking: a tracked copy would be shared with a handler that loads this user to change it.
     private Task<User?> LoadUserAsync(string identifier, CancellationToken cancellationToken)
         => dbContext.Users
             .TagWithOperationCallSite("users.permission_guard.load")
@@ -78,7 +77,6 @@ public sealed class PermissionGuard(
             .Include(u => u.UserPermissions)
             .FirstOrDefaultAsync(u => u.Identifier == identifier, cancellationToken);
 
-    // Null when the agent or its tenant is deleted. The identity of the scope can be older than this check.
     private async Task<IEnumerable<Permission>?> LoadGrantAsync(string agentId, CancellationToken cancellationToken)
     {
         var agent = await dbContext.Agents

@@ -427,6 +427,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses
 - [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler
 - [ ] Additional DTOs created if needed
+- [ ] Telemetry added with the `feature-telemetry` skill: query tags, id tags on the feature span, a log for each state change, and metrics if support needs a rate
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
 
@@ -439,3 +440,4 @@ These docs give the detailed patterns:
 - `docs/backend/endpoints.md` - HTTP endpoints, gRPC, and MCP
 - `docs/backend/domain-events.md` - Domain events
 - `docs/backend/entity-configurations.md` - EF Core entity configurations
+- `docs/backend/feature-telemetry.md` - Spans, logs, and metrics for production support

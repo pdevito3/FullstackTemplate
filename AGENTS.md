@@ -37,7 +37,7 @@ Read the doc for an area before you change code in that area.
 | Doc | Content |
 |-----|---------|
 | [docs/backend.md](docs/backend.md) | Domain structure, new features, DI, API versioning, error responses, database, tests |
-| [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, endpoints (HTTP, gRPC, MCP), domain events, and EF configurations |
+| [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, endpoints (HTTP, gRPC, MCP), domain events, EF configurations, and feature telemetry |
 | [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |

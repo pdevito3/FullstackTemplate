@@ -19,6 +19,7 @@ The stack must be running. The `aspire-cli` skill tells how to start it. Run eac
 | Failed traces | `dotnet aspire otel traces server --has-error true` |
 | All signals of one request | `dotnet aspire otel logs --trace-id <id>` and `dotnet aspire otel spans --trace-id <id>` |
 | A text or attribute search | `dotnet aspire otel logs --search "<text>"` |
+| All requests of one tenant, user, or agent | `dotnet aspire otel spans server --search <id>`. The `app.caller.*` tags of each feature slice span have the id. |
 | Fields for a script | Add `--format Json` |
 | Console output (stdout) of a resource | `dotnet aspire logs server` |
 
@@ -38,6 +39,8 @@ For a dashboard with no AppHost, such as the standalone `aspire-dashboard` conta
 These spans have a call site: the spans from `Telemetry.Trace` and `Telemetry.TraceRoot`, the events from `Telemetry.AddEvent`, and the Npgsql spans of queries tagged with `TagWithOperationCallSite`. A feature slice span has no call site. Its name (for example `GetUser.Query`) is the feature class.
 
 ## Write telemetry
+
+For a backend feature, use the `feature-telemetry` skill. It tells which signals a feature must emit. This section gives the helper for each signal.
 
 Pick the signal from the question that it answers:
 

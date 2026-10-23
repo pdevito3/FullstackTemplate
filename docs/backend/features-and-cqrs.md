@@ -8,7 +8,7 @@ Each feature is one folder in `Domain/[EntityName]s/Features/`, for example `Fea
 2. Make the request a `sealed record` named `Command` or `Query`.
 3. Make the handler a `sealed class` named `Handler`. Inject services with a primary constructor.
 4. Pass the `CancellationToken` to each async call.
-5. Tag each EF query with `TagWithOperationCallSite`. See [telemetry.md](../telemetry.md).
+5. Tag each EF query with `TagWithOperationCallSite`, and give the feature the telemetry that support needs. See [feature-telemetry.md](feature-telemetry.md).
 6. In a command, put the business logic in the entity. The handler loads the entity, calls an entity method, and calls `SaveChangesAsync`.
 7. In a query, do not change data. Use `AsNoTracking()` for lists.
 8. Return a DTO. Never return an entity.

@@ -1582,6 +1582,7 @@
       "AgentDto": {
         "required": [
           "id",
+          "version",
           "tenantId",
           "name",
           "clientId",
@@ -1592,6 +1593,11 @@
         "properties": {
           "id": {
             "type": "string"
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
           },
           "tenantId": {
             "type": "string"

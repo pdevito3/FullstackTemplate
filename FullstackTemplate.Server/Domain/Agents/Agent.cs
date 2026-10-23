@@ -62,7 +62,7 @@ public class Agent : BaseEntity, ITenantable
         foreach (var permission in forCreation.Permissions)
             agent.AddToGrant(Permission.Of(permission), grantor);
 
-        agent.QueueDomainEvent(new AgentCreated(agent));
+        agent.QueueDomainEvent(new AgentCreated(agent.Id));
 
         return agent;
     }

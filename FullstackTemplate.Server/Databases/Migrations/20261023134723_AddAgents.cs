@@ -26,7 +26,8 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     created_by = table.Column<string>(type: "text", nullable: true),
                     last_modified_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     last_modified_by = table.Column<string>(type: "text", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -50,7 +51,8 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     created_by = table.Column<string>(type: "text", nullable: true),
                     last_modified_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     last_modified_by = table.Column<string>(type: "text", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false)
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {

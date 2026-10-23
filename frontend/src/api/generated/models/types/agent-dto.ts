@@ -5,6 +5,12 @@
 
 export type AgentDto = {
     id: string;
+    /**
+     * @minLength 0
+     * @maxLength 4294967295
+     * @type integer
+    */
+    version: number;
     tenantId: string;
     name: string;
     clientId: string;

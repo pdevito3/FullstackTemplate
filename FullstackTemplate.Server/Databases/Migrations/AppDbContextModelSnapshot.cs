@@ -79,6 +79,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("tenant_id")
                         .UseCollation("C");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Mode", "FullstackTemplate.Server.Domain.Agents.Agent.Mode#AgentMode", b1 =>
                         {
                             b1.IsRequired();
@@ -151,6 +157,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_on");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Agents.AgentPermission.Permission#Permission", b1 =>
                         {

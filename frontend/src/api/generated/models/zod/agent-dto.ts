@@ -7,6 +7,7 @@ import * as z from 'zod'
 
 export const agentDtoSchema = z.object({
   id: z.string(),
+  version: z.int().min(0).max(4294967295),
   tenantId: z.string(),
   name: z.string(),
   clientId: z.string(),

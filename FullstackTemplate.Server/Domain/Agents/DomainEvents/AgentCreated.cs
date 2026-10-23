@@ -1,3 +1,3 @@
 namespace FullstackTemplate.Server.Domain.Agents.DomainEvents;
 
-public sealed record AgentCreated(Agent Agent) : DomainEvent;
+public sealed record AgentCreated(string AgentId) : DomainEvent;

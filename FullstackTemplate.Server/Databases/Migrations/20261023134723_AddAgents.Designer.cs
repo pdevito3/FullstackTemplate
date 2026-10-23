@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FullstackTemplate.Server.Databases.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261023014054_AddAgents")]
+    [Migration("20261023134723_AddAgents")]
     partial class AddAgents
     {
         /// <inheritdoc />
@@ -73,6 +73,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("tenant_id")
                         .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Mode", "FullstackTemplate.Server.Domain.Agents.Agent.Mode#AgentMode", b1 =>
                         {
@@ -138,6 +144,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_on");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Agents.AgentPermission.Permission#Permission", b1 =>
                         {
@@ -214,6 +226,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_tenants");
 
@@ -282,6 +300,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("username");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Email", "FullstackTemplate.Server.Domain.Users.User.Email#EmailAddress", b1 =>
                         {
@@ -355,6 +379,12 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("user_id")
                         .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Permission", "FullstackTemplate.Server.Domain.Users.UserPermission.Permission#Permission", b1 =>
                         {

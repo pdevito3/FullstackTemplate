@@ -20,7 +20,7 @@ public class UserConcurrencyTests : TestBase
             .AddTenant(out _)
             .AddUser(out var user, u => u.Role = "Admin")
             .BuildAsync();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = user.Identifier });
+        FactoryClient.SignInAsAppUser(user.Identifier);
         var first = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(user.Id),
             new FakeUserForUpdateDto().Generate() with { Version = user.Version });
         first.StatusCode.ShouldBe(HttpStatusCode.OK);

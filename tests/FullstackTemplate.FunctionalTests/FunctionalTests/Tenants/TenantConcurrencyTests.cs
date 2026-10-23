@@ -138,7 +138,7 @@ public class TenantConcurrencyTests : TestBase
             .AddTenant(out var tenant)
             .AddUser(out var admin, u => u.Role = "Admin")
             .BuildAsync();
-        FactoryClient.SetFakeBearerToken(new Dictionary<string, object> { ["sub"] = admin.Identifier });
+        FactoryClient.SignInAsAppUser(admin.Identifier);
         return tenant;
     }
 

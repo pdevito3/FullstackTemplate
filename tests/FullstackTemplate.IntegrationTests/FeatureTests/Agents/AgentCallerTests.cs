@@ -10,6 +10,7 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Agent;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 /// <summary>
@@ -35,7 +36,7 @@ public class AgentCallerTests : TestBase
         testingServiceScope.SetDelegatedClient(admin.Identifier, agent.ClientId);
 
         // Act
-        var renamed = await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        var renamed = await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, await NewTenantNameAsync(tenant.Id)));
         var addUser = () => testingServiceScope.SendAsync(new AddUser.Command(new FakeUserForCreationDto().Generate()));
 
         // Assert
@@ -56,9 +57,10 @@ public class AgentCallerTests : TestBase
             .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant])
             .BuildAsync();
         testingServiceScope.SetDelegatedClient(member.Identifier, agent.ClientId);
+        var update = await NewTenantNameAsync(tenant.Id);
 
         // Act
-        var act = () => testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        var act = () => testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, update));
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
@@ -72,11 +74,11 @@ public class AgentCallerTests : TestBase
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _).AddTenant(out _).AddAgent(out var otherAgent).BuildAsync();
         testingServiceScope.SetDelegatedClient(TestFixture.DefaultUser.Identifier, otherAgent.ClientId);
+        var update = await NewTenantNameAsync(TestFixture.DefaultTenant.Id);
 
         // Act
         var tenants = await testingServiceScope.SendAsync(new GetTenantList.Query(AllTenantsPage()));
-        var rename = () => testingServiceScope.SendAsync(
-            new UpdateTenant.Command(TestFixture.DefaultTenant.Id, NewTenantName()));
+        var rename = () => testingServiceScope.SendAsync(new UpdateTenant.Command(TestFixture.DefaultTenant.Id, update));
 
         // Assert
         tenants.ShouldBeEmpty();
@@ -95,7 +97,7 @@ public class AgentCallerTests : TestBase
             .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant])
             .BuildAsync();
         testingServiceScope.SetDelegatedClient(admin.Identifier, agent.ClientId);
-        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, await NewTenantNameAsync(tenant.Id)));
 
         var tenantAdmin = new TestingServiceScope();
         tenantAdmin.SetUserWithDefaults(identifier: admin.Identifier);
@@ -103,9 +105,10 @@ public class AgentCallerTests : TestBase
 
         var nextRequest = new TestingServiceScope();
         nextRequest.SetDelegatedClient(admin.Identifier, agent.ClientId);
+        var update = await NewTenantNameAsync(tenant.Id);
 
         // Act
-        var act = () => nextRequest.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        var act = () => nextRequest.SendAsync(new UpdateTenant.Command(tenant.Id, update));
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(
@@ -175,7 +178,7 @@ public class AgentCallerTests : TestBase
             })
             .BuildAsync();
         testingServiceScope.SetMachineClient(machineAgent.ClientId);
-        var name = NewTenantName();
+        var name = await NewTenantNameAsync(tenant.Id);
 
         // Act
         var renamed = await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, name));
@@ -205,10 +208,11 @@ public class AgentCallerTests : TestBase
 
         var nextRequest = new TestingServiceScope();
         nextRequest.SetMachineClient(machineAgent.ClientId);
+        var update = await NewTenantNameAsync(tenant.Id);
 
         // Act
         var tenants = await nextRequest.SendAsync(new GetTenantList.Query(AllTenantsPage()));
-        var rename = () => nextRequest.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        var rename = () => nextRequest.SendAsync(new UpdateTenant.Command(tenant.Id, update));
 
         // Assert
         tenants.ShouldBeEmpty();
@@ -229,20 +233,29 @@ public class AgentCallerTests : TestBase
             })
             .BuildAsync();
         testingServiceScope.SetMachineClient(machineAgent.ClientId);
-        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, await NewTenantNameAsync(tenant.Id)));
 
         var operatorScope = new TestingServiceScope();
         operatorScope.SetMachineClient(TestFixture.TrustedMachineClientId);
         await operatorScope.SendAsync(new DeleteAgent.Command(machineAgent.Id));
+        var update = await NewTenantNameAsync(tenant.Id);
 
         // Act
-        var act = () => testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        var act = () => testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, update));
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(UnknownClientDenial);
     }
 
-    private static TenantForUpdateDto NewTenantName() => new() { Name = new FakeTenantForCreationDto().Generate().Name };
+    private static async Task<TenantForUpdateDto> NewTenantNameAsync(string tenantId)
+    {
+        var version = await new TestingServiceScope().ExecuteDbContextAsync(db => db.Tenants
+            .IgnoreQueryFilters()
+            .Where(t => t.Id == tenantId)
+            .Select(t => t.Version)
+            .SingleAsync());
+        return new TenantForUpdateDto { Name = new FakeTenantForCreationDto().Generate().Name, Version = version };
+    }
 
     private static TenantParametersDto AllTenantsPage() => TenantParametersDto.From(null, 500, null, null);
 }

@@ -28,7 +28,7 @@ public class AgentAuditTests : TestBase
         testingServiceScope.SetDelegatedClient(admin.Identifier, agent.ClientId);
 
         // Act
-        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, await NewTenantNameAsync(tenant.Id)));
 
         // Assert
         (await LastModifiedOfAsync(tenant.Id)).ShouldBe((admin.Identifier, agent.ClientId));
@@ -51,7 +51,7 @@ public class AgentAuditTests : TestBase
         testingServiceScope.SetMachineClient(machineAgent.ClientId, serviceAccount);
 
         // Act
-        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, await NewTenantNameAsync(tenant.Id)));
 
         // Assert
         (await LastModifiedOfAsync(tenant.Id)).ShouldBe((serviceAccount, machineAgent.ClientId));
@@ -69,13 +69,21 @@ public class AgentAuditTests : TestBase
         testingServiceScope.SetUserWithDefaults(identifier: admin.Identifier);
 
         // Act
-        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, NewTenantName()));
+        await testingServiceScope.SendAsync(new UpdateTenant.Command(tenant.Id, await NewTenantNameAsync(tenant.Id)));
 
         // Assert
         (await LastModifiedOfAsync(tenant.Id)).ShouldBe((admin.Identifier, TestFixture.FirstPartyClientId));
     }
 
-    private static TenantForUpdateDto NewTenantName() => new() { Name = new FakeTenantForCreationDto().Generate().Name };
+    private static async Task<TenantForUpdateDto> NewTenantNameAsync(string tenantId)
+    {
+        var version = await new TestingServiceScope().ExecuteDbContextAsync(db => db.Tenants
+            .IgnoreQueryFilters()
+            .Where(t => t.Id == tenantId)
+            .Select(t => t.Version)
+            .SingleAsync());
+        return new TenantForUpdateDto { Name = new FakeTenantForCreationDto().Generate().Name, Version = version };
+    }
 
     private static async Task<(string? By, string? ByClient)> LastModifiedOfAsync(string tenantId)
     {

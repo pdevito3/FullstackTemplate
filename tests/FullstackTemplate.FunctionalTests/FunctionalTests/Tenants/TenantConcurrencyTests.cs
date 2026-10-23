@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
@@ -69,6 +70,28 @@ public class TenantConcurrencyTests : TestBase
         problem.Detail.ShouldBe(StaleDetail);
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("version");
         (await GetTenantAsync(tenant.Id)).Name.ShouldBe(name);
+    }
+
+    [Test]
+    public async Task put_with_a_stale_version_and_a_taken_name_is_a_stale_version_problem()
+    {
+        // Arrange
+        var tenant = await AddTenantAndSignInAsAdminAsync();
+        var other = Tenant.Create(new FakeTenantForCreation().Generate());
+        await InsertAsync(other);
+        var loaded = await GetTenantAsync(tenant.Id);
+        (await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id),
+            new { name = NewName(), version = loaded.Version })).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Tenants.Put(tenant.Id),
+            new { name = other.Name, version = loaded.Version });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("version");
     }
 
     [Test]

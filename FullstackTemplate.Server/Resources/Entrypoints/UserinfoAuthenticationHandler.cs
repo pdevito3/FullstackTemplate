@@ -16,6 +16,9 @@ public sealed class UserinfoAuthenticationOptions : AuthenticationSchemeOptions
 {
     public string Authority { get; set; } = "";
 
+    /// <summary><c>Auth:ClientId</c>, the client of the app.</summary>
+    public string ClientId { get; set; } = "";
+
     public string NameClaimType { get; set; } = "name";
 
     public string RoleClaimType { get; set; } = "role";
@@ -108,7 +111,12 @@ public sealed class UserinfoAuthenticationHandler(
             using var userinfo = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Context.RequestAborted));
             var claims = userinfo.RootElement.EnumerateObject()
                 .Where(p => p.Value.ValueKind is not (JsonValueKind.Object or JsonValueKind.Array or JsonValueKind.Null))
-                .Select(p => new Claim(p.Name, p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()! : p.Value.GetRawText()));
+                .Select(p => new Claim(p.Name, p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()! : p.Value.GetRawText()))
+                .ToList();
+            // A userinfo response names no client, and in this mode only the client of the app gets tokens from the
+            // issuer. Without a client claim, CallerIdentityResolver would make the user an unknown client.
+            if (!claims.Any(c => c.Type is "client_id" or "azp" or "applicationId"))
+                claims.Add(new Claim("client_id", Options.ClientId));
             var identity = new ClaimsIdentity(claims, Scheme.Name, Options.NameClaimType, Options.RoleClaimType);
             return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
         }

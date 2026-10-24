@@ -1,0 +1,96 @@
+namespace FullstackTemplate.UnitTests.Databases.Auditing;
+
+using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Databases.Auditing;
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.AuditEntries;
+using Shouldly;
+
+public class AuditSensitivityTests
+{
+    [Test]
+    public void each_recorded_value_of_an_entity_and_each_property_of_an_action_is_classified()
+    {
+        // Arrange
+        using var context = new AppDbContextFactory().CreateDbContext([]);
+        var vocabulary = AuditModel.Of(context.Model).Vocabulary;
+
+        // Act
+        var unclassified = vocabulary.EntityTypes
+            .Concat(vocabulary.Actions)
+            .SelectMany(known => known.Value
+                .Where(value => value.Value == Sensitivity.Unclassified)
+                .Select(value => $"{known.Key}.{value.Key}"))
+            .ToList();
+
+        // Assert
+        unclassified.ShouldBeEmpty(
+            "The audit log hides an unclassified value from each reader without read_audit_log_sensitive. Mark the property [Sensitive] or [NotSensitive].");
+    }
+
+    [Test]
+    [Arguments(nameof(Values.Text), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.Structure), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.BothMarks), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.SensitiveNumber), nameof(Sensitivity.Sensitive))]
+    [Arguments(nameof(Values.NotSensitiveText), nameof(Sensitivity.NotSensitive))]
+    [Arguments(nameof(Values.Number), nameof(Sensitivity.NotSensitive))]
+    [Arguments(nameof(Values.Moment), nameof(Sensitivity.NotSensitive))]
+    [Arguments(nameof(Values.Format), nameof(Sensitivity.NotSensitive))]
+    public void mark_decides_and_with_no_mark_only_a_plain_value_is_not_sensitive(string property, string expected)
+    {
+        // Arrange
+        var member = typeof(Values).GetProperty(property)!;
+
+        // Act
+        var sensitivity = AuditSensitivity.Of(member, member.PropertyType);
+
+        // Assert
+        sensitivity.ShouldBe(Enum.Parse<Sensitivity>(expected));
+    }
+
+    [Test]
+    public void action_type_that_shares_a_name_with_another_is_refused()
+    {
+        // Act
+        var act = () => AuditVocabulary.Of(
+            new Dictionary<Microsoft.EntityFrameworkCore.Metadata.IEntityType, IReadOnlyList<AuditedValue>>(),
+            [typeof(UsersExported), typeof(UsersExportedAgain)]);
+
+        // Assert
+        act.ShouldThrow<InvalidOperationException>().Message
+            .ShouldBe("UsersExported and UsersExportedAgain have the audit action name 'users_exported'. Give each action a name of its own.");
+    }
+
+    [Test]
+    public void stored_properties_of_an_action_are_known_and_its_subject_is_not()
+    {
+        // Act
+        var action = AuditVocabulary.Of(
+            new Dictionary<Microsoft.EntityFrameworkCore.Metadata.IEntityType, IReadOnlyList<AuditedValue>>(),
+            [typeof(UsersExported)]).Actions["users_exported"];
+
+        // Assert
+        action.ShouldBe(new Dictionary<string, Sensitivity>
+        {
+            ["Format"] = Sensitivity.NotSensitive,
+            ["Count"] = Sensitivity.NotSensitive,
+            ["Reason"] = Sensitivity.Sensitive,
+        }, ignoreOrder: true);
+    }
+
+    private sealed class Values
+    {
+        public string Text { get; init; } = "";
+        public Values? Structure { get; init; }
+        [Sensitive, NotSensitive] public string BothMarks { get; init; } = "";
+        [Sensitive] public int SensitiveNumber { get; init; }
+        [NotSensitive] public string NotSensitiveText { get; init; } = "";
+        public long? Number { get; init; }
+        public DateTimeOffset Moment { get; init; }
+        public ExportFormat Format { get; init; }
+    }
+
+    [AuditActionName("users_exported")]
+    private sealed record UsersExportedAgain(AuditSubject Subject) : AuditAction(Subject);
+}

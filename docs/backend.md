@@ -148,6 +148,8 @@ A command checks a permission in its handler with `IPermissionGuard` (see [featu
 | `manage_user_access` | `UpdateUserRole`, `AddUserPermission`, `RemoveUserPermission` |
 | `manage_tenant` | `UpdateTenant`, `DeleteTenant` |
 | `manage_agents` | `AddAgent`, `DeleteAgent`, `AddAgentPermission`, `RemoveAgentPermission` |
+| `read_audit_log` | `GetAuditEntryPage` |
+| `read_audit_log_sensitive` | None. `GetAuditEntryPage` shows the sensitive values of the audit log only to a caller with it. |
 
 The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.
 

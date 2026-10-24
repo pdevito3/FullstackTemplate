@@ -20,13 +20,13 @@ public class Agent : BaseEntity, ITenantable
 {
     public const string IdPrefix = "agt";
 
-    public string TenantId { get; private set; } = default!;
-    public string Name { get; private set; } = default!;
+    [NotSensitive] public string TenantId { get; private set; } = default!;
+    [NotSensitive] public string Name { get; private set; } = default!;
 
     /// <summary>The client ID in the tokens of the client. Case-sensitive.</summary>
-    public string ClientId { get; private set; } = default!;
+    [NotSensitive] public string ClientId { get; private set; } = default!;
 
-    public AgentMode Mode { get; private set; } = default!;
+    [NotSensitive] public AgentMode Mode { get; private set; } = default!;
 
     private readonly List<AgentPermission> _permissions = [];
 

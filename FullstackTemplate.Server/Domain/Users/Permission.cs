@@ -37,6 +37,8 @@ public partial class Permission : ValueObject
     public static Permission ManageUserAccess() => new(PermissionEnum.ManageUserAccess.Name);
     public static Permission ManageTenant() => new(PermissionEnum.ManageTenant.Name);
     public static Permission ManageAgents() => new(PermissionEnum.ManageAgents.Name);
+    public static Permission ReadAuditLog() => new(PermissionEnum.ReadAuditLog.Name);
+    public static Permission ReadAuditLogSensitive() => new(PermissionEnum.ReadAuditLogSensitive.Name);
 
     protected Permission() { } // EF Core
 
@@ -50,6 +52,8 @@ public partial class Permission : ValueObject
         public const string ManageUserAccess = "manage_user_access";
         public const string ManageTenant = "manage_tenant";
         public const string ManageAgents = "manage_agents";
+        public const string ReadAuditLog = "read_audit_log";
+        public const string ReadAuditLogSensitive = "read_audit_log_sensitive";
     }
 
     private sealed class PermissionEnum(string name, int value) : SmartEnum<PermissionEnum>(name, value)
@@ -58,5 +62,7 @@ public partial class Permission : ValueObject
         public static readonly PermissionEnum ManageUserAccess = new(Names.ManageUserAccess, 1);
         public static readonly PermissionEnum ManageTenant = new(Names.ManageTenant, 2);
         public static readonly PermissionEnum ManageAgents = new(Names.ManageAgents, 3);
+        public static readonly PermissionEnum ReadAuditLog = new(Names.ReadAuditLog, 4);
+        public static readonly PermissionEnum ReadAuditLogSensitive = new(Names.ReadAuditLogSensitive, 5);
     }
 }

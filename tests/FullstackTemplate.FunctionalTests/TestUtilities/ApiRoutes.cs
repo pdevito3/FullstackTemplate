@@ -29,6 +29,11 @@ public static class ApiRoutes
         public static string Delete(string id) => $"{Base}/tenants/{id}";
     }
 
+    public static class AuditEntries
+    {
+        public static string GetPage(string entityId) => $"{Base}/audit-entries?entityId={Uri.EscapeDataString(entityId)}";
+    }
+
     public static class Weather
     {
         public static string Get => $"{Base}/weather";

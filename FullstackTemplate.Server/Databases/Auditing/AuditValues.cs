@@ -13,6 +13,9 @@ using Domain.AuditEntries;
 /// A <see cref="AuditEntryKind.Created"/> change has no "old". An action is its properties, for example
 /// <c>{"Format":"Csv","Count":3}</c>.
 /// </summary>
+/// <summary>One stored value as display text. <c>Old</c> is null for a created value and for a property of an action.</summary>
+internal readonly record struct StoredValue(string Name, string? Old, string? New);
+
 internal static class AuditValues
 {
     // An enum is stored by name, so a reorder of its members does not change the meaning of stored entries.
@@ -49,6 +52,26 @@ internal static class AuditValues
 
         return Encoding.UTF8.GetString(buffer.WrittenSpan);
     }
+
+    /// <summary>Each value of a stored entry as display text: a string as it is, and other JSON as its JSON text.</summary>
+    public static IReadOnlyList<StoredValue> Read(AuditEntryKind kind, string data)
+    {
+        using var document = JsonDocument.Parse(data);
+        return document.RootElement.EnumerateObject()
+            .Select(property => kind == AuditEntryKind.Action
+                ? new StoredValue(property.Name, Old: null, Display(property.Value))
+                : new StoredValue(property.Name,
+                    property.Value.TryGetProperty("old", out var old) ? Display(old) : null,
+                    Display(property.Value.GetProperty("new"))))
+            .ToList();
+    }
+
+    private static string? Display(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Null => null,
+        JsonValueKind.String => value.GetString(),
+        _ => value.GetRawText(),
+    };
 
     private static void WriteValue(Utf8JsonWriter writer, string path, object? value)
     {

@@ -1,6 +1,8 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
+using System.Reflection;
 using Domain;
+using Domain.AuditEntries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -9,7 +11,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 /// property, or null. <c>IsRecorded</c> is false for the key and the <see cref="BaseEntity"/> bookkeeping (the stamps
 /// and <c>IsDeleted</c>).
 /// </summary>
-internal sealed record AuditedValue(string Path, IProperty Property, IComplexProperty? Complex, bool IsRecorded);
+internal sealed record AuditedValue(
+    string Path, IProperty Property, IComplexProperty? Complex, bool IsRecorded, Sensitivity Sensitivity);
 
 /// <summary>
 /// What the audit log knows about the EF model of the context. It derives everything from the model, so a new
@@ -36,7 +39,12 @@ internal sealed class AuditModel
             _values[entityType] = ValuesOfType(entityType);
             _ownerKeys[entityType] = OwnerKeyOfType(entityType);
         }
+
+        Vocabulary = AuditVocabulary.Of(_values, typeof(AuditAction).Assembly.GetTypes());
     }
+
+    /// <summary>The sensitivity of each value that the code of today can find in an audit entry.</summary>
+    public AuditVocabulary Vocabulary { get; }
 
     public static AuditModel Of(IModel model)
         => model.GetOrAddRuntimeAnnotationValue(AnnotationName, static m => new AuditModel(m!), model);
@@ -54,7 +62,10 @@ internal sealed class AuditModel
     {
         var values = entityType.GetProperties()
             .Where(p => !IsStoreGenerated(p))
-            .Select(p => new AuditedValue(p.Name, p, null, IsRecorded: !p.IsPrimaryKey() && !Bookkeeping.Contains(p.Name)))
+            .Select(p => new AuditedValue(p.Name, p, null,
+                IsRecorded: !p.IsPrimaryKey() && !Bookkeeping.Contains(p.Name),
+                AuditSensitivity.Of(p.PropertyInfo ?? (MemberInfo?)p.FieldInfo,
+                    p.GetTypeMapping().Converter?.ProviderClrType ?? p.ClrType)))
             .ToList();
 
         foreach (var complex in entityType.GetComplexProperties())
@@ -64,8 +75,10 @@ internal sealed class AuditModel
                     $"The audit log cannot read {entityType.ClrType.Name}.{complex.Name}. It reads only a complex property with plain values, not a collection or a nested complex property.");
 
             var properties = complex.ComplexType.GetProperties().ToList();
+            var sensitivity = AuditSensitivity.Of(complex.PropertyInfo ?? (MemberInfo?)complex.FieldInfo, complex.ClrType);
             values.AddRange(properties.Select(p => new AuditedValue(
-                properties.Count == 1 ? complex.Name : $"{complex.Name}.{p.Name}", p, complex, IsRecorded: true)));
+                properties.Count == 1 ? complex.Name : $"{complex.Name}.{p.Name}", p, complex, IsRecorded: true,
+                sensitivity)));
         }
 
         return values;

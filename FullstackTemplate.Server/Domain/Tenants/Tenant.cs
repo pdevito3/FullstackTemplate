@@ -7,7 +7,7 @@ public class Tenant : BaseEntity
 {
     public const string IdPrefix = "ten";
 
-    public string Name { get; private set; } = default!;
+    [NotSensitive] public string Name { get; private set; } = default!;
 
     public static Tenant Create(TenantForCreation tenantForCreation)
     {

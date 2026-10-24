@@ -342,7 +342,7 @@ public class PermissionGuardTests : TestBase
         var updated = await scope.SendAsync(new RemoveUserPermission.Command(admin.Id, "manage_user_access"));
 
         // Assert
-        updated.Permissions.ShouldBe(["manage_users", "manage_tenant", "manage_agents"], ignoreOrder: true);
+        updated.Permissions.ShouldBe(Permission.ListNames().Except(["manage_user_access"]), ignoreOrder: true);
     }
 
     [Test]

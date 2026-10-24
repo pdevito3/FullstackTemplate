@@ -1,7 +1,10 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Diagnostics;
+using Auditing;
 using Domain;
 using Domain.Agents;
+using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +26,13 @@ public class AppDbContext(
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     public DbSet<Agent> Agents => Set<Agent>();
     public DbSet<AgentPermission> AgentPermissions => Set<AgentPermission>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     #endregion
 
     private TenantScope? _tenantScope;
     private TenantScope? _domainEventTenantScope;
     private SaveStage _saveStage = SaveStage.Idle;
+    private string? _requestName;
 
     /// <summary>
     /// The tenants whose rows the current caller can see. The tenant query filter reads it for each query.
@@ -47,6 +52,17 @@ public class AppDbContext(
     /// DI scope, for example a test that changes the current user after a query.
     /// </summary>
     public void RefreshTenantScope() => _tenantScope = null;
+
+    /// <summary>
+    /// Names the MediatR request whose saves this context writes, until the result is disposed. The outermost request
+    /// wins: a nested Send shares this context and its saves, so it keeps the outer name.
+    /// </summary>
+    internal IDisposable EnterRequest(string requestName)
+    {
+        var outerRequestName = _requestName;
+        _requestName ??= requestName;
+        return new RequestNameRestorer(this, outerRequestName);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,10 +124,11 @@ public class AppDbContext(
         await RunDomainEventHandlers(cancellationToken);
 
         _saveStage = SaveStage.Saving;
-        UpdateAuditFields();
+        var auditEntryCount = PrepareWrite();
         try
         {
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            // The audit entries are in the tracker before the execution strategy runs, so a retry sends the same rows.
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken) - auditEntryCount;
         }
         catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {
@@ -172,11 +189,53 @@ public class AppDbContext(
         }
     }
 
-    private void UpdateAuditFields()
+    /// <summary>
+    /// The steps before the write. It touches the owners of changed children, stamps the entities, turns deletes into
+    /// soft deletes, and adds the audit entries of the changes to the tracker. Returns the number of audit entries.
+    /// </summary>
+    private int PrepareWrite()
     {
-        GuardOwnerVersionsOfChangedChildren();
+        // Entities that code removed from a collection become Deleted here.
+        ChangeTracker.DetectChanges();
+        RefuseAuditEntriesNotFromCapture();
+
+        var auditModel = AuditModel.Of(Model);
+        var aggregates = TrackedAggregates.Index(ChangeTracker, auditModel);
+        TouchOwnersOfChangedChildren(aggregates);
 
         var now = timeProvider.GetUtcNow();
+        StampEntities(now);
+
+        var save = SaveFacts.From(now, currentUserService.UserIdentifier, currentUserService.ClientId, _requestName,
+            Activity.Current?.TraceId.ToHexString());
+        var auditEntries = AuditDiff.Compose(save, AuditDiff.Changes(AuditSnapshots.Take(aggregates, auditModel)));
+        Set<AuditEntry>().AddRange(auditEntries);
+        return auditEntries.Count;
+    }
+
+    private void RefuseAuditEntriesNotFromCapture()
+    {
+        if (ChangeTracker.Entries<AuditEntry>().Any(e => e.State != EntityState.Unchanged))
+            throw new InvalidOperationException(
+                "Only the save writes audit entries. Do not add, change, or remove an AuditEntry.");
+    }
+
+    // A changed child marks its Unchanged owner modified, so the owner row is written and its xmin changes (ADR 0008).
+    private static void TouchOwnersOfChangedChildren(TrackedAggregates aggregates)
+    {
+        var changed = new Queue<EntityEntry<BaseEntity>>(aggregates.Changed);
+        while (changed.TryDequeue(out var child))
+        {
+            if (aggregates.OwnerOf(child) is not { State: EntityState.Unchanged } owner)
+                continue;
+
+            owner.Property(e => e.LastModifiedOn).IsModified = true;
+            changed.Enqueue(owner);
+        }
+    }
+
+    private void StampEntities(DateTimeOffset now)
+    {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             switch (entry.State)
@@ -199,33 +258,9 @@ public class AppDbContext(
         }
     }
 
-    private void GuardOwnerVersionsOfChangedChildren()
+    private sealed class RequestNameRestorer(AppDbContext context, string? outerRequestName) : IDisposable
     {
-        var entries = ChangeTracker.Entries<BaseEntity>().ToList();
-        var changed = new Queue<EntityEntry<BaseEntity>>(entries.Where(e =>
-            e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted));
-
-        while (changed.TryDequeue(out var child))
-        {
-            foreach (var ownership in child.Metadata.GetForeignKeys().Where(fk =>
-                         fk.DeleteBehavior == DeleteBehavior.Cascade
-                         && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity))))
-            {
-                var ownerIdProperty = child.Property(ownership.Properties.Single().Name);
-                var ownerId = child.State == EntityState.Deleted
-                    ? ownerIdProperty.OriginalValue
-                    : ownerIdProperty.CurrentValue;
-                var owner = entries.SingleOrDefault(e =>
-                                e.Metadata == ownership.PrincipalEntityType && Equals(e.Entity.Id, ownerId))
-                            ?? throw new InvalidOperationException(
-                                $"A {child.Metadata.ClrType.Name} changed, but its {ownership.PrincipalEntityType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownership.PrincipalEntityType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
-                if (owner.State != EntityState.Unchanged)
-                    continue;
-
-                owner.Property(e => e.LastModifiedOn).IsModified = true;
-                changed.Enqueue(owner);
-            }
-        }
+        public void Dispose() => context._requestName = outerRequestName;
     }
 
     private enum SaveStage

@@ -35,6 +35,8 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
             cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
             cfg.AddOpenBehavior(typeof(CallerIdentityBehavior<,>));
+            // Innermost behavior, next to the handler whose saves it names.
+            cfg.AddOpenBehavior(typeof(AuditRequestBehavior<,>));
         });
 
         builder.Services.AddSingleton<TenantLookupInterceptor>();

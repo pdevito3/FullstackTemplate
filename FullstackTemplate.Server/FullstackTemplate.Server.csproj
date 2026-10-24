@@ -21,6 +21,10 @@
     <OpenApiGenerateDocuments Condition="'$(Configuration)' != 'Debug'">false</OpenApiGenerateDocuments>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FullstackTemplate.UnitTests" />
+  </ItemGroup>
+
   <!-- The gRPC contract of each domain and version lives in its Grpc/v{n} folder. The functional tests generate the client. -->
   <ItemGroup>
     <Protobuf Include="Domain/**/Grpc/v*/*.proto" GrpcServices="Server" />

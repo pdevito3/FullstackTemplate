@@ -184,6 +184,107 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.ToTable("agent_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.AuditEntries.AuditEntry", b =>
+                {
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("Action")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("ActorClient")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("actor_client");
+
+                    b.Property<string>("ActorUser")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("actor_user");
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("data");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("RequestName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("request_name");
+
+                    b.Property<string>("RootId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("root_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("RootType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("root_type");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character(32)")
+                        .HasColumnName("trace_id")
+                        .IsFixedLength();
+
+                    b.HasKey("OccurredAt", "RecordId", "Ordinal")
+                        .HasName("pk_audit_entries");
+
+                    b.HasIndex("RootId", "OccurredAt", "RecordId", "Ordinal")
+                        .IsDescending(false, true, true, true)
+                        .HasDatabaseName("ix_audit_entries_root_id_occurred_at_record_id_ordinal");
+
+                    b.HasIndex("TenantId", "OccurredAt", "RecordId", "Ordinal")
+                        .IsDescending(false, true, true, true)
+                        .HasDatabaseName("ix_audit_entries_tenant_id_occurred_at_record_id_ordinal");
+
+                    b.ToTable("audit_entries", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_audit_entries_action_names_an_action", "(kind = 'Action') = (action IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.DPoPProofs.UsedDPoPProof", b =>
                 {
                     b.Property<string>("Id")
@@ -455,12 +556,14 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.AgentPermission", b =>
                 {
-                    b.HasOne("FullstackTemplate.Server.Domain.Agents.Agent", null)
+                    b.HasOne("FullstackTemplate.Server.Domain.Agents.Agent", "Agent")
                         .WithMany("Permissions")
                         .HasForeignKey("AgentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_agent_permissions_agents_agent_id");
+
+                    b.Navigation("Agent");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>
@@ -475,12 +578,14 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.UserPermission", b =>
                 {
-                    b.HasOne("FullstackTemplate.Server.Domain.Users.User", null)
+                    b.HasOne("FullstackTemplate.Server.Domain.Users.User", "User")
                         .WithMany("UserPermissions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_permissions_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>

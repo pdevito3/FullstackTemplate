@@ -1,6 +1,8 @@
 namespace FullstackTemplate.UnitTests.Databases;
 
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Databases.Auditing;
+using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -18,6 +20,22 @@ public sealed class AppDbContextSaveTests
         var exception = Should.Throw<NotSupportedException>(() => dbContext.SaveChanges());
 
         exception.Message.ShouldContain("SaveChangesAsync");
+    }
+
+    [Test]
+    public async Task save_refuses_an_audit_entry_that_code_added()
+    {
+        // Arrange
+        await using var dbContext = CreateContext();
+        var save = SaveFacts.From(DateTimeOffset.UtcNow, "sub-1", "spa", requestName: null, traceId: null);
+        var subject = new AuditSubject("User", "usr_1", "User", "usr_1", "ten_1");
+        dbContext.AuditEntries.Add(new AuditEntry(save, 0, subject, AuditEntryKind.Deleted, action: null, "{}"));
+
+        // Act
+        var act = () => dbContext.SaveChangesAsync();
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("Only the save writes audit entries");
     }
 
     [Test]

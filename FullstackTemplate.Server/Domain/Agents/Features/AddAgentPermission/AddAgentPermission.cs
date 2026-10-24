@@ -25,7 +25,7 @@ public static class AddAgentPermission
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageAgents());
             var permission = Permission.Of(request.Permission);
-            Activity.Current?.SetTag("app.permission", permission.Value);
+            Activity.Current?.SetTag("app.permission.name", permission.Value);
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.add_permission.load")

@@ -211,7 +211,7 @@ public class AppDbContext(
             var version = await Database.CreateExecutionStrategy().ExecuteInTransactionAsync(
                 ct => PostgresCopy.WriteAsync(Database, tables, ct),
                 // After a lost acknowledgment of the commit, the audit entries tell whether it committed.
-                ct => AuditEntries
+                verifySucceeded: ct => AuditEntries
                     .TagWithOperationCallSite("audit_entries.bulk_insert_committed")
                     .IgnoreQueryFilters([QueryFilterNames.Tenant])
                     .AnyAsync(e => e.OccurredAt == occurredAt && e.RecordId == recordId, ct),

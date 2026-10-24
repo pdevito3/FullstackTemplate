@@ -46,18 +46,15 @@ public static class BaseEntityConventions
         });
 
     /// <summary>Postgres has the <c>xmin</c> system column on each table, so the migration has no DDL.</summary>
-    public static void MapVersionToXmin(this ModelBuilder modelBuilder)
-    {
-        foreach (var mutableEntityType in modelBuilder.Model.GetEntityTypes()
-                     .Where(m => m.ClrType.IsAssignableTo(typeof(BaseEntity))))
+    public static void MapVersionToXmin(this ModelConfigurationBuilder configurationBuilder)
+        => configurationBuilder.ConfigureEachEntity(entityType =>
         {
-            modelBuilder.Entity(mutableEntityType.ClrType)
-                .Property(nameof(BaseEntity.Version))
-                .HasColumnName("xmin")
-                .HasColumnType("xid")
-                .IsRowVersion();
-        }
-    }
+            var versionProperty = entityType.FindProperty(nameof(BaseEntity.Version))!;
+            versionProperty.SetColumnName("xmin");
+            versionProperty.SetColumnType("xid");
+            versionProperty.SetIsConcurrencyToken(true);
+            versionProperty.SetValueGenerated(ValueGenerated.OnAddOrUpdate);
+        });
 
     private static void ConfigureEachEntity(this ModelConfigurationBuilder configurationBuilder,
         Action<IConventionEntityType> configure)

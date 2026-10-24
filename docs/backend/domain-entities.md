@@ -12,7 +12,7 @@ A domain entity holds its data and its business rules. Code outside the entity c
 6. Keep collections private. Expose an `IReadOnlyCollection<T>`, and change it only with entity methods.
 7. Use a value object for a domain concept, such as an email or a role. Do not use a bare `string`.
 8. In a method that applies the fields of an edit form, call `GuardVersion` first. See [Versions](#versions).
-9. Give each text or structured property `[Sensitive]` or `[NotSensitive]`. The audit log shows a sensitive value only to a reader with `read_audit_log_sensitive`. See [audit-log.md](audit-log.md#rules).
+9. Give each property `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. The audit log shows a sensitive value only to a reader with `read_audit_log_sensitive`. See [audit-log.md](audit-log.md#rules).
 
 ## IDs
 

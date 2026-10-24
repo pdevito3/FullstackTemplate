@@ -32,21 +32,42 @@ public class AuditSensitivityTests
     [Arguments(nameof(Values.Text), nameof(Sensitivity.Unclassified))]
     [Arguments(nameof(Values.Structure), nameof(Sensitivity.Unclassified))]
     [Arguments(nameof(Values.BothMarks), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.BirthDate), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.Salary), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.Moment), nameof(Sensitivity.Unclassified))]
+    [Arguments(nameof(Values.Score), nameof(Sensitivity.Unclassified))]
     [Arguments(nameof(Values.SensitiveNumber), nameof(Sensitivity.Sensitive))]
     [Arguments(nameof(Values.NotSensitiveText), nameof(Sensitivity.NotSensitive))]
     [Arguments(nameof(Values.Number), nameof(Sensitivity.NotSensitive))]
-    [Arguments(nameof(Values.Moment), nameof(Sensitivity.NotSensitive))]
+    [Arguments(nameof(Values.Flag), nameof(Sensitivity.NotSensitive))]
+    [Arguments(nameof(Values.Key), nameof(Sensitivity.NotSensitive))]
     [Arguments(nameof(Values.Format), nameof(Sensitivity.NotSensitive))]
-    public void mark_decides_and_with_no_mark_only_a_plain_value_is_not_sensitive(string property, string expected)
+    public void mark_decides_and_with_no_mark_only_a_flag_an_enum_a_guid_or_an_integer_is_not_sensitive(string property,
+        string expected)
     {
         // Arrange
         var member = typeof(Values).GetProperty(property)!;
 
         // Act
-        var sensitivity = AuditSensitivity.Of(member, member.PropertyType);
+        var sensitivity = AuditSensitivity.Of(member, member.PropertyType, isForeignKey: false);
 
         // Assert
         sensitivity.ShouldBe(Enum.Parse<Sensitivity>(expected));
+    }
+
+    [Test]
+    public void foreign_key_with_no_mark_is_not_sensitive_and_a_mark_still_decides()
+    {
+        // Arrange
+        var text = typeof(Values).GetProperty(nameof(Values.Text))!;
+        var bothMarks = typeof(Values).GetProperty(nameof(Values.BothMarks))!;
+
+        // Act
+        var unmarked = AuditSensitivity.Of(text, typeof(string), isForeignKey: true);
+        var marked = AuditSensitivity.Of(bothMarks, typeof(string), isForeignKey: true);
+
+        // Assert
+        (unmarked, marked).ShouldBe((Sensitivity.NotSensitive, Sensitivity.Unclassified));
     }
 
     [Test]
@@ -87,7 +108,12 @@ public class AuditSensitivityTests
         [Sensitive] public int SensitiveNumber { get; init; }
         [NotSensitive] public string NotSensitiveText { get; init; } = "";
         public long? Number { get; init; }
+        public bool Flag { get; init; }
+        public Guid Key { get; init; }
+        public DateOnly? BirthDate { get; init; }
+        public decimal Salary { get; init; }
         public DateTimeOffset Moment { get; init; }
+        public double Score { get; init; }
         public ExportFormat Format { get; init; }
     }
 

@@ -31,7 +31,7 @@ The key is `(occurred_at, record_id, ordinal)`. One index serves the history of 
 ## Rules
 
 1. Write an audited table only through `SaveChangesAsync` or `BulkInsertAsync`. For a change of many rows, load the entities, change them, and save. See [Writes that skip the save](#writes-that-skip-the-save).
-2. Give each text or structured property of an entity `[Sensitive]` or `[NotSensitive]`. A value object is structured, so it needs a mark. A plain value (a number, a flag, a date, a time, a `Guid`, or an enum) needs no mark. `AuditSensitivityTests` fails on a value with no mark or with both marks.
+2. Give each property of an entity `[Sensitive]` or `[NotSensitive]`. Only a plain value (a `bool`, an enum, a `Guid`, or an integer) and a foreign key need no mark. Text, a date, a time, a `decimal`, a `double`, and a value object need a mark, because each can hold personal data, such as a birth date or a salary. `AuditSensitivityTests` fails on a value with no mark or with both marks.
 3. Use `[Sensitive]` for personal or secret data, such as a name, an email address, or free text. Use `[NotSensitive]` for an ID or a name from a fixed set.
 4. Map each value object with `ComplexProperty`, not `OwnsOne`. A complex property can hold only simple properties, not a collection and not another complex property.
 5. Give each aggregate root a tenant of its own. A root implements `ITenantable`, or it is `Tenant`. A child gets its owner through one `Cascade` foreign key, and it does not implement `ITenantable`. See [multi-tenancy.md](../multi-tenancy.md#make-a-child-entity-multi-tenant).
@@ -44,7 +44,7 @@ The key is `(occurred_at, record_id, ordinal)`. One index serves the history of 
 
 ## Record an action
 
-An action is a fact that is not a data change, for example "users exported". Declare a `sealed record` that derives from `AuditAction` in `Domain/[EntityName]s/`. Its subject is the aggregate root that the action is about. Mark each text property of the action, as for an entity.
+An action is a fact that is not a data change, for example "users exported". Declare a `sealed record` that derives from `AuditAction` in `Domain/[EntityName]s/`. Its subject is the aggregate root that the action is about. Mark each property of the action that is not plain, as for an entity.
 
 ```csharp
 [AuditActionName("users_exported")]
@@ -97,7 +97,7 @@ The migration helpers `GrantPermissionToRole` and `DeletePermission` write `user
 
 - With `entityId`, it gets the history of that aggregate root and its children. With no `entityId`, it gets each entry that the tenant filter shows to the caller.
 - It needs `read_audit_log`. A caller without it gets 403.
-- It shows a value only to a caller with `read_audit_log_sensitive`, or when the value is `[NotSensitive]` or plain. Otherwise the value has `hidden` set and no old or new value.
+- It shows a value only to a caller with `read_audit_log_sensitive`, or when the value is `[NotSensitive]`, plain, or a foreign key. Otherwise the value has `hidden` set and no old or new value.
 - It also hides a value that the code no longer knows, such as the value of a removed property or of a removed action.
 - The names, the IDs, the client and the user and agent IDs of the actor, the request name, and the trace id always show. The `sub` of the actor (`actorSubject`) shows only to a caller with `read_audit_log_sensitive`.
 - It pages with a cursor, not a page number. Send the `nextCursor` of a page as the `cursor` of the next request. The last page has no `nextCursor`. The response has no total count, because the table only grows.

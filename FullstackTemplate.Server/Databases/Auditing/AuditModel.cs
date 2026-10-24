@@ -73,11 +73,12 @@ internal sealed class AuditModel
             return new AuditedValue(property.Name, column,
                 IsRecorded: !property.IsPrimaryKey() && !Bookkeeping.Contains(property.Name),
                 AuditSensitivity.Of(property.PropertyInfo ?? (MemberInfo?)property.FieldInfo,
-                    property.GetTypeMapping().Converter?.ProviderClrType ?? property.ClrType));
+                    property.GetTypeMapping().Converter?.ProviderClrType ?? property.ClrType, property.IsForeignKey()));
 
         var path = complex.ComplexType.GetProperties().Count() == 1 ? complex.Name : $"{complex.Name}.{property.Name}";
         return new AuditedValue(path, column, IsRecorded: true,
-            AuditSensitivity.Of(complex.PropertyInfo ?? (MemberInfo?)complex.FieldInfo, complex.ClrType));
+            AuditSensitivity.Of(complex.PropertyInfo ?? (MemberInfo?)complex.FieldInfo, complex.ClrType,
+                isForeignKey: false));
     }
 
     private static HashSet<string> GuardedTablesOf(IModel model)

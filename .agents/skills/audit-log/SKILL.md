@@ -10,8 +10,8 @@ Each save writes the audit log in its transaction, so a feature gets its audit e
 ## Procedure
 
 1. Find each case of your change, and do its steps.
-   - **A new entity, property, or value object.** Mark each text or structured property `[Sensitive]` or `[NotSensitive]`. Personal and secret data is `[Sensitive]`. Make a root `ITenantable`, or make the entity a child with one `Cascade` foreign key to its owner. Map a value object with `ComplexProperty`.
-   - **A fact that changes no data**, such as an export. Declare a sealed `AuditAction` record with an `[AuditActionName]`, and mark its text properties. In the handler, call `dbContext.RecordAction` with `AuditSubject.Of(root)`, then `SaveChangesAsync`.
+   - **A new entity, property, or value object.** Mark each property `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. A date and a decimal need a mark. Personal and secret data is `[Sensitive]`. Make a root `ITenantable`, or make the entity a child with one `Cascade` foreign key to its owner. Map a value object with `ComplexProperty`.
+   - **A fact that changes no data**, such as an export. Declare a sealed `AuditAction` record with an `[AuditActionName]`, and mark each property that is not a flag, an enum, a `Guid`, or an integer. In the handler, call `dbContext.RecordAction` with `AuditSubject.Of(root)`, then `SaveChangesAsync`.
    - **A change of many rows.** Load the entities, change them through their methods, and save. For many new aggregates, call `dbContext.BulkInsertAsync`.
    - **A table that needs no audit**, such as a cache. Make the type a class that is not a `BaseEntity`, and give it `[NotAudited(reason)]`.
 2. Build the Server. An RS0030 error names a write that skips the save. Change the write to a save. Do not suppress the error for an audited table.
@@ -23,7 +23,7 @@ Each save writes the audit log in its transaction, so a feature gets its audit e
 
 Before you call the change done, make sure that each item is true:
 
-- [ ] Each new text or structured value of an entity or an action has one mark, and each personal value is `[Sensitive]`.
+- [ ] Each new value of an entity or an action that is not a flag, an enum, a `Guid`, an integer, or a foreign key has one mark, and each personal value is `[Sensitive]`.
 - [ ] Each write of an audited table goes through `SaveChangesAsync` or `BulkInsertAsync`.
 - [ ] Each new RS0030 suppression is for a `[NotAudited]` table, has a justification, and is on the list of `BannedApiSuppressionTests`.
 - [ ] Each action has an `[AuditActionName]` that no other action has. The name of a released action is the same as before.

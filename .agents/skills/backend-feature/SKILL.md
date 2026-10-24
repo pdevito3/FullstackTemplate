@@ -178,7 +178,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 2. **Add Property to Domain Entity**
    ```csharp
-   // Simple property. Mark each text or structured property for the audit log.
+   // Simple property. Mark each property for the audit log, except a flag, an enum, a Guid, an integer, or a foreign key.
    [Sensitive] public string PhoneNumber { get; private set; }
 
    // Value object property
@@ -392,7 +392,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Review generated entity for business logic completeness
 - [ ] Add DbSet to `AppDbContext.cs`
 - [ ] The entity is a root with `ITenantable`, or a child with one `Cascade` foreign key to its owner (see `docs/backend/audit-log.md`)
-- [ ] Each text or structured property has `[Sensitive]` or `[NotSensitive]`
+- [ ] Each property that is not a flag, an enum, a `Guid`, an integer, or a foreign key has `[Sensitive]` or `[NotSensitive]`
 - [ ] Verify entity configuration is in `Databases/EntityConfigurations/` and properly applied
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
@@ -407,7 +407,7 @@ public LineItem AddLineItem(Product product, int quantity)
 
 ### New Property Checklist
 - [ ] Property added with private setter in entity
-- [ ] A text or structured property has `[Sensitive]` or `[NotSensitive]` (see `docs/backend/audit-log.md`)
+- [ ] A property that is not a flag, an enum, a `Guid`, an integer, or a foreign key has `[Sensitive]` or `[NotSensitive]` (see `docs/backend/audit-log.md`)
 - [ ] Factory method updated (if set at creation)
 - [ ] Update method updated (if updatable)
 - [ ] Internal models updated (ForCreation/ForUpdate)

@@ -8,7 +8,7 @@ Each row repeats the facts of its save: the record id, the time, the actor, the 
 
 Only the save and `BulkInsertAsync` write an audited table. `WriteGuard` refuses `ExecuteUpdate`, `ExecuteDelete`, and raw SQL that names an audited table. The build bans these APIs, the raw connection, and COPY in the Server. `BulkInsertAsync` writes many new aggregates with COPY, and their `Created` entries in the same transaction.
 
-`GetAuditEntryPage` reads the log with `read_audit_log`. It shows a sensitive value only to a caller with `read_audit_log_sensitive`. Each text or structured value of an entity or an action has `[Sensitive]` or `[NotSensitive]`, and a unit test fails without a mark. The rules are in [audit-log.md](../backend/audit-log.md).
+`GetAuditEntryPage` reads the log with `read_audit_log`. It shows a sensitive value only to a caller with `read_audit_log_sensitive`. Each value of an entity or an action has `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. A unit test fails without a mark. The rules are in [audit-log.md](../backend/audit-log.md).
 
 ## Considered options
 
@@ -47,7 +47,7 @@ Only the save and `BulkInsertAsync` write an audited table. `WriteGuard` refuses
 
 - **Offset pages with a total count, as `PagedList` gives.** We did not choose this option. The table only grows, so the count of each page gets slower. A save between two pages also moves the rows, so a row can show on two pages. The read pages with a key instead, newest first, in the order `(occurred_at, record_id, ordinal)`. The response has the cursor of the next page and no total. The name of the feature ends in `Page`, because an endpoint name that ends in `List` must return a `PagedList`.
 - **Show the `sub` of the actor to each reader.** We did not choose this option. A provider can make the `sub` an email address. For example, the Authentik seed sets `sub_mode: user_email`. Thus the read shows the `sub` only with `read_audit_log_sensitive`, and `User.Identifier`, which holds the same `sub`, is `[Sensitive]`. The "who" is the purpose of the log, so each row also stores the ID of the user record and the ID of the agent record of the caller. These IDs and the client ID show to each reader with `read_audit_log`. The cached lookup that finds the tenant of the caller also gives the user ID, so the save adds no query.
-- **Mark only the sensitive values.** We did not choose this option. A new column with personal data would then show to each reader with no warning. Each text or structured value needs a mark. A plain value, such as a number, a flag, a date, a `Guid`, or an enum, needs none. The read hides a value with no mark, and a value that the code no longer knows.
+- **Mark only the sensitive values.** We did not choose this option. A new column with personal data would then show to each reader with no warning. Each value needs a mark, except a flag, an enum, a `Guid`, an integer, or a foreign key. A date, a decimal, or a floating-point number can be personal, for example a birth date or a salary, so it needs a mark too. The read hides a value with no mark, and a value that the code no longer knows.
 - **The mark as an EF annotation in the configuration.** We did not choose this option. The mark would sit far from the property, so an author who adds a property does not see it. An action needs an attribute anyway. An annotation also goes into the model snapshot, so a change of a mark adds a migration with no DDL.
 
 ## Consequences

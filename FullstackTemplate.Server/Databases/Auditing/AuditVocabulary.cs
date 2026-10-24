@@ -45,7 +45,7 @@ internal sealed class AuditVocabulary(
                     $"{actionTypes[name].Name} and {type.Name} have the audit action name '{name}'. Give each action a name of its own.");
 
             actions[name] = StoredProperties(type)
-                .ToDictionary(property => property.Name, property => AuditSensitivity.Of(property, property.PropertyType));
+                .ToDictionary(property => property.Name, property => AuditSensitivity.Of(property, property.PropertyType, isForeignKey: false));
         }
 
         return new AuditVocabulary(entityTypes, actions);

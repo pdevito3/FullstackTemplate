@@ -7,11 +7,6 @@ using Riok.Mapperly.Abstractions;
 [Mapper]
 public static partial class TenantMapper
 {
-    [MapperIgnoreSource(nameof(Tenant.CreatedBy))]
-    [MapperIgnoreSource(nameof(Tenant.LastModifiedBy))]
-    [MapperIgnoreSource(nameof(Tenant.CreatedByClient))]
-    [MapperIgnoreSource(nameof(Tenant.LastModifiedByClient))]
-    [MapperIgnoreSource(nameof(Tenant.CreatedOn))]
     [MapperIgnoreSource(nameof(Tenant.LastModifiedOn))]
     [MapperIgnoreSource(nameof(Tenant.IsDeleted))]
     [MapperIgnoreSource(nameof(Tenant.DomainEvents))]

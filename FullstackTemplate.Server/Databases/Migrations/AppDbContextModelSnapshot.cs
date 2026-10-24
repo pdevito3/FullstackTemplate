@@ -38,29 +38,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("client_id")
                         .UseCollation("C");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("CreatedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by_client");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("LastModifiedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -130,29 +110,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("agent_id")
                         .UseCollation("C");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("CreatedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by_client");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("LastModifiedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -324,29 +284,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("CreatedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by_client");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("LastModifiedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -382,18 +322,6 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("CreatedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by_client");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -409,14 +337,6 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("LastModifiedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
@@ -493,29 +413,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("CreatedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("created_by_client");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LastModifiedBy")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by");
-
-                    b.Property<string>("LastModifiedByClient")
-                        .HasColumnType("text")
-                        .HasColumnName("last_modified_by_client");
 
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")

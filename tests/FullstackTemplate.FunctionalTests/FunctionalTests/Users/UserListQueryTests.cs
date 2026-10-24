@@ -161,12 +161,11 @@ public class UserListQueryTests : TestBase
     // The DTO does not show these fields, so a caller must not filter or sort on them.
     // A 400 here also shows that the error message names only a field that the contract does not have.
     [Test]
-    [Arguments("filters", "CreatedBy == \"x\"")]
-    [Arguments("filters", "LastModifiedBy == \"x\"")]
+    [Arguments("filters", "LastModifiedOn == \"x\"")]
     [Arguments("filters", "IsDeleted == true")]
     [Arguments("filters", "UserPermissions.Count > 0")]
-    [Arguments("filters", "(CreatedBy, FirstName) @= \"x\"")]
-    [Arguments("sortOrder", "CreatedOn desc")]
+    [Arguments("filters", "(LastModifiedOn, FirstName) @= \"x\"")]
+    [Arguments("sortOrder", "LastModifiedOn desc")]
     public async Task query_on_a_field_that_the_dto_does_not_show_returns_bad_request(string parameter, string value)
     {
         // Arrange

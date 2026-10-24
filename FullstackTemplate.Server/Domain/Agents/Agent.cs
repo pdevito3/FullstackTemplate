@@ -19,6 +19,8 @@ using Users;
 public class Agent : BaseEntity, ITenantable
 {
     public const string IdPrefix = "agt";
+    public const int NameMaxLength = 200;
+    public const int ClientIdMaxLength = 255;
 
     [NotSensitive] public string TenantId { get; private set; } = default!;
     [NotSensitive] public string Name { get; private set; } = default!;
@@ -108,7 +110,11 @@ public class Agent : BaseEntity, ITenantable
         ValidationException.ThrowWhenNullOrWhitespace(agent.TenantId, "tenantId", "Please provide a tenant.");
         ValidationException.Must(EntityId.IsValid(agent.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.Name, "name", "Please provide a name.");
+        ValidationException.Must(agent.Name.Length <= NameMaxLength, "name",
+            $"A name can have no more than {NameMaxLength} characters.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.ClientId, "clientId", "Please provide a client ID.");
+        ValidationException.Must(agent.ClientId.Length <= ClientIdMaxLength, "clientId",
+            $"A client ID can have no more than {ClientIdMaxLength} characters.");
         ValidationException.Must(agent.ClientId == agent.ClientId.Trim(), "clientId",
             "A client ID cannot start or end with a space.");
     }

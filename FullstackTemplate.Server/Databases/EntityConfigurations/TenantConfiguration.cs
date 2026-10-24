@@ -16,7 +16,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.Property(e => e.Name)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(Tenant.NameMaxLength);
 
         // Indexes
         builder.HasIndex(e => e.Name)

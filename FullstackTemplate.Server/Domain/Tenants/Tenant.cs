@@ -6,6 +6,7 @@ using Models;
 public class Tenant : BaseEntity
 {
     public const string IdPrefix = "ten";
+    public const int NameMaxLength = 200;
 
     [NotSensitive] public string Name { get; private set; } = default!;
 
@@ -38,6 +39,8 @@ public class Tenant : BaseEntity
     private static void ValidateTenant(Tenant tenant)
     {
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(tenant.Name, "name", "Please provide a tenant name.");
+        Exceptions.ValidationException.Must(tenant.Name.Length <= NameMaxLength, "name",
+            $"A tenant name can have no more than {NameMaxLength} characters.");
     }
 
     protected Tenant() : base(IdPrefix) { } // For EF Core

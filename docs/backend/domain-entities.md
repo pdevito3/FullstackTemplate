@@ -13,6 +13,7 @@ A domain entity holds its data and its business rules. Code outside the entity c
 7. Use a value object for a domain concept, such as an email or a role. Do not use a bare `string`.
 8. In a method that applies the fields of an edit form, call `GuardVersion` first. See [Versions](#versions).
 9. Give each property `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. The audit log shows a sensitive value only to a reader with `read_audit_log_sensitive`. See [audit-log.md](audit-log.md#rules).
+10. Give each text value that a request sets a max length constant, for example `User.FirstNameMaxLength` or `EmailAddress.MaxLength`. Refuse a longer value with a `ValidationException` that has the limit in its message. Use the same constant in `HasMaxLength`. Without the check, a long value fails the save in Postgres, and the API gives 500, not 422. `StringColumnLengthTests` fails on a string column that the domain does not check.
 
 ## IDs
 

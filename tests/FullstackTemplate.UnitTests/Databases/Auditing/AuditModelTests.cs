@@ -131,6 +131,24 @@ public class AuditModelTests
         guarded.ShouldNotContain("used_dpop_proofs");
     }
 
+    [Test]
+    public void no_column_that_a_write_sends_gets_its_value_from_the_database_on_insert()
+    {
+        // Arrange
+        using var context = new AppDbContextFactory().CreateDbContext([]);
+
+        // Act
+        var generated = EntityTypes(context.Model)
+            .SelectMany(EntityColumn.Of)
+            .Where(column => !column.Property.IsPrimaryKey() && column.Property.ValueGenerated == ValueGenerated.OnAdd)
+            .Select(column => $"{column.Property.DeclaringType.DisplayName()}.{column.Property.Name}")
+            .ToList();
+
+        // Assert
+        generated.ShouldBeEmpty(
+            "The COPY of BulkInsertAsync sends the C# value of each column, and the audit entry records it, so a database default or an identity never applies. Set the value in the entity, and remove HasDefaultValueSql, HasDefaultValue, or the identity.");
+    }
+
     private static IEnumerable<IEntityType> EntityTypes(IModel model)
         => model.GetEntityTypes().Where(e => e.ClrType.IsAssignableTo(typeof(BaseEntity)));
 }

@@ -8,13 +8,13 @@ public class User : BaseEntity, ITenantable
 {
     public const string IdPrefix = "usr";
 
-    public string TenantId { get; private set; } = default!;
-    public string FirstName { get; private set; } = default!;
-    public string LastName { get; private set; } = default!;
-    public string Identifier { get; private set; } = default!;
-    public EmailAddress Email { get; private set; } = default!;
-    public string Username { get; private set; } = default!;
-    public UserRole Role { get; private set; } = default!;
+    [NotSensitive] public string TenantId { get; private set; } = default!;
+    [Sensitive] public string FirstName { get; private set; } = default!;
+    [Sensitive] public string LastName { get; private set; } = default!;
+    [Sensitive] public string Identifier { get; private set; } = default!;
+    [Sensitive] public EmailAddress Email { get; private set; } = default!;
+    [Sensitive] public string Username { get; private set; } = default!;
+    [NotSensitive] public UserRole Role { get; private set; } = default!;
 
     private readonly List<UserPermission> _userPermissions = [];
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();

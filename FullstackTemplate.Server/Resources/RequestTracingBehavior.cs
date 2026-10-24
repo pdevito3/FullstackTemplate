@@ -18,19 +18,11 @@ using MediatR;
 public sealed class RequestTracingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    /// <summary>
-    /// Slices nest their contract inside the feature class, so the plain type name is "Command" or
-    /// "Query" for every one of them. Qualify it: <c>GetUser+Query</c> becomes "GetUser.Query".
-    /// </summary>
-    private static readonly string RequestName = typeof(TRequest).DeclaringType is { } feature
-        ? $"{feature.Name}.{typeof(TRequest).Name}"
-        : typeof(TRequest).Name;
-
     public async Task<TResponse> Handle(
         TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        using var activity = Telemetry.Source.StartActivity(RequestName);
-        activity?.SetTag("app.request.name", RequestName);
+        using var activity = Telemetry.Source.StartActivity(RequestName<TRequest>.Value);
+        activity?.SetTag("app.request.name", RequestName<TRequest>.Value);
         var startedAt = Stopwatch.GetTimestamp();
         string? errorType = null;
 
@@ -52,7 +44,7 @@ public sealed class RequestTracingBehavior<TRequest, TResponse> : IPipelineBehav
         }
         finally
         {
-            TagList tags = new() { { "app.request.name", RequestName } };
+            TagList tags = new() { { "app.request.name", RequestName<TRequest>.Value } };
             if (errorType is not null)
                 tags.Add("error.type", errorType);
             Telemetry.RequestDuration.Record(Stopwatch.GetElapsedTime(startedAt).TotalSeconds, tags);

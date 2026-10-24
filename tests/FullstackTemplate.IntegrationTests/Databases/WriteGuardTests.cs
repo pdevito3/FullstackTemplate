@@ -1,6 +1,8 @@
-namespace FullstackTemplate.IntegrationTests.DomainEvents;
+namespace FullstackTemplate.IntegrationTests.Databases;
 
+using FullstackTemplate.IntegrationTests.DomainEvents;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain.DPoPProofs;
 using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users;
@@ -8,11 +10,13 @@ using FullstackTemplate.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Shouldly;
-using static DomainEventTestServices;
+using static FullstackTemplate.IntegrationTests.DomainEvents.DomainEventTestServices;
 
-public class HandlerWriteGuardTests : TestBase
+public class WriteGuardTests : TestBase
 {
     public delegate Task HandlerWrite(AppDbContext dbContext, string userId, CancellationToken cancellationToken);
+
+    public delegate Task Write(AppDbContext dbContext, string userId);
 
     public static IEnumerable<Func<(string Write, HandlerWrite Run)>> Writes()
     {
@@ -40,6 +44,102 @@ public class HandlerWriteGuardTests : TestBase
             refusal.Message.ShouldStartWith("A domain event handler must not begin or use a transaction.");
             throw refusal;
         });
+    }
+
+    public static IEnumerable<Func<(string Write, string Table, Write Run)>> WritesOfAuditedTables()
+    {
+        yield return () => ("ExecuteUpdateAsync", "users", (db, userId) => db.Users.Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(set => set.SetProperty(u => u.FirstName, "Changed")));
+        yield return () => ("ExecuteDeleteAsync", "user_permissions", (db, userId) => db.UserPermissions
+            .Where(p => p.UserId == userId).ExecuteDeleteAsync());
+        yield return () => ("raw SQL", "users", (db, userId) => db.Database.ExecuteSqlAsync(
+            $"UPDATE users SET first_name = 'Changed' WHERE id = {userId}"));
+        yield return () => ("raw SQL on the audit log", "audit_entries", (db, userId) => db.Database.ExecuteSqlAsync(
+            $"DELETE FROM audit_entries WHERE root_id = {userId}"));
+        yield return () => ("SqlQuery with UPDATE RETURNING", "users", async (db, userId) => await db.Database.SqlQuery<int>(
+            $"UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING 1 AS \"Value\"").ToListAsync());
+        yield return () => ("FromSql with a writable CTE", "users", async (db, userId) => await db.Tenants.FromSql($"""
+                WITH changed AS (UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING tenant_id)
+                SELECT * FROM tenants WHERE id IN (SELECT tenant_id FROM changed)
+                """)
+            .IgnoreQueryFilters().AsNoTracking().ToListAsync());
+    }
+
+    [Test]
+    [MethodDataSource(nameof(WritesOfAuditedTables))]
+    public async Task write_of_an_audited_table_that_skips_the_save_is_refused(string write, string table, Write run)
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        var scenario = await scope.StartTenantScenarioAsync();
+        var permissionsBefore = await ReadAsync(read => read.UserPermissions.CountAsync(p => p.UserId == scenario.FirstUser.Id));
+        var auditEntriesBefore = await ReadAsync(read => read.AuditEntries.CountAsync(e => e.RootId == scenario.FirstUser.Id));
+
+        // Act
+        var act = () => run(scope.GetService<AppDbContext>(), scenario.FirstUser.Id);
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message
+            .ShouldStartWith($"{table} is audited, so write it through SaveChangesAsync or BulkInsertAsync.", customMessage: write);
+        await ShouldBeUnchangedAsync(scenario, permissionsBefore);
+        (await ReadAsync(read => read.AuditEntries.CountAsync(e => e.RootId == scenario.FirstUser.Id)))
+            .ShouldBe(auditEntriesBefore);
+    }
+
+    public static IEnumerable<Func<(string Write, Write Run)>> HiddenCode()
+    {
+        yield return () => ("DO block", (db, userId) =>
+        {
+            var sql = $"DO $$ BEGIN UPDATE users SET first_name = 'Changed' WHERE id = '{userId}'; END $$";
+            return db.Database.ExecuteSqlRawAsync(sql);
+        });
+        yield return () => ("DO block in quotes", (db, userId) =>
+        {
+            var sql = $"DO 'BEGIN UPDATE users SET first_name = ''Changed'' WHERE id = ''{userId}''; END'";
+            return db.Database.ExecuteSqlRawAsync(sql);
+        });
+        yield return () => ("CALL", (db, _) => db.Database.ExecuteSqlRawAsync("CALL rename_users()"));
+        yield return () => ("SqlQuery with dollar-quoted text", async (db, _) => await db.Database.SqlQueryRaw<string>(
+            "SELECT $q$x$q$ AS \"Value\"").ToListAsync());
+    }
+
+    [Test]
+    [MethodDataSource(nameof(HiddenCode))]
+    public async Task raw_sql_that_hides_the_tables_it_writes_is_refused(string write, Write run)
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        var scenario = await scope.StartTenantScenarioAsync();
+        var permissionsBefore = await ReadAsync(read => read.UserPermissions.CountAsync(p => p.UserId == scenario.FirstUser.Id));
+
+        // Act
+        var act = () => run(scope.GetService<AppDbContext>(), scenario.FirstUser.Id);
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message
+            .ShouldStartWith("Raw SQL must not run a DO block, a CALL, or dollar-quoted text", customMessage: write);
+        await ShouldBeUnchangedAsync(scenario, permissionsBefore);
+    }
+
+    [Test]
+    public async Task raw_read_of_an_audited_table_and_raw_write_of_a_table_with_no_audit_run()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        var scenario = await scope.StartTenantScenarioAsync();
+        var db = scope.GetService<AppDbContext>();
+        var proofId = $"probe-{Guid.NewGuid():N}";
+
+        // Act
+        var firstNames = await db.Database.SqlQuery<string>(
+            $"SELECT first_name AS \"Value\" FROM users WHERE id = {scenario.FirstUser.Id}").ToListAsync();
+        var inserted = await db.Database.ExecuteSqlAsync(
+            $"INSERT INTO used_dpop_proofs (id, expires) VALUES ({proofId}, {DateTimeOffset.UtcNow}) ON CONFLICT (id) DO NOTHING");
+        var deleted = await db.Set<UsedDPoPProof>().Where(p => p.Id == proofId).ExecuteDeleteAsync();
+
+        // Assert
+        firstNames.ShouldBe([scenario.FirstUser.FirstName]);
+        (inserted, deleted).ShouldBe((1, 1));
     }
 
     [Test]
@@ -117,7 +217,7 @@ public class HandlerWriteGuardTests : TestBase
             .UseSnakeCaseNamingConvention()
             .Options;
         await using var db = new AppDbContext(options, TimeProvider.System, scope.GetService<ICurrentUserService>(),
-            scope.GetService<ITenantScopeProvider>(), scope.GetService<DomainEventDispatcher>());
+            scope.GetService<ICallerIdentityResolver>(), scope.GetService<ITenantScopeProvider>(), scope.GetService<DomainEventDispatcher>());
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act

@@ -28,7 +28,7 @@ The guarantee has two limits:
 6. Make each handler a `sealed class` that implements `IDomainEventHandler<TEvent>`. Change entities through the `dbContext` parameter of `Handle`.
 7. Do not call `SaveChangesAsync` in a handler. The save that runs the handler saves its changes.
 8. Inject only `TimeProvider` and `IOptions<T>` into a handler. `DomainEventShapeTests` fails on any other constructor parameter.
-9. Read with LINQ in a handler. Do not use `ExecuteUpdateAsync`, `ExecuteDeleteAsync`, raw SQL (`FromSql`, `SqlQuery`, or `ExecuteSql`), or a transaction. These run outside the save. The context refuses them while handlers run. It cannot see a command that you send on `Database.GetDbConnection()`.
+9. Read with LINQ in a handler. Do not use `ExecuteUpdateAsync`, `ExecuteDeleteAsync`, raw SQL (`FromSql`, `SqlQuery`, or `ExecuteSql`), or a transaction. These run outside the save. `WriteGuard` refuses them while handlers run, also on a table with no audit. It cannot see a command that you send on `Database.GetDbConnection()`, so the build bans that call in the Server. See [audit-log.md](audit-log.md#writes-that-skip-the-save).
 10. Do not send an email, call an HTTP API, or change a cache in a handler. See [Effects outside the database](#effects-outside-the-database).
 11. Do not add an event for a delete. The context does soft deletes.
 12. Do not use an event to validate the entity that queues it. Validate in the entity.

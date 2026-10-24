@@ -1,0 +1,46 @@
+// The Server writes an audited table only through the save of AppDbContext, so that each change has its audit entry.
+// The APIs below write without the save. WriteGuard also refuses them at run time when the SQL names an audited table.
+// A method that must use one for a [NotAudited] table suppresses RS0030 with a reason. A unit test pins those files.
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteUpdate``1(System.Linq.IQueryable{``0},System.Action{Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder{``0}});ExecuteUpdate writes no audit entry. Load the entities, change them, and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteUpdateAsync``1(System.Linq.IQueryable{``0},System.Action{Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder{``0}},System.Threading.CancellationToken);ExecuteUpdateAsync writes no audit entry. Load the entities, change them, and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteDelete``1(System.Linq.IQueryable{``0});ExecuteDelete writes no audit entry. Load the entities, remove them, and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteDeleteAsync``1(System.Linq.IQueryable{``0},System.Threading.CancellationToken);ExecuteDeleteAsync writes no audit entry. Load the entities, remove them, and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSql(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.FormattableString);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlAsync(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.FormattableString,System.Threading.CancellationToken);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlRaw(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.String,System.Collections.Generic.IEnumerable{System.Object});Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlRaw(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.String,System.Object[]);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlRawAsync(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.String,System.Collections.Generic.IEnumerable{System.Object},System.Threading.CancellationToken);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlRawAsync(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.String,System.Object[]);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlRawAsync(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.String,System.Threading.CancellationToken);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlInterpolated(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.FormattableString);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlInterpolatedAsync(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.FormattableString,System.Threading.CancellationToken);Raw SQL writes no audit entry. Change the entities and call SaveChangesAsync.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.SqlQuery``1(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.FormattableString);Raw SQL can write with no audit entry. Read with LINQ.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.SqlQueryRaw``1(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade,System.String,System.Object[]);Raw SQL can write with no audit entry. Read with LINQ.
+M:Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSql``1(Microsoft.EntityFrameworkCore.DbSet{``0},System.FormattableString);Raw SQL can write with no audit entry. Read with LINQ.
+M:Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSqlRaw``1(Microsoft.EntityFrameworkCore.DbSet{``0},System.String,System.Object[]);Raw SQL can write with no audit entry. Read with LINQ.
+M:Microsoft.EntityFrameworkCore.RelationalQueryableExtensions.FromSqlInterpolated``1(Microsoft.EntityFrameworkCore.DbSet{``0},System.FormattableString);Raw SQL can write with no audit entry. Read with LINQ.
+M:Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade);A command on the connection of the context skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.BeginBinaryImport(System.String);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+M:Npgsql.NpgsqlConnection.BeginBinaryImportAsync(System.String,System.Threading.CancellationToken);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+M:Npgsql.NpgsqlConnection.BeginTextImport(System.String);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+M:Npgsql.NpgsqlConnection.BeginTextImportAsync(System.String,System.Threading.CancellationToken);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+M:Npgsql.NpgsqlConnection.BeginRawBinaryCopy(System.String);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+M:Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(System.String,System.Threading.CancellationToken);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+P:Microsoft.EntityFrameworkCore.Storage.IRelationalConnection.DbConnection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+P:Microsoft.EntityFrameworkCore.Storage.RelationalConnection.DbConnection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.#ctor;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.#ctor(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.Create(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.CreateConnection;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.CreateCommand(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.CreateBatch;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.OpenConnection;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSourceBuilder.Build;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlSlimDataSourceBuilder.Build;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost;A command on a connection of its own skips the save and WriteGuard. Use the context.
+P:System.Data.Common.DbTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+P:Npgsql.NpgsqlTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.CloneWith(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.

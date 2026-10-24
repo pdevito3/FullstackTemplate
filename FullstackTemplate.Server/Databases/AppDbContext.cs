@@ -1,17 +1,26 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Diagnostics;
+using Auditing;
 using Domain;
 using Domain.Agents;
+using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Npgsql;
+using Resources;
 using Services;
 
 public class AppDbContext(
     DbContextOptions<AppDbContext> options,
     TimeProvider timeProvider,
     ICurrentUserService currentUserService,
+    ICallerIdentityResolver callerIdentityResolver,
     ITenantScopeProvider tenantScopeProvider,
     DomainEventDispatcher domainEventDispatcher) : DbContext(options)
 {
@@ -23,11 +32,14 @@ public class AppDbContext(
     public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
     public DbSet<Agent> Agents => Set<Agent>();
     public DbSet<AgentPermission> AgentPermissions => Set<AgentPermission>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     #endregion
 
     private TenantScope? _tenantScope;
     private TenantScope? _domainEventTenantScope;
     private SaveStage _saveStage = SaveStage.Idle;
+    private string? _requestName;
+    private readonly List<AuditAction> _recordedActions = [];
 
     /// <summary>
     /// The tenants whose rows the current caller can see. The tenant query filter reads it for each query.
@@ -47,6 +59,26 @@ public class AppDbContext(
     /// DI scope, for example a test that changes the current user after a query.
     /// </summary>
     public void RefreshTenantScope() => _tenantScope = null;
+
+    /// <summary>
+    /// Names the MediatR request whose saves this context writes, until the result is disposed. The outermost request
+    /// wins: a nested Send shares this context and its saves, so it keeps the outer name.
+    /// </summary>
+    internal EnteredRequest EnterRequest(string requestName)
+    {
+        var entered = new EnteredRequest(this, _requestName);
+        _requestName ??= requestName;
+        return entered;
+    }
+
+    /// <summary>
+    /// Adds the action to the audit log of the next save, in the same transaction and the same record as the changes of
+    /// that save. Save also when the handler changes no data. <see cref="Resources.AuditRequestBehavior{TRequest,TResponse}"/>
+    /// throws when a request records an action and does not save it.
+    /// </summary>
+    public void RecordAction(AuditAction action) => _recordedActions.Add(action);
+
+    internal bool HasUnsavedActions => _recordedActions.Count > 0;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,7 +102,7 @@ public class AppDbContext(
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.AddInterceptors(HandlerWriteGuard.Instance);
+        optionsBuilder.AddInterceptors(WriteGuard.Instance);
     }
 
     /// <summary>
@@ -85,13 +117,39 @@ public class AppDbContext(
     /// transaction. <see cref="DbContext.SaveChangesAsync(CancellationToken)"/> also calls this overload.
     /// A failed save ends the context, so a retry must use a new DI scope.
     /// </summary>
-    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
         RefuseSave();
+        return EndOnFailure(SaveInStages(acceptAllChangesOnSuccess, cancellationToken));
+    }
+
+    /// <summary>
+    /// Inserts new aggregates with Postgres COPY, for an import of many rows. It is a save with another writer: the
+    /// same stamps, a Created audit entry for each row, the recorded actions, and the SaveChanges interceptors, in one
+    /// transaction. After it, the entities are tracked and Unchanged with their <c>Version</c>, as after a save. A
+    /// failed bulk insert ends the context, as a failed save does.
+    /// </summary>
+    /// <returns>The number of entity rows that it wrote, the children of the roots too.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The context has pending changes, <typeparamref name="TRoot"/> is a child of an owner, or an entity queued a
+    /// domain event that has a handler. Each refusal of <see cref="SaveChangesAsync(bool, CancellationToken)"/> applies
+    /// too.
+    /// </exception>
+    public Task<int> BulkInsertAsync<TRoot>(IEnumerable<TRoot> roots, CancellationToken cancellationToken = default)
+        where TRoot : BaseEntity
+    {
+        RefuseSave();
+        RefuseBulkInsert(Set<TRoot>().EntityType);
+        return EndOnFailure(BulkInsertInStages(roots, cancellationToken));
+    }
+
+    // The tracker of a failed write can hold the stamps and the audit entries of a write that did not commit.
+    private async Task<int> EndOnFailure(Task<int> write)
+    {
         try
         {
-            var result = await SaveInStages(acceptAllChangesOnSuccess, cancellationToken);
+            var result = await write;
             _saveStage = SaveStage.Idle;
             return result;
         }
@@ -108,15 +166,112 @@ public class AppDbContext(
         await RunDomainEventHandlers(cancellationToken);
 
         _saveStage = SaveStage.Saving;
-        UpdateAuditFields();
+        var auditEntries = PrepareWrite(await callerIdentityResolver.GetAsync(cancellationToken));
         try
         {
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            // The audit entries are in the tracker before the execution strategy runs, so a retry sends the same rows.
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken) - auditEntries.Count;
         }
         catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {
             throw conflict;
         }
+    }
+
+    private async Task<int> BulkInsertInStages<TRoot>(IEnumerable<TRoot> roots, CancellationToken cancellationToken)
+        where TRoot : BaseEntity
+    {
+        _saveStage = SaveStage.Saving;
+        Set<TRoot>().AddRange(roots);
+        TakeDomainEventsWithNoHandler();
+        var auditEntries = PrepareWrite(await callerIdentityResolver.GetAsync(cancellationToken));
+        if (auditEntries.Count == 0)
+            return 0;
+
+        var entities = ChangeTracker.Entries<BaseEntity>().Where(e => e.State == EntityState.Added).ToList();
+        using var activity = Telemetry.Trace(
+            [("app.bulk_insert.entity_type", typeof(TRoot).Name), ("app.bulk_insert.row_count", entities.Count)],
+            "database.bulk_insert");
+
+        // The owners before their children, so that each foreign key finds its row.
+        var auditModel = AuditModel.Of(Model);
+        int OwnerDepth(IEntityType type)
+            => auditModel.OwnerKeyOf(type) is { } ownerKey ? 1 + OwnerDepth(ownerKey.PrincipalEntityType) : 0;
+        var tables = entities.GroupBy(e => e.Metadata).OrderBy(table => OwnerDepth(table.Key))
+            .Concat<IGrouping<IEntityType, EntityEntry>>(ChangeTracker.Entries<AuditEntry>()
+                .Where(e => e.State == EntityState.Added).GroupBy(e => e.Metadata))
+            .ToList();
+        var (occurredAt, recordId) = (auditEntries[0].OccurredAt, auditEntries[0].RecordId);
+
+        // The SaveChanges interceptors see the bulk insert as a save, so TenantLookupInterceptor forgets a cached miss
+        // of each new user.
+        var updateLogger = this.GetService<IDiagnosticsLogger<DbLoggerCategory.Update>>();
+        await updateLogger.SaveChangesStartingAsync(this, cancellationToken);
+        try
+        {
+            var version = await Database.CreateExecutionStrategy().ExecuteInTransactionAsync(
+                ct => PostgresCopy.WriteAsync(Database, tables, ct),
+                // After a lost acknowledgment of the commit, the audit entries tell whether it committed.
+                verifySucceeded: ct => AuditEntries
+                    .TagWithOperationCallSite("audit_entries.bulk_insert_committed")
+                    .IgnoreQueryFilters([QueryFilterNames.Tenant])
+                    .AnyAsync(e => e.OccurredAt == occurredAt && e.RecordId == recordId, ct),
+                cancellationToken);
+
+            foreach (var entry in entities)
+                entry.Property(e => e.Version).CurrentValue = version;
+            ChangeTracker.AcceptAllChanges();
+            return await updateLogger.SaveChangesCompletedAsync(this, entities.Count, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            await updateLogger.SaveChangesCanceledAsync(this, cancellationToken);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await updateLogger.SaveChangesFailedAsync(this, exception, cancellationToken);
+            var conflict = exception is PostgresException postgres ? DatabaseConflict.From(postgres) : null;
+            activity?.SetTag("error.type", (conflict ?? exception).GetType().FullName);
+            if (conflict is not null)
+                throw conflict;
+
+            Telemetry.MarkFailed(activity, exception);
+            throw;
+        }
+    }
+
+    private void RefuseBulkInsert(IEntityType rootType)
+    {
+        if (AuditModel.Of(Model).OwnerKeyOf(rootType) is { } ownerKey)
+        {
+            var owner = ownerKey.PrincipalEntityType.ClrType.Name;
+            throw new InvalidOperationException(
+                $"BulkInsertAsync inserts aggregate roots, and a {rootType.ClrType.Name} is a part of its {owner}. Add it to its {owner}, then bulk insert the {owner}.");
+        }
+
+        if (ChangeTracker.HasChanges())
+            throw new InvalidOperationException(
+                "BulkInsertAsync writes only the entities that it inserts, but this AppDbContext has pending changes. Save them first.");
+    }
+
+    // A save takes the queued events and runs their handlers. A bulk insert runs no handler, so it can take only the
+    // events that have no handler, which the save drops too.
+    private void TakeDomainEventsWithNoHandler()
+    {
+        var entities = ChangeTracker.Entries<BaseEntity>().Select(entry => entry.Entity).ToList();
+        var handled = entities.SelectMany(entity => entity.DomainEvents)
+            .Select(domainEvent => domainEvent.GetType())
+            .Distinct()
+            .Where(domainEventDispatcher.HasHandlers)
+            .Select(eventType => eventType.Name)
+            .ToList();
+        if (handled.Count > 0)
+            throw new InvalidOperationException(
+                $"BulkInsertAsync runs no domain event handlers, but {string.Join(", ", handled)} has a handler. Save these entities with SaveChangesAsync.");
+
+        foreach (var entity in entities)
+            entity.TakeDomainEvents();
     }
 
     private void RefuseSave()
@@ -172,11 +327,56 @@ public class AppDbContext(
         }
     }
 
-    private void UpdateAuditFields()
+    /// <summary>
+    /// The steps before the write of a save and of a bulk insert. It touches the owners of changed children, stamps the
+    /// entities, turns deletes into soft deletes, and adds the audit entries of the changes and the recorded actions to
+    /// the tracker. Returns the audit entries.
+    /// </summary>
+    private IReadOnlyList<AuditEntry> PrepareWrite(CallerIdentity caller)
     {
-        GuardOwnerVersionsOfChangedChildren();
+        // Entities that code removed from a collection become Deleted here.
+        ChangeTracker.DetectChanges();
+        RefuseAuditEntriesNotFromCapture();
+
+        var auditModel = AuditModel.Of(Model);
+        var aggregates = TrackedAggregates.Index(ChangeTracker, auditModel);
+        TouchOwnersOfChangedChildren(aggregates);
 
         var now = timeProvider.GetUtcNow();
+        StampEntities(now);
+
+        var actor = AuditActor.Of(currentUserService.UserIdentifier, currentUserService.ClientId, caller);
+        var save = SaveFacts.From(now, actor, _requestName, Activity.Current?.TraceId.ToHexString());
+        var auditEntries = AuditDiff.Compose(save, AuditDiff.Changes(AuditSnapshots.Take(aggregates, auditModel)),
+            _recordedActions);
+        _recordedActions.Clear();
+        Set<AuditEntry>().AddRange(auditEntries);
+        return auditEntries;
+    }
+
+    private void RefuseAuditEntriesNotFromCapture()
+    {
+        if (ChangeTracker.Entries<AuditEntry>().Any(e => e.State != EntityState.Unchanged))
+            throw new InvalidOperationException(
+                "Only the save writes audit entries. Do not add, change, or remove an AuditEntry.");
+    }
+
+    // A changed child marks its Unchanged owner modified, so the owner row is written and its xmin changes (ADR 0008).
+    private static void TouchOwnersOfChangedChildren(TrackedAggregates aggregates)
+    {
+        var changed = new Queue<EntityEntry<BaseEntity>>(aggregates.Changed);
+        while (changed.TryDequeue(out var child))
+        {
+            if (aggregates.OwnerOf(child) is not { State: EntityState.Unchanged } owner)
+                continue;
+
+            owner.Property(e => e.LastModifiedOn).IsModified = true;
+            changed.Enqueue(owner);
+        }
+    }
+
+    private void StampEntities(DateTimeOffset now)
+    {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             switch (entry.State)
@@ -199,33 +399,12 @@ public class AppDbContext(
         }
     }
 
-    private void GuardOwnerVersionsOfChangedChildren()
+    /// <summary>Gives the context back the name of the outer request when disposed.</summary>
+    internal sealed class EnteredRequest(AppDbContext context, string? outerRequestName) : IDisposable
     {
-        var entries = ChangeTracker.Entries<BaseEntity>().ToList();
-        var changed = new Queue<EntityEntry<BaseEntity>>(entries.Where(e =>
-            e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted));
+        public bool IsOutermost => outerRequestName is null;
 
-        while (changed.TryDequeue(out var child))
-        {
-            foreach (var ownership in child.Metadata.GetForeignKeys().Where(fk =>
-                         fk.DeleteBehavior == DeleteBehavior.Cascade
-                         && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity))))
-            {
-                var ownerIdProperty = child.Property(ownership.Properties.Single().Name);
-                var ownerId = child.State == EntityState.Deleted
-                    ? ownerIdProperty.OriginalValue
-                    : ownerIdProperty.CurrentValue;
-                var owner = entries.SingleOrDefault(e =>
-                                e.Metadata == ownership.PrincipalEntityType && Equals(e.Entity.Id, ownerId))
-                            ?? throw new InvalidOperationException(
-                                $"A {child.Metadata.ClrType.Name} changed, but its {ownership.PrincipalEntityType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownership.PrincipalEntityType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
-                if (owner.State != EntityState.Unchanged)
-                    continue;
-
-                owner.Property(e => e.LastModifiedOn).IsModified = true;
-                changed.Enqueue(owner);
-            }
-        }
+        public void Dispose() => context._requestName = outerRequestName;
     }
 
     private enum SaveStage

@@ -419,6 +419,76 @@
         }
       }
     },
+    "/api/v1/audit-entries": {
+      "get": {
+        "tags": [
+          "AuditEntries"
+        ],
+        "summary": "Gets one page of audit entries, newest first. With an entityId, it gets the history of that aggregate root and\nits children. With no entityId, it gets the entries of the tenant. Needs read_audit_log. A value that the caller\nmay not read has hidden set and no old or new value. To get the next page, send the nextCursor of this page as\nthe cursor. The last page has no nextCursor.",
+        "operationId": "GetAuditEntryPage",
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntryPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
     "/api/v1/tenants": {
       "post": {
         "tags": [
@@ -1670,6 +1740,163 @@
           }
         }
       },
+      "AuditEntryDto": {
+        "required": [
+          "occurredAt",
+          "recordId",
+          "ordinal",
+          "kind",
+          "tenantId",
+          "entityType",
+          "entityId",
+          "rootType",
+          "rootId",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "The save that wrote the entry. The entries of one save have the same record id.",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "type": "integer",
+            "description": "The position of the entry in its save.",
+            "format": "int32"
+          },
+          "kind": {
+            "type": "string",
+            "description": "\"Created\", \"Updated\", \"Deleted\", \"Restored\", or \"Action\"."
+          },
+          "action": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The name of the action, for example \"users_exported\". Null for a data change."
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "rootType": {
+            "type": "string"
+          },
+          "rootId": {
+            "type": "string"
+          },
+          "actorSubject": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The `sub` of the token of the save. It shows only to a caller with `read_audit_log_sensitive`,\nbecause a provider can make it an email address. Null for system work."
+          },
+          "actorClient": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The client ID of the token of the save. Null for system work."
+          },
+          "actorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The ID of the user who acted, also for a delegated agent. Null for system work, for a client that acts for no\nuser, and for a user with no user record yet."
+          },
+          "actorAgentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The ID of the agent that acted. Null when no agent acted."
+          },
+          "requestName": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The MediatR request of the save, for example \"UpdateUser.Command\". Null for work outside a request."
+          },
+          "traceId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditValueDto"
+            }
+          }
+        }
+      },
+      "AuditEntryPageDto": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryDto"
+            },
+            "description": "The entries of the page, newest first."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Send it as the cursor of the next request to get the next page. Null on the last page."
+          }
+        }
+      },
+      "AuditValueDto": {
+        "required": [
+          "name",
+          "hidden"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The property, for example \"FirstName\", or \"Address.City\" for one value of a complex property."
+          },
+          "old": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The value before the change. Null for a created value, for an action, and for a hidden value."
+          },
+          "new": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The value after the change, or the value of an action. Null for a hidden value."
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "True when the caller has no `read_audit_log_sensitive` and the value is sensitive, or is a value that the\ncode no longer knows."
+          }
+        }
+      },
       "InitiateUserAndTenantDto": {
         "required": [
           "tenantName",
@@ -2118,6 +2345,9 @@
   "tags": [
     {
       "name": "Agents"
+    },
+    {
+      "name": "AuditEntries"
     },
     {
       "name": "Tenants"

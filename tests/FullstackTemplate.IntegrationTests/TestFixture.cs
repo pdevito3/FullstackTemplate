@@ -12,6 +12,7 @@ using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using NSubstitute;
 
 public sealed class TestFixture : IAsyncDisposable
@@ -65,6 +66,20 @@ public sealed class TestFixture : IAsyncDisposable
 
         // Set TestContext so the DTO fakers use the seed tenant by default
         TestContext.DefaultTenantId = Seed.Tenant.Id;
+    }
+
+    /// <summary>
+    /// Runs SQL on a connection of its own, outside AppDbContext, so the write guard does not see it and no audit
+    /// entry records it. Use it to make a state that the domain cannot make, or to play the write of another process.
+    /// </summary>
+    public static async Task ExecuteOutOfBandAsync(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        foreach (var (name, value) in parameters)
+            command.Parameters.AddWithValue(name, value);
+        await command.ExecuteNonQueryAsync();
     }
 
     public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices)

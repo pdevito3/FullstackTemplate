@@ -19,7 +19,7 @@ Domain/Tenants/
         └── TenantGrpcMappings.cs  # The maps from the DTOs to the messages
 ```
 
-Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, Tenants, Users, and Weather features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `GetTenant`, `GetTenantList`, `AddTenant`, and `UpdateTenant` have MCP.
+Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, AuditEntries, Tenants, Users, and Weather features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `GetTenant`, `GetTenantList`, `AddTenant`, and `UpdateTenant` have MCP.
 
 The reason for this layout is in [ADR 0002](../adr/0002-colocate-entrypoints-with-features.md).
 
@@ -94,6 +94,7 @@ A create endpoint returns `TypedResults.CreatedAtRoute(result, "GetUser", new { 
 |-----------|--------|-------|----------------|
 | Get one | GET | `/{entities}/{id}` | 200 |
 | Get a list | GET | `/{entities}` | 200, with the `X-Pagination` header from `PaginationHeaderFilter` |
+| Get a page of a log that only grows | GET | `/{entities}?cursor=` | 200, with `nextCursor` in the body. The name ends in `Page`, for example `GetAuditEntryPage`. See [audit-log.md](audit-log.md#read-the-audit-log). |
 | Create | POST | `/{entities}` | 201, with `CreatedAtRoute` |
 | Update | PUT | `/{entities}/{id}` | 200 |
 | Delete | DELETE | `/{entities}/{id}` | 204 |

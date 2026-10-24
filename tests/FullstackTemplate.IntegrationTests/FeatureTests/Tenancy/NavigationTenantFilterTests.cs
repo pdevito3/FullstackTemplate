@@ -79,7 +79,8 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
     }
 
     private sealed class NoteContext(DbContextOptions<AppDbContext> options, ITenantScopeProvider scopeProvider)
-        : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(), scopeProvider,
+        : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
+            Substitute.For<ICallerIdentityResolver>(), scopeProvider,
             new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -89,7 +90,8 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
                 note.HasKey(n => n.Id);
                 note.Property(n => n.Id).HasMaxLength(EntityId.MaxLength).UseCollation(EntityId.Collation);
                 note.Property(n => n.UserId).HasMaxLength(EntityId.MaxLength).UseCollation(EntityId.Collation);
-                note.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Restrict);
+                // The user owns the note, so the audit log of the save finds the tenant of the note through the user.
+                note.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
                 note.ApplyTenanting(n => n.User.TenantId);
             });
             base.OnModelCreating(modelBuilder);

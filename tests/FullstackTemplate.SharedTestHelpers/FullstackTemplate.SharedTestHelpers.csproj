@@ -21,4 +21,9 @@
                           ReferenceOutputAssembly="false" />
     </ItemGroup>
 
+    <!-- The Postgres image tag of the app. The tests run the same version. -->
+    <ItemGroup>
+        <Compile Include="..\..\FullstackTemplate.AppHost\Config.cs" Link="AppHostConfig.cs" />
+    </ItemGroup>
+
 </Project>

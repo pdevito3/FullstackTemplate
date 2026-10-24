@@ -84,7 +84,7 @@ public sealed class CallerIdentityResolver(
             return new CallerIdentity.UnknownClient(null);
 
         if (token.Subject is { } subject && firstPartyClients.Value.Contains(clientId))
-            return new CallerIdentity.User(subject, await tenantIdProvider.GetTenantIdAsync(subject, cancellationToken));
+            return new CallerIdentity.User(subject, await tenantIdProvider.FindLiveUserAsync(subject, cancellationToken));
 
         var tenancy = tenancyOptions.Value;
         if (tenancy.ManageAllTenantsClientIds.Contains(clientId, StringComparer.Ordinal))
@@ -97,9 +97,9 @@ public sealed class CallerIdentityResolver(
             return new CallerIdentity.MachineAgent(machineAgent.AgentId, clientId, machineAgent.TenantId);
 
         if (token.Subject is { } delegatingUser
-            && await tenantIdProvider.GetTenantIdAsync(delegatingUser, cancellationToken) is { } tenantId
-            && await agentDirectory.FindDelegatedAgentAsync(tenantId, clientId, cancellationToken) is { } agentId)
-            return new CallerIdentity.DelegatedAgent(agentId, clientId, delegatingUser, tenantId);
+            && await tenantIdProvider.FindLiveUserAsync(delegatingUser, cancellationToken) is { } liveUser
+            && await agentDirectory.FindDelegatedAgentAsync(liveUser.TenantId, clientId, cancellationToken) is { } agentId)
+            return new CallerIdentity.DelegatedAgent(agentId, clientId, delegatingUser, liveUser);
 
         return new CallerIdentity.UnknownClient(clientId);
     }

@@ -41,7 +41,7 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
         await context.GetService<IMigrator>().MigrateAsync(ThisMigration);
         var afterFirstRun = await ReadRowsAsync();
         foreach (var sql in UpSqlOf(context))
-            await context.Database.ExecuteSqlRawAsync(sql);
+            await ExecuteAsync(sql);
         var afterSecondRun = await ReadRowsAsync();
 
         // Assert
@@ -108,7 +108,7 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
             .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 
     private static IEnumerable<string> UpSqlOf(AppDbContext context)

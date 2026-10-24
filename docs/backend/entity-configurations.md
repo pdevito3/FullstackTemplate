@@ -8,8 +8,8 @@ Each entity has one EF Core configuration class in `Databases/EntityConfiguratio
 2. Do not configure an entity in `OnModelCreating`.
 3. Give `Id` and each ID foreign key `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`.
 4. Give each string property a `HasMaxLength`. Use 320 for an email.
-5. Map each value object with `ComplexProperty`. Give its column a snake case name with `HasColumnName`. The naming convention makes the other names snake case.
-6. Set `OnDelete` on each relationship. Use `Restrict` for a link to another aggregate. Use `Cascade` for a child that the entity owns. `Cascade` also tells the context that a change to the child updates the owner row, so that the version of the owner guards the child. See [backend.md](../backend.md#concurrency).
+5. Map each value object with `ComplexProperty`. Give its column a snake case name with `HasColumnName`. The naming convention makes the other names snake case. Do not use `OwnsOne`. The audit log reads only entities and their complex properties, and `AuditModelTests` fails on an owned type.
+6. Set `OnDelete` on each relationship. Use `Restrict` for a link to another aggregate. Use `Cascade` for a child that the entity owns. `Cascade` also tells the context that a change to the child updates the owner row, so that the version of the owner guards the child. It also makes the owner the aggregate root of the child in the audit log. Give a child one `Cascade` foreign key to an entity. See [backend.md](../backend.md#concurrency).
 7. Add an index for each property that queries filter or sort on.
 8. After you change a configuration, add a migration. See [backend.md](../backend.md#migrations).
 9. Do not configure `Version`. `MapVersionToXmin` maps it to the `xmin` column of each entity.

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.DPoPProofs.Features;
 
+using System.Diagnostics.CodeAnalysis;
 using Databases;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,8 @@ public static class DeleteExpiredDPoPProofs
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, int>
     {
+        [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+            Justification = "used_dpop_proofs is [NotAudited], so this write needs no audit entry.")]
         public Task<int> Handle(Command request, CancellationToken cancellationToken)
         {
             var batch = dbContext.Set<UsedDPoPProof>()

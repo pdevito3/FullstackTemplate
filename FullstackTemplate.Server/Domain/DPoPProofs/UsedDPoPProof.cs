@@ -11,6 +11,7 @@ using System.Text;
 /// is unique for the key that signed it.</param>
 /// <param name="Expires">The time after which the proof cannot pass the <c>iat</c> check. The cleanup then
 /// deletes the row.</param>
+[NotAudited("A replay cache of proof ids. A row holds no business data and expires in minutes.")]
 public sealed record UsedDPoPProof(string Id, DateTimeOffset Expires)
 {
     public static string KeyFor(string jwkThumbprint, string jti) =>

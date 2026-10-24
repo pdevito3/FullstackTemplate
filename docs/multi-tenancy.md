@@ -49,14 +49,14 @@ A child entity can get its tenant through its owner. In the configuration of the
 builder.ApplyTenanting(line => line.Order.TenantId);
 ```
 
-The filter then shows a row only if the owner is in the tenant of the caller. The path must go through navigation properties, so give the child a navigation to its owner. `UserPermission` is an example. The context adds the tenant filter when the model is complete, so a context that calls `ApplyTenanting` after the model of `AppDbContext` also gets the tenant filter. A child that gets its tenant this way cannot queue a domain event. The save throws a `NotSupportedException`. See [domain-events.md](backend/domain-events.md#handlers).
+The filter then shows a row only if the owner is in the tenant of the caller. The path must go through navigation properties, so give the child a navigation to its owner. Make the foreign key to the owner `Cascade`. The audit log reads the tenant of a change from the aggregate root, and the `Cascade` foreign key makes the owner the root (see [audit-log.md](backend/audit-log.md)). An entity that implements `ITenantable` must be a root. `UserPermission` is an example. The context adds the tenant filter when the model is complete, so a context that calls `ApplyTenanting` after the model of `AppDbContext` also gets the tenant filter. A child that gets its tenant this way cannot queue a domain event. The save throws a `NotSupportedException`. See [domain-events.md](backend/domain-events.md#handlers).
 
 ## Entities with no tenant filter
 
 `TenantQueryFilterTests` checks the model of `AppDbContext`. Each entity must have the tenant filter, or be on a list in the test that gives the reason why it has no tenant filter. A new entity with no filter fails the test, so you must make a decision for it:
 
 - If the entity holds the data of a tenant, implement `ITenantable` or call `ApplyTenanting`.
-- If the entity has no tenant data, such as the replay cache of the DPoP check, add it to the list in the test.
+- If the entity has no tenant data, such as the replay cache of the DPoP check, add it to the list in the test. Each audit entry has a tenant, so such an entity cannot be a `BaseEntity`. Make it a class with `[NotAudited(reason)]`, as `UsedDPoPProof` is.
 
 An entity with a foreign key to an entity that has the tenant filter holds the data of that tenant. The test fails for such an entity if it has no tenant filter, also when it is on the list.
 
@@ -78,7 +78,7 @@ When the context removes stale results, it adds a `tenant_lookup.removed` event 
 
 A lookup can start before the save and finish after the removal. Each removal moves the identifier to a new cache key, so the late result goes to an old key that no request reads.
 
-A write that does not go through `SaveChangesAsync`, such as `ExecuteUpdateAsync` or raw SQL, does not remove the cached results. If such a write adds a user, or changes the identifier, the tenant, or the deleted state of a user or a tenant, call `ITenantIdProvider.InvalidateCacheAsync` after the write.
+`BulkInsertAsync` raises the same save events, so it also removes the cached result of each new user. The Server writes `users` and `tenants` only through these two. A write from outside the Server, such as SQL in a migration, does not remove the cached results. If such a write adds a user, or changes the identifier, the tenant, or the deleted state of a user or a tenant, call `ITenantIdProvider.InvalidateCacheAsync` after the write, or wait until the results expire.
 
 The cache is in the memory of each server instance. There is no distributed cache and no backplane. The removals and the "next request" behavior above are true for one server instance only. If you run more than one instance, the other instances keep the old result until it expires. Add a backplane to FusionCache before you run more than one instance.
 

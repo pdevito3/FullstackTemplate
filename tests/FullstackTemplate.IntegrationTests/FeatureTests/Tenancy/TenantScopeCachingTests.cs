@@ -80,6 +80,7 @@ public class TenantScopeCachingTests : TestBase
             services.GetRequiredService<DbContextOptions<AppDbContext>>(),
             TimeProvider.System,
             services.GetRequiredService<ICurrentUserService>(),
+            services.GetRequiredService<ICallerIdentityResolver>(),
             tenantScopeProvider,
             services.GetRequiredService<DomainEventDispatcher>());
 }

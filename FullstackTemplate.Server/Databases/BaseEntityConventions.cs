@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Microsoft.EntityFrameworkCore.Query;
 using Resources;
 
 /// <summary>
@@ -15,22 +14,13 @@ using Resources;
 /// </summary>
 public static class BaseEntityConventions
 {
-    public static void FilterSoftDeletedRecords(this ModelBuilder modelBuilder)
-    {
-        Expression<Func<BaseEntity, bool>> filterExpr = e => !e.IsDeleted;
-        foreach (var mutableEntityType in modelBuilder.Model.GetEntityTypes()
-                     .Where(m => m.ClrType.IsAssignableTo(typeof(BaseEntity))))
+    public static void FilterSoftDeletedRecords(this ModelConfigurationBuilder configurationBuilder)
+        => configurationBuilder.ConfigureEachEntity(entityType =>
         {
-            // modify expression to handle correct child type
-            var parameter = Expression.Parameter(mutableEntityType.ClrType);
-            var body = ReplacingExpressionVisitor
-                .Replace(filterExpr.Parameters.First(), parameter, filterExpr.Body);
-            var lambdaExpression = Expression.Lambda(body, parameter);
-
-            // set filter with name for selective disabling
-            mutableEntityType.SetQueryFilter(QueryFilterNames.SoftDelete, lambdaExpression);
-        }
-    }
+            var row = Expression.Parameter(entityType.ClrType, "e");
+            var notDeleted = Expression.Not(Expression.Property(row, nameof(BaseEntity.IsDeleted)));
+            entityType.SetQueryFilter(QueryFilterNames.SoftDelete, Expression.Lambda(notDeleted, row));
+        });
 
     /// <summary>
     /// Makes EF write the ID field of each entity when it loads a row. <see cref="BaseEntity.Id"/> has no setter

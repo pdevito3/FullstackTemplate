@@ -11,10 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Shouldly;
 
-/// <summary>
-/// A context that configures an entity after the model of <see cref="AppDbContext"/> gets the same model rules for it
-/// as the entities of <see cref="AppDbContext"/>. The test needs a model and a database of its own.
-/// </summary>
 public sealed class LateConfiguredEntityTests : IAsyncDisposable
 {
     private readonly PostgresTestDatabase _database = new();

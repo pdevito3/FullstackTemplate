@@ -7,10 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-/// <summary>
-/// The model of <see cref="AppDbContext"/>, then an <see cref="OrderLine"/> that gets its tenant through its order,
-/// and a <see cref="Memo"/> that has no tenant.
-/// </summary>
 internal sealed class NavigationTenantedContext() : AppDbContext(TestModelOptions.Options, TimeProvider.System,
     Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
     Substitute.For<ITenantScopeProvider>(),

@@ -8,10 +8,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Resources;
 
-/// <summary>
-/// The model rules of each <see cref="BaseEntity"/>. Each rule runs when the model is complete, so it also applies to
-/// an entity that a context configures after the model of <see cref="AppDbContext"/>.
-/// </summary>
 public static class BaseEntityConventions
 {
     public static void FilterSoftDeletedRecords(this ModelConfigurationBuilder configurationBuilder)

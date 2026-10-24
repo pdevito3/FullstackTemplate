@@ -42,8 +42,12 @@ internal static class AuditValues
                     WriteValue(writer, property.Path, property.Original);
                 }
 
-                writer.WritePropertyName("new");
-                WriteValue(writer, property.Path, property.Current);
+                if (kind != AuditEntryKind.Deleted || !Equals(property.Original, property.Current))
+                {
+                    writer.WritePropertyName("new");
+                    WriteValue(writer, property.Path, property.Current);
+                }
+
                 writer.WriteEndObject();
             }
 
@@ -62,7 +66,7 @@ internal static class AuditValues
                 ? new StoredValue(property.Name, Old: null, Display(property.Value))
                 : new StoredValue(property.Name,
                     property.Value.TryGetProperty("old", out var old) ? Display(old) : null,
-                    Display(property.Value.GetProperty("new"))))
+                    property.Value.TryGetProperty("new", out var @new) ? Display(@new) : null))
             .ToList();
     }
 

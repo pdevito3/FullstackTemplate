@@ -96,7 +96,7 @@ public class AuditCaptureTests : TestBase
         deleted.Select(e => e.EntityId)
             .ShouldBe(user.UserPermissions.Select(p => p.Id).Append(user.Id), ignoreOrder: true);
         deleted.Select(e => e.RecordId).Distinct().ShouldHaveSingleItem();
-        deleted.ShouldAllBe(e => e.Data == "{}");
+        deleted.Single(e => e.EntityId == user.Id).Data.ShouldContain(user.Identifier);
     }
 
     [Test]
@@ -119,6 +119,7 @@ public class AuditCaptureTests : TestBase
         (deletion.EntityType, deletion.EntityId, deletion.RootType, deletion.TenantId)
             .ShouldBe((nameof(UserPermission), removed.Id, nameof(User), user.TenantId));
         entries.Where(e => e.RecordId == deletion.RecordId).ShouldHaveSingleItem();
+        deletion.Data.ShouldContain($"\"{removed.Permission.Value}\"");
     }
 
     [Test]

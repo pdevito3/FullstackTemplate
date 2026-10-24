@@ -57,17 +57,20 @@ internal static class AuditDiff
                 continue;
             }
 
-            var changed = snapshot.Properties.Where(p => !Equals(p.Original, p.Current)).ToList();
             var kind = (snapshot.WasDeleted, snapshot.IsDeleted) switch
             {
                 (false, true) => AuditEntryKind.Deleted,
                 (true, false) => AuditEntryKind.Restored,
                 _ => AuditEntryKind.Updated,
             };
-            if (kind == AuditEntryKind.Updated && changed.Count == 0)
+            // A delete keeps every value that the row held, so the entry says what was deleted.
+            var recorded = kind == AuditEntryKind.Deleted
+                ? snapshot.Properties.Where(p => p.Original is not null || p.Current is not null).ToList()
+                : snapshot.Properties.Where(p => !Equals(p.Original, p.Current)).ToList();
+            if (kind == AuditEntryKind.Updated && recorded.Count == 0)
                 continue;
 
-            changes.Add(new DataChange(snapshot.Subject, kind, changed));
+            changes.Add(new DataChange(snapshot.Subject, kind, recorded));
         }
 
         return changes;

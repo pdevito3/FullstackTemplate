@@ -10,7 +10,7 @@ A save adds one audit entry for each entity that it adds, changes, or deletes, a
 |------|----------|--------------|
 | `Created` | adds the entity | Each value that is not null |
 | `Updated` | changes a value | The old and the new value of each changed value |
-| `Deleted` | deletes the entity (a soft delete) | The old and the new value of each value that also changed |
+| `Deleted` | deletes the entity (a soft delete) | The old value of each value that the row held, and the new value of each value that also changed |
 | `Restored` | sets `IsDeleted` back to false | The old and the new value of each value that also changed |
 | `Action` | saves a recorded action | Each property of the action, except its subject |
 

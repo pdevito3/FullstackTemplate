@@ -53,20 +53,35 @@ public class AuditDiffTests
     }
 
     [Test]
-    [Arguments(false, true, AuditEntryKind.Deleted)]
-    [Arguments(true, false, AuditEntryKind.Restored)]
-    public void soft_delete_flag_that_changed_gives_its_kind_also_with_no_changed_value(
-        bool wasDeleted, bool isDeleted, AuditEntryKind kind)
+    public void restore_with_no_changed_value_gives_a_restored_change_with_no_values()
     {
         // Arrange
-        var snapshot = Snapshot(isAdded: false, wasDeleted, isDeleted, new PropertySnapshot("FirstName", "Ann", "Ann"));
+        var snapshot = Snapshot(isAdded: false, wasDeleted: true, isDeleted: false, new PropertySnapshot("FirstName", "Ann", "Ann"));
 
         // Act
         var change = AuditDiff.Changes([snapshot]).ShouldHaveSingleItem();
 
         // Assert
-        change.Kind.ShouldBe(kind);
+        change.Kind.ShouldBe(AuditEntryKind.Restored);
         change.Properties.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void delete_keeps_every_value_that_the_row_held()
+    {
+        // Arrange
+        var snapshot = Snapshot(isAdded: false, wasDeleted: false, isDeleted: true,
+            new PropertySnapshot("Permission", "manage_users", "manage_users"),
+            new PropertySnapshot("Note", null, null));
+
+        // Act
+        var change = AuditDiff.Changes([snapshot]).ShouldHaveSingleItem();
+
+        // Assert
+        change.Kind.ShouldBe(AuditEntryKind.Deleted);
+        change.Properties.Select(p => p.Path).ShouldBe(["Permission"]);
+        AuditValues.Read(change.Kind, AuditValues.WriteChange(change.Kind, change.Properties))
+            .ShouldHaveSingleItem().ShouldBe(new StoredValue("Permission", Old: "manage_users", New: null));
     }
 
     [Test]

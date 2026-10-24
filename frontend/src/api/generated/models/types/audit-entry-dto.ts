@@ -42,15 +42,25 @@ export type AuditEntryDto = {
     rootType: string;
     rootId: string;
     /**
-     * @description The subject of the user of the save. Null for system work and for a machine client.
+     * @description The `sub` of the token of the save. It shows only to a caller with `read_audit_log_sensitive`,\nbecause a provider can make it an email address. Null for system work.
      * @type string | undefined
     */
-    actorUser?: string | null;
+    actorSubject?: string | null;
     /**
      * @description The client ID of the token of the save. Null for system work.
      * @type string | undefined
     */
     actorClient?: string | null;
+    /**
+     * @description The ID of the user who acted, also for a delegated agent. Null for system work, for a client that acts for no\nuser, and for a user with no user record yet.
+     * @type string | undefined
+    */
+    actorUserId?: string | null;
+    /**
+     * @description The ID of the agent that acted. Null when no agent acted.
+     * @type string | undefined
+    */
+    actorAgentId?: string | null;
     /**
      * @description The MediatR request of the save, for example \"UpdateUser.Command\". Null for work outside a request.
      * @type string | undefined

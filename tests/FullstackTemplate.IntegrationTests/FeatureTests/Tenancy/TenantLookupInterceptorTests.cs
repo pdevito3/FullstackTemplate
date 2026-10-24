@@ -32,8 +32,8 @@ public class TenantLookupInterceptorTests : TestBase
     {
         public List<string> Invalidations { get; } = [];
 
-        public Task<string?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default)
-            => Task.FromResult<string?>(tenantId);
+        public Task<LiveUser?> FindLiveUserAsync(string userIdentifier, CancellationToken cancellationToken = default)
+            => Task.FromResult<LiveUser?>(new LiveUser("usr_1", tenantId));
 
         public Task InvalidateCacheAsync(string userIdentifier, CancellationToken cancellationToken = default)
         {

@@ -23,19 +23,19 @@ public class TenantIdProviderTests : TestBase
         await testingServiceScope.StartGraph(out _)
             .AddUser(out var user)
             .BuildAsync();
-        (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
+        (await provider.FindLiveUserAsync(identifier)).ShouldBeNull();
 
         await TestFixture.ExecuteOutOfBandAsync("UPDATE users SET identifier = @identifier WHERE id = @id",
             ("identifier", identifier), ("id", user.Id));
 
         // Act
-        var cached = await provider.GetTenantIdAsync(identifier);
+        var cached = await provider.FindLiveUserAsync(identifier);
         await provider.InvalidateCacheAsync(identifier);
-        var fresh = await provider.GetTenantIdAsync(identifier);
+        var fresh = await provider.FindLiveUserAsync(identifier);
 
         // Assert
         cached.ShouldBeNull();
-        fresh.ShouldBe(user.TenantId);
+        fresh.ShouldBe(new LiveUser(user.Id, user.TenantId));
     }
 
     [Test]
@@ -54,7 +54,7 @@ public class TenantIdProviderTests : TestBase
         await testingServiceScope.StartGraph(out _)
             .AddUser(out var user)
             .BuildAsync();
-        (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
+        (await provider.FindLiveUserAsync(identifier)).ShouldBeNull();
         // FusionCache sets the absolute expiration from the real clock, so the manual clock starts from the time of the miss.
         clock.SetToNow();
 
@@ -63,13 +63,13 @@ public class TenantIdProviderTests : TestBase
 
         // Act
         clock.Advance(TimeSpan.FromSeconds(29));
-        var beforeExpiry = await provider.GetTenantIdAsync(identifier);
+        var beforeExpiry = await provider.FindLiveUserAsync(identifier);
         clock.Advance(TimeSpan.FromSeconds(2));
-        var afterExpiry = await provider.GetTenantIdAsync(identifier);
+        var afterExpiry = await provider.FindLiveUserAsync(identifier);
 
         // Assert
         beforeExpiry.ShouldBeNull();
-        afterExpiry.ShouldBe(user.TenantId);
+        afterExpiry.ShouldBe(new LiveUser(user.Id, user.TenantId));
     }
 
     [Test]
@@ -79,7 +79,7 @@ public class TenantIdProviderTests : TestBase
         var testingServiceScope = new TestingServiceScope();
         var provider = testingServiceScope.GetService<ITenantIdProvider>();
         var identifier = $"new-{Guid.NewGuid()}";
-        (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
+        (await provider.FindLiveUserAsync(identifier)).ShouldBeNull();
 
         // Act
         await testingServiceScope.StartGraph(out _)
@@ -87,7 +87,7 @@ public class TenantIdProviderTests : TestBase
             .BuildAsync();
 
         // Assert
-        (await provider.GetTenantIdAsync(identifier)).ShouldBe(user.TenantId);
+        (await provider.FindLiveUserAsync(identifier)).ShouldBe(new LiveUser(user.Id, user.TenantId));
     }
 
     [Test]
@@ -99,13 +99,13 @@ public class TenantIdProviderTests : TestBase
         await testingServiceScope.StartGraph(out _)
             .AddUser(out var user)
             .BuildAsync();
-        (await provider.GetTenantIdAsync(user.Identifier)).ShouldBe(user.TenantId);
+        (await provider.FindLiveUserAsync(user.Identifier)).ShouldBe(new LiveUser(user.Id, user.TenantId));
 
         // Act
         await testingServiceScope.SendAsync(new DeleteUser.Command(user.Id));
 
         // Assert
-        (await provider.GetTenantIdAsync(user.Identifier)).ShouldBeNull();
+        (await provider.FindLiveUserAsync(user.Identifier)).ShouldBeNull();
     }
 
     [Test]
@@ -119,7 +119,7 @@ public class TenantIdProviderTests : TestBase
             .AddUsers(out var users, u => u.Role = "Admin", _ => { })
             .BuildAsync();
         foreach (var user in users)
-            (await provider.GetTenantIdAsync(user.Identifier)).ShouldBe(tenant.Id);
+            (await provider.FindLiveUserAsync(user.Identifier)).ShouldBe(new LiveUser(user.Id, tenant.Id));
         testingServiceScope.SetUserWithDefaults(identifier: users[0].Identifier);
 
         // Act
@@ -127,7 +127,7 @@ public class TenantIdProviderTests : TestBase
 
         // Assert
         foreach (var user in users)
-            (await provider.GetTenantIdAsync(user.Identifier)).ShouldBeNull();
+            (await provider.FindLiveUserAsync(user.Identifier)).ShouldBeNull();
     }
 
     [Test]
@@ -143,15 +143,15 @@ public class TenantIdProviderTests : TestBase
             .BuildAsync();
 
         // The lookup reads the user, then waits before it can write its result to the cache.
-        var inFlight = Task.Run(() => provider.GetTenantIdAsync(user.Identifier));
+        var inFlight = Task.Run(() => provider.FindLiveUserAsync(user.Identifier));
         await scopeFactory.ReadDone.Task.WaitAsync(TimeSpan.FromSeconds(30));
         await testingServiceScope.SendAsync(new DeleteUser.Command(user.Id));
         await provider.InvalidateCacheAsync(user.Identifier);
 
         // Act
         scopeFactory.Release.SetResult();
-        (await inFlight).ShouldBe(user.TenantId);
-        var afterDelete = await provider.GetTenantIdAsync(user.Identifier);
+        (await inFlight).ShouldBe(new LiveUser(user.Id, user.TenantId));
+        var afterDelete = await provider.FindLiveUserAsync(user.Identifier);
 
         // Assert
         afterDelete.ShouldBeNull();

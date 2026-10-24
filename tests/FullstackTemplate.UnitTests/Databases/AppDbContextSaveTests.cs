@@ -27,7 +27,8 @@ public sealed class AppDbContextSaveTests
     {
         // Arrange
         await using var dbContext = CreateContext();
-        var save = SaveFacts.From(DateTimeOffset.UtcNow, "sub-1", "spa", requestName: null, traceId: null);
+        var save = SaveFacts.From(DateTimeOffset.UtcNow, new AuditActor("sub-1", "spa", UserId: null, AgentId: null),
+            requestName: null, traceId: null);
         var subject = new AuditSubject("User", "usr_1", "User", "usr_1", "ten_1");
         dbContext.AuditEntries.Add(new AuditEntry(save, 0, subject, AuditEntryKind.Deleted, action: null, "{}"));
 
@@ -54,6 +55,6 @@ public sealed class AppDbContextSaveTests
             .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 }

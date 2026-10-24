@@ -50,7 +50,8 @@ public class BulkInsertTests : TestBase
                 .ShouldBe(user.UserPermissions.Select(p => p.Id), ignoreOrder: true);
         }
 
-        entries.ShouldAllBe(e => e.Kind == AuditEntryKind.Created && e.ActorUser == TestFixture.DefaultUser.Identifier);
+        entries.ShouldAllBe(e => e.Kind == AuditEntryKind.Created && e.ActorSubject == TestFixture.DefaultUser.Identifier
+                                 && e.ActorUserId == TestFixture.DefaultUser.Id);
         users.ShouldAllBe(u => u.DomainEvents.Count == 0);
     }
 
@@ -79,13 +80,13 @@ public class BulkInsertTests : TestBase
         var scope = new TestingServiceScope();
         var lookup = scope.GetService<ITenantIdProvider>();
         var user = NewAdmin();
-        (await lookup.GetTenantIdAsync(user.Identifier)).ShouldBeNull();
+        (await lookup.FindLiveUserAsync(user.Identifier)).ShouldBeNull();
 
         // Act
         await scope.GetService<AppDbContext>().BulkInsertAsync([user]);
 
         // Assert
-        (await lookup.GetTenantIdAsync(user.Identifier)).ShouldBe(user.TenantId);
+        (await lookup.FindLiveUserAsync(user.Identifier)).ShouldBe(new LiveUser(user.Id, user.TenantId));
     }
 
     [Test]

@@ -16,9 +16,9 @@ public sealed class CallerIdentityTests
         yield return () => ("system work", new CallerIdentity.System(), true);
         yield return () => ("client on the manage list", new CallerIdentity.AllTenantsClient("sync", CanManage: true), true);
         yield return () => ("client on the read list", new CallerIdentity.AllTenantsClient("report", CanManage: false), false);
-        yield return () => ("user", new CallerIdentity.User("user-1", TenantId), false);
+        yield return () => ("user", new CallerIdentity.User("user-1", new LiveUser("usr_1", TenantId)), false);
         yield return () => ("delegated agent",
-            new CallerIdentity.DelegatedAgent(AgentId, "clinic-assistant", "user-1", TenantId), false);
+            new CallerIdentity.DelegatedAgent(AgentId, "clinic-assistant", "user-1", new LiveUser("usr_1", TenantId)), false);
         yield return () => ("machine agent", new CallerIdentity.MachineAgent(AgentId, "fleet-sync", TenantId), false);
         yield return () => ("unknown client", new CallerIdentity.UnknownClient("m2m"), false);
         yield return () => ("anonymous", new CallerIdentity.Anonymous(), false);

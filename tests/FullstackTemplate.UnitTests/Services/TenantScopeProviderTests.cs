@@ -66,7 +66,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     public void user_with_a_user_record_gets_their_tenant()
     {
         var tenantId = EntityId.New(Tenant.IdPrefix);
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(tenantId);
+        _tenantIdProvider.FindLiveUserAsync("user-1").Returns(new LiveUser("usr_1", tenantId));
         SetCaller(new Claim("sub", "user-1"), new Claim("azp", FirstPartyClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
@@ -75,7 +75,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Test]
     public void user_with_no_user_record_gets_no_tenant()
     {
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns((string?)null);
+        _tenantIdProvider.FindLiveUserAsync("user-1").Returns((LiveUser?)null);
         SetCaller(new Claim("sub", "user-1"), new Claim("azp", FirstPartyClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
@@ -130,7 +130,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     public void service_account_token_on_the_allow_list_gets_all_tenants()
     {
         // Keycloak, ZeroFactor, and Cognito give a client_credentials token a service-account sub with no user record.
-        _tenantIdProvider.GetTenantIdAsync("service-account-1").Returns((string?)null);
+        _tenantIdProvider.FindLiveUserAsync("service-account-1").Returns((LiveUser?)null);
         SetCaller(new Claim("sub", "service-account-1"), new Claim("azp", TrustedClientId));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.AllTenants);
@@ -139,7 +139,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     [Test]
     public void user_through_an_unknown_client_gets_no_tenant()
     {
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(EntityId.New(Tenant.IdPrefix));
+        _tenantIdProvider.FindLiveUserAsync("user-1").Returns(new LiveUser("usr_1", EntityId.New(Tenant.IdPrefix)));
         SetCaller(new Claim("sub", "user-1"), new Claim("azp", "some-agent"));
 
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
@@ -149,7 +149,7 @@ public sealed class TenantScopeProviderTests : IDisposable
     public void user_through_a_delegated_agent_gets_the_tenant_of_the_user()
     {
         var tenantId = EntityId.New(Tenant.IdPrefix);
-        _tenantIdProvider.GetTenantIdAsync("user-1").Returns(tenantId);
+        _tenantIdProvider.FindLiveUserAsync("user-1").Returns(new LiveUser("usr_1", tenantId));
         _agentDirectory.FindDelegatedAgentAsync(tenantId, "clinic-assistant").Returns(EntityId.New(Agent.IdPrefix));
         SetCaller(new Claim("sub", "user-1"), new Claim("azp", "clinic-assistant"));
 

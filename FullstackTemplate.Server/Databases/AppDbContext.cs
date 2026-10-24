@@ -20,6 +20,7 @@ public class AppDbContext(
     DbContextOptions<AppDbContext> options,
     TimeProvider timeProvider,
     ICurrentUserService currentUserService,
+    ICallerIdentityResolver callerIdentityResolver,
     ITenantScopeProvider tenantScopeProvider,
     DomainEventDispatcher domainEventDispatcher) : DbContext(options)
 {
@@ -165,7 +166,7 @@ public class AppDbContext(
         await RunDomainEventHandlers(cancellationToken);
 
         _saveStage = SaveStage.Saving;
-        var auditEntries = PrepareWrite();
+        var auditEntries = PrepareWrite(await callerIdentityResolver.GetAsync(cancellationToken));
         try
         {
             // The audit entries are in the tracker before the execution strategy runs, so a retry sends the same rows.
@@ -183,7 +184,7 @@ public class AppDbContext(
         _saveStage = SaveStage.Saving;
         Set<TRoot>().AddRange(roots);
         TakeDomainEventsWithNoHandler();
-        var auditEntries = PrepareWrite();
+        var auditEntries = PrepareWrite(await callerIdentityResolver.GetAsync(cancellationToken));
         if (auditEntries.Count == 0)
             return 0;
 
@@ -331,7 +332,7 @@ public class AppDbContext(
     /// entities, turns deletes into soft deletes, and adds the audit entries of the changes and the recorded actions to
     /// the tracker. Returns the audit entries.
     /// </summary>
-    private IReadOnlyList<AuditEntry> PrepareWrite()
+    private IReadOnlyList<AuditEntry> PrepareWrite(CallerIdentity caller)
     {
         // Entities that code removed from a collection become Deleted here.
         ChangeTracker.DetectChanges();
@@ -344,8 +345,8 @@ public class AppDbContext(
         var now = timeProvider.GetUtcNow();
         StampEntities(now);
 
-        var save = SaveFacts.From(now, currentUserService.UserIdentifier, currentUserService.ClientId, _requestName,
-            Activity.Current?.TraceId.ToHexString());
+        var actor = AuditActor.Of(currentUserService.UserIdentifier, currentUserService.ClientId, caller);
+        var save = SaveFacts.From(now, actor, _requestName, Activity.Current?.TraceId.ToHexString());
         var auditEntries = AuditDiff.Compose(save, AuditDiff.Changes(AuditSnapshots.Take(aggregates, auditModel)),
             _recordedActions);
         _recordedActions.Clear();

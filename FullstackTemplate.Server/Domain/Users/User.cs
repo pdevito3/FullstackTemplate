@@ -11,7 +11,7 @@ public class User : BaseEntity, ITenantable
     [NotSensitive] public string TenantId { get; private set; } = default!;
     [Sensitive] public string FirstName { get; private set; } = default!;
     [Sensitive] public string LastName { get; private set; } = default!;
-    [NotSensitive] public string Identifier { get; private set; } = default!;
+    [Sensitive] public string Identifier { get; private set; } = default!;
     [Sensitive] public EmailAddress Email { get; private set; } = default!;
     [Sensitive] public string Username { get; private set; } = default!;
     [NotSensitive] public UserRole Role { get; private set; } = default!;

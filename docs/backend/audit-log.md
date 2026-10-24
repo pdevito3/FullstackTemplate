@@ -19,7 +19,8 @@ The entries do not record the key or the `BaseEntity` bookkeeping: the stamps, `
 Each entry repeats the facts of its save:
 
 - `occurred_at` is the one clock reading of the save. The stamps of the entities have the same value.
-- `actor_user` is the `sub` of the token, and `actor_client` is its client ID. Both are null for system work.
+- `actor_subject` is the `sub` of the token, and `actor_client` is its client ID. Both are null for system work. A provider can make the `sub` an email address, so the read shows it only with `read_audit_log_sensitive`.
+- `actor_user_id` is the user record of the caller, or of the user that a delegated agent acts for. It is null for system work, for a client that acts for no user, and for a user with no user record yet. `actor_agent_id` is the agent record of a delegated agent or a machine agent.
 - `request_name` is the MediatR request, for example `UpdateUser.Command`. A nested request keeps the name of the outer request. The name is null for a save outside a request.
 - `trace_id` joins the save to its trace in the Aspire dashboard.
 
@@ -98,7 +99,7 @@ The migration helpers `GrantPermissionToRole` and `DeletePermission` write `user
 - It needs `read_audit_log`. A caller without it gets 403.
 - It shows a value only to a caller with `read_audit_log_sensitive`, or when the value is `[NotSensitive]` or plain. Otherwise the value has `hidden` set and no old or new value.
 - It also hides a value that the code no longer knows, such as the value of a removed property or of a removed action.
-- The names, the IDs, the actor, the request name, and the trace id always show.
+- The names, the IDs, the client and the user and agent IDs of the actor, the request name, and the trace id always show. The `sub` of the actor (`actorSubject`) shows only to a caller with `read_audit_log_sensitive`.
 - It pages with a cursor, not a page number. Send the `nextCursor` of a page as the `cursor` of the next request. The last page has no `nextCursor`. The response has no total count, because the table only grows.
 
 The cursor text is `{occurred_at in microseconds since 1970}_{record_id}_{ordinal}`. A caller sends it back as it got it. A malformed cursor gives 400.

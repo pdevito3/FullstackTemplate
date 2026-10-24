@@ -108,7 +108,7 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
             .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 
     private static IEnumerable<string> UpSqlOf(AppDbContext context)

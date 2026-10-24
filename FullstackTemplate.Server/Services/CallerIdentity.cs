@@ -19,16 +19,17 @@ public abstract record CallerIdentity
     public sealed record AllTenantsClient(string ClientId, bool CanManage) : CallerIdentity;
 
     /// <summary>
-    /// A user of a first-party client (the BFF or Swagger UI). <paramref name="TenantId"/> is null when the user has
+    /// A user of a first-party client (the BFF or Swagger UI). <paramref name="LiveUser"/> is null when the user has
     /// no live user record.
     /// </summary>
-    public sealed record User(string Subject, string? TenantId) : CallerIdentity;
+    public sealed record User(string Subject, LiveUser? LiveUser) : CallerIdentity;
 
     /// <summary>
     /// A client that the tenant of the user registered as a delegated agent, in a token for a live app user of that
     /// tenant.
     /// </summary>
-    public sealed record DelegatedAgent(string AgentId, string ClientId, string Subject, string TenantId) : CallerIdentity;
+    public sealed record DelegatedAgent(string AgentId, string ClientId, string Subject, LiveUser LiveUser)
+        : CallerIdentity;
 
     /// <summary>
     /// A client registered as a machine agent, whatever the <c>sub</c> of the token. The token names no tenant, so the
@@ -49,8 +50,8 @@ public abstract record CallerIdentity
     public TenantScope Scope => this switch
     {
         System or AllTenantsClient => TenantScope.AllTenants,
-        User { TenantId: { } tenantId } => TenantScope.ForTenant(tenantId),
-        DelegatedAgent agent => TenantScope.ForTenant(agent.TenantId),
+        User { LiveUser: { } liveUser } => TenantScope.ForTenant(liveUser.TenantId),
+        DelegatedAgent agent => TenantScope.ForTenant(agent.LiveUser.TenantId),
         MachineAgent agent => TenantScope.ForTenant(agent.TenantId),
         _ => TenantScope.NoTenant,
     };

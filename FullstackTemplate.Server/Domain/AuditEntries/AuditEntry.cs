@@ -17,8 +17,10 @@ public sealed class AuditEntry : ITenantable
     {
         RecordId = save.RecordId;
         OccurredAt = save.OccurredAt;
-        ActorUser = save.ActorUser;
-        ActorClient = save.ActorClient;
+        ActorSubject = save.Actor.Subject;
+        ActorClient = save.Actor.ClientId;
+        ActorUserId = save.Actor.UserId;
+        ActorAgentId = save.Actor.AgentId;
         RequestName = save.RequestName;
         TraceId = save.TraceId;
         Ordinal = ordinal;
@@ -41,11 +43,22 @@ public sealed class AuditEntry : ITenantable
     /// <summary>The one clock reading of the save. The stamps of the entities use the same value.</summary>
     public DateTimeOffset OccurredAt { get; private set; }
 
-    /// <summary>The <c>sub</c> of the token. Null for system work.</summary>
-    public string? ActorUser { get; private set; }
+    /// <summary>
+    /// The <c>sub</c> of the token. Null for system work. A provider can make it an email address, so it is sensitive.
+    /// </summary>
+    public string? ActorSubject { get; private set; }
 
     /// <summary>The OAuth client of the token. Null for system work.</summary>
     public string? ActorClient { get; private set; }
+
+    /// <summary>
+    /// The user record of the caller, or of the user that a delegated agent acts for. Null for system work, for a
+    /// client that acts for no user, and for a user with no live user record yet.
+    /// </summary>
+    public string? ActorUserId { get; private set; }
+
+    /// <summary>The agent record of a delegated or a machine agent. Null for any other caller.</summary>
+    public string? ActorAgentId { get; private set; }
 
     /// <summary>The MediatR request of the save, for example "UpdateUser.Command". Null when no request ran.</summary>
     public string? RequestName { get; private set; }

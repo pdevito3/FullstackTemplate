@@ -16,8 +16,10 @@ public sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntr
         // of the key gives the list of all tenants, newest first.
         builder.HasKey(e => new { e.OccurredAt, e.RecordId, e.Ordinal });
 
-        builder.Property(e => e.ActorUser).HasMaxLength(255);
+        builder.Property(e => e.ActorSubject).HasMaxLength(255);
         builder.Property(e => e.ActorClient).HasMaxLength(255);
+        builder.Property(e => e.ActorUserId).HasMaxLength(EntityId.MaxLength).UseCollation(EntityId.Collation);
+        builder.Property(e => e.ActorAgentId).HasMaxLength(EntityId.MaxLength).UseCollation(EntityId.Collation);
         builder.Property(e => e.RequestName).HasMaxLength(200);
         builder.Property(e => e.TraceId).HasMaxLength(32).IsFixedLength();
         builder.Property(e => e.TenantId).HasMaxLength(EntityId.MaxLength).UseCollation(EntityId.Collation);

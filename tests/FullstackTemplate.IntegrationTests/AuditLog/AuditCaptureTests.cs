@@ -48,7 +48,8 @@ public class AuditCaptureTests : TestBase
             .Select(e => ChangeOf(e, "Permission").New)
             .ShouldBe(Permission.GetAll().Select(p => p.Value), ignoreOrder: true);
         entries.ShouldAllBe(e => e.RecordId == created.RecordId && e.Kind == AuditEntryKind.Created
-                                 && e.ActorUser == TestFixture.DefaultUser.Identifier
+                                 && e.ActorSubject == TestFixture.DefaultUser.Identifier
+                                 && e.ActorUserId == TestFixture.DefaultUser.Id && e.ActorAgentId == null
                                  && e.ActorClient == TestFixture.FirstPartyClientId
                                  && e.RequestName == "AddUser.Command");
     }
@@ -200,7 +201,31 @@ public class AuditCaptureTests : TestBase
 
         // Assert
         var created = (await EntriesOfRootAsync(tenant.Id)).ShouldHaveSingleItem();
-        (created.ActorUser, created.ActorClient, created.RequestName).ShouldBe((null, null, null));
+        (created.ActorSubject, created.ActorClient, created.ActorUserId, created.ActorAgentId, created.RequestName)
+            .ShouldBe((null, null, null, null, null));
+    }
+
+    [Test]
+    public async Task save_of_a_delegated_agent_names_the_agent_and_the_user_it_acts_for()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant)
+            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant])
+            .BuildAsync();
+        scope.SetDelegatedClient(admin.Identifier, agent.ClientId);
+
+        // Act
+        await scope.SendAsync(new UpdateTenant.Command(tenant.Id,
+            new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version }));
+
+        // Assert
+        var updated = (await EntriesOfRootAsync(tenant.Id)).Single(e => e.Kind == AuditEntryKind.Updated);
+        (updated.ActorSubject, updated.ActorClient, updated.ActorUserId, updated.ActorAgentId)
+            .ShouldBe((admin.Identifier, agent.ClientId, admin.Id, agent.Id));
     }
 
     [Test]

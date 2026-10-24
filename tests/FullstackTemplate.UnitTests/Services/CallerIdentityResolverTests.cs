@@ -4,6 +4,7 @@ using System.Security.Claims;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,7 @@ public sealed class CallerIdentityResolverTests : IDisposable
     private const string ServiceAccount = "service-account-1";
 
     private static readonly string AppUserTenantId = EntityId.New(Tenant.IdPrefix);
+    private static readonly LiveUser AppUserRecord = new(EntityId.New(User.IdPrefix), AppUserTenantId);
     private static readonly string MachineTenantId = EntityId.New(Tenant.IdPrefix);
     private static readonly string DelegatedAgentId = EntityId.New(Agent.IdPrefix);
     private static readonly string MachineAgentId = EntityId.New(Agent.IdPrefix);
@@ -38,8 +40,8 @@ public sealed class CallerIdentityResolverTests : IDisposable
 
     public CallerIdentityResolverTests()
     {
-        _tenantIdProvider.GetTenantIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((string?)null);
-        _tenantIdProvider.GetTenantIdAsync(AppUser, Arg.Any<CancellationToken>()).Returns(AppUserTenantId);
+        _tenantIdProvider.FindLiveUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((LiveUser?)null);
+        _tenantIdProvider.FindLiveUserAsync(AppUser, Arg.Any<CancellationToken>()).Returns(AppUserRecord);
         _agentDirectory.FindDelegatedAgentAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _agentDirectory.FindDelegatedAgentAsync(AppUserTenantId, DelegatedClientId, Arg.Any<CancellationToken>())
@@ -83,16 +85,16 @@ public sealed class CallerIdentityResolverTests : IDisposable
     {
         yield return () => ("first-party user with a user record",
             [new("sub", AppUser), new("azp", AppClientId)],
-            new CallerIdentity.User(AppUser, AppUserTenantId));
+            new CallerIdentity.User(AppUser, AppUserRecord));
         yield return () => ("first-party user with no user record",
             [new("sub", "new-user"), new("azp", AppClientId)],
             new CallerIdentity.User("new-user", null));
         yield return () => ("Swagger UI user",
             [new("sub", AppUser), new("azp", SwaggerClientId)],
-            new CallerIdentity.User(AppUser, AppUserTenantId));
+            new CallerIdentity.User(AppUser, AppUserRecord));
         yield return () => ("FusionAuth user, with the client in applicationId",
             [new("sub", AppUser), new("applicationId", AppClientId)],
-            new CallerIdentity.User(AppUser, AppUserTenantId));
+            new CallerIdentity.User(AppUser, AppUserRecord));
         yield return () => ("first-party client with no sub",
             [new("client_id", AppClientId)],
             new CallerIdentity.UnknownClient(AppClientId));
@@ -119,7 +121,7 @@ public sealed class CallerIdentityResolverTests : IDisposable
             new CallerIdentity.UnknownClient(null));
         yield return () => ("app user through a delegated agent of their tenant",
             [new("sub", AppUser), new("azp", DelegatedClientId)],
-            new CallerIdentity.DelegatedAgent(DelegatedAgentId, DelegatedClientId, AppUser, AppUserTenantId));
+            new CallerIdentity.DelegatedAgent(DelegatedAgentId, DelegatedClientId, AppUser, AppUserRecord));
         yield return () => ("delegated agent client with no app user",
             [new("client_id", DelegatedClientId)],
             new CallerIdentity.UnknownClient(DelegatedClientId));
@@ -198,7 +200,7 @@ public sealed class CallerIdentityResolverTests : IDisposable
         _ = _sut.Current;
 
         // Assert
-        _tenantIdProvider.Received(1).GetTenantIdAsync(AppUser, Arg.Any<CancellationToken>());
+        _tenantIdProvider.Received(1).FindLiveUserAsync(AppUser, Arg.Any<CancellationToken>());
     }
 
     [Test]

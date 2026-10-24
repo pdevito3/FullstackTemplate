@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
 using Domain.AuditEntries;
+using Services;
 
 /// <summary>
 /// One audited entity of the tracker after the stamps, as plain values. <see cref="AuditSnapshots"/> makes it.
@@ -21,21 +22,45 @@ internal readonly record struct PropertySnapshot(string Path, object? Original, 
 
 internal sealed record DataChange(AuditSubject Subject, AuditEntryKind Kind, IReadOnlyList<PropertySnapshot> Properties);
 
+/// <summary>Who made a save.</summary>
+/// <param name="Subject">The <c>sub</c> of the token. A provider can make it an email address, so the read shows it
+/// only with <c>read_audit_log_sensitive</c>.</param>
+/// <param name="ClientId">The client of the token.</param>
+/// <param name="UserId">The user record of a user, or of the user that a delegated agent acts for. Null when the
+/// user has no live user record yet, for example when the user starts a tenant.</param>
+/// <param name="AgentId">The agent record of a delegated or a machine agent.</param>
+internal sealed record AuditActor(string? Subject, string? ClientId, string? UserId, string? AgentId)
+{
+    /// <summary>A blank claim becomes null, so "no caller" has one form.</summary>
+    public static AuditActor Of(string? subject, string? clientId, CallerIdentity caller) => new(
+        NullIfBlank(subject),
+        NullIfBlank(clientId),
+        caller switch
+        {
+            CallerIdentity.User { LiveUser: { } liveUser } => liveUser.UserId,
+            CallerIdentity.DelegatedAgent agent => agent.LiveUser.UserId,
+            _ => null,
+        },
+        caller switch
+        {
+            CallerIdentity.DelegatedAgent agent => agent.AgentId,
+            CallerIdentity.MachineAgent agent => agent.AgentId,
+            _ => null,
+        });
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+}
+
 /// <summary>The facts of one save that each of its audit entries shares.</summary>
 internal sealed record SaveFacts(
     Guid RecordId,
     DateTimeOffset OccurredAt,
-    string? ActorUser,
-    string? ActorClient,
+    AuditActor Actor,
     string? RequestName,
     string? TraceId)
 {
-    /// <summary>A blank actor becomes null, so "no caller" has one form.</summary>
-    public static SaveFacts From(DateTimeOffset now, string? actorUser, string? actorClient, string? requestName,
-        string? traceId)
-        => new(Guid.CreateVersion7(now), now, NullIfBlank(actorUser), NullIfBlank(actorClient), requestName, traceId);
-
-    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+    public static SaveFacts From(DateTimeOffset now, AuditActor actor, string? requestName, string? traceId)
+        => new(Guid.CreateVersion7(now), now, actor, requestName, traceId);
 }
 
 internal static class AuditDiff

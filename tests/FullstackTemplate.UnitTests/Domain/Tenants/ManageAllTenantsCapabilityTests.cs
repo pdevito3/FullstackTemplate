@@ -36,7 +36,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
             .UseSnakeCaseNamingConvention()
             .Options;
         _dbContext = new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            _tenantScopeProvider, new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            Substitute.For<ICallerIdentityResolver>(), _tenantScopeProvider, new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 
     public void Dispose() => _dbContext.Dispose();

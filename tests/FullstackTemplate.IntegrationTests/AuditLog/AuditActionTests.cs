@@ -31,7 +31,8 @@ public class AuditActionTests : TestBase
             .Select(p => $"{p.Key}={p.Value}").Order().ShouldBe(["Count=3", "Format=csv"]);
         (action.EntityType, action.EntityId, action.RootType, action.TenantId)
             .ShouldBe((nameof(Tenant), scenario.Tenant.Id, nameof(Tenant), scenario.Tenant.Id));
-        (action.ActorUser, action.RequestName).ShouldBe((scenario.Admin.Identifier, "ExportUsers.Command"));
+        (action.ActorSubject, action.ActorUserId, action.RequestName)
+            .ShouldBe((scenario.Admin.Identifier, scenario.Admin.Id, "ExportUsers.Command"));
     }
 
     [Test]

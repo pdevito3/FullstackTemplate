@@ -182,7 +182,7 @@ public class WriteGuardTests : TestBase
             .UseSnakeCaseNamingConvention()
             .Options;
         await using var db = new AppDbContext(options, TimeProvider.System, scope.GetService<ICurrentUserService>(),
-            scope.GetService<ITenantScopeProvider>(), scope.GetService<DomainEventDispatcher>());
+            scope.GetService<ICallerIdentityResolver>(), scope.GetService<ITenantScopeProvider>(), scope.GetService<DomainEventDispatcher>());
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act

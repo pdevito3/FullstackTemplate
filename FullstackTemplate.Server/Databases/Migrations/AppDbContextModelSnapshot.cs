@@ -203,15 +203,27 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("action");
 
+                    b.Property<string>("ActorAgentId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("actor_agent_id")
+                        .UseCollation("C");
+
                     b.Property<string>("ActorClient")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("actor_client");
 
-                    b.Property<string>("ActorUser")
+                    b.Property<string>("ActorSubject")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
-                        .HasColumnName("actor_user");
+                        .HasColumnName("actor_subject");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("actor_user_id")
+                        .UseCollation("C");
 
                     b.Property<string>("Data")
                         .IsRequired()

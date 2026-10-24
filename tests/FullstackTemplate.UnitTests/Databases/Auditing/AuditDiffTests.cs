@@ -2,11 +2,13 @@ namespace FullstackTemplate.UnitTests.Databases.Auditing;
 
 using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain.AuditEntries;
+using FullstackTemplate.Server.Services;
 using Shouldly;
 
 public class AuditDiffTests
 {
     private static readonly AuditSubject User = new("User", "usr_1", "User", "usr_1", "ten_1");
+    private static readonly AuditActor NoActor = new(Subject: null, ClientId: null, UserId: null, AgentId: null);
 
     [Test]
     public void added_entity_is_created_with_each_value_that_is_not_null()
@@ -88,7 +90,8 @@ public class AuditDiffTests
     public void entries_of_one_save_share_its_facts_and_are_numbered_in_order()
     {
         // Arrange
-        var save = new SaveFacts(Guid.CreateVersion7(), DateTimeOffset.UnixEpoch, "sub-1", "spa", "UpdateUser.Command",
+        var actor = new AuditActor("sub-1", "spa", "usr_9", AgentId: null);
+        var save = new SaveFacts(Guid.CreateVersion7(), DateTimeOffset.UnixEpoch, actor, "UpdateUser.Command",
             "4bf92f3577b34da6a3ce929d0e0e4736");
         var permission = new AuditSubject("UserPermission", "uperm_1", "User", "usr_1", "ten_1");
         DataChange[] changes =
@@ -107,7 +110,8 @@ public class AuditDiffTests
             (2, "usr_1", AuditEntryKind.Action, "users_exported"),
         ]);
         entries.ShouldAllBe(e => e.RecordId == save.RecordId && e.OccurredAt == save.OccurredAt
-                                 && e.ActorUser == "sub-1" && e.ActorClient == "spa"
+                                 && e.ActorSubject == "sub-1" && e.ActorClient == "spa" && e.ActorUserId == "usr_9"
+                                 && e.ActorAgentId == null
                                  && e.RequestName == "UpdateUser.Command" && e.TraceId == save.TraceId
                                  && e.TenantId == "ten_1" && e.RootId == "usr_1");
     }
@@ -116,7 +120,7 @@ public class AuditDiffTests
     public void action_type_with_no_name_is_refused()
     {
         // Arrange
-        var save = SaveFacts.From(DateTimeOffset.UnixEpoch, null, null, requestName: null, traceId: null);
+        var save = SaveFacts.From(DateTimeOffset.UnixEpoch, NoActor, requestName: null, traceId: null);
 
         // Act
         var act = () => AuditDiff.Compose(save, [], [new ActionWithNoName(User)]);
@@ -132,11 +136,34 @@ public class AuditDiffTests
     public void blank_actor_is_no_actor(string? blank)
     {
         // Act
-        var save = SaveFacts.From(DateTimeOffset.UnixEpoch, blank, blank, requestName: null, traceId: null);
+        var actor = AuditActor.Of(blank, blank, new CallerIdentity.System());
 
         // Assert
-        save.ActorUser.ShouldBeNull();
-        save.ActorClient.ShouldBeNull();
+        actor.ShouldBe(NoActor);
+    }
+
+    public static IEnumerable<Func<(string Case, CallerIdentity Caller, string? UserId, string? AgentId)>> Callers()
+    {
+        yield return () => ("user", new CallerIdentity.User("sub-1", new LiveUser("usr_1", "ten_1")), "usr_1", null);
+        yield return () => ("user with no user record yet", new CallerIdentity.User("sub-1", LiveUser: null), null, null);
+        yield return () => ("delegated agent",
+            new CallerIdentity.DelegatedAgent("agt_1", "assistant", "sub-1", new LiveUser("usr_1", "ten_1")), "usr_1", "agt_1");
+        yield return () => ("machine agent", new CallerIdentity.MachineAgent("agt_1", "sync", "ten_1"), null, "agt_1");
+        yield return () => ("client on an all-tenants list", new CallerIdentity.AllTenantsClient("sync", CanManage: true),
+            null, null);
+        yield return () => ("system work", new CallerIdentity.System(), null, null);
+    }
+
+    [Test]
+    [MethodDataSource(nameof(Callers))]
+    public void actor_names_the_user_and_the_agent_of_the_caller(string @case, CallerIdentity caller, string? userId,
+        string? agentId)
+    {
+        // Act
+        var actor = AuditActor.Of("sub-1", "spa", caller);
+
+        // Assert
+        actor.ShouldBe(new AuditActor("sub-1", "spa", userId, agentId));
     }
 
     private static EntitySnapshot Snapshot(bool isAdded, bool wasDeleted, bool isDeleted,

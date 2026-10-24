@@ -12,7 +12,8 @@ using NSubstitute;
 /// and a <see cref="Memo"/> that has no tenant.
 /// </summary>
 internal sealed class NavigationTenantedContext() : AppDbContext(TestModelOptions.Options, TimeProvider.System,
-    Substitute.For<ICurrentUserService>(), Substitute.For<ITenantScopeProvider>(),
+    Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
+    Substitute.For<ITenantScopeProvider>(),
     new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -30,7 +31,8 @@ internal sealed class NavigationTenantedContext() : AppDbContext(TestModelOption
 
 /// <summary>The model of <see cref="AppDbContext"/>, then an <see cref="OrderLine"/> that calls ApplyTenanting after it.</summary>
 internal sealed class LateNavigationTenantedContext() : AppDbContext(TestModelOptions.Options, TimeProvider.System,
-    Substitute.For<ICurrentUserService>(), Substitute.For<ITenantScopeProvider>(),
+    Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
+    Substitute.For<ITenantScopeProvider>(),
     new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)

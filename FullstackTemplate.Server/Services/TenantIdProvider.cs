@@ -6,6 +6,9 @@ using Resources;
 using Resources.Extensions;
 using ZiggyCreatures.Caching.Fusion;
 
+/// <summary>The live user record of a <c>sub</c>, in a live tenant.</summary>
+public sealed record LiveUser(string UserId, string TenantId);
+
 /// <summary>
 /// Provides tenant ID lookup with caching.
 /// Uses FusionCache in memory only, with no distributed cache and no backplane. An invalidation
@@ -14,9 +17,10 @@ using ZiggyCreatures.Caching.Fusion;
 public interface ITenantIdProvider
 {
     /// <summary>
-    /// Gets the tenant ID for a user by their identifier.
+    /// The live user record of the identifier and its tenant, or null. The one cached query gives both IDs, so the
+    /// audit log names the user with no query of its own.
     /// </summary>
-    Task<string?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default);
+    Task<LiveUser?> FindLiveUserAsync(string userIdentifier, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Invalidates the cached tenant ID for a user. <see cref="TenantLookupInterceptor"/> calls it after each save that
@@ -53,30 +57,30 @@ public sealed class TenantIdProvider(
     private string GetCacheKey(string userIdentifier)
         => $"tenant:user:{userIdentifier}:{Volatile.Read(ref Generation(userIdentifier))}";
 
-    public async Task<string?> GetTenantIdAsync(string userIdentifier, CancellationToken cancellationToken = default)
+    public async Task<LiveUser?> FindLiveUserAsync(string userIdentifier, CancellationToken cancellationToken = default)
     {
         var cacheKey = GetCacheKey(userIdentifier);
 
-        return await cache.GetOrSetAsync<string?>(
+        return await cache.GetOrSetAsync<LiveUser?>(
             cacheKey,
             async (ctx, ct) =>
             {
-                var tenantId = await LookupTenantIdAsync(userIdentifier, ct);
+                var liveUser = await LookupLiveUserAsync(userIdentifier, ct);
 
                 // Fail-safe is off, so a stale miss never outlives this duration.
-                if (tenantId is null)
+                if (liveUser is null)
                 {
                     ctx.Options.Duration = MissingUserDuration;
                     ctx.Options.IsFailSafeEnabled = false;
                 }
 
-                return tenantId;
+                return liveUser;
             },
             CacheOptions,
             cancellationToken);
     }
 
-    private async Task<string?> LookupTenantIdAsync(string userIdentifier, CancellationToken cancellationToken)
+    private async Task<LiveUser?> LookupLiveUserAsync(string userIdentifier, CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -88,7 +92,7 @@ public sealed class TenantIdProvider(
             .TagWithOperationCallSite("users.tenant_id_lookup")
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .Where(u => u.Identifier == userIdentifier)
-            .Join(dbContext.Tenants, u => u.TenantId, t => t.Id, (_, t) => (string?)t.Id)
+            .Join(dbContext.Tenants, u => u.TenantId, t => t.Id, (u, t) => new LiveUser(u.Id, t.Id))
             .FirstOrDefaultAsync(cancellationToken);
     }
 

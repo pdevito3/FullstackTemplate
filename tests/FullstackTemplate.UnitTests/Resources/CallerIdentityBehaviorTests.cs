@@ -49,9 +49,9 @@ public sealed class CallerIdentityBehaviorTests
     public async Task handler_runs_after_the_identity_is_resolved()
     {
         // Arrange
-        var tenantId = EntityId.New(Tenant.IdPrefix);
-        var lookup = new TaskCompletionSource<string?>();
-        _tenantIdProvider.GetTenantIdAsync(AppUser, Arg.Any<CancellationToken>()).Returns(lookup.Task);
+        var liveUser = new LiveUser("usr_1", EntityId.New(Tenant.IdPrefix));
+        var lookup = new TaskCompletionSource<LiveUser?>();
+        _tenantIdProvider.FindLiveUserAsync(AppUser, Arg.Any<CancellationToken>()).Returns(lookup.Task);
         var behavior = new CallerIdentityBehavior<GetTenant.Query, TenantDto>(_resolver);
         CallerIdentity? identityInHandler = null;
 
@@ -63,38 +63,38 @@ public sealed class CallerIdentityBehaviorTests
             return Task.FromResult(new TenantDto());
         }, CancellationToken.None);
         var handlerRanBeforeTheLookup = identityInHandler is not null;
-        lookup.SetResult(tenantId);
+        lookup.SetResult(liveUser);
         await handled;
 
         // Assert
         handlerRanBeforeTheLookup.ShouldBeFalse();
-        identityInHandler.ShouldBe(new CallerIdentity.User(AppUser, tenantId));
+        identityInHandler.ShouldBe(new CallerIdentity.User(AppUser, liveUser));
     }
 
     [Test]
     public async Task canceled_first_read_reaches_the_lookup_and_is_not_kept()
     {
         // Arrange
-        var tenantId = EntityId.New(Tenant.IdPrefix);
+        var liveUser = new LiveUser("usr_1", EntityId.New(Tenant.IdPrefix));
         using var request = new CancellationTokenSource();
         await request.CancelAsync();
-        _tenantIdProvider.GetTenantIdAsync(AppUser, Arg.Any<CancellationToken>()).Returns(tenantId);
-        _tenantIdProvider.GetTenantIdAsync(AppUser, request.Token)
-            .Returns(call => Task.FromCanceled<string?>(call.ArgAt<CancellationToken>(1)));
+        _tenantIdProvider.FindLiveUserAsync(AppUser, Arg.Any<CancellationToken>()).Returns(liveUser);
+        _tenantIdProvider.FindLiveUserAsync(AppUser, request.Token)
+            .Returns(call => Task.FromCanceled<LiveUser?>(call.ArgAt<CancellationToken>(1)));
 
         // Act
         var firstRead = _resolver.GetAsync(request.Token);
 
         // Assert
         await Should.ThrowAsync<TaskCanceledException>(firstRead);
-        _resolver.Current.ShouldBe(new CallerIdentity.User(AppUser, tenantId));
+        _resolver.Current.ShouldBe(new CallerIdentity.User(AppUser, liveUser));
     }
 
     [Test]
     public async Task feature_span_and_handler_logs_get_the_ids_of_the_caller()
     {
         // Arrange
-        var caller = new CallerIdentity.DelegatedAgent("agent_1", "agent-client", "user-1", "tenant_1");
+        var caller = new CallerIdentity.DelegatedAgent("agent_1", "agent-client", "user-1", new LiveUser("usr_1", "tenant_1"));
         var behavior = BehaviorFor(caller);
         var sink = new CollectingSink();
         using var logger = new LoggerConfiguration().Enrich.FromLogContext().WriteTo.Sink(sink).CreateLogger();
@@ -126,7 +126,7 @@ public sealed class CallerIdentityBehaviorTests
     public async Task caller_with_no_tenant_gets_no_tenant_tag()
     {
         // Arrange
-        var behavior = BehaviorFor(new CallerIdentity.User("user-1", TenantId: null));
+        var behavior = BehaviorFor(new CallerIdentity.User("user-1", LiveUser: null));
         using var featureSpan = new Activity("GetTenant.Query").Start();
 
         // Act

@@ -25,7 +25,7 @@ async Task<T> SendAs<T>(string sub, IRequest<T> request)
 {
     using (var lookupScope = Get<IServiceScopeFactory>().CreateScope())
     {
-        if (await lookupScope.ServiceProvider.GetRequiredService<ITenantIdProvider>().GetTenantIdAsync(sub) is null)
+        if (await lookupScope.ServiceProvider.GetRequiredService<ITenantIdProvider>().FindLiveUserAsync(sub) is null)
             throw new InvalidOperationException($"No user has the identifier '{sub}'. Use the Identifier of a user in the tenant.");
     }
 

@@ -8,7 +8,8 @@ internal static class AuditRedaction
     /// <summary>
     /// The entry as the caller may read it. A value shows when the caller can read sensitive values, or when the
     /// vocabulary knows it as not sensitive. A value of an entity type, an action, or a path that the code no longer
-    /// knows is hidden (fail closed). The names always show, because they are code, not data.
+    /// knows is hidden (fail closed). The names always show, because they are code, not data. The <c>sub</c> of the
+    /// actor shows only with sensitive values, and the IDs of the actor always show.
     /// </summary>
     public static AuditEntryDto Redact(AuditEntry entry, AuditVocabulary vocabulary, bool canReadSensitive) => new()
     {
@@ -22,8 +23,10 @@ internal static class AuditRedaction
         EntityId = entry.EntityId,
         RootType = entry.RootType,
         RootId = entry.RootId,
-        ActorUser = entry.ActorUser,
+        ActorSubject = canReadSensitive ? entry.ActorSubject : null,
         ActorClient = entry.ActorClient,
+        ActorUserId = entry.ActorUserId,
+        ActorAgentId = entry.ActorAgentId,
         RequestName = entry.RequestName,
         TraceId = entry.TraceId,
         Values = AuditValues.Read(entry.Kind, entry.Data)

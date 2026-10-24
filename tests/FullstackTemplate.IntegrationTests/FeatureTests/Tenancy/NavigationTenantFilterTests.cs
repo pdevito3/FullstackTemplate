@@ -79,7 +79,8 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
     }
 
     private sealed class NoteContext(DbContextOptions<AppDbContext> options, ITenantScopeProvider scopeProvider)
-        : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(), scopeProvider,
+        : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
+            Substitute.For<ICallerIdentityResolver>(), scopeProvider,
             new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)

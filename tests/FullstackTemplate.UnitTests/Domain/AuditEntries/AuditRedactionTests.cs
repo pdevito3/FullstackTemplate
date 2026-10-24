@@ -98,7 +98,7 @@ public class AuditRedactionTests
     }
 
     [Test]
-    public void entry_shows_its_save_and_subject_to_each_reader()
+    public void entry_shows_its_save_subject_and_actor_ids_to_each_reader()
     {
         // Arrange
         var entry = Entry(User, AuditEntryKind.Deleted, action: null, "{}");
@@ -109,12 +109,29 @@ public class AuditRedactionTests
         // Assert
         (dto.Kind, dto.EntityType, dto.EntityId, dto.RootType, dto.RootId, dto.TenantId)
             .ShouldBe(("Deleted", "User", "usr_1", "User", "usr_1", "ten_1"));
-        (dto.ActorUser, dto.ActorClient, dto.RequestName, dto.TraceId, dto.RecordId, dto.Ordinal)
-            .ShouldBe(("sub-1", "spa", "DeleteUser.Command", "4bf92f3577b34da6a3ce929d0e0e4736", entry.RecordId, 2));
+        (dto.ActorClient, dto.ActorUserId, dto.ActorAgentId, dto.RequestName, dto.TraceId, dto.RecordId, dto.Ordinal)
+            .ShouldBe(("assistant", "usr_9", "agt_9", "DeleteUser.Command", "4bf92f3577b34da6a3ce929d0e0e4736",
+                entry.RecordId, 2));
         dto.Values.ShouldBeEmpty();
     }
 
+    [Test]
+    [Arguments(false, null)]
+    [Arguments(true, "ann@example.com")]
+    public void subject_of_the_actor_shows_only_with_sensitive_values(bool canReadSensitive, string? subject)
+    {
+        // Arrange
+        var entry = Entry(User, AuditEntryKind.Deleted, action: null, "{}");
+
+        // Act
+        var dto = AuditRedaction.Redact(entry, Vocabulary, canReadSensitive);
+
+        // Assert
+        dto.ActorSubject.ShouldBe(subject);
+    }
+
     private static AuditEntry Entry(AuditSubject subject, AuditEntryKind kind, string? action, string data)
-        => new(new SaveFacts(Guid.CreateVersion7(), DateTimeOffset.UnixEpoch, "sub-1", "spa", "DeleteUser.Command",
-            "4bf92f3577b34da6a3ce929d0e0e4736"), ordinal: 2, subject, kind, action, data);
+        => new(new SaveFacts(Guid.CreateVersion7(), DateTimeOffset.UnixEpoch,
+                new AuditActor("ann@example.com", "assistant", "usr_9", "agt_9"), "DeleteUser.Command",
+                "4bf92f3577b34da6a3ce929d0e0e4736"), ordinal: 2, subject, kind, action, data);
 }

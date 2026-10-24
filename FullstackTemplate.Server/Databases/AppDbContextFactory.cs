@@ -17,6 +17,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             optionsBuilder.Options,
             TimeProvider.System,
             new DesignTimeCurrentUserService(),
+            new DesignTimeCallerIdentityResolver(),
             new DesignTimeTenantScopeProvider(),
             new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
@@ -36,6 +37,12 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         public bool IsInRole(string role) => false;
         public string? GetClaimValue(string claimType) => null;
         public IReadOnlyList<string> GetClaimValues(string claimType) => [];
+    }
+
+    private sealed class DesignTimeCallerIdentityResolver : ICallerIdentityResolver
+    {
+        public CallerIdentity Current { get; } = new CallerIdentity.System();
+        public Task<CallerIdentity> GetAsync(CancellationToken cancellationToken) => Task.FromResult(Current);
     }
 
     // The EF Core tools are system work, so the design-time context opts in to all tenants.

@@ -1,10 +1,12 @@
 namespace FullstackTemplate.FunctionalTests.FunctionalTests.Telemetry;
 
 using System.Diagnostics;
+using System.Net;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
+using TestUtilities;
 using Telemetry = FullstackTemplate.Server.Resources.Telemetry;
 
 // These tests count the spans of the whole app, so no other test can run at the same time.
@@ -68,6 +70,30 @@ public class TracingTests : TestBase
             .Where(a => a.TraceId == parent.TraceId && a.DisplayName == "GetTenant.Query")
             .ShouldHaveSingleItem();
         slice.GetTagItem("app.caller.kind").ShouldBe("system");
+    }
+
+    [Test]
+    public async Task a_request_that_fails_validation_has_the_caller_on_its_span()
+    {
+        // Arrange
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var user);
+        await InsertAsync(tenant);
+        await InsertAsync(user);
+        FactoryClient.SignInAsAppUser(user.Identifier);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(user.Id), new { });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var slice = ExportedSpans()
+            .Where(a => a.DisplayName == "UpdateUserRole.Command"
+                && a.GetTagItem("app.caller.subject") as string == user.Identifier)
+            .ShouldHaveSingleItem();
+        slice.GetTagItem("app.caller.kind").ShouldBe("user");
+        slice.GetTagItem("app.caller.tenant_id").ShouldBe(tenant.Id);
     }
 
     [Test]

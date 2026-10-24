@@ -110,7 +110,7 @@ The behavior tags an exception type as `error.type`. A client error does not mar
 
 ## Caller tags
 
-`CallerIdentityBehavior` resolves the caller before the handler runs. It then tags the feature slice span with the caller, and adds the caller to the log context of the handler. Thus each log that the handler writes has the caller too. A value that the caller does not have is not added.
+`CallerIdentityBehavior` resolves the caller before the handler runs. It then tags the feature slice span with the caller, and adds the caller to the log context of the handler. Thus each log that the handler writes has the caller too. A value that the caller does not have is not added. The behavior runs before `RequestValidationBehavior`, so a request that fails validation also has the caller tags.
 
 | Span tag | Log property | Value |
 |---|---|---|

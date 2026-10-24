@@ -33,8 +33,8 @@ public static class WebAppServiceConfiguration
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
             // Outermost behavior, so its span covers every later behavior and the handler itself.
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
-            cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
             cfg.AddOpenBehavior(typeof(CallerIdentityBehavior<,>));
+            cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
             // Innermost behavior, next to the handler whose saves it names.
             cfg.AddOpenBehavior(typeof(AuditRequestBehavior<,>));
         });

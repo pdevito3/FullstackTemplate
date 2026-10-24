@@ -265,7 +265,7 @@ When you add an MCP tool:
 
 ### Audit
 
-Each entity records the `sub` of the token in `CreatedBy` and `LastModifiedBy`, and the client ID in `CreatedByClient` and `LastModifiedByClient`. A change by the BFF records the first-party client ID. A change by an agent records the client ID of the agent. A change with no token, for example a background job, records null. Each audit entry of a save also records the `sub`, the client ID, and the IDs of the user and the agent of the caller (see [audit-log.md](backend/audit-log.md)).
+Each audit entry of a save records the `sub` of the token, its client ID, and the IDs of the user and the agent of the caller (see [audit-log.md](backend/audit-log.md)). A change by the BFF records the first-party client ID. A change by an agent records the client ID of the agent. A change with no token, for example a background job, records null.
 
 ### Providers
 

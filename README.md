@@ -49,7 +49,7 @@ MyProject/
 - **CQRS with MediatR** - Vertical slice architecture
 - **Rich Domain Entities** - DDD patterns with value objects
 - **Multi-tenancy** - Automatic tenant isolation
-- **Soft Delete** - Audit fields and soft delete built-in
+- **Audit Log and Soft Delete** - An append-only log of each change, and soft delete built-in
 - **API Versioning** - URL segment versioning (`/api/v1/...`)
 - **OpenTelemetry** - Distributed tracing and metrics
 - **PostgreSQL** - With EF Core and migrations

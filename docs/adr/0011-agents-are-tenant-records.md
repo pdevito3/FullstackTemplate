@@ -21,6 +21,8 @@ Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permis
 
 `BaseEntity` records the client ID of the token in `CreatedByClient` and `LastModifiedByClient`, next to the `sub` in `CreatedBy` and `LastModifiedBy`.
 
+> [ADR 0012](0012-audit-log.md) replaces these four columns. Each audit entry records the `sub` and the client ID of the token, and the migration `DropWhoAndWhenColumns` drops the columns. The choice of the client ID of each token, below, still applies.
+
 ## Considered options
 
 ### How to identify an agent

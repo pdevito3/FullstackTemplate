@@ -178,11 +178,11 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 2. **Add Property to Domain Entity**
    ```csharp
-   // Simple property
-   public string PhoneNumber { get; private set; }
+   // Simple property. Mark each text or structured property for the audit log.
+   [Sensitive] public string PhoneNumber { get; private set; }
 
    // Value object property
-   public EmailAddress Email { get; private set; } = default!;
+   [Sensitive] public EmailAddress Email { get; private set; } = default!;
    ```
 
 3. **Update Factory Method (if set at creation)**
@@ -391,6 +391,8 @@ public LineItem AddLineItem(Product product, int quantity)
 ### New Entity Checklist
 - [ ] Review generated entity for business logic completeness
 - [ ] Add DbSet to `AppDbContext.cs`
+- [ ] The entity is a root with `ITenantable`, or a child with one `Cascade` foreign key to its owner (see `docs/backend/audit-log.md`)
+- [ ] Each text or structured property has `[Sensitive]` or `[NotSensitive]`
 - [ ] Verify entity configuration is in `Databases/EntityConfigurations/` and properly applied
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
@@ -405,6 +407,7 @@ public LineItem AddLineItem(Product product, int quantity)
 
 ### New Property Checklist
 - [ ] Property added with private setter in entity
+- [ ] A text or structured property has `[Sensitive]` or `[NotSensitive]` (see `docs/backend/audit-log.md`)
 - [ ] Factory method updated (if set at creation)
 - [ ] Update method updated (if updatable)
 - [ ] Internal models updated (ForCreation/ForUpdate)
@@ -420,6 +423,7 @@ public LineItem AddLineItem(Product product, int quantity)
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
 - [ ] Domain event created (if state change is significant)
+- [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)
 - [ ] Feature folder created with the Command/Query and Handler file
 - [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)

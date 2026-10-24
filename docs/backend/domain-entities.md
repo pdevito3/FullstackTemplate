@@ -12,6 +12,7 @@ A domain entity holds its data and its business rules. Code outside the entity c
 6. Keep collections private. Expose an `IReadOnlyCollection<T>`, and change it only with entity methods.
 7. Use a value object for a domain concept, such as an email or a role. Do not use a bare `string`.
 8. In a method that applies the fields of an edit form, call `GuardVersion` first. See [Versions](#versions).
+9. Give each text or structured property `[Sensitive]` or `[NotSensitive]`. The audit log shows a sensitive value only to a reader with `read_audit_log_sensitive`. See [audit-log.md](audit-log.md#rules).
 
 ## IDs
 
@@ -26,9 +27,9 @@ public class User : BaseEntity, ITenantable
 {
     public const string IdPrefix = "usr";
 
-    public string FirstName { get; private set; } = default!;
-    public EmailAddress Email { get; private set; } = default!;
-    public UserRole Role { get; private set; } = default!;
+    [Sensitive] public string FirstName { get; private set; } = default!;
+    [Sensitive] public EmailAddress Email { get; private set; } = default!;
+    [NotSensitive] public UserRole Role { get; private set; } = default!;
 
     private readonly List<UserPermission> _userPermissions = [];
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();

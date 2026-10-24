@@ -18,16 +18,16 @@ public class [EntityName] : BaseEntity
     // A short, unique type prefix. The ID is "[prefix]_{uuidv7}".
     public const string IdPrefix = "[prefix]";
 
-    // Properties with private setters
-    public string Name { get; private set; } = default!;
-    public string? Description { get; private set; }
+    // Properties with private setters. Mark each text or structured property for the audit log.
+    [NotSensitive] public string Name { get; private set; } = default!;
+    [Sensitive] public string? Description { get; private set; }
 
     // ID foreign keys
     // public string TenantId { get; private set; } = default!;
 
     // Value object properties
-    // public EmailAddress Email { get; private set; } = default!;
-    // public [EntityName]Status Status { get; private set; } = default!;
+    // [Sensitive] public EmailAddress Email { get; private set; } = default!;
+    // [NotSensitive] public [EntityName]Status Status { get; private set; } = default!;
 
     // Navigation properties with encapsulated collections
     // private readonly List<RelatedEntity> _relatedEntities = [];
@@ -797,11 +797,11 @@ public class PagedList<T>
 ### Step 1: Add to Domain Entity
 
 ```csharp
-// In [EntityName].cs - add property with private setter
-public string PhoneNumber { get; private set; }
+// In [EntityName].cs - add property with private setter and its audit mark
+[Sensitive] public string PhoneNumber { get; private set; }
 
 // Or for value objects
-public EmailAddress Email { get; private set; } = default!;
+[Sensitive] public EmailAddress Email { get; private set; } = default!;
 ```
 
 ### Step 2: Update Factory Method (if set at creation)

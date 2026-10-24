@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases.EntityConfigurations;
 
 using Domain;
+using Domain.EmailAddresses;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -17,19 +18,19 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(e => e.FirstName)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(User.FirstNameMaxLength);
 
         builder.Property(e => e.LastName)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(User.LastNameMaxLength);
 
         builder.Property(e => e.Identifier)
             .IsRequired()
-            .HasMaxLength(255);
+            .HasMaxLength(User.IdentifierMaxLength);
 
         builder.Property(e => e.Username)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(User.UsernameMaxLength);
 
         builder.Property(e => e.TenantId)
             .IsRequired()
@@ -45,7 +46,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         {
             email.Property(e => e.Value)
                 .HasColumnName("email")
-                .HasMaxLength(320)
+                .HasMaxLength(EmailAddress.MaxLength)
                 .IsRequired();
         });
 

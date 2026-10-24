@@ -27,11 +27,11 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
 
         builder.Property(e => e.Name)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(Agent.NameMaxLength);
 
         builder.Property(e => e.ClientId)
             .IsRequired()
-            .HasMaxLength(255)
+            .HasMaxLength(Agent.ClientIdMaxLength)
             .UseCollation(EntityId.Collation);
 
         builder.ComplexProperty(e => e.Mode, mode =>

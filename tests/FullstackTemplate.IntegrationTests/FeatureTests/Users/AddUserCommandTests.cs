@@ -1,6 +1,7 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.EmailAddresses;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
@@ -35,6 +36,35 @@ public class AddUserCommandTests : TestBase
         userInDb.Username.ShouldBe(fakeUserDto.Username);
         userInDb.Identifier.ShouldBe(fakeUserDto.Identifier);
         userInDb.TenantId.ShouldBe(TestFixture.DefaultTenant.Id);
+    }
+
+    [Test]
+    public async Task can_add_a_user_whose_text_fills_each_column_with_characters_outside_the_basic_plane()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        static string Emoji(int count) => string.Concat(Enumerable.Repeat("\U0001F600", count));
+        var fakeUserDto = new FakeUserForCreationDto()
+            .RuleFor(x => x.FirstName, _ => Emoji(User.FirstNameMaxLength))
+            .RuleFor(x => x.LastName, _ => Emoji(User.LastNameMaxLength))
+            .RuleFor(x => x.Identifier, _ => Emoji(User.IdentifierMaxLength))
+            .RuleFor(x => x.Username, _ => Emoji(User.UsernameMaxLength))
+            .RuleFor(x => x.Email, _ => Emoji(EmailAddress.MaxLength - "@example.com".Length) + "@example.com")
+            .Generate();
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        var userInDb = await testingServiceScope.ExecuteDbContextAsync(db =>
+            db.Users.FirstOrDefaultAsync(u => u.Id == userReturned.Id));
+
+        userInDb.ShouldNotBeNull();
+        userInDb.FirstName.ShouldBe(fakeUserDto.FirstName);
+        userInDb.LastName.ShouldBe(fakeUserDto.LastName);
+        userInDb.Identifier.ShouldBe(fakeUserDto.Identifier);
+        userInDb.Username.ShouldBe(fakeUserDto.Username);
+        userInDb.Email.Value.ShouldBe(fakeUserDto.Email);
     }
 
     [Test]

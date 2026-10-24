@@ -4,11 +4,15 @@ using FluentValidation;
 
 public sealed partial class EmailAddress : ValueObject
 {
+    public const int MaxLength = 320;
+
     public string Value { get; private set; } = default!;
 
     public EmailAddress(string value)
     {
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(value, "email", "Please provide a valid email.");
+        Exceptions.ValidationException.ThrowWhenLongerThan(value, MaxLength, "email",
+            $"An email can have no more than {MaxLength} characters.");
         new EmailValidator().ValidateAndThrow(value);
         Value = value;
     }

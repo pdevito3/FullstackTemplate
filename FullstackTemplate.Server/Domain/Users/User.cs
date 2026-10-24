@@ -7,6 +7,10 @@ using Models;
 public class User : BaseEntity, ITenantable
 {
     public const string IdPrefix = "usr";
+    public const int FirstNameMaxLength = 200;
+    public const int LastNameMaxLength = 200;
+    public const int IdentifierMaxLength = 255;
+    public const int UsernameMaxLength = 100;
 
     [NotSensitive] public string TenantId { get; private set; } = default!;
     [Sensitive] public string FirstName { get; private set; } = default!;
@@ -131,9 +135,17 @@ public class User : BaseEntity, ITenantable
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.TenantId, "tenantId", "Please provide a tenant.");
         Exceptions.ValidationException.Must(EntityId.IsValid(user.TenantId, Tenants.Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "firstName", "Please provide a first name.");
+        Exceptions.ValidationException.ThrowWhenLongerThan(user.FirstName, FirstNameMaxLength, "firstName",
+            $"A first name can have no more than {FirstNameMaxLength} characters.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "lastName", "Please provide a last name.");
+        Exceptions.ValidationException.ThrowWhenLongerThan(user.LastName, LastNameMaxLength, "lastName",
+            $"A last name can have no more than {LastNameMaxLength} characters.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "identifier", "Please provide an identifier.");
+        Exceptions.ValidationException.ThrowWhenLongerThan(user.Identifier, IdentifierMaxLength, "identifier",
+            $"An identifier can have no more than {IdentifierMaxLength} characters.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Username, "username", "Please provide a username.");
+        Exceptions.ValidationException.ThrowWhenLongerThan(user.Username, UsernameMaxLength, "username",
+            $"A username can have no more than {UsernameMaxLength} characters.");
         Exceptions.ValidationException.ThrowWhenNull(user.Role, "role", "Please provide a role.");
     }
 

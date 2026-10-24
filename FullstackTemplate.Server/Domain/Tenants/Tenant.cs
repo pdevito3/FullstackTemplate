@@ -39,7 +39,7 @@ public class Tenant : BaseEntity
     private static void ValidateTenant(Tenant tenant)
     {
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(tenant.Name, "name", "Please provide a tenant name.");
-        Exceptions.ValidationException.Must(tenant.Name.Length <= NameMaxLength, "name",
+        Exceptions.ValidationException.ThrowWhenLongerThan(tenant.Name, NameMaxLength, "name",
             $"A tenant name can have no more than {NameMaxLength} characters.");
     }
 

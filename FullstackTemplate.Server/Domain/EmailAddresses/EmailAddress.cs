@@ -11,7 +11,7 @@ public sealed partial class EmailAddress : ValueObject
     public EmailAddress(string value)
     {
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(value, "email", "Please provide a valid email.");
-        Exceptions.ValidationException.Must(value.Length <= MaxLength, "email",
+        Exceptions.ValidationException.ThrowWhenLongerThan(value, MaxLength, "email",
             $"An email can have no more than {MaxLength} characters.");
         new EmailValidator().ValidateAndThrow(value);
         Value = value;

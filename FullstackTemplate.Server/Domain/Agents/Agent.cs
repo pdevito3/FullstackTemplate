@@ -110,10 +110,10 @@ public class Agent : BaseEntity, ITenantable
         ValidationException.ThrowWhenNullOrWhitespace(agent.TenantId, "tenantId", "Please provide a tenant.");
         ValidationException.Must(EntityId.IsValid(agent.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.Name, "name", "Please provide a name.");
-        ValidationException.Must(agent.Name.Length <= NameMaxLength, "name",
+        ValidationException.ThrowWhenLongerThan(agent.Name, NameMaxLength, "name",
             $"A name can have no more than {NameMaxLength} characters.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.ClientId, "clientId", "Please provide a client ID.");
-        ValidationException.Must(agent.ClientId.Length <= ClientIdMaxLength, "clientId",
+        ValidationException.ThrowWhenLongerThan(agent.ClientId, ClientIdMaxLength, "clientId",
             $"A client ID can have no more than {ClientIdMaxLength} characters.");
         ValidationException.Must(agent.ClientId == agent.ClientId.Trim(), "clientId",
             "A client ID cannot start or end with a space.");

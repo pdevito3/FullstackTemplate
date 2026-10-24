@@ -13,11 +13,14 @@ using Shouldly;
 
 public class StringColumnLengthTests
 {
-    public sealed record CallerColumn(string RequestField, Func<int, string> ValueOfLength, Action<string> Write);
+    public sealed record CallerColumn(string RequestField, Func<string, int, string> ValueOfLength, Action<string> Write);
 
-    private static string Text(int length) => new('a', length);
+    // Postgres counts U+1F600 as one character, and .NET counts it as two UTF-16 units.
+    private static readonly string[] Characters = ["a", "\U0001F600"];
 
-    private static string Email(int length) => Text(length - "@example.com".Length) + "@example.com";
+    private static string Text(string character, int length) => string.Concat(Enumerable.Repeat(character, length));
+
+    private static string Email(string character, int length) => Text(character, length - "@example.com".Length) + "@example.com";
 
     private static readonly Dictionary<string, CallerColumn> CallerColumns = new()
     {
@@ -75,17 +78,18 @@ public class StringColumnLengthTests
         stale.ShouldBeEmpty();
     }
 
-    public static IEnumerable<string> CallerColumnNames => CallerColumns.Keys;
+    public static IEnumerable<(string, string)> CallerColumnsAndCharacters =>
+        CallerColumns.Keys.SelectMany(column => Characters.Select(character => (column, character)));
 
     [Test]
-    [MethodDataSource(nameof(CallerColumnNames))]
-    public void the_domain_takes_a_value_of_the_column_length_and_refuses_a_longer_one(string column)
+    [MethodDataSource(nameof(CallerColumnsAndCharacters))]
+    public void the_domain_takes_a_value_of_the_column_length_and_refuses_a_longer_one(string column, string character)
     {
         // Arrange
         var maxLength = NonIdStringColumnsWithMaxLength()[column];
         var callerColumn = CallerColumns[column];
-        var fits = callerColumn.ValueOfLength(maxLength);
-        var tooLong = callerColumn.ValueOfLength(maxLength + 1);
+        var fits = callerColumn.ValueOfLength(character, maxLength);
+        var tooLong = callerColumn.ValueOfLength(character, maxLength + 1);
 
         // Act
         var writeFits = () => callerColumn.Write(fits);
@@ -96,6 +100,24 @@ public class StringColumnLengthTests
         var exception = writeTooLong.ShouldThrow<ValidationException>();
         exception.Property.ShouldBe(callerColumn.RequestField);
         exception.Message.ShouldContain(maxLength.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public static IEnumerable<string> CallerColumnNames => CallerColumns.Keys;
+
+    [Test]
+    [MethodDataSource(nameof(CallerColumnNames))]
+    public void the_domain_refuses_a_too_long_value_of_lone_surrogates_with_a_validation_error(string column)
+    {
+        // Arrange
+        var maxLength = NonIdStringColumnsWithMaxLength()[column];
+        var callerColumn = CallerColumns[column];
+        var tooLong = callerColumn.ValueOfLength("\uD800", maxLength + 1);
+
+        // Act
+        var writeTooLong = () => callerColumn.Write(tooLong);
+
+        // Assert
+        writeTooLong.ShouldThrow<ValidationException>().Property.ShouldBe(callerColumn.RequestField);
     }
 
     [Test]

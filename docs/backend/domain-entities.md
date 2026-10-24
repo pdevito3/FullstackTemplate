@@ -13,7 +13,7 @@ A domain entity holds its data and its business rules. Code outside the entity c
 7. Use a value object for a domain concept, such as an email or a role. Do not use a bare `string`.
 8. In a method that applies the fields of an edit form, call `GuardVersion` first. See [Versions](#versions).
 9. Give each property `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. The audit log shows a sensitive value only to a reader with `read_audit_log_sensitive`. See [audit-log.md](audit-log.md#rules).
-10. Give each text value that a request sets a max length constant, for example `User.FirstNameMaxLength` or `EmailAddress.MaxLength`. Refuse a longer value with a `ValidationException` that has the limit in its message. Use the same constant in `HasMaxLength`. Without the check, a long value fails the save in Postgres, and the API gives 500, not 422. `StringColumnLengthTests` fails on a string column that the domain does not check.
+10. Give each text value that a request sets a max length constant, for example `User.FirstNameMaxLength` or `EmailAddress.MaxLength`. Refuse a longer value with `ValidationException.ThrowWhenLongerThan`, and put the limit in its message. It counts characters as Postgres does. Do not compare `.Length`, because it counts an emoji as two. Use the same constant in `HasMaxLength`. Without the check, a long value fails the save in Postgres, and the API gives 500, not 422. `StringColumnLengthTests` fails on each text column with a max length that is not a key or a foreign key, also one stored through `HasConversion`, until you list it as a caller column with its domain write, a fixed-option column, or a server column.
 
 ## IDs
 
@@ -27,6 +27,7 @@ The constructor for EF Core is `protected` and calls `base(IdPrefix)`.
 public class User : BaseEntity, ITenantable
 {
     public const string IdPrefix = "usr";
+    public const int FirstNameMaxLength = 200;
 
     [Sensitive] public string FirstName { get; private set; } = default!;
     [Sensitive] public EmailAddress Email { get; private set; } = default!;
@@ -67,6 +68,8 @@ public class User : BaseEntity, ITenantable
     private static void ValidateUser(User user)
     {
         ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "firstName", "Please provide a first name.");
+        ValidationException.ThrowWhenLongerThan(user.FirstName, FirstNameMaxLength, "firstName",
+            $"A first name can have no more than {FirstNameMaxLength} characters.");
         ValidationException.Must(EntityId.IsValid(user.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
     }
 

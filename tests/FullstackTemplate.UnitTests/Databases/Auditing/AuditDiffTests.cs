@@ -83,14 +83,31 @@ public class AuditDiffTests
         ];
 
         // Act
-        var entries = AuditDiff.Compose(save, changes);
+        var entries = AuditDiff.Compose(save, changes, [new UsersExported(User, ExportFormat.Csv, 1)]);
 
         // Assert
-        entries.Select(e => (e.Ordinal, e.EntityId, e.RootId)).ShouldBe([(0, "usr_1", "usr_1"), (1, "uperm_1", "usr_1")]);
+        entries.Select(e => (e.Ordinal, e.EntityId, e.Kind, e.Action)).ShouldBe([
+            (0, "usr_1", AuditEntryKind.Updated, null),
+            (1, "uperm_1", AuditEntryKind.Created, null),
+            (2, "usr_1", AuditEntryKind.Action, "users_exported"),
+        ]);
         entries.ShouldAllBe(e => e.RecordId == save.RecordId && e.OccurredAt == save.OccurredAt
                                  && e.ActorUser == "sub-1" && e.ActorClient == "spa"
                                  && e.RequestName == "UpdateUser.Command" && e.TraceId == save.TraceId
-                                 && e.TenantId == "ten_1" && e.Action == null);
+                                 && e.TenantId == "ten_1" && e.RootId == "usr_1");
+    }
+
+    [Test]
+    public void action_type_with_no_name_is_refused()
+    {
+        // Arrange
+        var save = SaveFacts.From(DateTimeOffset.UnixEpoch, null, null, requestName: null, traceId: null);
+
+        // Act
+        var act = () => AuditDiff.Compose(save, [], [new ActionWithNoName(User)]);
+
+        // Assert
+        act.ShouldThrow<InvalidOperationException>().Message.ShouldContain("ActionWithNoName has no [AuditActionName]");
     }
 
     [Test]

@@ -73,10 +73,17 @@ internal static class AuditDiff
         return changes;
     }
 
-    /// <summary>The audit entries of one save, numbered in the order of <paramref name="changes"/>.</summary>
-    public static IReadOnlyList<AuditEntry> Compose(SaveFacts save, IReadOnlyList<DataChange> changes)
+    /// <summary>
+    /// The audit entries of one save, numbered in order: the <paramref name="changes"/>, then the
+    /// <paramref name="actions"/> in the order that the handlers recorded them.
+    /// </summary>
+    public static IReadOnlyList<AuditEntry> Compose(SaveFacts save, IReadOnlyList<DataChange> changes,
+        IReadOnlyList<AuditAction> actions)
         => changes
-            .Select((change, ordinal) => new AuditEntry(save, ordinal, change.Subject, change.Kind, action: null,
-                AuditValues.WriteChange(change.Kind, change.Properties)))
+            .Select(change => (change.Subject, change.Kind, Action: (string?)null,
+                Data: AuditValues.WriteChange(change.Kind, change.Properties)))
+            .Concat(actions.Select(action => (action.Subject, Kind: AuditEntryKind.Action,
+                Action: (string?)AuditAction.NameOf(action.GetType()), Data: AuditValues.WriteAction(action))))
+            .Select((entry, ordinal) => new AuditEntry(save, ordinal, entry.Subject, entry.Kind, entry.Action, entry.Data))
             .ToList();
 }

@@ -4,15 +4,24 @@ using System.Buffers;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Domain.AuditEntries;
 
 /// <summary>
 /// The one owner of the jsonb format of <see cref="AuditEntry.Data"/>. A change is
 /// <c>{"FirstName":{"old":"Ann","new":"Anne"},"Email":{"old":"a@example.com","new":"b@example.com"}}</c>.
-/// A <see cref="AuditEntryKind.Created"/> change has no "old".
+/// A <see cref="AuditEntryKind.Created"/> change has no "old". An action is its properties, for example
+/// <c>{"Format":"Csv","Count":3}</c>.
 /// </summary>
 internal static class AuditValues
 {
+    // An enum is stored by name, so a reorder of its members does not change the meaning of stored entries.
+    private static readonly JsonSerializerOptions ActionOptions = new() { Converters = { new JsonStringEnumConverter() } };
+
+    /// <summary>Each property of the action except its subject, by its C# name.</summary>
+    public static string WriteAction(AuditAction action)
+        => JsonSerializer.Serialize(action, action.GetType(), ActionOptions);
+
     /// <exception cref="NotSupportedException">A value has a provider type with no case here, for example
     /// <c>byte[]</c>. A new column type then fails its first save in the tests.</exception>
     public static string WriteChange(AuditEntryKind kind, IReadOnlyList<PropertySnapshot> properties)

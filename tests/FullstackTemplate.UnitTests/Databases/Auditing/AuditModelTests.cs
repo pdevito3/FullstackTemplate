@@ -30,6 +30,24 @@ public class AuditModelTests
     }
 
     [Test]
+    public void each_entity_with_a_tenant_of_its_own_is_an_aggregate_root()
+    {
+        // Arrange
+        using var context = new AppDbContextFactory().CreateDbContext([]);
+        var auditModel = AuditModel.Of(context.Model);
+
+        // Act
+        var tenantedChildren = EntityTypes(context.Model)
+            .Where(e => e.ClrType.IsAssignableTo(typeof(ITenantable)) && auditModel.OwnerKeyOf(e) is not null)
+            .Select(e => e.ClrType)
+            .ToList();
+
+        // Assert
+        tenantedChildren.ShouldBeEmpty(
+            "AuditSubject.Of files an action under the entity that it names as the aggregate root. Remove ITenantable from a child, because its owner gives its tenant.");
+    }
+
+    [Test]
     public void no_entity_type_is_owned()
     {
         // Arrange

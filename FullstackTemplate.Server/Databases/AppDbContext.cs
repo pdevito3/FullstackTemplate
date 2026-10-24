@@ -33,6 +33,7 @@ public class AppDbContext(
     private TenantScope? _domainEventTenantScope;
     private SaveStage _saveStage = SaveStage.Idle;
     private string? _requestName;
+    private readonly List<AuditAction> _recordedActions = [];
 
     /// <summary>
     /// The tenants whose rows the current caller can see. The tenant query filter reads it for each query.
@@ -57,12 +58,21 @@ public class AppDbContext(
     /// Names the MediatR request whose saves this context writes, until the result is disposed. The outermost request
     /// wins: a nested Send shares this context and its saves, so it keeps the outer name.
     /// </summary>
-    internal IDisposable EnterRequest(string requestName)
+    internal EnteredRequest EnterRequest(string requestName)
     {
-        var outerRequestName = _requestName;
+        var entered = new EnteredRequest(this, _requestName);
         _requestName ??= requestName;
-        return new RequestNameRestorer(this, outerRequestName);
+        return entered;
     }
+
+    /// <summary>
+    /// Adds the action to the audit log of the next save, in the same transaction and the same record as the changes of
+    /// that save. Save also when the handler changes no data. <see cref="Resources.AuditRequestBehavior{TRequest,TResponse}"/>
+    /// throws when a request records an action and does not save it.
+    /// </summary>
+    public void RecordAction(AuditAction action) => _recordedActions.Add(action);
+
+    internal bool HasUnsavedActions => _recordedActions.Count > 0;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -191,7 +201,8 @@ public class AppDbContext(
 
     /// <summary>
     /// The steps before the write. It touches the owners of changed children, stamps the entities, turns deletes into
-    /// soft deletes, and adds the audit entries of the changes to the tracker. Returns the number of audit entries.
+    /// soft deletes, and adds the audit entries of the changes and the recorded actions to the tracker. Returns the
+    /// number of audit entries.
     /// </summary>
     private int PrepareWrite()
     {
@@ -208,7 +219,9 @@ public class AppDbContext(
 
         var save = SaveFacts.From(now, currentUserService.UserIdentifier, currentUserService.ClientId, _requestName,
             Activity.Current?.TraceId.ToHexString());
-        var auditEntries = AuditDiff.Compose(save, AuditDiff.Changes(AuditSnapshots.Take(aggregates, auditModel)));
+        var auditEntries = AuditDiff.Compose(save, AuditDiff.Changes(AuditSnapshots.Take(aggregates, auditModel)),
+            _recordedActions);
+        _recordedActions.Clear();
         Set<AuditEntry>().AddRange(auditEntries);
         return auditEntries.Count;
     }
@@ -258,8 +271,11 @@ public class AppDbContext(
         }
     }
 
-    private sealed class RequestNameRestorer(AppDbContext context, string? outerRequestName) : IDisposable
+    /// <summary>Gives the context back the name of the outer request when disposed.</summary>
+    internal sealed class EnteredRequest(AppDbContext context, string? outerRequestName) : IDisposable
     {
+        public bool IsOutermost => outerRequestName is null;
+
         public void Dispose() => context._requestName = outerRequestName;
     }
 

@@ -28,6 +28,19 @@ public class AuditValuesTests
     }
 
     [Test]
+    public void action_holds_each_property_but_its_subject_and_names_its_enum_values()
+    {
+        // Arrange
+        var tenant = new AuditSubject("Tenant", "ten_1", "Tenant", "ten_1", "ten_1");
+
+        // Act
+        var json = AuditValues.WriteAction(new UsersExported(tenant, ExportFormat.Json, 3));
+
+        // Assert
+        json.ShouldBe("""{"Format":"Json","Count":3}""");
+    }
+
+    [Test]
     public void value_of_a_type_with_no_json_form_is_refused()
     {
         // Act

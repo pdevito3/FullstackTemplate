@@ -252,13 +252,20 @@ public class RefreshLockTests
         using var browser = Cookieless(app);
         try
         {
-            var firstCall = browser.SendAsync(ApiRequest(cookie));
-            await gate.Arrived.Task.WaitAsync(Timeout);
-            var secondCall = browser.SendAsync(ApiRequest(cookie));
-            await WaitForInProcessWaiterAsync(app);
+            Task<HttpResponseMessage> firstCall, secondCall;
             // The first call can wait the lock timeout for the lock and then the token request timeout for the
             // identity provider. The second call still waits for its result.
-            clock.Advance(ClockedLockTimeout + ClockedTokenRequestTimeout);
+            await using (await HoldLockAsync(key))
+            {
+                firstCall = browser.SendAsync(ApiRequest(cookie));
+                await WaitForLockWaiterAsync(key);
+                secondCall = browser.SendAsync(ApiRequest(cookie));
+                await WaitForInProcessWaiterAsync(app);
+                clock.Advance(ClockedLockTimeout + TimeSpan.FromMilliseconds(1));
+            }
+
+            await gate.Arrived.Task.WaitAsync(Timeout);
+            clock.Advance(ClockedTokenRequestTimeout - TimeSpan.FromMilliseconds(1));
             gate.Released.SetResult();
             var responses = await Task.WhenAll(firstCall, secondCall).WaitAsync(Timeout);
 
@@ -286,12 +293,12 @@ public class RefreshLockTests
         var provider = app.IdentityProvider;
         var subject = NewSubject();
         var (cookie, key) = await SignInAsync(app, $"test_sub={subject}&test_expires_in=60");
-        var gate = provider.HoldRefreshes(subject);
         using var browser = Cookieless(app);
-        try
+        Task<HttpResponseMessage> firstCall;
+        await using (await HoldLockAsync(key))
         {
-            var firstCall = browser.SendAsync(ApiRequest(cookie));
-            await gate.Arrived.Task.WaitAsync(Timeout);
+            firstCall = browser.SendAsync(ApiRequest(cookie));
+            await WaitForLockWaiterAsync(key);
             var secondCall = browser.SendAsync(ApiRequest(cookie));
             await WaitForInProcessWaiterAsync(app);
             clock.Advance(app.Services.GetRequiredService<IOptionsMonitor<RefreshOptions>>().CurrentValue.InProcessWaitLimit);
@@ -302,18 +309,13 @@ public class RefreshLockTests
             var currentAccessToken = provider.IssuedAccessTokens(subject).Single();
             (await second.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {currentAccessToken}");
             firstCall.IsCompleted.ShouldBeFalse();
+        }
 
-            gate.Released.SetResult();
-            var first = await firstCall.WaitAsync(Timeout);
-            first.StatusCode.ShouldBe(HttpStatusCode.OK);
-            (await first.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
-            provider.RefreshCount(subject).ShouldBe(1);
-            (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldNotBeNull();
-        }
-        finally
-        {
-            gate.Released.TrySetResult();
-        }
+        var first = await firstCall.WaitAsync(Timeout);
+        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await first.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
+        provider.RefreshCount(subject).ShouldBe(1);
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldNotBeNull();
     }
 
     /// <summary>

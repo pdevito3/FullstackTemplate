@@ -53,5 +53,7 @@ public sealed class RefreshFailureMetrics(IOpenIdConnectUserTokenEndpoint inner)
     /// </summary>
     public static void Register(IServiceCollection services) =>
         TokenEndpointDecorator.Decorate(services, (provider, inner) => new RefreshFailureMetrics(new RefreshTimeout(
-            inner, provider.GetRequiredService<IOptionsMonitor<RefreshOptions>>())));
+            inner,
+            provider.GetRequiredService<IOptionsMonitor<RefreshOptions>>(),
+            provider.GetRequiredService<TimeProvider>())));
 }

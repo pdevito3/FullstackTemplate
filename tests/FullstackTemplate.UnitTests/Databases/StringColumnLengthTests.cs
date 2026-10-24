@@ -46,6 +46,7 @@ public class StringColumnLengthTests
         "audit_entries.actor_user_id",
         "audit_entries.entity_id",
         "audit_entries.entity_type",
+        "audit_entries.kind",
         "audit_entries.request_name",
         "audit_entries.root_id",
         "audit_entries.root_type",
@@ -120,7 +121,7 @@ public class StringColumnLengthTests
         return model.GetEntityTypes()
             .Where(e => !e.IsOwned())
             .SelectMany(e => e.GetFlattenedProperties())
-            .Where(p => p.ClrType == typeof(string) && p.GetMaxLength() is not null && !p.IsKey() && !p.IsForeignKey())
+            .Where(p => (p.GetTypeMapping().Converter?.ProviderClrType ?? p.ClrType) == typeof(string) && p.GetMaxLength() is not null && !p.IsKey() && !p.IsForeignKey())
             .ToDictionary(
                 p => $"{p.DeclaringType.ContainingEntityType.GetTableName()}.{p.GetColumnName()}",
                 p => p.GetMaxLength()!.Value);

@@ -38,6 +38,7 @@ public static class UpdateUserRole
             var existingPermissions = user.UserPermissions.ToList();
             var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
 
+            var oldRole = user.Role;
             user.UpdateRole(newRole);
 
             // Handle permission changes: remove old, add new
@@ -63,8 +64,11 @@ public static class UpdateUserRole
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
-            UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+            if (newRole != oldRole)
+            {
+                _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
+                UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+            }
 
             return user.ToUserDto();
         }

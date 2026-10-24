@@ -37,7 +37,7 @@ PUT api/v{version}/users/{id}/role
                                               app.user_id=usr_01J...  app.user.role=Admin
    ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=32
    └─ SQL: <the save>                  8ms
-Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@66  CallerTenantId=ten_01J...
+Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@69  CallerTenantId=ten_01J...
 ```
 
 ## The support questions
@@ -169,10 +169,18 @@ public async Task<UserDto> Handle(Command request, CancellationToken cancellatio
     var newRole = UserRole.Of(request.Role);
     Activity.Current?.SetTag("app.user.role", newRole.Value);
 
-    // ... the permission checks, the load, the update, and the save, as before
+    // ... the permission checks and the load, as before
 
-    _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
-    UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+    var oldRole = user.Role;
+    user.UpdateRole(newRole);
+
+    // ... the permission rows and the save, as before
+
+    if (newRole != oldRole)
+    {
+        _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
+        UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+    }
 
     return user.ToUserDto();
 }
@@ -183,6 +191,7 @@ The example obeys these rules:
 - The id is on the span, and the log has it as a property. The metric has the role only.
 - The role is a value from a fixed set, so it is safe as a metric tag.
 - The log and the metric come after the save. Thus they record only a change that the database kept.
+- A request for the role that the user already has changes no role. Thus it writes no log and counts nothing.
 
 ## Test the telemetry
 

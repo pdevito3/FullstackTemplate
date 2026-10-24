@@ -54,7 +54,7 @@ public class TenantQueryFilterTests
     public void an_entity_tenanted_after_the_model_of_app_db_context_gets_the_tenant_filter()
     {
         // Arrange
-        using var context = new LateNavigationTenantedContext();
+        using var context = new NavigationTenantedContext();
 
         // Act
         var orderLine = context.Model.FindEntityType(typeof(OrderLine))!;

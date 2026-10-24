@@ -86,15 +86,15 @@ public class AppDbContext(
 
         // Automatically discovers and applies all IEntityTypeConfiguration<T> implementations in the assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-        modelBuilder.MapEntityIdToField();
-        modelBuilder.MapVersionToXmin();
-        modelBuilder.FilterSoftDeletedRecords();
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);
 
+        configurationBuilder.MapEntityIdToField();
+        configurationBuilder.MapVersionToXmin();
+        configurationBuilder.FilterSoftDeletedRecords();
         configurationBuilder.FilterByTenant(this);
     }
 

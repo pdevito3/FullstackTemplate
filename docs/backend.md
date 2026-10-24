@@ -200,6 +200,8 @@ To remove a permission, remove its value and add a migration that calls `DeleteP
 
 Entity configurations are in `Databases/EntityConfigurations/`. Database names use snake case.
 
+The context adds the soft delete filter, the `xmin` version, the ID field mapping, and the tenant filter with EF Core conventions. Thus a context that configures an entity after `base.OnModelCreating`, for example in a test, also gets them for that entity.
+
 A paged list query must have a fixed sort order. Without one, a row can show on two pages or on no page. When the caller gives no sort, sort by a natural key and then by `Id`. After a custom sort, also sort by `Id`. Add an index on the default sort, so that the database can read the page in order. See `GetUserList.cs` and `UserConfiguration.cs` for an example.
 
 ### Concurrency

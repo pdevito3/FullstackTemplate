@@ -1,8 +1,11 @@
 namespace FullstackTemplate.Server.Domain.Agents.Features;
 
+using System.Diagnostics;
 using Databases;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Resources;
+using Serilog;
 using Users;
 
 public static class DeleteAgent
@@ -11,8 +14,12 @@ public static class DeleteAgent
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.agent_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
 
             var agent = await dbContext.Agents
@@ -27,6 +34,8 @@ public static class DeleteAgent
 
             dbContext.Agents.Remove(agent);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Deleted agent {AgentId}", agent.Id);
         }
     }
 }

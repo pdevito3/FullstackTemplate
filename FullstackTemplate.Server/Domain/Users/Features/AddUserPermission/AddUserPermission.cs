@@ -1,11 +1,13 @@
 namespace FullstackTemplate.Server.Domain.Users.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
+using Serilog;
 
 public static class AddUserPermission
 {
@@ -14,11 +16,16 @@ public static class AddUserPermission
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.user_id", request.Id);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageUserAccess());
             var permission = Permission.Of(request.Permission);
+            Activity.Current?.SetTag("app.user.permission", permission.Value);
             caller.Require(permission);
 
             var user = await dbContext.Users
@@ -40,6 +47,9 @@ public static class AddUserPermission
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            if (user.UserPermissions.Count > existingPermissionIds.Count)
+                _logger.Here().Information("Added permission {Permission} to user {UserId}", permission.Value, user.Id);
 
             return user.ToUserDto();
         }

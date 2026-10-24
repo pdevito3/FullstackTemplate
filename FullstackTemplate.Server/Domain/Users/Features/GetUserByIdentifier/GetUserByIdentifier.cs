@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Exceptions;
@@ -20,6 +21,7 @@ public static class GetUserByIdentifier
                 .AsNoTracking()
                 .Include(u => u.UserPermissions)
                 .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken);
+            Activity.Current?.SetTag("app.user_id", user?.Id);
 
             return user?.ToUserDto() ?? throw new NotFoundException("User was not found.");
         }

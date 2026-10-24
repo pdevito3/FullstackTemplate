@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Mappings;
@@ -13,6 +14,8 @@ public static class GetTenant
     {
         public async Task<TenantDto> Handle(Query request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.tenant_id", request.Id);
+
             var tenant = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.get_by_id")
                 .GetById(request.Id, cancellationToken);

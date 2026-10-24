@@ -1,11 +1,14 @@
 namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Resources;
+using Serilog;
 using Users;
 
 public static class AddTenant
@@ -15,6 +18,8 @@ public static class AddTenant
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, TenantDto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<TenantDto> Handle(Command request, CancellationToken cancellationToken)
         {
             // A new tenant is outside the scope of each user, so only a caller that can manage all tenants
@@ -35,9 +40,12 @@ public static class AddTenant
 
             var forCreation = request.Dto.ToTenantForCreation();
             var tenant = Tenant.Create(forCreation);
+            Activity.Current?.SetTag("app.tenant_id", tenant.Id);
 
             await dbContext.Tenants.AddAsync(tenant, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Added tenant {TenantId}", tenant.Id);
 
             return tenant.ToTenantDto();
         }

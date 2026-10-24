@@ -1,8 +1,11 @@
 namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
+using System.Diagnostics;
 using Databases;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Resources;
+using Serilog;
 using Users;
 
 public static class DeleteTenant
@@ -11,8 +14,12 @@ public static class DeleteTenant
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.tenant_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
             var tenant = await dbContext.Tenants
@@ -32,6 +39,8 @@ public static class DeleteTenant
 
             dbContext.Tenants.Remove(tenant);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Deleted tenant {TenantId} and {AgentCount} agents", tenant.Id, agents.Count);
         }
     }
 }

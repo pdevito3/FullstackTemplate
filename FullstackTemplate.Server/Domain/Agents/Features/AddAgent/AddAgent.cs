@@ -30,11 +30,12 @@ public static class AddAgent
 
         public async Task<AgentDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            // The requested tenant first, so that a refused request also has it on the span
+            Activity.Current?.SetTag("app.tenant_id", request.Dto.TenantId);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageAgents());
 
-            // The requested tenant first, so that a refused tenant is also on the span
-            Activity.Current?.SetTag("app.tenant_id", request.Dto.TenantId);
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
             Activity.Current?.SetTag("app.tenant_id", tenantId);
             var agent = Agent.Create(request.Dto.ToAgentForCreation(tenantId), caller);

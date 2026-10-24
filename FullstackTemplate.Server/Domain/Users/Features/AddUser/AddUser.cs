@@ -23,14 +23,15 @@ public static class AddUser
 
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            // The requested tenant first, so that a refused request also has it on the span
+            Activity.Current?.SetTag("app.tenant_id", request.Dto.TenantId);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageUsers());
             var role = UserRole.Of(request.Dto.Role);
             Activity.Current?.SetTag("app.user.role", role.Value);
             caller.Require(role.GetDefaultPermissions());
 
-            // The requested tenant first, so that a refused tenant is also on the span
-            Activity.Current?.SetTag("app.tenant_id", request.Dto.TenantId);
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
             Activity.Current?.SetTag("app.tenant_id", tenantId);
 

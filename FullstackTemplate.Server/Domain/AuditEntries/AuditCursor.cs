@@ -11,6 +11,9 @@ public readonly record struct AuditCursor(DateTimeOffset OccurredAt, Guid Record
 {
     private const string Parameter = "cursor";
 
+    private static readonly long MinMicroseconds = MicrosecondsOf(DateTimeOffset.MinValue);
+    private static readonly long MaxMicroseconds = MicrosecondsOf(DateTimeOffset.MaxValue);
+
     public static AuditCursor Of(AuditEntry entry) => new(entry.OccurredAt, entry.RecordId, entry.Ordinal);
 
     /// <exception cref="QueryInputException">The text is not a cursor that <see cref="ToString"/> made.</exception>
@@ -19,6 +22,7 @@ public readonly record struct AuditCursor(DateTimeOffset OccurredAt, Guid Record
         var parts = text.Split('_');
         if (parts.Length == 3
             && long.TryParse(parts[0], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var microseconds)
+            && microseconds >= MinMicroseconds && microseconds <= MaxMicroseconds
             && Guid.TryParseExact(parts[1], "N", out var recordId)
             && int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var ordinal))
             return new AuditCursor(DateTimeOffset.UnixEpoch.AddTicks(microseconds * TimeSpan.TicksPerMicrosecond),
@@ -30,5 +34,8 @@ public readonly record struct AuditCursor(DateTimeOffset OccurredAt, Guid Record
     // The database keeps microseconds, so the text keeps each digit of a stored time.
     public override string ToString()
         => string.Create(CultureInfo.InvariantCulture,
-            $"{(OccurredAt - DateTimeOffset.UnixEpoch).Ticks / TimeSpan.TicksPerMicrosecond}_{RecordId:N}_{Ordinal}");
+            $"{MicrosecondsOf(OccurredAt)}_{RecordId:N}_{Ordinal}");
+
+    private static long MicrosecondsOf(DateTimeOffset time)
+        => (time - DateTimeOffset.UnixEpoch).Ticks / TimeSpan.TicksPerMicrosecond;
 }

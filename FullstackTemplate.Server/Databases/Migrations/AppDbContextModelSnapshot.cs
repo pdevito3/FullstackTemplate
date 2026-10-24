@@ -210,13 +210,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .UseCollation("C");
 
                     b.Property<string>("ActorClient")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasColumnType("text")
                         .HasColumnName("actor_client");
 
                     b.Property<string>("ActorSubject")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasColumnType("text")
                         .HasColumnName("actor_subject");
 
                     b.Property<string>("ActorUserId")

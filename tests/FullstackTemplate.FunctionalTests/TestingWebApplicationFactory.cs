@@ -13,6 +13,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Serilog.Core;
+using TestUtilities;
 using WebMotions.Fake.Authentication.JwtBearer;
 
 /// <summary>
@@ -53,6 +55,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     /// </summary>
     public List<MetricSnapshot> ExportedMetrics { get; } = [];
 
+    public CapturedLogs CapturedLogs { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(TestingConsts.FunctionalTestingEnvName);
@@ -80,6 +84,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
             services.AddOpenTelemetry()
                 .WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities))
                 .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics));
+            services.AddSingleton<ILogEventSink>(CapturedLogs);
         });
     }
 

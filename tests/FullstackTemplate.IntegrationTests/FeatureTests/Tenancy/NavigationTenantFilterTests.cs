@@ -85,6 +85,7 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<Note>(note =>
             {
                 note.HasKey(n => n.Id);
@@ -94,7 +95,6 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
                 note.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
                 note.ApplyTenanting(n => n.User.TenantId);
             });
-            base.OnModelCreating(modelBuilder);
         }
     }
 }

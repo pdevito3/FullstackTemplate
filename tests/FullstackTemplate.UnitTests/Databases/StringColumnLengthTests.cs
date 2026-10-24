@@ -3,6 +3,7 @@ namespace FullstackTemplate.UnitTests.Databases;
 using System.Globalization;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Agents;
+using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
@@ -38,6 +39,7 @@ public class StringColumnLengthTests
     {
         ["users.role"] = UserRole.ListNames(),
         ["agents.mode"] = [AgentMode.Delegated().Value, AgentMode.Machine().Value],
+        ["audit_entries.kind"] = Enum.GetNames<AuditEntryKind>(),
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
     };
@@ -49,7 +51,6 @@ public class StringColumnLengthTests
         "audit_entries.actor_user_id",
         "audit_entries.entity_id",
         "audit_entries.entity_type",
-        "audit_entries.kind",
         "audit_entries.request_name",
         "audit_entries.root_id",
         "audit_entries.root_type",

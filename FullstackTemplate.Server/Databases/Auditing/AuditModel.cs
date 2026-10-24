@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
 /// One value column of an entity type, with its audit facts. <c>IsRecorded</c> is false for the key and the
-/// <see cref="BaseEntity"/> bookkeeping (the stamps and <c>IsDeleted</c>).
+/// <see cref="BaseEntity"/> bookkeeping (<c>LastModifiedOn</c> and <c>IsDeleted</c>).
 /// </summary>
 internal sealed record AuditedValue(string Path, EntityColumn Column, bool IsRecorded, Sensitivity Sensitivity);
 
@@ -20,12 +20,7 @@ internal sealed class AuditModel
 {
     private const string AnnotationName = "Audit:Model";
 
-    private static readonly HashSet<string> Bookkeeping =
-    [
-        nameof(BaseEntity.CreatedOn), nameof(BaseEntity.CreatedBy), nameof(BaseEntity.CreatedByClient),
-        nameof(BaseEntity.LastModifiedOn), nameof(BaseEntity.LastModifiedBy), nameof(BaseEntity.LastModifiedByClient),
-        nameof(BaseEntity.IsDeleted),
-    ];
+    private static readonly HashSet<string> Bookkeeping = [nameof(BaseEntity.LastModifiedOn), nameof(BaseEntity.IsDeleted)];
 
     private readonly Dictionary<IEntityType, IReadOnlyList<AuditedValue>> _values = [];
     private readonly Dictionary<IEntityType, IForeignKey?> _ownerKeys = [];

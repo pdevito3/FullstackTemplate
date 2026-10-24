@@ -35,7 +35,7 @@ Each entrypoint file is optional. A feature has only the entrypoints that its ca
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
 - **Domain events** queue in the entity. `SaveChangesAsync` runs their handlers in the save transaction. See [domain-events.md](backend/domain-events.md).
 - **Audit log**: each save writes an audit entry for each data change and each recorded action, in the save transaction. See [audit-log.md](backend/audit-log.md).
-- **Prefixed string IDs**: each entity has a `public const string IdPrefix`, for example `usr`. `EntityId.New` makes IDs like `usr_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f` (the prefix and a UUIDv7). The build gives an error when an entity has no prefix, an invalid prefix, or a prefix that another entity uses. It also gives an error when a constructor does not call `base(IdPrefix)` with the prefix of its own type, or when an entity derives from another entity. A UUIDv7 ID shows the creation time to the millisecond. Thus, if you hide the `CreatedOn` field, the creation time is not secret.
+- **Prefixed string IDs**: each entity has a `public const string IdPrefix`, for example `usr`. `EntityId.New` makes IDs like `usr_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f` (the prefix and a UUIDv7). The build gives an error when an entity has no prefix, an invalid prefix, or a prefix that another entity uses. It also gives an error when a constructor does not call `base(IdPrefix)` with the prefix of its own type, or when an entity derives from another entity. A UUIDv7 ID shows the creation time to the millisecond, so the creation time of a record is not secret.
 
 ## Add a new feature
 
@@ -192,7 +192,7 @@ To remove a permission, remove its value and add a migration that calls `DeleteP
 `Databases/AppDbContext.cs` has these features:
 
 - **Soft delete**: the context filters out entities with `IsDeleted` automatically.
-- **Audit fields**: the context sets `CreatedOn`, `CreatedBy`, `CreatedByClient`, `LastModifiedOn`, `LastModifiedBy`, and `LastModifiedByClient`. `CreatedBy` has the `sub` of the token, and `CreatedByClient` has its client ID (see [Audit](authentication.md#audit)).
+- **Last modified**: the context sets `LastModifiedOn` on each row that a save writes. The audit log records who made each change and when. `LastModifiedOn` stays because a save that changes an owned child writes it on the owner, so the owner row and its version change (see [Concurrency](#concurrency)).
 - **Tenant filter**: see [multi-tenancy.md](multi-tenancy.md).
 - **Domain events**: the context runs the handlers before it sends the SQL, so the handler changes commit with the save.
 - **Audit log**: the context adds the audit entries of the save before it sends the SQL. Only the save and `BulkInsertAsync` can write an audited table. See [audit-log.md](backend/audit-log.md).

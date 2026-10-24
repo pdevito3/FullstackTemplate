@@ -55,7 +55,7 @@ A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`
 
 ## List query
 
-A list query projects to the DTO first. Then it applies the QueryKit filter and sort to the DTO. As a result, a caller can filter and sort only on the fields that the contract shows, and not on a field such as `CreatedBy`.
+A list query projects to the DTO first. Then it applies the QueryKit filter and sort to the DTO. As a result, a caller can filter and sort only on the fields that the contract shows, and not on a field such as `LastModifiedOn`.
 
 Each DTO field must translate to SQL. If a DTO field comes from a computed entity property, map it with an expression-bodied method. Then Mapperly puts the expression into the projection (see `UserMapper.MapFullName`).
 

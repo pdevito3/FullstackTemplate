@@ -41,8 +41,7 @@ public class BulkInsertTests : TestBase
         {
             var row = stored.Single(u => u.Id == user.Id);
             (row.FirstName, row.Email.Value, row.Role.Value).ShouldBe((user.FirstName, user.Email.Value, user.Role.Value));
-            (row.CreatedOn, row.CreatedBy, row.CreatedByClient)
-                .ShouldBe((record.OccurredAt, TestFixture.DefaultUser.Identifier, TestFixture.FirstPartyClientId));
+            row.LastModifiedOn.ShouldBe(record.OccurredAt);
             row.UserPermissions.Select(p => p.Permission.Value).ShouldBe(allPermissions, ignoreOrder: true);
 
             NewValueOf(entries.Single(e => e.EntityId == user.Id), "Email").ShouldBe(user.Email.Value);
@@ -51,6 +50,7 @@ public class BulkInsertTests : TestBase
         }
 
         entries.ShouldAllBe(e => e.Kind == AuditEntryKind.Created && e.ActorSubject == TestFixture.DefaultUser.Identifier
+                                 && e.ActorClient == TestFixture.FirstPartyClientId
                                  && e.ActorUserId == TestFixture.DefaultUser.Id);
         users.ShouldAllBe(u => u.DomainEvents.Count == 0);
     }

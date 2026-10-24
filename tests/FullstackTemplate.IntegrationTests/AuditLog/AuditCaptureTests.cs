@@ -43,7 +43,7 @@ public class AuditCaptureTests : TestBase
         ChangeOf(created, "FirstName").ShouldBe(new Change(HasOld: false, Old: null, New: dto.FirstName));
         ChangeOf(created, "Email").ShouldBe(new Change(HasOld: false, Old: null, New: dto.Email));
         Paths(created).ShouldNotContain(nameof(User.Id));
-        Paths(created).ShouldNotContain(nameof(User.CreatedOn));
+        Paths(created).ShouldNotContain(nameof(User.LastModifiedOn));
         entries.Where(e => e.EntityType == nameof(UserPermission))
             .Select(e => ChangeOf(e, "Permission").New)
             .ShouldBe(Permission.GetAll().Select(p => p.Value), ignoreOrder: true);
@@ -226,6 +226,32 @@ public class AuditCaptureTests : TestBase
         var updated = (await EntriesOfRootAsync(tenant.Id)).Single(e => e.Kind == AuditEntryKind.Updated);
         (updated.ActorSubject, updated.ActorClient, updated.ActorUserId, updated.ActorAgentId)
             .ShouldBe((admin.Identifier, agent.ClientId, admin.Id, agent.Id));
+    }
+
+    [Test]
+    public async Task save_of_a_machine_agent_names_the_agent_and_its_service_account()
+    {
+        // Arrange
+        const string serviceAccount = "service-account-fleet-sync";
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddAgent(out var machineAgent, a =>
+            {
+                a.Mode = "machine";
+                a.Permissions = [Permission.Names.ManageTenant];
+            })
+            .BuildAsync();
+        scope.SetMachineClient(machineAgent.ClientId, serviceAccount);
+
+        // Act
+        await scope.SendAsync(new UpdateTenant.Command(tenant.Id,
+            new TenantForUpdateDto { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version }));
+
+        // Assert
+        var updated = (await EntriesOfRootAsync(tenant.Id)).Single(e => e.Kind == AuditEntryKind.Updated);
+        (updated.ActorSubject, updated.ActorClient, updated.ActorUserId, updated.ActorAgentId)
+            .ShouldBe((serviceAccount, machineAgent.ClientId, null, machineAgent.Id));
     }
 
     [Test]

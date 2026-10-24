@@ -17,8 +17,8 @@ public class QueryInputErrorTests : TestBase
     [
         ("filters", "Name @= "),
         ("filters", "Unknown == \"x\""),
-        // TenantDto does not show CreatedBy, so the filter cannot use it
-        ("filters", "CreatedBy == \"x\""),
+        // TenantDto does not show LastModifiedOn, so the filter cannot use it
+        ("filters", "LastModifiedOn == \"x\""),
         ("filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\""),
         ("filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}"),
         ("filters", "Name ^^ \"x\""),

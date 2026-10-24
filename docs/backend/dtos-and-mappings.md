@@ -34,7 +34,7 @@ Endpoint gets UserForCreationDto
 2. Give a required property `= default!`. Make an optional property nullable.
 3. Use different DTOs for the response and for each request body.
 4. Keep a DTO flat. Use a nested DTO only when the data is a real child, such as a list of line items.
-5. Do not put an `Id`, audit fields, or internal data in a request DTO.
+5. Do not put an `Id`, `LastModifiedOn`, or internal data in a request DTO.
 6. In a request DTO, mark each non-nullable value-type property (`Guid`, `int`, `bool`, and more) with `required`. Without it, a missing field binds to the default value, and the request gets a 422 from a domain rule, not a 400.
 7. In a request DTO, give each non-nullable string property `[RequiredField]` from `Resources/RequiredFieldAttribute.cs`. `RequestValidationBehavior` does not read nullable annotations, so without it a missing field binds to null. With it, a missing field gets a 400 with a message that uses the JSON name of the field, and an empty string goes to the domain rules, which give a 422. The message names the field as the client sends it, for example "The firstName field is required.", not with a display name such as "First name", so that a client can match the message to its field.
 8. Give the response DTO of an aggregate root `public uint Version { get; init; }`. Give each `[EntityName]ForUpdateDto` `public required uint Version { get; init; }`, and give its update model `public uint Version { get; init; }`. Mapperly maps it by name. The client sends back the version that it loaded, and the entity checks it (see [domain-entities.md](domain-entities.md#versions)). A unit test fails if a `ForUpdateDto` has no required `Version`.
@@ -84,17 +84,12 @@ public sealed record UserForCreation
 2. Write each mapping as an extension method, for example `user.ToUserDto()`.
 3. Add an `IQueryable` projection for list queries. Mapperly turns it into one SQL query.
 4. Map a value object to its primitive with a private method.
-5. Ignore the audit fields and `DomainEvents` on the source of the DTO mapping.
+5. Ignore `LastModifiedOn`, `IsDeleted`, and `DomainEvents` on the source of the DTO mapping.
 
 ```csharp
 [Mapper]
 public static partial class UserMapper
 {
-    [MapperIgnoreSource(nameof(User.CreatedBy))]
-    [MapperIgnoreSource(nameof(User.LastModifiedBy))]
-    [MapperIgnoreSource(nameof(User.CreatedByClient))]
-    [MapperIgnoreSource(nameof(User.LastModifiedByClient))]
-    [MapperIgnoreSource(nameof(User.CreatedOn))]
     [MapperIgnoreSource(nameof(User.LastModifiedOn))]
     [MapperIgnoreSource(nameof(User.IsDeleted))]
     [MapperIgnoreSource(nameof(User.DomainEvents))]

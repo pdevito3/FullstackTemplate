@@ -49,7 +49,7 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
         afterFirstRun.ShouldNotContain(r => r.UserId == "usr_member" || r.UserId == "usr_deletedadmin");
 
         var admin = afterFirstRun.Where(r => r.UserId == "usr_admin").ToList();
-        admin.ShouldAllBe(r => !r.IsDeleted && r.CreatedBy == "migration");
+        admin.ShouldAllBe(r => !r.IsDeleted);
         admin.Select(r => r.Permission).ShouldBe(NewPermissions, ignoreOrder: true);
         foreach (var row in admin)
         {
@@ -131,16 +131,16 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
         await using var connection = new NpgsqlConnection(_database.ConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(
-            "SELECT id, user_id, permission, created_by, is_deleted FROM user_permissions", connection);
+            "SELECT id, user_id, permission, is_deleted FROM user_permissions", connection);
         await using var reader = await command.ExecuteReaderAsync();
         var rows = new List<PermissionRow>();
         while (await reader.ReadAsync())
         {
             rows.Add(new PermissionRow(reader.GetString(0), reader.GetString(1), reader.GetString(2),
-                reader.IsDBNull(3) ? null : reader.GetString(3), reader.GetBoolean(4)));
+                reader.GetBoolean(3)));
         }
         return rows;
     }
 
-    private sealed record PermissionRow(string Id, string UserId, string Permission, string? CreatedBy, bool IsDeleted);
+    private sealed record PermissionRow(string Id, string UserId, string Permission, bool IsDeleted);
 }

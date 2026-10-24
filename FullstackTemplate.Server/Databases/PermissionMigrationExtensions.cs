@@ -21,16 +21,35 @@ public static class PermissionMigrationExtensions
     /// Gives the permission to each live user with the role who has no live row for it. A second run changes nothing.
     /// </summary>
     public static void GrantPermissionToRole(this MigrationBuilder migrationBuilder, string role, string permission)
-        => migrationBuilder.Sql($"""
-            INSERT INTO user_permissions (id, user_id, permission, created_on, created_by, is_deleted)
-            SELECT {NewUserPermissionId}, u.id, {Literal(permission)}, now(), 'migration', false
+    {
+        var usersWithoutIt = $"""
             FROM users u
             WHERE u.role = {Literal(role)}
               AND NOT u.is_deleted
               AND NOT EXISTS (
                   SELECT 1 FROM user_permissions p
-                  WHERE p.user_id = u.id AND p.permission = {Literal(permission)} AND NOT p.is_deleted);
+                  WHERE p.user_id = u.id AND p.permission = {Literal(permission)} AND NOT p.is_deleted)
+            """;
+
+        // The migrations before DropWhoAndWhenColumns call this too. Then created_on exists, is NOT NULL, and has no
+        // default. PL/pgSQL checks the columns of a statement only when it runs it, so the branch that names
+        // created_on does no harm after the drop.
+        migrationBuilder.Sql($"""
+            DO $grant$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_attribute
+                           WHERE attrelid = 'user_permissions'::regclass AND attname = 'created_on' AND NOT attisdropped) THEN
+                    INSERT INTO user_permissions (id, user_id, permission, created_on, is_deleted)
+                    SELECT {NewUserPermissionId}, u.id, {Literal(permission)}, now(), false
+                    {usersWithoutIt};
+                ELSE
+                    INSERT INTO user_permissions (id, user_id, permission, is_deleted)
+                    SELECT {NewUserPermissionId}, u.id, {Literal(permission)}, false
+                    {usersWithoutIt};
+                END IF;
+            END $grant$;
             """);
+    }
 
     /// <summary>
     /// Hard-deletes each row of the permission, also the soft-deleted rows.

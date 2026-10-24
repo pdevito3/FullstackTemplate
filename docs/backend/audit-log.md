@@ -14,11 +14,11 @@ A save adds one audit entry for each entity that it adds, changes, or deletes, a
 | `Restored` | sets `IsDeleted` back to false | The old and the new value of each value that also changed |
 | `Action` | saves a recorded action | Each property of the action, except its subject |
 
-The entries do not record the key or the `BaseEntity` bookkeeping: the stamps, `IsDeleted`, and `Version`. An update that changes only these values writes no entry. Thus the owner touch of [Concurrency](../backend.md#concurrency) writes no entry.
+The entries do not record the key or the `BaseEntity` bookkeeping: `LastModifiedOn`, `IsDeleted`, and `Version`. An update that changes only these values writes no entry. Thus the owner touch of [Concurrency](../backend.md#concurrency) writes no entry.
 
 Each entry repeats the facts of its save:
 
-- `occurred_at` is the one clock reading of the save. The stamps of the entities have the same value.
+- `occurred_at` is the one clock reading of the save. The `LastModifiedOn` of the entities has the same value.
 - `actor_subject` is the `sub` of the token, and `actor_client` is its client ID. Both are null for system work. A provider can make the `sub` an email address, so the read shows it only with `read_audit_log_sensitive`.
 - `actor_user_id` is the user record of the caller, or of the user that a delegated agent acts for. It is null for system work, for a client that acts for no user, and for a user with no user record yet. `actor_agent_id` is the agent record of a delegated agent or a machine agent.
 - `request_name` is the MediatR request, for example `UpdateUser.Command`. A nested request keeps the name of the outer request. The name is null for a save outside a request.
@@ -65,7 +65,7 @@ await dbContext.SaveChangesAsync(cancellationToken);
 
 `AppDbContext.BulkInsertAsync(roots)` inserts many new aggregates with Postgres COPY, for an import. Use it when a save of the same rows is too slow. It is a save with another writer:
 
-- It stamps the entities and writes a `Created` entry for each row, the children of the roots too.
+- It sets `LastModifiedOn` and writes a `Created` entry for each row, the children of the roots too.
 - It writes the recorded actions of the context.
 - It writes all rows in one transaction, and it raises the save events of EF, so each `SaveChangesInterceptor` runs. Thus `TenantLookupInterceptor` forgets a cached miss of each new user.
 - After a lost acknowledgment of the commit, it looks for its record id in `audit_entries`. If the rows are there, it returns success.

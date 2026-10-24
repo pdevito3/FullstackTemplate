@@ -90,6 +90,34 @@ public class RequestValidationBehaviorTests
     }
 
     [Test]
+    public async Task a_missing_field_of_an_element_of_a_collection_class_gives_the_list_and_the_index()
+    {
+        // Arrange
+        var batch = new BatchDto { Lines = [new LineDto { Name = "Bolt" }, new LineDto { Name = null! }] };
+
+        // Act
+        var exception = await Should.ThrowAsync<RequestValidationException>(() => Send(new AddBatch(batch)));
+
+        // Assert
+        exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("lines[1].name");
+    }
+
+    [Test]
+    public async Task a_graph_with_a_cycle_gives_the_error_of_each_node_once()
+    {
+        // Arrange
+        var parent = new NodeDto { Name = "root" };
+        var child = new NodeDto { Name = null!, Owner = parent };
+        parent.Children.Add(child);
+
+        // Act
+        var exception = await Should.ThrowAsync<RequestValidationException>(() => Send(new AddNode(parent)));
+
+        // Assert
+        exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("children[0].name");
+    }
+
+    [Test]
     public async Task an_order_with_valid_lines_goes_to_the_handler()
     {
         // Arrange
@@ -259,6 +287,27 @@ public class RequestValidationBehaviorTests
     {
         [RequiredField]
         public string Name { get; init; } = default!;
+    }
+
+    private sealed record AddBatch(BatchDto Dto) : IRequest<bool>;
+
+    private sealed record BatchDto
+    {
+        public LineList Lines { get; init; } = [];
+    }
+
+    private sealed class LineList : List<LineDto>;
+
+    private sealed record AddNode(NodeDto Dto) : IRequest<bool>;
+
+    private sealed class NodeDto
+    {
+        [RequiredField]
+        public string Name { get; init; } = default!;
+
+        public NodeDto? Owner { get; init; }
+
+        public List<NodeDto> Children { get; } = [];
     }
 
     private sealed record AddKit(KitDto Dto) : IRequest<bool>;

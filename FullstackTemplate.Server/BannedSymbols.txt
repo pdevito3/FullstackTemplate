@@ -41,3 +41,6 @@ M:Npgsql.NpgsqlDataSourceBuilder.Build;A command on a connection of its own skip
 M:Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost;A command on a connection of its own skips the save and WriteGuard. Use the context.
 M:Npgsql.NpgsqlSlimDataSourceBuilder.Build;A command on a connection of its own skips the save and WriteGuard. Use the context.
 M:Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost;A command on a connection of its own skips the save and WriteGuard. Use the context.
+P:System.Data.Common.DbTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+P:Npgsql.NpgsqlTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.CloneWith(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.

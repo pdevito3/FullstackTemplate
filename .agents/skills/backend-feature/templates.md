@@ -11,19 +11,24 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s;
 
 using FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 using FullstackTemplate.Server.Domain.[EntityName]s.Models;
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Exceptions;
 
-public class [EntityName] : BaseEntity
+// A root has a tenant of its own, so its audit entries name their tenant. A child of a root is not ITenantable.
+public class [EntityName] : BaseEntity, ITenantable
 {
     // A short, unique type prefix. The ID is "[prefix]_{uuidv7}".
     public const string IdPrefix = "[prefix]";
 
-    // Properties with private setters. Mark each text or structured property for the audit log.
+    [NotSensitive] public string TenantId { get; private set; } = default!;
+
+    // Properties with private setters. Mark each property for the audit log, except a flag, an enum, a Guid, an
+    // integer, and an ID foreign key.
     [NotSensitive] public string Name { get; private set; } = default!;
     [Sensitive] public string? Description { get; private set; }
 
-    // ID foreign keys
-    // public string TenantId { get; private set; } = default!;
+    // Other ID foreign keys
+    // public string OtherId { get; private set; } = default!;
 
     // Value object properties
     // [Sensitive] public EmailAddress Email { get; private set; } = default!;
@@ -40,6 +45,7 @@ public class [EntityName] : BaseEntity
     {
         var entity = new [EntityName]
         {
+            TenantId = forCreation.TenantId,
             Name = forCreation.Name,
             Description = forCreation.Description,
         };
@@ -73,9 +79,9 @@ public class [EntityName] : BaseEntity
     {
         ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "name", "Please provide a name.");
 
-        // Check the prefix of each ID foreign key, as User checks its TenantId.
-        // ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "tenantId", "Please provide a tenant.");
-        // ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
+        // Check the prefix of each ID foreign key.
+        ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "tenantId", "Please provide a tenant.");
+        ValidationException.Must(EntityId.IsValid(entity.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
     }
 
     // Business methods
@@ -130,6 +136,7 @@ public sealed record [EntityName]Dto
 {
     public string Id { get; init; } = default!;
     public uint Version { get; init; }
+    public string TenantId { get; init; } = default!;
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
     public DateTimeOffset CreatedOn { get; init; }
@@ -217,6 +224,7 @@ public sealed record [EntityName]ForCreation
 {
     /// <summary>A fixed ID with the prefix of the entity. When it is null, the entity makes a new ID.</summary>
     public string? Id { get; init; }
+    public string TenantId { get; init; } = default!;
     public string Name { get; init; } = default!;
     public string? Description { get; init; }
 }
@@ -256,10 +264,10 @@ public static partial class [EntityName]Mapper
     public static partial IQueryable<[EntityName]Dto> To[EntityName]DtoQueryable(
         this IQueryable<[EntityName]> queryable);
 
-    // The API does not take an ID. Only tests set a fixed ID on the model.
+    // The API does not take an ID. Only tests set a fixed ID on the model. The handler decides the tenant.
     [MapperIgnoreTarget(nameof([EntityName]ForCreation.Id))]
     public static partial [EntityName]ForCreation To[EntityName]ForCreation(
-        this [EntityName]ForCreationDto dto);
+        this [EntityName]ForCreationDto dto, string tenantId);
 
     public static partial [EntityName]ForUpdate To[EntityName]ForUpdate(
         this [EntityName]ForUpdateDto dto);
@@ -281,6 +289,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Exceptions;
 using MediatR;
 
 public static class Add[EntityName]
@@ -294,7 +303,10 @@ public static class Add[EntityName]
         {
             await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
 
-            var forCreation = request.Dto.To[EntityName]ForCreation();
+            // The caller adds to its own tenant. AddUser shows a request that names the tenant.
+            var tenantId = dbContext.CurrentTenantScope.TenantId
+                ?? throw new ForbiddenAccessException("You can add a [EntityName] only to your own tenant.");
+            var forCreation = request.Dto.To[EntityName]ForCreation(tenantId);
             var entity = [EntityName].Create(forCreation);
 
             await dbContext.[EntityName]s.AddAsync(entity, cancellationToken);
@@ -672,6 +684,7 @@ namespace FullstackTemplate.Server.Databases.EntityConfigurations;
 
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.[EntityName]s;
+using FullstackTemplate.Server.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -685,15 +698,15 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
             .UseCollation(EntityId.Collation);
 
         // Each ID foreign key gets the same length and collation as the ID that it points to.
-        // builder.Property(e => e.TenantId)
-        //     .IsRequired()
-        //     .HasMaxLength(EntityId.MaxLength)
-        //     .UseCollation(EntityId.Collation);
-        //
-        // builder.HasOne<Tenant>()
-        //     .WithMany()
-        //     .HasForeignKey(e => e.TenantId)
-        //     .OnDelete(DeleteBehavior.Restrict);
+        builder.Property(e => e.TenantId)
+            .IsRequired()
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
+
+        builder.HasOne<Tenant>()
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(e => e.Name)
             .IsRequired()
@@ -705,15 +718,15 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
         // Indexes
         builder.HasIndex(e => e.Name);
 
-        // Value object configurations
-        // builder.OwnsOne(e => e.Email, email =>
+        // Value object configurations. The audit log reads a value object only as a ComplexProperty, not OwnsOne.
+        // builder.ComplexProperty(e => e.Email, email =>
         // {
         //     email.Property(e => e.Value)
         //         .HasColumnName("email")
         //         .HasMaxLength(320);
         // });
 
-        // builder.OwnsOne(e => e.Status, status =>
+        // builder.ComplexProperty(e => e.Status, status =>
         // {
         //     status.Property(s => s.Value)
         //         .HasColumnName("status")
@@ -908,7 +921,7 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
             .HasMaxLength(20);
 
         // Value object
-        builder.OwnsOne(e => e.Email, email =>
+        builder.ComplexProperty(e => e.Email, email =>
         {
             email.Property(e => e.Value)
                 .HasColumnName("email")

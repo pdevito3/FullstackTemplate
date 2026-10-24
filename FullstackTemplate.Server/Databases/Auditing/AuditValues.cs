@@ -95,6 +95,11 @@ internal static class AuditValues
             case long number: writer.WriteNumberValue(number); break;
             case ulong number: writer.WriteNumberValue(number); break;
             case decimal number: writer.WriteNumberValue(number); break;
+            // JSON has no NaN or Infinity, so Utf8JsonWriter throws on them.
+            case double number when !double.IsFinite(number):
+                writer.WriteStringValue(number.ToString(CultureInfo.InvariantCulture)); break;
+            case float number when !float.IsFinite(number):
+                writer.WriteStringValue(number.ToString(CultureInfo.InvariantCulture)); break;
             case double number: writer.WriteNumberValue(number); break;
             case float number: writer.WriteNumberValue(number); break;
             case Guid guid: writer.WriteStringValue(guid); break;

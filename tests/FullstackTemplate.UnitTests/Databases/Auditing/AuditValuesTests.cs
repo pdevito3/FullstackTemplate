@@ -97,6 +97,9 @@ public class AuditValuesTests
     [Arguments('A', "A")]
     [Arguments(1.5f, "1.5")]
     [Arguments(2.25, "2.25")]
+    [Arguments(double.NaN, "NaN")]
+    [Arguments(double.PositiveInfinity, "Infinity")]
+    [Arguments(float.NegativeInfinity, "-Infinity")]
     public void value_of_a_type_that_needs_a_mark_is_stored_as_display_text(object value, string display)
     {
         // Act

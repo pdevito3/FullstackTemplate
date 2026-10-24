@@ -24,7 +24,7 @@ public static class RemoveUserPermission
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageUserAccess());
             var permission = Permission.Of(request.Permission);
-            Activity.Current?.SetTag("app.user.permission", permission.Value);
+            Activity.Current?.SetTag("app.permission", permission.Value);
             caller.Require(permission);
 
             var user = await dbContext.Users

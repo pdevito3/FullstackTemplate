@@ -24,7 +24,7 @@ public static class RemoveAgentPermission
 
             await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
             var permission = Permission.Of(request.Permission);
-            Activity.Current?.SetTag("app.agent.permission", permission.Value);
+            Activity.Current?.SetTag("app.permission", permission.Value);
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.remove_permission.load")

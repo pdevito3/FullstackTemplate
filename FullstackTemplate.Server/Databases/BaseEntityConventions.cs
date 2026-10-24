@@ -65,7 +65,9 @@ public static class BaseEntityConventions
             property.SetColumnName("xmin");
             property.SetColumnType("xid");
             property.SetIsConcurrencyToken(true);
-            property.SetValueGenerated(ValueGenerated.OnAddOrUpdate);
+            // A convention computes the value generation again when the table mapping changes. It does not change a value
+            // from a data annotation.
+            property.SetValueGenerated(ValueGenerated.OnAddOrUpdate, fromDataAnnotation: true);
         }
     }
 }

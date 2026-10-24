@@ -7,12 +7,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
-/// One value column of an entity type, with its audit facts. <c>Complex</c> is the complex property that holds the
-/// property, or null. <c>IsRecorded</c> is false for the key and the <see cref="BaseEntity"/> bookkeeping (the stamps
-/// and <c>IsDeleted</c>).
+/// One value column of an entity type, with its audit facts. <c>IsRecorded</c> is false for the key and the
+/// <see cref="BaseEntity"/> bookkeeping (the stamps and <c>IsDeleted</c>).
 /// </summary>
-internal sealed record AuditedValue(
-    string Path, IProperty Property, IComplexProperty? Complex, bool IsRecorded, Sensitivity Sensitivity);
+internal sealed record AuditedValue(string Path, EntityColumn Column, bool IsRecorded, Sensitivity Sensitivity);
 
 /// <summary>
 /// What the audit log knows about the EF model of the context. It derives everything from the model, so a new
@@ -56,7 +54,7 @@ internal sealed class AuditModel
     public static AuditModel Of(IModel model)
         => model.GetOrAddRuntimeAnnotationValue(AnnotationName, static m => new AuditModel(m!), model);
 
-    /// <summary>Every value column of a <see cref="BaseEntity"/> type except store-generated ones (<c>xmin</c>).</summary>
+    /// <summary>The <see cref="EntityColumn"/>s of a <see cref="BaseEntity"/> type, with their audit facts.</summary>
     public IReadOnlyList<AuditedValue> ValuesOf(IEntityType entityType) => _values[entityType];
 
     /// <summary>
@@ -66,29 +64,20 @@ internal sealed class AuditModel
     public IForeignKey? OwnerKeyOf(IEntityType entityType) => _ownerKeys[entityType];
 
     private static List<AuditedValue> ValuesOfType(IEntityType entityType)
+        => EntityColumn.Of(entityType).Select(ValueOf).ToList();
+
+    private static AuditedValue ValueOf(EntityColumn column)
     {
-        var values = entityType.GetProperties()
-            .Where(p => !IsStoreGenerated(p))
-            .Select(p => new AuditedValue(p.Name, p, null,
-                IsRecorded: !p.IsPrimaryKey() && !Bookkeeping.Contains(p.Name),
-                AuditSensitivity.Of(p.PropertyInfo ?? (MemberInfo?)p.FieldInfo,
-                    p.GetTypeMapping().Converter?.ProviderClrType ?? p.ClrType)))
-            .ToList();
+        var property = column.Property;
+        if (column.Complex is not { } complex)
+            return new AuditedValue(property.Name, column,
+                IsRecorded: !property.IsPrimaryKey() && !Bookkeeping.Contains(property.Name),
+                AuditSensitivity.Of(property.PropertyInfo ?? (MemberInfo?)property.FieldInfo,
+                    property.GetTypeMapping().Converter?.ProviderClrType ?? property.ClrType));
 
-        foreach (var complex in entityType.GetComplexProperties())
-        {
-            if (complex.IsCollection || complex.ComplexType.GetComplexProperties().Any())
-                throw new NotSupportedException(
-                    $"The audit log cannot read {entityType.ClrType.Name}.{complex.Name}. It reads only a complex property with plain values, not a collection or a nested complex property.");
-
-            var properties = complex.ComplexType.GetProperties().ToList();
-            var sensitivity = AuditSensitivity.Of(complex.PropertyInfo ?? (MemberInfo?)complex.FieldInfo, complex.ClrType);
-            values.AddRange(properties.Select(p => new AuditedValue(
-                properties.Count == 1 ? complex.Name : $"{complex.Name}.{p.Name}", p, complex, IsRecorded: true,
-                sensitivity)));
-        }
-
-        return values;
+        var path = complex.ComplexType.GetProperties().Count() == 1 ? complex.Name : $"{complex.Name}.{property.Name}";
+        return new AuditedValue(path, column, IsRecorded: true,
+            AuditSensitivity.Of(complex.PropertyInfo ?? (MemberInfo?)complex.FieldInfo, complex.ClrType));
     }
 
     private static HashSet<string> GuardedTablesOf(IModel model)
@@ -97,9 +86,6 @@ internal sealed class AuditModel
             .Select(e => e.GetTableName())
             .OfType<string>()
             .ToHashSet(StringComparer.Ordinal);
-
-    private static bool IsStoreGenerated(IProperty property)
-        => property.ValueGenerated is ValueGenerated.OnUpdate or ValueGenerated.OnAddOrUpdate;
 
     private static IForeignKey? OwnerKeyOfType(IEntityType entityType)
     {

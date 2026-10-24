@@ -80,7 +80,7 @@ public class WriteGuardTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message
-            .ShouldStartWith($"{table} is audited, so write it through SaveChangesAsync.", customMessage: write);
+            .ShouldStartWith($"{table} is audited, so write it through SaveChangesAsync or BulkInsertAsync.", customMessage: write);
         await ShouldBeUnchangedAsync(scenario, permissionsBefore);
         (await ReadAsync(read => read.AuditEntries.CountAsync(e => e.RootId == scenario.FirstUser.Id)))
             .ShouldBe(auditEntriesBefore);

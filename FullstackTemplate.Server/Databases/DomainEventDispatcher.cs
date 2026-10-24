@@ -23,6 +23,10 @@ public sealed class DomainEventDispatcher(IServiceProvider serviceProvider)
         return run(serviceProvider, domainEvent, dbContext, cancellationToken);
     }
 
+    /// <summary>True when a save of an event of this type runs a handler.</summary>
+    public bool HasHandlers(Type eventType)
+        => serviceProvider.GetServices(typeof(IDomainEventHandler<>).MakeGenericType(eventType)).Any();
+
     private static async Task RunHandlersAsync<TEvent>(
         IServiceProvider serviceProvider, DomainEvent domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)
         where TEvent : DomainEvent

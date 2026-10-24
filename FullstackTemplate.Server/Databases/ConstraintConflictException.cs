@@ -4,15 +4,16 @@ using Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// A save that a unique index or an exclusion constraint stopped. <see cref="AppDbContext"/> throws it in place of the
-/// <see cref="DbUpdateException"/>. The error names the request field of the constraint. The constraint name and the
-/// values stay out of the error, because they show the schema and other rows.
+/// A save or a bulk insert that a unique index or an exclusion constraint stopped. <see cref="AppDbContext"/> throws it
+/// in place of the <see cref="DbUpdateException"/> or, for COPY, the <see cref="Npgsql.PostgresException"/>. The error
+/// names the request field of the constraint. The constraint name and the values stay out of the error, because they
+/// show the schema and other rows.
 /// </summary>
 public sealed class ConstraintConflictException(
     string constraint,
     string property,
     string message,
-    DbUpdateException innerException)
+    Exception innerException)
     : ConflictException(property, message, innerException)
 {
     public const string DuplicateMessage = "A record with this value already exists.";

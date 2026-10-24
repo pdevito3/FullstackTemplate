@@ -48,8 +48,8 @@ internal sealed class WriteGuard : DbCommandInterceptor, IDbTransactionIntercept
             _ => true,
         };
         return canWrite && SqlText.FirstNamed(commandText, guardedTables) is { } table
-            ? $"{table} is audited, so write it through SaveChangesAsync. ExecuteUpdate, ExecuteDelete, and raw SQL " +
-              "do not write audit entries. An entity type that needs no audit has [NotAudited(reason)]."
+            ? $"{table} is audited, so write it through SaveChangesAsync or BulkInsertAsync. ExecuteUpdate, ExecuteDelete, " +
+              "and raw SQL do not write audit entries. An entity type that needs no audit has [NotAudited(reason)]."
             : null;
     }
 

@@ -105,15 +105,6 @@ internal static class AuditSnapshots
 
     // A snapshot holds provider values, so it holds what the column holds.
     private static PropertySnapshot Snapshot(EntityEntry<BaseEntity> entry, AuditedValue value, bool isAdded)
-    {
-        var property = value.Complex is null
-            ? entry.Property(value.Property)
-            : entry.ComplexProperty(value.Complex).Property(value.Property);
-        var converter = value.Property.GetTypeMapping().Converter;
-
-        object? ToProvider(object? model) => model is null || converter is null ? model : converter.ConvertToProvider(model);
-
-        return new PropertySnapshot(value.Path, isAdded ? null : ToProvider(property.OriginalValue),
-            ToProvider(property.CurrentValue));
-    }
+        => new(value.Path, isAdded ? null : value.Column.ProviderValueOf(entry, original: true),
+            value.Column.ProviderValueOf(entry, original: false));
 }

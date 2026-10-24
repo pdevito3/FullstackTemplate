@@ -25,8 +25,8 @@ public class TenantIdProviderTests : TestBase
             .BuildAsync();
         (await provider.GetTenantIdAsync(identifier)).ShouldBeNull();
 
-        await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
-            "UPDATE users SET identifier = {0} WHERE id = {1}", identifier, user.Id));
+        await TestFixture.ExecuteOutOfBandAsync("UPDATE users SET identifier = @identifier WHERE id = @id",
+            ("identifier", identifier), ("id", user.Id));
 
         // Act
         var cached = await provider.GetTenantIdAsync(identifier);
@@ -58,8 +58,8 @@ public class TenantIdProviderTests : TestBase
         // FusionCache sets the absolute expiration from the real clock, so the manual clock starts from the time of the miss.
         clock.SetToNow();
 
-        await testingServiceScope.ExecuteDbContextAsync(db => db.Database.ExecuteSqlRawAsync(
-            "UPDATE users SET identifier = {0} WHERE id = {1}", identifier, user.Id));
+        await TestFixture.ExecuteOutOfBandAsync("UPDATE users SET identifier = @identifier WHERE id = @id",
+            ("identifier", identifier), ("id", user.Id));
 
         // Act
         clock.Advance(TimeSpan.FromSeconds(29));

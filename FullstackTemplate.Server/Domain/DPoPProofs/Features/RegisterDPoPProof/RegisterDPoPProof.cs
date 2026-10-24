@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.DPoPProofs.Features;
 
+using System.Diagnostics.CodeAnalysis;
 using Databases;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,8 @@ public static class RegisterDPoPProof
 
     public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, bool>
     {
+        [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+            Justification = "used_dpop_proofs is [NotAudited], so this write needs no audit entry.")]
         public async Task<bool> Handle(Command request, CancellationToken cancellationToken)
         {
             var id = UsedDPoPProof.KeyFor(request.JwkThumbprint, request.Jti);

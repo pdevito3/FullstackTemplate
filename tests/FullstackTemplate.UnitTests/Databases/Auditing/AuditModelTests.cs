@@ -3,6 +3,7 @@ namespace FullstackTemplate.UnitTests.Databases.Auditing;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Shouldly;
@@ -76,6 +77,58 @@ public class AuditModelTests
 
         // Assert
         sharedNames.ShouldBeEmpty("An audit entry names its entity type by the class name, so two entity classes must not share a name.");
+    }
+
+    [Test]
+    public void each_entity_type_that_the_save_does_not_audit_says_why()
+    {
+        // Arrange
+        using var context = new AppDbContextFactory().CreateDbContext([]);
+
+        // Act
+        var unexplained = context.Model.GetEntityTypes()
+            .Select(e => e.ClrType)
+            .Where(type => !type.IsAssignableTo(typeof(BaseEntity)) && type != typeof(AuditEntry))
+            .Where(type => string.IsNullOrWhiteSpace(
+                ((NotAuditedAttribute?)Attribute.GetCustomAttribute(type, typeof(NotAuditedAttribute)))?.Reason))
+            .ToList();
+
+        // Assert
+        unexplained.ShouldBeEmpty(
+            "The save audits only a BaseEntity. Make the type a BaseEntity, or give it [NotAudited(reason)] with the reason that its rows need no audit.");
+    }
+
+    [Test]
+    public void no_audited_entity_type_has_the_not_audited_mark()
+    {
+        // Arrange
+        using var context = new AppDbContextFactory().CreateDbContext([]);
+
+        // Act
+        var marked = context.Model.GetEntityTypes()
+            .Select(e => e.ClrType)
+            .Where(type => (type.IsAssignableTo(typeof(BaseEntity)) || type == typeof(AuditEntry))
+                           && Attribute.IsDefined(type, typeof(NotAuditedAttribute)))
+            .ToList();
+
+        // Assert
+        marked.ShouldBeEmpty(
+            "The save audits each BaseEntity, so the write guard must keep its table. Remove [NotAudited] from it.");
+    }
+
+    [Test]
+    public void guarded_tables_are_the_audited_tables_and_the_audit_log()
+    {
+        // Arrange
+        using var context = new AppDbContextFactory().CreateDbContext([]);
+
+        // Act
+        var guarded = AuditModel.Of(context.Model).GuardedTables;
+
+        // Assert
+        guarded.ShouldContain("users");
+        guarded.ShouldContain("audit_entries");
+        guarded.ShouldNotContain("used_dpop_proofs");
     }
 
     private static IEnumerable<IEntityType> EntityTypes(IModel model)

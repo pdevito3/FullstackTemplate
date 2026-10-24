@@ -41,7 +41,7 @@ public sealed class ReplacePlaceholderPermissionsMigrationTests : IAsyncDisposab
         await context.GetService<IMigrator>().MigrateAsync(ThisMigration);
         var afterFirstRun = await ReadRowsAsync();
         foreach (var sql in UpSqlOf(context))
-            await context.Database.ExecuteSqlRawAsync(sql);
+            await ExecuteAsync(sql);
         var afterSecondRun = await ReadRowsAsync();
 
         // Assert

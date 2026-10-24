@@ -83,11 +83,8 @@ public class DomainEventRetryTests : TestBase
         var saveAgain = () => scope.GetService<AppDbContext>().SaveChangesAsync();
         (await saveAgain.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("Use a new DI scope");
 
-        await using (var system = TestFixture.BaseScopeFactory.CreateSystemScope())
-        {
-            await system.ServiceProvider.GetRequiredService<AppDbContext>().Users.Where(u => u.Id == blocker.Id)
-                .ExecuteUpdateAsync(set => set.SetProperty(u => u.Identifier, $"moved-{Guid.NewGuid()}"));
-        }
+        await TestFixture.ExecuteOutOfBandAsync("UPDATE users SET identifier = @identifier WHERE id = @id",
+            ("identifier", $"moved-{Guid.NewGuid()}"), ("id", blocker.Id));
         var resendScope = new TestingServiceScope(services);
         resendScope.SetUserWithDefaults(identifier: scenario.Admin.Identifier);
         await resendScope.SendAsync(command);

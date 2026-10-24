@@ -41,10 +41,17 @@ internal sealed class AuditModel
         }
 
         Vocabulary = AuditVocabulary.Of(_values, typeof(AuditAction).Assembly.GetTypes());
+        GuardedTables = GuardedTablesOf(model);
     }
 
     /// <summary>The sensitivity of each value that the code of today can find in an audit entry.</summary>
     public AuditVocabulary Vocabulary { get; }
+
+    /// <summary>
+    /// The tables that only the save can write, so that each change has its audit entry: each table of the model,
+    /// <c>audit_entries</c> too, except the tables of a <see cref="NotAuditedAttribute"/> type.
+    /// </summary>
+    public IReadOnlySet<string> GuardedTables { get; }
 
     public static AuditModel Of(IModel model)
         => model.GetOrAddRuntimeAnnotationValue(AnnotationName, static m => new AuditModel(m!), model);
@@ -83,6 +90,13 @@ internal sealed class AuditModel
 
         return values;
     }
+
+    private static HashSet<string> GuardedTablesOf(IModel model)
+        => model.GetEntityTypes()
+            .Where(e => !e.ClrType.IsDefined(typeof(NotAuditedAttribute)))
+            .Select(e => e.GetTableName())
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
 
     private static bool IsStoreGenerated(IProperty property)
         => property.ValueGenerated is ValueGenerated.OnUpdate or ValueGenerated.OnAddOrUpdate;

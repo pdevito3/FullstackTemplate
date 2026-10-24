@@ -96,7 +96,7 @@ public class AppDbContext(
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.AddInterceptors(HandlerWriteGuard.Instance);
+        optionsBuilder.AddInterceptors(WriteGuard.Instance);
     }
 
     /// <summary>

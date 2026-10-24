@@ -25,6 +25,11 @@
     <InternalsVisibleTo Include="FullstackTemplate.UnitTests" />
   </ItemGroup>
 
+  <!-- BannedSymbols.txt bans the APIs that write without the save, so without an audit entry -->
+  <ItemGroup>
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
   <!-- The gRPC contract of each domain and version lives in its Grpc/v{n} folder. The functional tests generate the client. -->
   <ItemGroup>
     <Protobuf Include="Domain/**/Grpc/v*/*.proto" GrpcServices="Server" />
@@ -58,6 +63,10 @@
     <PackageReference Include="ZiggyCreatures.FusionCache" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

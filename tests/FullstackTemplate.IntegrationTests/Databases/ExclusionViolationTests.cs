@@ -13,6 +13,7 @@ using Shouldly;
 /// temporary table comes first in the search path of its session, and EF writes unqualified table names, so this
 /// context saves to the copy. The context keeps its connection open, so the copy lives until the test drops it.
 /// Other tests do not see the copy. The save is not in a transaction of the test, because AppDbContext refuses one.
+/// The SQL that makes the copy runs on the connection itself, because the context refuses raw SQL that names tenants.
 /// </summary>
 public class ExclusionViolationTests : TestBase
 {
@@ -24,8 +25,8 @@ public class ExclusionViolationTests : TestBase
         await dbContext.Database.OpenConnectionAsync();
         try
         {
-            await dbContext.Database.ExecuteSqlRawAsync("CREATE TEMP TABLE tenants (LIKE public.tenants INCLUDING DEFAULTS)");
-            await dbContext.Database.ExecuteSqlRawAsync(
+            await ExecuteOnConnectionAsync(dbContext, "CREATE TEMP TABLE tenants (LIKE public.tenants INCLUDING DEFAULTS)");
+            await ExecuteOnConnectionAsync(dbContext,
                 "ALTER TABLE tenants ADD CONSTRAINT ex_tenants_name EXCLUDE USING btree (name WITH =)");
             var name = $"Tenant {Guid.NewGuid():N}";
             dbContext.Tenants.Add(Tenant.Create(new TenantForCreation { Name = name }));
@@ -42,8 +43,15 @@ public class ExclusionViolationTests : TestBase
         }
         finally
         {
-            await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS pg_temp.tenants");
+            await ExecuteOnConnectionAsync(dbContext, "DROP TABLE IF EXISTS pg_temp.tenants");
             await dbContext.Database.CloseConnectionAsync();
         }
+    }
+
+    private static async Task ExecuteOnConnectionAsync(AppDbContext dbContext, string sql)
+    {
+        await using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
     }
 }

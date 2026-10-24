@@ -7,6 +7,10 @@ namespace FullstackTemplate.Server.Exceptions;
 public sealed class RequestValidationException(Dictionary<string, string[]> errors)
     : Exception(string.Join(" ", errors.Values.SelectMany(messages => messages)))
 {
-    /// <summary>The messages for each request field, keyed by the camelCase JSON name of the field.</summary>
+    /// <summary>
+    /// The messages for each request field. The key is the camelCase JSON name of a field of the request or of its
+    /// body DTO, for example <c>lastName</c>, or the path of a field of a DTO below them, for example
+    /// <c>lines[1].name</c>.
+    /// </summary>
     public Dictionary<string, string[]> Errors { get; } = errors;
 }

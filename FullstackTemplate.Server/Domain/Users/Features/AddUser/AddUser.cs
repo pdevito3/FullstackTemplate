@@ -1,11 +1,14 @@
 namespace FullstackTemplate.Server.Domain.Users.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Resources;
+using Serilog;
 
 public static class AddUser
 {
@@ -16,13 +19,21 @@ public static class AddUser
         // The key in the errors of the problem is the name of the request field
         private const string TenantIdField = "tenantId";
 
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            // The requested tenant first, so that a refused request also has it on the span
+            Activity.Current?.SetTag("app.tenant_id", request.Dto.TenantId);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageUsers());
-            caller.Require(UserRole.Of(request.Dto.Role).GetDefaultPermissions());
+            var role = UserRole.Of(request.Dto.Role);
+            Activity.Current?.SetTag("app.user.role", role.Value);
+            caller.Require(role.GetDefaultPermissions());
 
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
+            Activity.Current?.SetTag("app.tenant_id", tenantId);
 
             // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.
             var identifierInUse = await dbContext.Users
@@ -34,9 +45,12 @@ public static class AddUser
 
             var forCreation = request.Dto.ToUserForCreation(tenantId);
             var user = User.Create(forCreation);
+            Activity.Current?.SetTag("app.user_id", user.Id);
 
             await dbContext.Users.AddAsync(user, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Added user {UserId} to tenant {TenantId} with role {Role}", user.Id, tenantId, role.Value);
             
             // TODO handle IDP creation
 

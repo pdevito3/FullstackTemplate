@@ -1,11 +1,14 @@
 namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Resources;
+using Serilog;
 using Users;
 
 public static class UpdateTenant
@@ -14,8 +17,12 @@ public static class UpdateTenant
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, TenantDto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<TenantDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.tenant_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
             var tenant = await dbContext.Tenants
@@ -35,6 +42,8 @@ public static class UpdateTenant
                 throw new ConflictException("name", "A tenant with this name already exists.");
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Updated tenant {TenantId}", tenant.Id);
 
             return tenant.ToTenantDto();
         }

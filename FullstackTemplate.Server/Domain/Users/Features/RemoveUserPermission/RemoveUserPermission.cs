@@ -1,10 +1,13 @@
 namespace FullstackTemplate.Server.Domain.Users.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Resources;
+using Serilog;
 
 public static class RemoveUserPermission
 {
@@ -12,11 +15,16 @@ public static class RemoveUserPermission
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.user_id", request.Id);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageUserAccess());
             var permission = Permission.Of(request.Permission);
+            Activity.Current?.SetTag("app.permission.name", permission.Value);
             caller.Require(permission);
 
             var user = await dbContext.Users
@@ -39,6 +47,9 @@ public static class RemoveUserPermission
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            if (user.UserPermissions.Count < existingPermissions.Count)
+                _logger.Here().Information("Removed permission {Permission} from user {UserId}", permission.Value, user.Id);
 
             return user.ToUserDto();
         }

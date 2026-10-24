@@ -35,9 +35,9 @@ After:
 PUT api/v{version}/users/{id}/role
 └─ UpdateUserRole.Command            430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
                                               app.user_id=usr_01J...  app.user.role=Admin
-   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=24
+   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=32
    └─ SQL: <the save>                  8ms
-Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@58  CallerTenantId=ten_01J...
+Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@69  CallerTenantId=ten_01J...
 ```
 
 ## The support questions
@@ -136,7 +136,7 @@ Production keeps `Information` and higher (`appsettings.json`). Thus a `Debug` l
 
 ## Example
 
-This example adds the telemetry to `UpdateUserRole`. A role change gives or removes access, so support needs to find it later.
+`UpdateUserRole` has this telemetry. A role change gives or removes access, so support needs to find it later.
 
 `Domain/Users/UserMetrics.cs`:
 
@@ -155,23 +155,32 @@ public static class UserMetrics
 }
 ```
 
-`Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs`, the changed lines:
+`Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs`, the telemetry lines and the lines around them:
 
 ```csharp
 private readonly ILogger _logger = Log.ForContext<Handler>();
 
 public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
 {
-    // Tag the id first, so that a failed permission check also has it
     Activity.Current?.SetTag("app.user_id", request.Id);
 
-    // ... the permission checks and the load, as before
+    var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+    caller.Require(Permission.ManageUserAccess());
+    var newRole = UserRole.Of(request.Role);
     Activity.Current?.SetTag("app.user.role", newRole.Value);
 
-    // ... the update and the save, as before
+    // ... the permission checks and the load, as before
 
-    _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
-    UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+    var oldRole = user.Role;
+    user.UpdateRole(newRole);
+
+    // ... the permission rows and the save, as before
+
+    if (newRole != oldRole)
+    {
+        _logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, newRole.Value);
+        UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
+    }
 
     return user.ToUserDto();
 }
@@ -182,6 +191,7 @@ The example obeys these rules:
 - The id is on the span, and the log has it as a property. The metric has the role only.
 - The role is a value from a fixed set, so it is safe as a metric tag.
 - The log and the metric come after the save. Thus they record only a change that the database kept.
+- A request for the role that the user already has changes no role. Thus it writes no log and counts nothing.
 
 ## Test the telemetry
 

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Agents.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Exceptions;
@@ -8,6 +9,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Resources;
+using Serilog;
 using Services;
 using Users;
 
@@ -24,13 +26,21 @@ public static class AddAgent
         private const string TenantIdField = "tenantId";
         private const string ClientIdField = "clientId";
 
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<AgentDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            // The requested tenant first, so that a refused request also has it on the span
+            Activity.Current?.SetTag("app.tenant_id", request.Dto.TenantId);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageAgents());
 
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
+            Activity.Current?.SetTag("app.tenant_id", tenantId);
             var agent = Agent.Create(request.Dto.ToAgentForCreation(tenantId), caller);
+            Activity.Current?.SetTag("app.agent_id", agent.Id);
+            Activity.Current?.SetTag("app.agent.mode", agent.Mode.Value);
 
             if (firstPartyClients.Value.Contains(agent.ClientId))
                 throw new ValidationException(ClientIdField,
@@ -51,6 +61,8 @@ public static class AddAgent
 
             await dbContext.Agents.AddAsync(agent, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Added agent {AgentId} to tenant {TenantId} in mode {Mode}", agent.Id, agent.TenantId, agent.Mode.Value);
 
             return agent.ToAgentDto();
         }

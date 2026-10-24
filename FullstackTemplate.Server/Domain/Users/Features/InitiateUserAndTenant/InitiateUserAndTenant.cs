@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Exceptions;
@@ -34,6 +35,7 @@ public static class InitiateUserAndTenant
 
             // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.
             var identifierInUse = await dbContext.Users
+                .TagWithOperationCallSite("users.initiate.identifier_in_use")
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
             if (identifierInUse)
@@ -41,6 +43,7 @@ public static class InitiateUserAndTenant
 
             // Ignore all filters: the unique index on Name also covers deleted tenants.
             var tenantNameInUse = await dbContext.Tenants
+                .TagWithOperationCallSite("users.initiate.tenant_name_in_use")
                 .IgnoreQueryFilters()
                 .AnyAsync(t => t.Name == request.Dto.TenantName, cancellationToken);
             if (tenantNameInUse)
@@ -58,6 +61,7 @@ public static class InitiateUserAndTenant
             {
                 throw new ValidationException(TenantNameField, exception.Message);
             }
+            Activity.Current?.SetTag("app.tenant_id", tenant.Id);
             await dbContext.Tenants.AddAsync(tenant, cancellationToken);
 
             // Create user with tenant reference
@@ -72,6 +76,7 @@ public static class InitiateUserAndTenant
                 Role = request.Dto.Role
             };
             var user = User.Create(userForCreation);
+            Activity.Current?.SetTag("app.user_id", user.Id);
             await dbContext.Users.AddAsync(user, cancellationToken);
 
             // Single transaction - both saved together

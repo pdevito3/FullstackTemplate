@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Agents.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Mappings;
@@ -14,6 +15,8 @@ public static class GetAgent
     {
         public async Task<AgentDto> Handle(Query request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.agent_id", request.Id);
+
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.get_by_id")
                 .Include(a => a.Permissions)

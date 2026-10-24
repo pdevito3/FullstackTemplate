@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users.Features;
 
+using System.Diagnostics;
 using Databases;
 using Dtos;
 using Mappings;
@@ -14,6 +15,8 @@ public static class GetUser
     {
         public async Task<UserDto> Handle(Query request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.user_id", request.Id);
+
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.get_by_id")
                 .Include(u => u.UserPermissions)

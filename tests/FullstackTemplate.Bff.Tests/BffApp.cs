@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.AspNetCore;
@@ -60,6 +61,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
     private Action<IServiceCollection>? _services;
     private bool _ownsDependencies;
+    private readonly StartGate _startGate = new();
 
     public static async Task StartAsync()
     {
@@ -152,6 +154,22 @@ public sealed class BffApp : WebApplicationFactory<Program>
         await Database.DisposeAsync();
     }
 
+    /// <summary>
+    /// Starts the host that Program.cs builds. WebApplicationFactory runs Program.cs on another thread, and
+    /// <c>Start</c> gets <c>IHostApplicationLifetime</c> from the services of the host. A startup failure disposes
+    /// the host, so a failure before that call gave an ObjectDisposedException in place of the cause. The
+    /// <see cref="StartGate"/> holds the start of the host until <c>Start</c> has that service.
+    /// </summary>
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = builder.Build();
+        // StartAsync gets the service before its first await
+        var start = host.StartAsync();
+        _startGate.Open();
+        start.GetAwaiter().GetResult();
+        return host;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -170,6 +188,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
             services.AddOptions<RequestLoggingOptions>()
                 .Configure<Serilog.ILogger>((options, logger) => options.Logger = logger);
             services.AddTestAuthorization();
+            services.AddSingleton<IHostLifetime>(_startGate);
         });
         if (_services is not null)
             builder.ConfigureTestServices(_services);
@@ -275,6 +294,21 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// The query parameters of a URL.
     /// </summary>
     public static System.Collections.Specialized.NameValueCollection Query(Uri url) => HttpUtility.ParseQueryString(url.Query);
+}
+
+/// <summary>
+/// The host lifetime of each BFF in the tests. The host waits for it before anything else at its start, so
+/// <see cref="Open"/> decides when the start begins.
+/// </summary>
+internal sealed class StartGate : IHostLifetime
+{
+    private readonly TaskCompletionSource _opened = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Open() => _opened.TrySetResult();
+
+    public Task WaitForStartAsync(CancellationToken cancellationToken) => _opened.Task.WaitAsync(cancellationToken);
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 public static class AssemblyHooks

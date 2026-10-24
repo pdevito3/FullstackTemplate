@@ -97,6 +97,24 @@ public class FeatureTelemetryTests : TestBase
     }
 
     [Test]
+    public async Task a_role_change_that_the_database_does_not_save_logs_no_change()
+    {
+        // Arrange
+        var (admin, member) = await AddAdminAndMemberAsync();
+        FactoryClient.SignInAsAppUser(admin.Identifier);
+        TestingWebApplicationFactory.Instance.FailingSaves.Arm(member.Id);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        var slice = UpdateUserRoleSpanOf(admin);
+        TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
+            .ShouldNotContain(e => e.MessageTemplate.Text == RoleChangedTemplate);
+    }
+
+    [Test]
     public async Task get_agent_tags_the_agent()
     {
         // Arrange

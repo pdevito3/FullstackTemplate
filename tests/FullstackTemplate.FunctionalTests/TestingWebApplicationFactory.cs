@@ -57,6 +57,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 
     public CapturedLogs CapturedLogs { get; } = new();
 
+    public FailingSaves FailingSaves { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(TestingConsts.FunctionalTestingEnvName);
@@ -85,6 +87,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
                 .WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities))
                 .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics));
             services.AddSingleton<ILogEventSink>(CapturedLogs);
+            services.ConfigureDbContext<AppDbContext>((_, options) => options.AddInterceptors(FailingSaves));
         });
     }
 

@@ -33,14 +33,7 @@ public static class BaseEntityConventions
 
     /// <summary>Postgres has the <c>xmin</c> system column on each table, so the migration has no DDL.</summary>
     public static void MapVersionToXmin(this ModelConfigurationBuilder configurationBuilder)
-        => configurationBuilder.ConfigureEachEntity(entityType =>
-        {
-            var versionProperty = entityType.FindProperty(nameof(BaseEntity.Version))!;
-            versionProperty.SetColumnName("xmin");
-            versionProperty.SetColumnType("xid");
-            versionProperty.SetIsConcurrencyToken(true);
-            versionProperty.SetValueGenerated(ValueGenerated.OnAddOrUpdate);
-        });
+        => configurationBuilder.Conventions.Add(_ => new VersionToXminConvention());
 
     private static void ConfigureEachEntity(this ModelConfigurationBuilder configurationBuilder,
         Action<IConventionEntityType> configure)
@@ -54,6 +47,25 @@ public static class BaseEntityConventions
             foreach (var entityType in modelBuilder.Metadata.GetEntityTypes()
                          .Where(e => e.ClrType.IsAssignableTo(typeof(BaseEntity))))
                 configure(entityType);
+        }
+    }
+
+    // Maps the property when EF adds it, because EF gives the token to the other types of a shared table while the
+    // model completes.
+    private sealed class VersionToXminConvention : IPropertyAddedConvention
+    {
+        public void ProcessPropertyAdded(IConventionPropertyBuilder propertyBuilder,
+            IConventionContext<IConventionPropertyBuilder> context)
+        {
+            var property = propertyBuilder.Metadata;
+            if (property.Name != nameof(BaseEntity.Version)
+                || !property.DeclaringType.ClrType.IsAssignableTo(typeof(BaseEntity)))
+                return;
+
+            property.SetColumnName("xmin");
+            property.SetColumnType("xid");
+            property.SetIsConcurrencyToken(true);
+            property.SetValueGenerated(ValueGenerated.OnAddOrUpdate);
         }
     }
 }

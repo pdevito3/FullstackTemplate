@@ -60,6 +60,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private volatile RsaSecurityKey _signingKey = new(CreateRsaParameters()) { KeyId = "test-key" };
     // A second key in the JWKS, with another algorithm than the RS256 of the client registration
     private readonly ECDsaSecurityKey _ecKey = new(ECDsa.Create(ECCurve.NamedCurves.nistP256)) { KeyId = "test-ec-key" };
+    // The key of a bad_signature ID token. A new RSA key takes seconds under CPU load, longer than the token request
+    // timeout of the BFF, so it is made one time here and not in the token request
+    private readonly RSAParameters _otherKeyParameters = CreateRsaParameters();
     private readonly ConcurrentDictionary<string, Grant> _codes = new();
     private readonly ConcurrentDictionary<string, Grant> _accessTokens = new();
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
@@ -639,7 +642,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
         }
 
         var credentials = fault == "bad_signature"
-            ? new SigningCredentials(new RsaSecurityKey(CreateRsaParameters()) { KeyId = _signingKey.KeyId }, SecurityAlgorithms.RsaSha256)
+            ? new SigningCredentials(new RsaSecurityKey(_otherKeyParameters) { KeyId = _signingKey.KeyId }, SecurityAlgorithms.RsaSha256)
             : null;
         return CreateJwt(claims, "JWT", credentials);
     }

@@ -166,25 +166,58 @@ public class RequestValidationBehaviorTests
         }
     }
 
-    /// <summary>
-    /// The behavior does not read nullable annotations. Without <see cref="RequiredFieldAttribute"/>, a missing string
-    /// binds to null and goes to the handler, so each request DTO must mark each string that is not nullable.
-    /// </summary>
     [Test]
     public void each_string_of_a_request_dto_that_is_not_nullable_is_a_required_field()
     {
         // Arrange
-        var nullability = new NullabilityInfoContext();
-        var requestDtos = typeof(RequestValidationBehavior<,>).Assembly.GetTypes()
-            .Where(type => typeof(IBaseRequest).IsAssignableFrom(type) && type is { IsClass: true, IsAbstract: false })
-            .SelectMany(request => request.GetProperties())
-            .Select(property => property.PropertyType)
-            .Where(type => type.IsClass && type != typeof(string) && type.Assembly == typeof(RequestValidationBehavior<,>).Assembly)
-            .Distinct()
-            .ToList();
+        var requests = typeof(RequestValidationBehavior<,>).Assembly.GetTypes()
+            .Where(type => typeof(IBaseRequest).IsAssignableFrom(type) && type is { IsClass: true, IsAbstract: false });
 
         // Act
-        var unmarked = requestDtos
+        var requestDtos = RequestDtos(requests);
+
+        // Assert
+        requestDtos.ShouldContain(typeof(UserForCreationDto));
+        UnmarkedStrings(requestDtos).ShouldBeEmpty();
+    }
+
+    [Test]
+    public void the_required_field_guard_finds_a_string_of_a_dto_in_a_list_at_any_depth()
+    {
+        // Act
+        var unmarked = UnmarkedStrings(RequestDtos([typeof(AddKit)]));
+
+        // Assert
+        unmarked.ShouldBe(["KitPartDto.Name"]);
+    }
+
+    private static HashSet<Type> RequestDtos(IEnumerable<Type> requests)
+    {
+        var dtos = new HashSet<Type>();
+        var owners = new Stack<Type>(requests);
+        while (owners.TryPop(out var owner))
+        {
+            foreach (var property in owner.GetProperties())
+            {
+                var type = ListElement(property.PropertyType) ?? property.PropertyType;
+                if (type.IsClass && type != typeof(string) && type.Assembly == owner.Assembly && dtos.Add(type))
+                    owners.Push(type);
+            }
+        }
+
+        return dtos;
+    }
+
+    private static Type? ListElement(Type type) => type == typeof(string)
+        ? null
+        : type.GetInterfaces().Append(type)
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            ?.GetGenericArguments()[0];
+
+    private static List<string> UnmarkedStrings(IEnumerable<Type> dtos)
+    {
+        var nullability = new NullabilityInfoContext();
+        return dtos
             .SelectMany(dto => dto.GetProperties().Select(property => (Dto: dto, Property: property)))
             .Where(item => item.Property.PropertyType == typeof(string)
                 && item.Property.SetMethod is not null
@@ -192,10 +225,6 @@ public class RequestValidationBehaviorTests
                 && item.Property.GetCustomAttribute<RequiredFieldAttribute>() is null)
             .Select(item => $"{item.Dto.Name}.{item.Property.Name}")
             .ToList();
-
-        // Assert
-        requestDtos.ShouldContain(typeof(UserForCreationDto));
-        unmarked.ShouldBeEmpty();
     }
 
     private sealed record AddOrder(OrderDto Dto) : IRequest<bool>;
@@ -230,6 +259,23 @@ public class RequestValidationBehaviorTests
     {
         [RequiredField]
         public string Name { get; init; } = default!;
+    }
+
+    private sealed record AddKit(KitDto Dto) : IRequest<bool>;
+
+    private sealed record KitDto
+    {
+        [RequiredField]
+        public string Name { get; init; } = default!;
+
+        public IReadOnlyList<KitPartDto> Parts { get; init; } = [];
+    }
+
+    private sealed record KitPartDto
+    {
+        public string Name { get; init; } = default!;
+
+        public string? Note { get; init; }
     }
 
     private static async Task<bool> Send<TResponse>(IRequest<TResponse> request)

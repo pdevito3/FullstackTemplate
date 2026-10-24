@@ -25,14 +25,15 @@ public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBe
         TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         var errors = new Dictionary<string, string[]>();
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         foreach (var rule in RequestRules.For(request.GetType()))
         {
             var value = rule.Property.GetValue(request);
             Validate(request, rule, value, rule.JsonName, errors);
             if (rule.Holds == PropertyHolds.Dto && value is not null)
-                ValidateDto(value, "", errors);
+                ValidateDto(value, "", errors, visited);
             else
-                ValidateChildren(rule, value, rule.JsonName, errors);
+                ValidateChildren(rule, value, rule.JsonName, errors, visited);
         }
 
         if (errors.Count > 0)
@@ -41,30 +42,35 @@ public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBe
         return await next(cancellationToken);
     }
 
-    private static void ValidateDto(object dto, string prefix, Dictionary<string, string[]> errors)
+    private static void ValidateDto(
+        object dto, string prefix, Dictionary<string, string[]> errors, HashSet<object> visited)
     {
+        if (!visited.Add(dto))
+            return;
+
         foreach (var rule in RequestRules.For(dto.GetType()))
         {
             var value = rule.Property.GetValue(dto);
             var key = prefix + rule.JsonName;
             Validate(dto, rule, value, key, errors);
-            ValidateChildren(rule, value, key, errors);
+            ValidateChildren(rule, value, key, errors, visited);
         }
     }
 
-    private static void ValidateChildren(PropertyRule rule, object? value, string key, Dictionary<string, string[]> errors)
+    private static void ValidateChildren(
+        PropertyRule rule, object? value, string key, Dictionary<string, string[]> errors, HashSet<object> visited)
     {
         switch (rule.Holds)
         {
             case PropertyHolds.Dto when value is not null:
-                ValidateDto(value, $"{key}.", errors);
+                ValidateDto(value, $"{key}.", errors, visited);
                 break;
             case PropertyHolds.DtoList when value is IEnumerable elements:
                 var index = 0;
                 foreach (var element in elements)
                 {
                     if (element is not null)
-                        ValidateDto(element, $"{key}[{index}].", errors);
+                        ValidateDto(element, $"{key}[{index}].", errors, visited);
                     index++;
                 }
                 break;
@@ -111,13 +117,13 @@ internal static class RequestRules
 
     private static PropertyHolds HoldsOf(Type type, Assembly owner)
     {
-        if (IsDto(type, owner))
-            return PropertyHolds.Dto;
-
         var element = type.GetInterfaces().Append(type)
             .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             ?.GetGenericArguments()[0];
-        return element is not null && IsDto(element, owner) ? PropertyHolds.DtoList : PropertyHolds.Value;
+        if (element is not null && IsDto(element, owner))
+            return PropertyHolds.DtoList;
+
+        return IsDto(type, owner) ? PropertyHolds.Dto : PropertyHolds.Value;
     }
 
     // The runtime gives an array type the assembly of its element, so an array of DTOs passes the assembly check.

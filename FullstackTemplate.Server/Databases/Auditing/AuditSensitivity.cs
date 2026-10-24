@@ -27,8 +27,9 @@ internal static class AuditSensitivity
     /// birth date or a salary.
     /// </summary>
     /// <param name="member">The property or field that has the mark. Null for a shadow property.</param>
-    /// <param name="valueType">The type of the stored value: the provider type of an entity property, the type of a
-    /// complex property, or the type of an action property.</param>
+    /// <param name="valueType">The C# type of the value, not the type that a value converter stores, so a decimal
+    /// stored as a number still needs a mark: the type of an entity property, of a complex property, or of an action
+    /// property.</param>
     /// <param name="isForeignKey">True for an entity property that holds the ID of another entity.</param>
     public static Sensitivity Of(MemberInfo? member, Type valueType, bool isForeignKey)
     {

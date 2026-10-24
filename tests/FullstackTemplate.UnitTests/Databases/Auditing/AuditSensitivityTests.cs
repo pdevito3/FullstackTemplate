@@ -4,6 +4,10 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
+using FullstackTemplate.Server.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Shouldly;
 
 public class AuditSensitivityTests
@@ -71,6 +75,24 @@ public class AuditSensitivityTests
     }
 
     [Test]
+    public void column_type_of_a_value_converter_does_not_decide()
+    {
+        // Arrange
+        using var context = new ConvertedValuesContext();
+        var values = AuditModel.Of(context.Model).ValuesOf(context.Model.FindEntityType(typeof(Payslip))!);
+
+        // Act
+        var sensitivities = values.Where(value => value.IsRecorded).ToDictionary(value => value.Path, value => value.Sensitivity);
+
+        // Assert
+        sensitivities.ShouldBe(new Dictionary<string, Sensitivity>
+        {
+            [nameof(Payslip.Salary)] = Sensitivity.Unclassified,
+            [nameof(Payslip.Format)] = Sensitivity.NotSensitive,
+        }, ignoreOrder: true);
+    }
+
+    [Test]
     public void action_type_that_shares_a_name_with_another_is_refused()
     {
         // Act
@@ -119,4 +141,28 @@ public class AuditSensitivityTests
 
     [AuditActionName("users_exported")]
     private sealed record UsersExportedAgain(AuditSubject Subject) : AuditAction(Subject);
+}
+
+/// <summary>The model of <see cref="AppDbContext"/> plus a <see cref="Payslip"/> whose values have converters.</summary>
+file sealed class ConvertedValuesContext() : AppDbContext(
+    new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
+    TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
+    Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Payslip>(payslip =>
+        {
+            payslip.HasKey(p => p.Id);
+            payslip.Property(p => p.Salary).HasConversion<long>();
+            payslip.Property(p => p.Format).HasConversion<string>();
+        });
+        base.OnModelCreating(modelBuilder);
+    }
+}
+
+file sealed class Payslip() : BaseEntity("pay")
+{
+    public decimal Salary { get; private set; }
+    public ExportFormat Format { get; private set; }
 }

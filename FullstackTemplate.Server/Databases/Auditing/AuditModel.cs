@@ -72,8 +72,8 @@ internal sealed class AuditModel
         if (column.Complex is not { } complex)
             return new AuditedValue(property.Name, column,
                 IsRecorded: !property.IsPrimaryKey() && !Bookkeeping.Contains(property.Name),
-                AuditSensitivity.Of(property.PropertyInfo ?? (MemberInfo?)property.FieldInfo,
-                    property.GetTypeMapping().Converter?.ProviderClrType ?? property.ClrType, property.IsForeignKey()));
+                AuditSensitivity.Of(property.PropertyInfo ?? (MemberInfo?)property.FieldInfo, property.ClrType,
+                    property.IsForeignKey()));
 
         var path = complex.ComplexType.GetProperties().Count() == 1 ? complex.Name : $"{complex.Name}.{property.Name}";
         return new AuditedValue(path, column, IsRecorded: true,

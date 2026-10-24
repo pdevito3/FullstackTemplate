@@ -749,8 +749,6 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 
     // Apply all IEntityTypeConfiguration implementations from assembly
     modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-
-    modelBuilder.FilterSoftDeletedRecords();
 }
 ```
 

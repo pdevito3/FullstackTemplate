@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Bff.Tests.Fakes;
 
+using FullstackTemplate.AppHost;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -17,7 +18,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 
     private const int MaxPoolSize = 20;
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder($"postgres:{Config.PostgresImageTag}")
         .WithReuse(ReuseContainer)
         .WithCommand("-c", "max_connections=400")
         .WithLabel("fullstacktemplate.reuse", "test-postgres")

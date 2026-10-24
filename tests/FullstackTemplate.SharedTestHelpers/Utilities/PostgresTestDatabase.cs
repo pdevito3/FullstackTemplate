@@ -1,5 +1,6 @@
 namespace FullstackTemplate.SharedTestHelpers.Utilities;
 
+using FullstackTemplate.AppHost;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -20,7 +21,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     // connections of a default Postgres.
     private const int MaxPoolSize = 20;
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder($"postgres:{Config.PostgresImageTag}")
         .WithReuse(ReuseContainer)
         // The test runs of all worktrees on the machine share this container
         .WithCommand("-c", "max_connections=400")

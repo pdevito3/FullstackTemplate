@@ -26,3 +26,18 @@ M:Npgsql.NpgsqlConnection.BeginTextImport(System.String);COPY writes no audit en
 M:Npgsql.NpgsqlConnection.BeginTextImportAsync(System.String,System.Threading.CancellationToken);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
 M:Npgsql.NpgsqlConnection.BeginRawBinaryCopy(System.String);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
 M:Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(System.String,System.Threading.CancellationToken);COPY writes no audit entry. Add the entities and call SaveChangesAsync.
+P:Microsoft.EntityFrameworkCore.Storage.IRelationalConnection.DbConnection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+P:Microsoft.EntityFrameworkCore.Storage.RelationalConnection.DbConnection;A command on the connection of the context skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.#ctor;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlConnection.#ctor(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.Create(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.CreateConnection;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.CreateCommand(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.CreateBatch;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.OpenConnection;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken);A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSourceBuilder.Build;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlSlimDataSourceBuilder.Build;A command on a connection of its own skips the save and WriteGuard. Use the context.
+M:Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost;A command on a connection of its own skips the save and WriteGuard. Use the context.

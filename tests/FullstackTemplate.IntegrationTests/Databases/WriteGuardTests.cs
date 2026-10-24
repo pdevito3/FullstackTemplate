@@ -86,6 +86,41 @@ public class WriteGuardTests : TestBase
             .ShouldBe(auditEntriesBefore);
     }
 
+    public static IEnumerable<Func<(string Write, Write Run)>> HiddenCode()
+    {
+        yield return () => ("DO block", (db, userId) =>
+        {
+            var sql = $"DO $$ BEGIN UPDATE users SET first_name = 'Changed' WHERE id = '{userId}'; END $$";
+            return db.Database.ExecuteSqlRawAsync(sql);
+        });
+        yield return () => ("DO block in quotes", (db, userId) =>
+        {
+            var sql = $"DO 'BEGIN UPDATE users SET first_name = ''Changed'' WHERE id = ''{userId}''; END'";
+            return db.Database.ExecuteSqlRawAsync(sql);
+        });
+        yield return () => ("CALL", (db, _) => db.Database.ExecuteSqlRawAsync("CALL rename_users()"));
+        yield return () => ("SqlQuery with dollar-quoted text", async (db, _) => await db.Database.SqlQueryRaw<string>(
+            "SELECT $q$x$q$ AS \"Value\"").ToListAsync());
+    }
+
+    [Test]
+    [MethodDataSource(nameof(HiddenCode))]
+    public async Task raw_sql_that_hides_the_tables_it_writes_is_refused(string write, Write run)
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        var scenario = await scope.StartTenantScenarioAsync();
+        var permissionsBefore = await ReadAsync(read => read.UserPermissions.CountAsync(p => p.UserId == scenario.FirstUser.Id));
+
+        // Act
+        var act = () => run(scope.GetService<AppDbContext>(), scenario.FirstUser.Id);
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message
+            .ShouldStartWith("Raw SQL must not run a DO block, a CALL, or dollar-quoted text", customMessage: write);
+        await ShouldBeUnchangedAsync(scenario, permissionsBefore);
+    }
+
     [Test]
     public async Task raw_read_of_an_audited_table_and_raw_write_of_a_table_with_no_audit_run()
     {
@@ -99,7 +134,7 @@ public class WriteGuardTests : TestBase
         var firstNames = await db.Database.SqlQuery<string>(
             $"SELECT first_name AS \"Value\" FROM users WHERE id = {scenario.FirstUser.Id}").ToListAsync();
         var inserted = await db.Database.ExecuteSqlAsync(
-            $"INSERT INTO used_dpop_proofs (id, expires) VALUES ({proofId}, {DateTimeOffset.UtcNow})");
+            $"INSERT INTO used_dpop_proofs (id, expires) VALUES ({proofId}, {DateTimeOffset.UtcNow}) ON CONFLICT (id) DO NOTHING");
         var deleted = await db.Set<UsedDPoPProof>().Where(p => p.Id == proofId).ExecuteDeleteAsync();
 
         // Assert

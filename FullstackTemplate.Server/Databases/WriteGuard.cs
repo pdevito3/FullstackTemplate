@@ -22,6 +22,10 @@ internal sealed class WriteGuard : DbCommandInterceptor, IDbTransactionIntercept
         "A domain event handler must not begin or use a transaction. " +
         "The save that runs the handler commits its changes in one transaction.";
 
+    private const string HiddenCodeRefusal =
+        "Raw SQL must not run a DO block, a CALL, or dollar-quoted text, because the guard cannot see the tables " +
+        "that such code writes. Write through SaveChangesAsync, or read with LINQ.";
+
     public static WriteGuard Instance { get; } = new();
 
     private WriteGuard()
@@ -31,8 +35,9 @@ internal sealed class WriteGuard : DbCommandInterceptor, IDbTransactionIntercept
     /// <summary>
     /// Why a command must not run, or null. While the handlers run, only a LINQ query runs. Otherwise the commands of
     /// EF itself run (a LINQ query, the save, a migration, a value generator, scaffolding). Each other command, an
-    /// unknown one too, must not name a guarded table. A raw query (<see cref="CommandSource.FromSqlQuery"/>) can name
-    /// one, unless it also writes, for example in a data-modifying WITH.
+    /// unknown one too, must not run code that hides its tables (<see cref="SqlText.RunsHiddenCode"/>) and must not
+    /// name a guarded table. A raw query (<see cref="CommandSource.FromSqlQuery"/>) can name one, unless it also
+    /// writes, for example in a data-modifying WITH.
     /// </summary>
     internal static string? Refusal(
         CommandSource source, string commandText, bool runningDomainEventHandlers, IReadOnlySet<string> guardedTables)
@@ -40,13 +45,14 @@ internal sealed class WriteGuard : DbCommandInterceptor, IDbTransactionIntercept
         if (runningDomainEventHandlers)
             return source == CommandSource.LinqQuery ? null : HandlerRefusal;
 
-        var canWrite = source switch
-        {
-            CommandSource.LinqQuery or CommandSource.SaveChanges or CommandSource.Migrations
-                or CommandSource.ValueGenerator or CommandSource.Scaffolding => false,
-            CommandSource.FromSqlQuery => SqlText.IsWrite(commandText),
-            _ => true,
-        };
+        if (source is CommandSource.LinqQuery or CommandSource.SaveChanges or CommandSource.Migrations
+            or CommandSource.ValueGenerator or CommandSource.Scaffolding)
+            return null;
+
+        if (SqlText.RunsHiddenCode(commandText))
+            return HiddenCodeRefusal;
+
+        var canWrite = source != CommandSource.FromSqlQuery || SqlText.IsWrite(commandText);
         return canWrite && SqlText.FirstNamed(commandText, guardedTables) is { } table
             ? $"{table} is audited, so write it through SaveChangesAsync or BulkInsertAsync. ExecuteUpdate, ExecuteDelete, " +
               "and raw SQL do not write audit entries. An entity type that needs no audit has [NotAudited(reason)]."

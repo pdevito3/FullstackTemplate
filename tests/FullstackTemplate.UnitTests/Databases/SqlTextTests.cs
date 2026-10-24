@@ -47,4 +47,17 @@ public class SqlTextTests
     [Arguments("SELECT updated_on FROM t", false)]
     public void a_write_has_a_bare_write_keyword(string sql, bool isWrite)
         => SqlText.IsWrite(sql).ShouldBe(isWrite);
+
+    [Test]
+    [Arguments("DO $$ BEGIN UPDATE users SET first_name = 'x'; END $$", true)]
+    [Arguments("do 'BEGIN UPDATE users SET first_name = ''x''; END'", true)]
+    [Arguments("CALL rename_users()", true)]
+    [Arguments("SELECT 1; call rename_users()", true)]
+    [Arguments("-- note\n/* note */ DO 'BEGIN NULL; END'", true)]
+    [Arguments("SELECT $body$ x $body$", true)]
+    [Arguments("INSERT INTO t (id) VALUES (1) ON CONFLICT (id) DO NOTHING", false)]
+    [Arguments("SELECT \"do\", 'CALL x', $1 FROM t -- DO", false)]
+    [Arguments("SELECT rename_users()", false)]
+    public void hidden_code_is_a_do_block_a_call_or_dollar_quoted_text(string sql, bool runsHiddenCode)
+        => SqlText.RunsHiddenCode(sql).ShouldBe(runsHiddenCode);
 }

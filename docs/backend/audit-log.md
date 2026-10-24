@@ -82,10 +82,12 @@ A unique violation gives a `ConstraintConflictException`, as in a save. A failed
 
 ## Writes that skip the save
 
-`ExecuteUpdate`, `ExecuteDelete`, raw SQL, a command on `Database.GetDbConnection()`, and COPY write no audit entry. Two checks stop them:
+`ExecuteUpdate`, `ExecuteDelete`, raw SQL, a command on the connection of the context or on a new Npgsql connection, and COPY write no audit entry. Two checks catch them:
 
-- **The build.** `FullstackTemplate.Server/BannedSymbols.txt` bans these APIs in the Server (RS0030). The error names the fix.
-- **The run time.** `WriteGuard` refuses each command that can write and that names a guarded table. The guarded tables are each table of the model, `audit_entries` too, except the tables of a `[NotAudited]` type. A LINQ query, a save, a migration, a value generator, and scaffolding run. A raw query with `FromSql` runs when it does not write. While domain event handlers run, only LINQ queries run (see [domain-events.md](domain-events.md#errors)).
+- **The build.** `FullstackTemplate.Server/BannedSymbols.txt` bans these APIs in the Server (RS0030): `Database.GetDbConnection()`, `IRelationalConnection.DbConnection`, the `NpgsqlConnection` constructors, and the methods that make an `NpgsqlDataSource` or get a connection from one. The error names the fix.
+- **The run time.** `WriteGuard` checks each command that EF does not make itself. It refuses a DO block, a CALL, and dollar-quoted text, because their writes are not in the words of the SQL. It refuses a command that can write and that names a guarded table. The guarded tables are each table of the model, `audit_entries` too, except the tables of a `[NotAudited]` type. A LINQ query, a save, a migration, a value generator, and scaffolding run. A raw query with `FromSql` runs when it does not write. While domain event handlers run, only LINQ queries run (see [domain-events.md](domain-events.md#errors)).
+
+The checks catch mistakes, not code that wants to skip them. The guard does not see the writes of a function that a `SELECT` calls. Reflection or a suppressed ban gets past the build.
 
 To write a `[NotAudited]` table with a banned API, suppress RS0030 on the method with a justification. `BannedApiSuppressionTests` pins the files that suppress the ban, so add the file to its list. The DPoP replay cache is the example.
 

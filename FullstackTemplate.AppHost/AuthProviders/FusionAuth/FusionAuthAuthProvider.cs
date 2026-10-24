@@ -53,6 +53,11 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
             .WithEnvironment("FUSIONAUTH_APP_URL", "http://localhost:9011")
             .WithEnvironment("FUSIONAUTH_APP_KICKSTART_FILE", "/usr/local/fusionauth/kickstart/kickstart.json")
             .WithEnvironment("FUSIONAUTH_APP_SILENT_MODE", "true")
+            // Kickstart sends all its requests on one keep-alive connection to the local port 9012. After a response,
+            // that port closes a connection whose read rate over its life is below 16 KiB/s, and Kickstart does not
+            // retry. Thus the test user can stay missing and the health check never passes (issue #76). A new
+            // connection for each request gets 5 s before the check applies, and Kickstart sends a request in less.
+            .WithEnvironment("FUSIONAUTH_APP_ADDITIONAL_JAVA_ARGS", "-Dhttp.keepAlive=false")
             .WithEnvironment("SEARCH_TYPE", "database")
             .WithSeedFiles(this, "/usr/local/fusionauth/kickstart")
             .WithClientUrls(clientUrls)

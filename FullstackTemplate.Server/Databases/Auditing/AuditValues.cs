@@ -83,17 +83,26 @@ internal static class AuditValues
         {
             case null: writer.WriteNullValue(); break;
             case string text: writer.WriteStringValue(text); break;
+            case char character: writer.WriteStringValue(character.ToString()); break;
             case bool flag: writer.WriteBooleanValue(flag); break;
-            case int number: writer.WriteNumberValue(number); break;
-            case long number: writer.WriteNumberValue(number); break;
+            case Enum member: writer.WriteStringValue(member.ToString()); break;
+            case sbyte number: writer.WriteNumberValue(number); break;
+            case byte number: writer.WriteNumberValue(number); break;
             case short number: writer.WriteNumberValue(number); break;
+            case ushort number: writer.WriteNumberValue(number); break;
+            case int number: writer.WriteNumberValue(number); break;
             case uint number: writer.WriteNumberValue(number); break;
+            case long number: writer.WriteNumberValue(number); break;
+            case ulong number: writer.WriteNumberValue(number); break;
             case decimal number: writer.WriteNumberValue(number); break;
             case double number: writer.WriteNumberValue(number); break;
+            case float number: writer.WriteNumberValue(number); break;
             case Guid guid: writer.WriteStringValue(guid); break;
             case DateTimeOffset moment: writer.WriteStringValue(moment); break;
             case DateTime moment: writer.WriteStringValue(moment); break;
             case DateOnly date: writer.WriteStringValue(date.ToString("O", CultureInfo.InvariantCulture)); break;
+            case TimeOnly time: writer.WriteStringValue(time.ToString("O", CultureInfo.InvariantCulture)); break;
+            case TimeSpan span: writer.WriteStringValue(span.ToString("c", CultureInfo.InvariantCulture)); break;
             default:
                 throw new NotSupportedException(
                     $"The audit log cannot store '{path}', because it has no JSON form for {value.GetType().Name}. Add a case to AuditValues.");

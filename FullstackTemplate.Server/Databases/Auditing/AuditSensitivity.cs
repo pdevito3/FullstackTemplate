@@ -14,11 +14,12 @@ internal enum Sensitivity
 
 internal static class AuditSensitivity
 {
-    private static readonly HashSet<Type> PlainTypes =
-    [
+    /// <summary>The types that need no mark, besides an enum.</summary>
+    public static IReadOnlySet<Type> PlainTypes { get; } = new HashSet<Type>
+    {
         typeof(bool), typeof(Guid), typeof(sbyte), typeof(byte), typeof(short), typeof(ushort), typeof(int),
         typeof(uint), typeof(long), typeof(ulong),
-    ];
+    };
 
     /// <summary>
     /// A mark decides. With no mark, a plain value (a flag, an enum, a Guid, or an integer) and a foreign key are not

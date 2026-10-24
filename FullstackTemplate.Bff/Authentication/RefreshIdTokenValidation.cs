@@ -130,14 +130,16 @@ public sealed class RefreshIdTokenValidation(
     private async Task<string?> CheckAsync(string idToken, ClaimsPrincipal session, TimeSpan limit)
     {
         var options = oidcOptions.Get(OpenIdConnectDefaults.AuthenticationScheme);
+        // The limit starts before the load of the signing keys, so it covers the whole load
+        using var timeout = new CancellationTokenSource(limit, timeProvider);
         // The load of the signing keys does not stop at a cancellation, so the wait stops instead
         var validation = ValidateAsync(idToken, options);
         TokenValidationResult result;
         try
         {
-            result = await validation.WaitAsync(limit, timeProvider);
+            result = await validation.WaitAsync(timeout.Token);
         }
-        catch (TimeoutException)
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
             // Observed here, so that a later failure of the load does not raise UnobservedTaskException
             _ = validation.ContinueWith(t => _ = t.Exception, CancellationToken.None,

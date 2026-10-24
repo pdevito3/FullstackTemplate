@@ -48,6 +48,12 @@ public class TestBase : IDisposable
     /// <summary>
     /// An MCP client on <see cref="FactoryClient"/>, so it sends the bearer token that the test set.
     /// </summary>
+    /// <remarks>
+    /// The client waits for the reply to the <c>server/discover</c> probe. By default it stops the probe after 5
+    /// seconds, and the test server can answer that stop with a 499, which the client does not take as a reason to
+    /// fall back to <c>initialize</c>. The handshake limit only stops a broken server, so it is far above the time
+    /// that a busy machine takes.
+    /// </remarks>
     protected async Task<McpClient> CreateMcpClientAsync()
     {
         var transport = new HttpClientTransport(
@@ -58,7 +64,11 @@ public class TestBase : IDisposable
             },
             FactoryClient,
             ownsHttpClient: false);
-        return await McpClient.CreateAsync(transport);
+        return await McpClient.CreateAsync(transport, new McpClientOptions
+        {
+            DiscoverProbeTimeout = Timeout.InfiniteTimeSpan,
+            InitializationTimeout = TimeSpan.FromMinutes(5),
+        });
     }
 
     /// <summary>

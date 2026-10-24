@@ -4,6 +4,7 @@ using System.Net;
 using Duende.AccessTokenManagement.OpenIdConnect;
 using FullstackTemplate.Bff.Authentication;
 using FullstackTemplate.Bff.Sessions;
+using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -21,9 +22,10 @@ public class RefreshLockTests
     private const int CallsPerHost = 4;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
-    // Long real timeouts, so that only the fake clock of the in-process wait moves during a test
-    private static readonly TimeSpan ClockedLockTimeout = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan ClockedTokenRequestTimeout = TimeSpan.FromSeconds(15);
+    // Longer than Timeout, so that only the fake clock moves the refresh timers during a test, and a timer on the
+    // real clock fails the test
+    private static readonly TimeSpan ClockedLockTimeout = TimeSpan.FromSeconds(25);
+    internal static readonly TimeSpan ClockedTokenRequestTimeout = TimeSpan.FromSeconds(20);
 
     [Test]
     public async Task parallel_calls_on_two_hosts_make_one_refresh_and_all_get_the_new_token()
@@ -212,10 +214,8 @@ public class RefreshLockTests
     [Test]
     public async Task a_hung_identity_provider_reaches_the_token_request_timeout_and_releases_the_lock()
     {
-        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
-        {
-            ["Bff:Refresh:TokenRequestTimeout"] = "00:00:00.300",
-        });
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        await using var app = StartWithClock(clock);
         var provider = app.IdentityProvider;
         var subject = NewSubject();
         var (cookie, key) = await SignInAsync(app, $"test_sub={subject}&test_expires_in=60");
@@ -223,7 +223,10 @@ public class RefreshLockTests
         using var browser = Cookieless(app);
         try
         {
-            var response = await browser.SendAsync(ApiRequest(cookie)).WaitAsync(Timeout);
+            var call = browser.SendAsync(ApiRequest(cookie));
+            await gate.Arrived.Task.WaitAsync(Timeout);
+            clock.Advance(ClockedTokenRequestTimeout);
+            var response = await call.WaitAsync(Timeout);
 
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject).Single()}");
@@ -249,13 +252,20 @@ public class RefreshLockTests
         using var browser = Cookieless(app);
         try
         {
-            var firstCall = browser.SendAsync(ApiRequest(cookie));
-            await gate.Arrived.Task.WaitAsync(Timeout);
-            var secondCall = browser.SendAsync(ApiRequest(cookie));
-            await WaitForInProcessWaiterAsync(app);
+            Task<HttpResponseMessage> firstCall, secondCall;
             // The first call can wait the lock timeout for the lock and then the token request timeout for the
             // identity provider. The second call still waits for its result.
-            clock.Advance(ClockedLockTimeout + ClockedTokenRequestTimeout);
+            await using (await HoldLockAsync(key))
+            {
+                firstCall = browser.SendAsync(ApiRequest(cookie));
+                await WaitForLockWaiterAsync(key);
+                secondCall = browser.SendAsync(ApiRequest(cookie));
+                await WaitForInProcessWaiterAsync(app);
+                clock.Advance(ClockedLockTimeout + TimeSpan.FromMilliseconds(1));
+            }
+
+            await gate.Arrived.Task.WaitAsync(Timeout);
+            clock.Advance(ClockedTokenRequestTimeout - TimeSpan.FromMilliseconds(1));
             gate.Released.SetResult();
             var responses = await Task.WhenAll(firstCall, secondCall).WaitAsync(Timeout);
 
@@ -283,12 +293,12 @@ public class RefreshLockTests
         var provider = app.IdentityProvider;
         var subject = NewSubject();
         var (cookie, key) = await SignInAsync(app, $"test_sub={subject}&test_expires_in=60");
-        var gate = provider.HoldRefreshes(subject);
         using var browser = Cookieless(app);
-        try
+        Task<HttpResponseMessage> firstCall;
+        await using (await HoldLockAsync(key))
         {
-            var firstCall = browser.SendAsync(ApiRequest(cookie));
-            await gate.Arrived.Task.WaitAsync(Timeout);
+            firstCall = browser.SendAsync(ApiRequest(cookie));
+            await WaitForLockWaiterAsync(key);
             var secondCall = browser.SendAsync(ApiRequest(cookie));
             await WaitForInProcessWaiterAsync(app);
             clock.Advance(app.Services.GetRequiredService<IOptionsMonitor<RefreshOptions>>().CurrentValue.InProcessWaitLimit);
@@ -299,31 +309,29 @@ public class RefreshLockTests
             var currentAccessToken = provider.IssuedAccessTokens(subject).Single();
             (await second.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {currentAccessToken}");
             firstCall.IsCompleted.ShouldBeFalse();
+        }
 
-            gate.Released.SetResult();
-            var first = await firstCall.WaitAsync(Timeout);
-            first.StatusCode.ShouldBe(HttpStatusCode.OK);
-            (await first.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
-            provider.RefreshCount(subject).ShouldBe(1);
-            (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldNotBeNull();
-        }
-        finally
-        {
-            gate.Released.TrySetResult();
-        }
+        var first = await firstCall.WaitAsync(Timeout);
+        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await first.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
+        provider.RefreshCount(subject).ShouldBe(1);
+        (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldNotBeNull();
     }
 
     /// <summary>
-    /// A BFF whose <see cref="TimeProvider"/> is <paramref name="clock"/>, so that a test moves the timer of the
-    /// in-process wait with no real delay.
+    /// A BFF whose <see cref="TimeProvider"/> is <paramref name="clock"/>, so that a test moves the refresh timers
+    /// with no real delay. It uses the identity provider <paramref name="identityProvider"/>, when given, and the
+    /// extra <paramref name="settings"/>.
     /// </summary>
-    private static BffApp StartWithClock(FakeTimeProvider clock) => BffApp.StartAnotherInstance(
-        new Dictionary<string, string?>
+    internal static BffApp StartWithClock(FakeTimeProvider clock, FakeIdentityProvider? identityProvider = null,
+        IReadOnlyDictionary<string, string?>? settings = null) => BffApp.StartAnotherInstance(
+        new Dictionary<string, string?>(settings ?? new Dictionary<string, string?>())
         {
             ["Bff:Refresh:LockTimeout"] = ClockedLockTimeout.ToString(),
             ["Bff:Refresh:TokenRequestTimeout"] = ClockedTokenRequestTimeout.ToString(),
         },
-        services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock)));
+        services => services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock)),
+        identityProvider);
 
     /// <summary>
     /// Signs in on <paramref name="app"/> and returns the session cookie and the BFF session key.

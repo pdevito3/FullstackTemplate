@@ -5,13 +5,16 @@ using Microsoft.Extensions.Options;
 namespace FullstackTemplate.Bff.Authentication;
 
 /// <summary>
-/// Limits each refresh call to the token endpoint to <see cref="RefreshOptions.TokenRequestTimeout"/>. The
-/// refresh lock holds a <c>bffdb</c> connection and the advisory lock during the call, so a hung identity provider
-/// must not hold them until the timeout of the backchannel. A call that reaches the limit gives the temporary
-/// failure <see cref="TimeoutError"/>, so the failure rules of the token attach apply.
+/// Limits each refresh call to the token endpoint to <see cref="RefreshOptions.TokenRequestTimeout"/> on the
+/// <see cref="TimeProvider"/> of the app. The refresh lock holds a <c>bffdb</c> connection and the advisory lock
+/// during the call, so a hung identity provider must not hold them until the timeout of the backchannel. A call
+/// that reaches the limit gives the temporary failure <see cref="TimeoutError"/>, so the failure rules of the token
+/// attach apply.
 /// </summary>
-public sealed class RefreshTimeout(IOpenIdConnectUserTokenEndpoint inner, IOptionsMonitor<RefreshOptions> options)
-    : IOpenIdConnectUserTokenEndpoint
+public sealed class RefreshTimeout(
+    IOpenIdConnectUserTokenEndpoint inner,
+    IOptionsMonitor<RefreshOptions> options,
+    TimeProvider timeProvider) : IOpenIdConnectUserTokenEndpoint
 {
     /// <summary>
     /// The error of a refresh call that reached <see cref="RefreshOptions.TokenRequestTimeout"/>.
@@ -22,11 +25,11 @@ public sealed class RefreshTimeout(IOpenIdConnectUserTokenEndpoint inner, IOptio
         UserTokenRequestParameters parameters, CancellationToken ct = default)
     {
         var limit = options.CurrentValue.TokenRequestTimeout;
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(limit);
+        using var timeout = new CancellationTokenSource(limit, timeProvider);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
         try
         {
-            return await inner.RefreshAccessTokenAsync(userToken, parameters, timeout.Token);
+            return await inner.RefreshAccessTokenAsync(userToken, parameters, linked.Token);
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested && !ct.IsCancellationRequested)
         {

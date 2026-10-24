@@ -43,6 +43,70 @@ public class RequestValidationBehaviorTests
     }
 
     [Test]
+    public async Task a_missing_field_of_an_element_of_a_list_gives_the_list_and_the_index()
+    {
+        // Arrange
+        var order = new OrderDto { Number = "ord-1", Lines = [new LineDto { Name = "Bolt" }, new LineDto { Name = null! }] };
+
+        // Act
+        var exception = await Should.ThrowAsync<RequestValidationException>(() => Send(new AddOrder(order)));
+
+        // Assert
+        exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("lines[1].name");
+        exception.Errors["lines[1].name"].ShouldBe(["The lines[1].name field is required."]);
+    }
+
+    [Test]
+    public async Task a_missing_field_at_any_depth_gives_its_path()
+    {
+        // Arrange
+        var order = new OrderDto
+        {
+            Number = "ord-1",
+            ShipTo = new AddressDto { City = null! },
+            Lines =
+            [
+                new LineDto { Name = "Bolt", Parts = [new PartDto { Name = "Head" }, new PartDto { Name = null! }] },
+                new LineDto { Name = "Nut" },
+            ],
+        };
+
+        // Act
+        var exception = await Should.ThrowAsync<RequestValidationException>(() => Send(new AddOrder(order)));
+
+        // Assert
+        exception.Errors.Keys.ShouldBe(["shipTo.city", "lines[0].parts[1].name"], ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task a_missing_field_of_an_element_of_a_list_of_the_command_gives_the_list_and_the_index()
+    {
+        // Act
+        var exception = await Should.ThrowAsync<RequestValidationException>(
+            () => Send(new AddLines([new LineDto { Name = null! }])));
+
+        // Assert
+        exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("lines[0].name");
+    }
+
+    [Test]
+    public async Task an_order_with_valid_lines_goes_to_the_handler()
+    {
+        // Arrange
+        var order = new OrderDto
+        {
+            Number = "ord-1",
+            Lines = [new LineDto { Name = "Bolt", Parts = [new PartDto { Name = "Head" }] }, new LineDto { Name = "Nut" }],
+        };
+
+        // Act
+        var sent = await Send(new AddOrder(order));
+
+        // Assert
+        sent.ShouldBeTrue();
+    }
+
+    [Test]
     public async Task a_missing_field_of_the_command_gives_the_json_name()
     {
         // Act
@@ -132,6 +196,40 @@ public class RequestValidationBehaviorTests
         // Assert
         requestDtos.ShouldContain(typeof(UserForCreationDto));
         unmarked.ShouldBeEmpty();
+    }
+
+    private sealed record AddOrder(OrderDto Dto) : IRequest<bool>;
+
+    private sealed record AddLines(IReadOnlyList<LineDto> Lines) : IRequest<bool>;
+
+    private sealed record OrderDto
+    {
+        [RequiredField]
+        public string Number { get; init; } = default!;
+
+        public AddressDto? ShipTo { get; init; }
+
+        public IReadOnlyList<LineDto> Lines { get; init; } = [];
+    }
+
+    private sealed record AddressDto
+    {
+        [RequiredField]
+        public string City { get; init; } = default!;
+    }
+
+    private sealed record LineDto
+    {
+        [RequiredField]
+        public string Name { get; init; } = default!;
+
+        public PartDto[] Parts { get; init; } = [];
+    }
+
+    private sealed record PartDto
+    {
+        [RequiredField]
+        public string Name { get; init; } = default!;
     }
 
     private static async Task<bool> Send<TResponse>(IRequest<TResponse> request)

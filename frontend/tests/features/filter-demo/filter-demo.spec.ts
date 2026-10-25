@@ -3,6 +3,7 @@ import { takesUpSpace } from '@tests/support/screen'
 import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
+const dayInASixWeekMonth = new Date('2026-08-15T12:00:00Z')
 
 test.describe('the Add Filter menu on a phone', () => {
   test.use({ viewport: phone })
@@ -39,6 +40,61 @@ test.describe('the Add Filter menu on a phone', () => {
 
     await expect(demo.at.removeFilter('Created Date')).toBeVisible()
     await expect(demo.at.control('Created Date')).toBeHidden()
+  })
+})
+
+for (const viewport of [
+  { width: 320, height: 780 },
+  { width: 360, height: 780 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`the date control on a ${viewport.width} px phone`, () => {
+    test.use({ viewport })
+
+    for (const { mode, quickSelect } of [
+      { mode: 'On', quickSelect: 'Yesterday' },
+      { mode: 'Between', quickSelect: 'Last Year' },
+    ]) {
+      test(`fits the ${mode} calendar in the column of the control`, async ({ page }) => {
+        const demo = filterDemoPage(page)
+        await demo.openOn(dayInASixWeekMonth)
+
+        await demo.chooseProperty('Created Date')
+        if (mode === 'Between') await demo.chooseBetween('Created Date')
+
+        expect(await demo.sidewaysScrollOf('Created Date')).toBe(0)
+        await expect(demo.at.calendar('Created Date')).toBeInViewport({ ratio: 1 })
+        await expect(demo.at.button('Created Date', quickSelect)).toBeInViewport({ ratio: 1 })
+        const calendar = await demo.edgesOf(demo.at.calendar('Created Date'))
+        const firstMode = await demo.edgesOf(demo.at.button('Created Date', 'On'))
+        const lastMode = await demo.edgesOf(demo.at.button('Created Date', 'Between'))
+        expect(calendar.left).toBeCloseTo(firstMode.left, 0)
+        expect(calendar.right).toBeCloseTo(lastMode.right, 0)
+        if (mode === 'Between') {
+          const endDate = await demo.edgesOf(demo.at.dateField('Created Date', 'End date'))
+          expect(endDate.right).toBeCloseTo(lastMode.right, 0)
+        }
+      })
+    }
+  })
+}
+
+test.describe('the date control in the dialog of a 768 px tablet', () => {
+  test.use({ viewport: { width: 768, height: 1024 } })
+
+  test('fits the Between calendar in the column of the control', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    const startDate = await demo.edgesOf(demo.at.dateField('Created Date', 'Start date'))
+    const calendar = await demo.edgesOf(demo.at.calendar('Created Date'))
+    const firstMode = await demo.edgesOf(demo.at.button('Created Date', 'On'))
+    const lastMode = await demo.edgesOf(demo.at.button('Created Date', 'Between'))
+    expect(startDate.left).toBeCloseTo(firstMode.left, 0)
+    expect(calendar.right).toBeCloseTo(lastMode.right, 0)
   })
 })
 

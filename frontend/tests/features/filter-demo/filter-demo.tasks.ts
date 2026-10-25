@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { filterDemo } from './filter-demo.locators'
 
 export function filterDemoPage(page: Page) {
@@ -12,6 +12,12 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    async openOn(today: Date) {
+      await page.clock.setFixedTime(today)
+      await page.goto('/filter-demo')
+      await expect(at.heading).toBeVisible()
+    },
+
     async chooseProperty(propertyLabel: string) {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()
@@ -19,8 +25,13 @@ export function filterDemoPage(page: Page) {
       await expect(at.loadingControl).toHaveCount(0)
     },
 
+    async chooseBetween(propertyLabel: string) {
+      await at.button(propertyLabel, 'Between').click()
+      await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
+    },
+
     async addTodayFilter(propertyLabel: string) {
-      await at.quickSelect(propertyLabel, 'Today').click()
+      await at.button(propertyLabel, 'Today').click()
       await at.addFilter(propertyLabel).click()
     },
 
@@ -48,6 +59,24 @@ export function filterDemoPage(page: Page) {
         }
         return control.getBoundingClientRect().bottom
       })
+    },
+
+    async sidewaysScrollOf(propertyLabel: string) {
+      return at.control(propertyLabel).evaluate((control) => {
+        let widest = 0
+        for (const element of [control, ...control.querySelectorAll('*')]) {
+          if (['auto', 'scroll'].includes(getComputedStyle(element).overflowX)) {
+            widest = Math.max(widest, element.scrollWidth - element.clientWidth)
+          }
+        }
+        return widest
+      })
+    },
+
+    async edgesOf(element: Locator) {
+      const box = await element.boundingBox()
+      if (!box) throw new Error('The element is not on the page.')
+      return { left: box.x, right: box.x + box.width }
     },
 
     async pageScrollWidth() {

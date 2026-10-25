@@ -22,8 +22,8 @@ interface FilterControlDefinition {
    */
   surface: FilterControlSurface
   /**
-   * The class of FilterControlDialog. Without it, the dialog fits the width of
-   * the control (`md:w-auto md:max-w-fit`).
+   * The class of FilterControlDialog. Without it, the dialog uses
+   * `DEFAULT_DIALOG_CLASS_NAME`, which fits the width of the control.
    */
   dialogClassName?: string
 }

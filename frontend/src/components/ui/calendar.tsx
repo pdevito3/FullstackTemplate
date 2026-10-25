@@ -166,59 +166,59 @@ const dateRangePresets = [
   { label: "Last Year", getRange: () => getYearRange(-1) },
 ] as const
 
-// Quick selects panel for single date calendar
-interface QuickSelectsPanelProps {
-  onSelect: (date: CalendarDate) => void
+type CalendarLayout = "wide" | "narrow"
+
+const layoutClassNames = {
+  wide: {
+    body: "flex",
+    quickSelects: "mr-3 border-r pr-3",
+    presets: "flex flex-col gap-1",
+    preset: buttonVariants({ variant: "ghost", size: "sm", className: "h-7 justify-start text-xs font-normal" }),
+    header: "px-1",
+    navButton: "size-7",
+    headingButton: "",
+  },
+  narrow: {
+    body: "flex flex-col",
+    quickSelects: "mb-3 border-b pb-3",
+    presets: "grid grid-cols-3 gap-1",
+    preset: buttonVariants({
+      variant: "outline",
+      size: "sm",
+      className: "h-auto min-h-8 px-1 text-xs leading-tight font-normal whitespace-normal",
+    }),
+    header: "",
+    navButton: "size-8",
+    headingButton: "h-8",
+  },
+} satisfies Record<CalendarLayout, Record<string, string>>
+
+interface QuickSelectsPanelProps<P extends { label: string }> {
+  presets: readonly P[]
+  layout: CalendarLayout
+  onSelect: (preset: P) => void
 }
 
-function QuickSelectsPanel({ onSelect }: QuickSelectsPanelProps) {
+function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSelect }: QuickSelectsPanelProps<P>) {
+  const classNames = layoutClassNames[layout]
   return (
-    <div className="flex flex-col gap-1 border-r pr-3 mr-3">
-      <div className="text-xs font-medium text-muted-foreground mb-1">Quick Select</div>
-      {singleDatePresets.map((preset) => (
-        <AriaButton
-          key={preset.label}
-          onPress={() => onSelect(preset.getDate())}
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "justify-start h-7 text-xs font-normal"
-          )}
-        >
-          {preset.label}
-        </AriaButton>
-      ))}
-    </div>
-  )
-}
-
-// Quick selects panel for range calendar
-interface QuickSelectsRangePanelProps {
-  onSelect: (range: { start: CalendarDate; end: CalendarDate }) => void
-}
-
-function QuickSelectsRangePanel({ onSelect }: QuickSelectsRangePanelProps) {
-  return (
-    <div className="flex flex-col gap-1 border-r pr-3 mr-3">
-      <div className="text-xs font-medium text-muted-foreground mb-1">Quick Select</div>
-      {dateRangePresets.map((preset) => (
-        <AriaButton
-          key={preset.label}
-          onPress={() => onSelect(preset.getRange())}
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "justify-start h-7 text-xs font-normal"
-          )}
-        >
-          {preset.label}
-        </AriaButton>
-      ))}
+    <div className={cn("flex flex-col gap-1", classNames.quickSelects)}>
+      <div className="mb-1 text-xs font-medium text-muted-foreground">Quick Select</div>
+      <div className={classNames.presets}>
+        {presets.map((preset) => (
+          <AriaButton key={preset.label} onPress={() => onSelect(preset)} className={classNames.preset}>
+            {preset.label}
+          </AriaButton>
+        ))}
+      </div>
     </div>
   )
 }
 
 // The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
-// click picks an item. Each picker is w-63, the width of the day grid (7 cells of w-9), so that the popover keeps its size.
-const pickerClassName = "grid w-63 grid-cols-3 gap-1 p-1 outline-none"
+// click picks an item. Each picker is at least w-63, the width of the day grid (7 cells of w-9), so that the popover
+// keeps its size. In the narrow layout, the picker fills the column, as the day grid does.
+const pickerClassName = "grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none"
 
 function pickerItemClassName({ isSelected }: { isSelected: boolean }) {
   return cn(
@@ -367,8 +367,12 @@ function CalendarContent({ children }: CalendarContentProps) {
   }
 }
 
+interface CalendarHeadingZoomableProps extends React.HTMLAttributes<HTMLElement> {
+  layout: CalendarLayout
+}
+
 // Zoomable heading with clickable month/year
-const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
+const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomableProps) => {
   const { direction } = useLocale()
   const zoomContext = useContext(CalendarZoomContext)
   const state = useCalendarState()
@@ -425,9 +429,10 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
   }
 
   const isZoomed = zoomContext && zoomContext.view !== "days"
+  const classNames = layoutClassNames[layout]
 
   return (
-    <header className="flex w-full items-center gap-1 px-1 pb-4" {...props}>
+    <header className={cn("flex w-full items-center gap-1 pb-4", classNames.header)} {...props}>
       {isZoomed ? (
         <AriaButton
           slot={null}
@@ -435,7 +440,8 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
           onPress={handlePrevious}
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "size-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+            classNames.navButton,
+            "bg-transparent p-0 opacity-50 hover:opacity-100"
           )}
         >
           {direction === "rtl" ? (
@@ -449,7 +455,8 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
           slot="previous"
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "size-7 bg-transparent p-0 opacity-50",
+            classNames.navButton,
+            "bg-transparent p-0 opacity-50",
             "data-[hovered]:opacity-100"
           )}
         >
@@ -467,6 +474,7 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
         className={cn(
           "grow text-center text-sm font-medium",
           "rounded-md py-1 transition-colors",
+          classNames.headingButton,
           zoomContext?.view !== "years" && "cursor-pointer hover:bg-muted"
         )}
         isDisabled={zoomContext?.view === "years"}
@@ -488,7 +496,8 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
           onPress={handleNext}
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "size-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+            classNames.navButton,
+            "bg-transparent p-0 opacity-50 hover:opacity-100"
           )}
         >
           {direction === "rtl" ? (
@@ -502,7 +511,8 @@ const CalendarHeadingZoomable = (props: React.HTMLAttributes<HTMLElement>) => {
           slot="next"
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "size-7 bg-transparent p-0 opacity-50",
+            classNames.navButton,
+            "bg-transparent p-0 opacity-50",
             "data-[hovered]:opacity-100"
           )}
         >
@@ -564,7 +574,7 @@ const CalendarHeading = (props: React.HTMLAttributes<HTMLElement>) => {
 const CalendarGrid = ({ className, ...props }: AriaCalendarGridProps) => (
   <AriaCalendarGrid
     className={cn(
-      "border-separate border-spacing-x-0 border-spacing-y-1",
+      "w-full border-separate border-spacing-x-0 border-spacing-y-1",
       className
     )}
     {...props}
@@ -602,7 +612,7 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
       className={composeRenderProps(className, (className, renderProps) =>
         cn(
           buttonVariants({ variant: "ghost" }),
-          "relative flex size-9 items-center justify-center p-0 text-sm font-normal",
+          "relative flex h-9 w-full min-w-9 items-center justify-center p-0 text-sm font-normal",
           /* Disabled */
           renderProps.isDisabled && "text-muted-foreground opacity-50",
           /* Selected */
@@ -645,6 +655,7 @@ interface JollyCalendarProps<T extends AriaDateValue>
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
+  layout?: CalendarLayout
 }
 
 // With showDateInput, autoFocus focuses the date input, because it is the first field.
@@ -654,6 +665,7 @@ function JollyCalendar<T extends AriaDateValue>({
   className,
   showQuickSelects,
   showDateInput,
+  layout = "wide",
   onChange,
   value,
   autoFocus,
@@ -712,11 +724,17 @@ function JollyCalendar<T extends AriaDateValue>({
           <DateInput className="h-9" />
         </DateField>
       )}
-      <div className={cn("flex", showQuickSelects && "gap-0")}>
-        {showQuickSelects && <QuickSelectsPanel onSelect={handleQuickSelect} />}
+      <div className={layoutClassNames[layout].body}>
+        {showQuickSelects && (
+          <QuickSelectsPanel
+            presets={singleDatePresets}
+            layout={layout}
+            onSelect={(preset) => handleQuickSelect(preset.getDate())}
+          />
+        )}
         <Calendar
           className={composeRenderProps(className, (className) =>
-            cn("w-fit", className)
+            cn("grow", className)
           )}
           value={value}
           onChange={handleCalendarChange}
@@ -726,7 +744,7 @@ function JollyCalendar<T extends AriaDateValue>({
           {...props}
         >
           <CalendarZoomProvider>
-            <CalendarHeadingZoomable />
+            <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
               <CalendarGrid>
                 <CalendarGridHeader>
@@ -754,6 +772,7 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
+  layout?: CalendarLayout
 }
 
 // With showDateInput, autoFocus focuses the start date input, because it is the first field.
@@ -763,6 +782,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   className,
   showQuickSelects,
   showDateInput,
+  layout = "wide",
   onChange,
   value,
   autoFocus,
@@ -827,7 +847,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             onChange={handleStartDateChange}
             aria-label="Start date"
             autoFocus={autoFocus}
-            className="flex-1"
+            className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>
@@ -836,17 +856,23 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             value={value?.end ? (value.end as AriaDateValue) : null}
             onChange={handleEndDateChange}
             aria-label="End date"
-            className="flex-1"
+            className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>
         </div>
       )}
-      <div className={cn("flex", showQuickSelects && "gap-0")}>
-        {showQuickSelects && <QuickSelectsRangePanel onSelect={handleQuickSelect} />}
+      <div className={layoutClassNames[layout].body}>
+        {showQuickSelects && (
+          <QuickSelectsPanel
+            presets={dateRangePresets}
+            layout={layout}
+            onSelect={(preset) => handleQuickSelect(preset.getRange())}
+          />
+        )}
         <RangeCalendar
           className={composeRenderProps(className, (className) =>
-            cn("w-fit", className)
+            cn("grow", className)
           )}
           value={value}
           onChange={handleCalendarChange}
@@ -856,7 +882,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           {...props}
         >
           <CalendarZoomProvider>
-            <CalendarHeadingZoomable />
+            <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
               <CalendarGrid>
                 <CalendarGridHeader>

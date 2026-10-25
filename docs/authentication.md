@@ -29,6 +29,8 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 8. The React app calls `/bff/user` with the `X-CSRF: 1` header to get the claims. The claims include `bff:logout_url`.
 9. API calls go through the BFF at `/api/v1/*` with the `X-CSRF: 1` header. The BFF adds the access token of the BFF session.
 
+In a local run, the Vite dev server serves the SPA on its own origin, and the provider sends the browser back to the BFF origin. Thus, at the end of a login or a logout, the BFF sends the browser to `returnUrl` on the Vite origin, for example `http://localhost:5173/weather`. A published BFF serves the SPA itself, and it sends the browser to the local `returnUrl`.
+
 The BFF builds `redirect_uri` and `post_logout_redirect_uri` from `Bff:PublicOrigin`, never from the request. Register these URLs at the provider:
 
 | URL | Use |
@@ -104,7 +106,7 @@ The BFF reads the discovery document of the provider one time at startup. It use
 | `Auth:Features:Revocation` | `revocation_endpoint` | The BFF does not revoke tokens. |
 | `Auth:Features:IssuerParameter` | `authorization_response_iss_parameter_supported` | The BFF accepts a callback with no `iss`. A present `iss` must still match. |
 | `Auth:Features:BackChannelLogout` | `backchannel_logout_supported` | The endpoint stays mapped, and it validates each token. |
-| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to the local `returnUrl`. |
+| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to `returnUrl` at once. |
 | `Auth:Features:PushedAuthorization` | `pushed_authorization_request_endpoint` | The BFF uses the plain authorize URL. |
 | `Auth:Features:DPoP` | `dpop_signing_alg_values_supported` | The BFF uses Bearer tokens. See [DPoP](#dpop). |
 

@@ -51,6 +51,7 @@ try
     builder.Services.AddSingleton<IForwarderHttpClientFactory, DPoPProxy.NonceRetryClientFactory>();
     // Bff:PublicOrigin, the forwarded headers, and the host filter
     builder.Services.AddHostTrust();
+    builder.Services.AddSingleton(provider => SpaOrigin.FromConfiguration(provider.GetRequiredService<IConfiguration>()));
 
     var app = builder.Build();
 
@@ -82,11 +83,10 @@ try
     app.UseExceptionHandler();
 
     // In development the Vite dev server serves the SPA. Otherwise the SPA build is in wwwroot.
-    var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
-                      ?? builder.Configuration["services:webfrontend:http:0"];
+    var spaOrigin = app.Services.GetRequiredService<SpaOrigin>();
 
     // The SPA fallback skips paths with a file extension, so the JS and CSS bundles need this
-    if (string.IsNullOrEmpty(frontendUrl))
+    if (spaOrigin.DevServer is null)
     {
         app.UseStaticFiles();
     }
@@ -115,9 +115,9 @@ try
 
     app.MapDefaultEndpoints();
 
-    if (!string.IsNullOrEmpty(frontendUrl))
+    if (spaOrigin.DevServer is not null)
     {
-        app.MapGet("/", () => Results.Redirect(frontendUrl));
+        app.MapGet("/", () => Results.Redirect(spaOrigin.Resolve("/")));
     }
     else
     {

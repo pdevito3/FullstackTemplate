@@ -22,10 +22,15 @@ const stack = checkStack({
   appHost,
 })
 if (stack.kind === 'not-ready') {
-  console.error(stack.message)
-  process.exit(1)
+  fail(stack.message)
 }
 const described = { resources: stack.resources }
+
+// A problem with the stack is a message to the user, not a stack trace
+function fail(message: string): never {
+  console.error(message)
+  process.exit(1)
+}
 
 function environmentOf(resource: string): Record<string, string> {
   return (described.resources.find((r) => r.displayName === resource) as { environment?: Record<string, string> } | undefined)
@@ -36,7 +41,7 @@ function environmentOf(resource: string): Record<string, string> {
 function bffAuthority(): string {
   const authority = environmentOf('bff').Auth__Authority
   if (!authority) {
-    throw new Error('The stack has no Auth__Authority for the BFF.')
+    fail('The stack has no Auth__Authority for the BFF.')
   }
   return authority
 }
@@ -56,7 +61,7 @@ function endpointUrl(resource: string, endpoint: string): string {
     .find((r) => r.displayName === resource)
     ?.urls?.find((u) => u.name === endpoint)?.url
   if (!url) {
-    throw new Error(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with the AuthProvider of the IDP.`)
+    fail(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with the AuthProvider of the IDP.`)
   }
   return url
 }
@@ -68,7 +73,7 @@ function idpOfStack(): string {
     idps.find((idp) => idp.resource !== undefined && resources.has(idp.resource)) ??
     idps.find((idp) => idp.resource === undefined)
   if (!detected) {
-    throw new Error(`The stack has no resource of an IDP in e2e/idps/. Set IDP to one of these: ${idpNames().join(', ')}.`)
+    fail(`The stack has no resource of an IDP in e2e/idps/. Set IDP to one of these: ${idpNames().join(', ')}.`)
   }
   return detected.name
 }

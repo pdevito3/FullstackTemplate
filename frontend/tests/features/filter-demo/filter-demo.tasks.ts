@@ -12,17 +12,27 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
-    /** Opens the filter control of `property` from the Add Filter menu, and waits until the control loads. */
-    async chooseProperty(property: string) {
+    async chooseProperty(propertyLabel: string) {
       await at.addFilterMenu.click()
-      await at.property(property).click()
-      await expect(at.control(property)).toBeVisible()
+      await at.property(propertyLabel).click()
+      await expect(at.control(propertyLabel)).toBeVisible()
       await expect(at.loadingControl).toHaveCount(0)
     },
 
-    async addTodayFilter(property: string) {
-      await at.quickSelect(property, 'Today').click()
-      await at.addFilter(property).click()
+    async addTodayFilter(propertyLabel: string) {
+      await at.quickSelect(propertyLabel, 'Today').click()
+      await at.addFilter(propertyLabel).click()
+    },
+
+    async cssFiltersAround(propertyLabel: string) {
+      return at.control(propertyLabel).evaluate((control) => {
+        const filters: string[] = []
+        for (let element: Element | null = control; element; element = element.parentElement) {
+          const { filter } = getComputedStyle(element)
+          if (filter !== 'none') filters.push(filter)
+        }
+        return filters
+      })
     },
 
     async pageScrollWidth() {

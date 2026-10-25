@@ -140,3 +140,29 @@ test.describe('a signed-in user', () => {
     expect(api.last('get', bffPaths.logout)?.query.get('sid')).toBe('test-session')
   })
 })
+
+test.describe('the loading placeholders', () => {
+  const slowList = { ...weatherApi.listReturns(aForecast()), delayMs: 2_000 }
+
+  test('hold still for a user who asks for reduced motion', async ({ page, api }) => {
+    api.mock(slowList)
+    const weather = weatherForecastPage(page)
+
+    await weather.openWhileLoading()
+
+    expect(await weather.runningAnimationsIn(weather.at.loading)).toBe(0)
+  })
+
+  test.describe('without a reduced motion preference', () => {
+    test.use({ reducedMotion: 'no-preference' })
+
+    test('pulse', async ({ page, api }) => {
+      api.mock(slowList)
+      const weather = weatherForecastPage(page)
+
+      await weather.openWhileLoading()
+
+      expect(await weather.runningAnimationsIn(weather.at.loading)).toBeGreaterThan(0)
+    })
+  })
+})

@@ -64,12 +64,16 @@ for (const viewport of [
 
         expect(await demo.sidewaysScrollOf('Created Date')).toBe(0)
         await expect(demo.at.calendar('Created Date')).toBeInViewport({ ratio: 1 })
-        await expect(demo.at.quickSelect('Created Date', quickSelect)).toBeInViewport({ ratio: 1 })
+        await expect(demo.at.button('Created Date', quickSelect)).toBeInViewport({ ratio: 1 })
         const calendar = await demo.edgesOf(demo.at.calendar('Created Date'))
-        const firstMode = await demo.edgesOf(demo.at.dateMode('Created Date', 'On'))
-        const lastMode = await demo.edgesOf(demo.at.dateMode('Created Date', 'Between'))
+        const firstMode = await demo.edgesOf(demo.at.button('Created Date', 'On'))
+        const lastMode = await demo.edgesOf(demo.at.button('Created Date', 'Between'))
         expect(calendar.left).toBeCloseTo(firstMode.left, 0)
         expect(calendar.right).toBeCloseTo(lastMode.right, 0)
+        if (mode === 'Between') {
+          const endDate = await demo.edgesOf(demo.at.dateField('Created Date', 'End date'))
+          expect(endDate.right).toBeCloseTo(lastMode.right, 0)
+        }
       })
     }
   })
@@ -87,8 +91,8 @@ test.describe('the date control in the dialog of a 768 px tablet', () => {
 
     const startDate = await demo.edgesOf(demo.at.dateField('Created Date', 'Start date'))
     const calendar = await demo.edgesOf(demo.at.calendar('Created Date'))
-    const firstMode = await demo.edgesOf(demo.at.dateMode('Created Date', 'On'))
-    const lastMode = await demo.edgesOf(demo.at.dateMode('Created Date', 'Between'))
+    const firstMode = await demo.edgesOf(demo.at.button('Created Date', 'On'))
+    const lastMode = await demo.edgesOf(demo.at.button('Created Date', 'Between'))
     expect(startDate.left).toBeCloseTo(firstMode.left, 0)
     expect(calendar.right).toBeCloseTo(lastMode.right, 0)
   })

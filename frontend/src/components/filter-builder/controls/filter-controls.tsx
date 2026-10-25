@@ -21,6 +21,10 @@ interface FilterControlDefinition {
    * to the menu, or in a dialog after the menu closes. The edit dialog shows all types.
    */
   surface: FilterControlSurface
+  /**
+   * The class of FilterControlDialog. Without it, the dialog uses
+   * `DEFAULT_DIALOG_CLASS_NAME`, which fits the width of the control.
+   */
   dialogClassName?: string
 }
 

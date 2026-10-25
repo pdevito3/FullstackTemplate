@@ -216,7 +216,8 @@ function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSel
 }
 
 // The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
-// click picks an item.
+// click picks an item. Each picker is at least w-63, the width of the day grid (7 cells of w-9), so that the popover
+// keeps its size. In the narrow layout, the picker fills the column, as the day grid does.
 const pickerClassName = "grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none"
 
 function pickerItemClassName({ isSelected }: { isSelected: boolean }) {
@@ -846,7 +847,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             onChange={handleStartDateChange}
             aria-label="Start date"
             autoFocus={autoFocus}
-            className="flex-1"
+            className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>
@@ -855,7 +856,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             value={value?.end ? (value.end as AriaDateValue) : null}
             onChange={handleEndDateChange}
             aria-label="End date"
-            className="flex-1"
+            className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>

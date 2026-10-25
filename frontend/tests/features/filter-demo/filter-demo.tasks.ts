@@ -26,12 +26,12 @@ export function filterDemoPage(page: Page) {
     },
 
     async chooseBetween(propertyLabel: string) {
-      await at.dateMode(propertyLabel, 'Between').click()
+      await at.button(propertyLabel, 'Between').click()
       await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
     },
 
     async addTodayFilter(propertyLabel: string) {
-      await at.quickSelect(propertyLabel, 'Today').click()
+      await at.button(propertyLabel, 'Today').click()
       await at.addFilter(propertyLabel).click()
     },
 

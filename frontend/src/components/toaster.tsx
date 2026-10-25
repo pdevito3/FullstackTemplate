@@ -6,13 +6,14 @@ import {
   UNSTABLE_Toast as Toast,
   UNSTABLE_ToastContent as ToastContent,
   UNSTABLE_ToastRegion as ToastRegion,
+  type QueuedToast,
 } from 'react-aria-components/Toast'
 import { CheckmarkCircle02Icon, AlertCircleIcon, InformationCircleIcon, Alert02Icon, Cancel01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { toastQueue } from '@/components/notification'
+import { toastQueue, type ToastMessage } from '@/components/notification'
 
 // Icons for each toast type
 const icons = {
@@ -29,6 +30,22 @@ const iconColors = {
   info: 'text-primary',
   warning: 'text-chart-3', // orange from chart colors
 } as const
+
+// The size of a toast that index.css hides visually (sr-only).
+const hiddenToastSizePx = 1
+
+function pauseWhileHidden(toast: QueuedToast<ToastMessage>) {
+  return (element: HTMLElement | null) => {
+    if (!element) return
+    const observer = new ResizeObserver(([entry]) => {
+      const [{ inlineSize, blockSize }] = entry.borderBoxSize
+      if (inlineSize > hiddenToastSizePx && blockSize > hiddenToastSizePx) toastQueue.markShown(toast)
+      else toastQueue.markHidden(toast)
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }
+}
 
 /**
  * The region that shows the toast notifications, styled with the theme of the app.
@@ -55,6 +72,7 @@ export function Toaster() {
       {({ toast }) => (
         <Toast
           toast={toast}
+          ref={pauseWhileHidden(toast)}
           data-slot="toast"
           style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' } as CSSProperties}
           className={cn(

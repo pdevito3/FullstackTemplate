@@ -41,3 +41,61 @@ test.describe('the toasts on a phone on its side while a bottom sheet is open', 
     expect(await demo.shownToasts()).toEqual(['A new version is available', 'Something went wrong'])
   })
 })
+
+// The success toast closes after 5 s, and the error toast after 6 s.
+test.describe('the toasts that a bottom sheet hides on a phone on its side', () => {
+  test.use({ viewport: { width: 667, height: 375 } })
+
+  test('show one after the other, each for its full time', async ({ page }) => {
+    const demo = toastDemoPage(page)
+    await demo.controlTheClock()
+    await demo.open()
+    await demo.showToastsByKeyboard('Success', 'Error', 'Info')
+
+    await demo.openBottomSheet()
+    const shown = await demo.shownToastsAsTimePasses(5_000, 5_000, 1_500)
+
+    expect(shown).toEqual([
+      { afterMs: 0, toasts: ['A new version is available'] },
+      { afterMs: 5_000, toasts: ['Something went wrong'] },
+      { afterMs: 10_000, toasts: ['Something went wrong'] },
+      { afterMs: 11_500, toasts: ['Changes saved'] },
+    ])
+  })
+
+  test('keep waiting after the focus leaves the toasts', async ({ page }) => {
+    const demo = toastDemoPage(page)
+    await demo.controlTheClock()
+    await demo.open()
+    await demo.showToastsByKeyboard('Success', 'Error', 'Info')
+
+    await demo.openBottomSheet()
+    await demo.moveFocusToToasts()
+    await demo.pressTab(3)
+    await demo.moveFocusToBottomSheet()
+    const shown = await demo.shownToastsAsTimePasses(5_000, 6_500)
+
+    expect(shown).toEqual([
+      { afterMs: 0, toasts: ['A new version is available'] },
+      { afterMs: 5_000, toasts: ['Something went wrong'] },
+      { afterMs: 11_500, toasts: ['Changes saved'] },
+    ])
+  })
+
+  test('all show again when the sheet closes, so an error that waited still shows', async ({ page }) => {
+    const demo = toastDemoPage(page)
+    await demo.controlTheClock()
+    await demo.open()
+    await demo.showToastsByKeyboard('Error', 'Success')
+
+    await demo.openBottomSheet()
+    await demo.letTimePass(2_000)
+    await demo.closeBottomSheet()
+    const shown = await demo.shownToastsAsTimePasses(5_000)
+
+    expect(shown).toEqual([
+      { afterMs: 0, toasts: ['Changes saved', 'Something went wrong'] },
+      { afterMs: 5_000, toasts: ['Something went wrong'] },
+    ])
+  })
+})

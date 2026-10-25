@@ -2,11 +2,34 @@ import { expect, type Locator, type Page } from '@playwright/test'
 import { takesUpSpace } from '@tests/support/screen'
 import { toastDemo, type ToastButton } from './toasts.locators'
 
+// The toasts pause and restart their timers in ResizeObserver callbacks. The browser runs all the callbacks of one
+// rendering step in one task, so the next command of the test comes after all of them.
+async function nextResizeObserverCallbacks(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const observer = new ResizeObserver(() => {
+          observer.disconnect()
+          resolve()
+        })
+        observer.observe(document.body)
+      }),
+  )
+}
+
 export function toastDemoPage(page: Page) {
   const at = toastDemo(page)
 
   return {
     at,
+
+    // The clock stands still from the start, so only letTimePass moves the timers of the toasts. Real time that a slow
+    // browser takes does not count. The animations wait too, so a sheet that opens stays transparent until time passes.
+    async controlTheClock() {
+      const start = new Date('2026-01-05T09:00:00Z')
+      await page.clock.install({ time: start })
+      await page.clock.pauseAt(start.getTime() + 60_000)
+    },
 
     async open() {
       await page.goto('/components')
@@ -21,6 +44,23 @@ export function toastDemoPage(page: Page) {
     async openBottomSheet() {
       await at.openDialog.press('Enter')
       await expect(at.dialog).toBeVisible()
+      await nextResizeObserverCallbacks(page)
+    },
+
+    async closeBottomSheet() {
+      await at.closeDialog.press('Enter')
+      await expect(at.dialog).toBeHidden()
+      await nextResizeObserverCallbacks(page)
+    },
+
+    async moveFocusToBottomSheet() {
+      await at.dialogTitle.click()
+      await expect(at.dialog).toBeFocused()
+    },
+
+    async letTimePass(ms: number) {
+      await page.clock.runFor(ms)
+      await nextResizeObserverCallbacks(page)
     },
 
     async moveFocusToToasts() {
@@ -38,6 +78,15 @@ export function toastDemoPage(page: Page) {
         if (await takesUpSpace(toast)) shown.push((await toast.innerText()).split('\n')[0])
       }
       return shown
+    },
+
+    async shownToastsAsTimePasses(...stepsMs: number[]) {
+      const samples = [{ afterMs: 0, toasts: await this.shownToasts() }]
+      for (const ms of stepsMs) {
+        await this.letTimePass(ms)
+        samples.push({ afterMs: samples[samples.length - 1].afterMs + ms, toasts: await this.shownToasts() })
+      }
+      return samples
     },
 
     async hasFocusRing(element: Locator) {

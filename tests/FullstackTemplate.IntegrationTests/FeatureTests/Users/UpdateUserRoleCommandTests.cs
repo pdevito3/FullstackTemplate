@@ -201,6 +201,7 @@ public class UpdateUserRoleCommandTests : TestBase
 
         // Assert
         var userFromGet = await new TestingServiceScope().SendAsync(new GetUser.Query(createdUser.Id));
+        userFromGet.Permissions.ShouldBeEmpty();
         userReturned.Permissions.ShouldBe(userFromGet.Permissions, ignoreOrder: true);
     }
 }

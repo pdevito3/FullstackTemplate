@@ -1,0 +1,83 @@
+import { test, expect } from '@tests/support/fixtures'
+import { filterDemoPage } from './filter-demo.tasks'
+
+const phone = { width: 390, height: 844 }
+
+test.describe('the Add Filter menu on a phone', () => {
+  test.use({ viewport: phone })
+
+  for (const property of ['First Name', 'Created Date', 'Comment Count', 'Is Blocked', 'Status']) {
+    test(`shows the ${property} control sharp and fully on the screen`, async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.open()
+
+      await demo.chooseProperty(property)
+
+      await expect(demo.at.control(property)).toBeInViewport({ ratio: 1 })
+      expect(await demo.pageScrollWidth()).toBe(phone.width)
+      expect(await demo.cssFiltersAround(property)).toEqual([])
+    })
+  }
+
+  test('adds a date filter from its control', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Created Date')
+    await demo.addTodayFilter('Created Date')
+
+    await expect(demo.at.removeFilter('Created Date')).toBeVisible()
+    await expect(demo.at.control('Created Date')).toBeHidden()
+  })
+})
+
+// The date control is the widest. A submenu with it needs about 911 px beside the sidebar.
+for (const screen of [
+  { name: 'a phone on its side', viewport: { width: 844, height: 390 } },
+  { name: 'a tablet', viewport: { width: 820, height: 1180 } },
+]) {
+  test.describe(`the Add Filter menu on ${screen.name}`, () => {
+    test.use({ viewport: screen.viewport })
+
+    test('shows the Created Date control fully on the screen', async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.open()
+
+      await demo.chooseProperty('Created Date')
+
+      await expect(demo.at.control('Created Date')).toBeInViewport({ ratio: 1 })
+      expect(await demo.pageScrollWidth()).toBe(screen.viewport.width)
+    })
+  })
+}
+
+test.describe('the Add Filter menu on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('shows the Created Date control beside the open menu', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+    await expect(demo.at.searchProperties).toBeVisible()
+  })
+})
+
+const shortWindow = { width: 1280, height: 512 }
+
+test.describe('the Add Filter menu on a short desktop window', () => {
+  test.use({ viewport: shortWindow })
+
+  test('keeps a tall control on the screen and scrolls it to its Add Filter button', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Scheduled At (Local)')
+
+    expect(await demo.visibleBottomOf('Scheduled At (Local)')).toBeLessThanOrEqual(shortWindow.height)
+    await demo.scrollControlToEnd('Scheduled At (Local)')
+    await expect(demo.at.addFilter('Scheduled At (Local)')).toBeInViewport({ ratio: 1 })
+  })
+})

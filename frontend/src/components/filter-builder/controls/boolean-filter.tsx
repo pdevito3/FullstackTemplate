@@ -18,7 +18,7 @@ export function BooleanFilter({ config, onSubmit }: BooleanFilterProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 w-48 p-3">
+    <div className="flex flex-col gap-2 w-full md:w-48 p-3">
       <div className="text-sm font-medium mb-2">{propertyLabel}</div>
       <div className="flex gap-2">
         <Button

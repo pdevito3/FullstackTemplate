@@ -98,15 +98,32 @@ public class LogoutEndpointTests
     }
 
     [Test]
-    public async Task the_signed_out_callback_redirects_to_the_return_url()
+    public async Task the_signed_out_callback_redirects_to_the_return_url_on_the_spa_dev_server()
     {
         using var browser = BffApp.Instance.CreateBrowser();
-        var logout = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
+        var logout = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye%3Fx%3D1");
         var state = BffApp.Query(logout.Headers.Location!)["state"];
 
         var callback = await browser.GetAsync($"/signout-callback-oidc?state={Uri.EscapeDataString(state!)}");
 
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        callback.Headers.Location!.OriginalString.ShouldBe("/bye");
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye?x=1");
+    }
+
+    [Test]
+    public async Task without_a_spa_dev_server_the_signed_out_callback_redirects_to_the_local_return_url()
+    {
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["services:webfrontend:http:0"] = "",
+        });
+        using var browser = app.CreateBrowser();
+        var logout = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye%3Fx%3D1");
+        var state = BffApp.Query(logout.Headers.Location!)["state"];
+
+        var callback = await browser.GetAsync($"/signout-callback-oidc?state={Uri.EscapeDataString(state!)}");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe("/bye?x=1");
     }
 }

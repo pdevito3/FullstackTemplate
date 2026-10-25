@@ -13,7 +13,7 @@ public static class LoginEndpoint
 {
     public const string Path = "/bff/login";
 
-    public static async Task HandleAsync(HttpContext context, IOptionsMonitor<OpenIdConnectOptions> oidcOptions)
+    public static async Task HandleAsync(HttpContext context, IOptionsMonitor<OpenIdConnectOptions> oidcOptions, SpaOrigin spaOrigin)
     {
         var returnUrl = context.Request.Query["returnUrl"].FirstOrDefault();
         var prompt = context.Request.Query["prompt"].FirstOrDefault();
@@ -40,7 +40,7 @@ public static class LoginEndpoint
         if (string.IsNullOrWhiteSpace(returnUrl))
             returnUrl = context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
 
-        var properties = new AuthenticationProperties { RedirectUri = returnUrl };
+        var properties = new AuthenticationProperties { RedirectUri = spaOrigin.Resolve(returnUrl) };
         if (prompt is not null)
             LoginPrompt.Store(properties, prompt);
 

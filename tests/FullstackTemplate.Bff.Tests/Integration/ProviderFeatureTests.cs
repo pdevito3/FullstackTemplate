@@ -61,7 +61,7 @@ public class ProviderFeatureTests
 
         var callback = await browser.GetAsync((await BffApp.AuthorizeAsync(authorize, $"test_sub={NewSubject()}")).PathAndQuery);
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        callback.Headers.Location!.OriginalString.ShouldBe("/weather");
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/weather");
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -162,7 +162,7 @@ public class ProviderFeatureTests
         var logout = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
 
         logout.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        logout.Headers.Location!.OriginalString.ShouldBe("/bye");
+        logout.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
         logout.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
         (await _minimalBff.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

@@ -29,6 +29,14 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 8. The React app calls `/bff/user` with the `X-CSRF: 1` header to get the claims. The claims include `bff:logout_url`.
 9. API calls go through the BFF at `/api/v1/*` with the `X-CSRF: 1` header. The BFF adds the access token of the BFF session.
 
+In a local run, the Vite dev server serves the SPA on its own origin, and the provider sends the browser back to the BFF origin. Thus, at the end of a login or a logout, the BFF sends the browser to `returnUrl` on the Vite origin, for example `http://localhost:5173/weather`. A published BFF serves the SPA itself, and it sends the browser to the local `returnUrl`.
+
+The AppHost gives `services:webfrontend` to the BFF only in a local run. The BFF uses this value to find the Vite origin. A published BFF does not get the value, so it serves the SPA from `wwwroot`.
+
+In a local run, the BFF also sends each GET that no endpoint matches to the same path and query on the Vite origin. For example, a deep link to `https://<bff>/about?tab=team` goes to `http://localhost:5173/about?tab=team`. An unknown path that starts with `/api`, `/bff`, `/signin-oidc`, or `/signout-callback-oidc` keeps its 404, because the Vite proxy sends these paths back to the BFF. The BFF matches them as a raw prefix, as Vite does, so `/api-docs` and `/bffx` also keep their 404. An unknown path under `/health` or `/alive` also keeps its 404, because the health probes stay on the BFF. A path that is not a local URL, for example `//host`, also keeps its 404. A published BFF serves `index.html` for an unknown path.
+
+The BFF has no CORS policy, and it allows no cross-origin request. The SPA calls the BFF only from the same origin. In a local run, the Vite proxy sends `/api`, `/bff`, and the OIDC callbacks to the BFF. A published BFF serves the SPA itself.
+
 The BFF builds `redirect_uri` and `post_logout_redirect_uri` from `Bff:PublicOrigin`, never from the request. Register these URLs at the provider:
 
 | URL | Use |
@@ -104,7 +112,7 @@ The BFF reads the discovery document of the provider one time at startup. It use
 | `Auth:Features:Revocation` | `revocation_endpoint` | The BFF does not revoke tokens. |
 | `Auth:Features:IssuerParameter` | `authorization_response_iss_parameter_supported` | The BFF accepts a callback with no `iss`. A present `iss` must still match. |
 | `Auth:Features:BackChannelLogout` | `backchannel_logout_supported` | The endpoint stays mapped, and it validates each token. |
-| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to the local `returnUrl`. |
+| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to `returnUrl` at once. |
 | `Auth:Features:PushedAuthorization` | `pushed_authorization_request_endpoint` | The BFF uses the plain authorize URL. |
 | `Auth:Features:DPoP` | `dpop_signing_alg_values_supported` | The BFF uses Bearer tokens. See [DPoP](#dpop). |
 

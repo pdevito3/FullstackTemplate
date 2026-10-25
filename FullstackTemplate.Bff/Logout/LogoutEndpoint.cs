@@ -26,7 +26,8 @@ public static class LogoutEndpoint
         IBffSessionStore store,
         BffTicketStore ticketStore,
         RefreshTokenRevocation revocation,
-        ProviderFeatures features)
+        ProviderFeatures features,
+        SpaOrigin spaOrigin)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         var signedIn = result.Succeeded && result.Principal?.Identity?.IsAuthenticated == true;
@@ -64,6 +65,7 @@ public static class LogoutEndpoint
 
         if (string.IsNullOrWhiteSpace(returnUrl))
             returnUrl = context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
+        returnUrl = spaOrigin.Resolve(returnUrl);
 
         // With no end_session_endpoint, the BFF session is still gone, and the IdP session stays
         if (!features.Active.EndSession)

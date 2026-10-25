@@ -68,6 +68,7 @@ public class LoginEndpointTests
     [Arguments("%2F%2Fevil.example")]
     [Arguments("%2F%5Cevil.example")]
     [Arguments("evil")]
+    [Arguments("%40evil.example")]
     public async Task a_return_url_that_is_not_local_gets_400_problem(string returnUrl)
     {
         using var browser = BffApp.Instance.CreateBrowser();
@@ -79,15 +80,46 @@ public class LoginEndpointTests
 
     [Test]
     [Arguments("?returnUrl=%2Fweather%3Fcity%3Dx", "/weather?city=x")]
+    [Arguments("?returnUrl=%2Fassets%2F42", "/assets/42")]
     [Arguments("", "/")]
-    public async Task the_callback_redirects_to_the_return_url(string loginQuery, string expected)
+    public async Task the_callback_redirects_to_the_return_url_on_the_spa_dev_server(string loginQuery, string expected)
     {
         using var browser = BffApp.Instance.CreateBrowser();
 
         var callback = await BffApp.SignInAsync(browser, loginQuery, "test_sub=user-return");
 
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        callback.Headers.Location!.OriginalString.ShouldBe(expected);
+        callback.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + expected);
+    }
+
+    [Test]
+    [Arguments("%2F%40evil.example", "/@evil.example")]
+    [Arguments("%2F%252F%252Fevil.example", "/%2F%2Fevil.example")]
+    [Arguments("%2Fweather%3Fnext%3D%2F%2Fevil.example", "/weather?next=//evil.example")]
+    public async Task a_local_return_url_that_names_another_host_stays_on_the_spa_dev_server(string returnUrl, string expected)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var callback = await BffApp.SignInAsync(browser, $"?returnUrl={returnUrl}", "test_sub=user-return-host");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + expected);
+        callback.Headers.Location!.Authority.ShouldBe(new Uri(BffApp.SpaDevServer).Authority);
+    }
+
+    [Test]
+    public async Task without_a_spa_dev_server_the_callback_redirects_to_the_local_return_url()
+    {
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["services:webfrontend:http:0"] = "",
+        });
+        using var browser = app.CreateBrowser();
+
+        var callback = await BffApp.SignInAsync(browser, "?returnUrl=%2Fassets%2F42%3Ftab%3Dx", "test_sub=user-return-published");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe("/assets/42?tab=x");
     }
 
     [Test]
@@ -98,7 +130,7 @@ public class LoginEndpointTests
         var callback = await BffApp.SignInAsync(browser, "?prompt=none&returnUrl=%2Fback", "test_error=login_required");
 
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        callback.Headers.Location!.OriginalString.ShouldBe("/back");
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/back");
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 

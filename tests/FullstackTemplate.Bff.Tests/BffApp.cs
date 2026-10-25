@@ -31,6 +31,11 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// </summary>
     public static readonly Uri Origin = new("https://localhost");
 
+    /// <summary>
+    /// The origin of the Vite dev server (<c>services:webfrontend</c>). The browser opens the SPA there in a local run.
+    /// </summary>
+    public const string SpaDevServer = "http://localhost:5173";
+
     public static BffApp Instance { get; private set; } = null!;
 
     public FakeIdentityProvider IdentityProvider { get; private set; } = null!;
@@ -80,7 +85,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Auth__RequireHttpsMetadata", "false");
         Environment.SetEnvironmentVariable("Bff__PublicOrigin", Origin.GetLeftPart(UriPartial.Authority));
         Environment.SetEnvironmentVariable("services__server__http__0", api.Url);
-        Environment.SetEnvironmentVariable("services__webfrontend__http__0", "http://localhost:5173");
+        Environment.SetEnvironmentVariable("services__webfrontend__http__0", SpaDevServer);
         Environment.SetEnvironmentVariable($"ConnectionStrings__{BffDbContext.DatabaseName}", database.ConnectionString);
 
         var app = new BffApp { IdentityProvider = identityProvider, Api = api, _ownsDependencies = true };

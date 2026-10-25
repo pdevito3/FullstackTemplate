@@ -59,7 +59,7 @@ public class LoginHardeningTests
         var callback = await BffApp.SignInAsync(browser, "?prompt=none&returnUrl=%2Fback", "test_error=login_required");
 
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        callback.Headers.Location!.OriginalString.ShouldBe("/back");
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/back");
     }
 
     [Test]

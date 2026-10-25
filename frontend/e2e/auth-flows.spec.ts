@@ -211,6 +211,20 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await page.waitForURL('/', { timeout: 30000 })
       await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
     })
+
+    test('should return to a deep link on the SPA origin, with its query, after a login from that link', async ({ page, baseURL }) => {
+      const deepLink = '/about?tab=team&x=1'
+      await page.goto(deepLink)
+      await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toHaveText('About')
+
+      await page.goto(`/bff/login?returnUrl=${encodeURIComponent(deepLink)}`)
+      await loginAtIdp(page, currentIdp)
+
+      await page.waitForURL(new URL(deepLink, baseURL).toString(), { timeout: 30000 })
+      await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toHaveText('About')
+      const status = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
+      expect(status).toBe(200)
+    })
   })
 })
 

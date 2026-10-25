@@ -81,7 +81,7 @@ Give the child a navigation to its parent, and get its tenant through the parent
 builder.ApplyTenanting(up => up.User.TenantId);
 ```
 
-Each query of the owner loads its owned children. `LoadOwnedChildrenWithOwner` in `BaseEntityConventions.cs` auto-includes the navigation to each child whose `Cascade` foreign key goes to an entity. Thus a handler does not add an `Include`. Do not call `IgnoreAutoIncludes` on a query that loads an aggregate root. The collection is then empty, and the DTO and the entity methods see no children.
+Each query of the owner loads its owned children. `LoadOwnedChildrenWithOwner` in `BaseEntityConventions.cs` auto-includes the navigation to each child whose `Cascade` foreign key goes to an entity. Thus a handler does not add an `Include`. `BannedSymbols.txt` bans `IgnoreAutoIncludes` (RS0030). With it, the collection is empty, and the DTO and the entity methods see no children. To read only some columns, project them with `Select`.
 
 When you delete the parent, remove each child in the handler. See `Domain/Users/Features/DeleteUser/DeleteUser.cs`.
 

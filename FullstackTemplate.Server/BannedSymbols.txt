@@ -44,3 +44,5 @@ M:Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost;A command on a connection of
 P:System.Data.Common.DbTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
 P:Npgsql.NpgsqlTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
 M:Npgsql.NpgsqlConnection.CloneWith(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+// A query that skips the auto-includes loads an aggregate with no owned children. The DTO then shows none, and a permission check on the children passes.
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.IgnoreAutoIncludes``1(System.Linq.IQueryable{``0});IgnoreAutoIncludes loads an aggregate without its owned children. Load the whole aggregate, or project the columns that you need with Select.

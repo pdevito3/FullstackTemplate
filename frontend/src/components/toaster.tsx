@@ -49,7 +49,7 @@ export function Toaster() {
     <ToastRegion
       queue={toastQueue}
       data-slot="toast-region"
-      className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col-reverse items-center gap-2 outline-none md:right-6 md:bottom-6 md:left-auto"
+      className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col-reverse items-center gap-2 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:right-6 md:bottom-6 md:left-auto"
     >
       {({ toast }) => (
         <Toast
@@ -59,7 +59,7 @@ export function Toaster() {
             'bg-card text-card-foreground border border-border',
             'shadow-lg rounded-lg px-4 py-3',
             'pointer-events-auto flex w-full max-w-[500px] items-start gap-3 md:min-w-[300px]',
-            'outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            'outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
           )}
         >
           <ToastContent className="flex items-start gap-3 flex-1 min-w-0">

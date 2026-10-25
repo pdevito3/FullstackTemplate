@@ -46,6 +46,8 @@ frontend/src/
 
 In `components/ui/`, the variants are in `*-variants.ts` files (for example `button-variants.ts`) and the hooks are in `use-*.ts` files. A component from `shadcn add` imports them from the component file, for example `buttonVariants` from `@/components/ui/button`. Change that import to the new file.
 
+Wrap the `cva` call of a `*-variants.ts` file in `withMergedClasses` from `@/lib/utils`. Then a direct call, such as `<Link className={buttonVariants({ variant: "outline" })}>`, gets the classes that the component gets. Without the wrapper, a base class and a variant class for the same CSS property both get to the element, and the order of the CSS rules selects the class that applies.
+
 ## API client
 
 `lib/api-client.ts` exports `apiClient`, an Axios instance for the BFF:

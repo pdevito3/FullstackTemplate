@@ -10,7 +10,7 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 |---|---|---|---|
 | `/bff/login` | any | no | Starts a login |
 | `/bff/logout` | GET | no | Ends the BFF session and starts the logout at the provider |
-| `/bff/user` | GET | yes | The claims of the BFF session, or 401 |
+| `/bff/user` | GET | yes | The claims of the BFF session, or 204 when no one is signed in |
 | `/bff/backchannel` | POST | no | The back-channel logout receiver. Only the provider calls it. |
 | `/signin-oidc` | GET | no | The login callback |
 | `/signout-callback-oidc` | GET | no | The return from the logout at the provider |
@@ -330,7 +330,7 @@ The script also gives the tests the client id and the client secret of the BFF, 
 - The refresh rotation test uses the client of the BFF for its own code flow. It proves that the provider rejects the old refresh token after one refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik.
 - The BFF refresh test makes two API calls through the BFF, and each call refreshes. The second call succeeds only if the BFF stored the rotated refresh token of the first call. Then the test logs out, and the `id_token_hint` proves that the BFF stored the ID token of the second refresh. It runs if `sessionFeatures.refreshRotation` is true in the IdP file: Keycloak, FusionAuth, and Authentik. On a provider that does not reject a reused refresh token, the test cannot prove the rotation.
 - The refresh lock test makes two API calls through the BFF at the same time, and both need the same refresh. Both calls must succeed, and the BFF session must still work after them. With no refresh lock, both calls send the same refresh token, and the provider rejects the second one. It runs on the same providers as the BFF refresh test.
-- The back-channel logout test ends the session at the provider through its admin API, and expects a 401 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database.
+- The back-channel logout test ends the session at the provider through its admin API, and expects a 204 from `/bff/user`. It runs if `sessionFeatures.backChannelLogoutReachesBff` is true in the IdP file: on Keycloak, with the bootstrap admin, and on Authentik, with the `authentik-bootstrap-token` parameter of the AppHost. Authentik creates this token only on the first start of its database.
 
 ## Conformance
 

@@ -210,7 +210,7 @@ async function drive(browser: Browser, bff: string, flow: Flow, screenshot: stri
   }
   const user = async () => {
     const response = await context.request.get(`${bff}/bff/user`, { headers: { 'X-CSRF': '1' } })
-    return { status: response.status(), claims: response.ok() ? ((await response.json()) as { type: string; value: string }[]) : [] }
+    return { status: response.status(), claims: response.status() === 200 ? ((await response.json()) as { type: string; value: string }[]) : [] }
   }
 
   await step('login', login)

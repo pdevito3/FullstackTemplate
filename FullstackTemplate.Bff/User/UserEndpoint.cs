@@ -9,7 +9,8 @@ namespace FullstackTemplate.Bff.User;
 
 /// <summary>
 /// <c>/bff/user</c> returns the claims of the BFF session to the SPA. It is a BFF API endpoint, so it needs
-/// <c>X-CSRF: 1</c>. An anonymous request gets a 401 with an empty body.
+/// <c>X-CSRF: 1</c>. An anonymous request gets a 204 with an empty body. A signed-out visitor is a normal state, and a
+/// browser logs each 4xx response as an error in the console.
 /// </summary>
 public static class UserEndpoint
 {
@@ -27,7 +28,7 @@ public static class UserEndpoint
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (!result.Succeeded)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.StatusCode = StatusCodes.Status204NoContent;
             return;
         }
 

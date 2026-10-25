@@ -41,7 +41,7 @@ server="$(jq -r .urls.server "$stack")"
 code="$(curl -s -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/weather")"
 [[ "$code" == "200" ]] && ok "GET $web/api/v1/weather -> 200" || fail "GET $web/api/v1/weather -> $code"
 code="$(curl -s -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/bff/user")"
-[[ "$code" == "401" || "$code" == "200" ]] && ok "GET /bff/user -> $code" || fail "GET /bff/user -> $code"
+[[ "$code" == "204" || "$code" == "200" ]] && ok "GET /bff/user -> $code" || fail "GET /bff/user -> $code"
 code="$(curl -sk -o /dev/null -w '%{http_code}' "$server/health")"
 [[ "$code" == "200" ]] && ok "GET $server/health -> 200" || fail "GET $server/health -> $code"
 

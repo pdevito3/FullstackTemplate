@@ -591,7 +591,7 @@ test.describe(`Back-channel logout - ${currentIdp.name}`, () => {
     }
 
     // The BFF deletes the session row when the logout token arrives. Authentik sends it from a worker task.
-    await expect.poll(() => bffUserStatus(page), { timeout: 30000 }).toBe(401)
+    await expect.poll(() => bffUserStatus(page), { timeout: 30000 }).toBe(204)
   })
 })
 

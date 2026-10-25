@@ -1,4 +1,4 @@
-# Fullstack Aspire React Template
+# Fullstack Template
 
 A production-ready .NET Aspire template featuring:
 - **React 19** frontend with TanStack Router and React Query
@@ -27,6 +27,7 @@ All auth providers stay in the app, and the `AuthProvider` setting selects one a
 | Option | Description |
 |--------|-------------|
 | `--name` | Renames `FullstackTemplate` to this name in file names, folder names, and file contents. Use a C# namespace, for example `Acme.Shop`. |
+| `--display-name` | Renames the display name `Fullstack Template`, such as the page title and the sidebar, to this name. The default is the `--name` value. Use with `--name`, for example `--display-name "Acme Shop"`. |
 | `--auth-provider` | Sets the default `AuthProvider` of the AppHost. The value is the name of a folder in `FullstackTemplate.AppHost/AuthProviders/`. |
 
 See [ADR 0007](docs/adr/0007-regular-repo-instead-of-template.md) for the reasons.

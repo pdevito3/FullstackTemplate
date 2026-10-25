@@ -12,7 +12,7 @@ The home page shows a forecast of five days from the public weather API. Each ca
 ## How to get to it (user POV)
 
 - Open the app root `/`.
-- Choose `Home` in the sidebar, or the `FS Fullstack Template` logo link.
+- Choose `Home` in the sidebar, or the logo link with the app name.
 
 ## Driving it with browse.mjs
 

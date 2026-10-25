@@ -9,10 +9,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 const string Usage = """
-    Usage: dotnet run scripts/init.cs [--name <Name>] [--auth-provider <Provider>]
+    Usage: dotnet run scripts/init.cs [--name <Name>] [--display-name <DisplayName>] [--auth-provider <Provider>]
 
       --name <Name>               Rename FullstackTemplate to <Name> in file names, folder names, and file contents.
                                   <Name> is a C# namespace, for example Acme.Shop.
+      --display-name <DisplayName>
+                                  Rename the display name "Fullstack Template", such as the page title, to
+                                  <DisplayName>. The default is <Name>. Use with --name, for example "Acme Shop".
       --auth-provider <Provider>  Set the default AuthProvider of the AppHost. <Provider> is the name of a folder
                                   in <Name>.AppHost/AuthProviders/, for example Keycloak.
 
@@ -23,6 +26,7 @@ const string Usage = """
     """;
 
 string? name = null;
+string? displayName = null;
 string? authProvider = null;
 for (var i = 0; i < args.Length; i++)
 {
@@ -30,6 +34,9 @@ for (var i = 0; i < args.Length; i++)
     {
         case "--name" when i + 1 < args.Length:
             name = args[++i];
+            break;
+        case "--display-name" when i + 1 < args.Length:
+            displayName = args[++i];
             break;
         case "--auth-provider" when i + 1 < args.Length:
             authProvider = args[++i];
@@ -39,6 +46,12 @@ for (var i = 0; i < args.Length; i++)
             Console.Error.WriteLine(Usage);
             return 1;
     }
+}
+
+if (displayName is not null && name is null)
+{
+    Console.Error.WriteLine("--display-name renames the template, so it needs --name.");
+    return 1;
 }
 
 if (name is null && authProvider is null)
@@ -56,7 +69,7 @@ try
 
     // Check the arguments first. Then require a clean tree only if a change is due, so that a second run with the
     // same arguments passes and changes nothing.
-    var renameDue = name is not null && app.RenameIsDue(name);
+    var renameDue = name is not null && app.RenameIsDue(name, displayName ?? name);
     var provider = authProvider is null ? null : app.KnownProvider(authProvider);
     var providerDue = provider is not null && provider != app.AuthProvider;
     if (renameDue || providerDue)
@@ -65,7 +78,7 @@ try
         changing = true;
     }
     if (renameDue)
-        app.Rename(name!);
+        app.Rename(name!, displayName ?? name!);
     if (providerDue)
         app.SetAuthProvider(provider!);
 
@@ -127,10 +140,12 @@ internal sealed partial class AppRepo(string root)
     private string AuthProvidersPath => Path.Combine(root, $"{Name}.AppHost", "AuthProviders");
     private string AppSettingsPath => Path.Combine(root, $"{Name}.AppHost", "appsettings.json");
 
-    public bool RenameIsDue(string newName)
+    public bool RenameIsDue(string newName, string displayName)
     {
         if (!NamePattern().IsMatch(newName))
             throw new InitException($"'{newName}' is not a C# namespace. Use letters and digits, with dots between the parts.");
+        if (!DisplayNamePattern().IsMatch(displayName))
+            throw new InitException($"'{displayName}' is not a display name. Use words of letters and digits, with one space, dot, hyphen, or apostrophe between them.");
         if (Name == newName)
             return false;
         if (Name != TemplateName)
@@ -155,7 +170,7 @@ internal sealed partial class AppRepo(string root)
             throw new InitException("The git tree has changes. Commit or stash them, then run the script again.");
     }
 
-    public void Rename(string newName)
+    public void Rename(string newName, string displayName)
     {
         foreach (var path in RepoOnlyPaths.Select(path => Path.Combine(root, path)))
         {
@@ -170,7 +185,7 @@ internal sealed partial class AppRepo(string root)
         var changed = 0;
         foreach (var file in files)
         {
-            if (ReplaceInFile(Path.Combine(root, file), text => RemoveRepoOnlyText(ReplaceName(text, newName)).Replace(TemplateUserSecretsId, userSecretsId, StringComparison.Ordinal)))
+            if (ReplaceInFile(Path.Combine(root, file), text => RemoveRepoOnlyText(ReplaceName(text, newName, displayName)).Replace(TemplateUserSecretsId, userSecretsId, StringComparison.Ordinal)))
                 changed++;
         }
 
@@ -178,24 +193,24 @@ internal sealed partial class AppRepo(string root)
         var folders = files
             .SelectMany(Ancestors)
             .Distinct()
-            .Where(folder => ReplaceName(Path.GetFileName(folder), newName) != Path.GetFileName(folder))
+            .Where(folder => ReplaceName(Path.GetFileName(folder), newName, displayName) != Path.GetFileName(folder))
             .OrderByDescending(folder => folder.Count(c => c == '/'));
         foreach (var folder in folders)
         {
             var parent = Path.GetDirectoryName(folder) ?? "";
-            Directory.Move(Path.Combine(root, folder), Path.Combine(root, parent, ReplaceName(Path.GetFileName(folder), newName)));
+            Directory.Move(Path.Combine(root, folder), Path.Combine(root, parent, ReplaceName(Path.GetFileName(folder), newName, displayName)));
         }
 
         foreach (var file in files)
         {
-            var folder = ReplaceName(Path.GetDirectoryName(file) ?? "", newName);
+            var folder = ReplaceName(Path.GetDirectoryName(file) ?? "", newName, displayName);
             var source = Path.Combine(root, folder, Path.GetFileName(file));
-            var target = Path.Combine(root, folder, ReplaceName(Path.GetFileName(file), newName));
+            var target = Path.Combine(root, folder, ReplaceName(Path.GetFileName(file), newName, displayName));
             if (source != target && File.Exists(source))
                 File.Move(source, target);
         }
 
-        Console.WriteLine($"Renamed {TemplateName} to {newName} in {changed} files.");
+        Console.WriteLine($"Renamed {TemplateName} to {newName}, with the display name {displayName}, in {changed} files.");
     }
 
     public void SetAuthProvider(string provider)
@@ -216,10 +231,12 @@ internal sealed partial class AppRepo(string root)
     // One pass, so that a new name that holds the template name is not replaced again.
     // Aspire names the project types with underscores, for example Projects.Acme_Shop_Server.
     // The links to the upstream repo, github.com/pdevito3/FullstackTemplate, keep the template name.
-    private static string ReplaceName(string text, string newName) => NameFormsPattern().Replace(text, match => match.Value switch
+    private static string ReplaceName(string text, string newName, string displayName) => NameFormsPattern().Replace(text, match => match.Value switch
     {
         TemplateName => newName,
         "fullstacktemplate" => newName.ToLowerInvariant(),
+        "fullstack-template" => newName.ToLowerInvariant().Replace('.', '-'),
+        "Fullstack Template" => displayName,
         _ => $"Projects.{newName.Replace('.', '_')}_",
     });
 
@@ -278,7 +295,7 @@ internal sealed partial class AppRepo(string root)
         return output;
     }
 
-    [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate")]
+    [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate|fullstack-template|Fullstack Template")]
     private static partial Regex NameFormsPattern();
 
     // The comment can be <!-- -->, //, or #, so that a section works in Markdown, C#, YAML, and .gitignore
@@ -291,6 +308,9 @@ internal sealed partial class AppRepo(string root)
 
     [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$")]
     private static partial Regex NamePattern();
+
+    [GeneratedRegex(@"^[\p{L}\p{M}\p{N}]+([ .'-][\p{L}\p{M}\p{N}]+)*\z")]
+    private static partial Regex DisplayNamePattern();
 
     [GeneratedRegex("(?<prefix>\"AuthProvider\"\\s*:\\s*\")(?<value>[^\"]*)\"")]
     private static partial Regex SettingPattern();

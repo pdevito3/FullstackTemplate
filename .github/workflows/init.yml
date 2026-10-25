@@ -38,6 +38,8 @@ jobs:
           if dotnet run scripts/init.cs --name 1Bad; then exit 1; fi
           if dotnet run scripts/init.cs --auth-provider Nope; then exit 1; fi
           if dotnet run scripts/init.cs --auth-provider Conformance; then exit 1; fi
+          if dotnet run scripts/init.cs --name Acme.Shop --display-name '<b>Shop'; then exit 1; fi
+          if dotnet run scripts/init.cs --display-name 'Acme Shop'; then exit 1; fi
           echo "change" >> README.md
           if dotnet run scripts/init.cs --name Acme.Shop; then exit 1; fi
           git checkout README.md
@@ -49,16 +51,17 @@ jobs:
           git worktree add --detach ../holds-name
           cd ../holds-name
           dotnet run scripts/init.cs --name Acme.FullstackTemplate
+          grep -q '<title>Acme.FullstackTemplate</title>' frontend/index.html
           dotnet build Acme.FullstackTemplate.AppHost/Acme.FullstackTemplate.AppHost.csproj
 
       # The rename uses a dotted name, because Aspire turns the dots of a project name into underscores
       - name: Run the init script
-        run: dotnet run scripts/init.cs --name Acme.Shop --auth-provider Keycloak
+        run: dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop' --auth-provider Keycloak
 
       - name: Fail if a second run changes a file or a second rename runs
         run: |
           git add --all
-          dotnet run scripts/init.cs --name Acme.Shop --auth-provider Keycloak
+          dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop' --auth-provider Keycloak
           git diff --exit-code --stat
           if dotnet run scripts/init.cs --name Other.App; then exit 1; fi
 
@@ -82,6 +85,7 @@ jobs:
       - name: Fail if the template name is left or an upstream link changed
         run: |
           if git grep -inP '(?<!pdevito3/)fullstack|full[ ._-]stack[ ._-]?template' -- ':!scripts/init.cs'; then exit 1; fi
+          grep -q '<title>Acme Shop</title>' frontend/index.html
           git grep -q 'github.com/pdevito3/FullstackTemplate/issues' -- docs
           if git grep -n 'init.cs' -- README.md; then exit 1; fi
 

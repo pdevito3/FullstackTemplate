@@ -29,6 +29,7 @@ import {
   type CalendarProps as AriaCalendarProps,
   type DateValue as AriaDateValue,
   type RangeCalendarProps as AriaRangeCalendarProps,
+  type RangeCalendarState,
   type Selection as AriaSelection,
 } from "react-aria-components"
 
@@ -172,7 +173,8 @@ const layoutClassNames = {
   wide: {
     body: "flex",
     quickSelects: "mr-3 border-r pr-3",
-    presets: "flex flex-col gap-1",
+    // One width for both preset lists, so that the calendar keeps its width when the mode changes.
+    presets: "flex w-22 min-w-max flex-col gap-1",
     preset: buttonVariants({ variant: "ghost", size: "sm", className: "h-7 justify-start text-xs font-normal" }),
     header: "px-1",
     navButton: "size-7",
@@ -571,15 +573,39 @@ const CalendarHeading = (props: React.HTMLAttributes<HTMLElement>) => {
   )
 }
 
-const CalendarGrid = ({ className, ...props }: AriaCalendarGridProps) => (
-  <AriaCalendarGrid
-    className={cn(
-      "w-full border-separate border-spacing-x-0 border-spacing-y-1",
-      className
-    )}
-    {...props}
-  />
-)
+// React Aria moves the focus one day forward after Enter or Space on the first day of a range
+// (focusNearestAvailableDate, called from useCalendarCell). The grid keeps the focus on the day
+// that the user picked. React Aria finds its data by the identity of the state, so the grid
+// changes the state in place and does not copy it.
+function keepFocusOnRangeStart(state: RangeCalendarState | null) {
+  if (!state) return
+  state.focusNearestAvailableDate = (date) => {
+    state.setFocusedDate(date)
+    state.setFocused(true)
+  }
+}
+
+const CalendarGrid = ({ className, ...props }: AriaCalendarGridProps) => {
+  const rangeState = useContext(AriaRangeCalendarStateContext)
+  keepFocusOnRangeStart(rangeState)
+  return (
+    <>
+      <AriaCalendarGrid
+        className={cn(
+          "w-full border-separate border-spacing-x-0 border-spacing-y-1",
+          className
+        )}
+        {...props}
+      />
+      {/* The focus stays on the start day, so a screen reader does not read a new cell */}
+      {rangeState && (
+        <span className="sr-only" aria-live="polite">
+          {rangeState.anchorDate ? "Choose an end date." : ""}
+        </span>
+      )}
+    </>
+  )
+}
 
 const CalendarGridHeader = ({ ...props }: AriaCalendarGridHeaderProps) => (
   <AriaCalendarGridHeader {...props} />
@@ -631,6 +657,8 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
             !renderProps.isSelectionStart &&
             !renderProps.isSelectionEnd &&
             "rounded-none bg-accent text-accent-foreground",
+          /* Range: paint to the cell edges, so that the days join */
+          renderProps.isSelected && isRange && "bg-clip-border",
           /* Outside Month */
           renderProps.isOutsideMonth &&
             "text-muted-foreground opacity-50 data-[selected]:bg-accent/50 data-[selected]:text-muted-foreground data-[selected]:opacity-30",

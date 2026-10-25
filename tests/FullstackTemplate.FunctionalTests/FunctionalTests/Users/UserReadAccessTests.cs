@@ -109,6 +109,24 @@ public class UserReadAccessTests : TestBase
         user.Permissions.ShouldBeEmpty();
     }
 
+    // A new user reads their own identifier to know that they must start a tenant
+    [Test]
+    public async Task user_with_no_user_record_gets_not_found_for_their_own_identifier()
+    {
+        // Arrange
+        await AddTwoUsersAsync("Admin", "User");
+        var identifier = $"new-{Guid.NewGuid()}";
+        FactoryClient.SignInAsAppUser(identifier);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(identifier));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail
+            .ShouldBe("User was not found.");
+    }
+
     [Test]
     public async Task user_role_member_granted_read_users_can_list_the_users()
     {

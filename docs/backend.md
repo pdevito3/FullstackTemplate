@@ -151,7 +151,7 @@ A command, or a query that reads data that needs a permission, checks a permissi
 | `manage_agents` | `AddAgent`, `DeleteAgent`, `AddAgentPermission`, `RemoveAgentPermission` |
 | `read_audit_log` | `GetAuditEntryPage` |
 | `read_audit_log_sensitive` | None. `GetAuditEntryPage` shows the sensitive values of the audit log only to a caller with it. |
-| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user |
+| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for an identifier that no user has |
 | `read_agents` | `GetAgentList`, `GetAgent` |
 
 The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.
@@ -169,7 +169,7 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 | A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
 | A client in `Tenancy:ReadAllTenantsClientIds` | 403 |
 | An unknown client: a client that is not first-party, on no list, and with no agent for the token | 403 |
-| A user of a first-party client with no user record, or an anonymous principal | 403 |
+| A user of a first-party client with no user record, or an anonymous principal | 403. `GetUserByIdentifier` gives such a user 404 when it finds no user, because the user sees no rows. Thus a new user who reads their own identifier knows to start a tenant. |
 
 [Agents](authentication.md#agents) tells how the server identifies an agent and how a tenant registers it.
 

@@ -29,7 +29,10 @@ public static class GetUserByIdentifier
             // The check follows the load, because the exception for the own record needs the ID of the user
             if (user is null)
             {
-                caller.Require(Permission.ReadUsers());
+                // A user with no user record sees no rows, so the 404 tells it nothing. A new user who reads their own
+                // identifier gets the 404 and knows to start a tenant.
+                if (caller is not Caller.Outsider { Kind: OutsiderKind.NoUserRecord })
+                    caller.Require(Permission.ReadUsers());
                 throw new NotFoundException("User was not found.");
             }
 

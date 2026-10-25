@@ -64,6 +64,19 @@ public class GetUserByIdentifierQueryTests : TestBase
     }
 
     [Test]
+    public async Task throws_not_found_when_the_identifier_has_a_nul()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new GetUserByIdentifier.Query("a\0b"));
+
+        // Assert
+        await act.ShouldThrowAsync<NotFoundException>();
+    }
+
+    [Test]
     public async Task returns_user_with_permissions()
     {
         // Arrange

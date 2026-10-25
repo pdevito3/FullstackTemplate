@@ -31,6 +31,7 @@ public static class QueryableExtensions
     private static class IdPrefix<TEntity>
         where TEntity : BaseEntity
     {
-        public static readonly string Value = (string)typeof(TEntity).GetField("IdPrefix")!.GetRawConstantValue()!;
+        public static readonly string Value = (string?)typeof(TEntity).GetField("IdPrefix")?.GetRawConstantValue()
+            ?? throw new InvalidOperationException($"{typeof(TEntity).Name} has no public const string IdPrefix.");
     }
 }

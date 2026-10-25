@@ -20,11 +20,14 @@ public static class GetUserByIdentifier
         {
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
 
-            var user = await dbContext.Users
-                .TagWithOperationCallSite("users.get_by_identifier")
-                .AsNoTracking()
-                .Include(u => u.UserPermissions)
-                .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken);
+            // Postgres cannot take a NUL or a lone surrogate as a parameter, and no stored identifier has one
+            var user = PostgresText.CanStore(request.Identifier)
+                ? await dbContext.Users
+                    .TagWithOperationCallSite("users.get_by_identifier")
+                    .AsNoTracking()
+                    .Include(u => u.UserPermissions)
+                    .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken)
+                : null;
             Activity.Current?.SetTag("app.user_id", user?.Id);
 
             // The check follows the load, because the exception for the own record needs the ID of the user

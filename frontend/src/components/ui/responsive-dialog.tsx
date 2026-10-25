@@ -100,7 +100,7 @@ function ResponsiveDialog({
           {showCloseButton && (
             <ResponsiveDialogClose
               variant="ghost"
-              className="absolute top-2 right-2"
+              className="absolute top-2 right-2 max-md:size-8"
               size="icon-sm"
             >
               <HugeiconsIcon icon={Cancel01Icon} />

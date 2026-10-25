@@ -130,6 +130,16 @@ for (const screen of [
 test.describe('the Add Filter menu on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 
+  test('keeps the 28 px close button in the filter dialog', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.addBooleanFilter('Is Blocked', 'True')
+
+    await demo.editFilter('Is Blocked')
+
+    expect(await demo.at.button('Is Blocked', 'Close').boundingBox()).toMatchObject({ width: 28, height: 28 })
+  })
+
   test('shows the True and False buttons of the menu as plain buttons', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()

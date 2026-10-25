@@ -69,10 +69,13 @@ public static class GetUserList
 {
     public sealed record Query(UserParametersDto Parameters) : IRequest<PagedList<UserDto>>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, PagedList<UserDto>>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Query, PagedList<UserDto>>
     {
         public async Task<PagedList<UserDto>> Handle(Query request, CancellationToken cancellationToken)
         {
+            await permissionGuard.RequireAsync(Permission.ReadUsers(), cancellationToken);
+
             var queryKitConfig = new CustomQueryKitConfiguration();
 
             // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows

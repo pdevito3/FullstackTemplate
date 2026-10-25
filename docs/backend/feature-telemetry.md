@@ -35,9 +35,9 @@ After:
 PUT api/v{version}/users/{id}/role
 └─ UpdateUserRole.Command            430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
                                               app.user_id=usr_01J...  app.user.role=Admin
-   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=32
+   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=34
    └─ SQL: <the save>                  8ms
-Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@69  CallerTenantId=ten_01J...
+Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@71  CallerTenantId=ten_01J...
 ```
 
 ## The support questions
@@ -166,6 +166,7 @@ public async Task<UserDto> Handle(Command request, CancellationToken cancellatio
 
     var caller = await permissionGuard.GetCallerAsync(cancellationToken);
     caller.Require(Permission.ManageUserAccess());
+    caller.RequireSelfOr(request.Id, Permission.ReadUsers());
     var newRole = UserRole.Of(request.Role);
     Activity.Current?.SetTag("app.user.role", newRole.Value);
 

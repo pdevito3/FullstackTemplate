@@ -25,6 +25,10 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 {
     private readonly PostgresTestDatabase _database = new();
 
+    // WebApplicationFactory adds each client to a List with no lock, and the tests create their clients in parallel.
+    // Two adds at the same time can lose a client or leave a null in the list, and DisposeAsync then throws.
+    private readonly Lock _clientLock = new();
+
     /// <summary>
     /// The machine client that the test server lets manage all tenants. It also reads the rows of all tenants.
     /// </summary>
@@ -123,6 +127,12 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         // Start the host now, so startup work such as migrations is done before the first test
         _ = Services;
         Instance = this;
+    }
+
+    public new HttpClient CreateClient()
+    {
+        lock (_clientLock)
+            return base.CreateClient();
     }
 
     public override async ValueTask DisposeAsync()

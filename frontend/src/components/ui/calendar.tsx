@@ -656,6 +656,8 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
             !renderProps.isSelectionStart &&
             !renderProps.isSelectionEnd &&
             "rounded-none bg-accent text-accent-foreground",
+          /* Range: paint to the cell edges, so that the days join */
+          renderProps.isSelected && isRange && "bg-clip-border",
           /* Outside Month */
           renderProps.isOutsideMonth &&
             "text-muted-foreground opacity-50 data-[selected]:bg-accent/50 data-[selected]:text-muted-foreground data-[selected]:opacity-30",

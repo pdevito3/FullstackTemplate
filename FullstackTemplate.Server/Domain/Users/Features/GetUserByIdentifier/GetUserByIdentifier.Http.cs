@@ -13,6 +13,7 @@ public sealed class GetUserByIdentifierEndpoint : IEndpoint
         .WithTags("Users")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
+        .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
     /// <summary>

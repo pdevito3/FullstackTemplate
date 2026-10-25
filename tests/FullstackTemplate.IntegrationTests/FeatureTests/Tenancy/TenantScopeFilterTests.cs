@@ -1,7 +1,5 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 
-using FullstackTemplate.Server.Domain.Users.Dtos;
-using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -28,7 +26,7 @@ public class TenantScopeFilterTests : TestBase
             testingServiceScope.SetUserWithDefaults(identifier: $"unknown-{Guid.NewGuid()}");
 
             // Act
-            var users = await testingServiceScope.SendAsync(new GetUserList.Query(new UserParametersDto { PageSize = 500 }));
+            var users = await testingServiceScope.ExecuteDbContextAsync(db => db.Users.ToListAsync());
             var found = await testingServiceScope.ExecuteDbContextAsync(db => db.Users.AnyAsync(u => u.Id == user.Id));
 
             // Assert

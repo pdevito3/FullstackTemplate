@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
 
@@ -36,7 +37,7 @@ public class TenantLookupCacheTests : TestBase
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(member.Id));
 
         // Assert
-        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        await ShouldHaveNoUserRecordAsync(result);
     }
 
     [Test]
@@ -57,7 +58,7 @@ public class TenantLookupCacheTests : TestBase
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(member.Id));
 
         // Assert
-        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        await ShouldHaveNoUserRecordAsync(result);
     }
 
     [Test]
@@ -108,4 +109,12 @@ public class TenantLookupCacheTests : TestBase
 
     private void SignInAs(User user)
         => FactoryClient.SignInAsAppUser(user.Identifier);
+
+    // The tenant of the user is gone, so the server finds no user record for the caller
+    private static async Task ShouldHaveNoUserRecordAsync(HttpResponseMessage result)
+    {
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail
+            .ShouldBe("You need a user record in a tenant to do this.");
+    }
 }

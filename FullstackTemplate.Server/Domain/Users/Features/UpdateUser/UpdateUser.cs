@@ -20,7 +20,10 @@ public static class UpdateUser
         {
             Activity.Current?.SetTag("app.user_id", request.Id);
 
-            await permissionGuard.RequireSelfOrAsync(request.Id, Permission.ManageUsers(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.RequireSelfOr(request.Id, Permission.ManageUsers());
+            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
+            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update.load")

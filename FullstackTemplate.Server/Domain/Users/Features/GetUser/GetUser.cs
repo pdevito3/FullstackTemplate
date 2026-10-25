@@ -11,11 +11,14 @@ public static class GetUser
 {
     public sealed record Query(string Id) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Query, UserDto>
     {
         public async Task<UserDto> Handle(Query request, CancellationToken cancellationToken)
         {
             Activity.Current?.SetTag("app.user_id", request.Id);
+
+            await permissionGuard.RequireSelfOrAsync(request.Id, Permission.ReadUsers(), cancellationToken);
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.get_by_id")

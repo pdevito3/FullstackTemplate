@@ -3,6 +3,7 @@
 * Do not edit manually.
 */
 
+import type { ProblemDetails } from '../../models/types/problem-details'
 import type { UserDto } from '../../models/types/user-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
@@ -33,6 +34,8 @@ export type GetUserListStatus400 = ValidationProblemDetails;
 
 export type GetUserListStatus401 = unknown;
 
+export type GetUserListStatus403 = ProblemDetails;
+
 export type GetUserListOptions = {
     body?: never;
     path?: never;
@@ -44,6 +47,7 @@ export type GetUserListResponses = {
     "200": GetUserListStatus200;
     "400": GetUserListStatus400;
     "401": GetUserListStatus401;
+    "403": GetUserListStatus403;
 };
 
 /**

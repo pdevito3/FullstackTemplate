@@ -15,7 +15,8 @@ public sealed class GetUserListEndpoint : IEndpoint
         .WithTags("Users")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
-        .ProducesValidationProblem();
+        .ProducesValidationProblem()
+        .ProducesProblem(StatusCodes.Status403Forbidden);
 
     /// <summary>
     /// Gets a paginated list of Users.

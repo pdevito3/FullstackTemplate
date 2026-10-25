@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 /// <summary>
-/// A revoke needs only manage_agents, so a tenant admin can take a permission away from an agent that holds more than
+/// A revoke needs only manage_agents and read_agents, so a tenant admin can take a permission away from an agent that holds more than
 /// the admin.
 /// </summary>
 public class RemoveAgentPermissionCommandTests : TestBase
@@ -21,7 +21,7 @@ public class RemoveAgentPermissionCommandTests : TestBase
         await testingServiceScope.StartGraph(out _)
             .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant, Permission.Names.ManageUsers])
             .BuildAsync();
-        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents(), Permission.ManageTenant());
+        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents(), Permission.ReadAgents(), Permission.ManageTenant());
 
         // Act
         var agentReturned = await testingServiceScope.SendAsync(
@@ -50,14 +50,14 @@ public class RemoveAgentPermissionCommandTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_agents_revokes_a_permission_that_they_lack()
+    public async Task holder_of_only_manage_and_read_agents_revokes_a_permission_that_they_lack()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _)
             .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant, Permission.Names.ManageUsers])
             .BuildAsync();
-        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents());
+        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents(), Permission.ReadAgents());
 
         // Act
         var agentReturned = await testingServiceScope.SendAsync(

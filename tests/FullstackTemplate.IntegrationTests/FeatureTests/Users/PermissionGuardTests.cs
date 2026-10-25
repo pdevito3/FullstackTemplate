@@ -64,7 +64,7 @@ public class PermissionGuardTests : TestBase
     public async Task a_revoked_permission_stops_on_the_next_request()
     {
         // Arrange
-        var (scope, member, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUsers());
+        var (scope, member, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUsers(), Permission.ReadUsers());
         var updated = await scope.SendAsync(
             new UpdateUser.Command(target.Id, new FakeUserForUpdateDto().Generate() with { Version = target.Version }));
         await new TestingServiceScope().SendAsync(new RemoveUserPermission.Command(member.Id, "manage_users"));
@@ -95,7 +95,7 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    [Arguments(TestFixture.ReadOnlyMachineClientId, "This client cannot change data.")]
+    [Arguments(TestFixture.ReadOnlyMachineClientId, "This client has no permissions. It can read only the data that needs no permission.")]
     [Arguments("untrusted-machine", "This client is not a registered agent of your tenant. A tenant admin can register it.")]
     public async Task machine_client_that_cannot_manage_all_tenants_cannot_delete_a_user(string clientId, string denial)
     {
@@ -244,10 +244,10 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_can_grant_manage_user_access()
+    public async Task holder_of_only_manage_user_access_and_read_users_can_grant_manage_user_access()
     {
         // Arrange
-        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
 
         // Act
         var updated = await scope.SendAsync(new AddUserPermission.Command(target.Id, "manage_user_access"));
@@ -257,10 +257,10 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_cannot_grant_manage_tenant()
+    public async Task holder_of_only_manage_user_access_and_read_users_cannot_grant_manage_tenant()
     {
         // Arrange
-        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
 
         // Act
         var act = () => scope.SendAsync(new AddUserPermission.Command(target.Id, "manage_tenant"));
@@ -275,7 +275,7 @@ public class PermissionGuardTests : TestBase
     public async Task invalid_permission_from_a_holder_of_manage_user_access_is_a_validation_error()
     {
         // Arrange
-        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
 
         // Act
         var act = () => scope.SendAsync(new AddUserPermission.Command(target.Id, "not_a_permission"));
@@ -285,10 +285,10 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_cannot_make_a_user_an_admin()
+    public async Task holder_of_only_manage_user_access_and_read_users_cannot_make_a_user_an_admin()
     {
         // Arrange
-        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
 
         // Act
         var act = () => scope.SendAsync(new UpdateUserRole.Command(target.Id, "Admin"));
@@ -301,10 +301,10 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_cannot_demote_an_admin()
+    public async Task holder_of_only_manage_user_access_and_read_users_cannot_demote_an_admin()
     {
         // Arrange
-        var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
         var admin = await AddAdminAsync();
 
         // Act
@@ -316,10 +316,10 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_cannot_take_manage_tenant_away()
+    public async Task holder_of_only_manage_user_access_and_read_users_cannot_take_manage_tenant_away()
     {
         // Arrange
-        var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
         var admin = await AddAdminAsync();
 
         // Act
@@ -332,10 +332,10 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_can_take_manage_user_access_away()
+    public async Task holder_of_only_manage_user_access_and_read_users_can_take_manage_user_access_away()
     {
         // Arrange
-        var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess());
+        var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
         var admin = await AddAdminAsync();
 
         // Act

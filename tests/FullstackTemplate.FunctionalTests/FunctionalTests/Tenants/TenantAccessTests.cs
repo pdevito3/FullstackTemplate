@@ -280,11 +280,14 @@ public class TenantAccessTests : TestBase
         var deleted = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
 
         // Assert
-        await ShouldBeForbiddenAsync(updated, "This client cannot change data.");
-        await ShouldBeForbiddenAsync(deleted, "This client cannot change data.");
+        await ShouldBeForbiddenAsync(updated, ReadOnlyClientDenial);
+        await ShouldBeForbiddenAsync(deleted, ReadOnlyClientDenial);
         var exists = await ExecuteDbContextAsync(db => db.Tenants.AnyAsync(t => t.Id == tenant.Id));
         exists.ShouldBeTrue();
     }
+
+    private const string ReadOnlyClientDenial =
+        "This client has no permissions. It can read only the data that needs no permission.";
 
     private const string AddTenantForbiddenDetail =
         "Only a trusted tenant management client can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.";

@@ -306,7 +306,7 @@ internal sealed partial class AppRepo(string root)
     [GeneratedRegex(@"^[ \t]*""(?:test:conformance|conformance:down)"":[^\n]*\n", RegexOptions.Multiline)]
     private static partial Regex RepoOnlyScriptPattern();
 
-    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$")]
+    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*\z")]
     private static partial Regex NamePattern();
 
     [GeneratedRegex(@"^[\p{L}\p{M}\p{N}]+([ .'-][\p{L}\p{M}\p{N}]+)*\z")]

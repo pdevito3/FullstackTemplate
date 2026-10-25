@@ -41,10 +41,11 @@ const iconColors = {
  *   Notification.warning('Please be careful')
  */
 export function Toaster() {
+  // React Aria lists the newest toast first. flex-col-reverse keeps it nearest the bottom edge.
   return (
     <ToastRegion
       queue={toastQueue}
-      className="fixed top-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 outline-none"
+      className="fixed inset-x-4 bottom-4 z-[100] flex flex-col-reverse items-center gap-2 outline-none md:left-auto"
     >
       {({ toast }) => (
         <Toast
@@ -53,7 +54,7 @@ export function Toaster() {
           className={cn(
             'bg-card text-card-foreground border border-border',
             'shadow-lg rounded-lg px-4 py-3',
-            'flex items-start gap-3 min-w-[300px] max-w-[500px]',
+            'flex w-full max-w-[500px] items-start gap-3 md:min-w-[300px]',
             'outline-none focus-visible:ring-2 focus-visible:ring-ring'
           )}
         >

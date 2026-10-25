@@ -21,10 +21,36 @@ public static class PermissionMigrationExtensions
     /// Gives the permission to each live user with the role who has no live row for it. A second run changes nothing.
     /// </summary>
     public static void GrantPermissionToRole(this MigrationBuilder migrationBuilder, string role, string permission)
+        => migrationBuilder.GrantPermission(permission, $"u.role = {Literal(role)}");
+
+    /// <summary>
+    /// Gives the permission to each live user who has a live row for one of <paramref name="heldPermissions"/> and no
+    /// live row for the permission. A second run changes nothing.
+    /// </summary>
+    public static void GrantPermissionToHoldersOf(
+        this MigrationBuilder migrationBuilder, string permission, params string[] heldPermissions)
+        => migrationBuilder.GrantPermission(permission, $"""
+            EXISTS (
+                  SELECT 1 FROM user_permissions h
+                  WHERE h.user_id = u.id AND NOT h.is_deleted
+                    AND h.permission IN ({string.Join(", ", heldPermissions.Select(Literal))}))
+            """);
+
+    /// <summary>
+    /// Hard-deletes each row of the permission, also the soft-deleted rows.
+    /// </summary>
+    public static void DeletePermission(this MigrationBuilder migrationBuilder, string permission)
+        => migrationBuilder.Sql($"DELETE FROM user_permissions WHERE permission = {Literal(permission)};");
+
+    /// <summary>
+    /// Gives the permission to each live user who matches <paramref name="userCondition"/>, a SQL condition on the
+    /// alias <c>u</c> of <c>users</c>, and has no live row for the permission.
+    /// </summary>
+    private static void GrantPermission(this MigrationBuilder migrationBuilder, string permission, string userCondition)
     {
         var usersWithoutIt = $"""
             FROM users u
-            WHERE u.role = {Literal(role)}
+            WHERE {userCondition}
               AND NOT u.is_deleted
               AND NOT EXISTS (
                   SELECT 1 FROM user_permissions p
@@ -50,12 +76,6 @@ public static class PermissionMigrationExtensions
             END $grant$;
             """);
     }
-
-    /// <summary>
-    /// Hard-deletes each row of the permission, also the soft-deleted rows.
-    /// </summary>
-    public static void DeletePermission(this MigrationBuilder migrationBuilder, string permission)
-        => migrationBuilder.Sql($"DELETE FROM user_permissions WHERE permission = {Literal(permission)};");
 
     private static string Literal(string value) => $"'{value.Replace("'", "''", StringComparison.Ordinal)}'";
 }

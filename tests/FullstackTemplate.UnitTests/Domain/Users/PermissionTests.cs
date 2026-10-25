@@ -13,6 +13,8 @@ public class PermissionTests
         Permission.ManageUsers().Value.ShouldBe("manage_users");
         Permission.ManageUserAccess().Value.ShouldBe("manage_user_access");
         Permission.ManageTenant().Value.ShouldBe("manage_tenant");
+        Permission.ReadUsers().Value.ShouldBe("read_users");
+        Permission.ReadAgents().Value.ShouldBe("read_agents");
     }
 
     [Test]
@@ -70,7 +72,7 @@ public class PermissionTests
         var names = Permission.ListNames();
 
         // Assert
-        names.ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive"], ignoreOrder: true);
+        names.ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive", "read_users", "read_agents"], ignoreOrder: true);
     }
 
     [Test]
@@ -80,7 +82,7 @@ public class PermissionTests
         var permissions = Permission.GetAll();
 
         // Assert
-        permissions.Select(p => p.Value).ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive"], ignoreOrder: true);
+        permissions.Select(p => p.Value).ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive", "read_users", "read_agents"], ignoreOrder: true);
     }
 
     [Test]

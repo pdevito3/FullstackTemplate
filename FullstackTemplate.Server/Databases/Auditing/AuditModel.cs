@@ -85,10 +85,7 @@ internal sealed class AuditModel
 
     private static IForeignKey? OwnerKeyOfType(IEntityType entityType)
     {
-        var ownerKeys = entityType.GetForeignKeys()
-            .Where(fk => fk.DeleteBehavior == DeleteBehavior.Cascade
-                         && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity)))
-            .ToList();
+        var ownerKeys = entityType.GetForeignKeys().Where(fk => fk.IsOwnerKey()).ToList();
         return ownerKeys.Count <= 1
             ? ownerKeys.SingleOrDefault()
             : throw new NotSupportedException(

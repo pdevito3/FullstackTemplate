@@ -20,7 +20,7 @@ No MediatR behavior runs FluentValidation validators. Do not add a `Validator` c
 
 - Put the rules for one entity in the entity. See [domain-entities.md](domain-entities.md).
 - Put a check that needs the database, such as a unique value, in the handler. Throw a `ConflictException` on the request field, which gives 409. See [backend.md](../backend.md#error-responses).
-- Create or change the entity before the check that needs the database, and query with the value of the entity. Then the entity refuses a value that Postgres cannot take, such as a text with U+0000, with a 422 before a query sends it. A query that gets such a value fails, and the API gives 500. When a check must run before the entity exists, such as the lookup of the tenant ID of the request, query only when `EntityId.IsValid` passes for the ID.
+- Create or change the entity before the check that needs the database, and query with the value of the entity. Then the entity refuses a value that Postgres cannot take, such as a text with U+0000, with a 422 before a query sends it. A query that gets such a value fails, and the API gives 500. When a check must run before the entity exists, such as the lookup of the tenant ID of the request, query only when `EntityId.IsValid` passes for the ID. A read value that goes to a query without an entity, such as a filter value, must pass `PostgresText.CanStore`. If it fails, throw a `QueryInputException` with the name of the parameter.
 
 ## Command
 
@@ -53,7 +53,7 @@ public static class UpdateUser
 }
 ```
 
-`GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404. `user.Update` throws a `StaleVersionException` when the DTO has an old version, and `SaveChangesAsync` throws it when another request saved the row after the load. Both give 409. Do not catch it or retry the command, because a retry with the new version overwrites a change that the caller did not see.
+`GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404. An ID that `EntityId.IsValid` refuses for the entity, such as an ID with U+0000, gets the same exception with no query. `user.Update` throws a `StaleVersionException` when the DTO has an old version, and `SaveChangesAsync` throws it when another request saved the row after the load. Both give 409. Do not catch it or retry the command, because a retry with the new version overwrites a change that the caller did not see.
 
 A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. A command that has no result implements `IRequest`, not `IRequest<T>`.
 

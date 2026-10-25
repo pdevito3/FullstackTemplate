@@ -6,42 +6,17 @@ using Microsoft.EntityFrameworkCore;
 
 public static class QueryableExtensions
 {
-    public static async Task<TEntity?> GetByIdOrDefault<TEntity>(
-        this DbSet<TEntity> dbSet,
-        string id,
-        CancellationToken cancellationToken = default)
-        where TEntity : BaseEntity
-    {
-        return await dbSet.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
-    }
-
-    public static async Task<TEntity?> GetByIdOrDefault<TEntity>(
-        this IQueryable<TEntity> query,
-        string id,
-        CancellationToken cancellationToken = default)
-        where TEntity : BaseEntity
-    {
-        return await query.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
-    }
-
-    public static async Task<TEntity> GetById<TEntity>(
-        this DbSet<TEntity> dbSet,
-        string id,
-        CancellationToken cancellationToken = default)
-        where TEntity : BaseEntity
-    {
-        var result = await dbSet.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
-
-        return result.MustBeFoundOrThrow();
-    }
-
+    /// <exception cref="NotFoundException">No row has the ID. An ID that is not valid for the entity, such as one with a
+    /// NUL that Postgres text cannot hold, gets no query.</exception>
     public static async Task<TEntity> GetById<TEntity>(
         this IQueryable<TEntity> query,
         string id,
         CancellationToken cancellationToken = default)
         where TEntity : BaseEntity
     {
-        var result = await query.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        var result = EntityId.IsValid(id, IdPrefix<TEntity>.Value)
+            ? await query.FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
+            : null;
 
         return result.MustBeFoundOrThrow();
     }
@@ -50,5 +25,12 @@ public static class QueryableExtensions
         where TEntity : BaseEntity
     {
         return entity ?? throw new NotFoundException($"{typeof(TEntity).Name} was not found.");
+    }
+
+    // EntityIdPrefixAnalyzer makes sure that each entity has the IdPrefix constant
+    private static class IdPrefix<TEntity>
+        where TEntity : BaseEntity
+    {
+        public static readonly string Value = (string)typeof(TEntity).GetField("IdPrefix")!.GetRawConstantValue()!;
     }
 }

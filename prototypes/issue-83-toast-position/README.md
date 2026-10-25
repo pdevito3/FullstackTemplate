@@ -16,3 +16,5 @@ The recipes in `recipes/` run with `.agents/skills/verify-fullstack-template/scr
 - `coverage.json`: the page controls that three toasts cover, for each route, viewport, and sign-in state.
 
 Result: `bottom` covers no header control and no page control on any route. `under-header` covers `Login` or `Logout`, the unit toggle, and `Refresh` on the home page. `bottom` covers the primary action of the phone bottom-sheet dialog while a toast shows.
+
+- `final/`: the shipped position from the PR branch, from the live recipe `toast-position-live.mjs`.

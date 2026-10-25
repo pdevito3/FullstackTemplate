@@ -46,6 +46,7 @@ public class ExportedTelemetryTests : TestBase
         // Arrange
         var factory = TestingWebApplicationFactory.Instance;
         var meterProvider = factory.Services.GetRequiredService<MeterProvider>();
+        var before = factory.ExportedMetrics.Count;
         using var start = new Barrier(2);
         var flushes = Task.Run(() =>
         {
@@ -58,17 +59,11 @@ public class ExportedTelemetryTests : TestBase
         start.SignalAndWait();
         while (!flushes.IsCompleted)
         {
-            List<MetricSnapshot> exported;
-            lock (factory.ExportedMetrics)
-                exported = [.. factory.ExportedMetrics];
-            exported.ShouldAllBe(metric => metric != null);
+            factory.ExportedMetrics.Snapshot().ShouldAllBe(metric => metric != null);
         }
         await flushes;
 
         // Assert
-        List<MetricSnapshot> all;
-        lock (factory.ExportedMetrics)
-            all = [.. factory.ExportedMetrics];
-        all.ShouldNotBeEmpty();
+        factory.ExportedMetrics.Count.ShouldBeGreaterThan(before);
     }
 }

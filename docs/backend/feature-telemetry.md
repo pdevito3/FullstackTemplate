@@ -199,7 +199,7 @@ The example obeys these rules:
 If an alert, a dashboard, or a runbook uses a signal, write a test for it. A test stops a rename that breaks the alert. A log with no consumer needs no test.
 
 - For a span tag, use a functional test. Start a parent activity, send the request, and filter `ExportedSpans()` by the trace id of the parent. See `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Telemetry/TracingTests.cs`.
-- For a metric, call `MeterProvider.ForceFlush()`, then read `TestingWebApplicationFactory.ExportedMetrics`. See `MetricsTests.cs` in the same folder.
+- For a metric, call `MeterProvider.ForceFlush()`, then read `TestingWebApplicationFactory.ExportedMetrics.Snapshot()`. See `MetricsTests.cs` in the same folder.
 - A test class that reads all the exported spans must have `[NotInParallel]`.
 
 ## Make sure that it works in the stack

@@ -214,11 +214,7 @@ public class FeatureTelemetryTests : TestBase
         var factory = TestingWebApplicationFactory.Instance;
         factory.Services.GetRequiredService<MeterProvider>().ForceFlush().ShouldBeTrue();
 
-        List<MetricSnapshot> exported;
-        lock (factory.ExportedMetrics)
-            exported = [.. factory.ExportedMetrics];
-
-        return exported
+        return factory.ExportedMetrics.Snapshot()
             .Where(m => m.Name == "app.users.role_changed" && m.MeterName == "FullstackTemplate.Server")
             .SelectMany(m => m.MetricPoints)
             .Where(p => HasTag(p, "app.user.role", role))

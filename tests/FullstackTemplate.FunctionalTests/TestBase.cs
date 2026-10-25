@@ -29,8 +29,7 @@ public class TestBase : IDisposable
     public TestBase()
     {
         FactoryClient = Factory.CreateClient();
-        lock (Factory.ExportedActivities)
-            _firstSpanIndex = Factory.ExportedActivities.Count;
+        _firstSpanIndex = Factory.ExportedActivities.Count;
     }
 
     public void Dispose()
@@ -75,19 +74,13 @@ public class TestBase : IDisposable
     /// A snapshot of the spans that the server exported since this test started.
     /// </summary>
     protected IReadOnlyList<Activity> ExportedSpans()
-    {
-        lock (Factory.ExportedActivities)
-            return Factory.ExportedActivities.Skip(_firstSpanIndex).ToList();
-    }
+        => Factory.ExportedActivities.Snapshot().Skip(_firstSpanIndex).ToList();
 
     /// <summary>
     /// A snapshot of every span that the server exported, including the spans from startup.
     /// </summary>
     protected static IReadOnlyList<Activity> AllExportedSpans()
-    {
-        lock (Factory.ExportedActivities)
-            return Factory.ExportedActivities.ToList();
-    }
+        => Factory.ExportedActivities.Snapshot();
 
     // The helpers below arrange and check data for the test, outside any HTTP request. They are system
     // work, so each one opts in to all tenants with a system scope.

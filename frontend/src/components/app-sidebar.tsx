@@ -32,6 +32,14 @@ import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-v
 import { useSidebar } from "@/components/ui/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 
+const appName = "Fullstack Template"
+const appInitials = appName
+  .split(/[ .-]/)
+  .map((word) => word[0])
+  .join("")
+  .slice(0, 2)
+  .toUpperCase()
+
 const navItems = [
   {
     title: "Home",
@@ -75,11 +83,10 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" href="/" onPress={closeMobile}>
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <span className="text-xs font-bold">FS</span>
+                <span className="text-xs font-bold">{appInitials}</span>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Fullstack</span>
-                <span className="truncate text-xs text-muted-foreground">Template</span>
+                <span className="truncate font-semibold">{appName}</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

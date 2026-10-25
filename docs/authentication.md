@@ -376,7 +376,7 @@ The OpenID Foundation certifies a deployment, not this repository. To certify yo
    - `Auth__UseAudienceAsScope`: `false`
    - `Auth__MetadataRefreshInterval`: `00:00:01`, because each test module has new signing keys
 6. For each test module, start the module, then restart the BFF. The suite gives the discovery document only while a module runs, and the BFF reads it at startup.
-7. Do the login, or the login and the logout, in a browser. [`run-conformance.ts`](https://github.com/pdevito3/FullstackTemplate/blob/main/frontend/conformance/run-conformance.ts) of the FullstackTemplate repository shows the steps for each plan.
+7. Do the login, or the login and the logout, in a browser. [`run-conformance.ts`](https://github.com/pdevito3/FullstackTemplate/blob/main/frontend/conformance/run-conformance.ts) of the pdevito3/FullstackTemplate repository shows the steps for each plan.
 8. Export the results of each plan. Follow the instructions at <https://openid.net/certification/> to submit them.
 
 Use a separate deployment for the test run. The suite is the identity provider of that deployment while the test runs.

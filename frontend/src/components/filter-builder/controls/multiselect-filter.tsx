@@ -91,7 +91,7 @@ export function MultiSelectFilter({
   }
 
   return (
-    <div className="flex flex-col gap-2 w-64 p-2">
+    <div className="flex flex-col gap-2 w-full md:w-64 p-2">
       {/* Operator selector */}
       <OperatorSelect
         operators={allowedOperators}

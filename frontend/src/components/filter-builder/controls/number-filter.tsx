@@ -44,7 +44,7 @@ export function NumberFilter({
   const isValid = value.trim() !== '' && !isNaN(parseFloat(value))
 
   return (
-    <div className="flex flex-col gap-3 w-64 p-3">
+    <div className="flex flex-col gap-3 w-full md:w-64 p-3">
       <OperatorSelect
         operators={availableOperators}
         value={operator}

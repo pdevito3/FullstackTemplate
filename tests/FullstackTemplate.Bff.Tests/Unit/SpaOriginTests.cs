@@ -14,7 +14,7 @@ public class SpaOriginTests
     {
         var spaOrigin = Read(new() { ["services:webfrontend:http:0"] = devServer });
 
-        spaOrigin.Resolve("/assets/42?tab=x").ShouldBe("http://localhost:5173/assets/42?tab=x");
+        spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("http://localhost:5173/assets/42?tab=x");
     }
 
     [Test]
@@ -26,7 +26,7 @@ public class SpaOriginTests
             ["services:webfrontend:http:0"] = "http://localhost:5173",
         });
 
-        spaOrigin.Resolve("/").ShouldBe("https://localhost:5174/");
+        spaOrigin.Resolve(LocalUrl.Root).ShouldBe("https://localhost:5174/");
     }
 
     [Test]
@@ -36,7 +36,7 @@ public class SpaOriginTests
     {
         var spaOrigin = Read(new() { ["services:webfrontend:http:0"] = devServer });
 
-        spaOrigin.Resolve("/assets/42?tab=x").ShouldBe("/assets/42?tab=x");
+        spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("/assets/42?tab=x");
     }
 
     [Test]
@@ -48,16 +48,8 @@ public class SpaOriginTests
         Should.Throw<InvalidOperationException>(() => Read(new() { ["services:webfrontend:http:0"] = devServer }));
     }
 
-    [Test]
-    [Arguments("@evil.example")]
-    [Arguments("//evil.example")]
-    [Arguments("https://evil.example")]
-    public void a_value_that_is_not_a_local_url_throws(string returnUrl)
-    {
-        var spaOrigin = Read(new() { ["services:webfrontend:http:0"] = "http://localhost:5173" });
-
-        Should.Throw<ArgumentException>(() => spaOrigin.Resolve(returnUrl));
-    }
+    private static LocalUrl Local(string value) =>
+        LocalUrl.TryParse(value, out var localUrl) ? localUrl : throw new ArgumentException($"'{value}' is not a local URL.");
 
     private static SpaOrigin Read(Dictionary<string, string?> settings) =>
         SpaOrigin.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());

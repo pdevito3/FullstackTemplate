@@ -43,10 +43,9 @@ public static class LogoutEndpoint
             }
         }
 
-        var returnUrl = context.Request.Query["returnUrl"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(returnUrl) && !LocalUrl.IsLocal(returnUrl))
+        if (ReturnUrl.Read(context.Request) is not { } returnUrl)
         {
-            await ManagementProblem.WriteAsync(context, "Invalid return url", "returnUrl", $"ReturnUrl '{returnUrl}' was invalid");
+            await ReturnUrl.WriteInvalidAsync(context);
             return;
         }
 
@@ -63,19 +62,18 @@ public static class LogoutEndpoint
 
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        if (string.IsNullOrWhiteSpace(returnUrl))
-            returnUrl = context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
-        returnUrl = spaOrigin.Resolve(returnUrl);
+        var redirectUri = spaOrigin.Resolve(returnUrl);
 
-        // With no end_session_endpoint, the BFF session is still gone, and the IdP session stays
-        if (!features.Active.EndSession)
+        // With no BFF session, there is no ID token for id_token_hint, and the identity provider can refuse the
+        // logout. With no end_session_endpoint, the BFF session is still gone, and the IdP session stays.
+        if (!signedIn || !features.Active.EndSession)
         {
-            context.Response.Redirect(returnUrl);
+            context.Response.Redirect(redirectUri);
             return;
         }
 
         // The handler sends the browser to the end_session_endpoint with id_token_hint, and back to returnUrl
         // through /signout-callback-oidc.
-        await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = returnUrl });
+        await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = redirectUri });
     }
 }

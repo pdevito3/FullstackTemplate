@@ -20,7 +20,7 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 ## Login flow
 
 1. The user clicks Login in the React app.
-2. The frontend goes to `/bff/login`. A `returnUrl` must be a local URL, for example `/weather`. The BFF rejects an absolute URL and a URL that starts with `//`.
+2. The frontend goes to `/bff/login`. A `returnUrl` must be a local URL, for example `/weather`. The BFF rejects an absolute URL and a URL that starts with `//`. The BFF percent-encodes each non-ASCII character as UTF-8, so `/café` becomes `/caf%C3%A9`. The return URL travels in the `state` of the authorize URL. Thus, if the encoded `returnUrl` has more than 2048 characters, the BFF uses the default return URL (`PathBase`, or `/`), and the provider does not refuse the long URL with a 414.
 3. The BFF sends the browser to the provider with the authorization code flow, PKCE (`S256`), and `response_mode=query`. If the provider has PAR, the BFF first pushes the request, and the authorize URL has only `client_id` and `request_uri`.
 4. The provider sends the browser back to `/signin-oidc`. The BFF accepts only a GET there.
 5. The BFF checks the callback. The `iss` parameter must equal the issuer of the provider (RFC 9207). The ID token `aud` must hold only the client id. A failed check gives a 400, and the BFF creates no BFF session.
@@ -81,12 +81,14 @@ When the access token expires, the BFF refreshes it before it sends the API call
 
 ## Logout flow
 
-1. The frontend goes to the `bff:logout_url` of `/bff/user`, with a local `returnUrl`. The URL holds the `sid` of the BFF session, and the BFF rejects another `sid`.
+1. The frontend goes to the `bff:logout_url` of `/bff/user`, with a local `returnUrl`. The URL holds the `sid` of the BFF session, and the BFF rejects another `sid`. The BFF applies the `returnUrl` rules of the login.
 2. The BFF deletes the BFF session row.
 3. If the provider has a revocation endpoint, the BFF revokes the refresh token (RFC 7009). An error from the provider does not stop the logout.
 4. The BFF deletes the `__Host-bff` cookie.
 5. If the provider has an `end_session_endpoint`, the BFF sends the browser there with `id_token_hint` and `post_logout_redirect_uri`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`.
 6. If the provider has no `end_session_endpoint`, the BFF sends the browser to `returnUrl`.
+
+If no user is signed in, the BFF sends the browser to `returnUrl` at once. It does not go to the provider, because it has no ID token for `id_token_hint`, and a provider can refuse a logout without one. This also occurs when the BFF session ended before the provider session, for example at its absolute limit. Then the provider session stays, and the next login at the provider can occur with no prompt.
 
 ## Back-channel logout
 

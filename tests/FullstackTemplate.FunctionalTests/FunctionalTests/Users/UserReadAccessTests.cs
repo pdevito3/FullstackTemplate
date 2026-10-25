@@ -6,8 +6,10 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -16,7 +18,7 @@ using TestUtilities;
 
 /// <summary>
 /// A user with the read_users permission can read the other users of the tenant. The permission row decides, not
-/// the role. A user reads their own record with no permission.
+/// the role. A user reads their own record with no permission. A command that returns another user needs it too.
 /// </summary>
 public class UserReadAccessTests : TestBase
 {
@@ -249,6 +251,102 @@ public class UserReadAccessTests : TestBase
         await ShouldBeForbiddenAsync(record, denial);
     }
 
+    // A command returns the record of the user, so a manage permission alone must not show another user
+    [Test]
+    public async Task member_with_only_manage_user_access_cannot_remove_a_permission_of_another_user()
+    {
+        // Arrange
+        var (member, other) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ManageUserAccess()),
+            second => second.AddPermission(Permission.ManageUserAccess()));
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(
+            ApiRoutes.Users.RemovePermission(other.Id, Permission.Names.ManageUserAccess));
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, ReadUsersDenial);
+        (await PermissionsOfAsync(other.Id)).ShouldBe([Permission.Names.ManageUserAccess]);
+    }
+
+    [Test]
+    public async Task member_with_only_manage_user_access_cannot_add_a_permission_to_another_user()
+    {
+        // Arrange
+        var (member, other) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ManageUserAccess()));
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.AddPermission(other.Id),
+            new UserPermissionDto { Permission = Permission.Names.ManageUserAccess });
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, ReadUsersDenial);
+        (await PermissionsOfAsync(other.Id)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task member_with_only_manage_user_access_cannot_change_the_role_of_another_user()
+    {
+        // Arrange
+        var (member, other) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ManageUserAccess()),
+            second => second.AddPermission(Permission.ManageUserAccess()));
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(other.Id),
+            new UpdateUserRoleDto { Role = "User" });
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, ReadUsersDenial);
+        (await PermissionsOfAsync(other.Id)).ShouldBe([Permission.Names.ManageUserAccess]);
+    }
+
+    [Test]
+    public async Task member_with_only_manage_users_cannot_update_another_user()
+    {
+        // Arrange
+        var (member, other) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ManageUsers()));
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(other.Id),
+            new FakeUserForUpdateDto().Generate() with { Version = other.Version });
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, ReadUsersDenial);
+        var stored = await ExecuteDbContextAsync(db => db.Users.AsNoTracking().SingleAsync(u => u.Id == other.Id));
+        stored.FirstName.ShouldBe(other.FirstName);
+        stored.Version.ShouldBe(other.Version);
+    }
+
+    [Test]
+    public async Task member_with_only_manage_user_access_can_remove_their_own_permission()
+    {
+        // Arrange
+        var (member, _) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ManageUserAccess()));
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(
+            ApiRoutes.Users.RemovePermission(member.Id, Permission.Names.ManageUserAccess));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await PermissionsOfAsync(member.Id)).ShouldBeEmpty();
+    }
+
+    private static Task<List<string>> PermissionsOfAsync(string userId)
+        => ExecuteDbContextAsync(db => db.UserPermissions
+            .Where(p => p.UserId == userId)
+            .Select(p => p.Permission.Value)
+            .ToListAsync());
+
     private void SignInAs(User user)
         => FactoryClient.SignInAsAppUser(user.Identifier);
 
@@ -272,12 +370,13 @@ public class UserReadAccessTests : TestBase
     }
 
     private static async Task<(User First, User Second)> AddTwoUsersAsync(
-        string firstRole, string secondRole, Action<User>? changeFirst = null)
+        string firstRole, string secondRole, Action<User>? changeFirst = null, Action<User>? changeSecond = null)
     {
         TestGraph.Start(out _)
             .AddTenant(out var tenant)
             .AddUsers(out var users, u => u.Role = firstRole, u => u.Role = secondRole);
         changeFirst?.Invoke(users[0]);
+        changeSecond?.Invoke(users[1]);
         await InsertAsync(tenant);
         foreach (var user in users)
             await InsertAsync(user);

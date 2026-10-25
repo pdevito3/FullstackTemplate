@@ -91,7 +91,7 @@ The checks catch mistakes, not code that wants to skip them. The guard does not 
 
 To write a `[NotAudited]` table with a banned API, suppress RS0030 on the method with a justification. `BannedApiSuppressionTests` pins the files that suppress the ban, so add the file to its list. The DPoP replay cache is the example.
 
-The migration helpers `GrantPermissionToRole`, `GrantPermissionToHoldersOf`, and `DeletePermission` write `user_permissions` with SQL and no audit entry. The migration history is their record.
+The migration helpers `GrantPermissionToRole`, `GrantPermissionToHoldersOf`, and `DeletePermission` write the permission tables with SQL and no audit entry. `GrantPermissionToRole` writes `user_permissions`. `GrantPermissionToHoldersOf` and `DeletePermission` write `user_permissions` and `agent_permissions`. The migration history is their record.
 
 ## Read the audit log
 

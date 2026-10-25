@@ -24,6 +24,8 @@ public static class AddAgentPermission
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageAgents());
+            // The response carries the record of the agent, so it needs the read permission too (ADR 0009).
+            caller.Require(Permission.ReadAgents());
             var permission = Permission.Of(request.Permission);
             Activity.Current?.SetTag("app.permission.name", permission.Value);
 

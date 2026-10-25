@@ -24,6 +24,8 @@ public static class UpdateUserRole
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageUserAccess());
+            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
+            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
             var newRole = UserRole.Of(request.Role);
             Activity.Current?.SetTag("app.user.role", newRole.Value);
             caller.Require(newRole.GetDefaultPermissions());

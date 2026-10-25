@@ -17,7 +17,7 @@ public class AddAgentPermissionCommandTests : TestBase
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _).AddAgent(out var agent).BuildAsync();
-        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents(), Permission.ManageTenant());
+        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents(), Permission.ReadAgents(), Permission.ManageTenant());
 
         // Act
         var agentReturned = await testingServiceScope.SendAsync(
@@ -45,12 +45,12 @@ public class AddAgentPermissionCommandTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_agents_cannot_grant_a_permission_that_they_lack()
+    public async Task holder_of_only_manage_and_read_agents_cannot_grant_a_permission_that_they_lack()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _).AddAgent(out var agent).BuildAsync();
-        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents());
+        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ManageAgents(), Permission.ReadAgents());
 
         // Act
         var act = () => testingServiceScope.SendAsync(

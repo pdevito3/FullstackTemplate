@@ -54,6 +54,7 @@ export function Toaster() {
       {({ toast }) => (
         <Toast
           toast={toast}
+          data-slot="toast"
           style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' } as CSSProperties}
           className={cn(
             'bg-card text-card-foreground border border-border',

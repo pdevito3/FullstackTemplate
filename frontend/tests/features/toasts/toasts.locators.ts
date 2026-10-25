@@ -5,6 +5,9 @@ export type ToastButton = 'Success' | 'Error' | 'Info' | 'Warning'
 export const toastDemo = (page: Page) => ({
   heading: page.getByRole('heading', { name: 'Component Library' }),
   showToast: (name: ToastButton) => page.getByRole('button', { name, exact: true }),
+  openDialog: page.getByRole('button', { name: 'Open Dialog', exact: true }),
+  dialog: page.getByRole('dialog', { name: 'Dialog Title' }),
   region: page.getByRole('region', { name: /notification/ }),
   toasts: page.getByRole('alertdialog'),
+  toast: (message: string) => page.getByRole('alertdialog').filter({ hasText: message }),
 })

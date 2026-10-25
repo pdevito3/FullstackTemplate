@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { takesUpSpace } from '@tests/support/screen'
 import { toastDemo, type ToastButton } from './toasts.locators'
 
 export function toastDemoPage(page: Page) {
@@ -17,9 +18,26 @@ export function toastDemoPage(page: Page) {
       await expect(at.toasts).toHaveCount(buttons.length)
     },
 
+    async openBottomSheet() {
+      await at.openDialog.press('Enter')
+      await expect(at.dialog).toBeVisible()
+    },
+
     async moveFocusToToasts() {
       await page.keyboard.press('F6')
       await expect(at.region).toBeFocused()
+    },
+
+    async pressTab(times: number) {
+      for (let i = 0; i < times; i++) await page.keyboard.press('Tab')
+    },
+
+    async shownToasts() {
+      const shown: string[] = []
+      for (const toast of await at.toasts.all()) {
+        if (await takesUpSpace(toast)) shown.push((await toast.innerText()).split('\n')[0])
+      }
+      return shown
     },
 
     async hasFocusRing(element: Locator) {

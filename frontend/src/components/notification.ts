@@ -27,9 +27,12 @@ export const toastQueue = new ToastQueue<ToastMessage>({
       'startViewTransition' in document &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
-      document.startViewTransition(() => {
+      const transition = document.startViewTransition(() => {
         flushSync(fn)
       })
+      // A second update before this transition ends skips it, and `ready` rejects. The update still runs, so only the
+      // animation is lost. `updateCallbackDone` and `finished` reject only when the update throws, so they stay unhandled.
+      transition.ready.catch(() => {})
     } else {
       fn()
     }

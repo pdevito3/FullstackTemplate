@@ -205,7 +205,7 @@ function ComponentsPage() {
                   <Button variant="link">Link</Button>
                 </div>
                 <Separator className="my-4" />
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <Button size="sm">Small</Button>
                   <Button size="default">Default</Button>
                   <Button size="lg">Large</Button>

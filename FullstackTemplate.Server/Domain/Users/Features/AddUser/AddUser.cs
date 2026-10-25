@@ -35,10 +35,10 @@ public static class AddUser
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
             Activity.Current?.SetTag("app.tenant_id", tenantId);
 
-            // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.
+            // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
             var identifierInUse = await dbContext.Users
                 .TagWithOperationCallSite("users.add.identifier_in_use")
-                .IgnoreQueryFilters()
+                .IgnoreQueryFilters([QueryFilterNames.Tenant])
                 .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
             if (identifierInUse)
                 throw new ConflictException("identifier", "A user with this identifier already exists.");

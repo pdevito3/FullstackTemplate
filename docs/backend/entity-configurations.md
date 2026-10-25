@@ -41,7 +41,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(e => e.Identifier)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("is_deleted = false");
     }
 }
 ```
@@ -57,6 +58,8 @@ builder.ComplexProperty(e => e.Email, email =>
         .IsRequired();
 });
 ```
+
+EF Core 10 cannot put an index on a column of a complex property. To index one, see [Index a column of a value object](#index-a-column-of-a-value-object).
 
 ## Private collections
 
@@ -82,15 +85,47 @@ When you delete the parent, load the children and remove each child in the handl
 
 ## Unique indexes
 
-The context does soft deletes, so a deleted row still holds its unique value. A unique index on a column of a soft-deleted entity also blocks the values of deleted rows. If a deleted row must free its value, add a filter to the index:
+The context does soft deletes, so a deleted row still holds its unique value. A unique index on a column of a soft-deleted entity also blocks the values of deleted rows. If a deleted row must free its value, add a filter to the index. `UserConfiguration` does this for `Identifier`, so that a deleted user can sign up again:
 
 ```csharp
-builder.HasIndex(e => e.Email)
+builder.HasIndex(e => e.Identifier)
     .IsUnique()
     .HasFilter("is_deleted = false");
 ```
 
-Give each unique index its request field in `ConstraintConflictException.ConstraintFields`, so that a duplicate gives a 409 on that field.
+The duplicate check of the handler must count the same rows as the index. For a filtered index, keep the soft delete filter in the check. See [backend.md](../backend.md#error-responses).
+
+Give each unique index its request field in `ConstraintConflictException.ConstraintFields`, so that a duplicate gives a 409 on that field. `ConstraintFieldsTests` reads the indexes of the database, so it fails on a unique index with no entry. This includes an index that only a migration adds.
+
+### Index a column of a value object
+
+EF Core 10 cannot put an index on a property of a complex type. `HasIndex(e => e.Email)`, `HasIndex(e => e.Email.Value)`, and `HasIndex("Email.Value")` each fail when EF builds the model, so the app cannot start. [EF Core 11](https://learn.microsoft.com/ef/core/modeling/indexes#indexes-on-complex-type-properties) adds this support. Until then, add the index in a migration. For example, to make the email of each live user unique:
+
+1. Add an empty migration with `dotnet ef migrations add` (see [backend.md](../backend.md#migrations)). The configuration does not change, so EF writes an empty `Up` and `Down`.
+2. Create the index in `Up`, and drop it in `Down`. Use the column name that the `ComplexProperty` mapping gives with `HasColumnName`.
+
+   ```csharp
+   protected override void Up(MigrationBuilder migrationBuilder)
+   {
+       migrationBuilder.CreateIndex(
+           name: "ix_users_email",
+           table: "users",
+           column: "email",
+           unique: true,
+           filter: "is_deleted = false");
+   }
+
+   protected override void Down(MigrationBuilder migrationBuilder)
+   {
+       migrationBuilder.DropIndex(
+           name: "ix_users_email",
+           table: "users");
+   }
+   ```
+
+3. Add the index to `ConstraintConflictException.ConstraintFields`, for example `["ix_users_email"] = "email"`.
+
+The model and the model snapshot do not have the index. Thus a later migration does not drop it, and `dotnet ef migrations has-pending-model-changes` finds no change. A save that the index stops gives a 409 on the field, the same as for an index in the model.
 
 ## Exclusion constraints
 

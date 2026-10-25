@@ -39,6 +39,29 @@ public class TenantIdProviderTests : TestBase
     }
 
     [Test]
+    public async Task finds_the_live_user_when_a_deleted_user_has_the_identifier()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        var provider = testingServiceScope.GetService<ITenantIdProvider>();
+        var identifier = $"signed-up-again-{Guid.NewGuid()}";
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var deleted, u => u.Identifier = identifier)
+            .BuildAsync();
+        await testingServiceScope.SendAsync(new DeleteUser.Command(deleted.Id));
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var live, u => u.Identifier = identifier)
+            .BuildAsync();
+
+        // Act
+        var found = await provider.FindLiveUserAsync(identifier);
+
+        // Assert
+        found.ShouldBe(new LiveUser(live.Id, tenant.Id));
+    }
+
+    [Test]
     public async Task missing_user_expires_after_30_seconds_with_no_fail_safe()
     {
         // Arrange

@@ -68,7 +68,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         // Indexes
         builder.HasIndex(e => e.Identifier)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("is_deleted = false");
 
         builder.HasIndex(e => e.Username);
 

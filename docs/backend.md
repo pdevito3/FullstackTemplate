@@ -137,7 +137,7 @@ In a list handler, call `ApplyFilters` and `ApplySortOrder` from `Resources/Quer
 
 Do not catch these exceptions in an endpoint. Throw them from the entity or the handler.
 
-Before you add a row with a unique value, check for the value in the handler and throw a `ConflictException` on the property. The check gives a clear message. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 409. Give each new unique index and each new exclusion constraint its request field in `ConstraintConflictException.ConstraintFields`. A test fails if one has no entry.
+Before you add a row with a unique value, check for the value in the handler and throw a `ConflictException` on the property. The check gives a clear message. The check must count the same rows as the unique index. If the index has a filter, such as `is_deleted = false`, keep the same filter in the check. Two requests can pass the check at the same time, so the unique index stops the second save, and the mapping above gives 409. Give each new unique index and each new exclusion constraint its request field in `ConstraintConflictException.ConstraintFields`. A test fails if one has no entry. EF Core 10 cannot index a column of a value object, so add such an index in a migration (see [entity-configurations.md](backend/entity-configurations.md#index-a-column-of-a-value-object)).
 
 ## Permissions
 

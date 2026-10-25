@@ -33,10 +33,10 @@ public static class InitiateUserAndTenant
         {
             await GuardCallerCanInitiateForAsync(request.Dto.Identifier, cancellationToken);
 
-            // Ignore all filters: the unique index on Identifier also covers other tenants and deleted users.
+            // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
             var identifierInUse = await dbContext.Users
                 .TagWithOperationCallSite("users.initiate.identifier_in_use")
-                .IgnoreQueryFilters()
+                .IgnoreQueryFilters([QueryFilterNames.Tenant])
                 .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
             if (identifierInUse)
                 throw new ConflictException("identifier", "A user with this identifier already exists.");

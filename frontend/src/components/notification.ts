@@ -27,9 +27,13 @@ export const toastQueue = new ToastQueue<ToastMessage>({
       'startViewTransition' in document &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
-      document.startViewTransition(() => {
+      const transition = document.startViewTransition(() => {
         flushSync(fn)
       })
+      // The browser skips the animation and rejects `ready` when a later transition starts or the page is hidden.
+      // The update still runs.
+      // `finished` and `updateCallbackDone` reject only when the update throws, so leave them unhandled.
+      transition.ready.catch(() => {})
     } else {
       fn()
     }

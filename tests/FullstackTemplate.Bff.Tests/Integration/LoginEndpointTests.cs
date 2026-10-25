@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using FullstackTemplate.Bff.Management;
 using Shouldly;
 
 public class LoginEndpointTests
@@ -69,6 +70,7 @@ public class LoginEndpointTests
     [Arguments("%2F%5Cevil.example")]
     [Arguments("evil")]
     [Arguments("%40evil.example")]
+    [Arguments("%2Fa%0D%0ALocation%3A%20https%3A%2F%2Fevil.example")]
     public async Task a_return_url_that_is_not_local_gets_400_problem(string returnUrl)
     {
         using var browser = BffApp.Instance.CreateBrowser();
@@ -125,8 +127,10 @@ public class LoginEndpointTests
     {
         using var browser = BffApp.Instance.CreateBrowser();
 
-        // 401 characters, and 2401 after the encoding of each é as %C3%A9
-        var callback = await BffApp.SignInAsync(browser, $"?returnUrl=/{string.Concat(Enumerable.Repeat("%C3%A9", 400))}", "test_sub=user-return-long-encoded");
+        var encodedE = "%C3%A9";
+        var count = ReturnUrl.MaxLength / encodedE.Length + 1;
+
+        var callback = await BffApp.SignInAsync(browser, $"?returnUrl=/{string.Concat(Enumerable.Repeat(encodedE, count))}", "test_sub=user-return-long-encoded");
 
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/");

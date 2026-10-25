@@ -98,7 +98,7 @@ These paths go away on purpose ([Duende BFF features to drop](https://github.com
 
 ### `/bff/login`
 
-- Query `returnUrl` (optional). It must pass the [local URL rule](#the-local-url-rule). If it fails, the response is 400 `application/problem+json` with the title "Invalid return url". The default is `PathBase`, or `/`.
+- Query `returnUrl` (optional). It must pass the [local URL rule](#the-local-url-rule). If it fails, the response is 400 `application/problem+json` with the title "Invalid return url". The default is `PathBase`, or `/`. If the encoded value has more than 2048 characters, the BFF uses the default.
 - Query `prompt` (optional). It must be in `prompt_values_supported` of discovery. If it is not, the response is 400 `application/problem+json` with the title "Invalid prompt value".
 - If the handler has no discovery document, the response is 404.
 - Otherwise the response is a 302 to the identity provider.
@@ -107,8 +107,8 @@ These paths go away on purpose ([Duende BFF features to drop](https://github.com
 ### `/bff/logout`
 
 - Query `sid`. If the BFF session has a `sid` claim, the query must have the same value. If not, the response is 400 `application/problem+json` with the title "Invalid Session ID". An anonymous user, or a BFF session with no `sid` claim, needs no `sid`.
-- Query `returnUrl` (optional). It must pass the local URL rule, or the response is 400 problem. The default is `/`.
-- The response is a 302 to the `end_session_endpoint`, or to the local `returnUrl` if the identity provider has no `end_session_endpoint`.
+- Query `returnUrl` (optional). It must pass the local URL rule, or the response is 400 problem. The default is `PathBase`, or `/`. If the encoded value has more than 2048 characters, the BFF uses the default.
+- The response is a 302 to the `end_session_endpoint`, or to the local `returnUrl` if no user is signed in or the identity provider has no `end_session_endpoint`.
 
 ### `/bff/user`
 
@@ -296,7 +296,9 @@ Decisions: [Session storage](https://github.com/pdevito3/FullstackTemplate/issue
 
 #### The local URL rule
 
-A `returnUrl` is local if it is `/`, or if it starts with `/` and its second character is not `/` or `\`. It must have no ASCII control character. Absolute URLs and `//host` fail (parity). `/bff/login` and `/bff/logout` use this rule.
+A `returnUrl` is local if it is `/`, or if it starts with `/` and its second character is not `/` or `\`. It must have no control character and no lone surrogate. Absolute URLs and `//host` fail (parity). `/bff/login` and `/bff/logout` use this rule.
+
+A `Location` header can hold only ASCII. Thus the BFF percent-encodes each non-ASCII character of a local `returnUrl` as UTF-8 (RFC 3987, section 3.1), for example `/café` as `/caf%C3%A9`. The `returnUrl` travels in the `state` of the authorize and end-session URLs, so the BFF uses the default for an encoded `returnUrl` of more than 2048 characters.
 
 #### Logout
 
@@ -307,7 +309,7 @@ A `returnUrl` is local if it is `/`, or if it starts with `/` and its second cha
 3. Delete the BFF session row. Add to `bff.sessions.ended` with `reason=logout`.
 4. If revocation is active, revoke the refresh token of the deleted row through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). The delete returns the row as it was at the delete. Thus, if a refresh in another request wrote new tokens after step 1, the BFF revokes the new refresh token. If no row was deleted, another end of the BFF session came first, and the BFF revokes nothing. If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
 5. Sign out the cookie scheme.
-6. If `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`.
+6. If a user was signed in and `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`.
 7. If not, send a 302 to `returnUrl`.
 
 #### Back-channel logout

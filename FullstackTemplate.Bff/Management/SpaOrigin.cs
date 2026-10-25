@@ -36,14 +36,7 @@ public sealed class SpaOrigin
     }
 
     /// <summary>
-    /// The URL to send the browser to for <paramref name="localUrl"/>. A value that fails <see cref="LocalUrl.IsLocal"/>
-    /// throws, because in front of the origin a value such as <c>@evil.example</c> changes the host.
+    /// The URL to send the browser to for <paramref name="localUrl"/>.
     /// </summary>
-    public string Resolve(string localUrl)
-    {
-        if (!LocalUrl.IsLocal(localUrl))
-            throw new ArgumentException($"'{localUrl}' is not a local URL.", nameof(localUrl));
-
-        return DevServer is null ? localUrl : DevServer + localUrl;
-    }
+    public string Resolve(LocalUrl localUrl) => DevServer is null ? localUrl.Value : DevServer + localUrl.Value;
 }

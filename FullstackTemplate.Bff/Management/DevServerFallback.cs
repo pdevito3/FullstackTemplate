@@ -38,7 +38,7 @@ public static class DevServerFallback
     /// <summary>
     /// The dev server URL for a request that no endpoint matches, or null when it keeps its 404. Vite proxies
     /// <paramref name="bffPaths"/> to the BFF, so a redirect of an unknown path that starts with one of them would
-    /// loop. The health probes also stay on the BFF. A path that fails <see cref="LocalUrl.IsLocal"/>, such as
+    /// loop. The health probes also stay on the BFF. A path that is not a <see cref="LocalUrl"/>, such as
     /// <c>//host</c>, also keeps its 404.
     /// </summary>
     private static string? Target(SpaOrigin spaOrigin, string method, PathString path, QueryString query, IEnumerable<PathString> bffPaths)
@@ -53,7 +53,6 @@ public static class DevServerFallback
             return null;
         }
 
-        var localUrl = path.ToUriComponent() + query.ToUriComponent();
-        return LocalUrl.IsLocal(localUrl) ? spaOrigin.Resolve(localUrl) : null;
+        return LocalUrl.TryParse(path.ToUriComponent() + query.ToUriComponent(), out var localUrl) ? spaOrigin.Resolve(localUrl) : null;
     }
 }

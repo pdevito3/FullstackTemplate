@@ -101,11 +101,13 @@ public class LogoutEndpointTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
+        response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
     }
 
     [Test]
     [Arguments("https%3A%2F%2Fevil.example")]
     [Arguments("%2F%2Fevil.example")]
+    [Arguments("%2Fa%0D%0ALocation%3A%20https%3A%2F%2Fevil.example")]
     public async Task a_return_url_that_is_not_local_gets_400_problem(string returnUrl)
     {
         using var browser = BffApp.Instance.CreateBrowser();

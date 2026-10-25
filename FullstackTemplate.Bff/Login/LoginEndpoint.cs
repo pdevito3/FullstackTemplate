@@ -15,7 +15,6 @@ public static class LoginEndpoint
 
     public static async Task HandleAsync(HttpContext context, IOptionsMonitor<OpenIdConnectOptions> oidcOptions, SpaOrigin spaOrigin)
     {
-        var returnUrl = context.Request.Query["returnUrl"].FirstOrDefault();
         var prompt = context.Request.Query["prompt"].FirstOrDefault();
 
         var configuration = await OidcDiscovery.GetConfigurationAsync(oidcOptions, context.RequestAborted);
@@ -31,14 +30,11 @@ public static class LoginEndpoint
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(returnUrl) && !LocalUrl.IsLocal(returnUrl))
+        if (ReturnUrl.Read(context.Request) is not { } returnUrl)
         {
-            await ManagementProblem.WriteAsync(context, "Invalid return url", "returnUrl", $"ReturnUrl '{returnUrl}' was invalid");
+            await ReturnUrl.WriteInvalidAsync(context);
             return;
         }
-
-        if (string.IsNullOrWhiteSpace(returnUrl))
-            returnUrl = context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
 
         var properties = new AuthenticationProperties { RedirectUri = spaOrigin.Resolve(returnUrl) };
         if (prompt is not null)

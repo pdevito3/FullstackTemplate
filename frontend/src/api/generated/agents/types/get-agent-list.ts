@@ -4,6 +4,7 @@
 */
 
 import type { AgentDto } from '../../models/types/agent-dto'
+import type { ProblemDetails } from '../../models/types/problem-details'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetAgentListQuery = {
@@ -33,6 +34,8 @@ export type GetAgentListStatus400 = ValidationProblemDetails;
 
 export type GetAgentListStatus401 = unknown;
 
+export type GetAgentListStatus403 = ProblemDetails;
+
 export type GetAgentListOptions = {
     body?: never;
     path?: never;
@@ -44,6 +47,7 @@ export type GetAgentListResponses = {
     "200": GetAgentListStatus200;
     "400": GetAgentListStatus400;
     "401": GetAgentListStatus401;
+    "403": GetAgentListStatus403;
 };
 
 /**

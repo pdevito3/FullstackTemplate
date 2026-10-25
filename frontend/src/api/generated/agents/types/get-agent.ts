@@ -14,6 +14,8 @@ export type GetAgentStatus200 = AgentDto;
 
 export type GetAgentStatus401 = unknown;
 
+export type GetAgentStatus403 = ProblemDetails;
+
 export type GetAgentStatus404 = ProblemDetails;
 
 export type GetAgentOptions = {
@@ -26,6 +28,7 @@ export type GetAgentOptions = {
 export type GetAgentResponses = {
     "200": GetAgentStatus200;
     "401": GetAgentStatus401;
+    "403": GetAgentStatus403;
     "404": GetAgentStatus404;
 };
 

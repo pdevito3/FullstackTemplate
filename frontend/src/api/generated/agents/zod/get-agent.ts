@@ -13,8 +13,10 @@ export const getAgentStatus200Schema = agentDtoSchema
 
 export const getAgentStatus401Schema = z.unknown()
 
+export const getAgentStatus403Schema = problemDetailsSchema
+
 export const getAgentStatus404Schema = problemDetailsSchema
 
 export const getAgentResponseSchema = getAgentStatus200Schema
 
-export const getAgentErrorSchema = z.union([getAgentStatus401Schema, getAgentStatus404Schema])
+export const getAgentErrorSchema = z.union([getAgentStatus401Schema, getAgentStatus403Schema, getAgentStatus404Schema])

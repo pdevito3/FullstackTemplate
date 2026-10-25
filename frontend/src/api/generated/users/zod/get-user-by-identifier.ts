@@ -13,8 +13,10 @@ export const getUserByIdentifierStatus200Schema = userDtoSchema
 
 export const getUserByIdentifierStatus401Schema = z.unknown()
 
+export const getUserByIdentifierStatus403Schema = problemDetailsSchema
+
 export const getUserByIdentifierStatus404Schema = problemDetailsSchema
 
 export const getUserByIdentifierResponseSchema = getUserByIdentifierStatus200Schema
 
-export const getUserByIdentifierErrorSchema = z.union([getUserByIdentifierStatus401Schema, getUserByIdentifierStatus404Schema])
+export const getUserByIdentifierErrorSchema = z.union([getUserByIdentifierStatus401Schema, getUserByIdentifierStatus403Schema, getUserByIdentifierStatus404Schema])

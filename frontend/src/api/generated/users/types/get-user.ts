@@ -14,6 +14,8 @@ export type GetUserStatus200 = UserDto;
 
 export type GetUserStatus401 = unknown;
 
+export type GetUserStatus403 = ProblemDetails;
+
 export type GetUserStatus404 = ProblemDetails;
 
 export type GetUserOptions = {
@@ -26,6 +28,7 @@ export type GetUserOptions = {
 export type GetUserResponses = {
     "200": GetUserStatus200;
     "401": GetUserStatus401;
+    "403": GetUserStatus403;
     "404": GetUserStatus404;
 };
 

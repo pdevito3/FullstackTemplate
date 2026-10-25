@@ -4,6 +4,7 @@
 */
 
 import * as z from 'zod'
+import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { userDtoSchema } from '../../models/zod/user-dto'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
@@ -21,6 +22,8 @@ export const getUserListStatus400Schema = validationProblemDetailsSchema
 
 export const getUserListStatus401Schema = z.unknown()
 
+export const getUserListStatus403Schema = problemDetailsSchema
+
 export const getUserListResponseSchema = getUserListStatus200Schema
 
-export const getUserListErrorSchema = z.union([getUserListStatus400Schema, getUserListStatus401Schema])
+export const getUserListErrorSchema = z.union([getUserListStatus400Schema, getUserListStatus401Schema, getUserListStatus403Schema])

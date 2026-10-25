@@ -5,6 +5,7 @@
 
 import * as z from 'zod'
 import { agentDtoSchema } from '../../models/zod/agent-dto'
+import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
 export const getAgentListQueryFiltersSchema = z.string().optional()
@@ -21,6 +22,8 @@ export const getAgentListStatus400Schema = validationProblemDetailsSchema
 
 export const getAgentListStatus401Schema = z.unknown()
 
+export const getAgentListStatus403Schema = problemDetailsSchema
+
 export const getAgentListResponseSchema = getAgentListStatus200Schema
 
-export const getAgentListErrorSchema = z.union([getAgentListStatus400Schema, getAgentListStatus401Schema])
+export const getAgentListErrorSchema = z.union([getAgentListStatus400Schema, getAgentListStatus401Schema, getAgentListStatus403Schema])

@@ -159,7 +159,7 @@ function ComponentsPage() {
 
   return (
     <>
-      <div className="w-full bg-linear-to-br from-bg-gradient-start to-bg-gradient-end text-text-primary">
+      <div className="w-full">
         <div className="max-w-[1200px] mx-auto px-8 py-10 max-md:px-4">
           {/* Header */}
           <div className="mb-10">

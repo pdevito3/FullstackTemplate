@@ -8,19 +8,24 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { idpNames, loadIdp } from './idps.ts'
+import { checkStack } from './stack-description.ts'
 import { refreshesOnEachCall } from './stack-features.ts'
 
-interface DescribedResource {
-  displayName: string
-  urls?: { name: string; url: string }[]
-}
+const appHost = '../FullstackTemplate.AppHost'
 
-const described = JSON.parse(
-  execFileSync('dotnet', ['aspire', 'describe', '--format', 'Json', '--apphost', '../FullstackTemplate.AppHost'], {
+// Aspire writes its messages to stderr, so the user sees them above the message of the script
+const stack = checkStack({
+  run: spawnSync('dotnet', ['aspire', 'describe', '--format', 'Json', '--apphost', appHost], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   }),
-) as { resources: DescribedResource[] }
+  appHost,
+})
+if (stack.kind === 'not-ready') {
+  console.error(stack.message)
+  process.exit(1)
+}
+const described = { resources: stack.resources }
 
 function environmentOf(resource: string): Record<string, string> {
   return (described.resources.find((r) => r.displayName === resource) as { environment?: Record<string, string> } | undefined)
@@ -39,7 +44,7 @@ function bffAuthority(): string {
 // `dotnet aspire describe` hides the value of a secret parameter, so read it from the user secrets of the AppHost,
 // where the AppHost keeps each generated value. The value is the last line of the output.
 function appHostSecret(key: string): string {
-  const output = execFileSync('dotnet', ['aspire', 'secret', 'get', key, '--non-interactive', '--nologo', '--apphost', '../FullstackTemplate.AppHost'], {
+  const output = execFileSync('dotnet', ['aspire', 'secret', 'get', key, '--non-interactive', '--nologo', '--apphost', appHost], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   })

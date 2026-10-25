@@ -21,6 +21,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   toastQueue.clear()
 })
@@ -30,6 +31,18 @@ afterEach(() => {
 async function animationsFinished(): Promise<void> {
   await Promise.all(startViewTransition.mock.results.map(({ value }) => value.finished))
   await Promise.all(document.getAnimations().map((animation) => animation.finished))
+}
+
+// A toast pauses or restarts its timer in a ResizeObserver callback. The browser runs all the callbacks of one rendering
+// step in one task, so the test goes on after all of them.
+async function resizeObserverCallbacks(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const observer = new ResizeObserver(() => {
+      observer.disconnect()
+      resolve()
+    })
+    observer.observe(document.body)
+  })
 }
 
 function boxOf(text: string): DOMRect {
@@ -132,3 +145,32 @@ test.each(Object.entries(bottomPanels))(
     expect(boxOf('Could not save the changes').bottom).toBe(window.innerHeight - 16)
   },
 )
+
+test('on a phone on its side, a toast that came while the pointer was on the toasts keeps waiting when a newer toast hides it', async () => {
+  await page.viewport(667, 375)
+  await render(
+    <>
+      <OpenPanel panel={bottomPanels['bottom sheet']} />
+      <Toaster />
+    </>,
+  )
+  await expect.element(page.getByRole('dialog', { name: 'Edit filter' })).toBeVisible()
+  // Only the test moves the clock of the toast timers, so a slow browser does not use up their time.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  Notification.info('Upload started', { duration: 20_000 })
+  await expect.element(page.getByText('Upload started')).toBeVisible()
+  await animationsFinished()
+
+  await userEvent.hover(page.getByText('Upload started'))
+  Notification.error('Could not save the changes', { duration: 10_000 })
+  await expect.element(page.getByText('Could not save the changes')).toBeVisible()
+  await userEvent.hover(page.getByRole('heading', { name: 'Edit filter' }))
+  Notification.info('Upload finished', { duration: 20_000 })
+  await expect.element(page.getByText('Upload finished')).toBeVisible()
+  await animationsFinished()
+  await resizeObserverCallbacks()
+  vi.advanceTimersByTime(10_500)
+  await animationsFinished()
+
+  expect(page.getByRole('alertdialog').filter({ hasText: 'Could not save the changes' }).query()).not.toBeNull()
+})

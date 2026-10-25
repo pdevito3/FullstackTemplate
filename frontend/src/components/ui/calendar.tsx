@@ -166,23 +166,24 @@ const dateRangePresets = [
   { label: "Last Year", getRange: () => getYearRange(-1) },
 ] as const
 
-/**
- * The width that the calendar has. A wide calendar shows the quick selects in a column to the left of the day grid.
- * A narrow calendar, such as on a phone, shows them as chips above the grid, and makes each button at least 32 px.
- * In both layouts the day grid fills the width of the calendar.
- */
 type CalendarLayout = "wide" | "narrow"
 
-const quickSelectsClassNames = {
+const layoutClassNames = {
   wide: {
-    panel: "mr-3 border-r pr-3",
+    body: "flex",
+    quickSelects: "mr-3 border-r pr-3",
     presets: "flex flex-col gap-1",
     preset: buttonVariants({ variant: "ghost", size: "sm", className: "h-7 justify-start text-xs font-normal" }),
+    header: "px-1",
+    navButton: "size-7",
   },
   narrow: {
-    panel: "mb-3 border-b pb-3",
+    body: "flex flex-col",
+    quickSelects: "mb-3 border-b pb-3",
     presets: "grid grid-cols-3 gap-1",
     preset: buttonVariants({ variant: "outline", size: "sm", className: "h-8 text-xs font-normal" }),
+    header: "",
+    navButton: "size-8",
   },
 } satisfies Record<CalendarLayout, Record<string, string>>
 
@@ -193,9 +194,9 @@ interface QuickSelectsPanelProps<P extends { label: string }> {
 }
 
 function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSelect }: QuickSelectsPanelProps<P>) {
-  const classNames = quickSelectsClassNames[layout]
+  const classNames = layoutClassNames[layout]
   return (
-    <div className={cn("flex flex-col gap-1", classNames.panel)}>
+    <div className={cn("flex flex-col gap-1", classNames.quickSelects)}>
       <div className="mb-1 text-xs font-medium text-muted-foreground">Quick Select</div>
       <div className={classNames.presets}>
         {presets.map((preset) => (
@@ -209,7 +210,7 @@ function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSel
 }
 
 // The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
-// click picks an item. Each picker is as wide as the day grid (at least 7 cells of w-9), so that the popover keeps its size.
+// click picks an item.
 const pickerClassName = "grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none"
 
 function pickerItemClassName({ isSelected }: { isSelected: boolean }) {
@@ -421,11 +422,10 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
   }
 
   const isZoomed = zoomContext && zoomContext.view !== "days"
-  const navButtonSize = layout === "narrow" ? "size-8" : "size-7"
+  const classNames = layoutClassNames[layout]
 
   return (
-    // A narrow calendar puts the arrows on the edges of the column, in line with the quick selects and the day grid.
-    <header className={cn("flex w-full items-center gap-1 pb-4", layout === "wide" && "px-1")} {...props}>
+    <header className={cn("flex w-full items-center gap-1 pb-4", classNames.header)} {...props}>
       {isZoomed ? (
         <AriaButton
           slot={null}
@@ -433,7 +433,7 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
           onPress={handlePrevious}
           className={cn(
             buttonVariants({ variant: "outline" }),
-            navButtonSize,
+            classNames.navButton,
             "bg-transparent p-0 opacity-50 hover:opacity-100"
           )}
         >
@@ -448,7 +448,7 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
           slot="previous"
           className={cn(
             buttonVariants({ variant: "outline" }),
-            navButtonSize,
+            classNames.navButton,
             "bg-transparent p-0 opacity-50",
             "data-[hovered]:opacity-100"
           )}
@@ -488,7 +488,7 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
           onPress={handleNext}
           className={cn(
             buttonVariants({ variant: "outline" }),
-            navButtonSize,
+            classNames.navButton,
             "bg-transparent p-0 opacity-50 hover:opacity-100"
           )}
         >
@@ -503,7 +503,7 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
           slot="next"
           className={cn(
             buttonVariants({ variant: "outline" }),
-            navButtonSize,
+            classNames.navButton,
             "bg-transparent p-0 opacity-50",
             "data-[hovered]:opacity-100"
           )}
@@ -604,7 +604,6 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
       className={composeRenderProps(className, (className, renderProps) =>
         cn(
           buttonVariants({ variant: "ghost" }),
-          // A cell fills its column, so that a range in a grid wider than 7 cells of w-9 shows as one band.
           "relative flex h-9 w-full min-w-9 items-center justify-center p-0 text-sm font-normal",
           /* Disabled */
           renderProps.isDisabled && "text-muted-foreground opacity-50",
@@ -717,7 +716,7 @@ function JollyCalendar<T extends AriaDateValue>({
           <DateInput className="h-9" />
         </DateField>
       )}
-      <div className={cn("flex", layout === "narrow" && "flex-col")}>
+      <div className={layoutClassNames[layout].body}>
         {showQuickSelects && (
           <QuickSelectsPanel
             presets={singleDatePresets}
@@ -855,7 +854,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           </DateField>
         </div>
       )}
-      <div className={cn("flex", layout === "narrow" && "flex-col")}>
+      <div className={layoutClassNames[layout].body}>
         {showQuickSelects && (
           <QuickSelectsPanel
             presets={dateRangePresets}

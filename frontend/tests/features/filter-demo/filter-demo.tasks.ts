@@ -55,7 +55,6 @@ export function filterDemoPage(page: Page) {
       })
     },
 
-    /** How far the user can scroll the control, or the sheet around it, sideways. */
     async sidewaysScrollOf(propertyLabel: string) {
       return at.control(propertyLabel).evaluate((control) => {
         let widest = 0
@@ -68,7 +67,6 @@ export function filterDemoPage(page: Page) {
       })
     },
 
-    /** The left and right edges of an element on the screen. */
     async edgesOf(element: Locator) {
       const box = await element.boundingBox()
       if (!box) throw new Error('The element is not on the page.')

@@ -56,7 +56,6 @@ export function DateFilter({
   const initialDateValue = initialFilter?.value as DateValue | undefined
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
-  // A phone shows the control in a sheet, which has no room for the quick selects beside the calendar.
   const isMobile = useIsMobile()
 
   // Convert initial values to CalendarDate
@@ -156,7 +155,6 @@ export function DateFilter({
   const isValid = mode === 'between' ? dateRange?.start : date
 
   return (
-    // On a wide sheet, a column at most 28rem wide keeps the day cells from stretching.
     <div className={cn('flex flex-col gap-3 p-3', isMobile && 'mx-auto w-full max-w-md')}>
       {/* Mode selector */}
       <div className="flex gap-1 flex-wrap">

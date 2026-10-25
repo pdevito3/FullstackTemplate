@@ -3,6 +3,7 @@ import { takesUpSpace } from '@tests/support/screen'
 import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
+const dayInASixWeekMonth = new Date('2026-08-15T12:00:00Z')
 
 test.describe('the Add Filter menu on a phone', () => {
   test.use({ viewport: phone })
@@ -56,7 +57,7 @@ for (const viewport of [
     ]) {
       test(`fits the ${mode} calendar in the column of the control`, async ({ page }) => {
         const demo = filterDemoPage(page)
-        await demo.open()
+        await demo.openOn(dayInASixWeekMonth)
 
         await demo.chooseProperty('Created Date')
         if (mode === 'Between') await demo.chooseBetween('Created Date')

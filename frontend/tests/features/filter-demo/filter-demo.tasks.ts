@@ -12,6 +12,12 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    async openOn(today: Date) {
+      await page.clock.setFixedTime(today)
+      await page.goto('/filter-demo')
+      await expect(at.heading).toBeVisible()
+    },
+
     async chooseProperty(propertyLabel: string) {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()

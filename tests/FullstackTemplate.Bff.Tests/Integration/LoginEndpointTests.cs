@@ -93,6 +93,58 @@ public class LoginEndpointTests
     }
 
     [Test]
+    [Arguments("%2Fcaf%C3%A9", "/caf%C3%A9")]
+    [Arguments("%2Fusers%2FJos%C3%A9%3Fcity%3D%E6%9D%B1%E4%BA%AC%23%C3%A9", "/users/Jos%C3%A9?city=%E6%9D%B1%E4%BA%AC#%C3%A9")]
+    [Arguments("%2F%F0%9F%98%80", "/%F0%9F%98%80")]
+    [Arguments("%2Fcaf%25C3%25A9", "/caf%C3%A9")]
+    public async Task a_non_ascii_return_url_comes_back_percent_encoded(string returnUrl, string expected)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var callback = await BffApp.SignInAsync(browser, $"?returnUrl={returnUrl}", "test_sub=user-return-non-ascii");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + expected);
+    }
+
+    [Test]
+    [Arguments(2049)]
+    [Arguments(8000)]
+    public async Task a_return_url_over_the_limit_falls_back_to_the_root(int length)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var callback = await BffApp.SignInAsync(browser, $"?returnUrl=/{new string('a', length - 1)}", "test_sub=user-return-long");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/");
+    }
+
+    [Test]
+    public async Task a_return_url_that_percent_encoding_takes_over_the_limit_falls_back_to_the_root()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        // 401 characters, and 2401 after the encoding of each é as %C3%A9
+        var callback = await BffApp.SignInAsync(browser, $"?returnUrl=/{string.Concat(Enumerable.Repeat("%C3%A9", 400))}", "test_sub=user-return-long-encoded");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/");
+    }
+
+    [Test]
+    public async Task a_return_url_at_the_limit_comes_back()
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+        var returnUrl = $"/{new string('a', 2047)}";
+
+        var callback = await BffApp.SignInAsync(browser, $"?returnUrl={returnUrl}", "test_sub=user-return-at-limit");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + returnUrl);
+    }
+
+    [Test]
     [Arguments("%2F%40evil.example", "/@evil.example")]
     [Arguments("%2F%252F%252Fevil.example", "/%2F%2Fevil.example")]
     [Arguments("%2Fweather%3Fnext%3D%2F%2Fevil.example", "/weather?next=//evil.example")]

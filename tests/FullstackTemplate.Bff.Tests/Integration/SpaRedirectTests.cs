@@ -33,6 +33,7 @@ public class SpaRedirectTests
     [Arguments("/assets/42")]
     [Arguments("/weather/forecast.json?city=x")]
     [Arguments("/%5Cevil.example/x")]
+    [Arguments("/caf%C3%A9?city=%E6%9D%B1%E4%BA%AC")]
     public async Task a_deep_link_redirects_to_the_same_path_and_query_on_the_spa_dev_server(string path)
     {
         using var browser = BffApp.Instance.CreateBrowser();

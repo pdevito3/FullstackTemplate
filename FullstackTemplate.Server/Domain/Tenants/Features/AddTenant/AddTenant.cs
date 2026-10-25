@@ -30,16 +30,17 @@ public static class AddTenant
                 throw new ForbiddenAccessException(
                     "Only a trusted tenant management client can add a tenant. A user starts their own tenant with POST /api/v1/users/initiate.");
 
+            var forCreation = request.Dto.ToTenantForCreation();
+            var tenant = Tenant.Create(forCreation);
+
             // Ignore all filters: the unique index on Name also covers deleted tenants.
             var nameInUse = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.add.name_in_use")
                 .IgnoreQueryFilters()
-                .AnyAsync(t => t.Name == request.Dto.Name, cancellationToken);
+                .AnyAsync(t => t.Name == tenant.Name, cancellationToken);
             if (nameInUse)
                 throw new ConflictException("name", "A tenant with this name already exists.");
 
-            var forCreation = request.Dto.ToTenantForCreation();
-            var tenant = Tenant.Create(forCreation);
             Activity.Current?.SetTag("app.tenant_id", tenant.Id);
 
             await dbContext.Tenants.AddAsync(tenant, cancellationToken);

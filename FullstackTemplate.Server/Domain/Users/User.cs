@@ -137,15 +137,23 @@ public class User : BaseEntity, ITenantable
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "firstName", "Please provide a first name.");
         Exceptions.ValidationException.ThrowWhenLongerThan(user.FirstName, FirstNameMaxLength, "firstName",
             $"A first name can have no more than {FirstNameMaxLength} characters.");
+        Exceptions.ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.FirstName, "firstName",
+            "A first name has a character that is not allowed.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.LastName, "lastName", "Please provide a last name.");
         Exceptions.ValidationException.ThrowWhenLongerThan(user.LastName, LastNameMaxLength, "lastName",
             $"A last name can have no more than {LastNameMaxLength} characters.");
+        Exceptions.ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.LastName, "lastName",
+            "A last name has a character that is not allowed.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Identifier, "identifier", "Please provide an identifier.");
         Exceptions.ValidationException.ThrowWhenLongerThan(user.Identifier, IdentifierMaxLength, "identifier",
             $"An identifier can have no more than {IdentifierMaxLength} characters.");
+        Exceptions.ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.Identifier, "identifier",
+            "An identifier has a character that is not allowed.");
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.Username, "username", "Please provide a username.");
         Exceptions.ValidationException.ThrowWhenLongerThan(user.Username, UsernameMaxLength, "username",
             $"A username can have no more than {UsernameMaxLength} characters.");
+        Exceptions.ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.Username, "username",
+            "A username has a character that is not allowed.");
         Exceptions.ValidationException.ThrowWhenNull(user.Role, "role", "Please provide a role.");
     }
 

@@ -20,6 +20,7 @@ No MediatR behavior runs FluentValidation validators. Do not add a `Validator` c
 
 - Put the rules for one entity in the entity. See [domain-entities.md](domain-entities.md).
 - Put a check that needs the database, such as a unique value, in the handler. Throw a `ConflictException` on the request field, which gives 409. See [backend.md](../backend.md#error-responses).
+- Create or change the entity before the check that needs the database, and query with the value of the entity. Then the entity refuses a value that Postgres cannot take, such as a text with U+0000, with a 422 before a query sends it. A query that gets such a value fails, and the API gives 500. When a check must run before the entity exists, such as the lookup of the tenant ID of the request, query only when `EntityId.IsValid` passes for the ID.
 
 ## Command
 

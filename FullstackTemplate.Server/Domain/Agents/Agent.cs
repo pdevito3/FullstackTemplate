@@ -112,9 +112,13 @@ public class Agent : BaseEntity, ITenantable
         ValidationException.ThrowWhenNullOrWhitespace(agent.Name, "name", "Please provide a name.");
         ValidationException.ThrowWhenLongerThan(agent.Name, NameMaxLength, "name",
             $"A name can have no more than {NameMaxLength} characters.");
+        ValidationException.ThrowWhenHasCharacterPostgresCannotStore(agent.Name, "name",
+            "A name has a character that is not allowed.");
         ValidationException.ThrowWhenNullOrWhitespace(agent.ClientId, "clientId", "Please provide a client ID.");
         ValidationException.ThrowWhenLongerThan(agent.ClientId, ClientIdMaxLength, "clientId",
             $"A client ID can have no more than {ClientIdMaxLength} characters.");
+        ValidationException.ThrowWhenHasCharacterPostgresCannotStore(agent.ClientId, "clientId",
+            "A client ID has a character that is not allowed.");
         ValidationException.Must(agent.ClientId == agent.ClientId.Trim(), "clientId",
             "A client ID cannot start or end with a space.");
     }

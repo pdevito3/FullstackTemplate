@@ -37,7 +37,7 @@ public static class UpdateTenant
             var nameInUse = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.update.name_in_use")
                 .IgnoreQueryFilters()
-                .AnyAsync(t => t.Id != tenant.Id && t.Name == request.Dto.Name, cancellationToken);
+                .AnyAsync(t => t.Id != tenant.Id && t.Name == tenant.Name, cancellationToken);
             if (nameInUse)
                 throw new ConflictException("name", "A tenant with this name already exists.");
 

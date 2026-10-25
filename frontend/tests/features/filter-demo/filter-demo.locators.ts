@@ -13,6 +13,8 @@ export const filterDemo = (page: Page) => {
     valueGroup: (propertyLabel: string) => control(propertyLabel).getByRole('group', { name: propertyLabel, exact: true }),
     controlLabel: (propertyLabel: string) => control(propertyLabel).getByText(propertyLabel, { exact: true }),
     button: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('button', { name, exact: true }),
+    fields: (propertyLabel: string) =>
+      control(propertyLabel).getByRole('button').or(control(propertyLabel).getByRole('textbox')),
     pressedButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { pressed: true }),
     dateField: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('group', { name, exact: true }),
     calendar: (propertyLabel: string) => control(propertyLabel).getByRole('grid'),

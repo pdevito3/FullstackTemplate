@@ -28,6 +28,27 @@ public class GetUserByIdentifierQueryTests : TestBase
     }
 
     [Test]
+    public async Task returns_the_live_user_when_a_deleted_user_has_the_identifier()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        var identifier = $"signed-up-again-{Guid.NewGuid()}";
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var deleted, u => u.Identifier = identifier)
+            .BuildAsync();
+        await testingServiceScope.SendAsync(new DeleteUser.Command(deleted.Id));
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var live, u => u.Identifier = identifier)
+            .BuildAsync();
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new GetUserByIdentifier.Query(identifier));
+
+        // Assert
+        userReturned.Id.ShouldBe(live.Id);
+    }
+
+    [Test]
     public async Task throws_not_found_when_identifier_not_found()
     {
         // Arrange

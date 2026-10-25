@@ -208,6 +208,25 @@ public class AddUserCommandTests : TestBase
         userReturned.Id.ShouldStartWith($"{User.IdPrefix}_");
     }
 
+    [Test]
+    public async Task can_add_a_user_with_the_identifier_of_a_deleted_user()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var deleted)
+            .BuildAsync();
+        await testingServiceScope.SendAsync(new DeleteUser.Command(deleted.Id));
+        var fakeUserDto = new FakeUserForCreationDto().RuleFor(x => x.Identifier, _ => deleted.Identifier).Generate();
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        userReturned.Id.ShouldNotBe(deleted.Id);
+        userReturned.Identifier.ShouldBe(deleted.Identifier);
+    }
+
     private static async Task ShouldHaveNoUserAsync(TestingServiceScope testingServiceScope, string identifier)
     {
         var userExists = await testingServiceScope.ExecuteDbContextAsync(db =>

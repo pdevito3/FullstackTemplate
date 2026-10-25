@@ -2,11 +2,13 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 
 using System.Net;
 using System.Net.Http.Json;
+using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using TestUtilities;
 
@@ -105,6 +107,55 @@ public class TenantLookupCacheTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    public async Task deleted_user_who_signs_up_again_resolves_to_the_new_user()
+    {
+        // Arrange
+        await StartGraph()
+            .AddTenant(out _)
+            .AddUsers(out var users, u => u.Role = "Admin", _ => { })
+            .BuildAsync();
+        var (admin, removed) = (users[0], users[1]);
+        SignInAs(removed);
+        (await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(removed.Identifier))).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+
+        SignInAs(admin);
+        (await FactoryClient.DeleteRequestAsync(ApiRoutes.Users.Delete(removed.Id))).StatusCode
+            .ShouldBe(HttpStatusCode.NoContent);
+
+        // Act
+        SignInAs(removed);
+        var dto = new FakeInitiateUserAndTenantDto()
+            .RuleFor(x => x.Identifier, _ => removed.Identifier)
+            .RuleFor(x => x.Role, _ => "Admin")
+            .Generate();
+        var initiated = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto);
+
+        // Assert
+        initiated.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var signedUp = (await initiated.Content.ReadFromJsonAsync<InitiateUserAndTenantResponseDto>()).ShouldNotBeNull();
+        signedUp.User.Id.ShouldNotBe(removed.Id);
+
+        var own = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(removed.Identifier));
+        own.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var ownUser = (await own.Content.ReadFromJsonAsync<UserDto>()).ShouldNotBeNull();
+        ownUser.Id.ShouldBe(signedUp.User.Id);
+
+        var update = new UserForUpdateDto
+        {
+            FirstName = "Again", LastName = ownUser.LastName, Email = ownUser.Email, Username = ownUser.Username,
+            Version = ownUser.Version,
+        };
+        (await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.Put(ownUser.Id), update)).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+        var actors = await ExecuteDbContextAsync(db => db.AuditEntries
+            .Where(e => e.EntityId == ownUser.Id && e.Kind == AuditEntryKind.Updated)
+            .Select(e => e.ActorUserId)
+            .ToListAsync());
+        actors.ShouldBe([signedUp.User.Id]);
     }
 
     private void SignInAs(User user)

@@ -82,9 +82,10 @@ public static class AddAgent
             if (!scope.Includes(requestedTenantId))
                 throw new ForbiddenAccessException("You can add an agent only to your own tenant.");
 
-            var tenantExists = await dbContext.Tenants
-                .TagWithOperationCallSite("agents.add.tenant_exists")
-                .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
+            var tenantExists = EntityId.IsValid(requestedTenantId, Tenants.Tenant.IdPrefix)
+                && await dbContext.Tenants
+                    .TagWithOperationCallSite("agents.add.tenant_exists")
+                    .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
             if (!tenantExists)
                 throw new ValidationException(TenantIdField, "The tenant does not exist.");
 

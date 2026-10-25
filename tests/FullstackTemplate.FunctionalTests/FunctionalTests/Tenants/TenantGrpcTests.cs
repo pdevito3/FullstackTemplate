@@ -184,6 +184,26 @@ public class TenantGrpcTests : TestBase
     }
 
     [Test]
+    public async Task nul_in_a_tenant_name_is_an_invalid_argument_with_a_field_violation()
+    {
+        // Arrange
+        SignInAsTrustedMachineClient();
+        using var channel = CreateGrpcChannel();
+        var client = new TenantsService.TenantsServiceClient(channel);
+
+        // Act
+        var exception = await Should.ThrowAsync<RpcException>(async () =>
+            await client.AddTenantAsync(new AddTenantRequest { Name = $"Tenant {Guid.NewGuid()}\0" }));
+
+        // Assert
+        exception.StatusCode.ShouldBe(StatusCode.InvalidArgument);
+        var violation = exception.GetRpcStatus().ShouldNotBeNull().GetDetail<BadRequest>().ShouldNotBeNull()
+            .FieldViolations.ShouldHaveSingleItem();
+        violation.Field.ShouldBe("name");
+        violation.Description.ShouldBe("A tenant name has a character that is not allowed.");
+    }
+
+    [Test]
     public async Task call_with_no_token_is_unauthenticated()
     {
         // Arrange

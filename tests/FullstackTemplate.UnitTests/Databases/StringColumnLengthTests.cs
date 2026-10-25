@@ -121,6 +121,28 @@ public class StringColumnLengthTests
         writeTooLong.ShouldThrow<ValidationException>().Property.ShouldBe(callerColumn.RequestField);
     }
 
+    private static readonly string[] CharactersPostgresCannotStore = ["\0", "\uD800", "\uDC00"];
+
+    public static IEnumerable<(string, string)> CallerColumnsAndCharactersPostgresCannotStore =>
+        CallerColumns.Keys.SelectMany(column => CharactersPostgresCannotStore.Select(character => (column, character)));
+
+    [Test]
+    [MethodDataSource(nameof(CallerColumnsAndCharactersPostgresCannotStore))]
+    public void the_domain_refuses_a_character_that_postgres_cannot_store_with_a_validation_error(string column, string character)
+    {
+        // Arrange
+        var callerColumn = CallerColumns[column];
+        var value = callerColumn.ValueOfLength("a", 20).Insert(1, character);
+
+        // Act
+        var write = () => callerColumn.Write(value);
+
+        // Assert
+        var exception = write.ShouldThrow<ValidationException>();
+        exception.Property.ShouldBe(callerColumn.RequestField);
+        exception.Message.ShouldContain("a character that is not allowed");
+    }
+
     [Test]
     public void each_option_of_a_fixed_option_column_fits_the_column()
     {

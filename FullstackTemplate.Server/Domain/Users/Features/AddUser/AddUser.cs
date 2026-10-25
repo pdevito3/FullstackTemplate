@@ -35,17 +35,17 @@ public static class AddUser
             var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
             Activity.Current?.SetTag("app.tenant_id", tenantId);
 
+            var forCreation = request.Dto.ToUserForCreation(tenantId);
+            var user = User.Create(forCreation);
+            Activity.Current?.SetTag("app.user_id", user.Id);
+
             // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
             var identifierInUse = await dbContext.Users
                 .TagWithOperationCallSite("users.add.identifier_in_use")
                 .IgnoreQueryFilters([QueryFilterNames.Tenant])
-                .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
+                .AnyAsync(u => u.Identifier == user.Identifier, cancellationToken);
             if (identifierInUse)
                 throw new ConflictException("identifier", "A user with this identifier already exists.");
-
-            var forCreation = request.Dto.ToUserForCreation(tenantId);
-            var user = User.Create(forCreation);
-            Activity.Current?.SetTag("app.user_id", user.Id);
 
             await dbContext.Users.AddAsync(user, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -75,9 +75,10 @@ public static class AddUser
                 throw new ForbiddenAccessException("You can add a user only to your own tenant.");
 
             // The tenant filter and the soft delete filter apply, so a deleted tenant does not exist here.
-            var tenantExists = await dbContext.Tenants
-                .TagWithOperationCallSite("users.add.tenant_exists")
-                .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
+            var tenantExists = EntityId.IsValid(requestedTenantId, Tenants.Tenant.IdPrefix)
+                && await dbContext.Tenants
+                    .TagWithOperationCallSite("users.add.tenant_exists")
+                    .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
             if (!tenantExists)
                 throw new ValidationException(TenantIdField, "The tenant does not exist.");
 

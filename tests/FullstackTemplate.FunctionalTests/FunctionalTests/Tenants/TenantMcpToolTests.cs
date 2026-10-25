@@ -326,6 +326,30 @@ public class TenantMcpToolTests : TestBase
     }
 
     [Test]
+    public async Task rename_with_a_nul_in_the_name_is_an_invalid_argument_with_the_field()
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("update_tenant",
+            new Dictionary<string, object?>
+            {
+                ["id"] = tenant.Id,
+                ["name"] = $"Renamed {Guid.NewGuid()}\0",
+                ["version"] = await VersionOfAsync(tenant.Id)
+            });
+
+        // Assert
+        ShouldBeToolError(result, "invalid_argument");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("errors").GetProperty("name")[0].GetString()
+            .ShouldBe("A tenant name has a character that is not allowed.");
+        (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
+    }
+
+    [Test]
     public async Task rename_with_a_stale_version_is_the_aborted_tool_error()
     {
         // Arrange

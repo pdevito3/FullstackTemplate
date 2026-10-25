@@ -396,7 +396,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Verify entity configuration is in `Databases/EntityConfigurations/` and properly applied
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
-- [ ] Each text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses (see `docs/backend/domain-entities.md`)
+- [ ] Each text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
 - [ ] Install MediatR if not already present
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation

@@ -32,6 +32,7 @@ public static class ApiRoutes
     public static class Agents
     {
         public static string GetList => $"{Base}/agents";
+        public static string Create => $"{Base}/agents";
         public static string GetRecord(string id) => $"{Base}/agents/{id}";
         public static string AddPermission(string id) => $"{Base}/agents/{id}/permissions";
         public static string RemovePermission(string id, string permission) => $"{Base}/agents/{id}/permissions/{permission}";

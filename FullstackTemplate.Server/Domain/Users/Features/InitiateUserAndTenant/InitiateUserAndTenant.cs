@@ -33,22 +33,6 @@ public static class InitiateUserAndTenant
         {
             await GuardCallerCanInitiateForAsync(request.Dto.Identifier, cancellationToken);
 
-            // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
-            var identifierInUse = await dbContext.Users
-                .TagWithOperationCallSite("users.initiate.identifier_in_use")
-                .IgnoreQueryFilters([QueryFilterNames.Tenant])
-                .AnyAsync(u => u.Identifier == request.Dto.Identifier, cancellationToken);
-            if (identifierInUse)
-                throw new ConflictException("identifier", "A user with this identifier already exists.");
-
-            // Ignore all filters: the unique index on Name also covers deleted tenants.
-            var tenantNameInUse = await dbContext.Tenants
-                .TagWithOperationCallSite("users.initiate.tenant_name_in_use")
-                .IgnoreQueryFilters()
-                .AnyAsync(t => t.Name == request.Dto.TenantName, cancellationToken);
-            if (tenantNameInUse)
-                throw new ConflictException(TenantNameField, TenantNameTaken);
-
             // Create tenant first
             var tenantForCreation = new TenantForCreation { Name = request.Dto.TenantName };
             Tenant tenant;
@@ -77,6 +61,23 @@ public static class InitiateUserAndTenant
             };
             var user = User.Create(userForCreation);
             Activity.Current?.SetTag("app.user_id", user.Id);
+
+            // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
+            var identifierInUse = await dbContext.Users
+                .TagWithOperationCallSite("users.initiate.identifier_in_use")
+                .IgnoreQueryFilters([QueryFilterNames.Tenant])
+                .AnyAsync(u => u.Identifier == user.Identifier, cancellationToken);
+            if (identifierInUse)
+                throw new ConflictException("identifier", "A user with this identifier already exists.");
+
+            // Ignore all filters: the unique index on Name also covers deleted tenants.
+            var tenantNameInUse = await dbContext.Tenants
+                .TagWithOperationCallSite("users.initiate.tenant_name_in_use")
+                .IgnoreQueryFilters()
+                .AnyAsync(t => t.Name == tenant.Name, cancellationToken);
+            if (tenantNameInUse)
+                throw new ConflictException(TenantNameField, TenantNameTaken);
+
             await dbContext.Users.AddAsync(user, cancellationToken);
 
             // Single transaction - both saved together

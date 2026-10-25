@@ -28,7 +28,6 @@ public static class DeleteTenant
 
             var agents = await dbContext.Agents
                 .TagWithOperationCallSite("tenants.delete.load_agents")
-                .Include(a => a.Permissions)
                 .Where(a => a.TenantId == tenant.Id)
                 .ToListAsync(cancellationToken);
             foreach (var agent in agents)

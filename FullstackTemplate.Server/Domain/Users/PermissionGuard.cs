@@ -74,7 +74,6 @@ public sealed class PermissionGuard(
         => dbContext.Users
             .TagWithOperationCallSite("users.permission_guard.load")
             .AsNoTracking()
-            .Include(u => u.UserPermissions)
             .FirstOrDefaultAsync(u => u.Identifier == identifier, cancellationToken);
 
     private async Task<IEnumerable<Permission>?> LoadGrantAsync(string agentId, CancellationToken cancellationToken)
@@ -82,7 +81,6 @@ public sealed class PermissionGuard(
         var agent = await dbContext.Agents
             .TagWithOperationCallSite("agents.permission_guard.load")
             .AsNoTracking()
-            .Include(a => a.Permissions)
             .Where(a => a.Id == agentId && dbContext.Tenants.Any(t => t.Id == a.TenantId))
             .FirstOrDefaultAsync(cancellationToken);
 

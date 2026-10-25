@@ -81,7 +81,9 @@ Give the child a navigation to its parent, and get its tenant through the parent
 builder.ApplyTenanting(up => up.User.TenantId);
 ```
 
-When you delete the parent, load the children and remove each child in the handler. See `Domain/Users/Features/DeleteUser/DeleteUser.cs`.
+Each query of the owner loads its owned children. `LoadOwnedChildrenWithOwner` in `BaseEntityConventions.cs` auto-includes the navigation of each `Cascade` child, so a handler does not add an `Include`. Without it, a load with no `Include` gives an empty collection, and the DTO then shows no children. Do not call `IgnoreAutoIncludes` on a query that loads an aggregate root.
+
+When you delete the parent, remove each child in the handler. See `Domain/Users/Features/DeleteUser/DeleteUser.cs`.
 
 ## Unique indexes
 

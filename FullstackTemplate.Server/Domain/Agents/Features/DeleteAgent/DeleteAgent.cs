@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Domain.Agents.Features;
 using System.Diagnostics;
 using Databases;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 using Users;
@@ -24,7 +23,6 @@ public static class DeleteAgent
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.delete.load")
-                .Include(a => a.Permissions)
                 .GetById(request.Id, cancellationToken);
 
             foreach (var permission in agent.Permissions.ToList())

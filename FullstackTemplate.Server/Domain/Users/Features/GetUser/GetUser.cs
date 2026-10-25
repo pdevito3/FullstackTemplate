@@ -5,7 +5,6 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 public static class GetUser
 {
@@ -22,7 +21,6 @@ public static class GetUser
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.get_by_id")
-                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
             return user.ToUserDto();
         }

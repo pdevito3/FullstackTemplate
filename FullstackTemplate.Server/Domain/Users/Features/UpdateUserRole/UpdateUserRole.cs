@@ -5,7 +5,6 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 
@@ -32,7 +31,6 @@ public static class UpdateUserRole
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update_role.load")
-                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
             // The new role replaces each permission row of the user, so the caller also takes those away.
             caller.Require(user.UserPermissions.Select(p => p.Permission));

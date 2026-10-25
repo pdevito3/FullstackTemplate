@@ -23,7 +23,6 @@ public static class GetUserByIdentifier
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.get_by_identifier")
                 .AsNoTracking()
-                .Include(u => u.UserPermissions)
                 .FirstOrDefaultAsync(u => u.Identifier == request.Identifier, cancellationToken);
             Activity.Current?.SetTag("app.user_id", user?.Id);
 

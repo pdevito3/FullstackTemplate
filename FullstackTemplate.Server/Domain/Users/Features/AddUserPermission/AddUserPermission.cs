@@ -5,7 +5,6 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 
@@ -32,7 +31,6 @@ public static class AddUserPermission
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.add_permission.load")
-                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 
             var existingPermissionIds = user.UserPermissions.Select(p => p.Id).ToHashSet();

@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 using System.Diagnostics;
 using Databases;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 
@@ -24,7 +23,6 @@ public static class DeleteUser
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.delete.load")
-                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
             // A delete takes away each permission of the user.
             caller.Require(user.UserPermissions.Select(p => p.Permission));

@@ -5,7 +5,6 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 using Users;
@@ -31,7 +30,6 @@ public static class RemoveAgentPermission
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.remove_permission.load")
-                .Include(a => a.Permissions)
                 .GetById(request.Id, cancellationToken);
 
             var existingPermissions = agent.Permissions.ToList();

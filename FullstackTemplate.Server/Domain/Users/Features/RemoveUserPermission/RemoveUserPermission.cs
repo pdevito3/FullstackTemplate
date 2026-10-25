@@ -5,7 +5,6 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 
@@ -31,7 +30,6 @@ public static class RemoveUserPermission
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.remove_permission.load")
-                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
 
             var existingPermissions = user.UserPermissions.ToList();

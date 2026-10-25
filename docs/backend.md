@@ -169,7 +169,7 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 | A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
 | A client in `Tenancy:ReadAllTenantsClientIds` | 403 |
 | An unknown client: a client that is not first-party, on no list, and with no agent for the token | 403 |
-| A user of a first-party client with no user record, or an anonymous principal | 403. `GetUserByIdentifier` gives such a user 404 when it finds no user, because the user sees no rows. Thus a new user who reads their own identifier knows to start a tenant. |
+| A user of a first-party client with no user record, or an anonymous principal | 403. `GetUserByIdentifier` gives a user with no user record and no tenant 404 when it finds no user, because that user sees no rows. Thus a new user who reads their own identifier knows to start a tenant. |
 
 [Agents](authentication.md#agents) tells how the server identifies an agent and how a tenant registers it.
 

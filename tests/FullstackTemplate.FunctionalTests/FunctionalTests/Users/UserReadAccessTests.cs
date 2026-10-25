@@ -2,11 +2,15 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Users;
 
 using System.Net;
 using System.Net.Http.Json;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Shouldly;
 using TestUtilities;
 
@@ -127,6 +131,24 @@ public class UserReadAccessTests : TestBase
             .ShouldBe("User was not found.");
     }
 
+    // The delete skips the save, as a delete on another server instance does, so the tenant of the user stays cached
+    [Test]
+    public async Task deleted_user_with_a_cached_tenant_is_forbidden_for_an_unknown_identifier()
+    {
+        // Arrange
+        var (member, _) = await AddTwoUsersAsync("User", "User");
+        SignInAs(member);
+        (await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(member.Id))).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+        await DeleteOutsideTheServerAsync(member);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier($"unknown-{Guid.NewGuid()}"));
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, "You need a user record in a tenant to do this.");
+    }
+
     [Test]
     public async Task user_role_member_granted_read_users_can_list_the_users()
     {
@@ -236,6 +258,17 @@ public class UserReadAccessTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
         problem.Detail.ShouldBe(detail);
+    }
+
+    private static async Task DeleteOutsideTheServerAsync(User user)
+    {
+        var connectionString = await ExecuteScopeAsync(sp => Task.FromResult(
+            sp.GetRequiredService<IConfiguration>().GetConnectionString(DatabaseConsts.DatabaseName)));
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("UPDATE users SET is_deleted = true WHERE id = @id", connection);
+        command.Parameters.AddWithValue("id", user.Id);
+        (await command.ExecuteNonQueryAsync()).ShouldBe(1);
     }
 
     private static async Task<(User First, User Second)> AddTwoUsersAsync(

@@ -7,6 +7,7 @@ using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Services;
 
 public static class GetUserByIdentifier
 {
@@ -29,9 +30,12 @@ public static class GetUserByIdentifier
             // The check follows the load, because the exception for the own record needs the ID of the user
             if (user is null)
             {
-                // A user with no user record sees no rows, so the 404 tells it nothing. A new user who reads their own
-                // identifier gets the 404 and knows to start a tenant.
-                if (caller is not Caller.Outsider { Kind: OutsiderKind.NoUserRecord })
+                // A user with no user record and no tenant sees no rows, so the 404 tells it nothing. A new user who
+                // reads their own identifier gets the 404 and knows to start a tenant. The scope is checked too,
+                // because a cached tenant of a user who was just deleted can still give rows.
+                var seesNoRows = caller is Caller.Outsider { Kind: OutsiderKind.NoUserRecord }
+                    && dbContext.CurrentTenantScope == TenantScope.NoTenant;
+                if (!seesNoRows)
                     caller.Require(Permission.ReadUsers());
                 throw new NotFoundException("User was not found.");
             }

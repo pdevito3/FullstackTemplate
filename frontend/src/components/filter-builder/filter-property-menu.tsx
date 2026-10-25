@@ -37,9 +37,9 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [dialogProperty, setDialogProperty] = useState<FilterConfig | null>(null)
   const { contains } = useFilter({ sensitivity: 'base' })
-  // The date control is 378 px wide and 450 px tall. Beside the sidebar, its
-  // submenu needs about 906 px of width and 474 px of height.
-  const hasRoomForSubmenus = useMediaQuery('(width >= 64rem) and (height >= 32rem)')
+  // The widest control, the date control between two dates, needs about 911 px
+  // beside the sidebar.
+  const hasRoomForSubmenus = useMediaQuery('(width >= 64rem)')
 
   // The menu closes by itself after an action.
   const handleAction = (key: Key) => {
@@ -158,7 +158,8 @@ function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemP
       <DropdownMenuSubTrigger id={config.propertyKey} textValue={config.propertyLabel}>
         {config.propertyLabel}
       </DropdownMenuSubTrigger>
-      <Popover placement="end top" className="w-auto p-0">
+      {/* React Aria sets the max height of the popover to the room on the screen. */}
+      <Popover placement="end top" className="w-auto overflow-y-auto p-0">
         <Dialog aria-label={`${config.propertyLabel} filter`} className="outline-none">
           <FilterControl config={config} onSubmit={onFilterSubmit} />
         </Dialog>

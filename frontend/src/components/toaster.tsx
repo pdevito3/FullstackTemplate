@@ -42,10 +42,14 @@ const iconColors = {
  */
 export function Toaster() {
   // React Aria lists the newest toast first. flex-col-reverse keeps it nearest the bottom edge.
+  // Below 768px the region spans the screen, and a toast is at most 500px wide. pointer-events-none lets a click beside
+  // or between the toasts reach the page. Each toast takes pointer events again, so hover still pauses the timers.
+  // index.css moves the region to the top while a bottom sheet is open.
   return (
     <ToastRegion
       queue={toastQueue}
-      className="fixed inset-x-4 bottom-4 z-[100] flex flex-col-reverse items-center gap-2 outline-none md:left-auto"
+      data-slot="toast-region"
+      className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col-reverse items-center gap-2 outline-none md:right-6 md:bottom-6 md:left-auto"
     >
       {({ toast }) => (
         <Toast
@@ -54,7 +58,7 @@ export function Toaster() {
           className={cn(
             'bg-card text-card-foreground border border-border',
             'shadow-lg rounded-lg px-4 py-3',
-            'flex w-full max-w-[500px] items-start gap-3 md:min-w-[300px]',
+            'pointer-events-auto flex w-full max-w-[500px] items-start gap-3 md:min-w-[300px]',
             'outline-none focus-visible:ring-2 focus-visible:ring-ring'
           )}
         >

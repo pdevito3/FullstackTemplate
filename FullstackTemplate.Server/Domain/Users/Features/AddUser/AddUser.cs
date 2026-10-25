@@ -37,6 +37,7 @@ public static class AddUser
 
             var forCreation = request.Dto.ToUserForCreation(tenantId);
             var user = User.Create(forCreation);
+            Activity.Current?.SetTag("app.user_id", user.Id);
 
             // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
             var identifierInUse = await dbContext.Users
@@ -45,8 +46,6 @@ public static class AddUser
                 .AnyAsync(u => u.Identifier == user.Identifier, cancellationToken);
             if (identifierInUse)
                 throw new ConflictException("identifier", "A user with this identifier already exists.");
-
-            Activity.Current?.SetTag("app.user_id", user.Id);
 
             await dbContext.Users.AddAsync(user, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);

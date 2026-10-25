@@ -32,6 +32,7 @@ public static class AddTenant
 
             var forCreation = request.Dto.ToTenantForCreation();
             var tenant = Tenant.Create(forCreation);
+            Activity.Current?.SetTag("app.tenant_id", tenant.Id);
 
             // Ignore all filters: the unique index on Name also covers deleted tenants.
             var nameInUse = await dbContext.Tenants
@@ -40,8 +41,6 @@ public static class AddTenant
                 .AnyAsync(t => t.Name == tenant.Name, cancellationToken);
             if (nameInUse)
                 throw new ConflictException("name", "A tenant with this name already exists.");
-
-            Activity.Current?.SetTag("app.tenant_id", tenant.Id);
 
             await dbContext.Tenants.AddAsync(tenant, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);

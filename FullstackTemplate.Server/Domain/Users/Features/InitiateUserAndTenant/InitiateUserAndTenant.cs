@@ -60,6 +60,7 @@ public static class InitiateUserAndTenant
                 Role = request.Dto.Role
             };
             var user = User.Create(userForCreation);
+            Activity.Current?.SetTag("app.user_id", user.Id);
 
             // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
             var identifierInUse = await dbContext.Users
@@ -77,7 +78,6 @@ public static class InitiateUserAndTenant
             if (tenantNameInUse)
                 throw new ConflictException(TenantNameField, TenantNameTaken);
 
-            Activity.Current?.SetTag("app.user_id", user.Id);
             await dbContext.Users.AddAsync(user, cancellationToken);
 
             // Single transaction - both saved together

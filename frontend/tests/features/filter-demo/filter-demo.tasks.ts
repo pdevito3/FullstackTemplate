@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { filterDemo } from './filter-demo.locators'
 
 export function filterDemoPage(page: Page) {
@@ -17,6 +17,11 @@ export function filterDemoPage(page: Page) {
       await at.property(propertyLabel).click()
       await expect(at.control(propertyLabel)).toBeVisible()
       await expect(at.loadingControl).toHaveCount(0)
+    },
+
+    async chooseBetween(propertyLabel: string) {
+      await at.dateMode(propertyLabel, 'Between').click()
+      await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
     },
 
     async addTodayFilter(propertyLabel: string) {
@@ -48,6 +53,26 @@ export function filterDemoPage(page: Page) {
         }
         return control.getBoundingClientRect().bottom
       })
+    },
+
+    /** How far the user can scroll the control, or the sheet around it, sideways. */
+    async sidewaysScrollOf(propertyLabel: string) {
+      return at.control(propertyLabel).evaluate((control) => {
+        let widest = 0
+        for (const element of [control, ...control.querySelectorAll('*')]) {
+          if (['auto', 'scroll'].includes(getComputedStyle(element).overflowX)) {
+            widest = Math.max(widest, element.scrollWidth - element.clientWidth)
+          }
+        }
+        return widest
+      })
+    },
+
+    /** The left and right edges of an element on the screen. */
+    async edgesOf(element: Locator) {
+      const box = await element.boundingBox()
+      if (!box) throw new Error('The element is not on the page.')
+      return { left: box.x, right: box.x + box.width }
     },
 
     async pageScrollWidth() {

@@ -21,9 +21,7 @@ public class MetricsTests : TestBase
         factory.Services.GetRequiredService<MeterProvider>().ForceFlush().ShouldBeTrue();
 
         // Assert
-        List<MetricSnapshot> exported;
-        lock (factory.ExportedMetrics)
-            exported = [.. factory.ExportedMetrics];
+        var exported = factory.ExportedMetrics.Snapshot();
 
         exported.ShouldContain(m => m.Name == "app.request.duration" && m.MeterName == "FullstackTemplate.Server");
         exported.ShouldContain(m => m.MeterName == "Microsoft.EntityFrameworkCore");

@@ -52,12 +52,12 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     /// <summary>
     /// Every span the server exports, in stop order. Read it through <see cref="TestBase.ExportedSpans"/>.
     /// </summary>
-    public List<Activity> ExportedActivities { get; } = [];
+    public ExportedTelemetry<Activity> ExportedActivities { get; } = new();
 
     /// <summary>
     /// Every metric snapshot the server exports. Call <c>MeterProvider.ForceFlush</c> to export now.
     /// </summary>
-    public List<MetricSnapshot> ExportedMetrics { get; } = [];
+    public ExportedTelemetry<MetricSnapshot> ExportedMetrics { get; } = new();
 
     public CapturedLogs CapturedLogs { get; } = new();
 
@@ -88,8 +88,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 
             // Capture the exported spans so tests can make assertions on the real trace pipeline
             services.AddOpenTelemetry()
-                .WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities))
-                .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics));
+                .WithTracing(tracing => tracing.AddInMemoryExporter(ExportedActivities.ExporterTarget))
+                .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics.ExporterTarget));
             services.AddSingleton<ILogEventSink>(CapturedLogs);
             services.ConfigureDbContext<AppDbContext>((_, options) => options.AddInterceptors(FailingSaves));
         });

@@ -224,7 +224,7 @@ In Development, the console uses a `Serilog.Expressions` template. Each line sho
 - Unit tests use an `ActivityListener` and filter spans by the trace id of the test. Test classes run in parallel, so the listener sees spans from other tests. See `tests/FullstackTemplate.UnitTests/Resources/TelemetryTests.cs`.
 - Unit tests for metrics use a `MeterListener`. See `tests/FullstackTemplate.UnitTests/Resources/RequestTracingBehaviorTests.cs`.
 - Functional tests use the OpenTelemetry in-memory exporter. `TestBase.ExportedSpans()` returns the spans that the current test exported. `TestBase.AllExportedSpans()` also returns startup spans, such as `database.migrate`. See `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Telemetry/TracingTests.cs`.
-- `TestingWebApplicationFactory.ExportedMetrics` collects the exported metrics. Call `MeterProvider.ForceFlush()` before you read it. See `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Telemetry/MetricsTests.cs`.
+- `TestingWebApplicationFactory.ExportedMetrics` collects the exported metrics. Call `MeterProvider.ForceFlush()`, then read them with `ExportedMetrics.Snapshot()`. See `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Telemetry/MetricsTests.cs`.
 
 ## Read telemetry as an agent
 

@@ -12,13 +12,15 @@ const DateFilter = lazy(async () => {
   return { default: DateFilter }
 })
 
+export type FilterControlSurface = 'submenu' | 'dialog'
+
 interface FilterControlDefinition {
   component: ComponentType<FilterControlProps>
   /**
-   * Where the Add Filter menu shows the control: in a submenu next to the
-   * menu, or in a dialog after the menu closes. The edit dialog shows all types.
+   * Where the Add Filter menu shows the control on a desktop: in a submenu next
+   * to the menu, or in a dialog after the menu closes. The edit dialog shows all types.
    */
-  surface: 'submenu' | 'dialog'
+  surface: FilterControlSurface
   /**
    * The class of FilterControlDialog. Without it, the dialog fits the width of
    * the control (`md:w-auto md:max-w-fit`).

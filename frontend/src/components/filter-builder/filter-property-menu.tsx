@@ -7,20 +7,21 @@ import {
   useFilter,
   type Key,
 } from 'react-aria-components'
-import { Add01Icon, TextIcon } from '@hugeicons/core-free-icons'
+import { Add01Icon, ArrowRight01Icon, TextIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover } from '@/components/ui/popover'
+import { useIsMobile } from '@/hooks/use-mobile'
 import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { FilterConfig, Filter } from './types'
+import type { ControlType, FilterConfig, Filter } from './types'
 import { FilterControl, FilterControlDialog } from './controls/filter-control'
-import { FILTER_CONTROLS } from './controls/filter-controls'
+import { FILTER_CONTROLS, type FilterControlSurface } from './controls/filter-controls'
 
 interface FilterPropertyMenuProps {
   options: FilterConfig[]
@@ -36,11 +37,12 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [dialogProperty, setDialogProperty] = useState<FilterConfig | null>(null)
   const { contains } = useFilter({ sensitivity: 'base' })
+  const isMobile = useIsMobile()
 
   // The menu closes by itself after an action.
   const handleAction = (key: Key) => {
     const config = options.find((opt) => opt.propertyKey === key)
-    if (config && FILTER_CONTROLS[config.controlType].surface === 'dialog') {
+    if (config && surfaceOf(config.controlType, isMobile) === 'dialog') {
       setDialogProperty(config)
     }
   }
@@ -76,8 +78,8 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
             <Menu
               items={options}
               // React Aria caches each item per option. Without this, a submenu keeps the
-              // handleFilterSubmit of its first render.
-              dependencies={[handleFilterSubmit]}
+              // handleFilterSubmit and the surface of its first render.
+              dependencies={[handleFilterSubmit, isMobile]}
               onAction={handleAction}
               renderEmptyState={() => (
                 <div className="p-4 text-sm text-muted-foreground text-center">
@@ -87,7 +89,11 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
               className="max-h-72 overflow-y-auto p-1 outline-none"
             >
               {(config) => (
-                <PropertyMenuItem config={config} onFilterSubmit={handleFilterSubmit} />
+                <PropertyMenuItem
+                  config={config}
+                  surface={surfaceOf(config.controlType, isMobile)}
+                  onFilterSubmit={handleFilterSubmit}
+                />
               )}
             </Menu>
           </Autocomplete>
@@ -114,18 +120,33 @@ function propertyKeyOf(node: { type: string; key: Key; firstChildKey?: Key | nul
   return String(node.type === 'submenutrigger' ? node.firstChildKey : node.key)
 }
 
+/**
+ * A phone has no room for a submenu beside the menu. React Aria flips a side
+ * popover to the other side, but it never moves the popover along that axis.
+ * So on a phone, each control opens in the dialog, which is a bottom sheet.
+ */
+function surfaceOf(controlType: ControlType, isMobile: boolean): FilterControlSurface {
+  return isMobile ? 'dialog' : FILTER_CONTROLS[controlType].surface
+}
+
 interface PropertyMenuItemProps {
   config: FilterConfig
+  surface: FilterControlSurface
   onFilterSubmit: (filter: Omit<Filter, 'id'>) => void
 }
 
-function PropertyMenuItem({ config, onFilterSubmit }: PropertyMenuItemProps) {
+function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemProps) {
   // A dialog control opens after the menu closes, so its item has no submenu.
-  if (FILTER_CONTROLS[config.controlType].surface === 'dialog') {
+  if (surface === 'dialog') {
+    const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].surface === 'submenu'
     return (
       <DropdownMenuItem id={config.propertyKey} textValue={config.propertyLabel}>
         {config.propertyLabel}
-        <HugeiconsIcon icon={TextIcon} className="ml-auto size-4 text-muted-foreground" />
+        {isSubmenuOnDesktop ? (
+          <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-auto" />
+        ) : (
+          <HugeiconsIcon icon={TextIcon} className="ml-auto size-4 text-muted-foreground" />
+        )}
       </DropdownMenuItem>
     )
   }

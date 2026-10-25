@@ -31,6 +31,15 @@ test.describe('the Add Filter menu on a phone', () => {
     await expect(demo.at.valueGroup('Is Blocked')).toBeVisible()
   })
 
+  test('gives the close button of the sheet a 32 px touch target', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Is Blocked')
+
+    expect(await demo.at.button('Is Blocked', 'Close').boundingBox()).toMatchObject({ width: 32, height: 32 })
+  })
+
   test('adds a date filter from its control', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()
@@ -140,6 +149,21 @@ test.describe('the Add Filter menu on a desktop', () => {
     await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
     await expect(demo.at.searchProperties).toBeVisible()
   })
+})
+
+test.describe('the edit dialog of a boolean filter', () => {
+  for (const [value, other] of [['True', 'False'], ['False', 'True']] as const) {
+    test(`shows ${value} as the current value`, async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.open()
+      await demo.addBooleanFilter('Is Blocked', value)
+
+      await demo.editFilter('Is Blocked')
+
+      await expect(demo.at.pressedButtons('Is Blocked')).toHaveText([value])
+      await expect(demo.at.button('Is Blocked', other)).toHaveAttribute('aria-pressed', 'false')
+    })
+  }
 })
 
 const shortWindow = { width: 1280, height: 512 }

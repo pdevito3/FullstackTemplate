@@ -35,6 +35,7 @@ public class PaginationHeaderTests : TestBase
         var users = Enumerable.Range(0, 2)
             .Select(_ => User.Create(new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id).Generate()))
             .ToArray();
+        users[0].AddPermission(Permission.ReadUsers());
         await InsertAsync(users);
         FactoryClient.SignInAsAppUser(users[0].Identifier);
 

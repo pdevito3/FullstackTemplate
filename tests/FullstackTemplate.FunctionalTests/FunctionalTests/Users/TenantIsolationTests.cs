@@ -7,6 +7,8 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
 
@@ -16,7 +18,7 @@ public class TenantIsolationTests : TestBase
     public async Task user_sees_only_the_users_in_their_tenant()
     {
         // Arrange
-        var (_, user) = await AddTenantWithUserAsync();
+        var (_, user) = await AddTenantWithUserAsync(canReadUsers: true);
         var (_, otherUser) = await AddTenantWithUserAsync();
         FactoryClient.SignInAsAppUser(user.Identifier);
 
@@ -41,9 +43,7 @@ public class TenantIsolationTests : TestBase
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
 
         // Assert
-        result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
-        users.ShouldBeEmpty();
+        await ShouldBeForbiddenAsync(result, "You need a user record in a tenant to do this.");
     }
 
     [Test]
@@ -53,8 +53,8 @@ public class TenantIsolationTests : TestBase
         var identifier = $"new-{Guid.NewGuid()}";
         FactoryClient.SignInAsAppUser(identifier);
         var before = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
-        before.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var (_, user) = await AddTenantWithUserAsync(identifier);
+        before.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        var (_, user) = await AddTenantWithUserAsync(identifier, canReadUsers: true);
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
@@ -76,9 +76,8 @@ public class TenantIsolationTests : TestBase
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
 
         // Assert
-        result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var users = (await result.Content.ReadFromJsonAsync<List<UserDto>>()).ShouldNotBeNull();
-        users.ShouldBeEmpty();
+        await ShouldBeForbiddenAsync(result,
+            "This client is not a registered agent of your tenant. A tenant admin can register it.");
     }
 
     [Test]
@@ -102,13 +101,24 @@ public class TenantIsolationTests : TestBase
         users.Select(u => u.Id).ShouldBe([user.Id, otherUser.Id], ignoreOrder: true);
     }
 
-    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(string? identifier = null)
+    private static async Task ShouldBeForbiddenAsync(HttpResponseMessage result, string detail)
+    {
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        var problem = (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull();
+        problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
+        problem.Detail.ShouldBe(detail);
+    }
+
+    private static async Task<(Tenant Tenant, User User)> AddTenantWithUserAsync(
+        string? identifier = null, bool canReadUsers = false)
     {
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
         var userForCreation = new FakeUserForCreation().RuleFor(u => u.TenantId, tenant.Id);
         if (identifier is not null)
             userForCreation.RuleFor(u => u.Identifier, identifier);
         var user = User.Create(userForCreation.Generate());
+        if (canReadUsers)
+            user.AddPermission(Permission.ReadUsers());
         await InsertAsync(tenant);
         await InsertAsync(user);
         return (tenant, user);

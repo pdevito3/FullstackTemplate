@@ -73,6 +73,7 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
         var act = () => handler.Handle(new AddUser.Command(new FakeUserForCreationDto().Generate()),
             CancellationToken.None);
 
-        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe("This client cannot change data.");
+        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
+            .ShouldBe("This client has no permissions. It can read only the data that needs no permission.");
     }
 }

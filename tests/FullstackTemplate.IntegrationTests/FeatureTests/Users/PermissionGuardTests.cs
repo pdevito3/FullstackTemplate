@@ -95,7 +95,7 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    [Arguments(TestFixture.ReadOnlyMachineClientId, "This client cannot change data.")]
+    [Arguments(TestFixture.ReadOnlyMachineClientId, "This client has no permissions. It can read only the data that needs no permission.")]
     [Arguments("untrusted-machine", "This client is not a registered agent of your tenant. A tenant admin can register it.")]
     public async Task machine_client_that_cannot_manage_all_tenants_cannot_delete_a_user(string clientId, string denial)
     {

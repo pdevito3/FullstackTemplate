@@ -15,6 +15,9 @@ public class CallerTests
     private const string DelegatedClientId = "clinic-assistant";
     private const string MachineClientId = "fleet-sync";
 
+    private const string MachineClientDenial =
+        "This client has no permissions. It can read only the data that needs no permission.";
+
     private const string UnknownClientDenial =
         "This client is not a registered agent of your tenant. A tenant admin can register it.";
 
@@ -36,8 +39,7 @@ public class CallerTests
         yield return () => ("member with no permission", MemberWith(),
             "You need the manage_users permission to do this.");
         yield return () => ("anonymous", new Caller.Outsider(OutsiderKind.Anonymous), "Sign in to do this.");
-        yield return () => ("machine client", new Caller.Outsider(OutsiderKind.MachineClient),
-            "This client cannot change data.");
+        yield return () => ("machine client", new Caller.Outsider(OutsiderKind.MachineClient), MachineClientDenial);
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord),
             "You need a user record in a tenant to do this.");
         yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), UnknownClientDenial);
@@ -66,7 +68,7 @@ public class CallerTests
         yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, OtherId, null);
         yield return () => ("anonymous", new Caller.Outsider(OutsiderKind.Anonymous), SelfId, "Sign in to do this.");
         yield return () => ("machine client", new Caller.Outsider(OutsiderKind.MachineClient), SelfId,
-            "This client cannot change data.");
+            MachineClientDenial);
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord), SelfId,
             "You need a user record in a tenant to do this.");
         yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), SelfId,
@@ -202,7 +204,7 @@ public class CallerTests
         Caller.DelegatedAgent agent => NotGranted(agent.ClientId, permission),
         Caller.MachineAgent agent => NotGranted(agent.ClientId, permission),
         Caller.Outsider { Kind: OutsiderKind.Anonymous } => "Sign in to do this.",
-        Caller.Outsider { Kind: OutsiderKind.MachineClient } => "This client cannot change data.",
+        Caller.Outsider { Kind: OutsiderKind.MachineClient } => MachineClientDenial,
         Caller.Outsider { Kind: OutsiderKind.UnknownClient } => UnknownClientDenial,
         _ => throw new ArgumentOutOfRangeException(nameof(caller)),
     };

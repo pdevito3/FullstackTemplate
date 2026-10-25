@@ -274,7 +274,7 @@ public static partial class [EntityName]Mapper
 
 ## 6. Features
 
-Each command checks a permission first (see `docs/backend/features-and-cqrs.md#permission-checks`). The templates use `Permission.Manage[EntityName]s()`. Add it to `Domain/Users/Permission.cs` with its `Permission.Names` constant, and add a migration that gives it to the admins that exist (see `docs/backend.md#add-a-permission`). A query has no permission check.
+Each command checks a permission first (see `docs/backend/features-and-cqrs.md#permission-checks`). The templates use `Permission.Manage[EntityName]s()`. Add it to `Domain/Users/Permission.cs` with its `Permission.Names` constant, and add a migration that gives it to the admins that exist (see `docs/backend.md#add-a-permission`). A query has no permission check, unless it reads data that needs a permission, such as the other users or the agents.
 
 **File:** `Domain/[EntityName]s/Features/Add[EntityName]/Add[EntityName].cs`
 

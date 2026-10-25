@@ -12,7 +12,7 @@ Each feature is one folder in `Domain/[EntityName]s/Features/`, for example `Fea
 6. In a command, put the business logic in the entity. The handler loads the entity, calls an entity method, and calls `SaveChangesAsync`.
 7. In a query, do not change data. Use `AsNoTracking()` for lists.
 8. Return a DTO. Never return an entity.
-9. In a command that changes the data of a tenant, make a permission check the first statement of the handler. See [Permission checks](#permission-checks).
+9. In a command that changes the data of a tenant, make a permission check the first statement of the handler. Do the same in a query that reads data that needs a permission, such as the other users or the agents. See [Permission checks](#permission-checks).
 
 ## Validation
 
@@ -131,10 +131,10 @@ If the check fails, the guard throws `ForbiddenAccessException`. HTTP returns 40
 
 Obey these rules:
 
-1. Put the check before the first load. Then a caller without the permission gets 403 for each ID, and does not learn which IDs exist.
+1. Put the check before the first load. Then a caller without the permission gets 403 for each ID, and does not learn which IDs exist. The exception is a self check that needs the ID from the load, as in `GetUserByIdentifier`. Then also check the permission when the load finds no row. Thus a caller without the permission gets 403 also for a value that does not exist.
 2. Do not throw `ForbiddenAccessException` for a missing permission yourself, and do not read `User.Role` for access. The role gives only the default permissions of a user.
 3. A caller can give or take away only the permissions that it has. When a command changes the permissions of a user, also require each permission that it gives or takes away. `AddUser` gives the default permissions of the role. `AddUserPermission` and `RemoveUserPermission` give or take away one permission. `UpdateUserRole` takes away each permission of the user and gives the defaults of the new role. `DeleteUser` takes away each permission of the user.
-4. A query has no permission check. The tenant filter limits the rows that it reads. Add a check to a query only when a part of the data of the tenant needs a permission.
+4. A query checks a read permission when it reads data that needs one, for example the other users (`read_users`), the agents (`read_agents`), or the audit log (`read_audit_log`). A query whose rows each member can see, such as the tenant of the caller, has no check. In both cases, the tenant filter still limits the rows that the query reads.
 5. Do not add a permission check to an adapter. The HTTP endpoint, the gRPC method, and the MCP tool send the same request, so the check in the handler applies to each of them.
 
 For the permissions, the callers that pass, and how to add a permission, see [backend.md](../backend.md#permissions).

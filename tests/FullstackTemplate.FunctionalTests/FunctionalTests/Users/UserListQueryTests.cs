@@ -91,6 +91,7 @@ public class UserListQueryTests : TestBase
         var third = UserNamed(ids[0], "b", "a");
         var second = UserNamed(ids[1], "a", "b");
         var first = UserNamed(ids[2], "a", "a");
+        third.AddPermission(Permission.ReadUsers());
         await InsertAsync(third, second, first);
         FactoryClient.SignInAsAppUser(third.Identifier);
 
@@ -124,6 +125,7 @@ public class UserListQueryTests : TestBase
                 .RuleFor(u => u.Role, UserRole.User().Value)
                 .Generate()))
             .ToArray();
+        users[0].AddPermission(Permission.ReadUsers());
         foreach (var user in users)
             await InsertAsync(user);
         FactoryClient.SignInAsAppUser(users[0].Identifier);
@@ -200,7 +202,7 @@ public class UserListQueryTests : TestBase
     }
 
     // Makes a new tenant with two users, signs in as the second user, and returns the first user.
-    // The first user is an admin with a permission, and the second user is not an admin and has no permission.
+    // The first user is an admin with a permission, and the second user is not an admin and has only read_users.
     // So a filter on the role or on the permissions matches only the first user.
     // The values of the first user start with "a" and the values of the second user start with "b",
     // so each sort on a text field has one correct order in each collation.
@@ -213,6 +215,7 @@ public class UserListQueryTests : TestBase
         target.AddPermission(Permission.ManageTenant());
         var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate());
         caller.UpdateRole(UserRole.User());
+        caller.AddPermission(Permission.ReadUsers());
         await InsertAsync(target, caller);
         FactoryClient.SignInAsAppUser(caller.Identifier);
         return target;

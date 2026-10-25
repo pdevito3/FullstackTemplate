@@ -6,18 +6,18 @@ using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
 
-/// <summary>A read needs no permission. The tenant filter decides which agents a caller can get.</summary>
+/// <summary>A read needs read_agents. The tenant filter decides which agents a caller can get.</summary>
 public class GetAgentQueryTests : TestBase
 {
     [Test]
-    public async Task member_with_no_permission_gets_an_agent_of_their_tenant()
+    public async Task member_with_only_read_agents_gets_an_agent_of_their_tenant()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _)
             .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ManageTenant])
             .BuildAsync();
-        await testingServiceScope.SignInAsMemberWithOnlyAsync();
+        await testingServiceScope.SignInAsMemberWithOnlyAsync(Permission.ReadAgents());
 
         // Act
         var agentReturned = await testingServiceScope.SendAsync(new GetAgent.Query(agent.Id));
@@ -29,6 +29,22 @@ public class GetAgentQueryTests : TestBase
         agentReturned.ClientId.ShouldBe(agent.ClientId);
         agentReturned.Mode.ShouldBe("delegated");
         agentReturned.Permissions.ShouldBe([Permission.Names.ManageTenant]);
+    }
+
+    [Test]
+    public async Task member_with_no_permission_cannot_get_an_agent()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _).AddAgent(out var agent).BuildAsync();
+        await testingServiceScope.SignInAsMemberWithOnlyAsync();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new GetAgent.Query(agent.Id));
+
+        // Assert
+        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
+            .ShouldBe("You need the read_agents permission to do this.");
     }
 
     [Test]

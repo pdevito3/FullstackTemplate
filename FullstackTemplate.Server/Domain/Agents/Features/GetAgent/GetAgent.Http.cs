@@ -13,6 +13,7 @@ public sealed class GetAgentEndpoint : IEndpoint
         .WithTags("Agents")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
+        .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
     /// <summary>

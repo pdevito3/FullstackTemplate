@@ -261,7 +261,11 @@ public class UserErrorResponseTests : TestBase
     public async Task unknown_identifier_returns_not_found_problem()
     {
         // Arrange
-        FactoryClient.SetFakeBearerToken("user");
+        await StartGraph()
+            .AddTenant(out _)
+            .AddUser(out var admin, u => u.Role = "Admin")
+            .BuildAsync();
+        FactoryClient.SignInAsAppUser(admin.Identifier);
 
         // Act
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier($"unknown-{Guid.NewGuid()}"));

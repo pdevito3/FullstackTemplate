@@ -227,6 +227,25 @@ public class AddUserCommandTests : TestBase
         userReturned.Identifier.ShouldBe(deleted.Identifier);
     }
 
+    [Test]
+    public async Task cannot_add_a_user_with_the_identifier_of_a_live_user_in_another_tenant()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddTenant(out _)
+            .AddUser(out var otherTenantUser)
+            .BuildAsync();
+        var fakeUserDto = new FakeUserForCreationDto().RuleFor(x => x.Identifier, _ => otherTenantUser.Identifier).Generate();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(new AddUser.Command(fakeUserDto));
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<ConflictException>();
+        exception.Message.ShouldBe("A user with this identifier already exists.");
+    }
+
     private static async Task ShouldHaveNoUserAsync(TestingServiceScope testingServiceScope, string identifier)
     {
         var userExists = await testingServiceScope.ExecuteDbContextAsync(db =>

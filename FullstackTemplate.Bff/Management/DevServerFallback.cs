@@ -37,16 +37,18 @@ public static class DevServerFallback
 
     /// <summary>
     /// The dev server URL for a request that no endpoint matches, or null when it keeps its 404. Vite proxies
-    /// <paramref name="bffPaths"/> to the BFF, so a redirect of an unknown path under one of them would loop. The
-    /// health probes also stay on the BFF. A path that fails <see cref="LocalUrl.IsLocal"/>, such as <c>//host</c>,
-    /// also keeps its 404.
+    /// <paramref name="bffPaths"/> to the BFF, so a redirect of an unknown path that starts with one of them would
+    /// loop. The health probes also stay on the BFF. A path that fails <see cref="LocalUrl.IsLocal"/>, such as
+    /// <c>//host</c>, also keeps its 404.
     /// </summary>
     private static string? Target(SpaOrigin spaOrigin, string method, PathString path, QueryString query, IEnumerable<PathString> bffPaths)
     {
         if (spaOrigin.DevServer is null
             || !HttpMethods.IsGet(method)
             || Extensions.IsHealthProbe(path)
-            || bffPaths.Any(bffPath => path.StartsWithSegments(bffPath, StringComparison.OrdinalIgnoreCase)))
+            // A raw prefix, not a path segment, because Vite proxies each URL that starts with the prefix, such as
+            // /api-docs or /bff%2Fx. The match ignores case, so it also covers Vite's case-sensitive match.
+            || bffPaths.Any(bffPath => path.Value!.StartsWith(bffPath.Value!, StringComparison.OrdinalIgnoreCase)))
         {
             return null;
         }

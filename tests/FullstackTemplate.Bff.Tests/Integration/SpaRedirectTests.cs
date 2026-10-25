@@ -33,7 +33,6 @@ public class SpaRedirectTests
     [Arguments("/assets/42")]
     [Arguments("/weather/forecast.json?city=x")]
     [Arguments("/%5Cevil.example/x")]
-    [Arguments("/api-docs")]
     public async Task a_deep_link_redirects_to_the_same_path_and_query_on_the_spa_dev_server(string path)
     {
         using var browser = BffApp.Instance.CreateBrowser();
@@ -54,6 +53,10 @@ public class SpaRedirectTests
     [Arguments("/alive/nope")]
     [Arguments("/signin-oidc/nope")]
     [Arguments("/signout-callback-oidc/nope")]
+    [Arguments("/api-docs")]
+    [Arguments("/bffx")]
+    [Arguments("/api%2Fx")]
+    [Arguments("/signin-oidcx")]
     public async Task an_unknown_path_that_vite_proxies_to_the_bff_keeps_its_404(string path)
     {
         using var browser = BffApp.Instance.CreateBrowser();

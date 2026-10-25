@@ -8,7 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { FilterControlProps } from '../types'
 import { FILTER_CONTROLS } from './filter-controls'
 
-const DEFAULT_DIALOG_CLASS_NAME = 'md:w-auto md:max-w-fit'
+// The dialog is fixed at left 50%, so w-auto gives it at most half of the screen, and the
+// widest control spills out of a dialog on a 768 px screen. w-max fits the control.
+const DEFAULT_DIALOG_CLASS_NAME = 'md:w-max md:max-w-[calc(100vw-2rem)]'
 
 /**
  * Shows the filter control that matches `config.controlType`. A lazy control

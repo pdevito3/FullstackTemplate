@@ -9,7 +9,9 @@ type BooleanFilterProps = Pick<FilterControlProps, 'config' | 'initialFilter' | 
 export function BooleanFilter({ config, initialFilter, onSubmit }: BooleanFilterProps) {
   const { propertyKey, propertyLabel } = config
   // Only the edit dialog has a current value. In the Add Filter menu the buttons are plain buttons, not toggles.
-  const isPressed = (value: boolean) => (initialFilter ? initialFilter.value === value : undefined)
+  // A "Not Equals True" filter matches the rows that are false, so False is its current value.
+  const currentValue = initialFilter?.operator === Operators.NOT_EQUALS ? !initialFilter.value : initialFilter?.value
+  const isPressed = (value: boolean) => (initialFilter ? currentValue === value : undefined)
   const labelId = useId()
   const handleSubmit = (selectedValue: boolean) => {
     onSubmit({

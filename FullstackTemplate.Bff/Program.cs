@@ -28,21 +28,6 @@ try
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.Services.AddProblemDetails();
 
-    builder.Services.AddCors(options =>
-    {
-        options.AddDefaultPolicy(policy =>
-        {
-            var frontendUrl = builder.Configuration["services:webfrontend:https:0"]
-                ?? builder.Configuration["services:webfrontend:http:0"]
-                ?? "http://localhost:5173";
-
-            policy.WithOrigins(frontendUrl.TrimEnd('/'))
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-    });
-
     // Before the authentication, so that the bffdb migrations run before the Data Protection key ring loads
     builder.AddBffSessions();
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
@@ -91,7 +76,6 @@ try
         app.UseStaticFiles();
     }
 
-    app.UseCors();
     app.UseCallbackMethodGuard();
     // Also answers the OIDC callbacks, /signin-oidc and /signout-callback-oidc
     app.UseAuthentication();
@@ -117,7 +101,8 @@ try
 
     if (spaOrigin.DevServer is not null)
     {
-        app.MapGet("/", () => Results.Redirect(spaOrigin.Resolve("/")));
+        // A middleware after UseAuthorization, so that it sees the result of routing
+        app.UseDevServerFallback(spaOrigin);
     }
     else
     {

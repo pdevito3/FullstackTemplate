@@ -210,9 +210,12 @@ public class LoginHardeningTests
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_sid=sid-front");
 
-        var response = await browser.GetAsync("/signout-oidc?sid=sid-front&iss=" + Uri.EscapeDataString(BffApp.Instance.IdentityProvider.Issuer));
+        var path = "/signout-oidc?sid=sid-front&iss=" + Uri.EscapeDataString(BffApp.Instance.IdentityProvider.Issuer);
+        var response = await browser.GetAsync(path);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        // No endpoint answers the path, so in a local run it goes to the SPA dev server like any unknown path
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + path);
         BffApp.SessionCookieValue(response).ShouldBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }

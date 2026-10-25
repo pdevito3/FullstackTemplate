@@ -45,7 +45,8 @@ function RootComponent() {
   const router = useRouter()
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
-  const pageName = routeNames[currentPath] ?? 'Page'
+  const isNotFound = routerState.matches.some((match) => match.globalNotFound)
+  const pageName = isNotFound ? 'Not Found' : (routeNames[currentPath] ?? 'Page')
 
   return (
     <RouterProvider

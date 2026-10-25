@@ -32,3 +32,26 @@ test.describe('the home page on a desktop', () => {
     expect(await appShellPage(page).pageScrollRange()).toBe(0)
   })
 })
+
+test.describe('an unknown address', () => {
+  test('shows a page not found message in the app layout', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openMissingPage()
+
+    await expect(shell.at.notFoundHeading).toBeVisible()
+    await expect(shell.at.currentPage).toHaveText('Not Found')
+    expect(shell.warnings.filter((warning) => warning.includes('notFound'))).toEqual([])
+  })
+
+  test('links to the home page', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
+    const shell = appShellPage(page)
+    await shell.openMissingPage()
+
+    await shell.goHome()
+
+    await expect(shell.at.weatherHeading).toBeVisible()
+    await expect(shell.at.currentPage).toHaveText('Home')
+  })
+})

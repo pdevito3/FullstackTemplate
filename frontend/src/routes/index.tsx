@@ -64,7 +64,7 @@ function Index() {
   const handleLogout = () => auth.logoutUrl && logout(auth.logoutUrl)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

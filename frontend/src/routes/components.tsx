@@ -159,7 +159,7 @@ function ComponentsPage() {
 
   return (
     <>
-      <div className="w-full min-h-screen bg-linear-to-br from-bg-gradient-start to-bg-gradient-end text-text-primary">
+      <div className="w-full">
         <div className="max-w-[1200px] mx-auto px-8 py-10 max-md:px-4">
           {/* Header */}
           <div className="mb-10">
@@ -205,7 +205,7 @@ function ComponentsPage() {
                   <Button variant="link">Link</Button>
                 </div>
                 <Separator className="my-4" />
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <Button size="sm">Small</Button>
                   <Button size="default">Default</Button>
                   <Button size="lg">Large</Button>

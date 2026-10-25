@@ -13,6 +13,7 @@ export const weatherForecast = (page: Page) => {
     celsius: page.getByRole('button', { name: '°C', exact: true }),
     refresh: page.getByRole('button', { name: 'Refresh', exact: true }),
     tryAgain: page.getByRole('button', { name: 'Try Again', exact: true }),
+    loading: page.getByRole('status', { name: 'Loading forecast' }),
     emptyMessage: page.getByText('No weather data available'),
     error: page.getByRole('alert').filter({ hasText: 'Error loading weather data' }),
     toast: (text: string) => page.getByRole('alertdialog').filter({ hasText: text }),

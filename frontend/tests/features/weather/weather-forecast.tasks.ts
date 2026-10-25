@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { weatherPaths } from '@tests/support/api/weather-api'
 import { weatherForecast } from './weather-forecast.locators'
@@ -17,6 +17,15 @@ export function weatherForecastPage(page: Page) {
       await page.goto('/')
       await expect(at.heading).toBeVisible()
       await settled
+    },
+
+    async openWhileLoading() {
+      await page.goto('/')
+      await expect(at.loading).toBeVisible()
+    },
+
+    async runningAnimationsIn(element: Locator) {
+      return element.evaluate((node) => node.getAnimations({ subtree: true }).length)
     },
 
     async showInCelsius() {

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { NotFound } from '@/components/not-found'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/toaster'
 // Connects the generated API clients to apiClient before the first request.
@@ -12,7 +13,7 @@ import './index.css'
 import { routeTree } from './routeTree.gen'
 
 // Create a new router instance
-const router = createRouter({ routeTree })
+const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound })
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {

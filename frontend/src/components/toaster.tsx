@@ -42,24 +42,26 @@ const iconColors = {
  */
 export function Toaster() {
   // React Aria lists the newest toast first. flex-col-reverse keeps it nearest the bottom edge.
-  // Below 768px the region spans the screen, and a toast is at most 500px wide. pointer-events-none lets a click beside
-  // or between the toasts reach the page. Each toast takes pointer events again, so hover still pauses the timers.
+  // Below 768px the region is centered and at most 500px wide, the width of a toast, so its focus ring fits the toast.
+  // pointer-events-none lets a click beside or between the toasts reach the page. Each toast takes pointer events again,
+  // so hover still pauses the timers.
   // index.css moves the region to the top while a bottom sheet is open.
   return (
     <ToastRegion
       queue={toastQueue}
       data-slot="toast-region"
-      className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] flex flex-col-reverse items-center gap-2 outline-none md:right-6 md:bottom-6 md:left-auto"
+      className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] mx-auto flex max-w-[500px] flex-col-reverse items-center gap-2 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:right-6 md:bottom-6 md:left-auto"
     >
       {({ toast }) => (
         <Toast
           toast={toast}
+          data-slot="toast"
           style={{ viewTransitionName: toast.key, viewTransitionClass: 'toast' } as CSSProperties}
           className={cn(
             'bg-card text-card-foreground border border-border',
             'shadow-lg rounded-lg px-4 py-3',
             'pointer-events-auto flex w-full max-w-[500px] items-start gap-3 md:min-w-[300px]',
-            'outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            'outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
           )}
         >
           <ToastContent className="flex items-start gap-3 flex-1 min-w-0">

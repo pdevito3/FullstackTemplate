@@ -1,4 +1,5 @@
 import { test, expect } from '@tests/support/fixtures'
+import { takesUpSpace } from '@tests/support/screen'
 import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
@@ -18,6 +19,16 @@ test.describe('the Add Filter menu on a phone', () => {
       expect(await demo.cssFiltersAround(property)).toEqual([])
     })
   }
+
+  test('names the Is Blocked control only in the title of the sheet', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Is Blocked')
+
+    expect(await takesUpSpace(demo.at.controlLabel('Is Blocked'))).toBe(false)
+    await expect(demo.at.valueGroup('Is Blocked')).toBeVisible()
+  })
 
   test('adds a date filter from its control', async ({ page }) => {
     const demo = filterDemoPage(page)
@@ -53,6 +64,16 @@ for (const screen of [
 
 test.describe('the Add Filter menu on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('names the Is Blocked control in the menu', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Is Blocked')
+
+    expect(await takesUpSpace(demo.at.controlLabel('Is Blocked'))).toBe(true)
+    await expect(demo.at.valueGroup('Is Blocked')).toBeVisible()
+  })
 
   test('shows the Created Date control beside the open menu', async ({ page }) => {
     const demo = filterDemoPage(page)

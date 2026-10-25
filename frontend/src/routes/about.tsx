@@ -7,7 +7,7 @@ export const Route = createFileRoute('/about')({
 
 function About() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="max-w-2xl mx-auto px-4 py-8">
         <Card>
           <CardHeader>

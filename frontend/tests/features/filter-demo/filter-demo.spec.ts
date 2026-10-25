@@ -30,3 +30,37 @@ test.describe('the Add Filter menu on a phone', () => {
     await expect(demo.at.control('Created Date')).toBeHidden()
   })
 })
+
+// The date control is the largest. A submenu with it needs about 906 px beside the sidebar, and 474 px of height.
+for (const screen of [
+  { name: 'a phone on its side', viewport: { width: 844, height: 390 } },
+  { name: 'a tablet', viewport: { width: 820, height: 1180 } },
+]) {
+  test.describe(`the Add Filter menu on ${screen.name}`, () => {
+    test.use({ viewport: screen.viewport })
+
+    test('shows the Created Date control fully on the screen', async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.open()
+
+      await demo.chooseProperty('Created Date')
+
+      await expect(demo.at.control('Created Date')).toBeInViewport({ ratio: 1 })
+      expect(await demo.pageScrollWidth()).toBe(screen.viewport.width)
+    })
+  })
+}
+
+test.describe('the Add Filter menu on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('shows the Created Date control beside the open menu', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Created Date')
+
+    await expect(demo.at.control('Created Date')).toBeInViewport({ ratio: 1 })
+    await expect(demo.at.searchProperties).toBeVisible()
+  })
+})

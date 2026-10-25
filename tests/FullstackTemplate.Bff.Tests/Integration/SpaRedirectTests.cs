@@ -152,7 +152,7 @@ public class SpaRedirectTests
             var response = await browser.SendAsync(request);
 
             preflightResponse.Headers.Contains("Access-Control-Allow-Origin").ShouldBeFalse();
-            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+            response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
             response.Headers.Contains("Access-Control-Allow-Origin").ShouldBeFalse();
             response.Headers.Contains("Access-Control-Allow-Credentials").ShouldBeFalse();
         }

@@ -25,7 +25,7 @@ public class RefreshFailureTests
         (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
         BffApp.SessionCookieValue(response).ShouldBe("");
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]

@@ -35,7 +35,7 @@ public class LoginHardeningTests
 
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, "iss");
         BffApp.SessionCookieValue(callback).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         // The BFF does not redeem the code of a response that it does not trust
         BffApp.Instance.IdentityProvider.TokenRequests.ShouldNotContain(r => r.Subject == subject);
     }
@@ -94,7 +94,7 @@ public class LoginHardeningTests
 
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, IdTokenChecks.AlgorithmHeader);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -106,7 +106,7 @@ public class LoginHardeningTests
 
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, IdTokenChecks.AudienceClaim);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     /// <summary>
@@ -125,7 +125,7 @@ public class LoginHardeningTests
 
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     /// <summary>

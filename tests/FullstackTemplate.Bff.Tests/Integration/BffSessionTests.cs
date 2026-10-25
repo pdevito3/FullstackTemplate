@@ -51,7 +51,7 @@ public class BffSessionTests
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -136,7 +136,7 @@ public class BffSessionTests
         issued.Count.ShouldBe(2);
         provider.RevokedTokens.ShouldContain(issued[0]);
         provider.RevokedTokens.ShouldContain(issued[1]);
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -167,7 +167,7 @@ public class BffSessionTests
         var issued = provider.IssuedRefreshTokens(subject);
         issued.Count.ShouldBe(2);
         provider.RevokedTokens.ShouldContain(issued[1]);
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]

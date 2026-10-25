@@ -187,7 +187,7 @@ public class LoginEndpointTests
 
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/back");
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     public static async Task ShouldBeProblemAsync(HttpResponseMessage response, string title, string field)

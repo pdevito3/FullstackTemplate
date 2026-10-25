@@ -4,8 +4,9 @@ using Shouldly;
 
 /// <summary>
 /// <c>FullstackTemplate.Server/BannedSymbols.txt</c> bans the APIs that write without the save, so without an audit
-/// entry (RS0030). Code that writes a <c>[NotAudited]</c> table with one of them suppresses RS0030. This test pins the
-/// files that can suppress it, so each new suppression changes this list and gets a review.
+/// entry (RS0030). It also bans <c>IgnoreAutoIncludes</c>, which loads an aggregate without its owned children. Code
+/// that writes a <c>[NotAudited]</c> table with one of them suppresses RS0030. This test pins the files that can
+/// suppress it, so each new suppression changes this list and gets a review.
 /// </summary>
 public class BannedApiSuppressionTests
 {

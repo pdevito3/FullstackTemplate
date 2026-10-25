@@ -67,7 +67,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Indexes
-        // A deleted user frees its identifier, so the same person can sign up again.
         builder.HasIndex(e => e.Identifier)
             .IsUnique()
             .HasFilter("is_deleted = false");

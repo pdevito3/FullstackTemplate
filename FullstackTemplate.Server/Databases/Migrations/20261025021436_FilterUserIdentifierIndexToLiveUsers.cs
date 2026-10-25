@@ -25,6 +25,7 @@ namespace FullstackTemplate.Server.Databases.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // This fails while a deleted user and a user that is not deleted share an identifier.
             migrationBuilder.DropIndex(
                 name: "ix_users_identifier",
                 table: "users");

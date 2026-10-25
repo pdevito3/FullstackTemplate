@@ -62,9 +62,11 @@ test('range calendar: Enter on the start day keeps the focus on that day', async
 
   await userEvent.keyboard('{Enter}')
   await expect.poll(() => document.activeElement?.getAttribute('aria-label')).toMatch(/August 15, 2026/)
+  await expect.poll(() => screen.container.querySelector('[aria-live="polite"]')?.textContent).toBe('Choose an end date.')
   await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{Enter}')
 
   await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2026-08-18')
+  expect(screen.container.querySelector('[aria-live="polite"]')?.textContent).toBe('')
 })
 
 async function pixelsOf(element: Element): Promise<ImageData> {

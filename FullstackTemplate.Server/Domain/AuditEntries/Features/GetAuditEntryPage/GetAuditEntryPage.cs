@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Databases;
 using Databases.Auditing;
 using Dtos;
+using Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
@@ -12,6 +13,8 @@ using Users;
 
 public static class GetAuditEntryPage
 {
+    private const string EntityIdParameter = "entityId";
+
     public sealed record Query(AuditEntryParametersDto Parameters) : IRequest<AuditEntryPageDto>;
 
     /// <summary>
@@ -36,7 +39,11 @@ public static class GetAuditEntryPage
                 .TagWithOperationCallSite("audit_entries.page")
                 .AsNoTracking();
             if (parameters.EntityId is { } entityId)
+            {
+                if (!PostgresText.CanStore(entityId))
+                    throw new QueryInputException(EntityIdParameter, $"The {EntityIdParameter} value has a character that is not allowed.");
                 entries = entries.Where(e => e.RootId == entityId);
+            }
             if (parameters.Cursor is { } cursorText)
             {
                 var cursor = AuditCursor.Parse(cursorText);

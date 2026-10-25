@@ -1,7 +1,6 @@
 namespace FullstackTemplate.Server.Exceptions;
 
-using System.Buffers;
-using System.Text;
+using Databases;
 
 /// <summary>
 /// Exception thrown when domain validation rules are violated.
@@ -49,15 +48,7 @@ public class ValidationException : Exception
     }
 
     public static void ThrowWhenHasCharacterPostgresCannotStore(string value, string property, string message)
-    {
-        var rest = value.AsSpan();
-        while (!rest.IsEmpty)
-        {
-            if (Rune.DecodeFromUtf16(rest, out var rune, out var consumed) != OperationStatus.Done || rune.Value == 0)
-                throw new ValidationException(property, message);
-            rest = rest[consumed..];
-        }
-    }
+        => Must(PostgresText.CanStore(value), property, message);
 
     public static void Must(bool condition, string property, string message)
     {

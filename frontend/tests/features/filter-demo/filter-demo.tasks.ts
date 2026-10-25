@@ -35,6 +35,21 @@ export function filterDemoPage(page: Page) {
       })
     },
 
+    async scrollControlToEnd(propertyLabel: string) {
+      await at.control(propertyLabel).hover()
+      await page.mouse.wheel(0, 200)
+    },
+
+    /** The bottom edge of the control as the user sees it: the edge of the element that clips it, or its own. */
+    async visibleBottomOf(propertyLabel: string) {
+      return at.control(propertyLabel).evaluate((control) => {
+        for (let element = control.parentElement; element && element !== document.body; element = element.parentElement) {
+          if (getComputedStyle(element).overflowY !== 'visible') return element.getBoundingClientRect().bottom
+        }
+        return control.getBoundingClientRect().bottom
+      })
+    },
+
     async pageScrollWidth() {
       return page.evaluate(() => document.documentElement.scrollWidth)
     },

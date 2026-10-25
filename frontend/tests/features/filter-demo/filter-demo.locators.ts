@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 
 export const filterDemo = (page: Page) => {
-  const control = (propertyLabel: string) => page.getByRole('dialog', { name: new RegExp(`${propertyLabel} filter$`, 'i') })
+  const control = (propertyLabel: string) => page.getByRole('dialog', { name: `${propertyLabel} filter` })
 
   return {
     heading: page.getByRole('heading', { name: 'Filter Builder Demo' }),

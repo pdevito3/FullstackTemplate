@@ -31,7 +31,7 @@ test.describe('the Add Filter menu on a phone', () => {
   })
 })
 
-// The date control is the largest. A submenu with it needs about 906 px beside the sidebar, and 474 px of height.
+// The date control is the widest. A submenu with it needs about 911 px beside the sidebar.
 for (const screen of [
   { name: 'a phone on its side', viewport: { width: 844, height: 390 } },
   { name: 'a tablet', viewport: { width: 820, height: 1180 } },
@@ -60,7 +60,24 @@ test.describe('the Add Filter menu on a desktop', () => {
 
     await demo.chooseProperty('Created Date')
 
-    await expect(demo.at.control('Created Date')).toBeInViewport({ ratio: 1 })
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
     await expect(demo.at.searchProperties).toBeVisible()
+  })
+})
+
+const shortWindow = { width: 1280, height: 512 }
+
+test.describe('the Add Filter menu on a short desktop window', () => {
+  test.use({ viewport: shortWindow })
+
+  test('keeps a tall control on the screen and scrolls it to its Add Filter button', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Scheduled At (Local)')
+
+    expect(await demo.visibleBottomOf('Scheduled At (Local)')).toBeLessThanOrEqual(shortWindow.height)
+    await demo.scrollControlToEnd('Scheduled At (Local)')
+    await expect(demo.at.addFilter('Scheduled At (Local)')).toBeInViewport({ ratio: 1 })
   })
 })

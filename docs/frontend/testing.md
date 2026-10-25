@@ -4,7 +4,7 @@ The frontend has four test suites. Put a test in the lowest suite that can prove
 
 | Suite | Command | Runner | Files | What it proves |
 |-------|---------|--------|-------|----------------|
-| unit | `pnpm test` | Vitest in Node | `src/**/*.test.ts` | Pure rules and shapes. No React, no network. |
+| unit | `pnpm test` | Vitest in Node | `src/**/*.test.ts`, `e2e/*.test.ts` | Pure rules and shapes. No React, no network. |
 | component | `pnpm test` | Vitest browser mode in Chromium | `src/**/*.test.tsx` | One component in a real browser. |
 | functional | `pnpm test:e2e` | Playwright | `tests/features/**/*.spec.ts` | A real page of the SPA against a mocked BFF. |
 | stack | `pnpm test:e2e:stack` | Playwright | `e2e/*.spec.ts` | The login flows against a live Aspire stack and a real IdP. See [authentication.md](../authentication.md). |

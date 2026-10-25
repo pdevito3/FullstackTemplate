@@ -15,6 +15,8 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './e2e',
+  // The *.test.ts files in e2e/ are Vitest unit tests
+  testMatch: '*.spec.ts',
   fullyParallel: false, // Run tests sequentially since they share auth state
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

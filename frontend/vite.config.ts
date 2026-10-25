@@ -60,7 +60,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts'],
+          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
           // Type-check the test files too, so that a type test (expectTypeOf, @ts-expect-error) fails pnpm test.
           typecheck: {
             enabled: true,

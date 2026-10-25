@@ -8,19 +8,29 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { idpNames, loadIdp } from './idps.ts'
+import { checkStack } from './stack-description.ts'
 import { refreshesOnEachCall } from './stack-features.ts'
 
-interface DescribedResource {
-  displayName: string
-  urls?: { name: string; url: string }[]
-}
+const appHost = '../FullstackTemplate.AppHost'
 
-const described = JSON.parse(
-  execFileSync('dotnet', ['aspire', 'describe', '--format', 'Json', '--apphost', '../FullstackTemplate.AppHost'], {
+// Aspire writes its messages to stderr, so the user sees them above the message of the script
+const stack = checkStack({
+  run: spawnSync('dotnet', ['aspire', 'describe', '--format', 'Json', '--apphost', appHost], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   }),
-) as { resources: DescribedResource[] }
+  appHost,
+})
+if (stack.kind === 'not-ready') {
+  fail(stack.message)
+}
+const described = { resources: stack.resources }
+
+// A problem with the stack is a message to the user, not a stack trace
+function fail(message: string): never {
+  console.error(message)
+  process.exit(1)
+}
 
 function environmentOf(resource: string): Record<string, string> {
   return (described.resources.find((r) => r.displayName === resource) as { environment?: Record<string, string> } | undefined)
@@ -31,7 +41,7 @@ function environmentOf(resource: string): Record<string, string> {
 function bffAuthority(): string {
   const authority = environmentOf('bff').Auth__Authority
   if (!authority) {
-    throw new Error('The stack has no Auth__Authority for the BFF.')
+    fail('The stack has no Auth__Authority for the BFF.')
   }
   return authority
 }
@@ -39,7 +49,7 @@ function bffAuthority(): string {
 // `dotnet aspire describe` hides the value of a secret parameter, so read it from the user secrets of the AppHost,
 // where the AppHost keeps each generated value. The value is the last line of the output.
 function appHostSecret(key: string): string {
-  const output = execFileSync('dotnet', ['aspire', 'secret', 'get', key, '--non-interactive', '--nologo', '--apphost', '../FullstackTemplate.AppHost'], {
+  const output = execFileSync('dotnet', ['aspire', 'secret', 'get', key, '--non-interactive', '--nologo', '--apphost', appHost], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   })
@@ -51,7 +61,7 @@ function endpointUrl(resource: string, endpoint: string): string {
     .find((r) => r.displayName === resource)
     ?.urls?.find((u) => u.name === endpoint)?.url
   if (!url) {
-    throw new Error(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with the AuthProvider of the IDP.`)
+    fail(`The stack has no ${endpoint} URL for '${resource}'. Start the stack with the AuthProvider of the IDP.`)
   }
   return url
 }
@@ -63,7 +73,7 @@ function idpOfStack(): string {
     idps.find((idp) => idp.resource !== undefined && resources.has(idp.resource)) ??
     idps.find((idp) => idp.resource === undefined)
   if (!detected) {
-    throw new Error(`The stack has no resource of an IDP in e2e/idps/. Set IDP to one of these: ${idpNames().join(', ')}.`)
+    fail(`The stack has no resource of an IDP in e2e/idps/. Set IDP to one of these: ${idpNames().join(', ')}.`)
   }
   return detected.name
 }

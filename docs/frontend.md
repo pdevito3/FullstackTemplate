@@ -15,7 +15,7 @@ pnpm install
 pnpm dev      # dev server
 pnpm build    # production build
 pnpm lint     # ESLint
-pnpm test     # Vitest: unit tests (src/**/*.test.ts) in Node, component tests (src/**/*.test.tsx) in headless Chromium
+pnpm test     # Vitest: unit tests (src/**/*.test.ts, e2e/*.test.ts) in Node, component tests (src/**/*.test.tsx) in headless Chromium
 pnpm test:e2e # Playwright: the functional suite (tests/), the SPA against a mocked BFF. See docs/frontend/testing.md
 pnpm generate:api  # API contract from the OpenAPI document
 ```

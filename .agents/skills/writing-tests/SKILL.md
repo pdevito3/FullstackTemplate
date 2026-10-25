@@ -11,7 +11,7 @@ Put a test in the lowest suite that can prove the behavior. A lower suite is fas
 
 | The behavior | Suite | Command | Files |
 |---|---|---|---|
-| A pure rule or a shape, with no React and no network | Frontend unit | `pnpm test` | `frontend/src/**/*.test.ts` |
+| A pure rule or a shape, with no React and no network | Frontend unit | `pnpm test` | `frontend/src/**/*.test.ts`, or `frontend/e2e/*.test.ts` for a rule of the stack runner |
 | One component in a real browser | Frontend component | `pnpm test` | `frontend/src/**/*.test.tsx` |
 | A page of the SPA: what the user sees and what the page sends to the BFF | Functional | `pnpm test:e2e` | `frontend/tests/features/**/*.spec.ts` |
 | Login, logout, the session cookie, a token refresh, DPoP, PAR, or the BFF against a real IdP | Stack | `pnpm test:e2e:stack` | `frontend/e2e/*.spec.ts` |

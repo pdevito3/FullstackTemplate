@@ -62,6 +62,41 @@ public class FeatureTelemetryTests : TestBase
     }
 
     [Test]
+    public async Task a_forbidden_get_user_has_the_user_on_its_span()
+    {
+        // Arrange
+        var (admin, member) = await AddAdminAndMemberAsync();
+        FactoryClient.SignInAsAppUser(member.Identifier);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(admin.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        SpanOf("GetUser.Query", member).GetTagItem("app.user_id").ShouldBe(admin.Id);
+    }
+
+    [Test]
+    public async Task a_forbidden_get_agent_has_the_agent_on_its_span()
+    {
+        // Arrange
+        await StartGraph()
+            .AddTenant(out var tenant)
+            .AddUser(out var member, u => u.Role = "User")
+            .Under(tenant)
+            .AddAgent(out var agent)
+            .BuildAsync();
+        FactoryClient.SignInAsAppUser(member.Identifier);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Agents.GetRecord(agent.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        SpanOf("GetAgent.Query", member).GetTagItem("app.agent_id").ShouldBe(agent.Id);
+    }
+
+    [Test]
     public async Task a_role_change_counts_on_the_role_changed_metric_with_the_new_role()
     {
         // Arrange
@@ -164,9 +199,10 @@ public class FeatureTelemetryTests : TestBase
         return (users[0], users[1]);
     }
 
-    private Activity UpdateUserRoleSpanOf(User caller) => ExportedSpans()
-        .Where(a => a.DisplayName == "UpdateUserRole.Command"
-            && a.GetTagItem("app.caller.subject") as string == caller.Identifier)
+    private Activity UpdateUserRoleSpanOf(User caller) => SpanOf("UpdateUserRole.Command", caller);
+
+    private Activity SpanOf(string feature, User caller) => ExportedSpans()
+        .Where(a => a.DisplayName == feature && a.GetTagItem("app.caller.subject") as string == caller.Identifier)
         .ShouldHaveSingleItem();
 
     private static object? Scalar(LogEvent logEvent, string property)

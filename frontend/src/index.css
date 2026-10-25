@@ -218,11 +218,50 @@
 @keyframes toast-slide-in {
   from {
     opacity: 0;
-    transform: translateY(-0.5rem);
+    transform: translateY(0.5rem);
   }
 }
 
 @keyframes toast-slide-out {
+  to {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+/*
+ * On a phone, the buttons of a bottom sheet or drawer are where the toasts show. While one is open, the toasts show
+ * at the top, newest nearest the top edge, and enter from above.
+ */
+@media (width < 48rem) {
+  :root:has(
+      :is([data-slot="sheet-content"], [data-slot="responsive-dialog-content"])[data-side="bottom"],
+      [data-slot="drawer-content"][data-position="bottom"]
+    ) {
+    [data-slot="toast-region"] {
+      top: 1rem;
+      bottom: auto;
+      flex-direction: column;
+    }
+
+    &::view-transition-new(.toast):only-child {
+      animation-name: toast-slide-in-top;
+    }
+
+    &::view-transition-old(.toast):only-child {
+      animation-name: toast-slide-out-top;
+    }
+  }
+}
+
+@keyframes toast-slide-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes toast-slide-out-top {
   to {
     opacity: 0;
     transform: translateY(-0.5rem);

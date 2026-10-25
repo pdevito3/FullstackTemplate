@@ -8,10 +8,12 @@ export const Route = createFileRoute('/about')({
 function About() {
   return (
     <div className="bg-background">
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-3xl">About</CardTitle>
+            <CardTitle className="text-3xl">
+              <h1>About</h1>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground leading-relaxed">
@@ -45,7 +47,7 @@ function About() {
             </ul>
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   )
 }

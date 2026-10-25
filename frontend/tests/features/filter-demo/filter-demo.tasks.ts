@@ -30,6 +30,18 @@ export function filterDemoPage(page: Page) {
       await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
     },
 
+    async addBooleanFilter(propertyLabel: string, value: 'True' | 'False') {
+      await at.addFilterMenu.click()
+      await at.property(propertyLabel).click()
+      await at.button(propertyLabel, value).click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
+    async editFilter(propertyLabel: string) {
+      await at.editFilter(propertyLabel).click()
+      await expect(at.control(propertyLabel)).toBeVisible()
+    },
+
     async addTodayFilter(propertyLabel: string) {
       await at.button(propertyLabel, 'Today').click()
       await at.addFilter(propertyLabel).click()

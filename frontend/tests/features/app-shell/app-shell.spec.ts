@@ -33,6 +33,25 @@ test.describe('the home page on a desktop', () => {
   })
 })
 
+test.describe('the landmarks of a page', () => {
+  test('the home page has one main landmark', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
+
+    await weatherForecastPage(page).open()
+
+    expect(await appShellPage(page).at.mainLandmarks.count()).toBe(1)
+  })
+
+  test('the about page has one main landmark and a level 1 heading', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openAbout()
+
+    expect(await shell.at.mainLandmarks.count()).toBe(1)
+    await expect(shell.at.aboutHeading).toBeVisible()
+  })
+})
+
 test.describe('an unknown address', () => {
   test('shows a page not found message in the app layout', async ({ page }) => {
     const shell = appShellPage(page)

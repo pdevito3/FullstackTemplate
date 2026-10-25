@@ -9,6 +9,8 @@ import { JollyCalendar, JollyRangeCalendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { cn } from '@/lib/utils'
 import type { DateValue, Filter, FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
 
@@ -54,6 +56,8 @@ export function DateFilter({
   const initialDateValue = initialFilter?.value as DateValue | undefined
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
+  // A phone shows the control in a sheet, which has no room for the quick selects beside the calendar.
+  const isMobile = useIsMobile()
 
   // Convert initial values to CalendarDate
   const initialCalendarDate = useMemo(() => {
@@ -152,7 +156,8 @@ export function DateFilter({
   const isValid = mode === 'between' ? dateRange?.start : date
 
   return (
-    <div className="flex flex-col gap-3 p-3">
+    // On a wide sheet, a column at most 28rem wide keeps the day cells from stretching.
+    <div className={cn('flex flex-col gap-3 p-3', isMobile && 'mx-auto w-full max-w-md')}>
       {/* Mode selector */}
       <div className="flex gap-1 flex-wrap">
         {modes.map((m) => (
@@ -161,7 +166,7 @@ export function DateFilter({
             variant={mode === m.value ? 'default' : 'outline'}
             size="sm"
             onPress={() => setMode(m.value)}
-            className="flex-1 min-w-0"
+            className={cn('flex-1 min-w-0', isMobile && 'h-8')}
           >
             {m.label}
           </Button>
@@ -179,25 +184,25 @@ export function DateFilter({
       </Checkbox>
 
       {/* Calendar with integrated quick selects and date input */}
-      <div className="flex justify-center">
-        {mode === 'between' ? (
-          <JollyRangeCalendar
-            value={dateRange}
-            onChange={setDateRange}
-            showQuickSelects
-            showDateInput
-            autoFocus={autoFocus}
-          />
-        ) : (
-          <JollyCalendar
-            value={date}
-            onChange={setDate}
-            showQuickSelects
-            showDateInput
-            autoFocus={autoFocus}
-          />
-        )}
-      </div>
+      {mode === 'between' ? (
+        <JollyRangeCalendar
+          value={dateRange}
+          onChange={setDateRange}
+          showQuickSelects
+          layout={isMobile ? 'narrow' : 'wide'}
+          showDateInput
+          autoFocus={autoFocus}
+        />
+      ) : (
+        <JollyCalendar
+          value={date}
+          onChange={setDate}
+          showQuickSelects
+          layout={isMobile ? 'narrow' : 'wide'}
+          showDateInput
+          autoFocus={autoFocus}
+        />
+      )}
 
       {/* Time inputs for datetime mode */}
       {isDateTime && (

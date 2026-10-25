@@ -74,6 +74,25 @@ for (const viewport of [
   })
 }
 
+test.describe('the date control in the dialog of a 768 px tablet', () => {
+  test.use({ viewport: { width: 768, height: 1024 } })
+
+  test('fits the Between calendar in the column of the control', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    const startDate = await demo.edgesOf(demo.at.dateField('Created Date', 'Start date'))
+    const calendar = await demo.edgesOf(demo.at.calendar('Created Date'))
+    const firstMode = await demo.edgesOf(demo.at.dateMode('Created Date', 'On'))
+    const lastMode = await demo.edgesOf(demo.at.dateMode('Created Date', 'Between'))
+    expect(startDate.left).toBeCloseTo(firstMode.left, 0)
+    expect(calendar.right).toBeCloseTo(lastMode.right, 0)
+  })
+})
+
 // The date control is the widest. A submenu with it needs about 911 px beside the sidebar.
 for (const screen of [
   { name: 'a phone on its side', viewport: { width: 844, height: 390 } },

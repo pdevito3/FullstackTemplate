@@ -130,6 +130,16 @@ for (const screen of [
 test.describe('the Add Filter menu on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 
+  test('shows the True and False buttons of the menu as plain buttons', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Is Blocked')
+
+    await expect(demo.at.button('Is Blocked', 'True')).not.toHaveAttribute('aria-pressed')
+    await expect(demo.at.button('Is Blocked', 'False')).not.toHaveAttribute('aria-pressed')
+  })
+
   test('names the Is Blocked control in the menu', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()

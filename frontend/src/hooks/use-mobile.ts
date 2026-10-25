@@ -1,19 +1,6 @@
-import * as React from "react"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
-const MOBILE_BREAKPOINT = 768
-const MOBILE_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
-
-function subscribe(onChange: () => void) {
-  const mql = window.matchMedia(MOBILE_QUERY)
-  mql.addEventListener("change", onChange)
-  return () => mql.removeEventListener("change", onChange)
-}
-
-function isMobileNow() {
-  return window.matchMedia(MOBILE_QUERY).matches
-}
-
-/** True below the `md` breakpoint. */
+/** True below the `md` breakpoint of Tailwind. */
 export function useIsMobile() {
-  return React.useSyncExternalStore(subscribe, isMobileNow)
+  return useMediaQuery("(width < 48rem)")
 }

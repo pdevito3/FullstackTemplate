@@ -1,19 +1,16 @@
 import * as React from "react"
 
+/** Reads the media query on each render, the first render too, and renders again when it changes. */
 export function useMediaQuery(query: string) {
-  const [value, setValue] = React.useState(false)
+  // useSyncExternalStore subscribes again each time `subscribe` changes.
+  const subscribe = React.useCallback(
+    (onChange: () => void) => {
+      const result = matchMedia(query)
+      result.addEventListener("change", onChange)
+      return () => result.removeEventListener("change", onChange)
+    },
+    [query]
+  )
 
-  React.useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
-      setValue(event.matches)
-    }
-
-    const result = matchMedia(query)
-    result.addEventListener("change", onChange)
-    setValue(result.matches)
-
-    return () => result.removeEventListener("change", onChange)
-  }, [query])
-
-  return value
+  return React.useSyncExternalStore(subscribe, () => matchMedia(query).matches)
 }

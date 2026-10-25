@@ -12,7 +12,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover } from '@/components/ui/popover'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import {
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -37,12 +37,14 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [dialogProperty, setDialogProperty] = useState<FilterConfig | null>(null)
   const { contains } = useFilter({ sensitivity: 'base' })
-  const isMobile = useIsMobile()
+  // The date control is 378 px wide and 450 px tall. Beside the sidebar, its
+  // submenu needs about 906 px of width and 474 px of height.
+  const hasRoomForSubmenus = useMediaQuery('(width >= 64rem) and (height >= 32rem)')
 
   // The menu closes by itself after an action.
   const handleAction = (key: Key) => {
     const config = options.find((opt) => opt.propertyKey === key)
-    if (config && surfaceOf(config.controlType, isMobile) === 'dialog') {
+    if (config && surfaceOf(config.controlType, hasRoomForSubmenus) === 'dialog') {
       setDialogProperty(config)
     }
   }
@@ -79,7 +81,7 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
               items={options}
               // React Aria caches each item per option. Without this, a submenu keeps the
               // handleFilterSubmit and the surface of its first render.
-              dependencies={[handleFilterSubmit, isMobile]}
+              dependencies={[handleFilterSubmit, hasRoomForSubmenus]}
               onAction={handleAction}
               renderEmptyState={() => (
                 <div className="p-4 text-sm text-muted-foreground text-center">
@@ -91,7 +93,7 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
               {(config) => (
                 <PropertyMenuItem
                   config={config}
-                  surface={surfaceOf(config.controlType, isMobile)}
+                  surface={surfaceOf(config.controlType, hasRoomForSubmenus)}
                   onFilterSubmit={handleFilterSubmit}
                 />
               )}
@@ -121,12 +123,12 @@ function propertyKeyOf(node: { type: string; key: Key; firstChildKey?: Key | nul
 }
 
 /**
- * A phone has no room for a submenu beside the menu. React Aria flips a side
- * popover to the other side, but it never moves the popover along that axis.
- * So on a phone, each control opens in the dialog, which is a bottom sheet.
+ * A phone or a tablet has no room for a submenu beside the menu. React Aria
+ * flips a side popover to the other side, but it never moves the popover along
+ * that axis. So without the room, each control opens in the dialog.
  */
-function surfaceOf(controlType: ControlType, isMobile: boolean): FilterControlSurface {
-  return isMobile ? 'dialog' : FILTER_CONTROLS[controlType].surface
+function surfaceOf(controlType: ControlType, hasRoomForSubmenus: boolean): FilterControlSurface {
+  return hasRoomForSubmenus ? FILTER_CONTROLS[controlType].surface : 'dialog'
 }
 
 interface PropertyMenuItemProps {

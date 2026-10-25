@@ -113,7 +113,7 @@ These paths go away on purpose ([Duende BFF features to drop](https://github.com
 ### `/bff/user`
 
 - Without `X-CSRF: 1`, the response is 401 with an empty body.
-- Anonymous: 204 with an empty body. A browser logs each 4xx response as a console error, and a signed-out visitor is a normal state.
+- Anonymous: 204 with an empty body. Change: Duende BFF answered 401. A browser logs each 4xx response as a console error, and a signed-out visitor is a normal state.
 - Signed in: 200 `application/json`. The body is an array of `{ "type": string, "value": string, "valueType": null }`. The array has these items, in this order:
   1. Each claim of the BFF session principal, in the stored order.
   2. `bff:logout_url`, if the principal does not have it: `PathBase + /bff/logout`, plus `?sid=<url-encoded sid>` if a `sid` claim exists.

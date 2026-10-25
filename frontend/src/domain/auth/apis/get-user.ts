@@ -75,7 +75,6 @@ export function useAuth(): AuthState {
   const { data, isLoading, isError } = useQuery({
     queryKey: AuthKeys.user(),
     queryFn: getUser,
-    retry: false, // Don't retry on 401/403
     staleTime: 5 * 60 * 1000, // Consider auth data fresh for 5 minutes
   })
 

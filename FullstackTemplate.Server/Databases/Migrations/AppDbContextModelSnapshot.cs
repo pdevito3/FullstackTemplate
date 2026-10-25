@@ -394,7 +394,8 @@ namespace FullstackTemplate.Server.Databases.Migrations
 
                     b.HasIndex("Identifier")
                         .IsUnique()
-                        .HasDatabaseName("ix_users_identifier");
+                        .HasDatabaseName("ix_users_identifier")
+                        .HasFilter("is_deleted = false");
 
                     b.HasIndex("Username")
                         .HasDatabaseName("ix_users_username");

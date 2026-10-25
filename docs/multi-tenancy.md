@@ -72,6 +72,7 @@ The provider keeps a missing user for 30 seconds, with no fail-safe. This stops 
 
 - When a user is added, the context removes the cached result of its identifier. The new user sees their tenant on the next request.
 - When a user is deleted, or its identifier or its tenant changes, the context removes the cached result of the old and the new identifier. The user loses access on the next request.
+- When a deleted user signs up again, the new user has the identifier of the deleted user. The context removes the cached result of the identifier when it adds the new user, so the next request finds the new user and its tenant.
 - When a tenant is deleted, the context removes the cached result of each user of the tenant. The users lose access on the next request.
 
 When the context removes stale results, it adds a `tenant_lookup.removed` event to the current span. The `app.tenant_lookup.removed_count` tag has the number of identifiers. If the cache fails to remove a result, the context logs an error and the save still returns its result. The old result then stays until it expires.
@@ -80,7 +81,7 @@ A lookup can start before the save and finish after the removal. Each removal mo
 
 `BulkInsertAsync` raises the same save events, so it also removes the cached result of each new user. The Server writes `users` and `tenants` only through these two. A write from outside the Server, such as SQL in a migration, does not remove the cached results. If such a write adds a user, or changes the identifier, the tenant, or the deleted state of a user or a tenant, call `ITenantIdProvider.InvalidateCacheAsync` after the write, or wait until the results expire.
 
-The cache is in the memory of each server instance. There is no distributed cache and no backplane. The removals and the "next request" behavior above are true for one server instance only. If you run more than one instance, the other instances keep the old result until it expires. Add a backplane to FusionCache before you run more than one instance.
+The cache is in the memory of each server instance. There is no distributed cache and no backplane. The removals and the "next request" behavior above are true for one server instance only. If you run more than one instance, the other instances keep the old result until it expires. For example, after a user is deleted and signs up again, another instance can still give the deleted user and its tenant for the identifier. Until the result expires, the new user on that instance reads the rows of the old tenant that need no permission, each permission check gives 403, and the audit log names the deleted user. Add a backplane to FusionCache before you run more than one instance.
 
 A `TenantScope` has one of three values. The filter makes the decision for each value. It does not depend on the data in the rows.
 
@@ -137,7 +138,7 @@ These rules stop a caller from joining a tenant that is not theirs:
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A user of a first-party client can do this only for their own `sub`. Any other caller, an agent included, must be able to manage all tenants. Other requests get 403.
-- If a user already has the identifier, `POST /api/v1/users` and `initiate` return 422. A user belongs to one tenant only.
+- If a live user in any tenant already has the identifier, `POST /api/v1/users` and `initiate` return 409. A user belongs to one tenant only. A deleted user frees its identifier, so the same person can sign up again.
 
 ## Tenant endpoints
 

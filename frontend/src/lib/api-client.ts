@@ -38,7 +38,7 @@ declare module 'axios' {
  *   await getTenant({ path: { id }, options: { suppressErrorToast: true } })
  */
 export const apiClient = axios.create({
-  withCredentials: true, // Required to send cookies cross-origin
+  withCredentials: true, // No effect on the same-origin calls. Only a cross-origin base URL needs it to send the cookie
   headers: {
     'X-CSRF': '1', // BFF CSRF protection header
   },

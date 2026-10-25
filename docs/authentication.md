@@ -33,7 +33,7 @@ In a local run, the Vite dev server serves the SPA on its own origin, and the pr
 
 The AppHost gives `services:webfrontend` to the BFF only in a local run. The BFF uses this value to find the Vite origin. A published BFF does not get the value, so it serves the SPA from `wwwroot`.
 
-In a local run, the BFF also sends each GET that no endpoint matches to the same path and query on the Vite origin. For example, a deep link to `https://<bff>/about?tab=team` goes to `http://localhost:5173/about?tab=team`. An unknown path under `/api`, `/bff`, `/signin-oidc`, `/signout-callback-oidc`, `/health`, or `/alive` keeps its 404, because Vite sends these paths back to the BFF. A path that is not a local URL, for example `//host`, also keeps its 404. A published BFF serves `index.html` for an unknown path.
+In a local run, the BFF also sends each GET that no endpoint matches to the same path and query on the Vite origin. For example, a deep link to `https://<bff>/about?tab=team` goes to `http://localhost:5173/about?tab=team`. An unknown path that starts with `/api`, `/bff`, `/signin-oidc`, or `/signout-callback-oidc` keeps its 404, because the Vite proxy sends these paths back to the BFF. The BFF matches them as a raw prefix, as Vite does, so `/api-docs` and `/bffx` also keep their 404. An unknown path under `/health` or `/alive` also keeps its 404, because the health probes stay on the BFF. A path that is not a local URL, for example `//host`, also keeps its 404. A published BFF serves `index.html` for an unknown path.
 
 The BFF has no CORS policy, and it allows no cross-origin request. The SPA calls the BFF only from the same origin. In a local run, the Vite proxy sends `/api`, `/bff`, and the OIDC callbacks to the BFF. A published BFF serves the SPA itself.
 

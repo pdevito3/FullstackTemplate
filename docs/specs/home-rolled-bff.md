@@ -440,7 +440,7 @@ Decisions: [Session cookie SameSite](https://github.com/pdevito3/FullstackTempla
 - The identity provider containers and the conformance suite call `/bff/backchannel` at `host.docker.internal`. The AppHost adds this host in a local run only, not when it publishes. The conformance job adds it too.
 - The health probes call the BFF at its internal host. The AppHost adds `localhost` in a local run only. A deployment adds the host of its probes.
 
-**CORS.** No change. The default policy allows the Vite origin with credentials.
+**CORS.** The BFF has no CORS policy, and it allows no cross-origin request. The SPA calls the BFF only from the same origin, through the Vite proxy in a local run and from `wwwroot` when published.
 
 ### 3.9 Telemetry
 
@@ -465,13 +465,13 @@ Each startup warning of section 3.3 is one structured log with the feature name.
 3. Serilog request logging
 4. `UseExceptionHandler`
 5. `UseStaticFiles`, only when there is no Vite URL
-6. `UseCors`
-7. The method guard for `/signin-oidc`
-8. `UseAuthentication`
-9. `UseRouting`
-10. The `X-CSRF` middleware
-11. `UseAuthorization`
-12. The endpoints: `/bff/*`, `/local-api/hello`, the `/api` forwarder, the health checks, and `/` or the SPA fallback.
+6. The method guard for `/signin-oidc`
+7. `UseAuthentication`
+8. `UseRouting`
+9. The `X-CSRF` middleware
+10. `UseAuthorization`
+11. The endpoints: `/bff/*`, `/local-api/hello`, the `/api` forwarder, and the health checks
+12. With a Vite URL, the dev fallback, which sends a GET that no endpoint matches to the same path and query on Vite. Without a Vite URL, the SPA fallback to `index.html`.
 
 There is no startup filter. Each step is visible in `Program.cs`.
 

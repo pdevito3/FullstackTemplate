@@ -81,7 +81,7 @@ jobs:
       # The links to the upstream repo keep the template name, and the README loses its init section
       - name: Fail if the template name is left or an upstream link changed
         run: |
-          if git grep -inP '(?<!pdevito3/)fullstacktemplate' -- ':!scripts/init.cs'; then exit 1; fi
+          if git grep -inP '(?<!pdevito3/)fullstack|full[ ._-]stack[ ._-]?template' -- ':!scripts/init.cs'; then exit 1; fi
           git grep -q 'github.com/pdevito3/FullstackTemplate/issues' -- docs
           if git grep -n 'init.cs' -- README.md; then exit 1; fi
 

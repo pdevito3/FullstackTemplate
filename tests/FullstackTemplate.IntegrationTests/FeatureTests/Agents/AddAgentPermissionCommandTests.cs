@@ -116,4 +116,23 @@ public class AddAgentPermissionCommandTests : TestBase
             .Where(p => p.AgentId == agentId)
             .Select(p => p.Permission.Value)
             .ToListAsync());
+
+    [Test]
+    public async Task response_has_the_permissions_that_get_agent_returns()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddAgent(out var agent, a => a.Permissions = [Permission.Names.ReadUsers])
+            .BuildAsync();
+
+        // Act
+        var agentReturned = await testingServiceScope.SendAsync(
+            new AddAgentPermission.Command(agent.Id, Permission.Names.ReadAgents));
+
+        // Assert
+        var agentFromGet = await new TestingServiceScope().SendAsync(new GetAgent.Query(agent.Id));
+        agentFromGet.Permissions.ShouldBe([Permission.Names.ReadUsers, Permission.Names.ReadAgents], ignoreOrder: true);
+        agentReturned.Permissions.ShouldBe(agentFromGet.Permissions, ignoreOrder: true);
+    }
 }

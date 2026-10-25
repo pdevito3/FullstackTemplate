@@ -186,4 +186,21 @@ public class UpdateUserRoleCommandTests : TestBase
         // Assert - Permission should be restored
         userReturned.Permissions.ShouldContain("manage_tenant");
     }
+
+    [Test]
+    public async Task response_has_the_permissions_that_get_user_returns()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new UpdateUserRole.Command(createdUser.Id, "User"));
+
+        // Assert
+        var userFromGet = await new TestingServiceScope().SendAsync(new GetUser.Query(createdUser.Id));
+        userReturned.Permissions.ShouldBe(userFromGet.Permissions, ignoreOrder: true);
+    }
 }

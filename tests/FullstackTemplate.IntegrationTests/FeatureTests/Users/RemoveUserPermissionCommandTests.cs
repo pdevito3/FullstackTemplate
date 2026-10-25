@@ -160,4 +160,23 @@ public class RemoveUserPermissionCommandTests : TestBase
         // Assert
         afterRemove.Permissions.ShouldBeEmpty();
     }
+
+    [Test]
+    public async Task response_has_the_permissions_that_get_user_returns()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "Admin")
+            .BuildAsync();
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(
+            new RemoveUserPermission.Command(createdUser.Id, Permission.Names.ManageTenant));
+
+        // Assert
+        var userFromGet = await new TestingServiceScope().SendAsync(new GetUser.Query(createdUser.Id));
+        userFromGet.Permissions.ShouldNotBeEmpty();
+        userReturned.Permissions.ShouldBe(userFromGet.Permissions, ignoreOrder: true);
+    }
 }

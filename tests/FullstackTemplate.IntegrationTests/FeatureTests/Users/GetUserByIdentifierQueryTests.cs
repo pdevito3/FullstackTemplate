@@ -156,4 +156,23 @@ public class GetUserByIdentifierQueryTests : TestBase
         userReturned.Id.ShouldBe(targetUser.Id);
         userReturned.FirstName.ShouldBe("TargetUser");
     }
+
+    [Test]
+    public async Task response_has_the_permissions_that_get_user_returns()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        var identifier = $"with-permissions-{Guid.NewGuid()}";
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => { u.Identifier = identifier; u.Role = "Admin"; })
+            .BuildAsync();
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new GetUserByIdentifier.Query(identifier));
+
+        // Assert
+        var userFromGet = await new TestingServiceScope().SendAsync(new GetUser.Query(createdUser.Id));
+        userFromGet.Permissions.ShouldNotBeEmpty();
+        userReturned.Permissions.ShouldBe(userFromGet.Permissions, ignoreOrder: true);
+    }
 }

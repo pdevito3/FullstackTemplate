@@ -61,4 +61,23 @@ public class UpdateUserCommandTests : TestBase
         userInDb.ShouldNotBeNull();
         userInDb.Email.Value.ShouldBe("newemail@example.com");
     }
+
+    [Test]
+    public async Task response_has_the_permissions_that_get_user_returns()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var fakeUser, u => u.Role = "Admin")
+            .BuildAsync();
+        var updateDto = new FakeUserForUpdateDto().Generate() with { Version = fakeUser.Version };
+
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new UpdateUser.Command(fakeUser.Id, updateDto));
+
+        // Assert
+        var userFromGet = await new TestingServiceScope().SendAsync(new GetUser.Query(fakeUser.Id));
+        userFromGet.Permissions.ShouldNotBeEmpty();
+        userReturned.Permissions.ShouldBe(userFromGet.Permissions, ignoreOrder: true);
+    }
 }

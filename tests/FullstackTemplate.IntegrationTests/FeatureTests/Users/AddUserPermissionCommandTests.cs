@@ -142,4 +142,24 @@ public class AddUserPermissionCommandTests : TestBase
         // Assert
         userFromGet.Permissions.ShouldContain("manage_tenant");
     }
+
+    [Test]
+    public async Task response_has_the_permissions_that_get_user_returns()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _)
+            .AddUser(out var createdUser, u => u.Role = "User")
+            .BuildAsync();
+        await testingServiceScope.SendAsync(new AddUserPermission.Command(createdUser.Id, Permission.Names.ReadUsers));
+
+        // Act
+        var userReturned = await new TestingServiceScope().SendAsync(
+            new AddUserPermission.Command(createdUser.Id, Permission.Names.ReadAgents));
+
+        // Assert
+        var userFromGet = await new TestingServiceScope().SendAsync(new GetUser.Query(createdUser.Id));
+        userFromGet.Permissions.ShouldBe([Permission.Names.ReadUsers, Permission.Names.ReadAgents], ignoreOrder: true);
+        userReturned.Permissions.ShouldBe(userFromGet.Permissions, ignoreOrder: true);
+    }
 }

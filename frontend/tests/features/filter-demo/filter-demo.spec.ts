@@ -21,6 +21,26 @@ test.describe('the Add Filter menu on a phone', () => {
     })
   }
 
+  test('gives each control the same 16 px side margins in the sheet', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    const margins: Record<string, { left: number; right: number }> = {}
+
+    for (const property of ['First Name', 'Status', 'Created Date', 'Comment Count', 'Is Blocked']) {
+      await demo.chooseProperty(property)
+      margins[property] = await demo.sideMarginsOf(property)
+      await demo.closeControl(property)
+    }
+
+    expect(margins).toEqual({
+      'First Name': { left: 16, right: 16 },
+      Status: { left: 16, right: 16 },
+      'Created Date': { left: 16, right: 16 },
+      'Comment Count': { left: 16, right: 16 },
+      'Is Blocked': { left: 16, right: 16 },
+    })
+  })
+
   test('names the Is Blocked control only in the title of the sheet', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()

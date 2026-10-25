@@ -38,7 +38,7 @@ public class LogoutEndpointTests
 
         provider.WasRefreshTokenRevoked("user-logout").ShouldBeTrue();
         response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -59,7 +59,7 @@ public class LogoutEndpointTests
         provider.WasRefreshTokenRevoked(subject).ShouldBeTrue();
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
         response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]

@@ -5,12 +5,17 @@ import { weatherForecast } from './weather-forecast.locators'
 
 export function weatherForecastPage(page: Page) {
   const at = weatherForecast(page)
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
   // The exact path: `/api/v1/weather/secure` also starts with `/api/v1/weather`.
   const answered = (path: string) =>
     page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === path)
 
   return {
     at,
+    consoleErrors,
 
     async open() {
       const settled = Promise.all([answered(bffPaths.user), answered(weatherPaths.list)])

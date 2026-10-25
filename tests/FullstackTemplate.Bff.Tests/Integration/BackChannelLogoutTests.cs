@@ -158,7 +158,7 @@ public class BackChannelLogoutTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await app.WithStoreAsync(store => store.GetAsync(endedKey, CancellationToken.None))).ShouldBeNull();
-        (await ended.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await ended.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await app.WithStoreAsync(store => store.GetAsync(otherKey, CancellationToken.None))).ShouldNotBeNull();
         (await otherIdpSession.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -175,7 +175,7 @@ public class BackChannelLogoutTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -195,8 +195,8 @@ public class BackChannelLogoutTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
-        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await otherUser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -215,8 +215,8 @@ public class BackChannelLogoutTests
         (await PostAsync(Token(c => { c["sub"] = subject; c.Remove("sid"); }))).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
-        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         app.IdentityProvider.IssuedRefreshTokens(subject).Count.ShouldBe(2);
         app.IdentityProvider.WasRefreshTokenRevoked(subject).ShouldBeFalse();
     }
@@ -298,7 +298,7 @@ public class BackChannelLogoutTests
 
         // The identity provider sends the token again to a BFF that can write the jti
         (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -320,7 +320,7 @@ public class BackChannelLogoutTests
 
         // The identity provider sends the token again to a BFF that can delete the row
         (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]
@@ -344,8 +344,8 @@ public class BackChannelLogoutTests
 
         await WaitUntilAsync(async () =>
             (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).Count == 0);
-        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await first.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await second.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]

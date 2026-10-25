@@ -25,6 +25,11 @@ export function filterDemoPage(page: Page) {
       await expect(at.loadingControl).toHaveCount(0)
     },
 
+    async closeControl(propertyLabel: string) {
+      await at.button(propertyLabel, 'Close').click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
     async chooseBetween(propertyLabel: string) {
       await at.button(propertyLabel, 'Between').click()
       await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
@@ -89,6 +94,22 @@ export function filterDemoPage(page: Page) {
       const box = await element.boundingBox()
       if (!box) throw new Error('The element is not on the page.')
       return { left: box.x, right: box.x + box.width }
+    },
+
+    /** The space between each side of the sheet and the nearest button or text box of the control, without the Close button. */
+    async sideMarginsOf(propertyLabel: string) {
+      const sheet = await at.control(propertyLabel).boundingBox()
+      const close = await at.button(propertyLabel, 'Close').boundingBox()
+      if (!sheet || !close) throw new Error('The sheet is not on the screen.')
+      let left = Infinity
+      let right = Infinity
+      for (const field of await at.fields(propertyLabel).all()) {
+        const box = await field.boundingBox()
+        if (!box || box.width === 0 || (box.x === close.x && box.y === close.y)) continue
+        left = Math.min(left, box.x - sheet.x)
+        right = Math.min(right, sheet.x + sheet.width - (box.x + box.width))
+      }
+      return { left, right }
     },
 
     async pageScrollWidth() {

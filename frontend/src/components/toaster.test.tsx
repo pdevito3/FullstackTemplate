@@ -146,6 +146,33 @@ test.each(Object.entries(bottomPanels))(
   },
 )
 
+test('on a phone on its side, the toast at the top does not cover a tall bottom sheet', async () => {
+  await page.viewport(667, 375)
+  await render(
+    <>
+      <OpenPanel
+        panel={(props) => (
+          <ResponsiveDialog {...props}>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>Edit filter</ResponsiveDialogTitle>
+            </ResponsiveDialogHeader>
+            <div className="h-[600px]" />
+          </ResponsiveDialog>
+        )}
+      />
+      <Toaster />
+    </>,
+  )
+  const dialog = page.getByRole('dialog', { name: 'Edit filter' })
+  await expect.element(dialog).toBeVisible()
+
+  Notification.error('Could not save the changes')
+  await expect.element(page.getByText('Could not save the changes')).toBeVisible()
+  await animationsFinished()
+
+  expect(boxOf('Could not save the changes').bottom).toBeLessThanOrEqual(dialog.element().getBoundingClientRect().top)
+})
+
 test('on a phone on its side, a toast that came while the pointer was on the toasts keeps waiting when a newer toast hides it', async () => {
   await page.viewport(667, 375)
   await render(

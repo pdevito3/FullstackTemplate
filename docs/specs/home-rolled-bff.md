@@ -113,7 +113,7 @@ These paths go away on purpose ([Duende BFF features to drop](https://github.com
 ### `/bff/user`
 
 - Without `X-CSRF: 1`, the response is 401 with an empty body.
-- Anonymous: 401 with an empty body.
+- Anonymous: 204 with an empty body. Change: Duende BFF answered 401. A browser logs each 4xx response as a console error, and a signed-out visitor is a normal state.
 - Signed in: 200 `application/json`. The body is an array of `{ "type": string, "value": string, "valueType": null }`. The array has these items, in this order:
   1. Each claim of the BFF session principal, in the stored order.
   2. `bff:logout_url`, if the principal does not have it: `PathBase + /bff/logout`, plus `?sid=<url-encoded sid>` if a `sid` claim exists.
@@ -401,7 +401,7 @@ If a check fails, the refresh fails with the error `bff_invalid_refresh_id_token
 
 The checks and the revocation do not use the cancellation of `Bff:Refresh:TokenRequestTimeout`, because that cancellation gives a temporary failure and keeps the BFF session. Each gets its own limit of `Bff:Refresh:TokenRequestTimeout` instead. If the signing keys do not load within the limit, the check fails. A revocation that fails or reaches its limit is logged, and the refresh still fails with `bff_invalid_refresh_id_token`.
 
-Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 401, so the SPA shows the user as signed out. The SPA does not change. The refresh has no retry inside the call. The next request that needs a token tries again. A retry inside the call can send a rotated refresh token two times, after the identity provider used it but the response got lost, and then the session ends. A retry also holds the refresh lock and its `bffdb` connection longer. The refresh goes through the backchannel `HttpClient` of the OIDC handler, which does not come from `IHttpClientFactory`, so the standard resilience handler of the service defaults does not apply to it.
+Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kind=temporary`. After a permanent failure, the next `/bff/user` gives a 204, so the SPA shows the user as signed out. The SPA does not change. The refresh has no retry inside the call. The next request that needs a token tries again. A retry inside the call can send a rotated refresh token two times, after the identity provider used it but the response got lost, and then the session ends. A retry also holds the refresh lock and its `bffdb` connection longer. The refresh goes through the backchannel `HttpClient` of the OIDC handler, which does not come from `IHttpClientFactory`, so the standard resilience handler of the service defaults does not apply to it.
 
 **The refresh lock.** Our own `IUserTokenRequestConcurrencyControl` replaces the default. It has two layers:
 
@@ -491,7 +491,8 @@ Each behavior of the current BFF, from [the inventory](https://github.com/pdevit
 | 6 | `/bff/logout`: local `returnUrl` | Kept | Open-redirect defense | 3.4 |
 | 7 | `/bff/logout`: refresh token revocation | Changed | `Auth:Features:Revocation` replaces `RevokeRefreshTokenOnLogout`. A missing endpoint is safe. [#18](https://github.com/pdevito3/FullstackTemplate/issues/18) | 3.3, 3.4 |
 | 8 | `/bff/logout`: RP-initiated logout with `id_token_hint` | Kept | A missing `end_session_endpoint` now falls back to the local `returnUrl` | 3.4 |
-| 9 | `/bff/user`: `X-CSRF`, 401 empty body when anonymous | Kept | Wire contract | 2 |
+| 9 | `/bff/user`: `X-CSRF`, 401 empty body without it | Kept | Wire contract | 2 |
+| 9a | `/bff/user`: 204 empty body when anonymous, not 401 | Changed | A browser logs each 4xx response as a console error, and a signed-out visitor is a normal state | 2 |
 | 10 | `/bff/user`: claim array, `bff:logout_url`, `bff:session_state` | Kept | Wire contract | 2 |
 | 11 | `/bff/user`: `bff:session_expires_in` as a number | Changed | It now also reflects the absolute limit | 2, 3.1 |
 | 12 | `/bff/user?slide=false` | Kept | [#22](https://github.com/pdevito3/FullstackTemplate/issues/22) | 2 |
@@ -621,7 +622,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | Unit | Each `Auth:Features:PushedAuthorization` value maps to the correct `PushedAuthorizationBehavior`. | [#13](https://github.com/pdevito3/FullstackTemplate/issues/13) |
 | Integration | A forged `X-Forwarded-Host` on `/bff/login` still gives the configured `redirect_uri`. | [#16](https://github.com/pdevito3/FullstackTemplate/issues/16) |
 | Integration | A `Host` that is not on the list gets a 400. | [#16](https://github.com/pdevito3/FullstackTemplate/issues/16) |
-| Integration | `invalid_grant`: the BFF session row is gone, the request goes with no token, and `/bff/user` returns 401. | [#20](https://github.com/pdevito3/FullstackTemplate/issues/20) |
+| Integration | `invalid_grant`: the BFF session row is gone, the request goes with no token, and `/bff/user` returns 204. | [#20](https://github.com/pdevito3/FullstackTemplate/issues/20) |
 | Integration | A 503 while the token is still valid: the request goes with the current token, and the BFF session stays. | [#20](https://github.com/pdevito3/FullstackTemplate/issues/20) |
 | Integration | A 503 after the token expired: the request goes with no token, the BFF session stays, and the next call tries the refresh again. | [#20](https://github.com/pdevito3/FullstackTemplate/issues/20) |
 | Integration | A browser `Authorization` header never reaches the API, for an anonymous request too. | [#21](https://github.com/pdevito3/FullstackTemplate/issues/21) |

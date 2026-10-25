@@ -75,7 +75,7 @@ public class RefreshIdTokenTests
         BffApp.SessionCookieValue(response).ShouldBe("");
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
         provider.RevokedTokens.ShouldContain(provider.IssuedRefreshTokens(subject)[1]);
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Test]

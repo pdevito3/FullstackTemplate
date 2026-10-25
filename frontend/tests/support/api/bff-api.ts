@@ -1,3 +1,4 @@
+import type { ProblemDetails } from '@/lib/problem-details'
 import type { Identity } from '../auth/actors'
 import type { MockRoute } from './mock-route'
 
@@ -8,11 +9,17 @@ export const bffPaths = {
 }
 
 export const bffApi = {
-  /** The claims of the signed-in user, or a 401 for an anonymous visitor, as the BFF answers. */
+  /** The claims of the signed-in user, or a 204 with no body for an anonymous visitor, as the BFF answers. */
   userIs(identity: Identity): MockRoute {
     return identity.signedIn
       ? { method: 'get', path: bffPaths.user, status: 200, body: identity.claims }
-      : { method: 'get', path: bffPaths.user, status: 401 }
+      : { method: 'get', path: bffPaths.user, status: 204 }
+  },
+
+  /** The BFF fails to read the session. */
+  userFails(problem: { build(): ProblemDetails }): MockRoute {
+    const body = problem.build()
+    return { method: 'get', path: bffPaths.user, status: body.status ?? 500, body }
   },
 
   /** The SPA navigates to the login of the BFF. The mock answers with an empty page, not with the redirect to the IdP. */

@@ -4,14 +4,12 @@ import type { AuthState, BffClaim } from '../types'
 import { AuthKeys } from './auth.keys'
 
 /**
- * Fetch user claims from BFF. Returns null when nobody is signed in: the BFF answers 401 for an
- * anonymous visitor, and that is a normal state, not an error to show in a toast.
+ * Fetch user claims from BFF. Returns null when nobody is signed in: the BFF answers 204 for an
+ * anonymous visitor. A 4xx or 5xx status is an error, and apiClient shows it in a toast.
  */
 export async function getUser(): Promise<BffClaim[] | null> {
-  const response = await apiClient.get<BffClaim[]>('/bff/user', {
-    validateStatus: (status) => status === 200 || status === 401,
-  })
-  return response.status === 401 ? null : response.data
+  const response = await apiClient.get<BffClaim[]>('/bff/user')
+  return response.status === 204 ? null : response.data
 }
 
 /**
@@ -77,7 +75,6 @@ export function useAuth(): AuthState {
   const { data, isLoading, isError } = useQuery({
     queryKey: AuthKeys.user(),
     queryFn: getUser,
-    retry: false, // Don't retry on 401/403
     staleTime: 5 * 60 * 1000, // Consider auth data fresh for 5 minutes
   })
 

@@ -1,9 +1,9 @@
 // Feature: login-logout. BFF login through the IdP of the stack. See features/login-logout.md.
 export default async ({ page, context, step, capture, expect, login, logout }) => {
-  await step('anonymous: /bff/user is 401 and the page shows Login', async () => {
+  await step('anonymous: /bff/user is 204 and the page shows Login', async () => {
     const res = page.waitForResponse((r) => r.url().endsWith('/bff/user'))
     await page.goto('/')
-    expect((await res).status()).toBe(401)
+    expect((await res).status()).toBe(204)
     await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
   })
   await capture('anonymous')
@@ -24,9 +24,9 @@ export default async ({ page, context, step, capture, expect, login, logout }) =
 
   await step('log out', () => logout())
 
-  await step('logged out: /bff/user is 401 again', async () => {
+  await step('logged out: /bff/user is 204 again', async () => {
     const status = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
-    expect(status).toBe(401)
+    expect(status).toBe(204)
     await expect(page.getByText(`Welcome, ${name}`)).toHaveCount(0)
   })
   await capture('logged-out')

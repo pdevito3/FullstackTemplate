@@ -7,13 +7,13 @@ using Shouldly;
 public class UserEndpointTests
 {
     [Test]
-    public async Task an_anonymous_request_gets_401_with_an_empty_body()
+    public async Task an_anonymous_request_gets_204_with_an_empty_body()
     {
         using var browser = BffApp.Instance.CreateBrowser();
 
         var response = await browser.GetApiAsync("/bff/user");
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
     }
 

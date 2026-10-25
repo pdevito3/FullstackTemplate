@@ -165,7 +165,7 @@ public class ProviderFeatureTests
         logout.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
         logout.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
         (await _minimalBff.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
-        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         _minimalProvider.RevokedTokens.ShouldBeEmpty();
     }
 

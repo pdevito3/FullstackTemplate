@@ -173,7 +173,8 @@ const layoutClassNames = {
   wide: {
     body: "flex",
     quickSelects: "mr-3 border-r pr-3",
-    presets: "flex flex-col gap-1",
+    // One width for both preset lists, so that the calendar keeps its width when the mode changes.
+    presets: "flex w-22 min-w-max flex-col gap-1",
     preset: buttonVariants({ variant: "ghost", size: "sm", className: "h-7 justify-start text-xs font-normal" }),
     header: "px-1",
     navButton: "size-7",

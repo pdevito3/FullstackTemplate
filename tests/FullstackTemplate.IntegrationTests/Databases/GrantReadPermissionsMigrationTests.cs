@@ -14,7 +14,8 @@ using Shouldly;
 
 /// <summary>
 /// The data migration runs on a database of its own, from the migration before it, with users that existed before
-/// read_users and read_agents: admins, and users that were given a manage permission. It also covers
+/// read_users and read_agents: admins, users that were given a manage permission, and agents whose grant has a manage
+/// permission. It also covers
 /// <see cref="PermissionMigrationExtensions.GrantPermissionToHoldersOf"/> on the latest schema.
 /// </summary>
 public sealed class GrantReadPermissionsMigrationTests : IAsyncDisposable
@@ -47,6 +48,8 @@ public sealed class GrantReadPermissionsMigrationTests : IAsyncDisposable
             .ShouldBe(["usr_admin", "usr_bareadmin", "usr_usermanager", "usr_accessmanager"], ignoreOrder: true);
         UsersWith(afterFirstRun, "read_agents")
             .ShouldBe(["usr_admin", "usr_bareadmin", "usr_agentmanager"], ignoreOrder: true);
+        AgentsWith(afterFirstRun, "read_users").ShouldBe(["agt_usermanager", "agt_accessmanager"], ignoreOrder: true);
+        AgentsWith(afterFirstRun, "read_agents").ShouldBe(["agt_agentmanager"]);
         afterSecondRun.ShouldBe(afterFirstRun, ignoreOrder: true);
     }
 
@@ -91,6 +94,20 @@ public sealed class GrantReadPermissionsMigrationTests : IAsyncDisposable
             ('uperm_agentmanager', 'usr_agentmanager', 'manage_agents', false),
             ('uperm_revokedaccess', 'usr_revokedaccess', 'manage_user_access', true),
             ('uperm_deletedadmin', 'usr_deletedadmin', 'manage_users', false);
+        INSERT INTO agents (id, tenant_id, name, client_id, mode, is_deleted) VALUES
+            ('agt_usermanager', 'ten_migration', 'User manager', 'client-usermanager', 'machine', false),
+            ('agt_accessmanager', 'ten_migration', 'Access manager', 'client-accessmanager', 'delegated', false),
+            ('agt_agentmanager', 'ten_migration', 'Agent manager', 'client-agentmanager', 'machine', false),
+            ('agt_revokedaccess', 'ten_migration', 'Revoked', 'client-revokedaccess', 'machine', false),
+            ('agt_tenantmanager', 'ten_migration', 'Tenant manager', 'client-tenantmanager', 'machine', false),
+            ('agt_deleted', 'ten_migration', 'Deleted', 'client-deleted', 'machine', true);
+        INSERT INTO agent_permissions (id, agent_id, permission, is_deleted) VALUES
+            ('aperm_usermanager', 'agt_usermanager', 'manage_users', false),
+            ('aperm_accessmanager', 'agt_accessmanager', 'manage_user_access', false),
+            ('aperm_agentmanager', 'agt_agentmanager', 'manage_agents', false),
+            ('aperm_revokedaccess', 'agt_revokedaccess', 'manage_users', true),
+            ('aperm_tenantmanager', 'agt_tenantmanager', 'manage_tenant', false),
+            ('aperm_deleted', 'agt_deleted', 'manage_agents', false);
         """;
 
     private AppDbContext CreateContext()
@@ -111,7 +128,14 @@ public sealed class GrantReadPermissionsMigrationTests : IAsyncDisposable
     }
 
     private static List<string> UsersWith(List<PermissionRow> rows, string permission)
-        => rows.Where(r => r.Permission == permission && !r.IsDeleted).Select(r => r.UserId).ToList();
+        => OwnersWith(rows, "user_permissions", permission);
+
+    private static List<string> AgentsWith(List<PermissionRow> rows, string permission)
+        => OwnersWith(rows, "agent_permissions", permission);
+
+    private static List<string> OwnersWith(List<PermissionRow> rows, string table, string permission)
+        => rows.Where(r => r.Table == table && r.Permission == permission && !r.IsDeleted)
+            .Select(r => r.OwnerId).ToList();
 
     private async Task ExecuteAsync(string sql)
     {
@@ -126,16 +150,20 @@ public sealed class GrantReadPermissionsMigrationTests : IAsyncDisposable
         await using var connection = new NpgsqlConnection(_database.ConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(
-            "SELECT id, user_id, permission, is_deleted FROM user_permissions", connection);
+            """
+            SELECT 'user_permissions', id, user_id, permission, is_deleted FROM user_permissions
+            UNION ALL
+            SELECT 'agent_permissions', id, agent_id, permission, is_deleted FROM agent_permissions
+            """, connection);
         await using var reader = await command.ExecuteReaderAsync();
         var rows = new List<PermissionRow>();
         while (await reader.ReadAsync())
         {
             rows.Add(new PermissionRow(reader.GetString(0), reader.GetString(1), reader.GetString(2),
-                reader.GetBoolean(3)));
+                reader.GetString(3), reader.GetBoolean(4)));
         }
         return rows;
     }
 
-    private sealed record PermissionRow(string Id, string UserId, string Permission, bool IsDeleted);
+    private sealed record PermissionRow(string Table, string Id, string OwnerId, string Permission, bool IsDeleted);
 }

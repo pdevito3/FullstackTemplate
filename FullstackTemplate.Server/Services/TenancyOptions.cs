@@ -8,8 +8,9 @@ public sealed class TenancyOptions
     public const string SectionName = "Tenancy";
 
     /// <summary>
-    /// The client IDs of the machine clients that can read the rows of all tenants. These clients cannot
-    /// add, change, or delete anything. Each token of a listed client matches, whatever its "sub" claim.
+    /// The client IDs of the machine clients that can read the rows of all tenants that need no permission, such as
+    /// the tenants. These clients hold no permission, so they cannot read the users, the agents, or the audit log, and
+    /// they cannot add, change, or delete anything. Each token of a listed client matches, whatever its "sub" claim.
     /// </summary>
     public string[] ReadAllTenantsClientIds { get; init; } = [];
 

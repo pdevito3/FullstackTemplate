@@ -77,7 +77,7 @@ Rules for submissions:
 
 ## Tenants and users
 
-A scope with no user and no opt-in gets `TenantScope.NoTenant`, so it sees no rows. `Send` and `InScope` opt in with `CreateSystemScope()`. A system scope gets `TenantScope.AllTenants`, so it sees the rows of all tenants and can add a tenant. Do not use `Get<IServiceScopeFactory>().CreateScope()` directly, because that scope sees no rows. To see the data as one tenant, use `SendAs` with the `Identifier` of a user in that tenant. If no user has this `Identifier`, `SendAs` stops with `No user has the identifier`.
+A scope with no user and no opt-in gets `TenantScope.NoTenant`, so it sees no rows. `Send` and `InScope` opt in with `CreateSystemScope()`. A system scope gets `TenantScope.AllTenants`, so it sees the rows of all tenants and can add a tenant. Do not use `Get<IServiceScopeFactory>().CreateScope()` directly, because that scope sees no rows. To see the data as one tenant, use `SendAs` with the `Identifier` of a user in that tenant. The user needs the permission that the request checks, for example `read_users` for `GetUserList`. If no user has this `Identifier`, `SendAs` stops with `No user has the identifier`.
 
 ```bash
 NO_COLOR=1 dotnet csharprepl connect <pid> --streamPipedInput <<'EOF'

@@ -156,7 +156,7 @@ A client on one of two allow-lists acts for the operator in all tenants. Both li
 | `Tenancy:ReadAllTenantsClientIds` | Read the rows of all tenants that need no permission, such as the tenants. It holds no permission, so a query that checks a permission gives 403, for example the users, the agents, and the audit log. It cannot add, change, or delete anything. |
 | `Tenancy:ManageAllTenantsClientIds` | Read the rows of all tenants, add a tenant, start a tenant for another user, add a machine agent, and pass each permission check in any tenant. |
 
-Put a client on the read list unless it must change data. For example, a reporting service only reads.
+Put a client on the read list unless it must change data or read data that needs a permission. For example, a reporting service that counts the tenants only reads.
 
 ```json
 {

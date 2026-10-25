@@ -1,0 +1,358 @@
+[
+  {
+    "variant": "top-center",
+    "route": "/",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/about",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/components",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/filter-demo",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": [
+      "Login"
+    ]
+  },
+  {
+    "variant": "top-center",
+    "route": "/about",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/components",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": [
+      "INPUT",
+      "ReactVueAngularSvelteSolidQwikPreact"
+    ]
+  },
+  {
+    "variant": "top-center",
+    "route": "/filter-demo",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/about",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/components",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/filter-demo",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/about",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/components",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/filter-demo",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/about",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/components",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/filter-demo",
+    "viewport": "wide",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": [
+      "Login",
+      "°F",
+      "°C",
+      "Refresh"
+    ]
+  },
+  {
+    "variant": "under-header",
+    "route": "/about",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/components",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/filter-demo",
+    "viewport": "phone",
+    "who": "anonymous",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/about",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/components",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/filter-demo",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": [
+      "Logout"
+    ]
+  },
+  {
+    "variant": "top-center",
+    "route": "/about",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "top-center",
+    "route": "/components",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": [
+      "INPUT",
+      "ReactVueAngularSvelteSolidQwikPreact"
+    ]
+  },
+  {
+    "variant": "top-center",
+    "route": "/filter-demo",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/about",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/components",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/filter-demo",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/about",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/components",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "bottom",
+    "route": "/filter-demo",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": [
+      "°F",
+      "°C"
+    ]
+  },
+  {
+    "variant": "under-header",
+    "route": "/about",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/components",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/filter-demo",
+    "viewport": "wide",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": [
+      "Logout"
+    ]
+  },
+  {
+    "variant": "under-header",
+    "route": "/about",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/components",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  },
+  {
+    "variant": "under-header",
+    "route": "/filter-demo",
+    "viewport": "phone",
+    "who": "signed in",
+    "covered": []
+  }
+]

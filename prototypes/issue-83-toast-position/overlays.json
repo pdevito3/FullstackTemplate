@@ -1,0 +1,109 @@
+[
+  {
+    "variant": "top-center",
+    "viewport": "wide",
+    "overlay": "Open Sheet",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "top-center",
+    "viewport": "wide",
+    "overlay": "Open Drawer",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "top-center",
+    "viewport": "wide",
+    "overlay": "Open Dialog",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "top-center",
+    "viewport": "phone",
+    "overlay": "Open Dialog",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "top-center",
+    "viewport": "phone",
+    "overlay": "Open Sheet",
+    "coveredButtons": [],
+    "coversTitle": true
+  },
+  {
+    "variant": "bottom",
+    "viewport": "wide",
+    "overlay": "Open Sheet",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "bottom",
+    "viewport": "wide",
+    "overlay": "Open Drawer",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "bottom",
+    "viewport": "wide",
+    "overlay": "Open Dialog",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "bottom",
+    "viewport": "phone",
+    "overlay": "Open Dialog",
+    "coveredButtons": [
+      "Continue"
+    ],
+    "coversTitle": false
+  },
+  {
+    "variant": "bottom",
+    "viewport": "phone",
+    "overlay": "Open Sheet",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "under-header",
+    "viewport": "wide",
+    "overlay": "Open Sheet",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "under-header",
+    "viewport": "wide",
+    "overlay": "Open Drawer",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "under-header",
+    "viewport": "wide",
+    "overlay": "Open Dialog",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "under-header",
+    "viewport": "phone",
+    "overlay": "Open Dialog",
+    "coveredButtons": [],
+    "coversTitle": false
+  },
+  {
+    "variant": "under-header",
+    "viewport": "phone",
+    "overlay": "Open Sheet",
+    "coveredButtons": [],
+    "coversTitle": false
+  }
+]

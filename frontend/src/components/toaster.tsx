@@ -40,11 +40,22 @@ const iconColors = {
  *   Notification.info('Here is some information')
  *   Notification.warning('Please be careful')
  */
+// PROTOTYPE (issue #83), throwaway: localStorage 'prototype-toast-variant' picks the region position.
+const prototypeVariants = {
+  'top-center': 'fixed top-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 outline-none',
+  bottom:
+    'fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[100] flex flex-col-reverse items-stretch gap-2 outline-none sm:left-auto sm:items-end',
+  'under-header': 'fixed top-[4.5rem] left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 outline-none',
+} as const
+type PrototypeVariant = keyof typeof prototypeVariants
+const prototypeVariant = (localStorage.getItem('prototype-toast-variant') ?? 'top-center') as PrototypeVariant
+document.documentElement.dataset.toastVariant = prototypeVariant
+
 export function Toaster() {
   return (
     <ToastRegion
       queue={toastQueue}
-      className="fixed top-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 outline-none"
+      className={prototypeVariants[prototypeVariant]}
     >
       {({ toast }) => (
         <Toast

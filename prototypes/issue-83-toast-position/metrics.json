@@ -1,0 +1,314 @@
+[
+  {
+    "variant": "top-center",
+    "viewport": "wide",
+    "theme": "light",
+    "region": {
+      "x": 490,
+      "y": 16,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": true,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "top-center",
+    "viewport": "wide",
+    "theme": "dark",
+    "region": {
+      "x": 490,
+      "y": 16,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": true,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "top-center",
+    "viewport": "phone",
+    "theme": "light",
+    "region": {
+      "x": 45,
+      "y": 16,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": true,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": true,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "top-center",
+    "viewport": "phone",
+    "theme": "dark",
+    "region": {
+      "x": 45,
+      "y": 16,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": true,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": true,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "bottom",
+    "viewport": "wide",
+    "theme": "light",
+    "region": {
+      "x": 964,
+      "y": 624,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "Changes saved",
+      "Something went wrong",
+      "A new version is available"
+    ],
+    "enter": {
+      "name": "toast-slide-in-up",
+      "keyframes": [
+        "translateY(8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "bottom",
+    "viewport": "wide",
+    "theme": "dark",
+    "region": {
+      "x": 964,
+      "y": 624,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "Changes saved",
+      "Something went wrong",
+      "A new version is available"
+    ],
+    "enter": {
+      "name": "toast-slide-in-up",
+      "keyframes": [
+        "translateY(8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "bottom",
+    "viewport": "phone",
+    "theme": "light",
+    "region": {
+      "x": 16,
+      "y": 668,
+      "width": 358,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "Changes saved",
+      "Something went wrong",
+      "A new version is available"
+    ],
+    "enter": {
+      "name": "toast-slide-in-up",
+      "keyframes": [
+        "translateY(8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "bottom",
+    "viewport": "phone",
+    "theme": "dark",
+    "region": {
+      "x": 16,
+      "y": 668,
+      "width": 358,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "Changes saved",
+      "Something went wrong",
+      "A new version is available"
+    ],
+    "enter": {
+      "name": "toast-slide-in-up",
+      "keyframes": [
+        "translateY(8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "under-header",
+    "viewport": "wide",
+    "theme": "light",
+    "region": {
+      "x": 490,
+      "y": 72,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "under-header",
+    "viewport": "wide",
+    "theme": "dark",
+    "region": {
+      "x": 490,
+      "y": 72,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "under-header",
+    "viewport": "phone",
+    "theme": "light",
+    "region": {
+      "x": 45,
+      "y": 72,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  },
+  {
+    "variant": "under-header",
+    "viewport": "phone",
+    "theme": "dark",
+    "region": {
+      "x": 45,
+      "y": 72,
+      "width": 300,
+      "height": 160
+    },
+    "coversHeader": false,
+    "coversSidebarTrigger": false,
+    "coversBreadcrumb": false,
+    "topToBottomOrder": [
+      "A new version is available",
+      "Something went wrong",
+      "Changes saved"
+    ],
+    "enter": {
+      "name": "toast-slide-in",
+      "keyframes": [
+        "translateY(-8px)",
+        "none"
+      ]
+    }
+  }
+]

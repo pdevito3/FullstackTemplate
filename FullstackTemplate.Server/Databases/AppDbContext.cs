@@ -94,6 +94,7 @@ public class AppDbContext(
 
         configurationBuilder.MapEntityIdToField();
         configurationBuilder.MapVersionToXmin();
+        configurationBuilder.LoadOwnedChildrenWithOwner();
         configurationBuilder.FilterSoftDeletedRecords();
         configurationBuilder.FilterByTenant(this);
     }

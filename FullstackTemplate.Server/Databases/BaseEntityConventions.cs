@@ -31,6 +31,19 @@ public static class BaseEntityConventions
             idProperty.SetPropertyAccessMode(PropertyAccessMode.PreferFieldDuringConstruction);
         });
 
+    /// <summary>
+    /// Makes each query of an owner load its owned children, so that a loaded aggregate is always complete. Without it,
+    /// a load with no <c>Include</c> gives an empty collection, and the DTO and the entity methods take it as "no children".
+    /// A Cascade foreign key to a <see cref="BaseEntity"/> makes its principal the owner, the same rule as the audit log.
+    /// </summary>
+    public static void LoadOwnedChildrenWithOwner(this ModelConfigurationBuilder configurationBuilder)
+        => configurationBuilder.ConfigureEachEntity(entityType =>
+        {
+            foreach (var ownerKey in entityType.GetForeignKeys().Where(fk => fk.DeleteBehavior == DeleteBehavior.Cascade
+                         && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity))))
+                ownerKey.PrincipalToDependent?.Builder.AutoInclude(true);
+        });
+
     /// <summary>Postgres has the <c>xmin</c> system column on each table, so the migration has no DDL.</summary>
     public static void MapVersionToXmin(this ModelConfigurationBuilder configurationBuilder)
         => configurationBuilder.Conventions.Add(_ => new VersionToXminConvention());

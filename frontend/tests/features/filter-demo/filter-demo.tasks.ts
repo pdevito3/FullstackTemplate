@@ -59,6 +59,19 @@ export function filterDemoPage(page: Page) {
       await expect(at.selectMonth(propertyLabel)).toContainText(name)
     },
 
+    async typeDate(propertyLabel: string, field: string, digits: string) {
+      await at.dateSegment(propertyLabel, field, 'month').click()
+      await page.keyboard.type(digits)
+    },
+
+    async clearDate(propertyLabel: string, field: string) {
+      for (const part of ['year', 'day', 'month'] as const) {
+        await at.dateSegment(propertyLabel, field, part).click()
+        for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace')
+      }
+      await expect(at.dateField(propertyLabel, field)).toHaveText(/^mm.*dd.*yyyy$/)
+    },
+
     async addBooleanFilter(propertyLabel: string, value: 'True' | 'False') {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()

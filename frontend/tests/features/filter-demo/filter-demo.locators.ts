@@ -20,6 +20,8 @@ export const filterDemo = (page: Page) => {
       control(propertyLabel).getByRole('button').or(control(propertyLabel).getByRole('textbox')),
     pressedButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { pressed: true }),
     dateField: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('group', { name, exact: true }),
+    dateSegment: (propertyLabel: string, field: string, part: 'month' | 'day' | 'year') =>
+      control(propertyLabel).getByRole('spinbutton', { name: `${part}, ${field}`, exact: true }),
     calendar: (propertyLabel: string) => control(propertyLabel).getByRole('grid'),
     calendarNav: (propertyLabel: string, name: 'Next' | 'Previous') =>
       control(propertyLabel).getByRole('banner').getByRole('button', { name, exact: true }),

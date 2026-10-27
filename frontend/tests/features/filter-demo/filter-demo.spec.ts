@@ -252,6 +252,37 @@ test.describe('the Add Filter menu on a 900 px tall desktop', () => {
   })
 })
 
+test.describe('typed dates in the Between control on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('keeps Add Filter off after a typed start date is cleared and an end date is typed', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeDate('Created Date', 'Start date', '03102026')
+    await demo.clearDate('Created Date', 'Start date')
+    await demo.typeDate('Created Date', 'End date', '03202026')
+
+    await expect(demo.at.dateField('Created Date', 'Start date')).toHaveText(/^mm.*dd.*yyyy$/)
+    await expect(demo.at.selectMonth('Created Date')).toHaveText('March 2026')
+    await expect(demo.at.addFilter('Created Date')).toBeDisabled()
+  })
+
+  test('turns Add Filter off when the start date of a set range is cleared', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+    await demo.at.button('Created Date', 'Last Week').click()
+
+    await demo.clearDate('Created Date', 'Start date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeDisabled()
+  })
+})
+
 test.describe('the edit dialog of a boolean filter', () => {
   for (const [value, other] of [['True', 'False'], ['False', 'True']] as const) {
     test(`shows ${value} as the current value`, async ({ page }) => {

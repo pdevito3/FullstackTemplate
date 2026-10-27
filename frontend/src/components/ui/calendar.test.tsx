@@ -201,6 +201,142 @@ test('range calendar: a typed end date in an empty range keeps the date', async 
   await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
 })
 
+function TypedDateRange({ initialRange = null }: { initialRange?: RangeValue<DateValue> | null }) {
+  const [range, setRange] = useState<RangeValue<DateValue> | null>(initialRange)
+  return (
+    <>
+      <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showDateInput />
+      <output aria-label="Range">{range ? `${range.start} to ${range.end}` : ''}</output>
+    </>
+  )
+}
+
+async function typeDate(field: string, digits: string) {
+  await page.getByRole('spinbutton', { name: `month, ${field}` }).click()
+  await userEvent.keyboard(digits)
+}
+
+async function clearDate(field: string) {
+  for (const part of ['year', 'day', 'month']) {
+    await page.getByRole('spinbutton', { name: `${part}, ${field}` }).click()
+    await userEvent.keyboard('{Backspace}{Backspace}{Backspace}{Backspace}')
+  }
+}
+
+const lastWeek = { start: new CalendarDate(2026, 8, 2), end: new CalendarDate(2026, 8, 8) }
+
+test('range calendar: a typed start date that is cleared again leaves the range empty after a typed end date', async () => {
+  const screen = await render(<TypedDateRange />)
+
+  await typeDate('Start date', '03102026')
+  await clearDate('Start date')
+  await typeDate('End date', '03202026')
+
+  await expect.element(screen.getByRole('group', { name: 'Start date' })).toHaveTextContent('mm/dd/yyyy')
+  await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('March 2026')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+})
+
+test('range calendar: a cleared start date clears a set range', async () => {
+  const screen = await render(<TypedDateRange initialRange={lastWeek} />)
+
+  await clearDate('Start date')
+
+  await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('8/8/2026')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+})
+
+test('range calendar: a start date typed after the end date waits for its four-digit year', async () => {
+  const screen = await render(<TypedDateRange />)
+
+  await typeDate('End date', '03202026')
+  await typeDate('Start date', '03102')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+  await userEvent.keyboard('026')
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-03-10 to 2026-03-20')
+})
+
+test('range calendar: an end date with a short year leaves the range empty', async () => {
+  const screen = await render(<TypedDateRange />)
+
+  await typeDate('Start date', '03102026')
+  await typeDate('End date', '032020')
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('3/20/20')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+})
+
+test('range calendar: two-digit years leave the range empty', async () => {
+  const screen = await render(<TypedDateRange />)
+
+  await typeDate('Start date', '031026')
+  await userEvent.keyboard('{Tab}')
+  await typeDate('End date', '032026')
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+})
+
+test('range calendar: a typed end date before the start date leaves the range empty and marks the end date', async () => {
+  const screen = await render(<TypedDateRange initialRange={lastWeek} />)
+
+  await typeDate('End date', '07012026')
+
+  await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('7/1/2026')
+  await expect.element(screen.getByRole('spinbutton', { name: 'month, End date' })).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(screen.getByRole('spinbutton', { name: 'month, Start date' })).not.toHaveAttribute('aria-invalid')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+
+  await typeDate('End date', '08202026')
+
+  await expect.element(screen.getByRole('spinbutton', { name: 'month, End date' })).not.toHaveAttribute('aria-invalid')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-02 to 2026-08-20')
+})
+
+function TypedDate() {
+  const [date, setDate] = useState<DateValue | null>(null)
+  return (
+    <>
+      <JollyCalendar aria-label="Dates" value={date} onChange={setDate} showDateInput />
+      <output aria-label="Value">{date?.toString() ?? ''}</output>
+    </>
+  )
+}
+
+test('calendar: a typed date waits for its four-digit year, and a cleared date clears the value', async () => {
+  const screen = await render(<TypedDate />)
+
+  await typeDate('Date', '031020')
+  await expect.element(screen.getByRole('status', { name: 'Value' })).toBeEmptyDOMElement()
+  await userEvent.keyboard('26')
+  await expect.element(screen.getByRole('status', { name: 'Value' })).toHaveTextContent('2026-03-10')
+
+  await clearDate('Date')
+
+  await expect.element(screen.getByRole('group', { name: 'Date' })).toHaveTextContent('mm/dd/yyyy')
+  await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('March 2026')
+  await expect.element(screen.getByRole('status', { name: 'Value' })).toBeEmptyDOMElement()
+})
+
+for (const { name, picker, open } of [
+  { name: 'month picker', picker: 'Month picker', open: ['Select month'] },
+  { name: 'year picker', picker: 'Year picker', open: ['Select month', 'Select year'] },
+]) {
+  test(`calendar: the ${name} fills the height of the days view with fixedHeight`, async () => {
+    const screen = await render(<JollyRangeCalendar aria-label="Dates" fixedHeight />)
+    const days = screen.getByRole('grid').element().getBoundingClientRect()
+
+    for (const button of open) await screen.getByRole('button', { name: button }).click()
+
+    const options = screen.getByRole('listbox', { name: picker }).getByRole('option').elements()
+    expect(options).toHaveLength(12)
+    const bottom = Math.max(...options.map((option) => option.getBoundingClientRect().bottom))
+    expect(Math.abs(bottom - days.bottom), 'the last row of the picker ends at the bottom of the days').toBeLessThanOrEqual(4)
+  })
+}
+
 async function pixelsOf(element: Element): Promise<ImageData> {
   const image = new Image()
   image.src = `data:image/png;base64,${await page.screenshot({ element, save: false })}`

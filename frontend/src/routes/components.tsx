@@ -139,7 +139,7 @@ const countries = [
 ]
 
 function ComponentsPage() {
-  const [date, setDate] = useState<DateValue>(today(getLocalTimeZone()))
+  const [date, setDate] = useState<DateValue | null>(today(getLocalTimeZone()))
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false)
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [selectedFramework, setSelectedFramework] = useState<Key | null>(null)

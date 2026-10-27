@@ -4,6 +4,12 @@ import { filterDemo } from './filter-demo.locators'
 export function filterDemoPage(page: Page) {
   const at = filterDemo(page)
 
+  const showOtherMonth = async (propertyLabel: string, name: 'Next' | 'Previous') => {
+    const shownMonth = await at.selectMonth(propertyLabel).textContent()
+    await at.calendarNav(propertyLabel, name).click()
+    await expect(at.selectMonth(propertyLabel)).not.toHaveText(shownMonth ?? '')
+  }
+
   return {
     at,
 
@@ -35,6 +41,37 @@ export function filterDemoPage(page: Page) {
       await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
     },
 
+    async showNextMonth(propertyLabel: string) {
+      await showOtherMonth(propertyLabel, 'Next')
+    },
+
+    async showPreviousMonth(propertyLabel: string) {
+      await showOtherMonth(propertyLabel, 'Previous')
+    },
+
+    async openMonthPicker(propertyLabel: string) {
+      await at.selectMonth(propertyLabel).click()
+      await expect(at.monthOption(propertyLabel, 'Jan')).toBeVisible()
+    },
+
+    async pickMonth(propertyLabel: string, name: string) {
+      await at.monthOption(propertyLabel, name).click()
+      await expect(at.selectMonth(propertyLabel)).toContainText(name)
+    },
+
+    async typeDate(propertyLabel: string, field: string, digits: string) {
+      await at.dateSegment(propertyLabel, field, 'month').click()
+      await page.keyboard.type(digits)
+    },
+
+    async clearDate(propertyLabel: string, field: string) {
+      for (const part of ['year', 'day', 'month'] as const) {
+        await at.dateSegment(propertyLabel, field, part).click()
+        for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace')
+      }
+      await expect(at.dateField(propertyLabel, field)).toHaveText(/^mm.*dd.*yyyy$/)
+    },
+
     async addBooleanFilter(propertyLabel: string, value: 'True' | 'False') {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()
@@ -47,9 +84,16 @@ export function filterDemoPage(page: Page) {
       await expect(at.control(propertyLabel)).toBeVisible()
     },
 
+    async updateWithQuickSelect(propertyLabel: string, quickSelect: string) {
+      await at.button(propertyLabel, quickSelect).click()
+      await at.button(propertyLabel, 'Update Filter').click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
     async addTodayFilter(propertyLabel: string) {
       await at.button(propertyLabel, 'Today').click()
       await at.addFilter(propertyLabel).click()
+      await expect(at.control(propertyLabel)).toBeHidden()
     },
 
     async cssFiltersAround(propertyLabel: string) {
@@ -93,7 +137,7 @@ export function filterDemoPage(page: Page) {
     async edgesOf(element: Locator) {
       const box = await element.boundingBox()
       if (!box) throw new Error('The element is not on the page.')
-      return { left: box.x, right: box.x + box.width }
+      return { left: box.x, right: box.x + box.width, top: box.y, bottom: box.y + box.height }
     },
 
     /** The space between each side of the sheet and the nearest button or text box of the control, without the Close button. */

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useMemo, useEffect, useCallback, useId } from "react"
 import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -30,6 +30,7 @@ import {
   type DateValue as AriaDateValue,
   type RangeCalendarProps as AriaRangeCalendarProps,
   type RangeCalendarState,
+  type RangeValue,
   type Selection as AriaSelection,
 } from "react-aria-components"
 
@@ -54,6 +55,7 @@ interface CalendarZoomContextValue {
   setViewYear: (year: number) => void
   viewDecadeStart: number
   setViewDecadeStart: (year: number) => void
+  fixedHeight: boolean
 }
 
 const CalendarZoomContext = createContext<CalendarZoomContextValue | null>(null)
@@ -66,9 +68,10 @@ function useCalendarState() {
 
 interface CalendarZoomProviderProps {
   children: React.ReactNode
+  fixedHeight: boolean
 }
 
-function CalendarZoomProvider({ children }: CalendarZoomProviderProps) {
+function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderProps) {
   const state = useCalendarState()
   const currentYear = state?.focusedDate?.year ?? new Date().getFullYear()
 
@@ -95,8 +98,9 @@ function CalendarZoomProvider({ children }: CalendarZoomProviderProps) {
       setViewYear,
       viewDecadeStart,
       setViewDecadeStart,
+      fixedHeight,
     }),
-    [view, viewYear, viewDecadeStart]
+    [view, viewYear, viewDecadeStart, fixedHeight]
   )
 
   return (
@@ -220,14 +224,19 @@ function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSel
 // The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
 // click picks an item. Each picker is at least w-63, the width of the day grid (7 cells of w-9), so that the popover
 // keeps its size. In the narrow layout, the picker fills the column, as the day grid does.
-const pickerClassName = "grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none"
+// With a fixed height, the four rows of a picker share the height of the days view.
+function pickerClassName(fixedHeight: boolean) {
+  return cn("grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none", fixedHeight && "h-full auto-rows-fr")
+}
 
-function pickerItemClassName({ isSelected }: { isSelected: boolean }) {
-  return cn(
-    buttonVariants({ variant: "ghost" }),
-    "h-9 cursor-default text-sm font-normal",
-    isSelected && "bg-primary text-primary-foreground"
-  )
+function pickerItemClassName(fixedHeight: boolean) {
+  return ({ isSelected }: { isSelected: boolean }) =>
+    cn(
+      buttonVariants({ variant: "ghost" }),
+      "h-9 cursor-default text-sm font-normal",
+      fixedHeight && "h-auto",
+      isSelected && "bg-primary text-primary-foreground"
+    )
 }
 
 // A press on the selected item toggles the single selection off. That press still picks the item.
@@ -287,10 +296,10 @@ function MonthPickerGrid() {
       // Escape closes the popover, as it does in the day grid.
       escapeKeyBehavior="none"
       shouldSelectOnPressUp
-      className={pickerClassName}
+      className={pickerClassName(zoomContext.fixedHeight)}
     >
       {months.map(({ index, name }) => (
-        <AriaListBoxItem key={index} id={index} textValue={name} className={pickerItemClassName}>
+        <AriaListBoxItem key={index} id={index} textValue={name} className={pickerItemClassName(zoomContext.fixedHeight)}>
           {name}
         </AriaListBoxItem>
       ))}
@@ -336,10 +345,10 @@ function YearPickerGrid() {
       // Escape closes the popover, as it does in the day grid.
       escapeKeyBehavior="none"
       shouldSelectOnPressUp
-      className={pickerClassName}
+      className={pickerClassName(zoomContext.fixedHeight)}
     >
       {years.map((year) => (
-        <AriaListBoxItem key={year} id={year} textValue={String(year)} className={pickerItemClassName}>
+        <AriaListBoxItem key={year} id={year} textValue={String(year)} className={pickerItemClassName(zoomContext.fixedHeight)}>
           {year}
         </AriaListBoxItem>
       ))}
@@ -354,19 +363,28 @@ interface CalendarContentProps {
 
 function CalendarContent({ children }: CalendarContentProps) {
   const zoomContext = useContext(CalendarZoomContext)
+  const rangeState = useContext(AriaRangeCalendarStateContext)
 
-  if (!zoomContext) {
+  if (!zoomContext || zoomContext.view === "days") {
     return <>{children}</>
   }
 
-  switch (zoomContext.view) {
-    case "months":
-      return <MonthPickerGrid />
-    case "years":
-      return <YearPickerGrid />
-    default:
-      return <>{children}</>
+  keepRangeOpenInPicker(rangeState)
+  const picker = zoomContext.view === "months" ? <MonthPickerGrid /> : <YearPickerGrid />
+  if (!zoomContext.fixedHeight) {
+    return picker
   }
+
+  // The hidden day grid gives the picker the height of the days view. The day grid mounts again after a pick, so the
+  // focus moves to its cell.
+  return (
+    <div className="grid">
+      <div inert aria-hidden className="invisible col-start-1 row-start-1">
+        {children}
+      </div>
+      <div className="col-start-1 row-start-1">{picker}</div>
+    </div>
+  )
 }
 
 interface CalendarHeadingZoomableProps extends React.HTMLAttributes<HTMLElement> {
@@ -585,6 +603,14 @@ function keepFocusOnRangeStart(state: RangeCalendarState | null) {
   }
 }
 
+// React Aria commits a range on a pointer release inside the calendar that is not on a button (useRangeCalendar,
+// commitBehavior). Month and year items are options, so a pick would end the range. The range state is a new object
+// on each render, so the no-op lasts only while a picker shows. It also skips the commit on blur in that time.
+function keepRangeOpenInPicker(state: RangeCalendarState | null) {
+  if (!state) return
+  state.commitSelection = () => {}
+}
+
 const CalendarGrid = ({ className, ...props }: AriaCalendarGridProps) => {
   const rangeState = useContext(AriaRangeCalendarStateContext)
   keepFocusOnRangeStart(rangeState)
@@ -678,12 +704,32 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
   )
 }
 
+// A date field reports each year as the user types it (2, 20, 202, 2026), so a year below 1000 is still being typed.
+function isTypedInFull(date: AriaDateValue | null | undefined): date is AriaDateValue {
+  return date != null && date.year >= 1000
+}
+
+type TypedRange = Partial<RangeValue<AriaDateValue | null>>
+
+// The range that the date fields make: null while an end is empty, still being typed, or before the start.
+function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
+  if (!isTypedInFull(start) || !isTypedInFull(end) || end.compare(start) < 0) return null
+  return { start, end }
+}
+
 interface JollyCalendarProps<T extends AriaDateValue>
-  extends AriaCalendarProps<T> {
+  extends Omit<AriaCalendarProps<T>, "onChange"> {
+  /** Gets null when the typed date is cleared or is not complete. */
+  onChange?: (value: T | null) => void
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
   layout?: CalendarLayout
+  /**
+   * Keeps the same height for every month and for the month and year pickers. A popover that React Aria placed
+   * against the window edge cannot grow.
+   */
+  fixedHeight?: boolean
 }
 
 // With showDateInput, autoFocus focuses the date input, because it is the first field.
@@ -694,6 +740,7 @@ function JollyCalendar<T extends AriaDateValue>({
   showQuickSelects,
   showDateInput,
   layout = "wide",
+  fixedHeight = false,
   onChange,
   value,
   autoFocus,
@@ -724,14 +771,21 @@ function JollyCalendar<T extends AriaDateValue>({
     onChange?.(date as any)
   }, [onChange])
 
+  // A date that the user is still typing, or a cleared field. It shows in the field while the value is null.
+  const [typedDate, setTypedDate] = useState<AriaDateValue | null>(null)
+
   const handleDateInputChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue) {
-      const calDate = newValue as CalendarDate
-      setFocusedValue(calDate)
+    if (isTypedInFull(newValue)) {
+      setTypedDate(null)
+      setFocusedValue(newValue as CalendarDate)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.(calDate as any)
+      onChange?.(newValue as any)
+    } else {
+      setTypedDate(newValue)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (value) onChange?.(null as any)
     }
-  }, [onChange])
+  }, [onChange, value])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCalendarChange = useCallback((newValue: any) => {
@@ -744,7 +798,7 @@ function JollyCalendar<T extends AriaDateValue>({
     <div className="flex flex-col gap-2">
       {showDateInput && (
         <DateField
-          value={value ? (value as AriaDateValue) : null}
+          value={value ?? typedDate}
           onChange={handleDateInputChange}
           aria-label="Date"
           autoFocus={autoFocus}
@@ -769,9 +823,10 @@ function JollyCalendar<T extends AriaDateValue>({
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}
+          weeksInMonth={fixedHeight ? 6 : undefined}
           {...props}
         >
-          <CalendarZoomProvider>
+          <CalendarZoomProvider fixedHeight={fixedHeight}>
             <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
               <CalendarGrid>
@@ -796,11 +851,18 @@ function JollyCalendar<T extends AriaDateValue>({
 }
 
 interface JollyRangeCalendarProps<T extends AriaDateValue>
-  extends AriaRangeCalendarProps<T> {
+  extends Omit<AriaRangeCalendarProps<T>, "onChange"> {
+  /** Gets null when a typed date is cleared, is not complete, or ends the range before its start. */
+  onChange?: (value: RangeValue<T> | null) => void
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
   layout?: CalendarLayout
+  /**
+   * Keeps the same height for every month and for the month and year pickers. A popover that React Aria placed
+   * against the window edge cannot grow.
+   */
+  fixedHeight?: boolean
 }
 
 // With showDateInput, autoFocus focuses the start date input, because it is the first field.
@@ -811,6 +873,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   showQuickSelects,
   showDateInput,
   layout = "wide",
+  fixedHeight = false,
   onChange,
   value,
   autoFocus,
@@ -834,29 +897,37 @@ function JollyRangeCalendar<T extends AriaDateValue>({
     onChange?.({ start: range.start, end: range.end } as any)
   }, [onChange])
 
+  // The typed dates while they do not make a range. They show in the fields while the value is null.
+  const [draft, setDraft] = useState<TypedRange>({})
+
+  const handleFieldChange = useCallback((edit: TypedRange) => {
+    const fields = { ...(value ?? draft), ...edit }
+    const range = rangeOf(fields)
+    setDraft(range ? {} : fields)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (range || value) onChange?.(range as any)
+  }, [onChange, value, draft])
+
   const handleStartDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue && value) {
-      const calDate = newValue as CalendarDate
-      setFocusedValue(calDate)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.({ start: calDate, end: value.end } as any)
-    }
-  }, [onChange, value])
+    if (isTypedInFull(newValue)) setFocusedValue(newValue as CalendarDate)
+    handleFieldChange({ start: newValue })
+  }, [handleFieldChange])
 
   const handleEndDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue && value) {
-      const calDate = newValue as CalendarDate
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.({ start: value.start, end: calDate } as any)
-    }
-  }, [onChange, value])
+    handleFieldChange({ end: newValue })
+  }, [handleFieldChange])
+
+  const startDate = value?.start ?? draft.start ?? null
+  const endDate = value?.end ?? draft.end ?? null
+  const isEndBeforeStart = isTypedInFull(startDate) && isTypedInFull(endDate) && endDate.compare(startDate) < 0
+  const endErrorId = useId()
 
   return (
     <div className="flex flex-col gap-2">
       {showDateInput && (
         <div className="flex gap-2 items-center">
           <DateField
-            value={value?.start ? (value.start as AriaDateValue) : null}
+            value={startDate}
             onChange={handleStartDateChange}
             aria-label="Start date"
             autoFocus={autoFocus}
@@ -866,14 +937,21 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           </DateField>
           <span className="text-muted-foreground text-sm">to</span>
           <DateField
-            value={value?.end ? (value.end as AriaDateValue) : null}
+            value={endDate}
             onChange={handleEndDateChange}
+            isInvalid={isEndBeforeStart}
             aria-label="End date"
+            aria-describedby={isEndBeforeStart ? endErrorId : undefined}
             className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>
         </div>
+      )}
+      {showDateInput && isEndBeforeStart && (
+        <p id={endErrorId} className="text-destructive text-sm">
+          The end date is before the start date.
+        </p>
       )}
       <div className={layoutClassNames[layout].body}>
         {showQuickSelects && (
@@ -888,13 +966,14 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             cn("grow", className)
           )}
           value={value}
-          onChange={onChange}
+          onChange={onChange as AriaRangeCalendarProps<T>["onChange"]}
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}
+          weeksInMonth={fixedHeight ? 6 : undefined}
           {...props}
         >
-          <CalendarZoomProvider>
+          <CalendarZoomProvider fixedHeight={fixedHeight}>
             <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
               <CalendarGrid>

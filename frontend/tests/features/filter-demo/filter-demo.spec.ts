@@ -4,6 +4,7 @@ import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
 const dayInASixWeekMonth = new Date('2026-08-15T12:00:00Z')
+const dayInAFiveWeekMonth = new Date('2026-09-15T12:00:00Z')
 
 test.describe('the Add Filter menu on a phone', () => {
   test.use({ viewport: phone })
@@ -108,6 +109,27 @@ for (const viewport of [
   })
 }
 
+const shortPhone = { width: 320, height: 780 }
+
+test.describe('the Between calendar on a 320 x 780 phone', () => {
+  test.use({ viewport: shortPhone })
+
+  test('keeps Add Filter on the screen in a five-week month and in the month picker', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInAFiveWeekMonth)
+
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    const addFilter = await demo.edgesOf(demo.at.addFilter('Created Date'))
+    expect(Math.abs(addFilter.bottom - shortPhone.height), 'Add Filter sits flush with the bottom edge of the screen').toBeLessThanOrEqual(1)
+
+    await demo.openMonthPicker('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+})
+
 test.describe('the date control in the dialog of a 768 px tablet', () => {
   test.use({ viewport: { width: 768, height: 1024 } })
 
@@ -188,6 +210,76 @@ test.describe('the Add Filter menu on a desktop', () => {
 
     await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
     await expect(demo.at.searchProperties).toBeVisible()
+  })
+
+  test('keeps the Add Filter button of the date control on the screen after the month picker', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.openMonthPicker('Created Date')
+    await demo.pickMonth('Created Date', 'Aug')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+
+  test('edits a date filter in its dialog', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.addTodayFilter('Created Date')
+
+    await demo.editFilter('Created Date')
+    await demo.updateWithQuickSelect('Created Date', 'Yesterday')
+
+    await expect(demo.at.editFilter('Created Date')).toHaveAccessibleName(/Aug 14, 2026/)
+  })
+})
+
+test.describe('the Add Filter menu on a 900 px tall desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('keeps the Add Filter button of the date control on the screen after a five-week month', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.showNextMonth('Created Date')
+    await demo.showPreviousMonth('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+})
+
+test.describe('typed dates in the Between control on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('keeps Add Filter off after a typed start date is cleared and an end date is typed', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeDate('Created Date', 'Start date', '03102026')
+    await demo.clearDate('Created Date', 'Start date')
+    await demo.typeDate('Created Date', 'End date', '03202026')
+
+    await expect(demo.at.dateField('Created Date', 'Start date')).toHaveText(/^mm.*dd.*yyyy$/)
+    await expect(demo.at.selectMonth('Created Date')).toHaveText('March 2026')
+    await expect(demo.at.addFilter('Created Date')).toBeDisabled()
+  })
+
+  test('turns Add Filter off when the start date of a set range is cleared', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+    await demo.at.button('Created Date', 'Last Week').click()
+
+    await demo.clearDate('Created Date', 'Start date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeDisabled()
   })
 })
 

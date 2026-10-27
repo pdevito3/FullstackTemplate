@@ -1,7 +1,10 @@
 import type { Page } from '@playwright/test'
 
 export const filterDemo = (page: Page) => {
-  const control = (propertyLabel: string) => page.getByRole('dialog', { name: `${propertyLabel} filter` })
+  const dialog = (name: string) => page.getByRole('dialog', { name, exact: true })
+  // The Add Filter submenu names its dialog. The Add and Edit dialogs take their name from the title.
+  const control = (propertyLabel: string) =>
+    dialog(`${propertyLabel} filter`).or(dialog(`Add ${propertyLabel} Filter`)).or(dialog(`Edit ${propertyLabel} Filter`))
 
   return {
     heading: page.getByRole('heading', { name: 'Filter Builder Demo' }),
@@ -17,7 +20,14 @@ export const filterDemo = (page: Page) => {
       control(propertyLabel).getByRole('button').or(control(propertyLabel).getByRole('textbox')),
     pressedButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { pressed: true }),
     dateField: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('group', { name, exact: true }),
+    dateSegment: (propertyLabel: string, field: string, part: 'month' | 'day' | 'year') =>
+      control(propertyLabel).getByRole('spinbutton', { name: `${part}, ${field}`, exact: true }),
     calendar: (propertyLabel: string) => control(propertyLabel).getByRole('grid'),
+    calendarNav: (propertyLabel: string, name: 'Next' | 'Previous') =>
+      control(propertyLabel).getByRole('banner').getByRole('button', { name, exact: true }),
+    selectMonth: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Select month', exact: true }),
+    monthOption: (propertyLabel: string, name: string) =>
+      control(propertyLabel).getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name, exact: true }),
     addFilter: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Add Filter', exact: true }),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),

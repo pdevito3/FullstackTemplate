@@ -85,8 +85,7 @@ test('range calendar: a click on the end day in the next month keeps that month'
   const screen = await render(<DateRange initialRange={august2026} />)
 
   await screen.getByRole('button', { name: /August 15, 2026/ }).click()
-  // React Aria puts a second, hidden Next button after the grid for screen readers.
-  await screen.getByRole('button', { name: 'Next', exact: true }).first().click()
+  await screen.getByRole('banner').getByRole('button', { name: 'Next', exact: true }).click()
   await screen.getByRole('button', { name: /September 3, 2026/ }).click()
 
   await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2026-09-03')

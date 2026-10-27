@@ -107,7 +107,8 @@ async function step(name, fn) {
     log('steps.log', `FAIL  ${name} (${Date.now() - t0} ms): ${e.message.split('\n')[0]}`)
     console.log(`FAIL  ${name}`)
     // Capture now. A finally block of the recipe, such as a logout(), runs after the error leaves this step.
-    if (!capturedErrors.has(e)) await capture('failure').then(() => capturedErrors.add(e), () => {})
+    // A full-page capture scrolls the page, and a scroll closes an open overlay, so this capture shows the viewport.
+    if (!capturedErrors.has(e)) await capture('failure', { fullPage: false }).then(() => capturedErrors.add(e), () => {})
     throw e
   }
 }
@@ -207,8 +208,9 @@ try {
   if (!capturedErrors.has(e)) await capture('failure').catch(() => {})
 } finally {
   await Promise.all(pendingConsoleErrors)
-  await context.tracing.stop({ path: path.join(outDir, 'trace.zip') })
-  await browser.close()
+  // After a Ctrl-C or a browser crash, these throw. The run still writes result.json.
+  await context.tracing.stop({ path: path.join(outDir, 'trace.zip') }).catch(() => {})
+  await browser.close().catch(() => {})
   if (pageErrors.length > 0 && status === 'passed') {
     status = 'failed'
     error = `${pageErrors.length} page error(s) during the run`

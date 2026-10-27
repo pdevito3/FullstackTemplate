@@ -68,8 +68,14 @@ internal sealed class TrackedAggregates
     private AuditSubject SubjectOfEntry(EntityEntry<BaseEntity> entry)
     {
         var root = entry;
+        var visited = new HashSet<BaseEntity>(ReferenceEqualityComparer.Instance) { entry.Entity };
         while (OwnerOf(root) is { } owner)
+        {
+            if (!visited.Add(owner.Entity))
+                throw new InvalidOperationException(
+                    $"The owners of {entry.Metadata.ClrType.Name} '{entry.Entity.Id}' form a cycle at {owner.Metadata.ClrType.Name} '{owner.Entity.Id}', so the audit log cannot find its aggregate root. Give each entity one owner through a Cascade foreign key, and do not let an entity own itself.");
             root = owner;
+        }
 
         return new AuditSubject(entry.Metadata.ClrType.Name, entry.Entity.Id, root.Metadata.ClrType.Name,
             root.Entity.Id, TenantOf(root));

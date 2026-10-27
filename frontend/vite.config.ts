@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
@@ -25,6 +25,31 @@ function vendorChunk(id: string): string | undefined {
   return Object.keys(vendorChunks).find((chunk) =>
     vendorChunks[chunk].includes(match[1]),
   )
+}
+
+const bffTimeoutMs = 30_000
+
+class BffTimeoutError extends Error {}
+
+const failStalledBffRequests: ProxyOptions['configure'] = (proxy) => {
+  // Use a plain timer. Node fires a socket timeout late while a TLS
+  // handshake stalls, and the BFF runs on HTTPS.
+  proxy.on('proxyReq', (proxyReq, req) => {
+    const timer = setTimeout(() => {
+      proxyReq.destroy(
+        new BffTimeoutError(
+          `The BFF did not answer ${req.method} ${req.url} in ${bffTimeoutMs / 1000} s.`,
+        ),
+      )
+    }, bffTimeoutMs)
+    proxyReq.on('response', () => clearTimeout(timer))
+    proxyReq.on('close', () => clearTimeout(timer))
+  })
+  proxy.on('error', (err, _req, res) => {
+    if (err instanceof BffTimeoutError && 'req' in res && !res.headersSent) {
+      res.writeHead(504, { 'Content-Type': 'text/plain' }).end(err.message)
+    }
+  })
 }
 
 // https://vite.dev/config/
@@ -97,24 +122,28 @@ export default defineConfig({
       '/bff': {
         target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
         changeOrigin: true,
-        secure: false
+        secure: false,
+        configure: failStalledBffRequests
       },
       // OIDC callback endpoints
       '/signin-oidc': {
         target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
         changeOrigin: true,
-        secure: false
+        secure: false,
+        configure: failStalledBffRequests
       },
       '/signout-callback-oidc': {
         target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
         changeOrigin: true,
-        secure: false
+        secure: false,
+        configure: failStalledBffRequests
       },
       // API calls proxied through BFF
       '/api': {
         target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
         changeOrigin: true,
-        secure: false
+        secure: false,
+        configure: failStalledBffRequests
       }
     }
   }

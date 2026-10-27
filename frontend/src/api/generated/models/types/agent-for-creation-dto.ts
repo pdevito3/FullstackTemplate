@@ -3,6 +3,26 @@
 * Do not edit manually.
 */
 
+export const agentForCreationDtoModeEnum = {
+    delegated: "delegated",
+    machine: "machine"
+} as const;
+
+export type AgentForCreationDtoModeEnumKey = (typeof agentForCreationDtoModeEnum)[keyof typeof agentForCreationDtoModeEnum];
+
+export const agentForCreationDtoPermissionsEnum = {
+    manage_agents: "manage_agents",
+    manage_tenant: "manage_tenant",
+    manage_user_access: "manage_user_access",
+    manage_users: "manage_users",
+    read_agents: "read_agents",
+    read_audit_log: "read_audit_log",
+    read_audit_log_sensitive: "read_audit_log_sensitive",
+    read_users: "read_users"
+} as const;
+
+export type AgentForCreationDtoPermissionsEnumKey = (typeof agentForCreationDtoPermissionsEnum)[keyof typeof agentForCreationDtoPermissionsEnum];
+
 export type AgentForCreationDto = {
     /**
      * @description Only for a caller that sees all tenants. That caller must name the tenant. A tenant admin always adds to their\nown tenant. If a tenant admin sends a tenant, it must be their own tenant.
@@ -19,10 +39,10 @@ export type AgentForCreationDto = {
      * @description \"delegated\" for a client that acts for a signed-in user, or \"machine\" for a client that acts for itself with\nclient credentials. Only a caller that manages all tenants can add a machine agent.
      * @type string
     */
-    mode: string;
+    mode: AgentForCreationDtoModeEnumKey;
     /**
      * @description The first grant. The caller must hold each permission. No permission when it is not sent.
      * @type array | undefined
     */
-    permissions?: string[] | null;
+    permissions?: AgentForCreationDtoPermissionsEnumKey[] | null;
 };

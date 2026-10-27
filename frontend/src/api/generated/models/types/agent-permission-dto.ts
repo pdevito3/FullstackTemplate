@@ -3,6 +3,19 @@
 * Do not edit manually.
 */
 
+export const agentPermissionDtoPermissionEnum = {
+    manage_agents: "manage_agents",
+    manage_tenant: "manage_tenant",
+    manage_user_access: "manage_user_access",
+    manage_users: "manage_users",
+    read_agents: "read_agents",
+    read_audit_log: "read_audit_log",
+    read_audit_log_sensitive: "read_audit_log_sensitive",
+    read_users: "read_users"
+} as const;
+
+export type AgentPermissionDtoPermissionEnumKey = (typeof agentPermissionDtoPermissionEnum)[keyof typeof agentPermissionDtoPermissionEnum];
+
 export type AgentPermissionDto = {
-    permission: string;
+    permission: AgentPermissionDtoPermissionEnumKey;
 };

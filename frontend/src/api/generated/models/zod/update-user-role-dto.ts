@@ -6,5 +6,5 @@
 import * as z from 'zod'
 
 export const updateUserRoleDtoSchema = z.object({
-  role: z.string(),
+  role: z.enum(['Admin', 'User']),
 })

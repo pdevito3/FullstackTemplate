@@ -14,7 +14,7 @@ export const userDtoSchema = z.object({
   identifier: z.string(),
   email: z.string(),
   username: z.string(),
-  role: z.string(),
-  permissions: z.array(z.string()),
+  role: z.enum(['Admin', 'User']),
+  permissions: z.array(z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users'])),
   version: z.int().min(0).max(4294967295),
 })

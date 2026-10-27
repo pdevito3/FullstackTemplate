@@ -9,6 +9,6 @@ export const agentForCreationDtoSchema = z.object({
   tenantId: z.string().nullish().describe('Only for a caller that sees all tenants. That caller must name the tenant. A tenant admin always adds to their\nown tenant. If a tenant admin sends a tenant, it must be their own tenant.'),
   name: z.string(),
   clientId: z.string().describe('The client ID in the tokens of the client. Case-sensitive.'),
-  mode: z.string().describe('"delegated" for a client that acts for a signed-in user, or "machine" for a client that acts for itself with\nclient credentials. Only a caller that manages all tenants can add a machine agent.'),
-  permissions: z.array(z.string()).nullish().describe('The first grant. The caller must hold each permission. No permission when it is not sent.'),
+  mode: z.enum(['delegated', 'machine']).describe('"delegated" for a client that acts for a signed-in user, or "machine" for a client that acts for itself with\nclient credentials. Only a caller that manages all tenants can add a machine agent.'),
+  permissions: z.array(z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users'])).nullish().describe('The first grant. The caller must hold each permission. No permission when it is not sent.'),
 })

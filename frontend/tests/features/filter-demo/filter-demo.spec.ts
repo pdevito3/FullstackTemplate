@@ -129,9 +129,9 @@ for (const viewport of [
   })
 }
 
-const shortPhone = { width: 320, height: 780 }
+const shortPhone = { width: 320, height: 766 }
 
-test.describe('the Between calendar on a 320 x 780 phone', () => {
+test.describe('the Between calendar on a 320 x 766 phone', () => {
   test.use({ viewport: shortPhone })
 
   test('keeps Add Filter on the screen in a five-week month and in the month picker', async ({ page }) => {

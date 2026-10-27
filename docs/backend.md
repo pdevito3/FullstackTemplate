@@ -223,6 +223,8 @@ dotnet ef database update --project FullstackTemplate.Server --startup-project F
 
 The server applies migrations at startup, with a Postgres advisory lock.
 
+`ModelSnapshotTests` fails when the committed model snapshot is not the snapshot that the next migration writes. This includes a model change with no DDL, such as a new navigation, which `dotnet ef migrations has-pending-model-changes` does not find. The test ignores the `using` lines and the `ProductVersion` annotation. To correct the failure, add a migration in the change that changed the model. For a change with no DDL, the `Up` and `Down` of the migration are empty. An update of EF Core or Npgsql that changes the generated code also fails the test. Correct it the same way.
+
 ## Tests
 
 | Project | Scope |

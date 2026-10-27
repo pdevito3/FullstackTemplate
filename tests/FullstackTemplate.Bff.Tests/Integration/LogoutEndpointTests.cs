@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using FullstackTemplate.Bff.Logout;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Shouldly;
 
@@ -206,6 +207,6 @@ public class LogoutEndpointTests
     private static BffApp StartWithEndSessionWithoutIdTokenHint() =>
         BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
-            ["Auth:EndSessionWithoutIdTokenHint"] = "true",
+            [LogoutEndpoint.EndSessionWithoutIdTokenHintKey] = "true",
         });
 }

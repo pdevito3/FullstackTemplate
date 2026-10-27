@@ -88,7 +88,11 @@ When the access token expires, the BFF refreshes it before it sends the API call
 5. If the provider has an `end_session_endpoint`, the BFF sends the browser there with `id_token_hint` and `post_logout_redirect_uri`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`.
 6. If the provider has no `end_session_endpoint`, the BFF sends the browser to `returnUrl`.
 
-If no user is signed in, the BFF sends the browser to `returnUrl` at once. It does not go to the provider, because it has no ID token for `id_token_hint`, and a provider can refuse a logout without one. This also occurs when the BFF session ended before the provider session, for example at its absolute limit. Then the provider session stays, and the next login at the provider can occur with no prompt.
+If no user is signed in, the BFF sends the browser to `returnUrl` at once. It does not go to the provider, because it has no ID token for `id_token_hint`, and a provider can refuse a logout without one.
+
+The BFF session can end before the provider session, for example at its absolute limit. The browser then still has the `__Host-bff` cookie, but the BFF has no ID token for it. If `Auth:EndSessionWithoutIdTokenHint` is `true`, a logout with this cookie goes to the `end_session_endpoint` with `client_id`, `post_logout_redirect_uri`, and `state`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`. Keycloak first asks the user to confirm the logout. A logout with no cookie still goes to `returnUrl` at once. Thus an anonymous visit or a link from another site does not show the logout page of the provider.
+
+This logout is possible only from a page that still shows the user as signed in. After a reload, `/bff/user` gives 204, and the SPA shows only Login. If the setting is `false`, or if the user does not log out, the provider session stays. The next login then signs in the same user again with no prompt. On a shared computer, the next person can thus sign in as the previous user. Only Keycloak sets this setting in the local stack. ZeroFactor refuses a logout with no `id_token_hint`. The other providers are not tested.
 
 ## Back-channel logout
 
@@ -144,6 +148,7 @@ Other settings:
 | `Auth:IdTokenSigningAlgorithm` | `RS256` | The signing algorithm of the ID tokens and the logout tokens, as the client registration sets it. |
 | `Auth:MetadataRefreshInterval` | The handler default | The shortest time between two reads of the discovery document and the signing keys. |
 | `Auth:UseAudienceAsScope` | `true` | Adds `Auth:Audience` to the scopes. FusionAuth needs `false`. |
+| `Auth:EndSessionWithoutIdTokenHint` | `false` | Set it to `true` if the `end_session_endpoint` accepts `client_id` with no `id_token_hint`. A logout with the cookie of an ended BFF session then also ends the provider session. See [Logout flow](#logout-flow). |
 | `Auth:DefaultAccessTokenLifetime` | none | The lifetime of an access token when the token response has no `expires_in`. With no value, such a token never expires, and the BFF never refreshes it. |
 
 ## DPoP

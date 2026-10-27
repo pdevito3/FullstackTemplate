@@ -72,6 +72,13 @@ public sealed record AuthProviderConfig
     public string? LogoutPath { get; init; }
 
     /// <summary>
+    /// Whether the end_session_endpoint accepts client_id with no id_token_hint. A logout with the cookie of an ended
+    /// BFF session has no ID token, and the BFF then ends the IdP session only if this is true. ZeroFactor refuses
+    /// such a request.
+    /// </summary>
+    public bool EndSessionWithoutIdTokenHint { get; init; }
+
+    /// <summary>
     /// More environment variables for the BFF only, for a provider that needs a BFF setting that no other provider needs.
     /// </summary>
     public IReadOnlyDictionary<string, string> BffSettings { get; init; } = new Dictionary<string, string>();
@@ -214,6 +221,7 @@ public static class AuthProviderExtensions
             .WithEnvironment("Auth__RoleClaimType", authProvider.RoleClaimType)
             .WithEnvironment("Auth__UseAudienceAsScope", authProvider.UseAudienceAsScope.ToString())
             .WithEnvironment("Auth__RequestOfflineAccess", authProvider.RequestOfflineAccess.ToString())
+            .WithEnvironment("Auth__EndSessionWithoutIdTokenHint", authProvider.EndSessionWithoutIdTokenHint.ToString())
             .WithEnvironment("Auth__Features__Revocation", authProvider.Features.Revocation)
             .WithEnvironment("Auth__Features__IssuerParameter", authProvider.Features.IssuerParameter)
             .WithEnvironment("Auth__Features__BackChannelLogout", authProvider.Features.BackChannelLogout)

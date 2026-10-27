@@ -47,6 +47,19 @@ function pauseWhileHidden(toast: QueuedToast<ToastMessage>) {
   }
 }
 
+function publishToastRegionHeight(region: HTMLDivElement | null) {
+  if (!region) return
+  const root = document.documentElement
+  const observer = new ResizeObserver(([entry]) => {
+    root.style.setProperty('--toast-region-height', `${entry.borderBoxSize[0].blockSize}px`)
+  })
+  observer.observe(region)
+  return () => {
+    observer.disconnect()
+    root.style.removeProperty('--toast-region-height')
+  }
+}
+
 /**
  * The region that shows the toast notifications, styled with the theme of the app.
  * main.tsx renders it once, at the root of the app.
@@ -66,6 +79,7 @@ export function Toaster() {
   return (
     <ToastRegion
       queue={toastQueue}
+      ref={publishToastRegionHeight}
       data-slot="toast-region"
       className="pointer-events-none fixed inset-x-4 bottom-4 z-[100] mx-auto flex max-w-[500px] flex-col-reverse items-center gap-2 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:right-6 md:bottom-6 md:left-auto"
     >

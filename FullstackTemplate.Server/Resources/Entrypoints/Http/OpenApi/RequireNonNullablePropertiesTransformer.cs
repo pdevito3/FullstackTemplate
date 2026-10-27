@@ -6,6 +6,9 @@ using Microsoft.OpenApi;
 /// <summary>
 /// Marks each property that is not nullable as required. The generator marks only C# <c>required</c>
 /// members as required, so without this transformer each DTO property is optional in the frontend contract.
+/// A nullable property that refers to another component schema is still a bare reference here, because the generator
+/// adds its null option after the schema transformers run. So the transformer also reads the nullable annotation of
+/// the C# property.
 /// </summary>
 public sealed class RequireNonNullablePropertiesTransformer : IOpenApiSchemaTransformer
 {
@@ -17,10 +20,14 @@ public sealed class RequireNonNullablePropertiesTransformer : IOpenApiSchemaTran
         if (schema.Properties is not { Count: > 0 })
             return Task.CompletedTask;
 
+        var annotatedNullable = context.JsonTypeInfo.Properties
+            .Where(p => p.IsGetNullable)
+            .Select(p => p.Name)
+            .ToHashSet();
         schema.Required ??= new HashSet<string>();
         foreach (var (name, property) in schema.Properties)
         {
-            if (!IsNullable(property))
+            if (!IsNullable(property) && !annotatedNullable.Contains(name))
                 schema.Required.Add(name);
         }
 

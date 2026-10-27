@@ -59,7 +59,7 @@ The build starts the host without an auth provider or a database. `Resources/Ent
 The document transformers in `Resources/Entrypoints/Http/OpenApi/` set these rules:
 
 - Each endpoint must have a name (`.WithName`). If an endpoint has no name, the Debug build fails.
-- A property that is not nullable is required.
+- A property that is not nullable is required. A nullable property is optional, also when it refers to another DTO, such as `AddressDto? ShipTo`.
 - A `PagedList<T>` response documents the `X-Pagination` header with the `PaginationMetadata` schema. `PaginationHeaderFilter` sets this header on each `PagedList<T>` result. It is an endpoint filter on the versioned group, so each endpoint that `EndpointDiscovery` maps has it.
 - An endpoint that returns a `PagedList<T>` must have a name that ends in `List`. Other endpoints must not have a name that ends in `List`. If not, the Debug build fails. The frontend list clients use this name to return the full response.
 - An endpoint that requires authentication documents a 401 with no body. An endpoint with `[AllowAnonymous]` or no authorization metadata gets no 401. The endpoints have no authorization policies, so the transformer cannot know which endpoints return 403. A 403 comes from the handler (see [Permissions](#permissions)). Declare a 403 with `.ProducesProblem(StatusCodes.Status403Forbidden)` on each endpoint whose handler can throw `ForbiddenAccessException`.

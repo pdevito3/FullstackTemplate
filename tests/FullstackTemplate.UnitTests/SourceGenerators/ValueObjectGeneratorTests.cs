@@ -72,6 +72,37 @@ public class ValueObjectGeneratorTests
         first.GetHashCode().ShouldBe(second.GetHashCode());
     }
 
+    [Test]
+    public void a_value_object_with_a_member_of_no_single_item_type_compiles()
+    {
+        // Act
+        var assembly = Compile("""
+            namespace App
+            {
+                using System.Collections;
+                using System.Collections.Generic;
+                using FullstackTemplate.Server.Domain;
+
+                public sealed class Pairs : IEnumerable<int>, IEnumerable<string>
+                {
+                    IEnumerator<int> IEnumerable<int>.GetEnumerator() => new List<int>().GetEnumerator();
+                    IEnumerator<string> IEnumerable<string>.GetEnumerator() => new List<string>().GetEnumerator();
+                    IEnumerator IEnumerable.GetEnumerator() => new List<int>().GetEnumerator();
+                }
+
+                public partial class Grid : ValueObject
+                {
+                    public int[,] Cells { get; } = new int[1, 1];
+                    public Pairs Pairs { get; } = new();
+                }
+            }
+            """);
+
+        // Assert
+        var grid = assembly.GetType("App.Grid")!;
+        Activator.CreateInstance(grid)!.Equals(Activator.CreateInstance(grid)).ShouldBeFalse();
+    }
+
     private static object New(Type codes, List<string>? names, List<int> numbers, string label)
         => Activator.CreateInstance(codes, names, numbers.ToArray(), label)!;
 

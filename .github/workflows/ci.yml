@@ -74,6 +74,10 @@ jobs:
         working-directory: frontend
         run: pnpm build
 
+      # pnpm build writes the route tree, so a stale committed routeTree.gen.ts shows as a diff.
+      - name: Fail on a stale route tree
+        run: git diff --exit-code --stat -- frontend/src/routeTree.gen.ts
+
       - name: Lint the frontend
         working-directory: frontend
         run: pnpm lint

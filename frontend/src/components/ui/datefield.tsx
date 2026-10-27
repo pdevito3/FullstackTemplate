@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type { VariantProps } from "class-variance-authority"
 import {
   DateField as AriaDateField,
@@ -20,6 +21,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { dateInputVariants } from "@/components/ui/date-input-variants"
+import { shortYearMessage, useShortYearCheck } from "@/components/ui/use-short-year-check"
 
 const DateField = AriaDateField
 
@@ -80,13 +82,38 @@ function JollyDateField<T extends AriaDateValue>({
   description,
   className,
   errorMessage,
+  value,
+  defaultValue,
+  onChange,
+  onBlur,
+  isInvalid,
   ...props
 }: JollyDateFieldProps<T>) {
+  const [changedDate, setChangedDate] = useState<AriaDateValue | null>(defaultValue ?? null)
+  const date = value === undefined ? changedDate : value
+  const yearCheck = useShortYearCheck(date)
+
+  const handleChange: JollyDateFieldProps<T>["onChange"] = (newValue) => {
+    setChangedDate(newValue)
+    onChange?.(newValue)
+  }
+
+  const handleBlur: JollyDateFieldProps<T>["onBlur"] = (event) => {
+    yearCheck.onBlur()
+    onBlur?.(event)
+  }
+
   return (
     <DateField
       className={composeRenderProps(className, (className) =>
         cn("group flex flex-col gap-2", className)
       )}
+      value={value}
+      defaultValue={defaultValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      // Undefined when neither is set, so that React Aria keeps its own validation.
+      isInvalid={yearCheck.isShortYear || isInvalid}
       {...props}
     >
       {label && <Label>{label}</Label>}
@@ -96,7 +123,12 @@ function JollyDateField<T extends AriaDateValue>({
           {description}
         </Text>
       )}
-      {errorMessage && (
+      {yearCheck.isShortYear && (
+        <Text className="text-sm text-destructive" slot="errorMessage" role="alert">
+          {shortYearMessage}
+        </Text>
+      )}
+      {!yearCheck.isShortYear && errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
           {typeof errorMessage === "function" ? "" : errorMessage}
         </Text>

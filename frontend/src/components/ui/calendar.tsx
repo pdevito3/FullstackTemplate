@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useMemo, useEffect, useCallback, useId, useRef } from "react"
+import { createContext, useContext, useState, useMemo, useEffect, useCallback, useId } from "react"
 import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -37,6 +37,7 @@ import {
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { DateField, DateInput } from "@/components/ui/datefield"
+import { isTypedInFull, shortYearMessage, useShortYearCheck } from "@/components/ui/use-short-year-check"
 
 const Calendar = AriaCalendar
 
@@ -704,63 +705,12 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
   )
 }
 
-// A date field reports each year as the user types it (2, 20, 202, 2026), so a year below 1000 is still being typed.
-function isTypedInFull(date: AriaDateValue | null | undefined): date is AriaDateValue {
-  return date != null && date.year >= 1000
-}
-
 type TypedRange = Partial<RangeValue<AriaDateValue | null>>
 
 // The range that the date fields make: null while an end is empty, still being typed, or before the start.
 function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
   if (!isTypedInFull(start) || !isTypedInFull(end) || end.compare(start) < 0) return null
   return { start, end }
-}
-
-const shortYearMessage = "Enter a 4-digit year."
-
-// A year below 1000 is still being typed while the field has focus. After the focus leaves, it is an error until the
-// year has four digits or the field is empty.
-function useShortYearCheck(date: AriaDateValue | null) {
-  const isShort = date != null && !isTypedInFull(date)
-  const [isMarked, setIsMarked] = useState(false)
-  if (isMarked && !isShort) setIsMarked(false)
-
-  const isPressingRef = useRef(false)
-  useEffect(() => {
-    const handlePointerDown = () => { isPressingRef.current = true }
-    const handlePointerUp = () => { isPressingRef.current = false }
-    document.addEventListener("pointerdown", handlePointerDown, true)
-    document.addEventListener("pointerup", handlePointerUp, true)
-    document.addEventListener("pointercancel", handlePointerUp, true)
-    // A context menu takes the pointerup, so the press ends when the menu opens.
-    document.addEventListener("contextmenu", handlePointerUp, true)
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, true)
-      document.removeEventListener("pointerup", handlePointerUp, true)
-      document.removeEventListener("pointercancel", handlePointerUp, true)
-      document.removeEventListener("contextmenu", handlePointerUp, true)
-    }
-  }, [])
-
-  const onBlur = () => {
-    if (!isShort) return
-    if (!isPressingRef.current) {
-      setIsMarked(true)
-      return
-    }
-    // A pointer press moves the focus on pointerdown and presses on pointerup. A message that showed between them would
-    // move the pressed button down, and the press would miss. So it shows after the press.
-    const pressEnd = new AbortController()
-    const mark = () => {
-      pressEnd.abort()
-      setIsMarked(true)
-    }
-    document.addEventListener("pointerup", mark, { signal: pressEnd.signal })
-    document.addEventListener("pointercancel", mark, { signal: pressEnd.signal })
-  }
-
-  return { isShortYear: isMarked && isShort, onBlur }
 }
 
 // An end before the start needs two full years, so it never shows with a short year.

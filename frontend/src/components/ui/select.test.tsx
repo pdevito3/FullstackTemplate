@@ -5,6 +5,7 @@ import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -82,4 +83,50 @@ test('a Select in a submenu: Escape closes the submenu before the Select opens, 
   await page.getByRole('option', { name: 'Greater Than' }).click()
   await expect.element(submenu.getByRole('button', { name: /Greater Than/ })).toBeVisible()
   expect(errors).toEqual([])
+})
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`a disabled Select has the background of a disabled Input in the ${theme} theme`, async () => {
+    const screen = await render(
+      <div className={theme}>
+        <Input aria-label="Name" disabled />
+        <Select aria-label="Status" isDisabled defaultValue="active">
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem id="active">Active</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    )
+
+    const input = getComputedStyle(screen.getByRole('textbox', { name: 'Name' }).element())
+    const trigger = getComputedStyle(screen.getByRole('button', { name: /Status/ }).element())
+    expect(trigger.backgroundColor).toBe(input.backgroundColor)
+  })
+}
+
+test('a long Select value that does not fit the trigger ends with an ellipsis', async () => {
+  const longName = 'Doctor Alexandra Montgomery-Fitzgerald of the Riverside Family Practice Clinic'
+  const screen = await render(
+    <Select aria-label="Provider" defaultValue="long" className="w-48">
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem id="long">{longName}</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+
+  // Chrome draws the ellipsis of `text-overflow` only in a block container, not in a flex container.
+  const value = screen.getByRole('button', { name: /Provider/ }).element().querySelector<HTMLElement>('[data-slot=select-value]')!
+  const style = getComputedStyle(value)
+  expect(value.scrollWidth).toBeGreaterThan(value.clientWidth)
+  expect({ display: style.display, textOverflow: style.textOverflow, whiteSpace: style.whiteSpace }).toEqual({
+    display: 'block',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  })
 })

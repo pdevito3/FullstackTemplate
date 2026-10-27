@@ -27,6 +27,8 @@ public partial class Permission : ValueObject
         Value = value;
     }
 
+    public override string ToString() => Value;
+
     public static Permission Of(string value) => new(value);
     public static implicit operator string(Permission value) => value.Value;
     public static List<string> ListNames() => PermissionEnum.List.Select(x => x.Name).ToList();

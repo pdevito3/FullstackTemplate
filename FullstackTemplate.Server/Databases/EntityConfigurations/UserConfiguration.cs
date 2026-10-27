@@ -40,7 +40,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne<Tenant>()
             .WithMany()
             .HasForeignKey(e => e.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.ClientNoAction);
 
         builder.ComplexProperty(e => e.Email, email =>
         {

@@ -32,6 +32,8 @@ public partial class UserRole : ValueObject
 
     public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
 
+    public override string ToString() => Value;
+
     public static UserRole Of(string value) => new(value);
     public static implicit operator string(UserRole value) => value.Value;
     public static List<string> ListNames() => UserRoleEnum.List.Select(x => x.Name).ToList();

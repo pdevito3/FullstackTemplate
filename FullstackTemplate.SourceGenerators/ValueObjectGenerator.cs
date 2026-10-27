@@ -51,9 +51,7 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 					} prop
 					&& !HasAttribute(prop, "IgnoreMemberAttribute"))
 				{
-					var isNonNullableValueType = prop.Type.IsValueType
-						&& prop.NullableAnnotation != NullableAnnotation.Annotated;
-					members.Add(new MemberEntry(prop.Name, isNonNullableValueType));
+					members.Add(new MemberEntry(prop.Name, KindOf(prop.Type, prop.NullableAnnotation)));
 				}
 				else if (m is IFieldSymbol
 					{
@@ -63,9 +61,7 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 					} field
 					&& !HasAttribute(field, "IgnoreMemberAttribute"))
 				{
-					var isNonNullableValueType = field.Type.IsValueType
-						&& field.NullableAnnotation != NullableAnnotation.Annotated;
-					members.Add(new MemberEntry(field.Name, isNonNullableValueType));
+					members.Add(new MemberEntry(field.Name, KindOf(field.Type, field.NullableAnnotation)));
 				}
 			}
 
@@ -80,6 +76,22 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 			symbol.Name,
 			members.ToImmutable());
 	}
+
+	private static MemberKind KindOf(ITypeSymbol type, NullableAnnotation annotation)
+	{
+		if (type is IArrayTypeSymbol { Rank: 1 }
+			|| (type.SpecialType != SpecialType.System_String && SequenceInterfaceCount(type) == 1))
+			return MemberKind.Sequence;
+
+		return type.IsValueType && annotation != NullableAnnotation.Annotated
+			? MemberKind.NonNullableValue
+			: MemberKind.Nullable;
+	}
+
+	// SequenceEquals and SequenceHashCode infer one item type, so a type with two IEnumerable<T> keeps Equals.
+	private static int SequenceInterfaceCount(ITypeSymbol type) =>
+		(type.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T ? 1 : 0)
+		+ type.AllInterfaces.Count(i => i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T);
 
 	private static bool InheritsFrom(INamedTypeSymbol symbol, string baseName)
 	{
@@ -125,7 +137,7 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 
 		if (info.Members.Length == 1)
 		{
-			sb.AppendLine($"\t\treturn Equals({info.Members[0].Name}, other.{info.Members[0].Name});");
+			sb.AppendLine($"\t\treturn {EqualsOf(info.Members[0])};");
 		}
 		else
 		{
@@ -134,7 +146,7 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 			{
 				if (i > 0)
 					sb.Append("\t\t\t&& ");
-				sb.Append($"Equals({info.Members[i].Name}, other.{info.Members[i].Name})");
+				sb.Append(EqualsOf(info.Members[i]));
 				sb.AppendLine(i < info.Members.Length - 1 ? "" : ";");
 			}
 		}
@@ -151,10 +163,13 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 
 		foreach (var m in info.Members)
 		{
-			if (m.IsNonNullableValueType)
-				sb.AppendLine($"\t\t\thash = hash * 23 + {m.Name}.GetHashCode();");
-			else
-				sb.AppendLine($"\t\t\thash = hash * 23 + ({m.Name}?.GetHashCode() ?? 0);");
+			var memberHash = m.Kind switch
+			{
+				MemberKind.Sequence => $"SequenceHashCode({m.Name})",
+				MemberKind.NonNullableValue => $"{m.Name}.GetHashCode()",
+				_ => $"({m.Name}?.GetHashCode() ?? 0)",
+			};
+			sb.AppendLine($"\t\t\thash = hash * 23 + {memberHash};");
 		}
 
 		sb.AppendLine("\t\t\treturn hash;");
@@ -165,6 +180,10 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 
 		ctx.AddSource($"{info.ClassName}.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
 	}
+
+	private static string EqualsOf(MemberEntry member) => member.Kind == MemberKind.Sequence
+		? $"SequenceEquals({member.Name}, other.{member.Name})"
+		: $"Equals({member.Name}, other.{member.Name})";
 }
 
 internal readonly struct ValueObjectInfo : System.IEquatable<ValueObjectInfo>
@@ -199,21 +218,28 @@ internal readonly struct ValueObjectInfo : System.IEquatable<ValueObjectInfo>
 	}
 }
 
+internal enum MemberKind
+{
+	Nullable,
+	NonNullableValue,
+	Sequence,
+}
+
 internal readonly struct MemberEntry : System.IEquatable<MemberEntry>
 {
 	public string Name { get; }
-	public bool IsNonNullableValueType { get; }
+	public MemberKind Kind { get; }
 
-	public MemberEntry(string name, bool isNonNullableValueType)
+	public MemberEntry(string name, MemberKind kind)
 	{
 		Name = name;
-		IsNonNullableValueType = isNonNullableValueType;
+		Kind = kind;
 	}
 
 	public bool Equals(MemberEntry other) =>
-		Name == other.Name && IsNonNullableValueType == other.IsNonNullableValueType;
+		Name == other.Name && Kind == other.Kind;
 
 	public override bool Equals(object? obj) => obj is MemberEntry other && Equals(other);
 
-	public override int GetHashCode() => (Name.GetHashCode() * 397) ^ IsNonNullableValueType.GetHashCode();
+	public override int GetHashCode() => (Name.GetHashCode() * 397) ^ (int)Kind;
 }

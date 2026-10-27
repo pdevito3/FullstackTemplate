@@ -8,8 +8,6 @@ export function isTypedInFull(date: AriaDateValue | null | undefined): date is A
 
 export const shortYearMessage = "Enter a 4-digit year."
 
-// A year below 1000 is still being typed while the field has focus. After the focus leaves, it is an error until the
-// year has four digits or the field is empty.
 export function useShortYearCheck(date: AriaDateValue | null) {
   const isShort = date != null && !isTypedInFull(date)
   const [isMarked, setIsMarked] = useState(false)
@@ -22,7 +20,6 @@ export function useShortYearCheck(date: AriaDateValue | null) {
     document.addEventListener("pointerdown", handlePointerDown, true)
     document.addEventListener("pointerup", handlePointerUp, true)
     document.addEventListener("pointercancel", handlePointerUp, true)
-    // A context menu takes the pointerup, so the press ends when the menu opens.
     document.addEventListener("contextmenu", handlePointerUp, true)
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true)
@@ -34,20 +31,20 @@ export function useShortYearCheck(date: AriaDateValue | null) {
 
   const onBlur = () => {
     if (!isShort) return
-    if (!isPressingRef.current) {
-      setIsMarked(true)
-      return
-    }
-    // A pointer press moves the focus on pointerdown and presses on pointerup. A message that showed between them would
-    // move the pressed button down, and the press would miss. So it shows after the press.
-    const pressEnd = new AbortController()
-    const mark = () => {
-      pressEnd.abort()
-      setIsMarked(true)
-    }
-    document.addEventListener("pointerup", mark, { signal: pressEnd.signal })
-    document.addEventListener("pointercancel", mark, { signal: pressEnd.signal })
+    const mark = () => setIsMarked(true)
+    if (isPressingRef.current) runAfterPressEnds(mark)
+    else mark()
   }
 
   return { isShortYear: isMarked && isShort, onBlur }
+}
+
+function runAfterPressEnds(callback: () => void) {
+  const pressEnd = new AbortController()
+  const run = () => {
+    pressEnd.abort()
+    callback()
+  }
+  document.addEventListener("pointerup", run, { signal: pressEnd.signal })
+  document.addEventListener("pointercancel", run, { signal: pressEnd.signal })
 }

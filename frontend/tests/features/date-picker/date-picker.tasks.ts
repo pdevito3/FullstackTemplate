@@ -17,7 +17,6 @@ export function datePickerDemoPage(page: Page) {
       await page.keyboard.type(digits)
     },
 
-    /** Tabs past the calendar button of the picker to the next field of the form. */
     async leavePicker() {
       await page.keyboard.press('Tab')
       await page.keyboard.press('Tab')

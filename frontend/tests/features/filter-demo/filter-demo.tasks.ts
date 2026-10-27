@@ -68,7 +68,6 @@ export function filterDemoPage(page: Page) {
       await page.keyboard.press('Tab')
     },
 
-    /** Types a year below 1000 and leaves the field, so that the control shows its message. */
     async typeShortYear(propertyLabel: string, field: string) {
       await at.dateSegment(propertyLabel, field, 'month').click()
       await page.keyboard.type('0310999')

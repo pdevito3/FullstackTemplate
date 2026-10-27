@@ -247,6 +247,11 @@
     @supports (height: 100dvh) {
       [data-slot="responsive-dialog-content"][data-side="bottom"] {
         max-height: min(85vh, calc(100dvh - var(--toast-reserve)));
+
+        /* Move with the toast fade, not in one frame. */
+        @media (prefers-reduced-motion: no-preference) {
+          transition: max-height 200ms ease-out;
+        }
       }
     }
 

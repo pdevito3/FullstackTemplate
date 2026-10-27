@@ -61,8 +61,8 @@ public class Agent : BaseEntity, ITenantable
             agent.SetId(forCreation.Id);
 
         ValidateAgent(agent);
-        foreach (var permission in forCreation.Permissions)
-            agent.AddToGrant(Permission.Of(permission), grantor);
+        for (var i = 0; i < forCreation.Permissions.Count; i++)
+            agent.AddToGrant(Permission.Of(forCreation.Permissions[i], $"permissions[{i}]"), grantor);
 
         agent.QueueDomainEvent(new AgentCreated(agent.Id));
 

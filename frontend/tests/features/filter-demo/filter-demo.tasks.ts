@@ -68,6 +68,21 @@ export function filterDemoPage(page: Page) {
       await page.keyboard.press('Tab')
     },
 
+    async typeShortYear(propertyLabel: string, field: string) {
+      await at.dateSegment(propertyLabel, field, 'month').click()
+      await page.keyboard.type('0310999')
+      await page.keyboard.press('Tab')
+      await expect(at.dateMessage(propertyLabel, 'Enter a 4-digit year.')).toBeVisible()
+    },
+
+    async typeEndBeforeStart(propertyLabel: string) {
+      await at.dateSegment(propertyLabel, 'Start date', 'month').click()
+      await page.keyboard.type('03102026')
+      await at.dateSegment(propertyLabel, 'End date', 'month').click()
+      await page.keyboard.type('03012026')
+      await expect(at.dateMessage(propertyLabel, 'The end date is before the start date.')).toBeVisible()
+    },
+
     async clearDate(propertyLabel: string, field: string) {
       for (const part of ['year', 'day', 'month'] as const) {
         await at.dateSegment(propertyLabel, field, part).click()
@@ -158,6 +173,10 @@ export function filterDemoPage(page: Page) {
         right = Math.min(right, sheet.x + sheet.width - (box.x + box.width))
       }
       return { left, right }
+    },
+
+    async textColorOf(element: Locator) {
+      return element.evaluate((node) => getComputedStyle(node).color)
     },
 
     async pageScrollWidth() {

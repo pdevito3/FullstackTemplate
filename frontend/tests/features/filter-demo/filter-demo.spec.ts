@@ -149,7 +149,6 @@ test.describe('the date control in the dialog of a 768 px tablet', () => {
   })
 })
 
-// The date control is the widest. A submenu with it needs about 911 px beside the sidebar.
 for (const screen of [
   { name: 'a phone on its side', viewport: { width: 844, height: 390 } },
   { name: 'a tablet', viewport: { width: 820, height: 1180 } },
@@ -356,6 +355,57 @@ test.describe('a short year in the date control on a desktop', () => {
     await expect(demo.at.dateSegment('Created Date', 'End date', 'year')).not.toHaveAttribute('aria-invalid')
     await expect(demo.at.dateMessage('Created Date', 'Enter a 4-digit year.')).toHaveCount(0)
     await expect(demo.at.addFilter('Created Date')).toBeEnabled()
+  })
+})
+
+test.describe('a date message in the date control on a 900 px tall desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  const shortYear = 'Enter a 4-digit year.'
+  const endBeforeStart = 'The end date is before the start date.'
+
+  test('gives a date field with a short year the red border of its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.typeShortYear('Created Date', 'Date')
+
+    const red = await demo.textColorOf(demo.at.dateMessage('Created Date', shortYear))
+    await expect(demo.at.dateField('Created Date', 'Date')).toHaveCSS('border-top-color', red)
+  })
+
+  test('gives an end date before the start date the red border of its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeEndBeforeStart('Created Date')
+
+    const red = await demo.textColorOf(demo.at.dateMessage('Created Date', endBeforeStart))
+    await expect(demo.at.dateField('Created Date', 'End date')).toHaveCSS('border-top-color', red)
+  })
+
+  test('keeps Add Filter on the screen when a short year shows its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.typeShortYear('Created Date', 'Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+
+  test('keeps Add Filter on the screen when an end date before the start date shows its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeEndBeforeStart('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
   })
 })
 

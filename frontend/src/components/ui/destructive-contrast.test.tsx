@@ -1,13 +1,14 @@
 import { CalendarDate } from '@internationalized/date'
 import { expect, test } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { Badge } from '@/components/ui/badge'
+import { badgeVariants } from '@/components/ui/badge-variants'
 import { Button } from '@/components/ui/button'
 import { JollyCalendar } from '@/components/ui/calendar'
 import { JollyDateField } from '@/components/ui/datefield'
-import { contrastOf } from '@/test/contrast'
+import { contrastOf, focusRingContrastOf } from '@/test/contrast'
 
 // WCAG 1.4.3 asks 4.5:1 for text below 18 px. Each surface below shows the destructive color as 14 px text.
 const minimumRatio = 4.5
@@ -46,5 +47,34 @@ for (const theme of ['light', 'dark'] as const) {
     ratios['invalid calendar day'] = contrastOf(screen.getByRole('button', { name: /March 10, 2026/ }).element())
 
     expect(Object.entries(ratios).filter(([, ratio]) => ratio < minimumRatio)).toEqual([])
+  })
+}
+
+// WCAG 1.4.11 asks 3:1 for a focus indicator against the colors next to it.
+const minimumRingRatio = 3
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`destructive color: the focus ring of a destructive button and badge has a contrast of 3:1 in the ${theme} theme`, async () => {
+    await render(
+      <div className={`${theme} bg-background p-4`}>
+        <Button variant="destructive">Delete</Button>
+        <a href="#failed" className={badgeVariants({ variant: 'destructive' })}>
+          Failed
+        </a>
+      </div>,
+    )
+    const ratios: Record<string, number> = {}
+
+    for (const [name, element] of [
+      ['destructive button', page.getByRole('button', { name: 'Delete' })],
+      ['destructive badge link', page.getByRole('link', { name: 'Failed' })],
+    ] as const) {
+      await userEvent.tab()
+      await expect.element(element).toHaveFocus()
+      await Promise.all(element.element().getAnimations().map((transition) => transition.finished))
+      ratios[name] = focusRingContrastOf(element.element())
+    }
+
+    expect(Object.entries(ratios).filter(([, ratio]) => ratio < minimumRingRatio)).toEqual([])
   })
 }

@@ -2,6 +2,7 @@
 
 import { Calendar03Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { useState } from "react"
 import {
   DatePicker as AriaDatePicker,
   DateRangePicker as AriaDateRangePicker,
@@ -31,6 +32,7 @@ import {
 import { DateInput } from "@/components/ui/datefield"
 import { Label } from "@/components/ui/label"
 import { Popover } from "@/components/ui/popover"
+import { shortYearMessage, useShortYearCheck } from "@/components/ui/use-short-year-check"
 
 const DatePicker = AriaDatePicker
 
@@ -48,17 +50,44 @@ function JollyDatePicker<T extends AriaDateValue>({
   description,
   errorMessage,
   className,
+  value,
+  defaultValue,
+  onChange,
+  onBlur,
+  isInvalid,
   ...props
 }: JollyDatePickerProps<T>) {
+  const [changedDate, setChangedDate] = useState<AriaDateValue | null>(defaultValue ?? null)
+  const date = value === undefined ? changedDate : value
+  const yearCheck = useShortYearCheck(date)
+
+  const handleChange: JollyDatePickerProps<T>["onChange"] = (newValue) => {
+    setChangedDate(newValue)
+    onChange?.(newValue)
+  }
+
+  // React Aria calls it only when the focus leaves the whole picker. A move to the calendar button or the calendar
+  // does not mark a short year.
+  const handleBlur: JollyDatePickerProps<T>["onBlur"] = (event) => {
+    yearCheck.onBlur()
+    onBlur?.(event)
+  }
+
   return (
     <DatePicker
       className={composeRenderProps(className, (className) =>
         cn("group flex flex-col gap-2", className)
       )}
+      value={value}
+      defaultValue={defaultValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      // Undefined when neither is set, so that React Aria keeps its own validation.
+      isInvalid={yearCheck.isShortYear || isInvalid}
       {...props}
     >
       {label && <Label>{label}</Label>}
-      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-disabled:opacity-50 dark:bg-input/30">
+      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
         <DateInput className="flex-1" variant="ghost" />
         <Button
           variant="ghost"
@@ -88,7 +117,12 @@ function JollyDatePicker<T extends AriaDateValue>({
           {description}
         </Text>
       )}
-      {errorMessage && (
+      {yearCheck.isShortYear && (
+        <Text className="text-sm text-destructive" slot="errorMessage" role="alert">
+          {shortYearMessage}
+        </Text>
+      )}
+      {!yearCheck.isShortYear && errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
           {typeof errorMessage === "function" ? "" : errorMessage}
         </Text>
@@ -119,7 +153,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       {...props}
     >
       {label && <Label>{label}</Label>}
-      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-disabled:opacity-50 dark:bg-input/30">
+      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
         <DateInput variant="ghost" slot="start" />
         <span aria-hidden className="px-2 text-sm text-muted-foreground">
           -

@@ -37,8 +37,6 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [dialogProperty, setDialogProperty] = useState<FilterConfig | null>(null)
   const { contains } = useFilter({ sensitivity: 'base' })
-  // The widest control, the date control between two dates, needs about 911 px
-  // beside the sidebar.
   const hasRoomForSubmenus = useMediaQuery('(width >= 64rem)')
 
   // The menu closes by itself after an action.

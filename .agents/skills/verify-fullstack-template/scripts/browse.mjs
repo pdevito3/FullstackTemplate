@@ -51,6 +51,15 @@ const { chromium, expect } = requireFromFrontend('@playwright/test')
 const log = (file, line) => appendFileSync(path.join(outDir, file), line + '\n')
 let captureCount = 0
 
+// A step can fail while a promise of the recipe still waits, such as a page.waitForResponse that started before
+// the failed click. That promise rejects when the browser closes. Without a handler, Node exits before result.json.
+const unhandledRejections = []
+process.on('unhandledRejection', (e) => {
+  const message = e instanceof Error ? e.message : String(e)
+  unhandledRejections.push(message)
+  log('steps.log', `unhandled rejection: ${message.split('\n')[0]}`)
+})
+
 const browser = await chromium.launch({ headless: !headed })
 const context = await browser.newContext({
   baseURL: stack.urls.web,
@@ -197,6 +206,10 @@ try {
   if (pageErrors.length > 0 && status === 'passed') {
     status = 'failed'
     error = `${pageErrors.length} page error(s) during the run`
+  }
+  if (unhandledRejections.length > 0 && status === 'passed') {
+    status = 'failed'
+    error = `unhandled rejection: ${unhandledRejections[0]}`
   }
   writeFileSync(
     path.join(outDir, 'result.json'),

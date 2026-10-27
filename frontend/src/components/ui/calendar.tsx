@@ -733,10 +733,13 @@ function useShortYearCheck(date: AriaDateValue | null) {
     document.addEventListener("pointerdown", handlePointerDown, true)
     document.addEventListener("pointerup", handlePointerUp, true)
     document.addEventListener("pointercancel", handlePointerUp, true)
+    // A context menu takes the pointerup, so the press ends when the menu opens.
+    document.addEventListener("contextmenu", handlePointerUp, true)
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true)
       document.removeEventListener("pointerup", handlePointerUp, true)
       document.removeEventListener("pointercancel", handlePointerUp, true)
+      document.removeEventListener("contextmenu", handlePointerUp, true)
     }
   }, [])
 
@@ -864,7 +867,7 @@ function JollyCalendar<T extends AriaDateValue>({
         </DateField>
       )}
       {showDateInput && yearCheck.isShortYear && (
-        <p id={errorId} className="text-destructive text-sm">
+        <p id={errorId} role="alert" className="text-destructive text-sm">
           {shortYearMessage}
         </p>
       )}
@@ -1019,7 +1022,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
         </div>
       )}
       {showDateInput && fieldError && (
-        <p id={errorId} className="text-destructive text-sm">
+        <p id={errorId} role="alert" className="text-destructive text-sm">
           {fieldError}
         </p>
       )}

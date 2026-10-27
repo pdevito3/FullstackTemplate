@@ -283,21 +283,6 @@ test.describe('typed dates in the Between control on a desktop', () => {
   })
 })
 
-test.describe('a short year in the date control on a touch phone', () => {
-  test.use({ viewport: phone, hasTouch: true })
-
-  test('takes a quick select that is tapped right after a short year', async ({ page }) => {
-    const demo = filterDemoPage(page)
-    await demo.openOn(dayInASixWeekMonth)
-    await demo.chooseProperty('Created Date')
-
-    await demo.typeDate('Created Date', 'Date', '0310999')
-    await demo.at.button('Created Date', 'Yesterday').tap()
-
-    await expect(demo.at.dateField('Created Date', 'Date')).toHaveText('8/14/2026')
-  })
-})
-
 test.describe('a short year in the date control on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } })
 

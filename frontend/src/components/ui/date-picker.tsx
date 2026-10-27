@@ -58,7 +58,7 @@ function JollyDatePicker<T extends AriaDateValue>({
       {...props}
     >
       {label && <Label>{label}</Label>}
-      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-disabled:opacity-50 dark:bg-input/30">
+      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
         <DateInput className="flex-1" variant="ghost" />
         <Button
           variant="ghost"
@@ -119,7 +119,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       {...props}
     >
       {label && <Label>{label}</Label>}
-      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-disabled:opacity-50 dark:bg-input/30">
+      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
         <DateInput variant="ghost" slot="start" />
         <span aria-hidden className="px-2 text-sm text-muted-foreground">
           -

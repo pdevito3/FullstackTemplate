@@ -70,6 +70,27 @@ public class TenantErrorResponseTests : TestBase
     }
 
     [Test]
+    [Arguments("\"abc\"")]
+    [Arguments("null")]
+    public async Task value_of_the_wrong_type_returns_bad_request_problem_on_the_field(string version)
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+        using var content = new StringContent($$"""{ "name": "Acme", "version": {{version}} }""", Encoding.UTF8, "application/json");
+
+        // Act
+        var result = await FactoryClient.PutAsync(ApiRoutes.Tenants.Put(EntityId.New(Tenant.IdPrefix)), content);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("The version field is not valid.");
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe("version");
+        error.Value.ShouldBe(["The version field is not valid."]);
+    }
+
+    [Test]
     [Arguments("")]
     [Arguments("null")]
     public async Task missing_body_returns_bad_request_problem_with_the_empty_key(string body)

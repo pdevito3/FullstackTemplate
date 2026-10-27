@@ -368,6 +368,8 @@ public class OrderStatus : ValueObject
     public bool IsFinalState() => _status.IsFinalState();
     public bool CanBeCancelled() => !IsFinalState();
 
+    public override string ToString() => Value;
+
     public static OrderStatus Draft() => new("Draft");
     public static OrderStatus Submitted() => new("Submitted");
 }

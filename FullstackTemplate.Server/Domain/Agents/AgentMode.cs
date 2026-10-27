@@ -43,6 +43,8 @@ public partial class AgentMode : ValueObject
     /// </summary>
     public bool IsMachine => _mode == AgentModeEnum.Machine;
 
+    public override string ToString() => Value;
+
     public static AgentMode Of(string value) => new(value);
     public static AgentMode Delegated() => new(AgentModeEnum.Delegated.Name);
     public static AgentMode Machine() => new(AgentModeEnum.Machine.Name);

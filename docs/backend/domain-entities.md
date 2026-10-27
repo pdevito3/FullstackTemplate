@@ -116,7 +116,7 @@ private void GuardIfInFinalState(string field, string subject)
 
 A value object derives from `ValueObject`. It validates its value in the constructor and has a static `Of` method. See `Domain/EmailAddresses/EmailAddress.cs`. A FluentValidation rule in a value object names the request field with `OverridePropertyName`, for example `"email"`, so that the 422 has the key in `errors`.
 
-When a value has fixed options, back the value object with a private SmartEnum. Put the behavior for each option on the SmartEnum. `UserRole` is the example:
+When a value has fixed options, back the value object with a private SmartEnum. Put the behavior for each option on the SmartEnum. Override `ToString` to give `Value`, so that a failed test assertion and a log show the option, not the type name. Do not give `ToString` to a value object that holds personal data, such as `EmailAddress`, because a log of the object then shows the data. `UserRole` is the example:
 
 ```csharp
 public partial class UserRole : ValueObject
@@ -136,6 +136,8 @@ public partial class UserRole : ValueObject
     }
 
     public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
+
+    public override string ToString() => Value;
 
     public static UserRole Of(string value) => new(value);
     public static UserRole Admin() => new(UserRoleEnum.Admin.Name);

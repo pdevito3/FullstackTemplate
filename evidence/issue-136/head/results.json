@@ -1,0 +1,260 @@
+[
+  {
+    "viewport": "320",
+    "scenario": "keyboardTwoMonths",
+    "focus": "Selected Range: Saturday, August 15 to Thursday, September 3, 2026, Thursday, September 3, 2026 selected",
+    "month": "September 2026",
+    "start": "8/15/2026",
+    "end": "9/3/2026",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "keyboardOneMonth",
+    "focus": "Selected Range: Saturday, August 15 to Tuesday, August 18, 2026, Tuesday, August 18, 2026 selected",
+    "month": "August 2026",
+    "start": "8/15/2026",
+    "end": "8/18/2026",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "keyboardBackward",
+    "focus": "Selected Range: Saturday, July 25 to Saturday, August 15, 2026, Saturday, July 25, 2026 selected",
+    "month": "July 2026",
+    "start": "7/25/2026",
+    "end": "8/15/2026",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "mouseTwoMonths",
+    "focus": "Selected Range: Saturday, August 15 to Thursday, September 3, 2026, Thursday, September 3, 2026 selected",
+    "month": "September 2026",
+    "start": "8/15/2026",
+    "end": "9/3/2026",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "mouseOneMonth",
+    "focus": "Selected Range: Saturday, August 15 to Tuesday, August 18, 2026, Tuesday, August 18, 2026 selected",
+    "month": "August 2026",
+    "start": "8/15/2026",
+    "end": "8/18/2026",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "typedStart",
+    "focus": "year, Start date",
+    "month": "March 2025",
+    "start": "3/10/2025",
+    "end": "12/31/2025",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "typedEnd",
+    "focus": "year, End date",
+    "month": "January 2025",
+    "start": "1/1/2025",
+    "end": "11/20/2025",
+    "errors": []
+  },
+  {
+    "viewport": "320",
+    "scenario": "rangeChips",
+    "months": {
+      "This Week": "August 2026",
+      "Last Week": "August 2026",
+      "Next Week": "August 2026",
+      "This Month": "August 2026",
+      "Last Month": "July 2026",
+      "Next Month": "September 2026",
+      "This Year": "January 2026",
+      "Last Year": "January 2025"
+    }
+  },
+  {
+    "viewport": "320",
+    "scenario": "singleChips",
+    "months": {
+      "Today": "August 2026",
+      "Tomorrow": "August 2026",
+      "Yesterday": "August 2026"
+    }
+  },
+  {
+    "viewport": "768",
+    "scenario": "keyboardTwoMonths",
+    "focus": "Selected Range: Saturday, August 15 to Thursday, September 3, 2026, Thursday, September 3, 2026 selected",
+    "month": "September 2026",
+    "start": "8/15/2026",
+    "end": "9/3/2026",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "keyboardOneMonth",
+    "focus": "Selected Range: Saturday, August 15 to Tuesday, August 18, 2026, Tuesday, August 18, 2026 selected",
+    "month": "August 2026",
+    "start": "8/15/2026",
+    "end": "8/18/2026",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "keyboardBackward",
+    "focus": "Selected Range: Saturday, July 25 to Saturday, August 15, 2026, Saturday, July 25, 2026 selected",
+    "month": "July 2026",
+    "start": "7/25/2026",
+    "end": "8/15/2026",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "mouseTwoMonths",
+    "focus": "Selected Range: Saturday, August 15 to Thursday, September 3, 2026, Thursday, September 3, 2026 selected",
+    "month": "September 2026",
+    "start": "8/15/2026",
+    "end": "9/3/2026",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "mouseOneMonth",
+    "focus": "Selected Range: Saturday, August 15 to Tuesday, August 18, 2026, Tuesday, August 18, 2026 selected",
+    "month": "August 2026",
+    "start": "8/15/2026",
+    "end": "8/18/2026",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "typedStart",
+    "focus": "year, Start date",
+    "month": "March 2025",
+    "start": "3/10/2025",
+    "end": "12/31/2025",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "typedEnd",
+    "focus": "year, End date",
+    "month": "January 2025",
+    "start": "1/1/2025",
+    "end": "11/20/2025",
+    "errors": []
+  },
+  {
+    "viewport": "768",
+    "scenario": "rangeChips",
+    "months": {
+      "This Week": "August 2026",
+      "Last Week": "August 2026",
+      "Next Week": "August 2026",
+      "This Month": "August 2026",
+      "Last Month": "July 2026",
+      "Next Month": "September 2026",
+      "This Year": "January 2026",
+      "Last Year": "January 2025"
+    }
+  },
+  {
+    "viewport": "768",
+    "scenario": "singleChips",
+    "months": {
+      "Today": "August 2026",
+      "Tomorrow": "August 2026",
+      "Yesterday": "August 2026"
+    }
+  },
+  {
+    "viewport": "1280",
+    "scenario": "keyboardTwoMonths",
+    "focus": "Selected Range: Saturday, August 15 to Thursday, September 3, 2026, Thursday, September 3, 2026 selected",
+    "month": "September 2026",
+    "start": "8/15/2026",
+    "end": "9/3/2026",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "keyboardOneMonth",
+    "focus": "Selected Range: Saturday, August 15 to Tuesday, August 18, 2026, Tuesday, August 18, 2026 selected",
+    "month": "August 2026",
+    "start": "8/15/2026",
+    "end": "8/18/2026",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "keyboardBackward",
+    "focus": "Selected Range: Saturday, July 25 to Saturday, August 15, 2026, Saturday, July 25, 2026 selected",
+    "month": "July 2026",
+    "start": "7/25/2026",
+    "end": "8/15/2026",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "mouseTwoMonths",
+    "focus": "Selected Range: Saturday, August 15 to Thursday, September 3, 2026, Thursday, September 3, 2026 selected",
+    "month": "September 2026",
+    "start": "8/15/2026",
+    "end": "9/3/2026",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "mouseOneMonth",
+    "focus": "Selected Range: Saturday, August 15 to Tuesday, August 18, 2026, Tuesday, August 18, 2026 selected",
+    "month": "August 2026",
+    "start": "8/15/2026",
+    "end": "8/18/2026",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "typedStart",
+    "focus": "year, Start date",
+    "month": "March 2025",
+    "start": "3/10/2025",
+    "end": "12/31/2025",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "typedEnd",
+    "focus": "year, End date",
+    "month": "January 2025",
+    "start": "1/1/2025",
+    "end": "11/20/2025",
+    "errors": []
+  },
+  {
+    "viewport": "1280",
+    "scenario": "rangeChips",
+    "months": {
+      "This Week": "August 2026",
+      "Last Week": "August 2026",
+      "Next Week": "August 2026",
+      "This Month": "August 2026",
+      "Last Month": "July 2026",
+      "Next Month": "September 2026",
+      "This Year": "January 2026",
+      "Last Year": "January 2025"
+    }
+  },
+  {
+    "viewport": "1280",
+    "scenario": "singleChips",
+    "months": {
+      "Today": "August 2026",
+      "Tomorrow": "August 2026",
+      "Yesterday": "August 2026"
+    }
+  }
+]

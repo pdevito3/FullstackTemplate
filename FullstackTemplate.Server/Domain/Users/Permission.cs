@@ -13,13 +13,7 @@ public partial class Permission : ValueObject, IFixedNames
     public string Value
     {
         get => _permission.Name;
-        private set
-        {
-            if (!PermissionEnum.TryFromName(value, true, out var parsed))
-                throw new ValidationException(RequestField, $"Invalid permission: {value}");
-
-            _permission = parsed;
-        }
+        private set => _permission = Parse(value, RequestField);
     }
 
     public Permission(string value)
@@ -30,6 +24,13 @@ public partial class Permission : ValueObject, IFixedNames
     public override string ToString() => Value;
 
     public static Permission Of(string value) => new(value);
+
+    /// <summary>
+    /// The permission of a request field with another name, for example <c>permissions[1]</c> for an item of a list.
+    /// The field is the key of the error when the name is not valid.
+    /// </summary>
+    public static Permission Of(string value, string requestField) => new() { _permission = Parse(value, requestField) };
+
     public static implicit operator string(Permission value) => value.Value;
     public static List<string> ListNames() => PermissionEnum.List.Select(x => x.Name).ToList();
     public static List<Permission> GetAll()
@@ -45,6 +46,11 @@ public partial class Permission : ValueObject, IFixedNames
     public static Permission ReadAgents() => new(PermissionEnum.ReadAgents.Name);
 
     protected Permission() { } // EF Core
+
+    private static PermissionEnum Parse(string value, string requestField)
+        => PermissionEnum.TryFromName(value, true, out var parsed)
+            ? parsed
+            : throw new ValidationException(requestField, $"Invalid permission: {value}");
 
     /// <summary>
     /// The name of each permission, as a constant for an attribute argument, for example

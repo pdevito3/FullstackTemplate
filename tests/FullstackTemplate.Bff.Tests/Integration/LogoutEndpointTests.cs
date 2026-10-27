@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using FullstackTemplate.Bff.Tests.Fakes;
 using Shouldly;
 
 public class LogoutEndpointTests
@@ -105,6 +106,43 @@ public class LogoutEndpointTests
     }
 
     [Test]
+    public async Task with_end_session_without_id_token_hint_a_logout_with_a_cookie_of_an_ended_session_ends_the_provider_session()
+    {
+        await using var app = StartWithEndSessionWithoutIdTokenHint();
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout-ended-session-no-hint"))!;
+        await app.WithStoreAsync(store => store.DeleteAsync(key, CancellationToken.None));
+
+        var response = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var location = response.Headers.Location!;
+        location.GetLeftPart(UriPartial.Path).ShouldBe($"{app.IdentityProvider.Issuer}/endsession");
+        var query = BffApp.Query(location);
+        query["id_token_hint"].ShouldBeNull();
+        query["client_id"].ShouldBe(FakeIdentityProvider.ClientId);
+        query["post_logout_redirect_uri"].ShouldBe("https://localhost/signout-callback-oidc");
+        response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
+
+        var callback = await browser.GetAsync($"/signout-callback-oidc?state={Uri.EscapeDataString(query["state"]!)}");
+
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
+    }
+
+    [Test]
+    public async Task with_end_session_without_id_token_hint_a_logout_with_no_cookie_has_no_identity_provider_round_trip()
+    {
+        await using var app = StartWithEndSessionWithoutIdTokenHint();
+        using var browser = app.CreateBrowser();
+
+        var response = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
+    }
+
+    [Test]
     [Arguments("https%3A%2F%2Fevil.example")]
     [Arguments("%2F%2Fevil.example")]
     [Arguments("%2Fa%0D%0ALocation%3A%20https%3A%2F%2Fevil.example")]
@@ -164,4 +202,10 @@ public class LogoutEndpointTests
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe("/bye?x=1");
     }
+
+    private static BffApp StartWithEndSessionWithoutIdTokenHint() =>
+        BffApp.StartAnotherInstance(new Dictionary<string, string?>
+        {
+            ["Auth:EndSessionWithoutIdTokenHint"] = "true",
+        });
 }

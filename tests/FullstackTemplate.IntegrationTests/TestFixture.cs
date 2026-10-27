@@ -82,20 +82,20 @@ public sealed class TestFixture : IAsyncDisposable
         await command.ExecuteNonQueryAsync();
     }
 
-    public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices)
+    public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices, string? connectionString = null)
     {
-        var services = AddServices();
+        var services = AddServices(connectionString);
         addTestServices(services);
         return services.BuildServiceProvider();
     }
 
-    private static IServiceCollection AddServices()
+    private static IServiceCollection AddServices(string? connectionString = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = TestingConsts.IntegrationTestingEnvName
         });
-        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = _connectionString;
+        builder.Configuration[$"ConnectionStrings:{DatabaseConsts.DatabaseName}"] = connectionString ?? _connectionString;
 
         builder.Configuration["Auth:Authority"] = "https://localhost";
         builder.Configuration["Auth:Audience"] = "test-api";

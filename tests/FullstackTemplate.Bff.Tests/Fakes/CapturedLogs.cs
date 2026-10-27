@@ -18,4 +18,6 @@ public sealed class CapturedLogs : ILogEventSink
     /// </summary>
     public IReadOnlyList<LogEvent> WithPropertyContaining(string text) =>
         _events.Where(e => e.Properties.Values.Any(v => v.ToString().Contains(text, StringComparison.Ordinal))).ToList();
+
+    public IReadOnlyList<LogEvent> AtLeast(LogEventLevel level) => _events.Where(e => e.Level >= level).ToList();
 }

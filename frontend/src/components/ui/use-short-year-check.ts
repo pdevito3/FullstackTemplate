@@ -20,6 +20,7 @@ export function useShortYearCheck(date: AriaDateValue | null) {
     document.addEventListener("pointerdown", handlePointerDown, true)
     document.addEventListener("pointerup", handlePointerUp, true)
     document.addEventListener("pointercancel", handlePointerUp, true)
+    // A context menu takes the pointerup, so the press ends when the menu opens.
     document.addEventListener("contextmenu", handlePointerUp, true)
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true)
@@ -39,6 +40,8 @@ export function useShortYearCheck(date: AriaDateValue | null) {
   return { isShortYear: isMarked && isShort, onBlur }
 }
 
+// A pointer press moves the focus on pointerdown and presses on pointerup. A message that showed between them would
+// move the pressed button down, and the press would miss. So it shows after the press.
 function runAfterPressEnds(callback: () => void) {
   const pressEnd = new AbortController()
   const run = () => {

@@ -151,8 +151,10 @@ public class AgentTests
             "A client ID cannot start or end with a space.");
         yield return () => (ForCreation() with { Mode = "robot" }, "mode", "Invalid mode: robot. Use delegated or machine.");
         yield return () => (ForCreation() with { Mode = "" }, "mode", "Please provide a mode.");
-        yield return () => (ForCreation() with { Permissions = ["manage_everything"] }, "permission",
+        yield return () => (ForCreation() with { Permissions = ["manage_everything"] }, "permissions[0]",
             "Invalid permission: manage_everything");
+        yield return () => (ForCreation() with { Permissions = [Permission.Names.ReadUsers, "manage_everything"] },
+            "permissions[1]", "Invalid permission: manage_everything");
     }
 
     [Test]

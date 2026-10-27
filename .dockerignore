@@ -1,0 +1,14 @@
+# The Dockerfiles build with the repo root as the context, so Docker reads this file and not frontend/.dockerignore.
+# Keep local installs, build output, and test output out of the images. A host node_modules has binaries for the host OS.
+.git
+artifacts
+**/node_modules
+**/bin
+**/obj
+# The frontend.esproj build on macOS makes a folder with a literal backslash in its name.
+**/obj\\*
+**/dist
+**/TestResults
+**/test-results
+**/playwright-report
+**/.vitest

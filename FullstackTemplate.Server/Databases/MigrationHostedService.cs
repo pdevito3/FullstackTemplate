@@ -3,6 +3,9 @@ namespace FullstackTemplate.Server.Databases;
 using System.Net.Sockets;
 using Medallion.Threading.Postgres;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Resources;
 using Serilog;
@@ -53,6 +56,10 @@ public class MigrationHostedService<TDbContext>(
 
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var context = scope.ServiceProvider.GetRequiredService<TDbContext>();
+                // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the
+                // failed read as an error. Create the table first.
+                if (await context.GetService<IRelationalDatabaseCreator>().ExistsAsync(cancellationToken))
+                    await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
                 await context.Database.MigrateAsync(cancellationToken);
             }
 

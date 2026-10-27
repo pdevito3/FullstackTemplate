@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useMemo, useEffect, useCallback, useId } from "react"
+import { createContext, useContext, useState, useMemo, useEffect, useCallback, useId, useRef } from "react"
 import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -717,6 +717,59 @@ function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
   return { start, end }
 }
 
+const shortYearMessage = "Enter a 4-digit year."
+
+// A year below 1000 is still being typed while the field has focus. After the focus leaves, it is an error until the
+// year has four digits or the field is empty.
+function useShortYearCheck(date: AriaDateValue | null) {
+  const isShort = date != null && !isTypedInFull(date)
+  const [isMarked, setIsMarked] = useState(false)
+  if (isMarked && !isShort) setIsMarked(false)
+
+  const isPressingRef = useRef(false)
+  useEffect(() => {
+    const handlePointerDown = () => { isPressingRef.current = true }
+    const handlePointerUp = () => { isPressingRef.current = false }
+    document.addEventListener("pointerdown", handlePointerDown, true)
+    document.addEventListener("pointerup", handlePointerUp, true)
+    document.addEventListener("pointercancel", handlePointerUp, true)
+    // A context menu takes the pointerup, so the press ends when the menu opens.
+    document.addEventListener("contextmenu", handlePointerUp, true)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true)
+      document.removeEventListener("pointerup", handlePointerUp, true)
+      document.removeEventListener("pointercancel", handlePointerUp, true)
+      document.removeEventListener("contextmenu", handlePointerUp, true)
+    }
+  }, [])
+
+  const onBlur = () => {
+    if (!isShort) return
+    if (!isPressingRef.current) {
+      setIsMarked(true)
+      return
+    }
+    // A pointer press moves the focus on pointerdown and presses on pointerup. A message that showed between them would
+    // move the pressed button down, and the press would miss. So it shows after the press.
+    const pressEnd = new AbortController()
+    const mark = () => {
+      pressEnd.abort()
+      setIsMarked(true)
+    }
+    document.addEventListener("pointerup", mark, { signal: pressEnd.signal })
+    document.addEventListener("pointercancel", mark, { signal: pressEnd.signal })
+  }
+
+  return { isShortYear: isMarked && isShort, onBlur }
+}
+
+// An end before the start needs two full years, so it never shows with a short year.
+function rangeFieldError(isEndBeforeStart: boolean, hasShortYear: boolean): string | null {
+  if (isEndBeforeStart) return "The end date is before the start date."
+  if (hasShortYear) return shortYearMessage
+  return null
+}
+
 interface JollyCalendarProps<T extends AriaDateValue>
   extends Omit<AriaCalendarProps<T>, "onChange"> {
   /** Gets null when the typed date is cleared or is not complete. */
@@ -794,17 +847,29 @@ function JollyCalendar<T extends AriaDateValue>({
     onChange?.(newValue)
   }, [onChange])
 
+  const fieldDate = value ?? typedDate
+  const yearCheck = useShortYearCheck(fieldDate)
+  const errorId = useId()
+
   return (
     <div className="flex flex-col gap-2">
       {showDateInput && (
         <DateField
-          value={value ?? typedDate}
+          value={fieldDate}
           onChange={handleDateInputChange}
+          onBlur={yearCheck.onBlur}
+          isInvalid={yearCheck.isShortYear}
           aria-label="Date"
+          aria-describedby={yearCheck.isShortYear ? errorId : undefined}
           autoFocus={autoFocus}
         >
           <DateInput className="h-9" />
         </DateField>
+      )}
+      {showDateInput && yearCheck.isShortYear && (
+        <p id={errorId} role="alert" className="text-destructive text-sm">
+          {shortYearMessage}
+        </p>
       )}
       <div className={layoutClassNames[layout].body}>
         {showQuickSelects && (
@@ -920,7 +985,11 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   const startDate = value?.start ?? draft.start ?? null
   const endDate = value?.end ?? draft.end ?? null
   const isEndBeforeStart = isTypedInFull(startDate) && isTypedInFull(endDate) && endDate.compare(startDate) < 0
-  const endErrorId = useId()
+  const startYearCheck = useShortYearCheck(startDate)
+  const endYearCheck = useShortYearCheck(endDate)
+  const isEndInvalid = isEndBeforeStart || endYearCheck.isShortYear
+  const fieldError = rangeFieldError(isEndBeforeStart, startYearCheck.isShortYear || endYearCheck.isShortYear)
+  const errorId = useId()
 
   return (
     <div className="flex flex-col gap-2">
@@ -929,7 +998,10 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           <DateField
             value={startDate}
             onChange={handleStartDateChange}
+            onBlur={startYearCheck.onBlur}
+            isInvalid={startYearCheck.isShortYear}
             aria-label="Start date"
+            aria-describedby={startYearCheck.isShortYear ? errorId : undefined}
             autoFocus={autoFocus}
             className="min-w-0 flex-1"
           >
@@ -939,18 +1011,19 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           <DateField
             value={endDate}
             onChange={handleEndDateChange}
-            isInvalid={isEndBeforeStart}
+            onBlur={endYearCheck.onBlur}
+            isInvalid={isEndInvalid}
             aria-label="End date"
-            aria-describedby={isEndBeforeStart ? endErrorId : undefined}
+            aria-describedby={isEndInvalid ? errorId : undefined}
             className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>
         </div>
       )}
-      {showDateInput && isEndBeforeStart && (
-        <p id={endErrorId} className="text-destructive text-sm">
-          The end date is before the start date.
+      {showDateInput && fieldError && (
+        <p id={errorId} role="alert" className="text-destructive text-sm">
+          {fieldError}
         </p>
       )}
       <div className={layoutClassNames[layout].body}>

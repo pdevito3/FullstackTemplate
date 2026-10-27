@@ -283,6 +283,82 @@ test.describe('typed dates in the Between control on a desktop', () => {
   })
 })
 
+test.describe('a short year in the date control on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  for (const mode of ['On', 'Before', 'After']) {
+    test(`marks a short year in the ${mode} date after the focus leaves it`, async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.openOn(dayInASixWeekMonth)
+      await demo.chooseProperty('Created Date')
+      await demo.at.button('Created Date', mode).click()
+
+      await demo.typeDate('Created Date', 'Date', '0310999')
+      await demo.leaveDateField()
+
+      const year = demo.at.dateSegment('Created Date', 'Date', 'year')
+      await expect(year).toHaveAttribute('aria-invalid', 'true')
+      await expect(year).toHaveAccessibleDescription(/Enter a 4-digit year\./)
+      await expect(demo.at.addFilter('Created Date')).toBeDisabled()
+
+      await demo.typeDate('Created Date', 'Date', '03102026')
+
+      await expect(year).not.toHaveAttribute('aria-invalid')
+      await expect(demo.at.dateMessage('Created Date', 'Enter a 4-digit year.')).toHaveCount(0)
+      await expect(demo.at.addFilter('Created Date')).toBeEnabled()
+    })
+  }
+
+  test('takes a quick select that is pressed right after a short year', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.typeDate('Created Date', 'Date', '0310999')
+    await demo.at.button('Created Date', 'Yesterday').click()
+
+    await expect(demo.at.dateField('Created Date', 'Date')).toHaveText('8/14/2026')
+    await expect(demo.at.addFilter('Created Date')).toBeEnabled()
+  })
+
+  test('marks a short year after a press on a calendar button that does not set the date', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.typeDate('Created Date', 'Date', '0310999')
+    await demo.showNextMonth('Created Date')
+
+    await expect(demo.at.dateSegment('Created Date', 'Date', 'year')).toHaveAccessibleDescription(/Enter a 4-digit year\./)
+  })
+
+  test('marks a short start year and a short end year in the Between dates', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeDate('Created Date', 'Start date', '0310999')
+    await demo.leaveDateField()
+    await demo.typeDate('Created Date', 'End date', '0320202612')
+    await demo.leaveDateField()
+
+    for (const field of ['Start date', 'End date']) {
+      const year = demo.at.dateSegment('Created Date', field, 'year')
+      await expect(year).toHaveAttribute('aria-invalid', 'true')
+      await expect(year).toHaveAccessibleDescription(/Enter a 4-digit year\./)
+    }
+
+    await demo.typeDate('Created Date', 'Start date', '03102026')
+    await demo.typeDate('Created Date', 'End date', '03202026')
+
+    await expect(demo.at.dateSegment('Created Date', 'Start date', 'year')).not.toHaveAttribute('aria-invalid')
+    await expect(demo.at.dateSegment('Created Date', 'End date', 'year')).not.toHaveAttribute('aria-invalid')
+    await expect(demo.at.dateMessage('Created Date', 'Enter a 4-digit year.')).toHaveCount(0)
+    await expect(demo.at.addFilter('Created Date')).toBeEnabled()
+  })
+})
+
 test.describe('the edit dialog of a boolean filter', () => {
   for (const [value, other] of [['True', 'False'], ['False', 'True']] as const) {
     test(`shows ${value} as the current value`, async ({ page }) => {

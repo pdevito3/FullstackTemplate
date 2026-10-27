@@ -64,6 +64,10 @@ export function filterDemoPage(page: Page) {
       await page.keyboard.type(digits)
     },
 
+    async leaveDateField() {
+      await page.keyboard.press('Tab')
+    },
+
     async clearDate(propertyLabel: string, field: string) {
       for (const part of ['year', 'day', 'month'] as const) {
         await at.dateSegment(propertyLabel, field, part).click()

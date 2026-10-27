@@ -90,11 +90,12 @@ function ResponsiveDialog({
         <DialogPrimitive
           data-slot="responsive-dialog"
           aria-describedby={descriptionId}
+          data-close-button={showCloseButton || undefined}
           className="relative flex max-h-[inherit] flex-col outline-none"
         >
           {/* Drag handle for mobile */}
           <div className="mx-auto mt-3 h-1 w-12 shrink-0 rounded-full bg-muted md:hidden" />
-          <div className="overflow-y-auto p-4">
+          <div className="overflow-y-auto p-4" onFocus={padScrollForStickyParts}>
             <DialogDescriptionContext.Provider value={setDescriptionId}>
               {children}
             </DialogDescriptionContext.Provider>
@@ -102,7 +103,7 @@ function ResponsiveDialog({
           {showCloseButton && (
             <ResponsiveDialogClose
               variant="ghost"
-              className="absolute top-2 right-2 max-md:size-8"
+              className="absolute top-2 right-2 z-20 max-md:size-8"
               size="icon-sm"
             >
               <HugeiconsIcon icon={Cancel01Icon} />
@@ -115,6 +116,16 @@ function ResponsiveDialog({
   )
 }
 
+// The header and the footer stick over the content that scrolls. A field that gets focus scrolls only to the edge of
+// the scroll box, so the box needs scroll padding of their heights. The browser scrolls after the focus event.
+function padScrollForStickyParts(event: React.FocusEvent<HTMLDivElement>) {
+  const box = event.currentTarget
+  const header = box.querySelector<HTMLElement>('[data-slot="responsive-dialog-header"]')
+  const footer = box.querySelector<HTMLElement>('[data-slot="responsive-dialog-footer"]')
+  box.style.scrollPaddingTop = `${header?.offsetHeight ?? 0}px`
+  box.style.scrollPaddingBottom = `${footer?.offsetHeight ?? 0}px`
+}
+
 function ResponsiveDialogHeader({
   className,
   ...props
@@ -122,7 +133,12 @@ function ResponsiveDialogHeader({
   return (
     <div
       data-slot="responsive-dialog-header"
-      className={cn("flex flex-col gap-2 text-center md:text-left", className)}
+      className={cn(
+        // Sticks over the content that scrolls, so put it first. The negative top and margin cover the p-4 of that
+        // content. The min height covers the close button.
+        "sticky -top-4 z-10 -mt-4 flex flex-col gap-2 bg-background pt-4 text-center md:text-left in-data-close-button:md:min-h-9",
+        className
+      )}
       {...props}
     />
   )
@@ -136,7 +152,9 @@ function ResponsiveDialogFooter({
     <div
       data-slot="responsive-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end",
+        // Sticks over the content that scrolls, so put it last. The negative bottom and margin cover the p-4 of that
+        // content.
+        "sticky -bottom-4 z-10 -mb-4 flex flex-col-reverse gap-2 bg-background pt-4 pb-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -154,6 +172,7 @@ function ResponsiveDialogTitle({
       data-slot="responsive-dialog-title"
       className={cn(
         "text-base leading-none font-semibold md:text-sm md:font-medium",
+        "in-data-close-button:max-md:px-8 in-data-close-button:md:pr-8",
         className
       )}
       {...props}

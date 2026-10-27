@@ -72,9 +72,11 @@ The harness is `scripts/browse.mjs`. It loads Playwright from `frontend/node_mod
 node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>]
 ```
 
-The command prints `ok` or `FAIL` for each step, then `PASSED` or `FAILED` and the evidence path. The exit code is 0 only when all steps pass and the page has no uncaught error.
+The command prints `ok` or `FAIL` for each step, then `PASSED` or `FAILED` and the evidence path. The exit code is 0 only when the recipe does not throw, the page has no uncaught error or console error, and the recipe has no unhandled promise rejection. A step error that the recipe catches logs `FAIL` but does not fail the run.
 
 An uncaught error in the page (a Playwright `pageerror`) fails the run, even if all steps pass. A browser console error also fails the run, because an error boundary catches a render crash and only logs it. The one exception is `Failed to load resource`: `network.log` records those responses. After the `FAILED` line, the command prints each error on a line that starts with `[pageerror]`. A recipe does not need its own page-error check.
+
+An unhandled promise rejection in the recipe also fails the run. An example is a `page.waitForResponse` that the recipe did not await and that never got its response. `steps.log` records each rejection on a line that starts with `unhandled rejection:`. If a step fails while such a promise waits, the run still writes `result.json` with the error of the step.
 
 To prove a feature in the map, run its recipe:
 
@@ -90,7 +92,7 @@ To prove a new change, write a new recipe in the scratch folder of your run (for
 |---|---|
 | `page`, `context` | The Playwright page and its browser context. `page.goto('/')` uses the `web` URL. |
 | `expect` | The Playwright `expect` with web-first assertions. |
-| `step(name, fn)` | Runs `fn` and logs `ok` or `FAIL` with the name. Put each user action and its assertion in one step. |
+| `step(name, fn)` | Runs `fn` and logs `ok` or `FAIL` with the name. Put each user action and its assertion in one step. If `fn` fails, the step captures the page as `failure` before the error leaves the step, so a `finally` block of the recipe (for example, a `logout()`) does not change the capture. This capture shows only the viewport, so that an open overlay stays open. A step error that the recipe catches also makes this capture. |
 | `capture(name, { fullPage })` | Waits for `settle()`, then saves a screenshot and an ARIA snapshot. The screenshot is full-page by default. For an open overlay, give `{ fullPage: false }`, because the resize for a full-page screenshot closes a Drawer. In a full-page screenshot of a scrolled page, the fixed sidebar shows at the scroll offset. This is normal. |
 | `settle()` | Waits two frames, then waits for all finite animations to end. Call it before a click in an animated overlay. Playwright retries a click on a moving element with a scroll, and React Aria closes a popover on scroll. |
 | `login(user)` | Logs in through the real BFF and the IdP of the stack. It returns `{ name }`, the `name` claim of the session. Compare the screen with this name. Without `user`, the first user of the IdP signs in: `admin@example.com` (`Admin User`) for ZeroFactor, `bob` (`Bob Smith`) for DuendeDemo. The other users are `user@example.com` and `alice`. |
@@ -134,7 +136,7 @@ Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the
 | `network.log` | Each response with status 400 or more. |
 | `trace.zip` | The Playwright trace. Open it with `pnpm --dir frontend exec playwright show-trace <path>`. |
 | `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. |
-| `NN-failure.png` | A capture of the page at the time of the failure. |
+| `NN-failure.png` | A capture of the page at the time of the failure. A failed step makes the capture before the cleanup of the recipe runs. A failure outside a step gets its capture after the recipe ends. |
 
 `artifacts/` is in `.gitignore`. The evidence stays after cleanup.
 

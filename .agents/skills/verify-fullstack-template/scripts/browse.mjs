@@ -10,6 +10,7 @@
 //   steps.log      each step with ok/FAIL and its duration
 //   NN-<name>.png  a screenshot for each capture(), full-page by default
 //   NN-<name>.aria.txt  the ARIA snapshot of the page for each capture()
+//   NN-failure.png      the page when a step fails, before a finally block of the recipe runs
 //   console.log    browser console errors and warnings, and page errors
 //                  (an uncaught page error fails the run, even if all steps pass)
 //   network.log    each response with status >= 400
@@ -51,6 +52,15 @@ const { chromium, expect } = requireFromFrontend('@playwright/test')
 const log = (file, line) => appendFileSync(path.join(outDir, file), line + '\n')
 let captureCount = 0
 
+// A step can fail while a promise of the recipe still waits, such as a page.waitForResponse that started before
+// the failed click. That promise rejects when the browser closes. Without a handler, Node exits before result.json.
+const unhandledRejections = []
+process.on('unhandledRejection', (e) => {
+  const message = e instanceof Error ? e.message : String(e)
+  unhandledRejections.push(message)
+  log('steps.log', `unhandled rejection: ${message.split('\n')[0]}`)
+})
+
 const browser = await chromium.launch({ headless: !headed })
 const context = await browser.newContext({
   baseURL: stack.urls.web,
@@ -83,6 +93,9 @@ page.on('response', (r) => {
   if (r.status() >= 400) log('network.log', `${r.status()} ${r.request().method()} ${r.url()}`)
 })
 
+// The errors that already have a failure capture, so that an outer step or the runner does not capture again.
+const capturedErrors = new Set()
+
 async function step(name, fn) {
   const t0 = Date.now()
   try {
@@ -93,6 +106,9 @@ async function step(name, fn) {
   } catch (e) {
     log('steps.log', `FAIL  ${name} (${Date.now() - t0} ms): ${e.message.split('\n')[0]}`)
     console.log(`FAIL  ${name}`)
+    // Capture now. A finally block of the recipe, such as a logout(), runs after the error leaves this step.
+    // A full-page capture scrolls the page, and a scroll closes an open overlay, so this capture shows the viewport.
+    if (!capturedErrors.has(e)) await capture('failure', { fullPage: false }).then(() => capturedErrors.add(e), () => {})
     throw e
   }
 }
@@ -189,14 +205,19 @@ try {
 } catch (e) {
   status = 'failed'
   error = e.message
-  await capture('failure').catch(() => {})
+  if (!capturedErrors.has(e)) await capture('failure').catch(() => {})
 } finally {
   await Promise.all(pendingConsoleErrors)
-  await context.tracing.stop({ path: path.join(outDir, 'trace.zip') })
-  await browser.close()
+  // After a Ctrl-C or a browser crash, these throw. The run still writes result.json.
+  await context.tracing.stop({ path: path.join(outDir, 'trace.zip') }).catch(() => {})
+  await browser.close().catch(() => {})
   if (pageErrors.length > 0 && status === 'passed') {
     status = 'failed'
     error = `${pageErrors.length} page error(s) during the run`
+  }
+  if (unhandledRejections.length > 0 && status === 'passed') {
+    status = 'failed'
+    error = `unhandled rejection: ${unhandledRejections[0]}`
   }
   writeFileSync(
     path.join(outDir, 'result.json'),

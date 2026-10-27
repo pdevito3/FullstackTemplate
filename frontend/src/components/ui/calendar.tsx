@@ -355,6 +355,8 @@ interface CalendarContentProps {
 
 function CalendarContent({ children }: CalendarContentProps) {
   const zoomContext = useContext(CalendarZoomContext)
+  const rangeState = useContext(AriaRangeCalendarStateContext)
+  if (zoomContext && zoomContext.view !== "days") keepRangeOpenInPicker(rangeState)
 
   if (!zoomContext) {
     return <>{children}</>
@@ -584,6 +586,14 @@ function keepFocusOnRangeStart(state: RangeCalendarState | null) {
     state.setFocusedDate(date)
     state.setFocused(true)
   }
+}
+
+// React Aria commits a range on a pointer release inside the calendar that is not on a button (useRangeCalendar,
+// commitBehavior). Month and year items are options, so a pick would end the range. The range state is a new object
+// on each render, so the no-op lasts only while a picker shows. It also skips the commit on blur in that time.
+function keepRangeOpenInPicker(state: RangeCalendarState | null) {
+  if (!state) return
+  state.commitSelection = () => {}
 }
 
 const CalendarGrid = ({ className, ...props }: AriaCalendarGridProps) => {

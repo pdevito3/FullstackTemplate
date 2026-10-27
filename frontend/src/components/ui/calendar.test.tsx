@@ -93,6 +93,47 @@ test('range calendar: a click on the end day in the next month keeps that month'
   expect(document.activeElement?.getAttribute('aria-label')).toMatch(/Thursday, September 3, 2026 selected$/)
 })
 
+test('range calendar: a month pick after the start day keeps the range open', async () => {
+  const screen = await render(<DateRange initialRange={august2026} />)
+
+  await screen.getByRole('button', { name: /August 15, 2026/ }).click()
+  await screen.getByRole('button', { name: 'Select month' }).click()
+  await screen.getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name: 'Sep' }).click()
+  await screen.getByRole('button', { name: /September 3, 2026/ }).click()
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2026-09-03')
+})
+
+test('range calendar: a year pick and a month pick after the start day keep the range open', async () => {
+  const screen = await render(<DateRange initialRange={august2026} />)
+
+  await screen.getByRole('button', { name: /August 15, 2026/ }).click()
+  await screen.getByRole('button', { name: 'Select month' }).click()
+  await screen.getByRole('button', { name: 'Select year' }).click()
+  await screen.getByRole('listbox', { name: 'Year picker' }).getByRole('option', { name: '2027' }).click()
+  await screen.getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name: 'Feb' }).click()
+  await screen.getByRole('button', { name: /February 10, 2027/ }).click()
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2027-02-10')
+})
+
+test('range calendar: a click outside the calendar after a month pick ends the range in the picked month', async () => {
+  const screen = await render(
+    <>
+      <DateRange initialRange={august2026} />
+      <button type="button">Outside</button>
+    </>
+  )
+
+  await screen.getByRole('button', { name: /August 15, 2026/ }).click()
+  await screen.getByRole('button', { name: 'Select month' }).click()
+  await screen.getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name: 'Sep' }).click()
+  await screen.getByRole('button', { name: 'Outside' }).click()
+
+  // A hover in a range moves the focus, so the end day is the September day under the pointer after the pick.
+  await expect.poll(() => screen.getByRole('status', { name: 'Range' }).element().textContent).toMatch(/^2026-08-15 to 2026-09-\d\d$/)
+})
+
 function DateRangeWithControls() {
   const [range, setRange] = useState<RangeValue<DateValue> | null>(august2026)
   return <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showQuickSelects showDateInput />

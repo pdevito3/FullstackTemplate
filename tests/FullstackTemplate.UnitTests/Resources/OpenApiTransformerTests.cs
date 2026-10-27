@@ -2,9 +2,12 @@ namespace FullstackTemplate.UnitTests.Resources;
 
 using FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 using NSubstitute;
 using Shouldly;
@@ -124,6 +127,39 @@ public class OpenApiTransformerTests
 
         // Assert
         operation.Responses.ShouldNotBeNull().Keys.ShouldBe(["200"]);
+    }
+
+    [Test]
+    public async Task non_nullable_transformer_keeps_a_nullable_reference_to_a_schema_optional()
+    {
+        // Arrange
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.Services.AddOpenApi(options => options.AddSchemaTransformer<RequireNonNullablePropertiesTransformer>());
+        await using var app = builder.Build();
+        app.MapGet("/shipments", () => new ShipmentDto());
+        // The app adds its endpoints to the routing data when it starts
+        await app.StartAsync();
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var schemas = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull();
+        schemas[nameof(ShipmentDto)].Required.ShouldNotBeNull().ShouldBe(["reference", "origin"], ignoreOrder: true);
+    }
+
+    private sealed record ShipmentDto
+    {
+        public string Reference { get; init; } = default!;
+        public string? Note { get; init; }
+        public AddressDto Origin { get; init; } = default!;
+        public AddressDto? ShipTo { get; init; }
+    }
+
+    private sealed record AddressDto
+    {
+        public string City { get; init; } = default!;
     }
 
     private static OpenApiOperationTransformerContext OperationContext(params object[] endpointMetadata) => new()

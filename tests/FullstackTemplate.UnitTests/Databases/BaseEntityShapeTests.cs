@@ -59,8 +59,20 @@ public class BaseEntityShapeTests
         var exception = Should.Throw<InvalidOperationException>(() => context.Model);
 
         // Assert
-        exception.Message.ShouldContain(nameof(Cat));
-        exception.Message.ShouldContain($"Give the tenant only to {nameof(Pet)}");
+        exception.Message.ShouldEndWith($"{nameof(Pet)} has a tenant, and its filter covers {nameof(Cat)}. Remove the ApplyTenanting call from {nameof(Cat)}.");
+    }
+
+    [Test]
+    public void a_derived_tenantable_entity_type_under_a_root_with_a_tenant_path_fails_the_model_with_the_fix()
+    {
+        // Arrange
+        using var context = new DerivedTenantableUnderTenantPathContext();
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(() => context.Model);
+
+        // Assert
+        exception.Message.ShouldEndWith($"{nameof(Kennel)} has a tenant, and its filter covers {nameof(TenantedKennel)}. Remove ITenantable from {nameof(TenantedKennel)}.");
     }
 
     [Test]
@@ -75,6 +87,24 @@ public class BaseEntityShapeTests
         // Assert
         exception.Message.ShouldContain(nameof(Lid));
         exception.Message.ShouldContain("ComplexProperty");
+    }
+
+    [Test]
+    [Timeout(10_000)]
+    public async Task save_of_an_entity_that_owns_itself_fails_with_the_fix(CancellationToken cancellationToken)
+    {
+        // Arrange
+        await using var context = new SelfOwnedContext();
+        var node = new Node(EntityId.New(Tenant.IdPrefix));
+        node.MoveUnder(node.Id);
+        context.Add(node);
+
+        // Act
+        // The save runs on the pool, so the timeout can end a walk of the owners that never ends.
+        var act = () => Task.Run(() => context.SaveChangesAsync(cancellationToken), cancellationToken);
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("form a cycle");
     }
 
     private abstract class ShapeContext() : AppDbContext(Options, TimeProvider.System,
@@ -167,6 +197,57 @@ public class BaseEntityShapeTests
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<Animal>().HasKey(a => a.Id);
             modelBuilder.Entity<TenantedDog>().HasBaseType<Animal>();
+        }
+    }
+
+    private sealed class Shelter(string tenantId) : BaseEntity("shl"), ITenantable
+    {
+        public string TenantId { get; private set; } = tenantId;
+    }
+
+    private class Kennel() : BaseEntity("knl")
+    {
+        public Shelter Shelter { get; private set; } = null!;
+    }
+
+    private sealed class TenantedKennel(string tenantId) : Kennel, ITenantable
+    {
+        public string TenantId { get; private set; } = tenantId;
+    }
+
+    private sealed class DerivedTenantableUnderTenantPathContext : ShapeContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Shelter>().HasKey(s => s.Id);
+            modelBuilder.Entity<Kennel>(kennel =>
+            {
+                kennel.HasKey(k => k.Id);
+                kennel.ApplyTenanting(k => k.Shelter.TenantId);
+            });
+            modelBuilder.Entity<TenantedKennel>().HasBaseType<Kennel>();
+        }
+    }
+
+    private sealed class Node(string tenantId) : BaseEntity("nod"), ITenantable
+    {
+        public string TenantId { get; private set; } = tenantId;
+        public string? ParentId { get; private set; }
+
+        public void MoveUnder(string parentId) => ParentId = parentId;
+    }
+
+    private sealed class SelfOwnedContext : ShapeContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Node>(node =>
+            {
+                node.HasKey(n => n.Id);
+                node.HasOne<Node>().WithMany().HasForeignKey(n => n.ParentId).OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 

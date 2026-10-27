@@ -21,12 +21,34 @@ function Popover({
   placement = "bottom",
   offset = 4,
   crossOffset = 0,
+  ref,
   ...props
 }: Omit<PopoverPrimitiveProps, "className"> & {
   className?: string
+  ref?: React.Ref<HTMLElement>
 }) {
+  // React Aria places the popover again only when the popover or its trigger resizes. A popover at its max height
+  // does not resize when its content grows, so it would scroll. A window resize makes React Aria place it again.
+  const popoverRef = React.useCallback(
+    (element: HTMLElement | null) => {
+      if (!element) return
+      const observer = new ResizeObserver(() => {
+        if (element.scrollHeight > element.clientHeight) window.dispatchEvent(new Event("resize"))
+      })
+      for (const child of element.children) observer.observe(child)
+      const callerCleanup = setRef(ref, element)
+      return () => {
+        observer.disconnect()
+        if (callerCleanup) callerCleanup()
+        else setRef(ref, null)
+      }
+    },
+    [ref]
+  )
+
   return (
     <PopoverPrimitive
+      ref={popoverRef}
       data-slot="popover-content"
       placement={placement}
       offset={offset}
@@ -38,6 +60,11 @@ function Popover({
       {...props}
     />
   )
+}
+
+function setRef<T>(ref: React.Ref<T> | undefined, value: T | null): (() => void) | void {
+  if (typeof ref === "function") return ref(value)
+  if (ref) ref.current = value
 }
 
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {

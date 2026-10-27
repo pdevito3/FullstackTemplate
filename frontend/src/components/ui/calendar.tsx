@@ -729,8 +729,8 @@ interface JollyCalendarProps<T extends AriaDateValue>
   showDateInput?: boolean
   layout?: CalendarLayout
   /**
-   * Keeps the same height for every month and for the month and year pickers. A popover that React Aria placed
-   * against the window edge cannot grow.
+   * Keeps the same height for every month and for the month and year pickers, so that a popover does not move when
+   * the month or the view changes.
    */
   fixedHeight?: boolean
 }
@@ -874,8 +874,8 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
   showDateInput?: boolean
   layout?: CalendarLayout
   /**
-   * Keeps the same height for every month and for the month and year pickers. A popover that React Aria placed
-   * against the window edge cannot grow.
+   * Keeps the same height for every month and for the month and year pickers, so that a popover does not move when
+   * the month or the view changes.
    */
   fixedHeight?: boolean
 }

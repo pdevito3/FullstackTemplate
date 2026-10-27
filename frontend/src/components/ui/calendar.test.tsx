@@ -330,10 +330,13 @@ for (const { name, picker, open } of [
 
     for (const button of open) await screen.getByRole('button', { name: button }).click()
 
-    const options = screen.getByRole('listbox', { name: picker }).getByRole('option').elements()
+    const listbox = screen.getByRole('listbox', { name: picker })
+    const options = listbox.getByRole('option').elements()
     expect(options).toHaveLength(12)
-    const bottom = Math.max(...options.map((option) => option.getBoundingClientRect().bottom))
-    expect(Math.abs(bottom - days.bottom), 'the last row of the picker ends at the bottom of the days').toBeLessThanOrEqual(4)
+    const lastRow = Math.max(...options.map((option) => option.getBoundingClientRect().bottom))
+    const box = listbox.element().getBoundingClientRect()
+    expect(Math.abs(box.bottom - days.bottom), 'the picker ends at the bottom of the days').toBeLessThanOrEqual(1)
+    expect(box.bottom - lastRow, 'the last row of the picker ends at the bottom of the picker').toBeLessThanOrEqual(parseFloat(getComputedStyle(listbox.element()).paddingBottom) + 1)
   })
 }
 

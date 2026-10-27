@@ -65,7 +65,7 @@ function SelectValue<T extends object>({
       data-slot="select-value"
       className={composeRenderProps(className, (className) =>
         cn(
-          "min-w-0 flex-1 truncate text-left data-placeholder:text-muted-foreground *:inline *:*:empty:me-2 *:*:empty:inline-block *:*:empty:align-middle [&_svg]:me-2 [&_svg]:inline-block",
+          "min-w-0 flex-1 truncate text-left data-placeholder:text-muted-foreground *:inline *:*:me-2 *:*:empty:inline-block *:*:empty:align-middle [&_svg]:inline-block",
           className
         )
       )}

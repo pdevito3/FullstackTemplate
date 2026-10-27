@@ -132,21 +132,26 @@ test('a long Select value that does not fit the trigger ends with an ellipsis', 
   })
 })
 
-test('a status dot before a long Select value keeps its size in the trigger', async () => {
+test('the parts of a Select value keep their size and their gap in the trigger', async () => {
   const screen = await render(
-    <Select aria-label="Provider" defaultValue="long" className="w-48">
+    <Select aria-label="Provider" defaultValue="alex" className="w-96">
       <SelectTrigger>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem id="long" textValue={longName}>
+        <SelectItem id="alex" textValue="Alex Montgomery">
           <span data-testid="status-dot" className="size-2 rounded-full bg-green-500" />
-          {longName}
+          <span>Alex Montgomery</span>
+          <span className="text-muted-foreground">alex@example.com</span>
         </SelectItem>
       </SelectContent>
     </Select>
   )
 
-  const dot = screen.getByRole('button', { name: /Provider/ }).getByTestId('status-dot').element().getBoundingClientRect()
+  const trigger = screen.getByRole('button', { name: /Provider/ })
+  const dot = trigger.getByTestId('status-dot').element().getBoundingClientRect()
+  const name = trigger.getByText('Alex Montgomery').element().getBoundingClientRect()
+  const email = trigger.getByText('alex@example.com').element().getBoundingClientRect()
   expect({ width: dot.width, height: dot.height }).toEqual({ width: 8, height: 8 })
+  expect([name.left - dot.right, email.left - name.right]).toEqual([8, 8])
 })

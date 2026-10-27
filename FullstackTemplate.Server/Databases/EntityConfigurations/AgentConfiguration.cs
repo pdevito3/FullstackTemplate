@@ -23,7 +23,7 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
         builder.HasOne<Tenant>()
             .WithMany()
             .HasForeignKey(e => e.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.ClientNoAction);
 
         builder.Property(e => e.Name)
             .IsRequired()

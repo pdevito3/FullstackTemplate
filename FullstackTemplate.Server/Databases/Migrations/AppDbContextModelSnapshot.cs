@@ -460,7 +460,7 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
                         .HasConstraintName("fk_agents_tenants_tenant_id");
                 });
@@ -482,7 +482,7 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
                         .HasConstraintName("fk_users_tenants_tenant_id");
                 });

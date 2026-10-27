@@ -34,7 +34,7 @@ builder.Property(e => e.TenantId)
 builder.HasOne<Tenant>()
     .WithMany()
     .HasForeignKey(e => e.TenantId)
-    .OnDelete(DeleteBehavior.Restrict);
+    .OnDelete(DeleteBehavior.ClientNoAction);
 
 builder.HasIndex(e => e.TenantId);
 ```

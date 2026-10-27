@@ -172,6 +172,8 @@ The attribute repeats the permission of the handler. If the two differ, the resu
 
 `McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. The `code` has the name of the gRPC status, for example `already_exists` for a conflict and `aborted` for a stale version. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field. An argument of the wrong JSON type gives an `invalid_argument` tool error with one message for each such argument, for example "The value 'ten' is not valid for pageSize.", the same as a query value that does not bind.
 
+`McpCallTelemetry.Filter` is the first call filter. It puts the tool name (`gen_ai.tool.name`), the caller tags, and the `error.type` of a failed call on the span of the HTTP request. A call that fails before its feature runs has no feature span, so this span is the only one that names the tool and the caller. The `error.type` is the `code` of a tool error, or the type of the exception that the SDK answers. The name of an unknown tool comes from the caller, so the tag has its first 128 characters, with the control characters removed. A call to an unknown tool gets the JSON-RPC error `-32602` of the SDK. The SDK logs this error at `Error`, but it is a client error, so `McpProtocolErrorLogFilter` drops the log.
+
 ### MCP versions
 
 MCP has no version segment. The contract of a tool is its name and its input schema.

@@ -123,7 +123,7 @@ The behavior tags an exception type as `error.type`. A client error does not mar
 | `app.caller.agent_id` | `CallerAgentId` | The id of the registered agent |
 | `app.caller.tenant_id` | `CallerTenantId` | The tenant of the caller |
 
-The values are ids only. The request log of `UseSerilogRequestLogging` runs outside the MediatR pipeline, so it does not have the caller properties. Use its trace id to find the feature slice span.
+The values are ids only. An MCP tool call can fail before its feature runs, so `McpCallTelemetry` also puts the caller tags on the span of the HTTP request of each tool call. The request log of `UseSerilogRequestLogging` runs outside the MediatR pipeline, so it does not have the caller properties. Use its trace id to find the feature slice span.
 
 ## Domain event handler spans
 

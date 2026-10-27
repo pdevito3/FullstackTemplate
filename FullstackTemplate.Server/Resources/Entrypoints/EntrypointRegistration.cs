@@ -8,6 +8,7 @@ using Http.OpenApi;
 using Mcp;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
+using Serilog.Core;
 using Services;
 
 /// <summary>
@@ -45,9 +46,12 @@ public static class EntrypointRegistration
             {
                 filters.AddListToolsFilter(McpToolAccess.ListFilter);
                 // The first call filter is the outermost, so a denial of the access filter becomes a tool error.
+                filters.AddCallToolFilter(McpCallTelemetry.Filter);
                 filters.AddCallToolFilter(McpDomainErrors.Filter);
                 filters.AddCallToolFilter(McpToolAccess.CallFilter);
             });
+        // ReadFrom.Services in HostExtensions adds each ILogEventFilter of the services to the logger
+        builder.Services.AddSingleton<ILogEventFilter, McpProtocolErrorLogFilter>();
     }
 
     /// <summary>

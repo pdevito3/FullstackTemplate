@@ -11,8 +11,8 @@ using TestUtilities;
 using Telemetry = FullstackTemplate.Server.Resources.Telemetry;
 
 /// <summary>
-/// A tool call that fails before its feature runs has no feature span. The span of its HTTP request must still name
-/// the tool, the caller, and the error, and a mistake of the caller must not write an error log.
+/// A tool call that fails before its feature runs has no feature span, so the span of its HTTP request must name the
+/// tool, the caller, and the error.
 /// </summary>
 public class McpTelemetryTests : TestBase
 {
@@ -55,6 +55,23 @@ public class McpTelemetryTests : TestBase
         span.GetTagItem("app.caller.kind").ShouldBe("delegated_agent");
         span.GetTagItem("error.type").ShouldBe(typeof(McpProtocolException).FullName);
         ShouldHaveNoWarningOrErrorLog(parent.TraceId);
+    }
+
+    [Test]
+    public async Task a_long_unknown_tool_name_is_cut_on_its_span()
+    {
+        // Arrange
+        var agent = await SignInThroughDelegatedAgentAsync();
+        await using var client = await CreateMcpClientAsync();
+        var name = new string('x', 300);
+
+        // Act
+        var call = () => client.CallToolAsync(name, new Dictionary<string, object?>()).AsTask();
+
+        // Assert
+        await call.ShouldThrowAsync<McpProtocolException>();
+        var span = await McpSpanOfAsync(agent);
+        span.GetTagItem("gen_ai.tool.name").ShouldBe(name[..128]);
     }
 
     [Test]
@@ -115,7 +132,7 @@ public class McpTelemetryTests : TestBase
     }
 
     // The server exports the span of the HTTP request when the request ends, which can be after the client has read
-    // the response. Each test has its own agent, so the agent finds the one tool call of the test.
+    // the response.
     private async Task<Activity> McpSpanOfAsync(Agent agent)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
@@ -131,12 +148,13 @@ public class McpTelemetryTests : TestBase
     }
 
     // The test server runs the MCP handler in the context of the test, so the logs of the call are in the trace of the
-    // parent. The first check makes sure that the trace has the logs of the MCP server, so the second check means something.
+    // parent.
     private static void ShouldHaveNoWarningOrErrorLog(ActivityTraceId traceId)
     {
         var logs = TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(traceId);
         logs.ShouldContain(e => e.Properties.ContainsKey("SourceContext")
-            && e.Properties["SourceContext"].ToString().Contains("ModelContextProtocol"));
+            && e.Properties["SourceContext"].ToString().Contains("ModelContextProtocol"),
+            "The trace has no logs of the MCP SDK, so the check for warnings proves nothing.");
         logs.Where(e => e.Level >= LogEventLevel.Warning)
             .Select(e => $"{e.Level}: {e.MessageTemplate.Text}")
             .ShouldBeEmpty();

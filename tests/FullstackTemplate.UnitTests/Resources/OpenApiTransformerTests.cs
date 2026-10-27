@@ -134,7 +134,9 @@ public class OpenApiTransformerTests
     {
         // Arrange
         var builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        // The Server appsettings.json in the test output sets Kestrel endpoints on 8080 and 8081, and they win over UseUrls
+        builder.Configuration["Kestrel:Endpoints:http:Url"] = "http://127.0.0.1:0";
+        builder.Configuration["Kestrel:Endpoints:grpc:Url"] = "http://127.0.0.1:0";
         builder.Services.AddOpenApi(options => options.AddSchemaTransformer<RequireNonNullablePropertiesTransformer>());
         await using var app = builder.Build();
         app.MapGet("/shipments", () => new ShipmentDto());

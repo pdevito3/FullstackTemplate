@@ -24,10 +24,15 @@ public sealed class BffDatabaseMigrator(IServiceScopeFactory scopeFactory) : IHo
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<BffDbContext>();
-            // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the
-            // failed read as an error. Create the table first.
-            if (await dbContext.GetService<IRelationalDatabaseCreator>().ExistsAsync(cancellationToken))
-                await dbContext.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
+            // The Npgsql MigrateAsync reads the history table before it creates the database and the table, and EF
+            // Core logs the failed read as an error. Create both first.
+            var databaseCreator = dbContext.GetService<IRelationalDatabaseCreator>();
+            if (!await databaseCreator.ExistsAsync(cancellationToken))
+            {
+                await databaseCreator.CreateAsync(cancellationToken);
+                Logger.Here().Information("Created the database for {DbContext}", nameof(BffDbContext));
+            }
+            await dbContext.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
             await dbContext.Database.MigrateAsync(cancellationToken);
             Logger.Here().Information("Migrations complete for {DbContext}", nameof(BffDbContext));
         }

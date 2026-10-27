@@ -61,7 +61,7 @@ function RootComponent() {
               <SidebarTrigger className="-ml-1" />
               <Separator
                 orientation="vertical"
-                className="mr-2 aria-[orientation=vertical]:h-4"
+                className="mr-2 aria-[orientation=vertical]:h-4 aria-[orientation=vertical]:self-center"
               />
               <Breadcrumb>
                 <BreadcrumbList>
@@ -76,7 +76,8 @@ function RootComponent() {
             <Outlet />
           </div>
         </SidebarInset>
-        <TanStackRouterDevtools position="top-right" />
+        {/* The default container is a footer, which is a contentinfo landmark. */}
+        <TanStackRouterDevtools position="top-right" containerElement="div" />
       </SidebarProvider>
     </RouterProvider>
   )

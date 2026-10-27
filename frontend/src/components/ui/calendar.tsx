@@ -224,14 +224,19 @@ function QuickSelectsPanel<P extends { label: string }>({ presets, layout, onSel
 // The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
 // click picks an item. Each picker is at least w-63, the width of the day grid (7 cells of w-9), so that the popover
 // keeps its size. In the narrow layout, the picker fills the column, as the day grid does.
-const pickerClassName = "grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none"
+// With a fixed height, the four rows of a picker share the height of the days view.
+function pickerClassName(fixedHeight: boolean) {
+  return cn("grid w-full min-w-63 grid-cols-3 gap-1 p-1 outline-none", fixedHeight && "h-full auto-rows-fr")
+}
 
-function pickerItemClassName({ isSelected }: { isSelected: boolean }) {
-  return cn(
-    buttonVariants({ variant: "ghost" }),
-    "h-9 cursor-default text-sm font-normal",
-    isSelected && "bg-primary text-primary-foreground"
-  )
+function pickerItemClassName(fixedHeight: boolean) {
+  return ({ isSelected }: { isSelected: boolean }) =>
+    cn(
+      buttonVariants({ variant: "ghost" }),
+      "h-9 cursor-default text-sm font-normal",
+      fixedHeight && "h-auto",
+      isSelected && "bg-primary text-primary-foreground"
+    )
 }
 
 // A press on the selected item toggles the single selection off. That press still picks the item.
@@ -291,10 +296,10 @@ function MonthPickerGrid() {
       // Escape closes the popover, as it does in the day grid.
       escapeKeyBehavior="none"
       shouldSelectOnPressUp
-      className={pickerClassName}
+      className={pickerClassName(zoomContext.fixedHeight)}
     >
       {months.map(({ index, name }) => (
-        <AriaListBoxItem key={index} id={index} textValue={name} className={pickerItemClassName}>
+        <AriaListBoxItem key={index} id={index} textValue={name} className={pickerItemClassName(zoomContext.fixedHeight)}>
           {name}
         </AriaListBoxItem>
       ))}
@@ -340,10 +345,10 @@ function YearPickerGrid() {
       // Escape closes the popover, as it does in the day grid.
       escapeKeyBehavior="none"
       shouldSelectOnPressUp
-      className={pickerClassName}
+      className={pickerClassName(zoomContext.fixedHeight)}
     >
       {years.map((year) => (
-        <AriaListBoxItem key={year} id={year} textValue={String(year)} className={pickerItemClassName}>
+        <AriaListBoxItem key={year} id={year} textValue={String(year)} className={pickerItemClassName(zoomContext.fixedHeight)}>
           {year}
         </AriaListBoxItem>
       ))}

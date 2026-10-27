@@ -30,6 +30,7 @@ import {
   type DateValue as AriaDateValue,
   type RangeCalendarProps as AriaRangeCalendarProps,
   type RangeCalendarState,
+  type RangeValue,
   type Selection as AriaSelection,
 } from "react-aria-components"
 
@@ -834,29 +835,38 @@ function JollyRangeCalendar<T extends AriaDateValue>({
     onChange?.({ start: range.start, end: range.end } as any)
   }, [onChange])
 
-  const handleStartDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue && value) {
-      const calDate = newValue as CalendarDate
-      setFocusedValue(calDate)
+  // While the range is empty, a typed date waits here until both fields have one. A date field fires onChange on
+  // each partial year (2, 20, 202, 2026), so a range made from the first one would end in the year 2.
+  const [draft, setDraft] = useState<Partial<RangeValue<AriaDateValue>>>({})
+
+  const handleFieldChange = useCallback((edit: Partial<RangeValue<AriaDateValue>>) => {
+    const range = { ...(value ?? draft), ...edit }
+    if (range.start && range.end) {
+      setDraft({})
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.({ start: calDate, end: value.end } as any)
+      onChange?.(range as any)
+    } else {
+      setDraft(range)
     }
-  }, [onChange, value])
+  }, [onChange, value, draft])
+
+  const handleStartDateChange = useCallback((newValue: AriaDateValue | null) => {
+    if (newValue) {
+      setFocusedValue(newValue as CalendarDate)
+      handleFieldChange({ start: newValue })
+    }
+  }, [handleFieldChange])
 
   const handleEndDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue && value) {
-      const calDate = newValue as CalendarDate
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.({ start: value.start, end: calDate } as any)
-    }
-  }, [onChange, value])
+    if (newValue) handleFieldChange({ end: newValue })
+  }, [handleFieldChange])
 
   return (
     <div className="flex flex-col gap-2">
       {showDateInput && (
         <div className="flex gap-2 items-center">
           <DateField
-            value={value?.start ? (value.start as AriaDateValue) : null}
+            value={value?.start ?? draft.start ?? null}
             onChange={handleStartDateChange}
             aria-label="Start date"
             autoFocus={autoFocus}
@@ -866,7 +876,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           </DateField>
           <span className="text-muted-foreground text-sm">to</span>
           <DateField
-            value={value?.end ? (value.end as AriaDateValue) : null}
+            value={value?.end ?? draft.end ?? null}
             onChange={handleEndDateChange}
             aria-label="End date"
             className="min-w-0 flex-1"

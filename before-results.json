@@ -1,0 +1,172 @@
+{
+  "contrast": [
+    {
+      "theme": "light",
+      "surface": "invalid segment, not focused",
+      "fg": "#ef4444",
+      "bg": "#ffffff",
+      "ratio": 3.76
+    },
+    {
+      "theme": "light",
+      "surface": "invalid segment, focused",
+      "fg": "#ffffff",
+      "bg": "#ef4444",
+      "ratio": 3.76
+    },
+    {
+      "theme": "light",
+      "surface": "range error message",
+      "fg": "#ef4444",
+      "bg": "#ffffff",
+      "ratio": 3.76
+    },
+    {
+      "theme": "light",
+      "surface": "destructive button",
+      "fg": "#ef4444",
+      "bg": "#fdecec",
+      "ratio": 3.3
+    },
+    {
+      "theme": "light",
+      "surface": "destructive badge",
+      "fg": "#ef4444",
+      "bg": "#fdecec",
+      "ratio": 3.3
+    },
+    {
+      "theme": "dark",
+      "surface": "invalid segment, not focused",
+      "fg": "#ff6467",
+      "bg": "#020817",
+      "ratio": 6.93
+    },
+    {
+      "theme": "dark",
+      "surface": "invalid segment, focused",
+      "fg": "#f8fafc",
+      "bg": "#ff6467",
+      "ratio": 2.76
+    },
+    {
+      "theme": "dark",
+      "surface": "range error message",
+      "fg": "#ff6467",
+      "bg": "#020817",
+      "ratio": 6.93
+    },
+    {
+      "theme": "dark",
+      "surface": "destructive button",
+      "fg": "#ff6467",
+      "bg": "#351a27",
+      "ratio": 5.47
+    },
+    {
+      "theme": "dark",
+      "surface": "destructive badge",
+      "fg": "#ff6467",
+      "bg": "#351a27",
+      "ratio": 5.47
+    }
+  ],
+  "shortYear": [
+    {
+      "theme": "light",
+      "mode": "On",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "light",
+      "mode": "On, after the fix",
+      "field": "Date",
+      "text": "3/10/2026",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "light",
+      "mode": "Before",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "light",
+      "mode": "After",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "light",
+      "mode": "Between",
+      "field": "Start date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "light",
+      "mode": "Between",
+      "field": "End date",
+      "text": "3/20/12",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "On",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "On, after the fix",
+      "field": "Date",
+      "text": "3/10/2026",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "Before",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "After",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "Between",
+      "field": "Start date",
+      "text": "3/10/999",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "Between",
+      "field": "End date",
+      "text": "3/20/12",
+      "ariaInvalid": null,
+      "description": ""
+    }
+  ]
+}

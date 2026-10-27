@@ -1,0 +1,172 @@
+{
+  "contrast": [
+    {
+      "theme": "light",
+      "surface": "invalid segment, not focused",
+      "fg": "#b70007",
+      "bg": "#ffffff",
+      "ratio": 6.96
+    },
+    {
+      "theme": "light",
+      "surface": "invalid segment, focused",
+      "fg": "#ffffff",
+      "bg": "#b70007",
+      "ratio": 6.96
+    },
+    {
+      "theme": "light",
+      "surface": "range error message",
+      "fg": "#b70007",
+      "bg": "#ffffff",
+      "ratio": 6.96
+    },
+    {
+      "theme": "light",
+      "surface": "destructive button",
+      "fg": "#b70007",
+      "bg": "#f7e5e6",
+      "ratio": 5.74
+    },
+    {
+      "theme": "light",
+      "surface": "destructive badge",
+      "fg": "#b70007",
+      "bg": "#f7e5e6",
+      "ratio": 5.74
+    },
+    {
+      "theme": "dark",
+      "surface": "invalid segment, not focused",
+      "fg": "#ff6467",
+      "bg": "#020817",
+      "ratio": 6.93
+    },
+    {
+      "theme": "dark",
+      "surface": "invalid segment, focused",
+      "fg": "#020817",
+      "bg": "#ff6467",
+      "ratio": 6.93
+    },
+    {
+      "theme": "dark",
+      "surface": "range error message",
+      "fg": "#ff6467",
+      "bg": "#020817",
+      "ratio": 6.93
+    },
+    {
+      "theme": "dark",
+      "surface": "destructive button",
+      "fg": "#ff6467",
+      "bg": "#351a27",
+      "ratio": 5.47
+    },
+    {
+      "theme": "dark",
+      "surface": "destructive badge",
+      "fg": "#ff6467",
+      "bg": "#351a27",
+      "ratio": 5.47
+    }
+  ],
+  "shortYear": [
+    {
+      "theme": "light",
+      "mode": "On",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "light",
+      "mode": "On, after the fix",
+      "field": "Date",
+      "text": "3/10/2026",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "light",
+      "mode": "Before",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "light",
+      "mode": "After",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "light",
+      "mode": "Between",
+      "field": "Start date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "light",
+      "mode": "Between",
+      "field": "End date",
+      "text": "3/20/12",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 20, 12 Enter a 4-digit year."
+    },
+    {
+      "theme": "dark",
+      "mode": "On",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "dark",
+      "mode": "On, after the fix",
+      "field": "Date",
+      "text": "3/10/2026",
+      "ariaInvalid": null,
+      "description": ""
+    },
+    {
+      "theme": "dark",
+      "mode": "Before",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "dark",
+      "mode": "After",
+      "field": "Date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "dark",
+      "mode": "Between",
+      "field": "Start date",
+      "text": "3/10/999",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 10, 999 Enter a 4-digit year."
+    },
+    {
+      "theme": "dark",
+      "mode": "Between",
+      "field": "End date",
+      "text": "3/20/12",
+      "ariaInvalid": "true",
+      "description": "Selected Date: March 20, 12 Enter a 4-digit year."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+components-1280-dark.png 1280x3200 identical
+components-1280-light.png 1280x3200 diff 4248px in x486-602 y433-672
+components-320-dark.png 320x3942 identical
+components-320-light.png 320x3942 diff 4268px in x48-140 y569-940
+components-768-dark.png 768x3316 identical
+components-768-light.png 768x3316 diff 4248px in x486-602 y461-748
+filter-demo-1280-dark.png 1280x1086 identical
+filter-demo-1280-light.png 1280x1086 identical
+filter-demo-320-dark.png 320x1854 identical
+filter-demo-320-light.png 320x1854 identical
+filter-demo-768-dark.png 768x1366 identical
+filter-demo-768-light.png 768x1366 identical

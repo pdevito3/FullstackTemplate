@@ -49,11 +49,12 @@ export function contrastOf(element: Element): number {
   return ratio(over(painted(getComputedStyle(element).color), background), background)
 }
 
-// The color of the first box-shadow layer that has a spread, which is the Tailwind ring. The computed value puts the
-// color first in each layer, for example `oklab(0.5 0.1 0.1 / 0.8) 0px 0px 0px 3px`.
+// The color of the last box-shadow layer that has a spread, which is the Tailwind ring. A ring offset comes before it.
+// The computed value puts the color first in each layer, for example `oklab(0.5 0.1 0.1 / 0.8) 0px 0px 0px 3px`.
 function ringColorOf(element: Element): string {
   const layers = getComputedStyle(element).boxShadow.split(/,(?![^(]*\))/)
-  const ring = layers.find((layer) => /0px 0px 0px [1-9][\d.]*px\s*$/.test(layer))
+  const spreads = layers.filter((layer) => /0px 0px 0px [1-9][\d.]*px\s*$/.test(layer))
+  const ring = spreads[spreads.length - 1]
   if (!ring) throw new Error('The element shows no focus ring.')
   return ring.trim().replace(/(\s+-?[\d.]+px)+$/, '')
 }

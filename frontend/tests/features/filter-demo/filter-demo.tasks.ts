@@ -47,6 +47,12 @@ export function filterDemoPage(page: Page) {
       await expect(at.control(propertyLabel)).toBeVisible()
     },
 
+    async updateWithQuickSelect(propertyLabel: string, quickSelect: string) {
+      await at.button(propertyLabel, quickSelect).click()
+      await at.button(propertyLabel, 'Update Filter').click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
     async addTodayFilter(propertyLabel: string) {
       await at.button(propertyLabel, 'Today').click()
       await at.addFilter(propertyLabel).click()

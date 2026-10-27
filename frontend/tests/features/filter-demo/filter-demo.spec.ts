@@ -189,6 +189,18 @@ test.describe('the Add Filter menu on a desktop', () => {
     await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
     await expect(demo.at.searchProperties).toBeVisible()
   })
+
+  test('edits a date filter in its dialog', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.addTodayFilter('Created Date')
+
+    await demo.editFilter('Created Date')
+    await demo.updateWithQuickSelect('Created Date', 'Yesterday')
+
+    await expect(demo.at.editFilter('Created Date')).toHaveAccessibleName(/Aug 14, 2026/)
+  })
 })
 
 test.describe('the edit dialog of a boolean filter', () => {

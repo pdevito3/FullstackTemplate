@@ -359,6 +359,57 @@ test.describe('a short year in the date control on a desktop', () => {
   })
 })
 
+test.describe('a date message in the date control on a 900 px tall desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  const shortYear = 'Enter a 4-digit year.'
+  const endBeforeStart = 'The end date is before the start date.'
+
+  test('gives a date field with a short year the red border of its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.typeShortYear('Created Date', 'Date')
+
+    const red = await demo.textColorOf(demo.at.dateMessage('Created Date', shortYear))
+    await expect(demo.at.dateField('Created Date', 'Date')).toHaveCSS('border-top-color', red)
+  })
+
+  test('gives an end date before the start date the red border of its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeEndBeforeStart('Created Date')
+
+    const red = await demo.textColorOf(demo.at.dateMessage('Created Date', endBeforeStart))
+    await expect(demo.at.dateField('Created Date', 'End date')).toHaveCSS('border-top-color', red)
+  })
+
+  test('keeps Add Filter on the screen when a short year shows its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.typeShortYear('Created Date', 'Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+
+  test('keeps Add Filter on the screen when an end date before the start date shows its message', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.typeEndBeforeStart('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+})
+
 test.describe('the edit dialog of a boolean filter', () => {
   for (const [value, other] of [['True', 'False'], ['False', 'True']] as const) {
     test(`shows ${value} as the current value`, async ({ page }) => {

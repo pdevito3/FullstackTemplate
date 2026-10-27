@@ -38,10 +38,32 @@ function luminance([r, g, b]: Rgba): number {
   return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb
 }
 
+function ratio(a: Rgba, b: Rgba): number {
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return Math.round(((high + 0.05) / (low + 0.05)) * 100) / 100
+}
+
 /** The contrast ratio of the text color of `element` on the stack of backgrounds under it, rounded to 2 places. */
 export function contrastOf(element: Element): number {
   const background = backgroundOf(element)
-  const text = over(painted(getComputedStyle(element).color), background)
-  const [high, low] = [luminance(text), luminance(background)].sort((a, b) => b - a)
-  return Math.round(((high + 0.05) / (low + 0.05)) * 100) / 100
+  return ratio(over(painted(getComputedStyle(element).color), background), background)
+}
+
+// The color of the first box-shadow layer that has a spread, which is the Tailwind ring. The computed value puts the
+// color first in each layer, for example `oklab(0.5 0.1 0.1 / 0.8) 0px 0px 0px 3px`.
+function ringColorOf(element: Element): string {
+  const layers = getComputedStyle(element).boxShadow.split(/,(?![^(]*\))/)
+  const ring = layers.find((layer) => /0px 0px 0px [1-9][\d.]*px\s*$/.test(layer))
+  if (!ring) throw new Error('The element shows no focus ring.')
+  return ring.trim().replace(/(\s+-?[\d.]+px)+$/, '')
+}
+
+/**
+ * The lower contrast ratio of the focus ring of `element` against its two neighbors: the background outside the
+ * element and the background of the element. WCAG 1.4.11 asks 3:1 against the adjacent colors.
+ */
+export function focusRingContrastOf(element: Element): number {
+  const outside = backgroundOf(element.parentElement ?? document.body)
+  const ring = over(painted(ringColorOf(element)), outside)
+  return Math.min(ratio(ring, outside), ratio(ring, backgroundOf(element)))
 }

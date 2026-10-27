@@ -107,8 +107,9 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+const longName = 'Doctor Alexandra Montgomery-Fitzgerald of the Riverside Family Practice Clinic'
+
 test('a long Select value that does not fit the trigger ends with an ellipsis', async () => {
-  const longName = 'Doctor Alexandra Montgomery-Fitzgerald of the Riverside Family Practice Clinic'
   const screen = await render(
     <Select aria-label="Provider" defaultValue="long" className="w-48">
       <SelectTrigger>
@@ -129,4 +130,23 @@ test('a long Select value that does not fit the trigger ends with an ellipsis', 
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   })
+})
+
+test('a status dot before a long Select value keeps its size in the trigger', async () => {
+  const screen = await render(
+    <Select aria-label="Provider" defaultValue="long" className="w-48">
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem id="long" textValue={longName}>
+          <span data-testid="status-dot" className="size-2 rounded-full bg-green-500" />
+          {longName}
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  )
+
+  const dot = screen.getByRole('button', { name: /Provider/ }).getByTestId('status-dot').element().getBoundingClientRect()
+  expect({ width: dot.width, height: dot.height }).toEqual({ width: 8, height: 8 })
 })

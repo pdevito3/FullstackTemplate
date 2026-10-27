@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useMemo, useEffect, useCallback, useId } from "react"
 import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -920,6 +920,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   const startDate = value?.start ?? draft.start ?? null
   const endDate = value?.end ?? draft.end ?? null
   const isEndBeforeStart = isTypedInFull(startDate) && isTypedInFull(endDate) && endDate.compare(startDate) < 0
+  const endErrorId = useId()
 
   return (
     <div className="flex flex-col gap-2">
@@ -940,11 +941,17 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             onChange={handleEndDateChange}
             isInvalid={isEndBeforeStart}
             aria-label="End date"
+            aria-describedby={isEndBeforeStart ? endErrorId : undefined}
             className="min-w-0 flex-1"
           >
             <DateInput className="h-9" />
           </DateField>
         </div>
+      )}
+      {showDateInput && isEndBeforeStart && (
+        <p id={endErrorId} className="text-destructive text-sm">
+          The end date is before the start date.
+        </p>
       )}
       <div className={layoutClassNames[layout].body}>
         {showQuickSelects && (

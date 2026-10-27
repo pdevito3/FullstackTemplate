@@ -286,12 +286,14 @@ test('range calendar: a typed end date before the start date leaves the range em
 
   await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('7/1/2026')
   await expect.element(screen.getByRole('spinbutton', { name: 'month, End date' })).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(screen.getByRole('spinbutton', { name: 'month, End date' })).toHaveAccessibleDescription(/The end date is before the start date\./)
   await expect.element(screen.getByRole('spinbutton', { name: 'month, Start date' })).not.toHaveAttribute('aria-invalid')
   await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
 
   await typeDate('End date', '08202026')
 
   await expect.element(screen.getByRole('spinbutton', { name: 'month, End date' })).not.toHaveAttribute('aria-invalid')
+  await expect.element(screen.getByText('The end date is before the start date.')).not.toBeInTheDocument()
   await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-02 to 2026-08-20')
 })
 

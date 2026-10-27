@@ -22,11 +22,11 @@ public abstract class ValueObject : IEquatable<ValueObject>
 	public abstract override bool Equals(object? obj);
 	public abstract override int GetHashCode();
 
-	// The generated Equals calls this for an array or a list member.
+	// The generated Equals calls this for a member with one item type, such as an array, a list, or a set.
 	protected static bool SequenceEquals<T>(IEnumerable<T>? first, IEnumerable<T>? second)
 		=> first is null ? second is null : second is not null && first.SequenceEqual(second);
 
-	// The generated GetHashCode calls this for an array or a list member.
+	// The generated GetHashCode calls this for a member with one item type, such as an array, a list, or a set.
 	protected static int SequenceHashCode<T>(IEnumerable<T>? items)
 	{
 		if (items is null)

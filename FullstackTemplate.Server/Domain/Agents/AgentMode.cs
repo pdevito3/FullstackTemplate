@@ -4,7 +4,7 @@ using Ardalis.SmartEnum;
 using Exceptions;
 
 /// <summary>How the server reads a token of the client of an agent. The column holds "delegated" or "machine".</summary>
-public partial class AgentMode : ValueObject
+public partial class AgentMode : ValueObject, IFixedNames
 {
     private const string RequestField = "mode";
 

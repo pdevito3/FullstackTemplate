@@ -64,6 +64,7 @@ The document transformers in `Resources/Entrypoints/Http/OpenApi/` set these rul
 - An endpoint that returns a `PagedList<T>` must have a name that ends in `List`. Other endpoints must not have a name that ends in `List`. If not, the Debug build fails. The frontend list clients use this name to return the full response.
 - An endpoint that requires authentication documents a 401 with no body. An endpoint with `[AllowAnonymous]` or no authorization metadata gets no 401. The endpoints have no authorization policies, so the transformer cannot know which endpoints return 403. A 403 comes from the handler (see [Permissions](#permissions)). Declare a 403 with `.ProducesProblem(StatusCodes.Status403Forbidden)` on each endpoint whose handler can throw `ForbiddenAccessException`.
 - Requests and success responses use only `application/json`. Error responses with a `ProblemDetails` body use only `application/problem+json`, as the Server sends them. The document types numbers only as numbers. The Server still accepts the lenient forms (`text/json` and `application/*+json` request bodies, and numbers in JSON strings), but the contract states only the canonical form.
+- A DTO property with `[NamesOf<T>]` lists the names of `T` as an enum. For a list of names, the items have the enum. For any other schema, such as a nullable string, the Debug build fails. The Server still reads a name in any case, for example `admin` for `Admin`, but the contract states only the exact name.
 
 ## Service registration
 

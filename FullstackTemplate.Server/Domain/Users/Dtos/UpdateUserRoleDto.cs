@@ -5,5 +5,6 @@ using Resources;
 public sealed record UpdateUserRoleDto
 {
     [RequiredField]
+    [NamesOf<UserRole>]
     public string Role { get; init; } = default!;
 }

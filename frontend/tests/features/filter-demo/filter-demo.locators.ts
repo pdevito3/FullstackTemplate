@@ -1,7 +1,10 @@
 import type { Page } from '@playwright/test'
 
 export const filterDemo = (page: Page) => {
-  const control = (propertyLabel: string) => page.getByRole('dialog', { name: `${propertyLabel} filter` })
+  const dialog = (name: string) => page.getByRole('dialog', { name, exact: true })
+  // The Add Filter submenu names its dialog. The Add and Edit dialogs take their name from the title.
+  const control = (propertyLabel: string) =>
+    dialog(`${propertyLabel} filter`).or(dialog(`Add ${propertyLabel} Filter`)).or(dialog(`Edit ${propertyLabel} Filter`))
 
   return {
     heading: page.getByRole('heading', { name: 'Filter Builder Demo' }),

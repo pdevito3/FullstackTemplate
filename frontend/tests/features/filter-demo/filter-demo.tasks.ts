@@ -56,6 +56,7 @@ export function filterDemoPage(page: Page) {
     async addTodayFilter(propertyLabel: string) {
       await at.button(propertyLabel, 'Today').click()
       await at.addFilter(propertyLabel).click()
+      await expect(at.control(propertyLabel)).toBeHidden()
     },
 
     async cssFiltersAround(propertyLabel: string) {

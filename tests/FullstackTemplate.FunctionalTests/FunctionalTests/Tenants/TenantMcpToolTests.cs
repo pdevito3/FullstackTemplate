@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Client;
-using ModelContextProtocol.Protocol;
 using Shouldly;
 using TestUtilities;
 
@@ -64,7 +63,7 @@ public class TenantMcpToolTests : TestBase
         var result = await client.CallToolAsync("get_tenant", new Dictionary<string, object?> { ["id"] = tenant.Id });
 
         // Assert
-        ShouldBeToolError(result, "permission_denied");
+        result.ShouldBeToolError("permission_denied");
         result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString()
             .ShouldBe("This client is not a registered agent of your tenant. A tenant admin can register it.");
     }
@@ -82,7 +81,7 @@ public class TenantMcpToolTests : TestBase
             new Dictionary<string, object?> { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}" });
 
         // Assert
-        ShouldBeToolError(result, "permission_denied");
+        result.ShouldBeToolError("permission_denied");
         result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldBe(
             $"The agent {agent.ClientId} is not granted the manage_tenant permission. A tenant admin can grant it.");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
@@ -142,7 +141,7 @@ public class TenantMcpToolTests : TestBase
         var result = await client.CallToolAsync("get_tenant", new Dictionary<string, object?> { ["id"] = otherTenant.Id });
 
         // Assert
-        ShouldBeToolError(result, "not_found");
+        result.ShouldBeToolError("not_found");
         result.StructuredContent.ShouldNotBeNull().TryGetProperty("errors", out _).ShouldBeFalse();
     }
 
@@ -177,7 +176,7 @@ public class TenantMcpToolTests : TestBase
         var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?> { ["pageNumber"] = 0 });
 
         // Assert
-        ShouldBeToolError(result, "invalid_argument");
+        result.ShouldBeToolError("invalid_argument");
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").TryGetProperty("pageNumber", out _).ShouldBeTrue();
     }
 
@@ -213,7 +212,7 @@ public class TenantMcpToolTests : TestBase
         var result = await client.CallToolAsync("add_tenant", new Dictionary<string, object?> { ["name"] = "" });
 
         // Assert
-        ShouldBeToolError(result, "invalid_argument");
+        result.ShouldBeToolError("invalid_argument");
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").GetProperty("name")[0].GetString()
             .ShouldBe("Please provide a tenant name.");
     }
@@ -232,7 +231,7 @@ public class TenantMcpToolTests : TestBase
         var result = await client.CallToolAsync("add_tenant", new Dictionary<string, object?>());
 
         // Assert
-        ShouldBeToolError(result, "invalid_argument");
+        result.ShouldBeToolError("invalid_argument");
         // The message is the same as the message for a missing body field
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").GetProperty("name")[0].GetString()
             .ShouldBe("The name field is required.");
@@ -250,7 +249,7 @@ public class TenantMcpToolTests : TestBase
         var result = await client.CallToolAsync("add_tenant", new Dictionary<string, object?> { ["name"] = $"Tenant {Guid.NewGuid()}" });
 
         // Assert
-        ShouldBeToolError(result, "permission_denied");
+        result.ShouldBeToolError("permission_denied");
     }
 
     [Test]
@@ -272,7 +271,7 @@ public class TenantMcpToolTests : TestBase
         added.IsError.ShouldNotBe(true);
         var id = added.StructuredContent.ShouldNotBeNull().GetProperty("id").GetString().ShouldNotBeNull();
         (await FindAsync<Tenant>(id)).ShouldNotBeNull();
-        ShouldBeToolError(duplicate, "already_exists");
+        duplicate.ShouldBeToolError("already_exists");
         duplicate.StructuredContent.ShouldNotBeNull().GetProperty("errors").GetProperty("name")[0].GetString()
             .ShouldBe("A tenant with this name already exists.");
     }
@@ -295,7 +294,7 @@ public class TenantMcpToolTests : TestBase
             });
 
         // Assert
-        ShouldBeToolError(result, "permission_denied");
+        result.ShouldBeToolError("permission_denied");
         result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldNotBeNull()
             .ShouldContain("manage_tenant");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
@@ -343,7 +342,7 @@ public class TenantMcpToolTests : TestBase
             });
 
         // Assert
-        ShouldBeToolError(result, "invalid_argument");
+        result.ShouldBeToolError("invalid_argument");
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").GetProperty("name")[0].GetString()
             .ShouldBe("A tenant name has a character that is not allowed.");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
@@ -372,7 +371,7 @@ public class TenantMcpToolTests : TestBase
             });
 
         // Assert
-        ShouldBeToolError(result, "aborted");
+        result.ShouldBeToolError("aborted");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(name);
     }
 
@@ -397,7 +396,7 @@ public class TenantMcpToolTests : TestBase
             });
 
         // Assert
-        ShouldBeToolError(result, "permission_denied");
+        result.ShouldBeToolError("permission_denied");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
     }
 
@@ -444,13 +443,6 @@ public class TenantMcpToolTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-    }
-
-    private static void ShouldBeToolError(CallToolResult result, string code)
-    {
-        result.IsError.ShouldBe(true);
-        result.StructuredContent.ShouldNotBeNull().GetProperty("code").GetString().ShouldBe(code);
-        result.Content.OfType<TextContentBlock>().ShouldHaveSingleItem().Text.ShouldStartWith($"{code}: ");
     }
 
     private static async Task<uint> VersionOfAsync(string tenantId)

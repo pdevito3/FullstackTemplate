@@ -678,7 +678,6 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
               renderProps.isSelectionEnd ||
               !isRange) &&
             "data-[hovered]:bg-primary data-[hovered]:text-primary-foreground",
-          /* Selection Start/End */
           renderProps.isSelected &&
             isRange &&
             !renderProps.isSelectionStart &&

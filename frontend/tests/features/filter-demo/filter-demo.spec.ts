@@ -149,7 +149,6 @@ test.describe('the date control in the dialog of a 768 px tablet', () => {
   })
 })
 
-// The date control is the widest. A submenu with it needs about 911 px beside the sidebar.
 for (const screen of [
   { name: 'a phone on its side', viewport: { width: 844, height: 390 } },
   { name: 'a tablet', viewport: { width: 820, height: 1180 } },

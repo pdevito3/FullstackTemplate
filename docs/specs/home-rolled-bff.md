@@ -108,7 +108,7 @@ These paths go away on purpose ([Duende BFF features to drop](https://github.com
 
 - Query `sid`. If the BFF session has a `sid` claim, the query must have the same value. If not, the response is 400 `application/problem+json` with the title "Invalid Session ID". An anonymous user, or a BFF session with no `sid` claim, needs no `sid`.
 - Query `returnUrl` (optional). It must pass the local URL rule, or the response is 400 problem. The default is `PathBase`, or `/`. If the encoded value has more than 2048 characters, the BFF uses the default.
-- The response is a 302 to the `end_session_endpoint`, or to the local `returnUrl` if no user is signed in or the identity provider has no `end_session_endpoint`.
+- The response is a 302 to the `end_session_endpoint`, or to the local `returnUrl` if no user is signed in or the identity provider has no `end_session_endpoint`. With `Auth:EndSessionWithoutIdTokenHint`, a request with the cookie of an ended BFF session also goes to the `end_session_endpoint` (section 3.4).
 
 ### `/bff/user`
 
@@ -309,7 +309,7 @@ A `Location` header can hold only ASCII. Thus the BFF percent-encodes each non-A
 3. Delete the BFF session row. Add to `bff.sessions.ended` with `reason=logout`.
 4. If revocation is active, revoke the refresh token of the deleted row through `Duende.AccessTokenManagement` (RFC 7009, `token_type_hint=refresh_token`). The delete returns the row as it was at the delete. Thus, if a refresh in another request wrote new tokens after step 1, the BFF revokes the new refresh token. If no row was deleted, another end of the BFF session came first, and the BFF revokes nothing. If the identity provider returns an error, log it and continue. If revocation is not active, skip it with no exception.
 5. Sign out the cookie scheme.
-6. If a user was signed in and `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`.
+6. If a user was signed in and `end_session_endpoint` is active, sign out the OIDC scheme. The handler sends the browser there with `id_token_hint` and `post_logout_redirect_uri=<public origin>/signout-callback-oidc`. After the return, it sends the browser to `returnUrl`. If no user was signed in, but the request has the `__Host-bff` cookie of an ended BFF session and `Auth:EndSessionWithoutIdTokenHint` is `true`, do the same with `client_id` in place of `id_token_hint`.
 7. If not, send a 302 to `returnUrl`.
 
 #### Back-channel logout
@@ -473,7 +473,7 @@ Each startup warning of section 3.3 is one structured log with the feature name.
 9. The `X-CSRF` middleware
 10. `UseAuthorization`
 11. The endpoints: `/bff/*`, `/local-api/hello`, the `/api` forwarder, and the health checks
-12. With a Vite URL, the dev fallback, which sends a GET that no endpoint matches to the same path and query on Vite. Without a Vite URL, the SPA fallback to `index.html`.
+12. With a Vite URL, the dev fallback, which sends a GET that no endpoint matches to the same path and query on Vite. Without a Vite URL, the SPA fallback to `index.html`, except for a path under `/bff`, which keeps its 404.
 
 There is no startup filter. Each step is visible in `Program.cs`.
 

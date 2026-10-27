@@ -13,12 +13,15 @@ namespace FullstackTemplate.Bff.Logout;
 /// <para>
 /// The endpoint is a GET, so the <c>sid</c> query is its CSRF defense: a BFF session with a <c>sid</c> claim
 /// needs the same value in the query. The SPA gets the URL with the <c>sid</c> from the <c>bff:logout_url</c>
-/// claim of <c>/bff/user</c>.
+/// claim of <c>/bff/user</c>. A logout with the cookie of an ended BFF session has no <c>sid</c> to check. The
+/// cookie is <c>SameSite=Strict</c>, so a link from another site cannot send it to the logout of the provider.
 /// </para>
 /// </summary>
 public static class LogoutEndpoint
 {
     public const string Path = "/bff/logout";
+
+    public const string EndSessionWithoutIdTokenHintKey = "Auth:EndSessionWithoutIdTokenHint";
 
     public static async Task HandleAsync(
         HttpContext context,
@@ -27,7 +30,8 @@ public static class LogoutEndpoint
         BffTicketStore ticketStore,
         RefreshTokenRevocation revocation,
         ProviderFeatures features,
-        SpaOrigin spaOrigin)
+        SpaOrigin spaOrigin,
+        IConfiguration configuration)
     {
         var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         var signedIn = result.Succeeded && result.Principal?.Identity?.IsAuthenticated == true;
@@ -66,14 +70,17 @@ public static class LogoutEndpoint
 
         // With no BFF session, there is no ID token for id_token_hint, and the identity provider can refuse the
         // logout. With no end_session_endpoint, the BFF session is still gone, and the IdP session stays.
-        if (!signedIn || !features.Active.EndSession)
+        var hasCookieOfEndedSession = !signedIn && context.Request.Cookies.ContainsKey(AuthExtensions.SessionCookieName);
+        var endSession = features.Active.EndSession
+            && (signedIn || (hasCookieOfEndedSession && configuration.GetValue<bool>(EndSessionWithoutIdTokenHintKey)));
+        if (!endSession)
         {
             context.Response.Redirect(redirectUri);
             return;
         }
 
-        // The handler sends the browser to the end_session_endpoint with id_token_hint, and back to returnUrl
-        // through /signout-callback-oidc.
+        // The handler sends the browser to the end_session_endpoint with id_token_hint, or with client_id when there
+        // is no ID token, and back to returnUrl through /signout-callback-oidc.
         await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = redirectUri });
     }
 }

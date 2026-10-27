@@ -167,6 +167,15 @@ public static class AuthExtensions
                 };
                 options.Events.OnRemoteFailure = CallbackRejection.WriteProblemAsync;
 
+                options.Events.OnRedirectToIdentityProviderForSignOut = context =>
+                {
+                    // A logout with no BFF session has no ID token. client_id then names the client (RP-Initiated
+                    // Logout 1.0, section 2).
+                    if (string.IsNullOrEmpty(context.ProtocolMessage.IdTokenHint))
+                        context.ProtocolMessage.ClientId = context.Options.ClientId;
+                    return Task.CompletedTask;
+                };
+
                 options.Events.OnTicketReceived = context =>
                 {
                     LoginTraceLink.LinkCurrentActivity(context.Properties);

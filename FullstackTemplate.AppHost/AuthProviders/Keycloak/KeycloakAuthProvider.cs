@@ -60,7 +60,9 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             NameClaimType = "email",
             RoleClaimType = "roles",
             AuthResource = keycloak,
-            AuthorityPathSuffix = $"/realms/{realmName}"
+            AuthorityPathSuffix = $"/realms/{realmName}",
+            // Keycloak asks the user to confirm a logout with no id_token_hint, then ends its session
+            EndSessionWithoutIdTokenHint = true
         };
     }
 }

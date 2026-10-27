@@ -133,6 +133,25 @@ public class SpaRedirectTests
     }
 
     [Test]
+    public async Task a_published_bff_keeps_the_404_of_an_unknown_bff_path()
+    {
+        await using var published = StartPublished();
+        using var browser = published.CreateBrowser();
+
+        foreach (var path in new[] { "/bff", "/bff/nothing", "/BFF/nope?x=1", "/bff/login/nope" })
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.Add("Accept", "application/json");
+            request.Headers.Add("X-CSRF", "1");
+
+            var response = await browser.SendAsync(request);
+
+            ((int)response.StatusCode).ShouldBe(404, path);
+            (await response.Content.ReadAsStringAsync()).ShouldBeEmpty(path);
+        }
+    }
+
+    [Test]
     public async Task a_dev_or_published_bff_allows_no_cross_origin_request_from_the_spa_dev_server()
     {
         await using var published = StartPublished();

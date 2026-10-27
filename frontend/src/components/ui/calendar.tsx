@@ -699,6 +699,19 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
   )
 }
 
+// A date field reports each year as the user types it (2, 20, 202, 2026), so a year below 1000 is still being typed.
+function isTypedInFull(date: AriaDateValue | null | undefined): date is AriaDateValue {
+  return date != null && date.year >= 1000
+}
+
+type TypedRange = Partial<RangeValue<AriaDateValue | null>>
+
+// The range that the date fields make: null while an end is empty, still being typed, or before the start.
+function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
+  if (!isTypedInFull(start) || !isTypedInFull(end) || end.compare(start) < 0) return null
+  return { start, end }
+}
+
 interface JollyCalendarProps<T extends AriaDateValue>
   extends AriaCalendarProps<T> {
   errorMessage?: string
@@ -751,14 +764,21 @@ function JollyCalendar<T extends AriaDateValue>({
     onChange?.(date as any)
   }, [onChange])
 
+  // A date that the user is still typing, or a cleared field. It shows in the field while the value is null.
+  const [typedDate, setTypedDate] = useState<AriaDateValue | null>(null)
+
   const handleDateInputChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue) {
-      const calDate = newValue as CalendarDate
-      setFocusedValue(calDate)
+    if (isTypedInFull(newValue)) {
+      setTypedDate(null)
+      setFocusedValue(newValue as CalendarDate)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.(calDate as any)
+      onChange?.(newValue as any)
+    } else {
+      setTypedDate(newValue)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (value) onChange?.(null as any)
     }
-  }, [onChange])
+  }, [onChange, value])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCalendarChange = useCallback((newValue: any) => {
@@ -771,7 +791,7 @@ function JollyCalendar<T extends AriaDateValue>({
     <div className="flex flex-col gap-2">
       {showDateInput && (
         <DateField
-          value={value ? (value as AriaDateValue) : null}
+          value={value ?? typedDate}
           onChange={handleDateInputChange}
           aria-label="Date"
           autoFocus={autoFocus}
@@ -868,38 +888,36 @@ function JollyRangeCalendar<T extends AriaDateValue>({
     onChange?.({ start: range.start, end: range.end } as any)
   }, [onChange])
 
-  // While the range is empty, a typed date waits here until both fields have one. A date field fires onChange on
-  // each partial year (2, 20, 202, 2026), so a range made from the first one would end in the year 2.
-  const [draft, setDraft] = useState<Partial<RangeValue<AriaDateValue>>>({})
+  // The typed dates while they do not make a range. They show in the fields while the value is null.
+  const [draft, setDraft] = useState<TypedRange>({})
 
-  const handleFieldChange = useCallback((edit: Partial<RangeValue<AriaDateValue>>) => {
-    const range = { ...(value ?? draft), ...edit }
-    if (range.start && range.end) {
-      setDraft({})
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onChange?.(range as any)
-    } else {
-      setDraft(range)
-    }
+  const handleFieldChange = useCallback((edit: TypedRange) => {
+    const fields = { ...(value ?? draft), ...edit }
+    const range = rangeOf(fields)
+    setDraft(range ? {} : fields)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (range || value) onChange?.(range as any)
   }, [onChange, value, draft])
 
   const handleStartDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue) {
-      setFocusedValue(newValue as CalendarDate)
-      handleFieldChange({ start: newValue })
-    }
+    if (isTypedInFull(newValue)) setFocusedValue(newValue as CalendarDate)
+    handleFieldChange({ start: newValue })
   }, [handleFieldChange])
 
   const handleEndDateChange = useCallback((newValue: AriaDateValue | null) => {
-    if (newValue) handleFieldChange({ end: newValue })
+    handleFieldChange({ end: newValue })
   }, [handleFieldChange])
+
+  const startDate = value?.start ?? draft.start ?? null
+  const endDate = value?.end ?? draft.end ?? null
+  const isEndBeforeStart = isTypedInFull(startDate) && isTypedInFull(endDate) && endDate.compare(startDate) < 0
 
   return (
     <div className="flex flex-col gap-2">
       {showDateInput && (
         <div className="flex gap-2 items-center">
           <DateField
-            value={value?.start ?? draft.start ?? null}
+            value={startDate}
             onChange={handleStartDateChange}
             aria-label="Start date"
             autoFocus={autoFocus}
@@ -909,8 +927,9 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           </DateField>
           <span className="text-muted-foreground text-sm">to</span>
           <DateField
-            value={value?.end ?? draft.end ?? null}
+            value={endDate}
             onChange={handleEndDateChange}
+            isInvalid={isEndBeforeStart}
             aria-label="End date"
             className="min-w-0 flex-1"
           >

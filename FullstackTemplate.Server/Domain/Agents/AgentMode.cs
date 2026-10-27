@@ -46,6 +46,7 @@ public partial class AgentMode : ValueObject
     public override string ToString() => Value;
 
     public static AgentMode Of(string value) => new(value);
+    public static List<string> ListNames() => AgentModeEnum.List.Select(x => x.Name).ToList();
     public static AgentMode Delegated() => new(AgentModeEnum.Delegated.Name);
     public static AgentMode Machine() => new(AgentModeEnum.Machine.Name);
 

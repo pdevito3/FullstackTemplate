@@ -107,6 +107,7 @@ try
     else
     {
         // SPA fallback for client-side routing in production
+        app.MapFallback("/bff/{**path}", () => Results.NotFound());
         app.MapFallbackToFile("index.html");
     }
 

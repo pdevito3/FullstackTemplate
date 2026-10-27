@@ -473,7 +473,7 @@ Each startup warning of section 3.3 is one structured log with the feature name.
 9. The `X-CSRF` middleware
 10. `UseAuthorization`
 11. The endpoints: `/bff/*`, `/local-api/hello`, the `/api` forwarder, and the health checks
-12. With a Vite URL, the dev fallback, which sends a GET that no endpoint matches to the same path and query on Vite. Without a Vite URL, the SPA fallback to `index.html`.
+12. With a Vite URL, the dev fallback, which sends a GET that no endpoint matches to the same path and query on Vite. Without a Vite URL, the SPA fallback to `index.html`, except for a path under `/bff`, which keeps its 404.
 
 There is no startup filter. Each step is visible in `Program.cs`.
 

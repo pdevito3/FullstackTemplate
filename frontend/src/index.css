@@ -256,6 +256,11 @@
       flex-direction: column;
     }
 
+    /* The router devtools badge of a development build is at the top right, where the toasts now show. */
+    &:has([data-slot="toast-region"]) .TanStackRouterDevtools {
+      display: none;
+    }
+
     /* React Aria lists the newest toast first. */
     [data-slot="toast-region"] li:not(:first-child) > [data-slot="toast"]:not(:focus-within) {
       @apply sr-only;

@@ -6,5 +6,5 @@
 import * as z from 'zod'
 
 export const agentPermissionDtoSchema = z.object({
-  permission: z.string(),
+  permission: z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users']),
 })

@@ -2,6 +2,8 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.OpenApi;
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FullstackTemplate.Server.Domain.Agents;
+using FullstackTemplate.Server.Domain.Users;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
@@ -135,6 +137,33 @@ public class OpenApiDocumentTests
     }
 
     [Test]
+    public async Task dto_strings_that_hold_a_value_object_name_list_the_names()
+    {
+        var root = await LoadDocumentAsync();
+        var schemas = root["components"]!["schemas"]!;
+
+        JsonNode? Property(string schema, string property) => schemas[schema]?["properties"]?[property];
+        (string Name, JsonNode? Schema, List<string> Names)[] expectations =
+        [
+            ("AgentDto.mode", Property("AgentDto", "mode"), AgentMode.ListNames()),
+            ("AgentDto.permissions items", Property("AgentDto", "permissions")?["items"], Permission.ListNames()),
+            ("AgentForCreationDto.mode", Property("AgentForCreationDto", "mode"), AgentMode.ListNames()),
+            ("AgentForCreationDto.permissions items", Property("AgentForCreationDto", "permissions")?["items"],
+                Permission.ListNames()),
+            ("AgentPermissionDto.permission", Property("AgentPermissionDto", "permission"), Permission.ListNames()),
+            ("UserDto.role", Property("UserDto", "role"), UserRole.ListNames()),
+            ("UserDto.permissions items", Property("UserDto", "permissions")?["items"], Permission.ListNames()),
+            ("UserForCreationDto.role", Property("UserForCreationDto", "role"), UserRole.ListNames()),
+            ("InitiateUserAndTenantDto.role", Property("InitiateUserAndTenantDto", "role"), UserRole.ListNames()),
+            ("UpdateUserRoleDto.role", Property("UpdateUserRoleDto", "role"), UserRole.ListNames()),
+            ("UserPermissionDto.permission", Property("UserPermissionDto", "permission"), Permission.ListNames()),
+        ];
+
+        expectations.Select(e => $"{e.Name}: {string.Join(", ", EnumOf(e.Schema))}")
+            .ShouldBe(expectations.Select(e => $"{e.Name}: {string.Join(", ", e.Names)}"));
+    }
+
+    [Test]
     public async Task each_write_declares_a_validation_problem()
     {
         var root = await LoadDocumentAsync();
@@ -194,6 +223,9 @@ public class OpenApiDocumentTests
 
     private static IEnumerable<(string Status, JsonNode Response)> Responses(JsonNode operation) =>
         operation["responses"]!.AsObject().Select(response => (response.Key, response.Value!));
+
+    private static List<string> EnumOf(JsonNode? schema) =>
+        schema?["enum"]?.AsArray().Select(item => item!.GetValue<string>()).ToList() ?? [];
 
     // A schema type is a single name or a list of names. A nullable schema can also be a oneOf with a null type.
     private static List<string> TypesOf(JsonNode schema)

@@ -1729,12 +1729,26 @@
             "type": "string"
           },
           "mode": {
+            "enum": [
+              "delegated",
+              "machine"
+            ],
             "type": "string",
             "description": "\"delegated\" or \"machine\"."
           },
           "permissions": {
             "type": "array",
             "items": {
+              "enum": [
+                "manage_agents",
+                "manage_tenant",
+                "manage_user_access",
+                "manage_users",
+                "read_agents",
+                "read_audit_log",
+                "read_audit_log_sensitive",
+                "read_users"
+              ],
               "type": "string"
             },
             "description": "The grant: the most that the agent can hold."
@@ -1764,6 +1778,10 @@
             "description": "The client ID in the tokens of the client. Case-sensitive."
           },
           "mode": {
+            "enum": [
+              "delegated",
+              "machine"
+            ],
             "type": "string",
             "description": "\"delegated\" for a client that acts for a signed-in user, or \"machine\" for a client that acts for itself with\nclient credentials. Only a caller that manages all tenants can add a machine agent."
           },
@@ -1773,6 +1791,16 @@
               "array"
             ],
             "items": {
+              "enum": [
+                "manage_agents",
+                "manage_tenant",
+                "manage_user_access",
+                "manage_users",
+                "read_agents",
+                "read_audit_log",
+                "read_audit_log_sensitive",
+                "read_users"
+              ],
               "type": "string"
             },
             "description": "The first grant. The caller must hold each permission. No permission when it is not sent."
@@ -1786,6 +1814,16 @@
         "type": "object",
         "properties": {
           "permission": {
+            "enum": [
+              "manage_agents",
+              "manage_tenant",
+              "manage_user_access",
+              "manage_users",
+              "read_agents",
+              "read_audit_log",
+              "read_audit_log_sensitive",
+              "read_users"
+            ],
             "type": "string"
           }
         }
@@ -1978,6 +2016,10 @@
             "type": "string"
           },
           "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
             "type": "string"
           }
         }
@@ -2174,6 +2216,10 @@
         "type": "object",
         "properties": {
           "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
             "type": "string"
           }
         }
@@ -2219,11 +2265,25 @@
             "type": "string"
           },
           "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
             "type": "string"
           },
           "permissions": {
             "type": "array",
             "items": {
+              "enum": [
+                "manage_agents",
+                "manage_tenant",
+                "manage_user_access",
+                "manage_users",
+                "read_agents",
+                "read_audit_log",
+                "read_audit_log_sensitive",
+                "read_users"
+              ],
               "type": "string"
             }
           },
@@ -2268,6 +2328,10 @@
             "type": "string"
           },
           "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
             "type": "string"
           }
         }
@@ -2309,6 +2373,16 @@
         "type": "object",
         "properties": {
           "permission": {
+            "enum": [
+              "manage_agents",
+              "manage_tenant",
+              "manage_user_access",
+              "manage_users",
+              "read_agents",
+              "read_audit_log",
+              "read_audit_log_sensitive",
+              "read_users"
+            ],
             "type": "string"
           }
         }

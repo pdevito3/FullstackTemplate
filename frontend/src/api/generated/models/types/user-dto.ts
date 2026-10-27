@@ -3,6 +3,26 @@
 * Do not edit manually.
 */
 
+export const userDtoRoleEnum = {
+    Admin: "Admin",
+    User: "User"
+} as const;
+
+export type UserDtoRoleEnumKey = (typeof userDtoRoleEnum)[keyof typeof userDtoRoleEnum];
+
+export const userDtoPermissionsEnum = {
+    manage_agents: "manage_agents",
+    manage_tenant: "manage_tenant",
+    manage_user_access: "manage_user_access",
+    manage_users: "manage_users",
+    read_agents: "read_agents",
+    read_audit_log: "read_audit_log",
+    read_audit_log_sensitive: "read_audit_log_sensitive",
+    read_users: "read_users"
+} as const;
+
+export type UserDtoPermissionsEnumKey = (typeof userDtoPermissionsEnum)[keyof typeof userDtoPermissionsEnum];
+
 export type UserDto = {
     id: string;
     tenantId: string;
@@ -12,8 +32,8 @@ export type UserDto = {
     identifier: string;
     email: string;
     username: string;
-    role: string;
-    permissions: string[];
+    role: UserDtoRoleEnumKey;
+    permissions: UserDtoPermissionsEnumKey[];
     /**
      * @minLength 0
      * @maxLength 4294967295

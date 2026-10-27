@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Domain.Agents.Dtos;
 
 using Resources;
+using Users;
 
 public sealed record AgentForCreationDto
 {
@@ -21,8 +22,10 @@ public sealed record AgentForCreationDto
     /// client credentials. Only a caller that manages all tenants can add a machine agent.
     /// </summary>
     [RequiredField]
+    [NamesOf<AgentMode>]
     public string Mode { get; init; } = default!;
 
     /// <summary>The first grant. The caller must hold each permission. No permission when it is not sent.</summary>
+    [NamesOf<Permission>]
     public IReadOnlyList<string>? Permissions { get; init; }
 }

@@ -3,6 +3,26 @@
 * Do not edit manually.
 */
 
+export const agentDtoModeEnum = {
+    delegated: "delegated",
+    machine: "machine"
+} as const;
+
+export type AgentDtoModeEnumKey = (typeof agentDtoModeEnum)[keyof typeof agentDtoModeEnum];
+
+export const agentDtoPermissionsEnum = {
+    manage_agents: "manage_agents",
+    manage_tenant: "manage_tenant",
+    manage_user_access: "manage_user_access",
+    manage_users: "manage_users",
+    read_agents: "read_agents",
+    read_audit_log: "read_audit_log",
+    read_audit_log_sensitive: "read_audit_log_sensitive",
+    read_users: "read_users"
+} as const;
+
+export type AgentDtoPermissionsEnumKey = (typeof agentDtoPermissionsEnum)[keyof typeof agentDtoPermissionsEnum];
+
 export type AgentDto = {
     id: string;
     /**
@@ -18,10 +38,10 @@ export type AgentDto = {
      * @description \"delegated\" or \"machine\".
      * @type string
     */
-    mode: string;
+    mode: AgentDtoModeEnumKey;
     /**
      * @description The grant: the most that the agent can hold.
      * @type array
     */
-    permissions: string[];
+    permissions: AgentDtoPermissionsEnumKey[];
 };

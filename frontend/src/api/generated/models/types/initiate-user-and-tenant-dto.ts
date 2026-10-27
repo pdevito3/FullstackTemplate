@@ -3,6 +3,13 @@
 * Do not edit manually.
 */
 
+export const initiateUserAndTenantDtoRoleEnum = {
+    Admin: "Admin",
+    User: "User"
+} as const;
+
+export type InitiateUserAndTenantDtoRoleEnumKey = (typeof initiateUserAndTenantDtoRoleEnum)[keyof typeof initiateUserAndTenantDtoRoleEnum];
+
 export type InitiateUserAndTenantDto = {
     tenantName: string;
     firstName: string;
@@ -10,5 +17,5 @@ export type InitiateUserAndTenantDto = {
     identifier: string;
     email: string;
     username: string;
-    role: string;
+    role: InitiateUserAndTenantDtoRoleEnumKey;
 };

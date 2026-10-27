@@ -3,7 +3,7 @@ namespace FullstackTemplate.Server.Domain.Users;
 using Ardalis.SmartEnum;
 using Exceptions;
 
-public partial class UserRole : ValueObject
+public partial class UserRole : ValueObject, IFixedNames
 {
     // The key in the errors of the problem is the name of the request field
     private const string RequestField = "role";

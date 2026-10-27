@@ -17,5 +17,6 @@ public sealed record InitiateUserAndTenantDto
     [RequiredField]
     public string Username { get; init; } = default!;
     [RequiredField]
+    [NamesOf<UserRole>]
     public string Role { get; init; } = default!;
 }

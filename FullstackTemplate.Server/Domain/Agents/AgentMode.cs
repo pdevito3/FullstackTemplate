@@ -4,7 +4,7 @@ using Ardalis.SmartEnum;
 using Exceptions;
 
 /// <summary>How the server reads a token of the client of an agent. The column holds "delegated" or "machine".</summary>
-public partial class AgentMode : ValueObject
+public partial class AgentMode : ValueObject, IFixedNames
 {
     private const string RequestField = "mode";
 
@@ -46,6 +46,7 @@ public partial class AgentMode : ValueObject
     public override string ToString() => Value;
 
     public static AgentMode Of(string value) => new(value);
+    public static List<string> ListNames() => AgentModeEnum.List.Select(x => x.Name).ToList();
     public static AgentMode Delegated() => new(AgentModeEnum.Delegated.Name);
     public static AgentMode Machine() => new(AgentModeEnum.Machine.Name);
 

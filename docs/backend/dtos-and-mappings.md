@@ -38,6 +38,7 @@ Endpoint gets UserForCreationDto
 6. In a request DTO, mark each non-nullable value-type property (`Guid`, `int`, `bool`, and more) with `required`. Without it, a missing field binds to the default value, and the request gets a 422 from a domain rule, not a 400.
 7. In a request DTO, give each non-nullable string property `[RequiredField]` from `Resources/RequiredFieldAttribute.cs`. This rule also applies to a child DTO, such as a DTO in a list of line items. A unit test fails if a non-nullable string property of a request DTO or of a child DTO has no `[RequiredField]`. `RequestValidationBehavior` does not read nullable annotations, so without it a missing field binds to null. With it, a missing field gets a 400 with a message that uses the JSON name of the field, and an empty string goes to the domain rules, which give a 422. The message names the field as the client sends it, for example "The firstName field is required.", not with a display name such as "First name", so that a client can match the message to its field.
 8. Give the response DTO of an aggregate root `public uint Version { get; init; }`. Give each `[EntityName]ForUpdateDto` `public required uint Version { get; init; }`, and give its update model `public uint Version { get; init; }`. Mapperly maps it by name. The client sends back the version that it loaded, and the entity checks it (see [domain-entities.md](domain-entities.md#versions)). A unit test fails if a `ForUpdateDto` has no required `Version`.
+9. Mark each string property that holds a name of a value object with a fixed list of names, such as `UserRole`, with `[NamesOf<UserRole>]`. Also mark a list of such names. The value object implements `IFixedNames`. The OpenAPI document then lists the names as an enum, so the generated SPA type is a union. If the Server renames a value, the SPA build fails.
 
 ```csharp
 public sealed record UserDto
@@ -46,7 +47,9 @@ public sealed record UserDto
     public uint Version { get; init; }
     public string FirstName { get; init; } = default!;
     public string Email { get; init; } = default!;
+    [NamesOf<UserRole>]
     public string Role { get; init; } = default!;
+    [NamesOf<Permission>]
     public IReadOnlyList<string> Permissions { get; init; } = [];
 }
 ```

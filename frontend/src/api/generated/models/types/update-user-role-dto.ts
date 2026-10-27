@@ -3,6 +3,13 @@
 * Do not edit manually.
 */
 
+export const updateUserRoleDtoRoleEnum = {
+    Admin: "Admin",
+    User: "User"
+} as const;
+
+export type UpdateUserRoleDtoRoleEnumKey = (typeof updateUserRoleDtoRoleEnum)[keyof typeof updateUserRoleDtoRoleEnum];
+
 export type UpdateUserRoleDto = {
-    role: string;
+    role: UpdateUserRoleDtoRoleEnumKey;
 };

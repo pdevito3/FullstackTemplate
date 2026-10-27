@@ -12,5 +12,5 @@ export const userForCreationDtoSchema = z.object({
   identifier: z.string(),
   email: z.string(),
   username: z.string(),
-  role: z.string(),
+  role: z.enum(['Admin', 'User']),
 })

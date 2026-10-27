@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Resources.Entrypoints;
 
+using System.Text.Json;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using ModelContextProtocol.Protocol;
@@ -40,6 +41,70 @@ public class McpDomainErrorsTests
         content.GetProperty("code").GetString().ShouldBe("already_exists");
         content.GetProperty("title").GetString().ShouldBe("The request conflicts with a record that exists.");
     }
+
+    [Test]
+    public async Task a_json_error_with_no_argument_of_the_wrong_type_stays_a_server_fault()
+    {
+        // Act
+        var call = () => CallToolThatThrows(new JsonException("The tool could not read its own data."));
+
+        // Assert
+        await call.ShouldThrowAsync<JsonException>();
+    }
+
+    [Test]
+    public async Task a_json_error_when_each_argument_converts_stays_a_server_fault()
+    {
+        // Act
+        var call = () => CallListTool("""{ "pageSize": 10 }""");
+
+        // Assert
+        await call.ShouldThrowAsync<JsonException>();
+    }
+
+    [Test]
+    public async Task an_argument_named_for_a_parameter_that_the_sdk_fills_is_not_checked()
+    {
+        // Act
+        var result = await CallListTool("""{ "pageSize": "ten", "cancellationToken": 1 }""");
+
+        // Assert
+        result.IsError.ShouldBe(true);
+        var errors = result.StructuredContent.ShouldNotBeNull().GetProperty("errors");
+        errors.EnumerateObject().Select(e => e.Name).ShouldBe(["pageSize"]);
+        errors.GetProperty("pageSize")[0].GetString().ShouldBe("The value 'ten' is not valid for pageSize.");
+    }
+
+    [Test]
+    public async Task a_long_value_of_the_wrong_type_is_cut_in_the_message()
+    {
+        // Act
+        var result = await CallListTool($$"""{ "pageSize": "{{new string('x', 150)}}" }""");
+
+        // Assert
+        var errors = result.StructuredContent.ShouldNotBeNull().GetProperty("errors");
+        errors.GetProperty("pageSize")[0].GetString().ShouldBe($"The value '{new string('x', 100)}...' is not valid for pageSize.");
+    }
+
+    // The tool throws the JsonException that the SDK throws when an argument does not convert
+    private static async Task<CallToolResult> CallListTool(string arguments)
+    {
+        var handler = McpDomainErrors.Filter((_, _) => throw new JsonException("The JSON value could not be converted."));
+        var request = new RequestContext<CallToolRequestParams>(
+            Substitute.For<McpServer>(),
+            new JsonRpcRequest { Method = RequestMethods.ToolsCall },
+            new CallToolRequestParams
+            {
+                Name = "list_items",
+                Arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(arguments),
+            })
+        {
+            MatchedPrimitive = McpServerTool.Create(ListItems, new() { Name = "list_items" }),
+        };
+        return await handler(request, CancellationToken.None);
+    }
+
+    private static string ListItems(int? pageSize, CancellationToken cancellationToken) => $"{pageSize}";
 
     private static async Task<CallToolResult> CallToolThatThrows(Exception exception)
     {

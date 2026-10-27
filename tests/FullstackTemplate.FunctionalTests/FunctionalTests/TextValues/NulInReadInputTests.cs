@@ -7,7 +7,6 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using global::Google.Rpc;
 using global::Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
-using ModelContextProtocol.Protocol;
 using Shouldly;
 using TestUtilities;
 
@@ -107,7 +106,7 @@ public class NulInReadInputTests : TestBase
         var result = await client.CallToolAsync(tool, arguments);
 
         // Assert
-        ShouldBeToolError(result, "not_found");
+        result.ShouldBeToolError("not_found");
     }
 
     [Test]
@@ -124,7 +123,7 @@ public class NulInReadInputTests : TestBase
         var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?> { [field] = value });
 
         // Assert
-        ShouldBeToolError(result, "invalid_argument");
+        result.ShouldBeToolError("invalid_argument");
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").EnumerateObject()
             .ShouldHaveSingleItem().Name.ShouldBe(field);
     }
@@ -135,11 +134,5 @@ public class NulInReadInputTests : TestBase
         await InsertAsync(tenant);
         await InsertAsync(admin);
         FactoryClient.SignInAsAppUser(admin.Identifier);
-    }
-
-    private static void ShouldBeToolError(CallToolResult result, string code)
-    {
-        result.IsError.ShouldBe(true);
-        result.StructuredContent.ShouldNotBeNull().GetProperty("code").GetString().ShouldBe(code);
     }
 }

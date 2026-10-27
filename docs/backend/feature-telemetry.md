@@ -11,6 +11,7 @@ The pipeline gives each feature these signals:
 | Signal | From | Content |
 |---|---|---|
 | HTTP, gRPC, or MCP span | ASP.NET Core instrumentation | Route, status code, duration |
+| Tool tags on the MCP span | `McpCallTelemetry` | `gen_ai.tool.name`, the `app.caller.*` tags, and the `error.type` of a failed tool call. A call that fails before its feature runs has only this span. |
 | Feature slice span, for example `UpdateTenant.Command` | `RequestTracingBehavior` | Duration, `error.type`, the `Error` status for a server error |
 | Caller tags on the feature span | `CallerIdentityBehavior` | `app.caller.kind`, and the `app.caller.subject`, `app.caller.client_id`, `app.caller.agent_id`, and `app.caller.tenant_id` that the caller has |
 | Caller properties on each log of the handler | `CallerIdentityBehavior` | `CallerKind`, `CallerSubject`, `CallerClientId`, `CallerAgentId`, and `CallerTenantId` |

@@ -816,7 +816,8 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   autoFocus,
   ...props
 }: JollyRangeCalendarProps<T>) {
-  // Track focused value to navigate calendar view when quick select is used
+  // The view moves to the range start on mount, on a quick select, and on a typed start date. A pick in the grid
+  // keeps the focus on the picked day, which can be in another month. A value that the parent sets does not move it.
   // Initialize with today if no value to avoid uncontrolled-to-controlled warning
   const [focusedValue, setFocusedValue] = useState<CalendarDate>(() => {
     if (value?.start) {
@@ -825,14 +826,6 @@ function JollyRangeCalendar<T extends AriaDateValue>({
     }
     return today(getLocalTimeZone())
   })
-
-  // Sync focusedValue when value changes externally
-  useEffect(() => {
-    if (value?.start) {
-      const start = value.start as CalendarDate
-      setFocusedValue(new CalendarDate(start.year, start.month, start.day))
-    }
-  }, [value?.start])
 
   const handleQuickSelect = useCallback((range: { start: CalendarDate; end: CalendarDate }) => {
     // Update focused value to navigate calendar view to selected range start
@@ -857,14 +850,6 @@ function JollyRangeCalendar<T extends AriaDateValue>({
       onChange?.({ start: value.start, end: calDate } as any)
     }
   }, [onChange, value])
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCalendarChange = useCallback((newValue: any) => {
-    if (newValue?.start) {
-      setFocusedValue(newValue.start)
-    }
-    onChange?.(newValue)
-  }, [onChange])
 
   return (
     <div className="flex flex-col gap-2">
@@ -903,7 +888,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             cn("grow", className)
           )}
           value={value}
-          onChange={handleCalendarChange}
+          onChange={onChange}
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}

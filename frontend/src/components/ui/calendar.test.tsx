@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CalendarDate } from '@internationalized/date'
 import { Dialog, type DateValue, type RangeValue } from 'react-aria-components'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -67,6 +67,59 @@ test('range calendar: Enter on the start day keeps the focus on that day', async
 
   await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2026-08-18')
   expect(screen.container.querySelector('[aria-live="polite"]')?.textContent).toBe('')
+  expect(screen.getByRole('button', { name: /Tuesday, August 18, 2026 selected$/ }).element()).toHaveAttribute('data-focused')
+})
+
+test('range calendar: Enter on the end day in the next month keeps the focus and the month of that day', async () => {
+  const screen = await render(<DateRange initialRange={august2026} />)
+  screen.getByRole('button', { name: /August 15, 2026/ }).element().focus()
+
+  await userEvent.keyboard('{Enter}{ArrowDown}{ArrowDown}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{Enter}')
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2026-09-03')
+  await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('September 2026')
+  await expect.poll(() => document.activeElement?.getAttribute('aria-label')).toMatch(/Thursday, September 3, 2026 selected$/)
+})
+
+test('range calendar: a click on the end day in the next month keeps that month', async () => {
+  const screen = await render(<DateRange initialRange={august2026} />)
+
+  await screen.getByRole('button', { name: /August 15, 2026/ }).click()
+  await screen.getByRole('banner').getByRole('button', { name: 'Next', exact: true }).click()
+  await screen.getByRole('button', { name: /September 3, 2026/ }).click()
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-08-15 to 2026-09-03')
+  await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('September 2026')
+  expect(document.activeElement?.getAttribute('aria-label')).toMatch(/Thursday, September 3, 2026 selected$/)
+})
+
+function DateRangeWithControls() {
+  const [range, setRange] = useState<RangeValue<DateValue> | null>(august2026)
+  return <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showQuickSelects showDateInput />
+}
+
+test('range calendar: a Quick Select shows the month of the start of its range', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 7, 15, 12))
+  try {
+    const screen = await render(<DateRangeWithControls />)
+
+    await screen.getByRole('button', { name: 'Last Year', exact: true }).click()
+
+    await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('January 2025')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('range calendar: a typed start date shows its month', async () => {
+  const screen = await render(<DateRangeWithControls />)
+
+  await screen.getByRole('spinbutton', { name: 'month, Start date' }).click()
+  await userEvent.keyboard('03102026')
+
+  await expect.element(screen.getByRole('group', { name: 'Start date' })).toHaveTextContent('3/10/2026')
+  await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('March 2026')
 })
 
 async function pixelsOf(element: Element): Promise<ImageData> {

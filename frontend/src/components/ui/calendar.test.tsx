@@ -11,7 +11,7 @@ import { Popover, PopoverTrigger } from '@/components/ui/popover'
 
 // The same shape as the Pick a date popover of the components showcase.
 function DatePopover() {
-  const [date, setDate] = useState<DateValue>(new CalendarDate(2024, 3, 15))
+  const [date, setDate] = useState<DateValue | null>(new CalendarDate(2024, 3, 15))
   return (
     <PopoverTrigger>
       <Button>Pick a date</Button>

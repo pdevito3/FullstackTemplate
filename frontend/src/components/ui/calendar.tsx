@@ -718,7 +718,9 @@ function rangeOf({ start, end }: TypedRange): RangeValue<AriaDateValue> | null {
 }
 
 interface JollyCalendarProps<T extends AriaDateValue>
-  extends AriaCalendarProps<T> {
+  extends Omit<AriaCalendarProps<T>, "onChange"> {
+  /** Gets null when the typed date is cleared or is not complete. */
+  onChange?: (value: T | null) => void
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
@@ -849,7 +851,9 @@ function JollyCalendar<T extends AriaDateValue>({
 }
 
 interface JollyRangeCalendarProps<T extends AriaDateValue>
-  extends AriaRangeCalendarProps<T> {
+  extends Omit<AriaRangeCalendarProps<T>, "onChange"> {
+  /** Gets null when a typed date is cleared, is not complete, or ends the range before its start. */
+  onChange?: (value: RangeValue<T> | null) => void
   errorMessage?: string
   showQuickSelects?: boolean
   showDateInput?: boolean
@@ -955,7 +959,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
             cn("grow", className)
           )}
           value={value}
-          onChange={onChange}
+          onChange={onChange as AriaRangeCalendarProps<T>["onChange"]}
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}

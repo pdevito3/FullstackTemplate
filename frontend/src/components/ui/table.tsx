@@ -111,7 +111,7 @@ function TableCell({ className, ...props }: CellProps) {
       data-slot="table-cell"
       className={composeRenderProps(className, (className) =>
         cn(
-          "p-2 align-middle whitespace-nowrap [&:has([data-slot=checkbox])]:pr-0 [&:has([role=checkbox])]:pr-0",
+          "p-2 align-middle [&:has([data-slot=checkbox])]:pr-0 [&:has([role=checkbox])]:pr-0",
           className
         )
       )}

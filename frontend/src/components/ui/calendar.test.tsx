@@ -122,6 +122,44 @@ test('range calendar: a typed start date shows its month', async () => {
   await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('March 2026')
 })
 
+function EmptyDateRangeWithControls() {
+  const [range, setRange] = useState<RangeValue<DateValue> | null>(null)
+  return (
+    <>
+      <JollyRangeCalendar aria-label="Dates" value={range} onChange={setRange} showDateInput />
+      <output aria-label="Range">{range ? `${range.start} to ${range.end}` : ''}</output>
+    </>
+  )
+}
+
+test('range calendar: a typed start date in an empty range waits for the end date', async () => {
+  const screen = await render(<EmptyDateRangeWithControls />)
+
+  await screen.getByRole('spinbutton', { name: 'month, Start date' }).click()
+  await userEvent.keyboard('03102026')
+
+  await expect.element(screen.getByRole('group', { name: 'Start date' })).toHaveTextContent('3/10/2026')
+  await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('mm/dd/yyyy')
+  await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('March 2026')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+
+  await screen.getByRole('spinbutton', { name: 'month, End date' }).click()
+  await userEvent.keyboard('03202026')
+
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-03-10 to 2026-03-20')
+})
+
+test('range calendar: a typed end date in an empty range keeps the date', async () => {
+  const screen = await render(<EmptyDateRangeWithControls />)
+
+  await screen.getByRole('spinbutton', { name: 'month, End date' }).click()
+  await userEvent.keyboard('03202026')
+
+  await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('3/20/2026')
+  await expect.element(screen.getByRole('group', { name: 'Start date' })).toHaveTextContent('mm/dd/yyyy')
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toBeEmptyDOMElement()
+})
+
 async function pixelsOf(element: Element): Promise<ImageData> {
   const image = new Image()
   image.src = `data:image/png;base64,${await page.screenshot({ element, save: false })}`

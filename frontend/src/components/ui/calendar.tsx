@@ -55,6 +55,7 @@ interface CalendarZoomContextValue {
   setViewYear: (year: number) => void
   viewDecadeStart: number
   setViewDecadeStart: (year: number) => void
+  fixedHeight: boolean
 }
 
 const CalendarZoomContext = createContext<CalendarZoomContextValue | null>(null)
@@ -67,9 +68,10 @@ function useCalendarState() {
 
 interface CalendarZoomProviderProps {
   children: React.ReactNode
+  fixedHeight: boolean
 }
 
-function CalendarZoomProvider({ children }: CalendarZoomProviderProps) {
+function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderProps) {
   const state = useCalendarState()
   const currentYear = state?.focusedDate?.year ?? new Date().getFullYear()
 
@@ -96,8 +98,9 @@ function CalendarZoomProvider({ children }: CalendarZoomProviderProps) {
       setViewYear,
       viewDecadeStart,
       setViewDecadeStart,
+      fixedHeight,
     }),
-    [view, viewYear, viewDecadeStart]
+    [view, viewYear, viewDecadeStart, fixedHeight]
   )
 
   return (
@@ -356,20 +359,27 @@ interface CalendarContentProps {
 function CalendarContent({ children }: CalendarContentProps) {
   const zoomContext = useContext(CalendarZoomContext)
   const rangeState = useContext(AriaRangeCalendarStateContext)
-  if (zoomContext && zoomContext.view !== "days") keepRangeOpenInPicker(rangeState)
 
-  if (!zoomContext) {
+  if (!zoomContext || zoomContext.view === "days") {
     return <>{children}</>
   }
 
-  switch (zoomContext.view) {
-    case "months":
-      return <MonthPickerGrid />
-    case "years":
-      return <YearPickerGrid />
-    default:
-      return <>{children}</>
+  keepRangeOpenInPicker(rangeState)
+  const picker = zoomContext.view === "months" ? <MonthPickerGrid /> : <YearPickerGrid />
+  if (!zoomContext.fixedHeight) {
+    return picker
   }
+
+  // The hidden day grid gives the picker the height of the days view. The day grid mounts again after a pick, so the
+  // focus moves to its cell.
+  return (
+    <div className="grid">
+      <div inert aria-hidden className="invisible col-start-1 row-start-1">
+        {children}
+      </div>
+      <div className="col-start-1 row-start-1">{picker}</div>
+    </div>
+  )
 }
 
 interface CalendarHeadingZoomableProps extends React.HTMLAttributes<HTMLElement> {
@@ -695,6 +705,11 @@ interface JollyCalendarProps<T extends AriaDateValue>
   showQuickSelects?: boolean
   showDateInput?: boolean
   layout?: CalendarLayout
+  /**
+   * Keeps the same height for every month and for the month and year pickers. A popover that React Aria placed
+   * against the window edge cannot grow.
+   */
+  fixedHeight?: boolean
 }
 
 // With showDateInput, autoFocus focuses the date input, because it is the first field.
@@ -705,6 +720,7 @@ function JollyCalendar<T extends AriaDateValue>({
   showQuickSelects,
   showDateInput,
   layout = "wide",
+  fixedHeight = false,
   onChange,
   value,
   autoFocus,
@@ -780,9 +796,10 @@ function JollyCalendar<T extends AriaDateValue>({
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}
+          weeksInMonth={fixedHeight ? 6 : undefined}
           {...props}
         >
-          <CalendarZoomProvider>
+          <CalendarZoomProvider fixedHeight={fixedHeight}>
             <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
               <CalendarGrid>
@@ -812,6 +829,11 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
   showQuickSelects?: boolean
   showDateInput?: boolean
   layout?: CalendarLayout
+  /**
+   * Keeps the same height for every month and for the month and year pickers. A popover that React Aria placed
+   * against the window edge cannot grow.
+   */
+  fixedHeight?: boolean
 }
 
 // With showDateInput, autoFocus focuses the start date input, because it is the first field.
@@ -822,6 +844,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   showQuickSelects,
   showDateInput,
   layout = "wide",
+  fixedHeight = false,
   onChange,
   value,
   autoFocus,
@@ -912,9 +935,10 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           focusedValue={focusedValue}
           onFocusChange={setFocusedValue}
           autoFocus={autoFocus && !showDateInput}
+          weeksInMonth={fixedHeight ? 6 : undefined}
           {...props}
         >
-          <CalendarZoomProvider>
+          <CalendarZoomProvider fixedHeight={fixedHeight}>
             <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
               <CalendarGrid>

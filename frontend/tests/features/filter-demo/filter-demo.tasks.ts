@@ -124,7 +124,7 @@ export function filterDemoPage(page: Page) {
     async edgesOf(element: Locator) {
       const box = await element.boundingBox()
       if (!box) throw new Error('The element is not on the page.')
-      return { left: box.x, right: box.x + box.width }
+      return { left: box.x, right: box.x + box.width, top: box.y, bottom: box.y + box.height }
     },
 
     /** The space between each side of the sheet and the nearest button or text box of the control, without the Close button. */

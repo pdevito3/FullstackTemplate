@@ -188,6 +188,9 @@ export function DateFilter({
           onChange={setDateRange}
           showQuickSelects
           layout={isMobile ? 'narrow' : 'wide'}
+          // Below the md breakpoint the control shows in a bottom sheet, not an anchored popover, and an empty week
+          // there pushes Add Filter off a short screen.
+          fixedHeight={!isMobile}
           showDateInput
           autoFocus={autoFocus}
         />
@@ -197,6 +200,7 @@ export function DateFilter({
           onChange={setDate}
           showQuickSelects
           layout={isMobile ? 'narrow' : 'wide'}
+          fixedHeight={!isMobile}
           showDateInput
           autoFocus={autoFocus}
         />

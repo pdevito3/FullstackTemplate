@@ -4,6 +4,7 @@ import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
 const dayInASixWeekMonth = new Date('2026-08-15T12:00:00Z')
+const dayInAFiveWeekMonth = new Date('2026-09-15T12:00:00Z')
 
 test.describe('the Add Filter menu on a phone', () => {
   test.use({ viewport: phone })
@@ -107,6 +108,27 @@ for (const viewport of [
     }
   })
 }
+
+const shortPhone = { width: 320, height: 780 }
+
+test.describe('the Between calendar on a 320 x 780 phone', () => {
+  test.use({ viewport: shortPhone })
+
+  test('keeps Add Filter on the screen in a five-week month and in the month picker', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInAFiveWeekMonth)
+
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    const addFilter = await demo.edgesOf(demo.at.addFilter('Created Date'))
+    expect(Math.abs(addFilter.bottom - shortPhone.height), 'Add Filter sits flush with the bottom edge of the screen').toBeLessThanOrEqual(1)
+
+    await demo.openMonthPicker('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+})
 
 test.describe('the date control in the dialog of a 768 px tablet', () => {
   test.use({ viewport: { width: 768, height: 1024 } })

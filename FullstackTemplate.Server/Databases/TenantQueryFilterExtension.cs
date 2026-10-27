@@ -28,8 +28,16 @@ public static class TenantQueryFilterExtension
         {
             foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
             {
-                if (TenantIdPathOf(entityType) is { } tenantIdPath)
-                    entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
+                var root = entityType.GetRootType();
+                if (entityType == root)
+                {
+                    if (TenantIdPathOf(entityType) is { } tenantIdPath)
+                        entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
+                }
+                else if (HasTenantOfItsOwn(entityType, root))
+                    throw new InvalidOperationException(
+                        $"{entityType.ClrType.Name} has a tenant of its own, but a query filter can go only on {root.ClrType.Name}, the root type of its hierarchy. " +
+                        $"Give the tenant only to {root.ClrType.Name}: implement ITenantable on it, or call ApplyTenanting in its configuration.");
 
                 // A migration snapshot cannot hold the lambda of the path. The filter holds it now.
                 entityType.RemoveAnnotation(TenantingExtension.NavigationPathAnnotation);
@@ -47,6 +55,10 @@ public static class TenantQueryFilterExtension
                 $"Implement ITenantable on {queuedBy.Metadata.ClrType.Name}, or queue the event on its tenanted owner."),
         _ => null,
     };
+
+    private static bool HasTenantOfItsOwn(IReadOnlyEntityType derived, IReadOnlyEntityType root)
+        => derived.FindAnnotation(TenantingExtension.NavigationPathAnnotation) is not null
+           || (derived.ClrType.IsAssignableTo(typeof(ITenantable)) && !root.ClrType.IsAssignableTo(typeof(ITenantable)));
 
     private static LambdaExpression? TenantIdPathOf(IReadOnlyEntityType entityType)
     {

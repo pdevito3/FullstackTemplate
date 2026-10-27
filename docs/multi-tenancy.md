@@ -5,7 +5,7 @@ The server keeps the data of each tenant separate.
 ## How it works
 
 1. An entity gets its tenant in one of two ways. It implements `ITenantable`, so it has a `TenantId`. Or it has no `TenantId`, and its configuration calls `ApplyTenanting` with a navigation path to a `TenantId`.
-2. `AppDbContext` adds a query filter to each entity that has a tenant. The filter compares the `TenantId` or the navigation path with the scope of the caller. `Tenant` gets the same filter on its `Id`.
+2. `AppDbContext` adds a query filter to each entity that has a tenant. The filter compares the `TenantId` or the navigation path with the scope of the caller. `Tenant` gets the same filter on its `Id`. EF Core puts a query filter only on the root type of an inheritance hierarchy, and a derived type gets the filter of its root. Thus give the tenant to the root type. The model build fails when a derived type has a tenant of its own.
 3. `TenantScopeProvider` finds the `TenantScope` of the current request. `AppDbContext` gets this scope once and keeps it. The filter reads the kept scope for each query. If code changes the caller of a live DI scope, for example a test, call `AppDbContext.RefreshTenantScope()`.
 4. The context does not set the `TenantId` of a new entity. Set it when you create the entity.
 

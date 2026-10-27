@@ -361,7 +361,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 **Status with Behavior:**
 ```csharp
-public class OrderStatus : ValueObject
+public class OrderStatus : ValueObject, IFixedNames
 {
     private OrderStatusEnum _status;
 
@@ -369,6 +369,8 @@ public class OrderStatus : ValueObject
     public bool CanBeCancelled() => !IsFinalState();
 
     public override string ToString() => Value;
+
+    public static List<string> ListNames() => OrderStatusEnum.List.Select(x => x.Name).ToList();
 
     public static OrderStatus Draft() => new("Draft");
     public static OrderStatus Submitted() => new("Submitted");

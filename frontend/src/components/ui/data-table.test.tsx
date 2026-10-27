@@ -10,8 +10,8 @@ interface Charge {
   name: string
 }
 
-// The default page size is 10, so 12 charges make two pages.
-const charges: Charge[] = Array.from({ length: 12 }, (_, index) => ({ id: `c${index + 1}`, name: `Charge ${index + 1}` }))
+const defaultPageSize = 10
+const charges: Charge[] = Array.from({ length: defaultPageSize + 2 }, (_, index) => ({ id: `c${index + 1}`, name: `Charge ${index + 1}` }))
 const columns: ColumnDef<Charge>[] = [{ accessorKey: 'name', header: 'Name' }]
 
 test('the pager button keeps the focus when a keyboard press takes the table to the last or the first page', async () => {
@@ -26,7 +26,6 @@ test('the pager button keeps the focus when a keyboard press takes the table to 
   await expect.element(next).toHaveFocus()
   await expect.element(next).toHaveAttribute('aria-disabled', 'true')
 
-  // A press on a button that has nothing to do does nothing.
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('rowheader', { name: 'Charge 11' })).toBeVisible()
 

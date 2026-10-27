@@ -38,7 +38,6 @@ const vehicles: Vehicle[] = [
   { id: 'v2', name: 'Truck 2', status: 'In repair' },
 ]
 
-// One row render for both layouts, as a list that switches with useIsMobile writes it.
 function Vehicles({ isStacked }: { isStacked: boolean }) {
   return (
     <Table aria-label="Vehicles">

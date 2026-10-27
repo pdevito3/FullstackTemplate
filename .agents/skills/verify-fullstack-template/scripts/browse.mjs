@@ -10,6 +10,7 @@
 //   steps.log      each step with ok/FAIL and its duration
 //   NN-<name>.png  a screenshot for each capture(), full-page by default
 //   NN-<name>.aria.txt  the ARIA snapshot of the page for each capture()
+//   NN-failure.png      the page when a step fails, before a finally block of the recipe runs
 //   console.log    browser console errors and warnings, and page errors
 //                  (an uncaught page error fails the run, even if all steps pass)
 //   network.log    each response with status >= 400
@@ -92,6 +93,9 @@ page.on('response', (r) => {
   if (r.status() >= 400) log('network.log', `${r.status()} ${r.request().method()} ${r.url()}`)
 })
 
+// The errors that already have a failure capture, so that an outer step or the runner does not capture again.
+const capturedErrors = new Set()
+
 async function step(name, fn) {
   const t0 = Date.now()
   try {
@@ -102,6 +106,8 @@ async function step(name, fn) {
   } catch (e) {
     log('steps.log', `FAIL  ${name} (${Date.now() - t0} ms): ${e.message.split('\n')[0]}`)
     console.log(`FAIL  ${name}`)
+    // Capture now. A finally block of the recipe, such as a logout(), runs after the error leaves this step.
+    if (!capturedErrors.has(e)) await capture('failure').then(() => capturedErrors.add(e), () => {})
     throw e
   }
 }
@@ -198,7 +204,7 @@ try {
 } catch (e) {
   status = 'failed'
   error = e.message
-  await capture('failure').catch(() => {})
+  if (!capturedErrors.has(e)) await capture('failure').catch(() => {})
 } finally {
   await Promise.all(pendingConsoleErrors)
   await context.tracing.stop({ path: path.join(outDir, 'trace.zip') })

@@ -113,6 +113,9 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__0", TrustedMachineClientId);
         Environment.SetEnvironmentVariable("Tenancy__ReadAllTenantsClientIds__0", ReadOnlyMachineClientId);
 
+        // Aspire sets this on each project in development, so the request spans keep the query as the browser sent it
+        Environment.SetEnvironmentVariable("OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION", "true");
+
         // Disable Aspire health checks that require database connectivity during startup
         Environment.SetEnvironmentVariable("Aspire__Npgsql__EntityFrameworkCore__PostgreSQL__DisableHealthChecks", "true");
 

@@ -4,6 +4,12 @@ import { filterDemo } from './filter-demo.locators'
 export function filterDemoPage(page: Page) {
   const at = filterDemo(page)
 
+  const showOtherMonth = async (propertyLabel: string, name: 'Next' | 'Previous') => {
+    const shownMonth = await at.selectMonth(propertyLabel).textContent()
+    await at.calendarNav(propertyLabel, name).click()
+    await expect(at.selectMonth(propertyLabel)).not.toHaveText(shownMonth ?? '')
+  }
+
   return {
     at,
 
@@ -33,6 +39,24 @@ export function filterDemoPage(page: Page) {
     async chooseBetween(propertyLabel: string) {
       await at.button(propertyLabel, 'Between').click()
       await expect(at.dateField(propertyLabel, 'Start date')).toBeVisible()
+    },
+
+    async showNextMonth(propertyLabel: string) {
+      await showOtherMonth(propertyLabel, 'Next')
+    },
+
+    async showPreviousMonth(propertyLabel: string) {
+      await showOtherMonth(propertyLabel, 'Previous')
+    },
+
+    async openMonthPicker(propertyLabel: string) {
+      await at.selectMonth(propertyLabel).click()
+      await expect(at.monthOption(propertyLabel, 'Jan')).toBeVisible()
+    },
+
+    async pickMonth(propertyLabel: string, name: string) {
+      await at.monthOption(propertyLabel, name).click()
+      await expect(at.selectMonth(propertyLabel)).toContainText(name)
     },
 
     async addBooleanFilter(propertyLabel: string, value: 'True' | 'False') {

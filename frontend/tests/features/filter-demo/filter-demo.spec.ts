@@ -190,6 +190,17 @@ test.describe('the Add Filter menu on a desktop', () => {
     await expect(demo.at.searchProperties).toBeVisible()
   })
 
+  test('keeps the Add Filter button of the date control on the screen after the month picker', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.openMonthPicker('Created Date')
+    await demo.pickMonth('Created Date', 'Aug')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+
   test('edits a date filter in its dialog', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.openOn(dayInASixWeekMonth)
@@ -200,6 +211,22 @@ test.describe('the Add Filter menu on a desktop', () => {
     await demo.updateWithQuickSelect('Created Date', 'Yesterday')
 
     await expect(demo.at.editFilter('Created Date')).toHaveAccessibleName(/Aug 14, 2026/)
+  })
+})
+
+test.describe('the Add Filter menu on a 900 px tall desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('keeps the Add Filter button of the date control on the screen after a five-week month', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    await demo.showNextMonth('Created Date')
+    await demo.showPreviousMonth('Created Date')
+
+    await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
   })
 })
 

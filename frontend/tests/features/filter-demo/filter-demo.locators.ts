@@ -21,6 +21,11 @@ export const filterDemo = (page: Page) => {
     pressedButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { pressed: true }),
     dateField: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('group', { name, exact: true }),
     calendar: (propertyLabel: string) => control(propertyLabel).getByRole('grid'),
+    calendarNav: (propertyLabel: string, name: 'Next' | 'Previous') =>
+      control(propertyLabel).getByRole('banner').getByRole('button', { name, exact: true }),
+    selectMonth: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Select month', exact: true }),
+    monthOption: (propertyLabel: string, name: string) =>
+      control(propertyLabel).getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name, exact: true }),
     addFilter: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Add Filter', exact: true }),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),

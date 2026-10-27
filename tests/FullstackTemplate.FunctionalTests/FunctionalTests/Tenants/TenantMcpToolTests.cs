@@ -164,6 +164,59 @@ public class TenantMcpToolTests : TestBase
         content.GetProperty("pagination").GetProperty("totalCount").GetInt32().ShouldBe(1);
     }
 
+    public static IEnumerable<Func<(string Tool, string Argument, object Value, string Shown)>> ArgumentsOfTheWrongType()
+    {
+        yield return () => ("list_tenants", "pageSize", "ten", "ten");
+        yield return () => ("list_tenants", "pageNumber", 1.5, "1.5");
+        yield return () => ("get_tenant", "id", 5, "5");
+        yield return () => ("update_tenant", "version", "abc", "abc");
+    }
+
+    [Test]
+    [MethodDataSource(nameof(ArgumentsOfTheWrongType))]
+    public async Task argument_of_the_wrong_type_is_an_invalid_argument_with_the_field(
+        string tool, string argument, object value, string shown)
+    {
+        // Arrange
+        var (tenant, admin) = await AddTenantWithUserAsync("Admin");
+        SignInAs(admin);
+        await using var client = await CreateMcpClientAsync();
+        Dictionary<string, object?> arguments = tool switch
+        {
+            "list_tenants" => [],
+            "get_tenant" => new() { ["id"] = tenant.Id },
+            _ => new() { ["id"] = tenant.Id, ["name"] = $"Renamed {Guid.NewGuid()}", ["version"] = 1 },
+        };
+        arguments[argument] = value;
+
+        // Act
+        var result = await client.CallToolAsync(tool, arguments);
+
+        // Assert
+        result.ShouldBeToolError("invalid_argument");
+        var error = result.StructuredContent.ShouldNotBeNull().GetProperty("errors").EnumerateObject().ShouldHaveSingleItem();
+        error.Name.ShouldBe(argument);
+        error.Value[0].GetString().ShouldBe($"The value '{shown}' is not valid for {argument}.");
+    }
+
+    [Test]
+    public async Task each_argument_of_the_wrong_type_has_its_own_error()
+    {
+        // Arrange
+        var (_, user) = await AddTenantWithUserAsync();
+        SignInAs(user);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("list_tenants",
+            new Dictionary<string, object?> { ["pageNumber"] = "one", ["pageSize"] = "ten", ["sortOrder"] = "name" });
+
+        // Assert
+        result.ShouldBeToolError("invalid_argument");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("errors").EnumerateObject().Select(e => e.Name)
+            .ShouldBe(["pageNumber", "pageSize"], ignoreOrder: true);
+    }
+
     [Test]
     public async Task page_out_of_range_is_an_invalid_argument()
     {

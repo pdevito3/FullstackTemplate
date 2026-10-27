@@ -1,3 +1,5 @@
+import { buttonVariants } from "@/components/ui/button-variants"
+
 type CalendarLayout = "wide" | "narrow"
 
 const layoutClassNames = {
@@ -26,3 +28,5 @@ const layoutClassNames = {
   },
 } satisfies Record<CalendarLayout, Record<string, string>>
 
+export { layoutClassNames }
+export type { CalendarLayout }

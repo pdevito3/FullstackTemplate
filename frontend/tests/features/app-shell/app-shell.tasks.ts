@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { weatherPaths } from '@tests/support/api/weather-api'
 import { appShell } from './app-shell.locators'
 
@@ -29,6 +29,28 @@ export function appShellPage(page: Page) {
       )
       await at.homeLink.click()
       await settled
+    },
+
+    async addWideContent(width: number) {
+      await at.mainLandmarks.evaluate((main, width) => {
+        const scroller = document.createElement('div')
+        scroller.className = 'overflow-x-auto'
+        const content = document.createElement('div')
+        content.style.width = `${width}px`
+        content.textContent = 'Wide content'
+        scroller.append(content)
+        main.append(scroller)
+      }, width)
+    },
+
+    async pageSideScrollRange() {
+      return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    },
+
+    async verticalCenter(locator: Locator) {
+      const box = await locator.boundingBox()
+      if (!box) throw new Error('The element has no box')
+      return box.y + box.height / 2
     },
 
     async pageScrollRange() {

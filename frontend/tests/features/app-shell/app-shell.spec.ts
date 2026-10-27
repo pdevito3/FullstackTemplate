@@ -52,6 +52,51 @@ test.describe('the landmarks of a page', () => {
   })
 })
 
+test.describe('the layout header', () => {
+  test.use({ viewport: { width: 1280, height: 720 } })
+
+  test('centers the separator on the sidebar trigger', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openAbout()
+
+    expect(await shell.verticalCenter(shell.at.headerSeparator)).toBeCloseTo(await shell.verticalCenter(shell.at.sidebarTrigger), 0)
+  })
+})
+
+test.describe('the landmarks of the layout', () => {
+  test('the router devtools add no contentinfo landmark', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openAbout()
+
+    await expect(shell.at.routerDevtoolsButton).toBeVisible()
+    expect(await shell.at.contentInfoLandmarks.count()).toBe(0)
+  })
+
+  test('the sidebar links are in a main navigation landmark', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openAbout()
+
+    await expect(shell.at.mainNavigation.getByRole('link', { name: 'Home' })).toBeVisible()
+    await expect(shell.at.mainNavigation.getByRole('link', { name: 'About' })).toBeVisible()
+  })
+})
+
+test.describe('wide content next to the open sidebar', () => {
+  test.use({ viewport: { width: 1024, height: 720 } })
+
+  test('scrolls in its own box, and the page does not scroll sideways', async ({ page }) => {
+    const shell = appShellPage(page)
+    await shell.openAbout()
+
+    await shell.addWideContent(1600)
+
+    expect(await shell.pageSideScrollRange()).toBe(0)
+  })
+})
+
 test.describe('an unknown address', () => {
   test('shows a page not found message in the app layout', async ({ page }) => {
     const shell = appShellPage(page)

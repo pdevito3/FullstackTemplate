@@ -31,7 +31,8 @@
   --muted-foreground: oklch(0.5544 0.0407 257.4166);
   --accent: oklch(0.9683 0.0069 247.8956);
   --accent-foreground: oklch(0.2077 0.0398 265.7549);
-  --destructive: oklch(0.6368 0.2078 25.3313);
+  /* Darker than red-700, so that red text is 4.5:1 also on the 20% tint of a hovered destructive button. */
+  --destructive: oklch(0.485 0.205 27.4);
   --destructive-foreground: oklch(1.0000 0 0);
   --border: oklch(0.9288 0.0126 255.5078);
   --input: oklch(0.9288 0.0126 255.5078);
@@ -87,7 +88,8 @@
   --accent: oklch(0.2795 0.0368 260.0310);
   --accent-foreground: oklch(0.9842 0.0034 247.8575);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.9842 0.0034 247.8575);
+  /* The red of the dark theme is light, so the text on it is dark. White text on it is 2.76:1. */
+  --destructive-foreground: oklch(0.1363 0.0364 259.2010);
   --border: oklch(0.2795 0.0368 260.0310);
   --input: oklch(0.2795 0.0368 260.0310);
   --ring: oklch(0.6231 0.1880 259.8145);

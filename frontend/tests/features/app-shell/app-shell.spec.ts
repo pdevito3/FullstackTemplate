@@ -93,6 +93,7 @@ test.describe('wide content next to the open sidebar', () => {
 
     await shell.addWideContent(1600)
 
+    expect(await shell.sideScrollRange(shell.at.wideContent)).toBeGreaterThan(0)
     expect(await shell.pageSideScrollRange()).toBe(0)
   })
 })

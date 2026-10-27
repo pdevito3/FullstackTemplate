@@ -35,6 +35,8 @@ export function appShellPage(page: Page) {
       await at.mainLandmarks.evaluate((main, width) => {
         const scroller = document.createElement('div')
         scroller.className = 'overflow-x-auto'
+        scroller.role = 'region'
+        scroller.ariaLabel = 'Wide content'
         const content = document.createElement('div')
         content.style.width = `${width}px`
         content.textContent = 'Wide content'
@@ -45,6 +47,10 @@ export function appShellPage(page: Page) {
 
     async pageSideScrollRange() {
       return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    },
+
+    async sideScrollRange(locator: Locator) {
+      return locator.evaluate((element) => element.scrollWidth - element.clientWidth)
     },
 
     async verticalCenter(locator: Locator) {

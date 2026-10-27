@@ -47,10 +47,16 @@ function TableHeader<T>({ className, ...props }: TableHeaderProps<T>) {
   )
 }
 
-function TableBody<T>({ className, ...props }: TableBodyProps<T>) {
+function TableBody<T>({ className, dependencies = [], ...props }: TableBodyProps<T>) {
   return (
     <TableBodyPrimitive
       data-slot="table-body"
+      // React Aria keeps each rendered row by its item until a dependency changes. A new row render, such as the
+      // other layout of a list, must render the rows again, or the rows keep the old cells. A development build
+      // hides this, because it also renders the rows again when the source text of the row render changes. An
+      // inline row render is new on each render, so the rows render again each time. Wrap the row render in
+      // useCallback to keep the cache.
+      dependencies={[props.children, ...dependencies]}
       className={composeRenderProps(className, (className) =>
         cn(
           "data-empty:h-24 data-empty:text-center [&_tr:last-child]:border-0",
@@ -111,7 +117,7 @@ function TableCell({ className, ...props }: CellProps) {
       data-slot="table-cell"
       className={composeRenderProps(className, (className) =>
         cn(
-          "p-2 align-middle whitespace-nowrap [&:has([data-slot=checkbox])]:pr-0 [&:has([role=checkbox])]:pr-0",
+          "p-2 align-middle [&:has([data-slot=checkbox])]:pr-0 [&:has([role=checkbox])]:pr-0",
           className
         )
       )}

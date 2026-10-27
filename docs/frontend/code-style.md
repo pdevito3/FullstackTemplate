@@ -62,7 +62,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 - An animated component imports from `react-aria-components` what Animate UI does not re-export, for example `OverlayTriggerStateContext` in `select.tsx`.
 
 1. Use a component from `components/ui/`. If it does not exist, add it with `pnpm dlx shadcn@latest add <name>`. Then run `pnpm dlx @animate-ui/cli@latest animate <name>`. If Animate UI has an animation for the component, import the primitives from `@animate-ui/react/primitives/react-aria`. If not, import them from `react-aria-components`. Do not add a second UI library.
-2. Use the React Aria props: `onPress` (not `onClick`) and `isDisabled` (not `disabled`) on a `Button`. Use `onAction` on a menu item.
+2. Use the React Aria props: `onPress` (not `onClick`) and `isDisabled` (not `disabled`) on a `Button`. Use `onAction` on a menu item. A button that becomes unavailable while it has the focus, such as a pager button, uses `aria-disabled` and ignores the press, because a disabled button loses the focus to the body.
 3. Put the trigger and its overlay as children of the trigger component. For example, put a `Button` and a `DropdownMenu` in a `DropdownMenuTrigger`. Do not use a `render` prop.
 4. Give a `Dialog` or a `Popover` a title or an `aria-label`. Give an icon-only `Button` an `aria-label`. Use a `Tooltip`, not the `title` attribute.
 5. Use `href` for a link. The `RouterProvider` in `routes/__root.tsx` sends React Aria links to TanStack Router.
@@ -73,6 +73,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 1. Use Tailwind classes. Merge classes with `cn` from `@/lib/utils`.
 2. Make component variants with `cva`. See `components/ui/button.tsx`.
 3. Use the theme tokens, such as `bg-background` and `text-muted-foreground`. Do not use a fixed color, because the dark theme does not change it.
+4. A table cell wraps its text. Give `whitespace-nowrap` to a cell that holds a code, a date, an amount, an email address, or a badge, so that only prose wraps.
 
 ## Files and imports
 

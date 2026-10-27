@@ -127,25 +127,41 @@ function DataTable<TData, TValue>({
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
         <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => table.previousPage()}
-            isDisabled={!table.getCanPreviousPage()}
-          >
+          <PagerButton isAvailable={table.getCanPreviousPage()} onPress={() => table.previousPage()}>
             Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => table.nextPage()}
-            isDisabled={!table.getCanNextPage()}
-          >
+          </PagerButton>
+          <PagerButton isAvailable={table.getCanNextPage()} onPress={() => table.nextPage()}>
             Next
-          </Button>
+          </PagerButton>
         </div>
       </div>
     </div>
+  )
+}
+
+interface PagerButtonProps {
+  isAvailable: boolean
+  onPress: () => void
+  children: React.ReactNode
+}
+
+/**
+ * A pager button that keeps the focus at the first and the last page. A disabled button loses the focus to the
+ * body, so a keyboard user who pressed Next to reach the last page would have to Tab from the start of the page.
+ */
+function PagerButton({ isAvailable, onPress, children }: PagerButtonProps) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      aria-disabled={!isAvailable || undefined}
+      className="aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:focus-visible:ring-ring"
+      onPress={() => {
+        if (isAvailable) onPress()
+      }}
+    >
+      {children}
+    </Button>
   )
 }
 

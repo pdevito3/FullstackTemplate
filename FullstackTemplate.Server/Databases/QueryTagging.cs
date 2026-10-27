@@ -16,6 +16,8 @@ public static class QueryTagging
     /// </summary>
     internal const string QueryPrefix = "FullstackTemplate.Query:";
 
+    internal const string SuffixPrefix = "FullstackTemplate.QuerySuffix:";
+
     /// <summary>
     /// Tags a query with <paramref name="operationName"/> plus the calling member, file, and line.
     /// </summary>
@@ -36,4 +38,7 @@ public static class QueryTagging
         source
             .TagWith($"{QueryPrefix} {operationName}; Member: {memberName}")
             .TagWithCallSite(filePath, lineNumber);
+
+    internal static IQueryable<T> TagAsCountQuery<T>(this IQueryable<T> source) =>
+        source.TagWith($"{SuffixPrefix} count");
 }

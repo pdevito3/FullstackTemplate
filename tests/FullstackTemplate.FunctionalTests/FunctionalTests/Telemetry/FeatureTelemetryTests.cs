@@ -190,6 +190,26 @@ public class FeatureTelemetryTests : TestBase
         slice.GetTagItem("app.tenant_id").ShouldBe(tenant.Id);
     }
 
+    [Test]
+    public async Task an_authenticated_request_writes_no_cache_log()
+    {
+        // Arrange
+        var (admin, _) = await AddAdminAndMemberAsync();
+        FactoryClient.SignInAsAppUser(admin.Identifier);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(admin.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var slice = SpanOf("GetUser.Query", admin);
+        TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(slice.TraceId)
+            .Where(e => e.Properties.TryGetValue("SourceContext", out var source)
+                && source.ToString().Contains("ZiggyCreatures.Caching.Fusion", StringComparison.Ordinal))
+            .Select(e => e.MessageTemplate.Text)
+            .ShouldBeEmpty();
+    }
+
     private static async Task<(User Admin, User Member)> AddAdminAndMemberAsync()
     {
         await StartGraph()

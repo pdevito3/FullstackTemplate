@@ -87,6 +87,8 @@ public sealed class BffApp : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("services__server__http__0", api.Url);
         Environment.SetEnvironmentVariable("services__webfrontend__http__0", SpaDevServer);
         Environment.SetEnvironmentVariable($"ConnectionStrings__{BffDbContext.DatabaseName}", database.ConnectionString);
+        // Aspire sets this on each project in development, so the request spans keep the query as the browser sent it
+        Environment.SetEnvironmentVariable("OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION", "true");
 
         var app = new BffApp { IdentityProvider = identityProvider, Api = api, _ownsDependencies = true };
         // Start the host now, so that a startup failure fails the assembly hook with its own message

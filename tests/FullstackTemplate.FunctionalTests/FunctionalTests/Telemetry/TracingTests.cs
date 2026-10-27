@@ -2,9 +2,11 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Telemetry;
 
 using System.Diagnostics;
 using System.Net;
+using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
+using Serilog.Events;
 using Shouldly;
 using TestUtilities;
 using Telemetry = FullstackTemplate.Server.Resources.Telemetry;
@@ -26,6 +28,53 @@ public class TracingTests : TestBase
         AllExportedSpans()
             .Where(a => a.Source.Name == NpgsqlSource && a.TraceId == root.TraceId)
             .ShouldNotBeEmpty();
+    }
+
+    [Test]
+    public void startup_migration_on_an_empty_database_logs_no_error()
+    {
+        // Assert
+        var root = AllExportedSpans().Where(a => a.DisplayName == "database.migrate").ShouldHaveSingleItem();
+        TestingWebApplicationFactory.Instance.CapturedLogs.InTrace(root.TraceId)
+            .Where(e => e.Level >= LogEventLevel.Error)
+            .Select(e => e.MessageTemplate.Text)
+            .ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task request_span_keeps_the_query_keys_and_hides_the_values()
+    {
+        // Arrange
+        var key = $"probe_{Guid.NewGuid():N}";
+
+        // Act
+        await FactoryClient.GetAsync($"{ApiRoutes.Users.GetList}?filters=email%20%40%3D*%20%22jane%22&{key}=jane");
+
+        // Assert
+        var request = await WaitForSpanAsync(a =>
+            a.Kind == ActivityKind.Server && (a.GetTagItem("url.query") as string ?? "").Contains(key, StringComparison.Ordinal));
+        request.GetTagItem("url.query").ShouldBe($"?filters=Redacted&{key}=Redacted");
+    }
+
+    [Test]
+    public async Task paged_list_names_its_count_query_apart_from_its_page_query()
+    {
+        // Arrange
+        TestGraph.Start(out _).AddTenant(out var tenant);
+        await AddAsync(tenant);
+        using var parent = Telemetry.Source.StartActivity("test.parent").ShouldNotBeNull();
+
+        // Act
+        await SendAsync(new GetTenantList.Query(new TenantParametersDto()));
+        parent.Stop();
+
+        // Assert
+        var queries = ExportedSpans()
+            .Where(a => a.TraceId == parent.TraceId && a.DisplayName.StartsWith("SQL: tenants.list", StringComparison.Ordinal))
+            .ToList();
+        queries.Select(a => a.DisplayName).ShouldBe(["SQL: tenants.list.count", "SQL: tenants.list"], ignoreOrder: true);
+        queries.Select(a => a.GetTagItem("db.operation.name"))
+            .ShouldBe(["tenants.list.count", "tenants.list"], ignoreOrder: true);
     }
 
     [Test]
@@ -139,5 +188,21 @@ public class TracingTests : TestBase
 
         // Assert
         ExportedSpans().ShouldNotContain(a => a.TraceId == filtered.TraceId);
+    }
+
+    // The server ends the request span after it sends the response, so the span can export a moment after the client
+    // has the response
+    private async Task<Activity> WaitForSpanAsync(Func<Activity, bool> match)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (true)
+        {
+            var found = ExportedSpans().Where(match).ToList();
+            if (found.Count > 0)
+                return found.ShouldHaveSingleItem();
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException("No matching span.");
+            await Task.Delay(20);
+        }
     }
 }

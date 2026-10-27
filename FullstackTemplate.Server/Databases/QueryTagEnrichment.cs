@@ -65,6 +65,7 @@ internal static class QueryTagEnrichment
                 return default;
 
             string? operationName = null;
+            string? suffix = null;
             string? memberName = null;
             string? filePath = null;
             int? lineNumber = null;
@@ -83,8 +84,17 @@ internal static class QueryTagEnrichment
                     continue;
                 }
 
+                if (comment.StartsWith(QueryTagging.SuffixPrefix, StringComparison.Ordinal))
+                {
+                    suffix = NormalizeTagValue(comment[QueryTagging.SuffixPrefix.Length..]);
+                    continue;
+                }
+
                 (filePath, lineNumber) = ParseCallSiteComment(comment, filePath, lineNumber);
             }
+
+            if (operationName is not null && suffix is not null)
+                operationName = $"{operationName}.{suffix}";
 
             return new QueryTagMetadata(operationName, memberName, filePath, lineNumber);
         }

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources;
 
+using Databases;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
@@ -49,7 +50,7 @@ public static class PagedList
 {
     public static PagedList<T> Create<T>(IQueryable<T> source, int pageNumber, int pageSize)
     {
-        var count = source.Count();
+        var count = source.TagAsCountQuery().Count();
         var items = source.Skip(Offset(pageNumber, pageSize)).Take(pageSize).ToList();
         return new PagedList<T>(items, count, pageNumber, pageSize);
     }
@@ -60,7 +61,7 @@ public static class PagedList
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var count = await source.CountAsync(cancellationToken);
+        var count = await source.TagAsCountQuery().CountAsync(cancellationToken);
         var items = await source
             .Skip(Offset(pageNumber, pageSize))
             .Take(pageSize)

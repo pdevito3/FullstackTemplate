@@ -16,10 +16,18 @@ using Serilog.Events;
 /// </remarks>
 public sealed class McpProtocolErrorLogFilter : ILogEventFilter
 {
+    // An app that calls another MCP server and logs its -32602 has a bug of its own, so only the SDK server logs drop
+    private const string SdkServerSource = "ModelContextProtocol.Server";
+
     public bool IsEnabled(LogEvent logEvent)
-        => logEvent.Exception is not McpProtocolException
+        => !(IsFromSdkServer(logEvent) && logEvent.Exception is McpProtocolException
         {
             ErrorCode: McpErrorCode.ParseError or McpErrorCode.InvalidRequest or McpErrorCode.MethodNotFound
                 or McpErrorCode.InvalidParams,
-        };
+        });
+
+    private static bool IsFromSdkServer(LogEvent logEvent)
+        => logEvent.Properties.TryGetValue(Constants.SourceContextPropertyName, out var source)
+           && source is ScalarValue { Value: string name }
+           && name.StartsWith(SdkServerSource, StringComparison.Ordinal);
 }

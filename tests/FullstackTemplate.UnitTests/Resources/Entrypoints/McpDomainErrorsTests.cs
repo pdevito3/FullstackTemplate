@@ -75,6 +75,17 @@ public class McpDomainErrorsTests
         errors.GetProperty("pageSize")[0].GetString().ShouldBe("The value 'ten' is not valid for pageSize.");
     }
 
+    [Test]
+    public async Task a_long_value_of_the_wrong_type_is_cut_in_the_message()
+    {
+        // Act
+        var result = await CallListTool($$"""{ "pageSize": "{{new string('x', 150)}}" }""");
+
+        // Assert
+        var errors = result.StructuredContent.ShouldNotBeNull().GetProperty("errors");
+        errors.GetProperty("pageSize")[0].GetString().ShouldBe($"The value '{new string('x', 100)}...' is not valid for pageSize.");
+    }
+
     // The tool throws the JsonException that the SDK throws when an argument does not convert
     private static async Task<CallToolResult> CallListTool(string arguments)
     {

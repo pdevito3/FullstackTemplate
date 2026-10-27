@@ -53,7 +53,10 @@ public static class McpCallTelemetry
     private static string? ToolNameOf(string? name)
     {
         var clean = LogValue.Clean(name);
-        return clean?.Length > MaxToolNameLength ? clean[..MaxToolNameLength] : clean;
+        if (clean is null || clean.Length <= MaxToolNameLength)
+            return clean;
+        // A cut between the two halves of a surrogate pair leaves a broken character in the exported span
+        return char.IsHighSurrogate(clean[MaxToolNameLength - 1]) ? clean[..(MaxToolNameLength - 1)] : clean[..MaxToolNameLength];
     }
 
     private static string? CodeOf(CallToolResult result)

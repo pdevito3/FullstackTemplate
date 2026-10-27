@@ -25,6 +25,13 @@ public class McpProtocolErrorLogFilterTests
     public void a_server_fault_in_a_tool_is_logged()
         => new McpProtocolErrorLogFilter().IsEnabled(LogWith(new InvalidOperationException("Failed."))).ShouldBeTrue();
 
-    private static LogEvent LogWith(Exception exception)
-        => new(DateTimeOffset.UtcNow, LogEventLevel.Error, exception, MessageTemplate.Empty, []);
+    [Test]
+    public void a_protocol_error_that_the_app_logs_is_logged()
+        => new McpProtocolErrorLogFilter()
+            .IsEnabled(LogWith(new McpProtocolException("Bad params.", McpErrorCode.InvalidParams), "FullstackTemplate.Server.Reports"))
+            .ShouldBeTrue();
+
+    private static LogEvent LogWith(Exception exception, string source = "ModelContextProtocol.Server.McpServer")
+        => new(DateTimeOffset.UtcNow, LogEventLevel.Error, exception, MessageTemplate.Empty,
+            [new LogEventProperty(Serilog.Core.Constants.SourceContextPropertyName, new ScalarValue(source))]);
 }

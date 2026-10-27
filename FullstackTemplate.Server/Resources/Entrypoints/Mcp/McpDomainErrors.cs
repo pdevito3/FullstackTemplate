@@ -115,8 +115,16 @@ public static partial class McpDomainErrors
         }
     }
 
+    private const int MaxShownLength = 100;
+
     private static string Shown(JsonElement value)
-        => value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText();
+    {
+        var shown = value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText();
+        return shown.Length > MaxShownLength ? $"{Cut(shown, MaxShownLength)}..." : shown;
+    }
+
+    private static string Cut(string text, int length)
+        => char.IsHighSurrogate(text[length - 1]) ? text[..(length - 1)] : text[..length];
 
     [GeneratedRegex(@"missing a value for the required parameter '(?<name>[^']+)'", RegexOptions.CultureInvariant)]
     private static partial Regex MissingArgumentInMessage();

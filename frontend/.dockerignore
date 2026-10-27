@@ -1,2 +1,9 @@
+# Aspire publish builds the frontend image with this folder as the context (AddViteApp in AppHost.cs).
+# The Dockerfiles that build from the repo root use the .dockerignore at the root.
 node_modules/
 dist/
+obj/
+obj\\*
+test-results/
+playwright-report/
+.vitest/

@@ -78,6 +78,8 @@ It refuses these cases with an `InvalidOperationException`:
 - The type is a child of an owner. Add the child to its owner, then bulk insert the owner.
 - A queued domain event has a handler. The bulk insert runs no handler, so save these entities with `SaveChangesAsync`. It drops an event that has no handler, as a save does.
 
+It refuses a type that maps to more than one table, such as a derived type of a TPT hierarchy, with a `NotSupportedException`. Save it with `SaveChangesAsync`, or map the hierarchy with TPH or TPC.
+
 A unique violation gives a `ConstraintConflictException`, as in a save. A failed bulk insert ends the context, as a failed save does. The bulk insert keeps each row in the change tracker, so split a very large import into parts.
 
 ## Writes that skip the save

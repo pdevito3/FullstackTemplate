@@ -1,0 +1,150 @@
+1280-dark-between-aug.png	identical
+1280-dark-between-month-pick-then-sep3.png	46927 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":822}
+1280-dark-between-month-picker.png	43614 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":822}
+1280-dark-between-sep.png	42336 px differ, box {"x0":510,"y0":397,"x1":904,"y1":822}
+1280-dark-between-today-sep.png	49627 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":887}
+1280-dark-between-typed-start.png	6952 px differ, box {"x0":539,"y0":484,"x1":887,"y1":814}
+1280-dark-between-year-picker.png	45081 px differ, box {"x0":510,"y0":397,"x1":904,"y1":822}
+1280-dark-components-datepicker-aug-popover.png	identical
+1280-dark-components-datepicker-aug.png	45 px differ, box {"x0":1129,"y0":7,"x1":1272,"y1":37}
+1280-dark-components-datepicker-sep-popover.png	identical
+1280-dark-components-datepicker-sep.png	45 px differ, box {"x0":1129,"y0":7,"x1":1272,"y1":37}
+1280-dark-components-pickadate-sep-month-picker-popover.png	identical
+1280-dark-components-pickadate-sep-month-picker.png	3 px differ, box {"x0":1136,"y0":7,"x1":1272,"y1":31}
+1280-dark-components-pickadate-sep-popover.png	identical
+1280-dark-components-pickadate-sep.png	3 px differ, box {"x0":1136,"y0":7,"x1":1272,"y1":31}
+1280-dark-on-aug.png	42 px differ, box {"x0":1129,"y0":8,"x1":1271,"y1":37}
+1280-dark-on-feb.png	39734 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":814}
+1280-dark-on-month-picker.png	57339 px differ, box {"x0":510,"y0":397,"x1":904,"y1":893}
+1280-dark-on-next-previous.png	53047 px differ, box {"x0":510,"y0":8,"x1":1271,"y1":887}
+1280-dark-on-picker-back.png	42 px differ, box {"x0":1129,"y0":8,"x1":1271,"y1":37}
+1280-dark-on-sep.png	38960 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":814}
+1280-dark-on-today-sep-month-picker.png	57416 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":893}
+1280-dark-on-today-sep-year-picker.png	58725 px differ, box {"x0":510,"y0":7,"x1":1272,"y1":893}
+1280-dark-on-today-sep.png	40941 px differ, box {"x0":510,"y0":397,"x1":904,"y1":814}
+1280-dark-on-year-picker.png	58722 px differ, box {"x0":510,"y0":397,"x1":904,"y1":893}
+1280-light-between-aug.png	identical
+1280-light-between-month-pick-then-sep3.png	37859 px differ, box {"x0":288,"y0":7,"x1":1271,"y1":822}
+1280-light-between-month-picker.png	34372 px differ, box {"x0":509,"y0":7,"x1":1272,"y1":822}
+1280-light-between-sep.png	33221 px differ, box {"x0":509,"y0":397,"x1":903,"y1":822}
+1280-light-between-today-sep.png	41629 px differ, box {"x0":509,"y0":397,"x1":903,"y1":887}
+1280-light-between-typed-start.png	7072 px differ, box {"x0":288,"y0":484,"x1":887,"y1":814}
+1280-light-between-year-picker.png	35828 px differ, box {"x0":509,"y0":397,"x1":903,"y1":822}
+1280-light-components-datepicker-aug-popover.png	identical
+1280-light-components-datepicker-aug.png	6039 px differ, box {"x0":371,"y0":8,"x1":1269,"y1":861}
+1280-light-components-datepicker-sep-popover.png	identical
+1280-light-components-datepicker-sep.png	4 px differ, box {"x0":1271,"y0":12,"x1":1271,"y1":33}
+1280-light-components-pickadate-sep-month-picker-popover.png	identical
+1280-light-components-pickadate-sep-month-picker.png	128628 px differ, box {"x0":303,"y0":0,"x1":1271,"y1":899}
+1280-light-components-pickadate-sep-popover.png	identical
+1280-light-components-pickadate-sep.png	43 px differ, box {"x0":1129,"y0":8,"x1":1271,"y1":37}
+1280-light-on-aug.png	identical
+1280-light-on-feb.png	31760 px differ, box {"x0":509,"y0":397,"x1":903,"y1":814}
+1280-light-on-month-picker.png	49727 px differ, box {"x0":288,"y0":397,"x1":903,"y1":892}
+1280-light-on-next-previous.png	44716 px differ, box {"x0":509,"y0":7,"x1":1272,"y1":887}
+1280-light-on-picker-back.png	39 px differ, box {"x0":1129,"y0":8,"x1":1269,"y1":37}
+1280-light-on-sep.png	30641 px differ, box {"x0":509,"y0":7,"x1":1271,"y1":814}
+1280-light-on-today-sep-month-picker.png	49812 px differ, box {"x0":288,"y0":7,"x1":1272,"y1":892}
+1280-light-on-today-sep-year-picker.png	51205 px differ, box {"x0":288,"y0":8,"x1":1271,"y1":892}
+1280-light-on-today-sep.png	32705 px differ, box {"x0":288,"y0":7,"x1":1272,"y1":814}
+1280-light-on-year-picker.png	51167 px differ, box {"x0":288,"y0":7,"x1":1272,"y1":892}
+320-dark-between-aug.png	identical
+320-dark-between-month-pick-then-sep3.png	3489 px differ, box {"x0":98,"y0":276,"x1":271,"y1":571}
+320-dark-between-month-picker.png	identical
+320-dark-between-sep.png	30941 px differ, box {"x0":7,"y0":0,"x1":312,"y1":117}
+320-dark-between-today-sep.png	identical
+320-dark-between-typed-start.png	15149 px differ, box {"x0":17,"y0":271,"x1":302,"y1":778}
+320-dark-between-year-picker.png	identical
+320-dark-components-datepicker-aug-popover.png	identical
+320-dark-components-datepicker-aug.png	identical
+320-dark-components-datepicker-sep-popover.png	identical
+320-dark-components-datepicker-sep.png	3 px differ, box {"x0":176,"y0":7,"x1":312,"y1":31}
+320-dark-components-pickadate-sep-month-picker-popover.png	identical
+320-dark-components-pickadate-sep-month-picker.png	3 px differ, box {"x0":176,"y0":7,"x1":312,"y1":31}
+320-dark-components-pickadate-sep-popover.png	identical
+320-dark-components-pickadate-sep.png	3 px differ, box {"x0":176,"y0":7,"x1":312,"y1":31}
+320-dark-on-aug.png	identical
+320-dark-on-feb.png	identical
+320-dark-on-month-picker.png	identical
+320-dark-on-next-previous.png	identical
+320-dark-on-picker-back.png	identical
+320-dark-on-sep.png	identical
+320-dark-on-today-sep-month-picker.png	identical
+320-dark-on-today-sep-year-picker.png	identical
+320-dark-on-today-sep.png	identical
+320-dark-on-year-picker.png	identical
+320-light-between-aug.png	identical
+320-light-between-month-pick-then-sep3.png	3501 px differ, box {"x0":98,"y0":276,"x1":271,"y1":571}
+320-light-between-month-picker.png	identical
+320-light-between-sep.png	identical
+320-light-between-today-sep.png	identical
+320-light-between-typed-start.png	15133 px differ, box {"x0":17,"y0":10,"x1":311,"y1":778}
+320-light-between-year-picker.png	identical
+320-light-components-datepicker-aug-popover.png	identical
+320-light-components-datepicker-aug.png	identical
+320-light-components-datepicker-sep-popover.png	identical
+320-light-components-datepicker-sep.png	3 px differ, box {"x0":176,"y0":7,"x1":312,"y1":31}
+320-light-components-pickadate-sep-month-picker-popover.png	identical
+320-light-components-pickadate-sep-month-picker.png	56 px differ, box {"x0":169,"y0":7,"x1":312,"y1":37}
+320-light-components-pickadate-sep-popover.png	identical
+320-light-components-pickadate-sep.png	identical
+320-light-on-aug.png	identical
+320-light-on-feb.png	identical
+320-light-on-month-picker.png	identical
+320-light-on-next-previous.png	identical
+320-light-on-picker-back.png	identical
+320-light-on-sep.png	44725 px differ, box {"x0":7,"y0":0,"x1":312,"y1":161}
+320-light-on-today-sep-month-picker.png	identical
+320-light-on-today-sep-year-picker.png	identical
+320-light-on-today-sep.png	242732 px differ, box {"x0":0,"y0":0,"x1":319,"y1":779}
+320-light-on-year-picker.png	identical
+768-dark-between-aug.png	identical
+768-dark-between-month-pick-then-sep3.png	72149 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-between-month-picker.png	65785 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-between-sep.png	68528 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-between-today-sep.png	71775 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-between-typed-start.png	9031 px differ, box {"x0":201,"y0":294,"x1":565,"y1":698}
+768-dark-between-year-picker.png	68122 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-components-datepicker-aug-popover.png	identical
+768-dark-components-datepicker-aug.png	identical
+768-dark-components-datepicker-sep-popover.png	identical
+768-dark-components-datepicker-sep.png	identical
+768-dark-components-pickadate-sep-month-picker-popover.png	identical
+768-dark-components-pickadate-sep-month-picker.png	3 px differ, box {"x0":624,"y0":7,"x1":760,"y1":31}
+768-dark-components-pickadate-sep-popover.png	identical
+768-dark-components-pickadate-sep.png	identical
+768-dark-on-aug.png	identical
+768-dark-on-feb.png	89366 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-on-month-picker.png	95170 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-on-next-previous.png	identical
+768-dark-on-picker-back.png	identical
+768-dark-on-sep.png	72091 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-on-today-sep-month-picker.png	95314 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-on-today-sep-year-picker.png	97469 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-on-today-sep.png	77904 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-dark-on-year-picker.png	97498 px differ, box {"x0":184,"y0":10,"x1":759,"y1":788}
+768-light-between-aug.png	identical
+768-light-between-month-pick-then-sep3.png	64903 px differ, box {"x0":184,"y0":234,"x1":583,"y1":823}
+768-light-between-month-picker.png	58063 px differ, box {"x0":184,"y0":234,"x1":583,"y1":823}
+768-light-between-sep.png	61204 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-light-between-today-sep.png	64519 px differ, box {"x0":184,"y0":234,"x1":583,"y1":823}
+768-light-between-typed-start.png	9298 px differ, box {"x0":216,"y0":293,"x1":566,"y1":698}
+768-light-between-year-picker.png	60510 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-light-components-datepicker-aug-popover.png	identical
+768-light-components-datepicker-aug.png	53 px differ, box {"x0":617,"y0":8,"x1":759,"y1":37}
+768-light-components-datepicker-sep-popover.png	identical
+768-light-components-datepicker-sep.png	identical
+768-light-components-pickadate-sep-month-picker-popover.png	identical
+768-light-components-pickadate-sep-month-picker.png	identical
+768-light-components-pickadate-sep-popover.png	identical
+768-light-components-pickadate-sep.png	3 px differ, box {"x0":624,"y0":7,"x1":760,"y1":31}
+768-light-on-aug.png	81 px differ, box {"x0":281,"y0":788,"x1":395,"y1":823}
+768-light-on-feb.png	78093 px differ, box {"x0":184,"y0":234,"x1":583,"y1":823}
+768-light-on-month-picker.png	82934 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-light-on-next-previous.png	identical
+768-light-on-picker-back.png	identical
+768-light-on-sep.png	64686 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-light-on-today-sep-month-picker.png	83082 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-light-on-today-sep-year-picker.png	85467 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}
+768-light-on-today-sep.png	70622 px differ, box {"x0":184,"y0":234,"x1":583,"y1":823}
+768-light-on-year-picker.png	85467 px differ, box {"x0":184,"y0":234,"x1":583,"y1":788}

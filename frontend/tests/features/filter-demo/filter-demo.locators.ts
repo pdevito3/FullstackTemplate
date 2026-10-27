@@ -22,6 +22,7 @@ export const filterDemo = (page: Page) => {
     dateField: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('group', { name, exact: true }),
     dateSegment: (propertyLabel: string, field: string, part: 'month' | 'day' | 'year') =>
       control(propertyLabel).getByRole('spinbutton', { name: `${part}, ${field}`, exact: true }),
+    dateMessage: (propertyLabel: string, text: string) => control(propertyLabel).getByText(text, { exact: true }),
     calendar: (propertyLabel: string) => control(propertyLabel).getByRole('grid'),
     calendarNav: (propertyLabel: string, name: 'Next' | 'Previous') =>
       control(propertyLabel).getByRole('banner').getByRole('button', { name, exact: true }),

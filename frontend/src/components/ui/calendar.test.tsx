@@ -412,3 +412,56 @@ function contentFits(button: Element): boolean {
   const room = button.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
   return text.getBoundingClientRect().width <= room
 }
+
+const shortYearMessage = /Enter a 4-digit year\./
+
+test('calendar: a short year is marked after the focus leaves the field, until the year has four digits', async () => {
+  const screen = await render(<TypedDate />)
+  const year = screen.getByRole('spinbutton', { name: 'year, Date' })
+
+  await typeDate('Date', '0310999')
+  await expect.element(year).not.toHaveAttribute('aria-invalid')
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(year).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(year).toHaveAccessibleDescription(shortYearMessage)
+  await expect.element(screen.getByText(shortYearMessage)).toBeVisible()
+
+  await year.click()
+  await userEvent.keyboard('20')
+  await expect.element(year).toHaveAccessibleDescription(shortYearMessage)
+  await userEvent.keyboard('26')
+
+  await expect.element(year).not.toHaveAttribute('aria-invalid')
+  await expect.element(screen.getByText(shortYearMessage)).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('status', { name: 'Value' })).toHaveTextContent('2026-03-10')
+})
+
+test('range calendar: a short start year and a short end year are marked after the focus leaves each field', async () => {
+  const screen = await render(<TypedDateRange />)
+  const startYear = screen.getByRole('spinbutton', { name: 'year, Start date' })
+  const endYear = screen.getByRole('spinbutton', { name: 'year, End date' })
+
+  await typeDate('Start date', '0310999')
+  await userEvent.keyboard('{Tab}')
+  await typeDate('End date', '0320202612')
+  await expect.element(endYear).not.toHaveAttribute('aria-invalid')
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('group', { name: 'End date' })).toHaveTextContent('3/20/12')
+  await expect.element(startYear).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(startYear).toHaveAccessibleDescription(shortYearMessage)
+  await expect.element(endYear).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(endYear).toHaveAccessibleDescription(shortYearMessage)
+
+  await typeDate('Start date', '03102026')
+
+  await expect.element(startYear).not.toHaveAttribute('aria-invalid')
+  await expect.element(endYear).toHaveAccessibleDescription(shortYearMessage)
+
+  await typeDate('End date', '03202026')
+
+  await expect.element(endYear).not.toHaveAttribute('aria-invalid')
+  await expect.element(screen.getByText(shortYearMessage)).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-03-10 to 2026-03-20')
+})

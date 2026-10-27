@@ -26,22 +26,19 @@ public static class TenantQueryFilterExtension
         public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder,
             IConventionContext<IConventionModelBuilder> conventionContext)
         {
-            foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
+            var entityTypes = modelBuilder.Metadata.GetEntityTypes().ToList();
+            foreach (var root in entityTypes.Where(e => e.BaseType is null))
             {
-                var root = entityType.GetRootType();
-                if (entityType == root)
-                {
-                    if (TenantIdPathOf(entityType) is { } tenantIdPath)
-                        entityType.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
-                }
-                else if (HasTenantOfItsOwn(entityType, root))
-                    throw new InvalidOperationException(
-                        $"{entityType.ClrType.Name} has a tenant of its own, but a query filter can go only on {root.ClrType.Name}, the root type of its hierarchy. " +
-                        $"Give the tenant only to {root.ClrType.Name}: implement ITenantable on it, or call ApplyTenanting in its configuration.");
-
-                // A migration snapshot cannot hold the lambda of the path. The filter holds it now.
-                entityType.RemoveAnnotation(TenantingExtension.NavigationPathAnnotation);
+                if (TenantIdPathOf(root) is { } tenantIdPath)
+                    root.SetQueryFilter(QueryFilterNames.Tenant, BuildFilter(tenantIdPath, context));
             }
+
+            foreach (var derived in entityTypes.Where(e => e.BaseType is not null))
+                GuardNoTenantOfItsOwn(derived);
+
+            // A migration snapshot cannot hold the lambda of the path. The filter holds it now.
+            foreach (var entityType in entityTypes)
+                entityType.RemoveAnnotation(TenantingExtension.NavigationPathAnnotation);
         }
     }
 
@@ -56,9 +53,23 @@ public static class TenantQueryFilterExtension
         _ => null,
     };
 
-    private static bool HasTenantOfItsOwn(IReadOnlyEntityType derived, IReadOnlyEntityType root)
-        => derived.FindAnnotation(TenantingExtension.NavigationPathAnnotation) is not null
-           || (derived.ClrType.IsAssignableTo(typeof(ITenantable)) && !root.ClrType.IsAssignableTo(typeof(ITenantable)));
+    private static void GuardNoTenantOfItsOwn(IReadOnlyEntityType derived)
+    {
+        var root = derived.GetRootType();
+        var ownTenant = derived.FindAnnotation(TenantingExtension.NavigationPathAnnotation) is not null
+            ? "the ApplyTenanting call"
+            : derived.ClrType.IsAssignableTo(typeof(ITenantable)) && !root.ClrType.IsAssignableTo(typeof(ITenantable))
+                ? "ITenantable"
+                : null;
+        if (ownTenant is null)
+            return;
+
+        var fix = root.FindDeclaredQueryFilter(QueryFilterNames.Tenant) is not null
+            ? $"{root.ClrType.Name} has a tenant, and its filter covers {derived.ClrType.Name}. Remove {ownTenant} from {derived.ClrType.Name}."
+            : $"Give the tenant only to {root.ClrType.Name}: implement ITenantable on it, or call ApplyTenanting in its configuration.";
+        throw new InvalidOperationException(
+            $"{derived.ClrType.Name} has a tenant of its own, but a query filter can go only on {root.ClrType.Name}, the root type of its hierarchy. {fix}");
+    }
 
     private static LambdaExpression? TenantIdPathOf(IReadOnlyEntityType entityType)
     {

@@ -1,17 +1,20 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Exceptions;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 /// <summary>
 /// Maps a domain exception from a tool to an MCP tool error: a result with <c>isError</c> set, so the model
 /// reads the message and can correct its call. The structured content has the same fields as an HTTP problem.
-/// A missing required argument gives the same tool error as a missing required body field. A server fault is not
-/// mapped: the SDK returns a tool error with no detail, so the message stays on the server.
+/// A missing required argument gives the same tool error as a missing required body field. An argument of the wrong
+/// JSON type gives the message of a query value that does not bind. A server fault is not mapped: the SDK returns a tool
+/// error with no detail, so the message stays on the server.
 /// </summary>
 public static partial class McpDomainErrors
 {
@@ -37,6 +40,10 @@ public static partial class McpDomainErrors
             {
                 var missing = new RequestValidationException(new() { [name] = [$"The {name} field is required."] });
                 return ToToolError(DomainError.From(missing));
+            }
+            catch (JsonException) when (WrongTypeArguments(context) is { Count: > 0 } errors)
+            {
+                return ToToolError(DomainError.From(new RequestValidationException(errors)));
             }
         };
 
@@ -73,6 +80,43 @@ public static partial class McpDomainErrors
         => exception.ParamName == "arguments" && MissingArgumentInMessage().Match(exception.Message) is { Success: true } match
             ? match.Groups["name"].Value
             : null;
+
+    // The SDK converts each argument before the tool runs, and its JsonException does not name the argument.
+    // The SDK fills the parameters that are not in the input schema, such as the cancellation token, and ignores an
+    // argument with their name.
+    private static Dictionary<string, string[]> WrongTypeArguments(RequestContext<CallToolRequestParams> context)
+    {
+        if (context.MatchedPrimitive is not McpServerTool tool
+            || tool.Metadata.OfType<MethodInfo>().FirstOrDefault() is not { } method
+            || !tool.ProtocolTool.InputSchema.TryGetProperty("properties", out var properties)
+            || context.Params?.Arguments is not { } arguments)
+            return [];
+
+        var types = method.GetParameters()
+            .Where(p => p.Name is not null && properties.TryGetProperty(p.Name, out _))
+            .ToDictionary(p => p.Name!, p => p.ParameterType);
+        return arguments
+            .Where(argument => types.TryGetValue(argument.Key, out var type) && !Converts(argument.Value, type))
+            .ToDictionary(
+                argument => argument.Key,
+                argument => new[] { $"The value '{Shown(argument.Value)}' is not valid for {argument.Key}." });
+    }
+
+    private static bool Converts(JsonElement value, Type type)
+    {
+        try
+        {
+            JsonSerializer.Deserialize(value, type, McpJsonUtilities.DefaultOptions);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static string Shown(JsonElement value)
+        => value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText();
 
     [GeneratedRegex(@"missing a value for the required parameter '(?<name>[^']+)'", RegexOptions.CultureInvariant)]
     private static partial Regex MissingArgumentInMessage();

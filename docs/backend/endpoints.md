@@ -170,7 +170,7 @@ At startup, `McpToolAccess.Validate` stops the server if a tool has no `[ToolAcc
 
 The attribute repeats the permission of the handler. If the two differ, the result fails closed: the list hides the tool from a caller who could use it, or the handler denies the call.
 
-`McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. The `code` has the name of the gRPC status, for example `already_exists` for a conflict and `aborted` for a stale version. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field.
+`McpDomainErrors` maps a domain exception to a tool error with `isError` set and the same fields as an HTTP problem. The `code` has the name of the gRPC status, for example `already_exists` for a conflict and `aborted` for a stale version. A missing required argument gives an `invalid_argument` tool error with the message "The name field is required.", the same as a missing body field. An argument of the wrong JSON type gives an `invalid_argument` tool error with one message for each such argument, for example "The value 'ten' is not valid for pageSize.", the same as a query value that does not bind.
 
 ### MCP versions
 

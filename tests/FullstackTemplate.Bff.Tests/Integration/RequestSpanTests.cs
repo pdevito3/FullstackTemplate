@@ -2,6 +2,7 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
 using Shouldly;
 
 public sealed class RequestSpanTests : IDisposable
@@ -28,8 +29,10 @@ public sealed class RequestSpanTests : IDisposable
         var key = $"probe_{Guid.NewGuid():N}";
         using var browser = BffApp.Instance.CreateBrowser();
 
-        await browser.GetAsync($"/api/v1/users?filters=email%20%40%3D*%20%22jane%22&{key}=jane");
+        var response = await browser.GetAsync($"/api/v1/users?filters=email%20%40%3D*%20%22jane%22&{key}=jane");
 
+        // The BFF does not forward the request, so the fake API makes no second span with this query
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var request = await WaitForSpanAsync(key);
         request.GetTagItem("url.query").ShouldBe($"?filters=Redacted&{key}=Redacted");
     }

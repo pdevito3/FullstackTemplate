@@ -33,6 +33,12 @@ public static class Extensions
     // name they export as a bare "GET", and the login callback is hard to find among other requests.
     private static readonly string[] OidcCallbackPaths = ["/signin-oidc", "/signout-callback-oidc"];
 
+    // The instrumentation redacts the query values by default, but Aspire turns that off in development.
+    private static string RedactedQuery(string query) =>
+        "?" + string.Join('&', query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => $"{pair.Split('=')[0]}=Redacted"));
+
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
@@ -76,6 +82,9 @@ public static class Extensions
                         opts.RecordException = true;
                         opts.EnrichWithHttpRequest = (activity, request) =>
                         {
+                            if (request.QueryString.HasValue)
+                                activity.SetTag("url.query", RedactedQuery(request.QueryString.Value!));
+
                             if (OidcCallbackPaths.Contains(request.Path.Value))
                             {
                                 activity.DisplayName = $"{request.Method} {request.Path.Value}";

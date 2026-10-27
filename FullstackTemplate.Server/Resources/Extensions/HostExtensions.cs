@@ -28,6 +28,12 @@ public static class HostExtensions
         "Microsoft.AspNetCore.Authorization",
     ];
 
+    // The instrumentation redacts the query values by default, but Aspire turns that off in development.
+    private static string RedactedQuery(string query) =>
+        "?" + string.Join('&', query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => $"{pair.Split('=')[0]}=Redacted"));
+
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
@@ -69,6 +75,11 @@ public static class HostExtensions
                     {
                         opts.Filter = ctx => !IsHealthProbe(ctx.Request.Path);
                         opts.RecordException = true;
+                        opts.EnrichWithHttpRequest = (activity, request) =>
+                        {
+                            if (request.QueryString.HasValue)
+                                activity.SetTag("url.query", RedactedQuery(request.QueryString.Value!));
+                        };
                     })
                     .AddHttpClientInstrumentation(opts => opts.RecordException = true);
             });

@@ -6,6 +6,8 @@ The server and the BFF export traces, metrics, and logs with OpenTelemetry. In d
 
 A span carries names, identifiers, and counts. It never carries user-entered content or personal data, such as names or email addresses. Every helper below takes its tags from the caller, so each call site must obey this rule.
 
+The request spans of the server and the BFF keep each query key in `url.query` and replace each value with `Redacted`, for example `?filters=Redacted&pageSize=Redacted`. The ASP.NET Core instrumentation does this by default, but Aspire turns it off in development. Thus `HostExtensions.cs` and the BFF `Extensions.cs` set `url.query` again.
+
 ## What a trace looks like
 
 A request through the BFF gives one trace with this shape:

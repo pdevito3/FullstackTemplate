@@ -42,6 +42,26 @@ test.describe('the Add Filter menu on a phone', () => {
     })
   })
 
+  test('gives each control the same 16 px space below the title and above the end of the sheet', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    const margins: Record<string, { top: number; bottom: number }> = {}
+
+    for (const property of ['First Name', 'Status', 'Created Date', 'Comment Count', 'Is Blocked']) {
+      await demo.chooseProperty(property)
+      margins[property] = await demo.verticalMarginsOf(property)
+      await demo.closeControl(property)
+    }
+
+    expect(margins).toEqual({
+      'First Name': { top: 16, bottom: 16 },
+      Status: { top: 16, bottom: 16 },
+      'Created Date': { top: 16, bottom: 16 },
+      'Comment Count': { top: 16, bottom: 16 },
+      'Is Blocked': { top: 16, bottom: 16 },
+    })
+  })
+
   test('names the Is Blocked control only in the title of the sheet', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()

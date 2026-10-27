@@ -179,6 +179,36 @@ export function filterDemoPage(page: Page) {
       return element.evaluate((node) => getComputedStyle(node).color)
     },
 
+    /**
+     * The space from the title of the sheet down to the first thing of the control, and from the last thing of the
+     * control down to the end of the sheet. Where the sheet scrolls, the end is the end of its scrolled content.
+     */
+    async verticalMarginsOf(propertyLabel: string) {
+      const sheet = await at.control(propertyLabel).elementHandle()
+      return at.controlTitle(propertyLabel).evaluate((title, sheet) => {
+        const shows = (element: Element) => {
+          const { width, height } = element.getBoundingClientRect()
+          return width > 1 && height > 1
+        }
+        const headerBottom = title.parentElement!.getBoundingClientRect().bottom
+        let top = Infinity
+        let bottom = -Infinity
+        for (const element of sheet!.querySelectorAll('*')) {
+          const box = element.getBoundingClientRect()
+          const isLeaf = ['BUTTON', 'INPUT'].includes(element.tagName) || ![...element.children].some(shows)
+          if (!isLeaf || !shows(element) || box.top < headerBottom) continue
+          top = Math.min(top, box.top)
+          bottom = Math.max(bottom, box.bottom)
+        }
+        let scroller: Element = title
+        while (scroller.parentElement && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY)) {
+          scroller = scroller.parentElement
+        }
+        const contentEnd = scroller.getBoundingClientRect().top + scroller.clientTop - scroller.scrollTop + scroller.scrollHeight
+        return { top: Math.round(top - headerBottom), bottom: Math.round(contentEnd - bottom) }
+      }, sheet)
+    },
+
     async pageScrollWidth() {
       return page.evaluate(() => document.documentElement.scrollWidth)
     },

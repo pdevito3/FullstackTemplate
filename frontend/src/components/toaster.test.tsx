@@ -173,6 +173,50 @@ test('on a phone on its side, the toast at the top does not cover a tall bottom 
   expect(boxOf('Could not save the changes').bottom).toBeLessThanOrEqual(dialog.element().getBoundingClientRect().top)
 })
 
+const tallBottomPanels = {
+  'bottom sheet': (props: PanelProps) => (
+    <ResponsiveDialog {...props}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle>Edit filter</ResponsiveDialogTitle>
+      </ResponsiveDialogHeader>
+      <div className="h-[600px]" />
+    </ResponsiveDialog>
+  ),
+  drawer: (props: PanelProps) => (
+    <Drawer {...props}>
+      <DrawerHeader>
+        <DrawerTitle>Edit filter</DrawerTitle>
+      </DrawerHeader>
+      <div className="h-[600px] shrink-0" />
+    </Drawer>
+  ),
+}
+
+test.each(Object.entries(tallBottomPanels))(
+  'on a phone on its side, a toast of three lines at the top does not cover a tall %s',
+  async (_, panel) => {
+    await page.viewport(667, 375)
+    await render(
+      <>
+        <OpenPanel panel={panel} />
+        <Toaster />
+      </>,
+    )
+    const dialog = page.getByRole('dialog', { name: 'Edit filter' })
+    await expect.element(dialog).toBeVisible()
+
+    Notification.error('Could not save the changes', {
+      description: 'The server did not answer in time. Check the connection, and then try again in a few minutes.',
+    })
+    await expect.element(page.getByText('Could not save the changes')).toBeVisible()
+    await animationsFinished()
+
+    const panelTopWithDragHandle = dialog.element().parentElement!.getBoundingClientRect().top
+    expect(boxOf('Could not save the changes').height).toBeGreaterThan(80)
+    expect(boxOf('Could not save the changes').bottom).toBeLessThanOrEqual(panelTopWithDragHandle)
+  },
+)
+
 test('on a phone on its side, a toast that came while the pointer was on the toasts keeps waiting when a newer toast hides it', async () => {
   await page.viewport(667, 375)
   await render(

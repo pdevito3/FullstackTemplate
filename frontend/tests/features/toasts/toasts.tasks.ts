@@ -36,6 +36,10 @@ export function toastDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    async waitForDevtoolsBadge() {
+      await expect(at.devtoolsBadge).toBeVisible()
+    },
+
     async showToastsByKeyboard(...buttons: ToastButton[]) {
       for (const button of buttons) await at.showToast(button).press('Enter')
       await expect(at.toasts).toHaveCount(buttons.length)
@@ -87,6 +91,15 @@ export function toastDemoPage(page: Page) {
         samples.push({ afterMs: samples[samples.length - 1].afterMs + ms, toasts: await this.shownToasts() })
       }
       return samples
+    },
+
+    async overlapAreaOf(a: Locator, b: Locator) {
+      if (!(await a.isVisible()) || !(await b.isVisible())) return 0
+      const [boxA, boxB] = [await a.boundingBox(), await b.boundingBox()]
+      if (!boxA || !boxB) return 0
+      const width = Math.min(boxA.x + boxA.width, boxB.x + boxB.width) - Math.max(boxA.x, boxB.x)
+      const height = Math.min(boxA.y + boxA.height, boxB.y + boxB.height) - Math.max(boxA.y, boxB.y)
+      return Math.max(0, width) * Math.max(0, height)
     },
 
     async hasFocusRing(element: Locator) {

@@ -16,6 +16,7 @@ A request through the BFF gives one trace with this shape:
 BFF   GET /api/v1/users
 └─ Server   GET api/v{version}/users
    └─ GetUserList.Query                (RequestTracingBehavior)
+      ├─ SQL: users.list.count         (Npgsql span, the count of the paged list)
       └─ SQL: users.list               (Npgsql span, tagged query)
 ```
 
@@ -147,6 +148,8 @@ The Npgsql span then has these properties:
 - `code.function`, `code.file.path`, and `code.line.number` give the C# call site.
 
 Use a stable dotted name in the form `area.operation`. Never put an id or other data in the name. An untagged query keeps the default Npgsql span name.
+
+`PagedList.CreateAsync` runs two queries on the tagged query that it gets: the count and the page. It tags the count query with `TagAsCountQuery`, which adds the `count` suffix to the name. Thus the count of `users.list` is `SQL: users.list.count`, and the page is `SQL: users.list`.
 
 ## Queries with no parent span
 

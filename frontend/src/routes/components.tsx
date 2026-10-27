@@ -672,8 +672,8 @@ function ComponentsPage() {
                     {tableData.map((row) => (
                       <TableRow key={row.id}>
                         <TableCell className="font-medium">{row.name}</TableCell>
-                        <TableCell>{row.email}</TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">{row.email}</TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <Badge variant={row.status === 'Active' ? 'default' : row.status === 'Pending' ? 'secondary' : 'outline'}>
                             {row.status}
                           </Badge>

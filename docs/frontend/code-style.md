@@ -73,6 +73,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 1. Use Tailwind classes. Merge classes with `cn` from `@/lib/utils`.
 2. Make component variants with `cva`. See `components/ui/button.tsx`.
 3. Use the theme tokens, such as `bg-background` and `text-muted-foreground`. Do not use a fixed color, because the dark theme does not change it.
+4. A table cell wraps its text. Give `whitespace-nowrap` to a cell that holds a code, a date, an amount, an email address, or a badge, so that only prose wraps.
 
 ## Files and imports
 

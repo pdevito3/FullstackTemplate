@@ -155,7 +155,7 @@ function PagerButton({ isAvailable, onPress, children }: PagerButtonProps) {
       variant="outline"
       size="sm"
       aria-disabled={!isAvailable || undefined}
-      className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+      className="aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:focus-visible:ring-ring"
       onPress={() => {
         if (isAvailable) onPress()
       }}

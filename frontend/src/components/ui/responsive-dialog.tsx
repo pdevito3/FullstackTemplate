@@ -45,6 +45,32 @@ function ResponsiveDialogClose({
   )
 }
 
+type ScrollPadding = { top: number; bottom: number }
+
+const ScrollPaddingContext = React.createContext<React.Dispatch<React.SetStateAction<ScrollPadding>> | null>(null)
+
+// The header and the footer stick over the content that scrolls. The scroll box gets scroll padding of their heights,
+// so the browser does not scroll a field that gets focus under them.
+function useStickyHeight(side: keyof ScrollPadding) {
+  const setScrollPadding = React.useContext(ScrollPaddingContext)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useLayoutEffect(() => {
+    const element = ref.current
+    if (!element || !setScrollPadding) return
+    const setHeight = (height: number) =>
+      setScrollPadding((padding) => (padding[side] === height ? padding : { ...padding, [side]: height }))
+    const observer = new ResizeObserver(() => setHeight(element.offsetHeight))
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      setHeight(0)
+    }
+  }, [setScrollPadding, side])
+
+  return ref
+}
+
 /**
  * A dialog that is a bottom sheet on mobile and a centered modal on desktop.
  * Put it inside a `ResponsiveDialogTrigger`, or control it with `isOpen`.
@@ -62,6 +88,7 @@ function ResponsiveDialog({
 }) {
   const isMobile = useIsMobile()
   const [descriptionId, setDescriptionId] = React.useState<string>()
+  const [scrollPadding, setScrollPadding] = React.useState<ScrollPadding>({ top: 0, bottom: 0 })
 
   return (
     <ModalOverlayPrimitive
@@ -95,9 +122,14 @@ function ResponsiveDialog({
         >
           {/* Drag handle for mobile */}
           <div className="mx-auto mt-3 h-1 w-12 shrink-0 rounded-full bg-muted md:hidden" />
-          <div className="overflow-y-auto p-4" onFocus={padScrollForStickyParts}>
+          <div
+            className="overflow-y-auto p-4"
+            style={{ scrollPaddingTop: scrollPadding.top, scrollPaddingBottom: scrollPadding.bottom }}
+          >
             <DialogDescriptionContext.Provider value={setDescriptionId}>
-              {children}
+              <ScrollPaddingContext.Provider value={setScrollPadding}>
+                {children}
+              </ScrollPaddingContext.Provider>
             </DialogDescriptionContext.Provider>
           </div>
           {showCloseButton && (
@@ -116,26 +148,17 @@ function ResponsiveDialog({
   )
 }
 
-// The header and the footer stick over the content that scrolls. A field that gets focus scrolls only to the edge of
-// the scroll box, so the box needs scroll padding of their heights. The browser scrolls after the focus event.
-function padScrollForStickyParts(event: React.FocusEvent<HTMLDivElement>) {
-  const box = event.currentTarget
-  const header = box.querySelector<HTMLElement>('[data-slot="responsive-dialog-header"]')
-  const footer = box.querySelector<HTMLElement>('[data-slot="responsive-dialog-footer"]')
-  box.style.scrollPaddingTop = `${header?.offsetHeight ?? 0}px`
-  box.style.scrollPaddingBottom = `${footer?.offsetHeight ?? 0}px`
-}
-
+/** Sticks to the top of the content that scrolls. Put it first in the dialog. */
 function ResponsiveDialogHeader({
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: Omit<React.ComponentProps<"div">, "ref">) {
   return (
     <div
+      ref={useStickyHeight("top")}
       data-slot="responsive-dialog-header"
       className={cn(
-        // Sticks over the content that scrolls, so put it first. The negative top and margin cover the p-4 of that
-        // content. The min height covers the close button.
+        // The negative top and margin cover the p-4 of the content that scrolls. The min height covers the close button.
         "sticky -top-4 z-10 -mt-4 flex flex-col gap-2 bg-background pt-4 text-center md:text-left in-data-close-button:md:min-h-9",
         className
       )}
@@ -144,16 +167,17 @@ function ResponsiveDialogHeader({
   )
 }
 
+/** Sticks to the bottom of the content that scrolls. Put it last in the dialog. */
 function ResponsiveDialogFooter({
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: Omit<React.ComponentProps<"div">, "ref">) {
   return (
     <div
+      ref={useStickyHeight("bottom")}
       data-slot="responsive-dialog-footer"
       className={cn(
-        // Sticks over the content that scrolls, so put it last. The negative bottom and margin cover the p-4 of that
-        // content.
+        // The negative bottom and margin cover the p-4 of the content that scrolls.
         "sticky -bottom-4 z-10 -mb-4 flex flex-col-reverse gap-2 bg-background pt-4 pb-4 sm:flex-row sm:justify-end",
         className
       )}

@@ -131,16 +131,19 @@ for (const [width, height] of [
     render(<FormDialog />)
     await openAnimationsFinished()
 
+    scrollParent(page.getByRole('textbox', { name: 'Field 1', exact: true }).element()).scrollTop = 40
+    const focused: string[] = []
     const hidden: string[] = []
-    page.getByRole('textbox', { name: 'Field 1', exact: true }).element().focus()
-    for (let index = 2; index <= 20; index++) {
-      await userEvent.keyboard('{Tab}')
-      if (isHidden(document.activeElement!)) hidden.push(document.activeElement!.ariaLabel!)
+    async function press(keys: string) {
+      await userEvent.keyboard(keys)
+      const field = document.activeElement!
+      focused.push(field.ariaLabel!)
+      if (isHidden(field)) hidden.push(field.ariaLabel!)
     }
-    for (let index = 19; index >= 1; index--) {
-      await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-      if (isHidden(document.activeElement!)) hidden.push(document.activeElement!.ariaLabel!)
-    }
+    for (let index = 1; index <= 20; index++) await press('{Tab}')
+    for (let index = 19; index >= 1; index--) await press('{Shift>}{Tab}{/Shift}')
+
+    expect(focused[0]).toBe('Field 1')
     expect(hidden).toEqual([])
   })
 

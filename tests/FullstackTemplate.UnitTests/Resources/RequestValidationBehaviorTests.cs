@@ -43,7 +43,7 @@ public class RequestValidationBehaviorTests
     }
 
     [Test]
-    public async Task a_missing_field_of_an_element_of_a_list_gives_the_list_and_the_index()
+    public async Task a_missing_field_of_an_element_of_a_list_gives_the_path_as_the_key_and_the_field_in_the_message()
     {
         // Arrange
         var order = new OrderDto { Number = "ord-1", Lines = [new LineDto { Name = "Bolt" }, new LineDto { Name = null! }] };
@@ -53,7 +53,7 @@ public class RequestValidationBehaviorTests
 
         // Assert
         exception.Errors.ShouldHaveSingleItem().Key.ShouldBe("lines[1].name");
-        exception.Errors["lines[1].name"].ShouldBe(["The lines[1].name field is required."]);
+        exception.Errors["lines[1].name"].ShouldBe(["The name field is required."]);
     }
 
     [Test]

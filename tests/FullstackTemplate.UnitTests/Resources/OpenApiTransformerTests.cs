@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
+using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -162,6 +163,148 @@ public class OpenApiTransformerTests
     private sealed record AddressDto
     {
         public string City { get; init; } = default!;
+    }
+
+    [Test]
+    public async Task limits_transformer_writes_the_max_length_of_the_named_constant()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((LimitedDto dto) => dto);
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(LimitedDto)].Properties.ShouldNotBeNull();
+        properties["name"].MaxLength.ShouldBe(Limits.NameMaxLength);
+    }
+
+    [Test]
+    public async Task limits_transformer_writes_the_maximum_of_the_named_static_field()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((LimitedDto dto) => dto);
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(LimitedDto)].Properties.ShouldNotBeNull();
+        properties["quantity"].Maximum.ShouldBe("99.5");
+    }
+
+    [Test]
+    public async Task limits_transformer_gives_a_uint_the_domain_maximum_in_place_of_the_uint_maximum()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((LimitedDto dto) => dto);
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(LimitedDto)].Properties.ShouldNotBeNull();
+        properties["version"].Minimum.ShouldBe("0");
+        properties["version"].Maximum.ShouldBe("1000");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_max_length_on_a_number()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((MaxLengthOnNumberDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(MaxLengthOnNumberDto)}.quantity has [SchemaMaxLength]");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_maximum_on_a_string()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((MaximumOnStringDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(MaximumOnStringDto)}.name has [SchemaMaximum]");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_member_that_is_not_a_public_static_number_field()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((NonNumericLimitDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(Limits)}.{nameof(Limits.Unit)}");
+    }
+
+    private static async Task<WebApplication> AppWithLimitsTransformerAsync(Delegate handler)
+    {
+        var builder = WebApplication.CreateSlimBuilder();
+        // The Server appsettings.json in the test output sets Kestrel endpoints on 8080 and 8081, and they win over UseUrls
+        builder.Configuration["Kestrel:Endpoints:http:Url"] = "http://127.0.0.1:0";
+        builder.Configuration["Kestrel:Endpoints:grpc:Url"] = "http://127.0.0.1:0";
+        // The Server removes the string type from numbers and gives a uint its range first, as SwaggerExtension orders
+        // the transformers
+        builder.Services.AddOpenApi(options =>
+        {
+            options.AddSchemaTransformer<RemoveStringFromNumbersTransformer>();
+            options.AddSchemaTransformer<UnsignedIntegerRangeTransformer>();
+            options.AddSchemaTransformer<SchemaLimitsTransformer>();
+        });
+        var app = builder.Build();
+        app.MapPost("/limited", handler);
+        // The app adds its endpoints to the routing data when it starts
+        await app.StartAsync();
+        return app;
+    }
+
+    private static class Limits
+    {
+        public const int NameMaxLength = 40;
+        public static readonly decimal QuantityMax = 99.5m;
+        public const int VersionMax = 1000;
+        public const string Unit = "kg";
+    }
+
+    private sealed record LimitedDto
+    {
+        [SchemaMaxLength(typeof(Limits), nameof(Limits.NameMaxLength))]
+        public string Name { get; init; } = default!;
+        [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMax))]
+        public decimal Quantity { get; init; }
+        [SchemaMaximum(typeof(Limits), nameof(Limits.VersionMax))]
+        public uint Version { get; init; }
+    }
+
+    private sealed record MaxLengthOnNumberDto
+    {
+        [SchemaMaxLength(typeof(Limits), nameof(Limits.NameMaxLength))]
+        public int Quantity { get; init; }
+    }
+
+    private sealed record MaximumOnStringDto
+    {
+        [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMax))]
+        public string Name { get; init; } = default!;
+    }
+
+    private sealed record NonNumericLimitDto
+    {
+        [SchemaMaxLength(typeof(Limits), nameof(Limits.Unit))]
+        public string Name { get; init; } = default!;
     }
 
     private static OpenApiOperationTransformerContext OperationContext(params object[] endpointMetadata) => new()

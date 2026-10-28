@@ -95,6 +95,7 @@ public static class SwaggerExtension
             options.AddSchemaTransformer<RemoveStringFromNumbersTransformer>();
             options.AddSchemaTransformer<UnsignedIntegerRangeTransformer>();
             options.AddSchemaTransformer<FixedNamesTransformer>();
+            options.AddSchemaTransformer<SchemaLimitsTransformer>();
             options.AddOperationTransformer<PaginationHeaderTransformer>();
             options.AddOperationTransformer<JsonContentTypeTransformer>();
             options.AddOperationTransformer<UnauthorizedResponseTransformer>();

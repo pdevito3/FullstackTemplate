@@ -76,6 +76,27 @@ internal sealed class TrackedAggregates
             : null;
     }
 
+    /// <summary>
+    /// <see cref="AuditSubject.Of{TEntity}"/> names the entity as the root. A tree node has a tenant and can have an
+    /// owner, so this checks each tracked root of an action.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">An action names a tracked entity that has an owner as its root.</exception>
+    public void GuardRootsOf(IEnumerable<AuditAction> actions)
+    {
+        foreach (var action in actions)
+        {
+            var subject = action.Subject;
+            var root = _entries.Values.FirstOrDefault(e =>
+                e.Entity.Id == subject.RootId && e.Metadata.ClrType.Name == subject.RootType);
+            if (root is null || _model.OwnerKeyOf(root.Metadata) is not { } ownerKey
+                             || root.Property(ownerKey.Properties.Single().Name).CurrentValue is null)
+                continue;
+
+            throw new InvalidOperationException(
+                $"The action {action.GetType().Name} names {subject.RootType} '{subject.RootId}' as its aggregate root, but the {subject.RootType} has an owner. Make the subject from the root at the end of its owners, such as the top node of a tree.");
+        }
+    }
+
     private EntityEntry<BaseEntity> TrackedOwner(EntityEntry<BaseEntity> child, IForeignKey ownerKey, object? ownerId)
     {
         var ownerType = ownerKey.PrincipalEntityType;

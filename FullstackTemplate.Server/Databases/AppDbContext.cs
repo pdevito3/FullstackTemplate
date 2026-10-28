@@ -424,6 +424,7 @@ public class AppDbContext(
 
         var auditModel = AuditModel.Of(Model);
         var aggregates = TrackedAggregates.Index(ChangeTracker, auditModel);
+        aggregates.GuardRootsOf(_recordedActions);
         TouchOwnersOfChangedChildren(aggregates);
 
         var now = timeProvider.GetUtcNow();

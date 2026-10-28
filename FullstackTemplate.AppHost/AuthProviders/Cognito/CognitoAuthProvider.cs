@@ -30,7 +30,7 @@ public sealed class CognitoAuthProvider : IAuthProvider
 
         // The compat image has the AWS CLI that the seed script uses
         var floci = builder.AddContainer("cognito", "floci/floci", "2.3.0-compat")
-            .WithHttpEndpoint(targetPort: 4566, name: "http");
+            .WithHttpEndpoint(port: 24770, targetPort: 4566, name: "http");
         var flociEndpoint = floci.GetEndpoint("http");
 
         floci
@@ -40,7 +40,7 @@ public sealed class CognitoAuthProvider : IAuthProvider
             {
                 context.EnvironmentVariables["FLOCI_BASE_URL"] = flociEndpoint.Url;
                 // Swagger UI on the server calls the token endpoint from the browser
-                context.EnvironmentVariables["FLOCI_SECURITY_EXTRA_CORS_ALLOWED_ORIGINS"] = clientUrls.Server.Url;
+                context.EnvironmentVariables["FLOCI_SECURITY_EXTRA_CORS_ALLOWED_ORIGINS"] = $"{clientUrls.Server.Url},{clientUrls.ServerHttp.Url}";
             })
             .WithSeedFiles(this, "/etc/floci/init/ready.d")
             .WithClientUrls(clientUrls)

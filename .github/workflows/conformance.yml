@@ -102,11 +102,9 @@ jobs:
       - name: Start the stack
         run: dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
 
-      - name: Wait for healthy resources
-        run: |
-          for resource in server webfrontend; do
-            dotnet aspire wait "$resource" --status healthy --timeout 900 --non-interactive --apphost FullstackTemplate.AppHost
-          done
+      # The webfrontend waits for the BFF, so it starts only after the driver starts the BFF. The plans do not use it.
+      - name: Wait for a healthy server
+        run: dotnet aspire wait server --status healthy --timeout 900 --non-interactive --apphost FullstackTemplate.AppHost
 
       # Writes the plan counts to the job summary. Fails on each FAILED result, on each WARNING or REVIEW result
       # that frontend/conformance/accepted-results.json does not list, and on each module that does not finish,

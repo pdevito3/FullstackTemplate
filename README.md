@@ -84,6 +84,40 @@ This starts:
 - **React Dev Server** - Vite with hot reload
 - **Auth Provider** - the provider that the `AuthProvider` setting selects
 
+The UI starts after the BFF and the API are healthy, and the BFF starts after the auth provider is healthy. Until then, the dashboard shows the UI as `Waiting`.
+
+### Ports
+
+A normal run uses the same ports at each start. All of them are in the block 24700 to 24799, which no common tool uses as a default. Each group of ten ports has one part of the stack:
+
+| Port | Resource | Endpoint |
+|---|---|---|
+| 24700 | Aspire dashboard | https |
+| 24701 | Aspire dashboard | http |
+| 24702 | Aspire dashboard | OTLP |
+| 24703 | Aspire dashboard | resource service |
+| 24704 | Aspire dashboard | MCP |
+| 24705 | `tests` (the Labcoat test UI) | http |
+| 24710 | `webfrontend` (the app URL) | http |
+| 24711 | `bff` | https |
+| 24712 | `bff` | http |
+| 24713 | `server` | https |
+| 24714 | `server` | http |
+| 24715 | `server` | grpc |
+| 24720 | `postgres` | tcp |
+| 24730 | `keycloak` | http |
+| 24731 | `keycloak-postgres` | tcp |
+| 24740 | `zerofactor` | http |
+| 24750 | `fusionauth` | http |
+| 24751 | `fusionauth-postgres` | tcp |
+| 24760 | `authentik` | http |
+| 24761 | `authentik-postgres` | tcp |
+| 24770 | `cognito` | http |
+
+The dashboard ports are in `MyProject.AppHost/Properties/launchSettings.json`. The server ports are in `Kestrel:Endpoints` of `MyProject.Server/appsettings.Development.json`, and the BFF ports are in `MyProject.Bff/Properties/launchSettings.json`. The other ports are in `MyProject.AppHost/AppHost.cs` and in the class of each auth provider. A new resource takes a port in the block. A new auth provider takes the next free group of ten. `PortTableTests` fails when an endpoint of the AppHost has no row in this table or has a different port.
+
+The provider seeds get the app URLs from the AppHost, so the redirect URIs agree with these ports. Keycloak and FusionAuth seed their database only when it is empty. If a provider database is from a run with other ports, delete its volume once (`docker volume ls`, then `docker volume rm <volume>`).
+
 ### Run several stacks at the same time
 
 To run a stack in each git worktree, start each one in isolated mode:
@@ -93,7 +127,7 @@ dotnet tool restore   # once: installs the pinned Aspire CLI as `dotnet aspire`
 dotnet aspire run --isolated --apphost MyProject.AppHost
 ```
 
-An isolated run gives each endpoint a random port and uses a copy of the user secrets. It also starts Postgres with no data volume, so each run gets an empty database. A normal run keeps port 5173 for the frontend and keeps a separate data volume for each checkout path.
+An isolated run gives each endpoint a random port and uses a copy of the user secrets. It also starts Postgres with no data volume, so each run gets an empty database. A normal run uses the fixed ports of the table above and keeps a separate data volume for each checkout path.
 
 ## Auth Provider
 

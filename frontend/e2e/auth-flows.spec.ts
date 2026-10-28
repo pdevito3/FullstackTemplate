@@ -330,7 +330,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
 
 test.describe(`Swagger - ${currentIdp.name}`, () => {
   // Get server URL from environment or use default
-  const serverUrl = process.env.SERVER_URL || 'https://localhost:7554'
+  const serverUrl = process.env.SERVER_URL || 'https://localhost:24713'
 
   test('should load Swagger UI with OAuth configured and display Weather endpoints', async ({
     page,
@@ -612,7 +612,7 @@ test.describe(`Refresh token rotation - ${currentIdp.name}`, () => {
     const clientId = requiredEnv('CLIENT_ID')
     const authorization = `Basic ${Buffer.from(`${encodeURIComponent(clientId)}:${encodeURIComponent(requiredEnv('CLIENT_SECRET'))}`).toString('base64')}`
     // A redirect URI that each seed registers
-    const redirectUri = new URL('/signin-oidc', process.env.BASE_URL ?? 'http://localhost:5173').toString()
+    const redirectUri = new URL('/signin-oidc', process.env.BASE_URL ?? 'http://localhost:24710').toString()
     const codeVerifier = base64Url(randomBytes(32))
     const state = base64Url(randomBytes(16))
 

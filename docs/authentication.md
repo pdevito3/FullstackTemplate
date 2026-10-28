@@ -29,11 +29,11 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 8. The React app calls `/bff/user` with the `X-CSRF: 1` header to get the claims. The claims include `bff:logout_url`.
 9. API calls go through the BFF at `/api/v1/*` with the `X-CSRF: 1` header. The BFF adds the access token of the BFF session.
 
-In a local run, the Vite dev server serves the SPA on its own origin, and the provider sends the browser back to the BFF origin. Thus, at the end of a login or a logout, the BFF sends the browser to `returnUrl` on the Vite origin, for example `http://localhost:5173/weather`. A published BFF serves the SPA itself, and it sends the browser to the local `returnUrl`.
+In a local run, the Vite dev server serves the SPA on its own origin, and the provider sends the browser back to the BFF origin. Thus, at the end of a login or a logout, the BFF sends the browser to `returnUrl` on the Vite origin, for example `http://localhost:24710/weather`. A published BFF serves the SPA itself, and it sends the browser to the local `returnUrl`.
 
 The AppHost gives `services:webfrontend` to the BFF only in a local run. The BFF uses this value to find the Vite origin. A published BFF does not get the value, so it serves the SPA from `wwwroot`.
 
-In a local run, the BFF also sends each GET or HEAD that no endpoint matches to the same path and query on the Vite origin. For example, a deep link to `https://<bff>/about?tab=team` goes to `http://localhost:5173/about?tab=team`. An unknown path that starts with `/api`, `/bff`, `/signin-oidc`, or `/signout-callback-oidc` keeps its 404, because the Vite proxy sends these paths back to the BFF. The BFF matches them as a raw prefix, as Vite does, so `/api-docs` and `/bffx` also keep their 404. An unknown path under `/health` or `/alive` also keeps its 404, because the health probes stay on the BFF. A path that is not a local URL, for example `//host`, also keeps its 404. A published BFF serves `index.html` for a GET or HEAD of an unknown path. It keeps the same 404s as a local run for the paths that start with `/api`, `/bff`, or an OIDC callback path, and for the paths under `/health` or `/alive`. A path with a file extension, such as a missing bundle, also keeps its 404. Thus a client that calls an unknown BFF path gets a 404, not HTML. A wrong method on a known endpoint, for example `POST /bff/user`, gets a 405 with an `Allow` header, in a local run and when published.
+In a local run, the BFF also sends each GET or HEAD that no endpoint matches to the same path and query on the Vite origin. For example, a deep link to `https://<bff>/about?tab=team` goes to `http://localhost:24710/about?tab=team`. An unknown path that starts with `/api`, `/bff`, `/signin-oidc`, or `/signout-callback-oidc` keeps its 404, because the Vite proxy sends these paths back to the BFF. The BFF matches them as a raw prefix, as Vite does, so `/api-docs` and `/bffx` also keep their 404. An unknown path under `/health` or `/alive` also keeps its 404, because the health probes stay on the BFF. A path that is not a local URL, for example `//host`, also keeps its 404. A published BFF serves `index.html` for a GET or HEAD of an unknown path. It keeps the same 404s as a local run for the paths that start with `/api`, `/bff`, or an OIDC callback path, and for the paths under `/health` or `/alive`. A path with a file extension, such as a missing bundle, also keeps its 404. Thus a client that calls an unknown BFF path gets a 404, not HTML. A wrong method on a known endpoint, for example `POST /bff/user`, gets a 405 with an `Allow` header, in a local run and when published.
 
 The BFF has no CORS policy, and it allows no cross-origin request. The SPA calls the BFF only from the same origin. In a local run, the Vite proxy sends `/api`, `/bff`, and the OIDC callbacks to the BFF. A published BFF serves the SPA itself.
 
@@ -203,10 +203,10 @@ The `AuthProvider` setting in `FullstackTemplate.AppHost/appsettings.json` selec
 - To use another provider for one run, you can also give the setting as an AppHost argument after `--`:
 
   ```bash
-  dotnet aspire run -- --AuthProvider ZeroFactor
+  dotnet aspire run -- --AuthProvider Keycloak
   ```
 
-The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is for local development only.
+The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is the default provider. It is for local development only, so select another provider before you publish or deploy.
 
 ### Change the provider of a database that has users
 

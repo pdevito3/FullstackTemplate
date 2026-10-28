@@ -60,7 +60,7 @@ The BFF has no package with a license cost. It keeps full parity with the curren
 - The code goes in folders in `FullstackTemplate.Bff`, one folder for each concern. There is no separate library.
 - The cutover replaces Duende in one change. There is no side-by-side flag.
 - DPoP is phase 2 (section 9). PAR is in phase 1.
-- `DuendeDemo` stays the default auth provider of the template.
+- `DuendeDemo` stays the default auth provider of the template. (Note, 2026-10-29: PR 311 made `ZeroFactor` the default.)
 
 ### Out of scope
 

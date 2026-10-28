@@ -15,7 +15,7 @@ An isolated run (`--isolated`) gives the stack its own copy of everything that c
 
 | Item | Normal run | Isolated run |
 |---|---|---|
-| Ports of the dashboard, the server, the BFF, Vite, and the auth containers | Fixed (Vite is `5173`) | Random |
+| Ports of the dashboard, the server, the BFF, Vite, and the auth containers | Fixed. See the port table in `README.md`. | Random |
 | User secrets | The AppHost secrets | A copy, deleted at the end of the run |
 | Postgres data (app and auth provider) | A volume for each checkout path | No volume. The data is empty at each start. |
 

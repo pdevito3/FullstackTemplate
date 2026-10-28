@@ -12,6 +12,7 @@ using Shouldly;
 /// Runs a real Kestrel host with the Kestrel:Endpoints of the appsettings.json of the Server. Only the URLs change
 /// to port 0, so that Kestrel picks free ports. The test reads the bound port of each named endpoint after the start.
 /// </summary>
+[NotInParallel(TestConstraints.HostEnvironment)]
 public class GrpcPortTests
 {
     [Test]

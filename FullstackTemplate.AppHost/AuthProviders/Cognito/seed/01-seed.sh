@@ -30,6 +30,7 @@ aws cognito-idp create-user-pool-client \
     "$APP_FRONTEND_URL/signin-oidc" \
     "$APP_BFF_URL/signin-oidc" \
     "$APP_SERVER_URL/swagger/oauth2-redirect.html" \
+    "$APP_SERVER_HTTP_URL/swagger/oauth2-redirect.html" \
   --logout-urls \
     "$APP_FRONTEND_URL" \
     "$APP_FRONTEND_URL/signout-callback-oidc" \

@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -147,7 +148,7 @@ function Index() {
                 >
                   <HugeiconsIcon
                     icon={Refresh01Icon}
-                    className={`size-4 ${isCurrentlyFetching ? 'animate-spin' : ''}`}
+                    className={cn('size-4', isCurrentlyFetching && 'animate-spin')}
                   />
                   Refresh
                 </Button>
@@ -157,7 +158,7 @@ function Index() {
 
             {/* Status indicator */}
             {isSecureData && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
+              <div className="mt-4 flex items-center gap-2 text-sm text-chart-2">
                 <HugeiconsIcon icon={SquareLock02Icon} className="w-4 h-4" />
                 Showing authenticated data
               </div>
@@ -175,47 +176,75 @@ function Index() {
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && displayData.length === 0 && (
-          <div role="status" aria-label="Loading forecast" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardContent>
-                  <Skeleton className="h-4 w-24 mb-2" />
-                  <Skeleton className="h-6 w-32 mb-4" />
-                  <Skeleton className="h-10 w-20" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Weather Grid */}
-        {displayData.length > 0 && (
-          <div role="list" aria-label="Forecast" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayData.map((forecast, index) => (
-              <WeatherCard
-                key={index}
-                forecast={forecast}
-                useCelsius={useCelsius}
-                isSecure={isSecureData}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && !currentError && displayData.length === 0 && (
-          <div className="text-center py-12">
-            <HugeiconsIcon icon={CloudIcon} className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No weather data available</p>
-            <Button variant="outline" className="mt-4" onPress={handleRefresh}>
-              Try Again
-            </Button>
-          </div>
-        )}
+        <ForecastDays
+          days={displayData}
+          isLoading={isLoading}
+          hasError={!!currentError}
+          useCelsius={useCelsius}
+          isSecure={isSecureData}
+          formatDate={formatDate}
+          onRetry={handleRefresh}
+        />
       </div>
+    </div>
+  )
+}
+
+interface ForecastDaysProps {
+  days: (WeatherForecast | SecureWeatherForecast)[]
+  isLoading: boolean
+  hasError: boolean
+  useCelsius: boolean
+  isSecure: boolean
+  formatDate: (date: string) => string
+  onRetry: () => void
+}
+
+function ForecastDays({ days, isLoading, hasError, useCelsius, isSecure, formatDate, onRetry }: ForecastDaysProps) {
+  if (isLoading) {
+    return (
+      <div role="status" aria-label="Loading forecast" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i}>
+            <CardContent>
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-6 w-32 mb-4" />
+              <Skeleton className="h-10 w-20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (days.length > 0) {
+    return (
+      <div role="list" aria-label="Forecast" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {days.map((forecast) => (
+          <WeatherCard
+            key={forecast.date}
+            forecast={forecast}
+            useCelsius={useCelsius}
+            isSecure={isSecure}
+            formatDate={formatDate}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // The error alert above the days already says why there is no forecast.
+  if (hasError) {
+    return null
+  }
+
+  return (
+    <div className="text-center py-12">
+      <HugeiconsIcon icon={CloudIcon} className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+      <p className="text-muted-foreground">No weather data available</p>
+      <Button variant="outline" className="mt-4" onPress={onRetry}>
+        Try Again
+      </Button>
     </div>
   )
 }
@@ -243,7 +272,7 @@ const SUMMARY_ICONS: Record<string, typeof CloudIcon> = {
 
 function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCardProps) {
   return (
-    <Card role="listitem" aria-label={formatDate(forecast.date)} className={`transition-shadow hover:shadow-md ${isSecure ? 'border-green-500/30' : ''}`}>
+    <Card role="listitem" aria-label={formatDate(forecast.date)} className={cn('transition-shadow hover:shadow-md', isSecure && 'border-chart-2/30')}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
@@ -257,7 +286,7 @@ function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCard
       </CardHeader>
       <CardContent>
         {'requestedBy' in forecast && (
-          <Badge variant="secondary" className="mb-3 text-green-600">
+          <Badge variant="secondary" className="mb-3 text-chart-2">
             <HugeiconsIcon icon={SquareLock02Icon} className="w-3 h-3 mr-1" />
             {String(forecast.requestedBy)}
           </Badge>

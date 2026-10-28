@@ -102,4 +102,36 @@ public class PauseAtQueryTests : TestBase
         await underTest;
         await rival;
     }
+
+    [Test]
+    public async Task held_requests_leave_the_pooled_connections_to_the_rivals()
+    {
+        // Arrange
+        var pauses = Enumerable.Range(0, PostgresTestDatabase.MaxPoolSize)
+            .Select(_ => PauseAtQuery.Before("pause_test.tagged"))
+            .ToList();
+        var providers = pauses.Select(pause => pause.BuildServices()).ToList();
+        var reads = providers
+            .Select(services => new TestingServiceScope(services).GetService<AppDbContext>()
+                .Tenants.TagWith("pause_test.tagged").IgnoreQueryFilters().CountAsync())
+            .ToList();
+        try
+        {
+            await Task.WhenAll(pauses.Select(pause => pause.ReachedAsync()));
+
+            // Act
+            var rival = await new TestingServiceScope().ExecuteDbContextAsync(db =>
+                db.Tenants.IgnoreQueryFilters().CountAsync()).WaitAsync(TimeSpan.FromSeconds(10));
+
+            // Assert
+            rival.ShouldBeGreaterThan(0);
+        }
+        finally
+        {
+            pauses.ForEach(pause => pause.Release());
+            await Task.WhenAll(reads);
+            foreach (var services in providers)
+                await services.DisposeAsync();
+        }
+    }
 }

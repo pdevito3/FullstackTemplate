@@ -82,6 +82,10 @@ public sealed class TestFixture : IAsyncDisposable
         await command.ExecuteNonQueryAsync();
     }
 
+    /// <summary>The connection string of the test database, with no connection pool.</summary>
+    public static string UnpooledConnectionString
+        => new NpgsqlConnectionStringBuilder(_connectionString) { Pooling = false }.ConnectionString;
+
     public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices, string? connectionString = null)
     {
         var services = AddServices(connectionString);

@@ -10,7 +10,7 @@ using Shouldly;
 /// An <see cref="IRunsAgainWhenRaced"/> request has no <c>Version</c>. With a version, a lost race is a stale version
 /// on each run, so the behavior runs the command <c>MaxRuns</c> times, and the caller gets a concurrent change, not the
 /// stale version that tells it to load the record again. The rule reads the request and each DTO in it, at any depth.
-/// A DTO is a class of the assembly of the request, or a list of these classes.
+/// A DTO is a class or a struct of the assembly of the request, or a list of these types.
 /// </summary>
 public class RunAgainRequestTests
 {
@@ -23,19 +23,21 @@ public class RunAgainRequestTests
     }
 
     [Test]
-    public void rule_finds_a_version_on_the_request_in_a_dto_and_in_a_list_of_dtos()
+    public void rule_finds_a_version_on_the_request_in_a_dto_in_a_list_of_dtos_and_on_a_struct()
     {
         VersionsInRunAgainRequests(typeof(FixtureMarker).Assembly).ShouldBe(
         [
             "FullstackTemplate.ArchitectureFixtures.Core.RunAgainCommandWithVersion.Version",
             "FullstackTemplate.ArchitectureFixtures.Core.RunAgainCommandWithVersionInDto.Body.Version",
             "FullstackTemplate.ArchitectureFixtures.Core.RunAgainCommandWithVersionInDtoList.Lines.Version",
+            "FullstackTemplate.ArchitectureFixtures.Core.RunAgainStructCommandWithVersion.Version",
+            "FullstackTemplate.ArchitectureFixtures.Core.RunAgainStructCommandWithVersionInDto.Body.Version",
         ]);
     }
 
     private static string[] VersionsInRunAgainRequests(Assembly assembly)
         => assembly.GetTypes()
-            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IRunsAgainWhenRaced).IsAssignableFrom(type))
+            .Where(type => (type.IsValueType || type is { IsClass: true, IsAbstract: false }) && typeof(IRunsAgainWhenRaced).IsAssignableFrom(type))
             .SelectMany(type => VersionPaths(type, type.FullName!, assembly, []))
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -55,7 +57,7 @@ public class RunAgainRequestTests
             }
 
             var dto = ElementOf(property.PropertyType) ?? property.PropertyType;
-            if (dto.IsClass && dto != typeof(string) && dto.Assembly == owner)
+            if ((dto.IsClass || dto.IsValueType) && dto != typeof(string) && dto.Assembly == owner)
                 foreach (var nested in VersionPaths(dto, propertyPath, owner, visited))
                     yield return nested;
         }

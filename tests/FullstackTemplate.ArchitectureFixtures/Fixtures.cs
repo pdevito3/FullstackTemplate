@@ -129,12 +129,42 @@ namespace FullstackTemplate.ArchitectureFixtures.Core
         }
     }
 
+    // Not rule 4: a struct command that its own code does not create
+    public readonly record struct RunAgainStructCommand(int Value) : IRequest<int>, IRunsAgainWhenRaced;
+
+    // Rule 4: core builds a struct command in place, with call .ctor
+    public static class CoreWithRunAgainStructInPlace
+    {
+        public static int Create()
+        {
+            var command = new RunAgainStructCommand(1);
+            return command.Value;
+        }
+    }
+
+    // Rule 4: core builds a struct command with initobj
+    public static class CoreWithRunAgainStructOfDefault
+    {
+        public static int Create()
+        {
+            RunAgainStructCommand command = default;
+            return command.Value;
+        }
+    }
+
     // RunAgainRequestTests: a version on the command, in a DTO of the command, and in a list of DTOs
     public sealed record RunAgainCommandWithVersion(string Id, uint Version) : IRunsAgainWhenRaced;
 
     public sealed record RunAgainCommandWithVersionInDto(string Id, VersionedBody Body) : IRunsAgainWhenRaced;
 
     public sealed record RunAgainCommandWithVersionInDtoList(IReadOnlyList<VersionedBody> Lines) : IRunsAgainWhenRaced;
+
+    public readonly record struct RunAgainStructCommandWithVersion(string Id, uint Version) : IRunsAgainWhenRaced;
+
+    public readonly record struct RunAgainStructCommandWithVersionInDto(string Id, VersionedStructBody Body)
+        : IRunsAgainWhenRaced;
+
+    public readonly record struct VersionedStructBody(string Name, uint Version);
 
     public sealed class VersionedBody
     {

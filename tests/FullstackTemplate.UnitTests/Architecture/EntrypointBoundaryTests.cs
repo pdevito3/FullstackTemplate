@@ -130,6 +130,8 @@ public class EntrypointBoundaryTests
         [
             "FullstackTemplate.ArchitectureFixtures.Core.CoreWithAsyncRunAgainCommand",
             "FullstackTemplate.ArchitectureFixtures.Core.CoreWithRunAgainCommand",
+            "FullstackTemplate.ArchitectureFixtures.Core.CoreWithRunAgainStructInPlace",
+            "FullstackTemplate.ArchitectureFixtures.Core.CoreWithRunAgainStructOfDefault",
             "FullstackTemplate.ArchitectureFixtures.Core.RunAgainCommandWithFactory",
         ]);
     }

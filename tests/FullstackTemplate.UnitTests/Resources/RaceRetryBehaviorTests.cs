@@ -10,6 +10,7 @@ using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Shouldly;
 
@@ -54,7 +55,7 @@ public sealed class RaceRetryBehaviorTests : IDisposable
         };
 
         // Act
-        var result = await new RaceRetryBehavior<RacedCommand, string>(dbContext)
+        var result = await new RaceRetryBehavior<RacedCommand, string>(dbContext, TimeProvider.System)
             .Handle(new RacedCommand(), handler, CancellationToken.None);
 
         // Assert
@@ -69,7 +70,9 @@ public sealed class RaceRetryBehaviorTests : IDisposable
     public async Task command_that_loses_each_run_is_a_concurrent_change_after_the_last_run()
     {
         // Arrange
+        using var span = _testSource.StartActivity("request").ShouldNotBeNull();
         using var dbContext = CreateContext();
+        var clock = new FakeTimeProvider();
         var runs = 0;
         RequestHandlerDelegate<string> handler = _ =>
         {
@@ -78,13 +81,21 @@ public sealed class RaceRetryBehaviorTests : IDisposable
         };
 
         // Act
-        var act = () => new RaceRetryBehavior<RacedCommand, string>(dbContext)
+        var handle = new RaceRetryBehavior<RacedCommand, string>(dbContext, clock)
             .Handle(new RacedCommand(), handler, CancellationToken.None);
+        while (!handle.IsCompleted)
+        {
+            clock.Advance(TimeSpan.FromMilliseconds(RaceRetryBehavior<RacedCommand, string>.MaxWaitMs));
+            await Task.Yield();
+        }
 
         // Assert
-        var exception = await act.ShouldThrowAsync<ConcurrentChangeException>();
+        const int maxRuns = RaceRetryBehavior<RacedCommand, string>.MaxRuns;
+        var exception = await Should.ThrowAsync<ConcurrentChangeException>(handle);
         exception.InnerException.ShouldBeOfType<StaleVersionException>();
-        runs.ShouldBe(RaceRetryBehavior<RacedCommand, string>.MaxRuns);
+        runs.ShouldBe(maxRuns);
+        span.Events.Select(e => e.Name).ShouldBe([.. Enumerable.Repeat("race.lost", maxRuns - 1), "race.exhausted"]);
+        span.Events.Last().Tags.ShouldContain(new KeyValuePair<string, object?>("app.race.run", maxRuns));
     }
 
     [Test]
@@ -100,7 +111,7 @@ public sealed class RaceRetryBehaviorTests : IDisposable
         };
 
         // Act
-        var act = () => new RaceRetryBehavior<RacedCommand, string>(dbContext)
+        var act = () => new RaceRetryBehavior<RacedCommand, string>(dbContext, TimeProvider.System)
             .Handle(new RacedCommand(), handler, CancellationToken.None);
 
         // Assert

@@ -114,9 +114,7 @@ public sealed partial class BoundaryScanner
             .Where(type => type.Methods
                 .Where(method => method.HasBody && method.Name != "<Clone>$")
                 .SelectMany(method => method.Body.Instructions)
-                .Any(instruction => instruction.OpCode == OpCodes.Newobj
-                    && instruction.Operand is MethodReference constructor
-                    && IsRunAgainRequest(constructor.DeclaringType)))
+                .Any(CreatesARunAgainRequest))
             .Select(type => Outermost(type).FullName)
             .Distinct()
             .Order(StringComparer.Ordinal)
@@ -176,7 +174,18 @@ public sealed partial class BoundaryScanner
             || type.NestedTypes.Any(HasGeneratedCode);
     }
 
-    private static bool IsRunAgainRequest(TypeReference type)
+    // A struct is also built in place, with call .ctor or initobj. A class calls the .ctor of its base with call.
+    private static bool CreatesARunAgainRequest(Instruction instruction) => instruction switch
+    {
+        { OpCode.Code: Code.Newobj, Operand: MethodReference constructor }
+            => RunAgainRequest(constructor.DeclaringType) is not null,
+        { OpCode.Code: Code.Call, Operand: MethodReference { Name: ".ctor" } constructor }
+            => RunAgainRequest(constructor.DeclaringType) is { IsValueType: true },
+        { OpCode.Code: Code.Initobj, Operand: TypeReference type } => RunAgainRequest(type) is not null,
+        _ => false,
+    };
+
+    private static Type? RunAgainRequest(TypeReference type)
     {
         var assemblyName = type.Scope switch
         {
@@ -187,7 +196,7 @@ public sealed partial class BoundaryScanner
         var reflected = assemblyName is null
             ? null
             : Type.GetType($"{type.GetElementType().FullName.Replace('/', '+')}, {assemblyName}");
-        return reflected is not null && typeof(IRunsAgainWhenRaced).IsAssignableFrom(reflected);
+        return reflected is not null && typeof(IRunsAgainWhenRaced).IsAssignableFrom(reflected) ? reflected : null;
     }
 
     private bool IsSharedPlumbing(TypeDefinition outer)

@@ -11,13 +11,13 @@ using MediatR;
 /// <see cref="AppDbContext.DiscardLostRace"/>. The caller, the validation, and the request span stay those of the
 /// first run. After <see cref="MaxRuns"/> lost runs, it throws a <see cref="ConcurrentChangeException"/>.
 /// </summary>
-public sealed class RaceRetryBehavior<TRequest, TResponse>(AppDbContext dbContext)
+public sealed class RaceRetryBehavior<TRequest, TResponse>(AppDbContext dbContext, TimeProvider timeProvider)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRunsAgainWhenRaced
 {
     internal const int MaxRuns = 20;
+    internal const int MaxWaitMs = 250;
     private const int FirstMaxWaitMs = 10;
-    private const int MaxWaitMs = 250;
 
     public async Task<TResponse> Handle(
         TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
@@ -32,10 +32,11 @@ public sealed class RaceRetryBehavior<TRequest, TResponse>(AppDbContext dbContex
             {
                 Telemetry.AddEvent([("app.race.run", run)], "race.lost");
                 dbContext.DiscardLostRace();
-                await Task.Delay(JitteredWaitAfter(run), cancellationToken);
+                await Task.Delay(JitteredWaitAfter(run), timeProvider, cancellationToken);
             }
             catch (StaleVersionException exception)
             {
+                Telemetry.AddEvent([("app.race.run", run)], "race.exhausted");
                 throw new ConcurrentChangeException(exception);
             }
         }

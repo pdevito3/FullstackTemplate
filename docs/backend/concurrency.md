@@ -29,7 +29,7 @@ public sealed record Command(string Id, [property: RequiredField] string Permiss
     : IRequest<UserDto>, IRunsAgainWhenRaced;
 ```
 
-`RaceRetryBehavior` catches the `StaleVersionException` of a marked command. It calls `AppDbContext.DiscardLostRace`, which clears the tracked entities and the recorded audit actions. Then it waits for a short random time and runs the handler again in the same DI scope. The lost save rolled back, so the database has none of its changes. The caller, the validation, and the request span stay those of the first run. Each lost run that runs again adds a `race.lost` event with `app.race.run` to the request span. After 20 lost runs, the behavior throws a `ConcurrentChangeException`.
+`RaceRetryBehavior` catches the `StaleVersionException` of a marked command. It calls `AppDbContext.DiscardLostRace`, which clears the tracked entities and the recorded audit actions. Then it waits for a short random time and runs the handler again in the same DI scope. The lost save rolled back, so the database has none of its changes. The caller, the validation, and the request span stay those of the first run. Each lost run that runs again adds a `race.lost` event with `app.race.run` to the request span. After 20 lost runs, the behavior adds a `race.exhausted` event with `app.race.run` and throws a `ConcurrentChangeException`.
 
 Obey these rules for a marked command. A test enforces the first two.
 
@@ -38,6 +38,12 @@ Obey these rules for a marked command. A test enforces the first two.
 3. Do the work that leaves the process, such as a log of the change, a metric, or a call to another service, after the save. The handler runs again from the start, so the work before the save runs one time for each run.
 4. The handler saves one time. A second run after a lost second save would apply the first save again.
 5. The handler gives the same end state when it runs again after its own commit, such as an add of a permission that is already there. In the window of [Lost reply of a commit](#lost-reply-of-a-commit), a save that committed can fail its `xmin` check, and the command runs again. A delete then gets 404 for a delete that worked. Do not mark a command that adds to a value, such as an increment.
+
+The tests do not see these breaks of the rules. Check them in the review:
+
+- A `Version` property with a different name, such as `RowVersion`. `RunAgainRequestTests` looks only for the name `Version`.
+- A copy of a marked record with `with` in core code. `EntrypointBoundaryTests` does not count the copy method of a record.
+- A background job in the shared plumbing or the composition root that sends a marked command. `EntrypointBoundaryTests` reads only the core types. `DiscardLostRace` then clears the tracked changes of the job.
 
 Each marked command has a race test (see [Race tests](../backend.md#race-tests)). The test pauses the command after its load, commits a rival write to the same aggregate, and checks that both changes saved.
 

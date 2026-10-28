@@ -170,6 +170,9 @@ public class AppDbContext(
     /// </summary>
     internal void DiscardLostRace()
     {
+        if (_saveStage is SaveStage.Dispatching or SaveStage.Saving)
+            throw new InvalidOperationException("A lost race can be discarded only after its save ends.");
+
         ChangeTracker.Clear();
         _recordedActions.Clear();
         _saveStage = SaveStage.Idle;

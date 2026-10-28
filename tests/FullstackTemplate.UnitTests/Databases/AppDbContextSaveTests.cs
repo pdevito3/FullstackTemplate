@@ -2,8 +2,12 @@ namespace FullstackTemplate.UnitTests.Databases;
 
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Databases.Auditing;
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
+using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,13 +52,40 @@ public sealed class AppDbContextSaveTests
         second.GetService<IModelSource>().ShouldBeSameAs(first.GetService<IModelSource>());
     }
 
-    private static AppDbContext CreateContext()
+    [Test]
+    public async Task discard_of_a_lost_race_during_a_save_is_refused()
+    {
+        // Arrange
+        var services = new ServiceCollection()
+            .AddSingleton<IDomainEventHandler<TenantCreated>, DiscardsTheLostRace>()
+            .BuildServiceProvider();
+        await using var dbContext = CreateContext(new DomainEventDispatcher(services));
+        dbContext.Add(Tenant.Create(new FakeTenantForCreation().Generate()));
+
+        // Act
+        var act = () => dbContext.SaveChangesAsync();
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("only after its save ends");
+    }
+
+    private sealed class DiscardsTheLostRace : IDomainEventHandler<TenantCreated>
+    {
+        public Task Handle(TenantCreated domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)
+        {
+            dbContext.DiscardLostRace();
+            return Task.CompletedTask;
+        }
+    }
+
+    private static AppDbContext CreateContext(DomainEventDispatcher? dispatcher = null)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql("Host=unused")
             .UseSnakeCaseNamingConvention()
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(),
+            dispatcher ?? new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
     }
 }

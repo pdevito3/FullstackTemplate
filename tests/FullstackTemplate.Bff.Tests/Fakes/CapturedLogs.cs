@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Bff.Tests.Fakes;
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Serilog.Core;
 using Serilog.Events;
 
@@ -18,6 +19,8 @@ public sealed class CapturedLogs : ILogEventSink
     /// </summary>
     public IReadOnlyList<LogEvent> WithPropertyContaining(string text) =>
         _events.Where(e => e.Properties.Values.Any(v => v.ToString().Contains(text, StringComparison.Ordinal))).ToList();
+
+    public IReadOnlyList<LogEvent> InTrace(ActivityTraceId traceId) => _events.Where(e => e.TraceId == traceId).ToList();
 
     public IReadOnlyList<LogEvent> AtLeast(LogEventLevel level) => _events.Where(e => e.Level >= level).ToList();
 }

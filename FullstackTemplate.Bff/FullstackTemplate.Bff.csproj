@@ -32,4 +32,9 @@
     <PackageReference Include="Yarp.ReverseProxy" />
   </ItemGroup>
 
+  <!-- The Server and the BFF share no project, so the BFF compiles the one health check wrapper of the Server -->
+  <ItemGroup>
+    <Compile Include="..\FullstackTemplate.Server\Resources\Extensions\CallerCancellationHealthCheck.cs" Link="CallerCancellationHealthCheck.cs" />
+  </ItemGroup>
+
 </Project>

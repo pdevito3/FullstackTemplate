@@ -178,6 +178,8 @@ jobs:
               - 'tests/FullstackTemplate.Bff.Tests/**'
               # The BFF tests compile this helper with a link
               - 'tests/FullstackTemplate.SharedTestHelpers/Utilities/PauseAtQuery.cs'
+              # The BFF compiles this health check wrapper with a link
+              - 'FullstackTemplate.Server/Resources/Extensions/CallerCancellationHealthCheck.cs'
               - 'FullstackTemplate.AppHost/**'
               # The token check of the Server, which the e2e tests call through the BFF
               - 'FullstackTemplate.Server/Resources/Entrypoints/**'

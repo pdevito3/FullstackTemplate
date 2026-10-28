@@ -1,4 +1,5 @@
 using System.Reflection;
+using FullstackTemplate.Server.Resources.Extensions;
 using Microsoft.AspNetCore.Builder;
 using AppTelemetry = FullstackTemplate.Bff.Telemetry;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -191,6 +192,8 @@ public static class Extensions
     {
         builder.Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+        // PostConfigure runs after all Configure calls, so it also wraps the checks that Aspire integrations add later
+        builder.Services.PostConfigure<HealthCheckServiceOptions>(CallerCancellationHealthCheck.WrapEachCheck);
 
         return builder;
     }

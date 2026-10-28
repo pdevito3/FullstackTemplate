@@ -14,7 +14,7 @@ public sealed class CapturedLogs : ILogEventSink
     public IReadOnlyList<LogEvent> InTrace(ActivityTraceId traceId) =>
         _events.Where(e => e.TraceId == traceId).ToList();
 
-    public IReadOnlyList<LogEvent> ForRequestPath(string path) =>
-        _events.Where(e => e.Properties.TryGetValue("RequestPath", out var value)
-            && value is ScalarValue { Value: string requestPath } && requestPath == path).ToList();
+    public IReadOnlyList<LogEvent> WithUserAgent(string userAgent) =>
+        _events.Where(e => e.Properties.TryGetValue("UserAgent", out var value)
+            && value is ScalarValue { Value: string requestUserAgent } && requestUserAgent == userAgent).ToList();
 }

@@ -73,6 +73,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(TestingConsts.FunctionalTestingEnvName);
+        // A health probe gets a Verbose request log, and a test reads it
+        builder.UseSetting("Serilog:MinimumLevel:Override:Serilog.AspNetCore.RequestLoggingMiddleware", "Verbose");
 
         builder.ConfigureLogging(logging =>
         {

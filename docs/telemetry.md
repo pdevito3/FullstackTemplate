@@ -6,7 +6,7 @@ The server and the BFF export traces, metrics, and logs with OpenTelemetry. In d
 
 A span carries names, identifiers, and counts. It never carries user-entered content or personal data, such as names or email addresses. Every helper below takes its tags from the caller, so each call site must obey this rule.
 
-Each Npgsql span copies the SQL text into `db.query.text`. Thus a value from the caller must go to the database as a parameter, never as a literal in the SQL text. `CustomQueryKitConfiguration` sets `ParameterizeFilterValues`, so the SQL text of a list query has a parameter name in place of each filter value.
+Each Npgsql span copies the SQL text into `db.query.text`. Thus a value from the caller must go to the database as a parameter, never as a literal in the SQL text. `CustomQueryKitConfiguration` sets `ParameterizeFilterValues`, so the SQL text of a list query has a parameter name in place of each filter value. The value of a QueryKit `CustomOperation` still goes into the SQL text as a literal.
 
 The request spans of the server and the BFF keep each query key in `url.query` and replace each value with `Redacted`, for example `?filters=Redacted&pageSize=Redacted`. The ASP.NET Core instrumentation does this by default, but Aspire turns it off in development. Thus `HostExtensions.cs` and the BFF `Extensions.cs` set `url.query` again.
 
@@ -224,7 +224,7 @@ In Development, the console uses a `Serilog.Expressions` template. Each line sho
 
 - An exception or a status code of 500 or more gives `Error`.
 - A health probe (`/health` or `/alive`) gives `Verbose`, so the default minimum level drops it.
-- A health probe that the caller leaves during a check gives `Verbose`. `CallerCancellationHealthCheck` ends each check with the cancellation, so the exception handler gives 499, not 503. A check that runs past its own timeout still reports `Unhealthy` at `Error`.
+- A health probe that the caller leaves during a check gives `Verbose`. In the server and the BFF, `CallerCancellationHealthCheck` ends each check with the cancellation, so the exception handler gives 499, not 503. A check that runs past its own timeout still reports `Unhealthy` at `Error`.
 - All other requests give `Information`.
 
 ## Tests

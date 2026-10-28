@@ -1107,6 +1107,8 @@ public sealed record [EntityName][ActionPastTense](
 
 ### Domain Method Template
 
+The method sets `[ActionPastTense]At`. Add this property to the entity, the `[EntityName]Dto`, and the configuration, as "Adding a New Property" shows. Mapperly fails the build with RMG020 if the DTO does not have it.
+
 ```csharp
 // Add to [EntityName].cs
 

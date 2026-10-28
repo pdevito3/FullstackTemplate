@@ -310,6 +310,13 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 5. **Add the HTTP Endpoint**
    ```csharp
    // Features/SubmitOrder/SubmitOrder.Http.cs
+   namespace FullstackTemplate.Server.Domain.Orders.Features;
+
+   using Dtos;
+   using MediatR;
+   using Microsoft.AspNetCore.Http.HttpResults;
+   using Resources.Entrypoints.Http;
+
    public sealed class SubmitOrderEndpoint : IEndpoint
    {
        public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
@@ -320,7 +327,8 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
            .RequireAuthorization()
            .ProducesProblem(StatusCodes.Status403Forbidden)
            .ProducesProblem(StatusCodes.Status404NotFound)
-           .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+           .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+           .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
        /// <summary>
        /// Submits an order for processing.
@@ -439,6 +447,7 @@ public LineItem AddLineItem(Product product, int quantity)
 
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
+- [ ] Each property that the domain method sets, such as `[ActionPastTense]At`, is on the entity, the `[EntityName]Dto`, and the configuration (see "Process: New Property")
 - [ ] Domain event created (if state change is significant)
 - [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)
 - [ ] Feature folder created with the Command/Query and Handler file
@@ -446,7 +455,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses
-- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler
+- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler. Add the tool name to the expected lists of `ToolsOfEachCaller` in `TenantMcpToolTests` for each caller that can use it
 - [ ] Additional DTOs created if needed
 - [ ] Telemetry added with the `feature-telemetry` skill: query tags, id tags on the feature span, a log for each state change, and metrics if support needs a rate
 - [ ] Run `dotnet build` to verify compilation

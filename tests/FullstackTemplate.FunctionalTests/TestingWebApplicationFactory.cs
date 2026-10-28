@@ -68,6 +68,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 
     public FailingSaves FailingSaves { get; } = new();
 
+    public StallingHealthCheck StallingHealthCheck { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(TestingConsts.FunctionalTestingEnvName);
@@ -97,6 +99,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
                 .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics.ExporterTarget));
             services.AddSingleton<ILogEventSink>(CapturedLogs);
             services.ConfigureDbContext<AppDbContext>((_, options) => options.AddInterceptors(FailingSaves));
+            services.AddHealthChecks().AddCheck("stalling", StallingHealthCheck);
         });
     }
 

@@ -20,6 +20,10 @@ public class [EntityName] : BaseEntity, ITenantable
     // A short, unique type prefix. The ID is "[prefix]_{uuidv7}".
     public const string IdPrefix = "[prefix]";
 
+    // A max length for each text value that a request sets. The entity configuration uses the same constants.
+    public const int NameMaxLength = 200;
+    public const int DescriptionMaxLength = 2000;
+
     [NotSensitive] public string TenantId { get; private set; } = default!;
 
     // Properties with private setters. Mark each property for the audit log, except a flag, an enum, a Guid, an
@@ -78,6 +82,18 @@ public class [EntityName] : BaseEntity, ITenantable
     private static void Validate[EntityName]([EntityName] entity)
     {
         ValidationException.ThrowWhenNullOrWhitespace(entity.Name, "name", "Please provide a name.");
+        ValidationException.ThrowWhenLongerThan(entity.Name, NameMaxLength, "name",
+            $"A name can have no more than {NameMaxLength} characters.");
+        ValidationException.ThrowWhenHasCharacterPostgresCannotStore(entity.Name, "name",
+            "A name has a character that is not allowed.");
+
+        if (entity.Description is not null)
+        {
+            ValidationException.ThrowWhenLongerThan(entity.Description, DescriptionMaxLength, "description",
+                $"A description can have no more than {DescriptionMaxLength} characters.");
+            ValidationException.ThrowWhenHasCharacterPostgresCannotStore(entity.Description, "description",
+                "A description has a character that is not allowed.");
+        }
 
         // Check the prefix of each ID foreign key.
         ValidationException.ThrowWhenNullOrWhitespace(entity.TenantId, "tenantId", "Please provide a tenant.");
@@ -746,10 +762,10 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
 
         builder.Property(e => e.Name)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength([EntityName].NameMaxLength);
 
         builder.Property(e => e.Description)
-            .HasMaxLength(2000);
+            .HasMaxLength([EntityName].DescriptionMaxLength);
 
         // Indexes
         builder.HasIndex(e => e.Name);

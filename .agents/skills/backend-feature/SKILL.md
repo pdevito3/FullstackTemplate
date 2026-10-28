@@ -409,11 +409,13 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
 - [ ] Each text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
+- [ ] Add the entity to the entity graph with the `test-entity-graph` skill. Then list each text column with a max length in `StringColumnLengthTests`: a column that a request sets in `CallerColumns` with its domain write, a column with fixed options in `FixedOptionColumns`, or a column that only the server writes in `ServerWrittenColumns`
 - [ ] Install MediatR if not already present
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Put validation in the entity, and put database checks such as unique values in the handler
 - [ ] Add the permission of the commands to `Permission.cs` (a `Permission.Names` constant, a `PermissionEnum` entry, and a factory method), with a migration that gives it to the admins that exist
+- [ ] Add the name of the new permission to the two lists in `PermissionTests` (`list_names_returns_all_permission_names` and `get_all_returns_all_permissions`)
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -430,6 +432,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
 - [ ] A new text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses (see `docs/backend/domain-entities.md`)
+- [ ] A new text column with a max length is in `CallerColumns`, `FixedOptionColumns`, or `ServerWrittenColumns` of `StringColumnLengthTests`
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -439,7 +442,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Domain event created (if state change is significant)
 - [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)
 - [ ] Feature folder created with the Command/Query and Handler file
-- [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist)
+- [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses

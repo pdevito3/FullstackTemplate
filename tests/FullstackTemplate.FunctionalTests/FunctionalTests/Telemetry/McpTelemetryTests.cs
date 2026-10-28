@@ -74,46 +74,52 @@ public class McpTelemetryTests : TestBase
         span.GetTagItem("gen_ai.tool.name").ShouldBe(name[..128]);
     }
 
-    // example:start
     [Test]
+    [NotInParallel(nameof(TestingWebApplicationFactory.TelemetryMachineClientId))]
     public async Task an_argument_of_the_wrong_type_has_the_tool_and_the_caller_on_its_span_and_writes_no_error_log()
     {
         // Arrange
-        var agent = await SignInThroughDelegatedAgentAsync();
+        SignInAsTelemetryClient();
         await using var client = await CreateMcpClientAsync();
         using var parent = Telemetry.Source.StartActivity("test.parent").ShouldNotBeNull();
 
         // Act
-        var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?> { ["pageSize"] = "ten" });
+        var result = await client.CallToolAsync("add_tenant", new Dictionary<string, object?> { ["name"] = 5 });
 
         // Assert
         parent.Stop();
         result.ShouldBeToolError("invalid_argument");
-        var span = await McpSpanOfAsync(agent);
-        span.GetTagItem("gen_ai.tool.name").ShouldBe("list_tenants");
-        span.GetTagItem("app.caller.agent_id").ShouldBe(agent.Id);
+        var span = await McpSpanOfTelemetryClientAsync();
+        span.GetTagItem("gen_ai.tool.name").ShouldBe("add_tenant");
+        span.GetTagItem("app.caller.client_id").ShouldBe(TestingWebApplicationFactory.TelemetryMachineClientId);
         span.GetTagItem("error.type").ShouldBe("invalid_argument");
         ShouldHaveNoWarningOrErrorLog(parent.TraceId);
     }
 
     [Test]
+    [NotInParallel(nameof(TestingWebApplicationFactory.TelemetryMachineClientId))]
     public async Task a_tool_call_that_succeeds_has_the_tool_and_the_caller_on_its_span_and_no_error()
     {
         // Arrange
-        var agent = await SignInThroughDelegatedAgentAsync();
+        SignInAsTelemetryClient();
         await using var client = await CreateMcpClientAsync();
 
         // Act
-        var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?>());
+        var result = await client.CallToolAsync("add_tenant", new Dictionary<string, object?> { ["name"] = $"Tenant {Guid.NewGuid()}" });
 
         // Assert
         result.IsError.ShouldNotBe(true);
-        var span = await McpSpanOfAsync(agent);
-        span.GetTagItem("gen_ai.tool.name").ShouldBe("list_tenants");
-        span.GetTagItem("app.caller.agent_id").ShouldBe(agent.Id);
+        var span = await McpSpanOfTelemetryClientAsync();
+        span.GetTagItem("gen_ai.tool.name").ShouldBe("add_tenant");
+        span.GetTagItem("app.caller.client_id").ShouldBe(TestingWebApplicationFactory.TelemetryMachineClientId);
         span.GetTagItem("error.type").ShouldBeNull();
     }
-    // example:end
+
+    private void SignInAsTelemetryClient()
+        => FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TelemetryMachineClientId
+        });
 
     private async Task<Agent> SignInThroughDelegatedAgentAsync()
     {
@@ -135,14 +141,18 @@ public class McpTelemetryTests : TestBase
 
     // The server exports the span of the HTTP request when the request ends, which can be after the client has read
     // the response.
-    private async Task<Activity> McpSpanOfAsync(Agent agent)
+    private Task<Activity> McpSpanOfAsync(Agent agent)
+        => McpSpanAsync(a => a.GetTagItem("app.caller.agent_id") as string == agent.Id);
+
+    private Task<Activity> McpSpanOfTelemetryClientAsync()
+        => McpSpanAsync(a => a.GetTagItem("app.caller.client_id") as string == TestingWebApplicationFactory.TelemetryMachineClientId);
+
+    private async Task<Activity> McpSpanAsync(Func<Activity, bool> match)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
         while (true)
         {
-            var spans = ExportedSpans()
-                .Where(a => a.DisplayName == "POST /mcp/" && a.GetTagItem("app.caller.agent_id") as string == agent.Id)
-                .ToList();
+            var spans = ExportedSpans().Where(a => a.DisplayName == "POST /mcp/" && match(a)).ToList();
             if (spans.Count > 0 || DateTime.UtcNow > deadline)
                 return spans.ShouldHaveSingleItem();
             await Task.Delay(50);

@@ -61,6 +61,26 @@ public class TenantMcpToolTests : TestBase
     }
 
     [Test]
+    public async Task tenant_name_of_the_wrong_type_is_an_invalid_argument_with_the_field()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("add_tenant", new Dictionary<string, object?> { ["name"] = 5 });
+
+        // Assert
+        result.ShouldBeToolError("invalid_argument");
+        var error = result.StructuredContent.ShouldNotBeNull().GetProperty("errors").EnumerateObject().ShouldHaveSingleItem();
+        error.Name.ShouldBe("name");
+        error.Value[0].GetString().ShouldBe("The value '5' is not valid for name.");
+    }
+
+    [Test]
     public async Task user_cannot_add_a_tenant()
     {
         // Arrange

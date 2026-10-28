@@ -16,7 +16,6 @@ public class OpenApiDocumentTests
 {
     private const string ValidationProblemRef = "#/components/schemas/ValidationProblemDetails";
 
-    // The operations that allow anonymous callers
     public static readonly string[] AnonymousOperations =
     [
         // example:start

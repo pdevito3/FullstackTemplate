@@ -33,6 +33,22 @@ export function weatherForecastPage(page: Page) {
       return element.evaluate((node) => node.getAnimations({ subtree: true }).length)
     },
 
+    async boxOf(element: Locator) {
+      const box = await element.boundingBox()
+      if (!box) throw new Error('The element has no box')
+      return box
+    },
+
+    // A fallback font has other widths, so wait for the web font before a count.
+    async linesOf(element: Locator) {
+      return element.evaluate(async (node) => {
+        await document.fonts.ready
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size
+      })
+    },
+
     async showInCelsius() {
       await at.celsius.click()
     },

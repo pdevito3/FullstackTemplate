@@ -173,6 +173,23 @@ test.describe('a signed-in user', () => {
 
     expect(api.last('get', bffPaths.logout)?.query.get('sid')).toBe('test-session')
   })
+
+  test.describe('on a 320 px screen', () => {
+    test.use({ actor: as.user('Admin User'), viewport: { width: 320, height: 800 } })
+
+    test('sees the title and the welcome on one line each, with the user area under the title', async ({ page, api }) => {
+      api.mock(weatherApi.listReturns(aForecast()))
+
+      const weather = weatherForecastPage(page)
+      await weather.open()
+
+      expect(await weather.linesOf(weather.at.heading)).toBe(1)
+      expect(await weather.linesOf(weather.at.welcome('Admin User'))).toBe(1)
+      const title = await weather.boxOf(weather.at.heading)
+      const logout = await weather.boxOf(weather.at.logout)
+      expect(logout.y).toBeGreaterThanOrEqual(title.y + title.height)
+    })
+  })
 })
 
 test.describe('the loading placeholders', () => {

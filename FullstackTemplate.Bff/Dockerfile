@@ -12,7 +12,7 @@ RUN pnpm build
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY Directory.Packages.props .
+COPY Directory.Packages.props Directory.Build.props .editorconfig ./
 COPY FullstackTemplate.Bff/*.csproj FullstackTemplate.Bff/
 RUN dotnet restore FullstackTemplate.Bff/FullstackTemplate.Bff.csproj
 

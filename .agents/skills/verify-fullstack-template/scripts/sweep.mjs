@@ -119,18 +119,21 @@ function measureLayout() {
     const range = document.createRange()
     range.setStartBefore(text[0])
     range.setEndAfter(text[text.length - 1])
-    const box = range.getBoundingClientRect()
-    // Past a scroll container, the text is the scroll container's content on that axis.
+    // The part of the text that the clipping parents so far let through. Past a scroll container, the text is the
+    // content of that container on that axis.
+    const shown = { ...range.getBoundingClientRect().toJSON() }
     let checkX = true
     let checkY = true
     for (let node = el.parentElement; node && node !== document.body && (checkX || checkY); node = node.parentElement) {
       const nodeStyle = getComputedStyle(node)
       const clip = node.getBoundingClientRect()
-      const outX = checkX && clipsOnly(nodeStyle.overflowX) && (box.left < clip.left - 1 || box.right > clip.right + 1)
-      const outY = checkY && clipsOnly(nodeStyle.overflowY) && (box.top < clip.top - 1 || box.bottom > clip.bottom + 1)
-      // A text that is all outside the clip is hidden on purpose, such as the label of a collapsed sidebar item.
-      const partlyShown = box.right > clip.left && box.left < clip.right && box.bottom > clip.top && box.top < clip.bottom
-      if ((outX || outY) && partlyShown) {
+      const outX = checkX && clipsOnly(nodeStyle.overflowX) && (shown.left < clip.left - 1 || shown.right > clip.right + 1)
+      const outY = checkY && clipsOnly(nodeStyle.overflowY) && (shown.top < clip.top - 1 || shown.bottom > clip.bottom + 1)
+      if (outX) Object.assign(shown, { left: Math.max(shown.left, clip.left), right: Math.min(shown.right, clip.right) })
+      if (outY) Object.assign(shown, { top: Math.max(shown.top, clip.top), bottom: Math.min(shown.bottom, clip.bottom) })
+      // A text that a parent hides all of is hidden on purpose, such as the label of a collapsed sidebar item.
+      if (shown.right <= shown.left || shown.bottom <= shown.top) break
+      if (outX || outY) {
         add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
         break
       }
@@ -141,23 +144,31 @@ function measureLayout() {
   return faults
 }
 
+// Adds a measured fault to the list and returns it when it is new. A fault is the same fault on each capture and
+// config of the same page, so the report names it once with the places it showed.
+export function record(faults, measured, { at, url, config }) {
+  const key = [new URL(url).pathname, measured.kind, measured.element, measured.text, measured.how.replace(/\d+ px/g, '')].join('|')
+  const known = faults.find((fault) => fault.key === key)
+  if (known) {
+    if (!known.at.includes(at)) known.at.push(at)
+    if (config && !known.configs.includes(configName(config))) known.configs.push(configName(config))
+    return null
+  }
+  const fault = { key, ...measured, url, at: [at], configs: config ? [configName(config)] : [], screenshot: `sweep-${String(faults.length + 1).padStart(2, '0')}.png` }
+  faults.push(fault)
+  return fault
+}
+
 // Runs the checks at each config, then puts the page back as the recipe left it. Each new fault gets a screenshot
-// with a red outline on the element. A fault that the same capture showed at an earlier config gets only that config.
+// with a red outline on the element.
 export async function sweepCapture({ page, cdp, settle, outDir, capture, faults }) {
   const url = page.url()
   const scroll = await page.evaluate(() => [scrollX, scrollY])
   for (const config of configs) {
     await applyConfig(page, cdp, settle, config)
     for (const [index, measured] of (await page.evaluate(measureLayout)).entries()) {
-      const key = `${capture}|${measured.kind}|${measured.element}|${measured.text}|${measured.how.replace(/\d+ px/g, '')}`
-      const known = faults.find((fault) => fault.key === key)
-      if (known) {
-        if (!known.configs.includes(configName(config))) known.configs.push(configName(config))
-        continue
-      }
-      const fault = { key, capture, url, ...measured, configs: [configName(config)], screenshot: `sweep-${String(faults.length + 1).padStart(2, '0')}.png` }
-      faults.push(fault)
-      await screenshotOf(page, `[data-sweep-fault="${index}"]`, path.join(outDir, fault.screenshot))
+      const fault = record(faults, measured, { at: capture, url, config })
+      if (fault) await screenshotOf(page, `[data-sweep-fault="${index}"]`, path.join(outDir, fault.screenshot))
     }
   }
   await applyConfig(page, cdp, settle, restingConfig)
@@ -186,19 +197,18 @@ async function applyConfig(page, cdp, settle, { width, height, scheme, fontSize 
 export async function sweepFocus({ page, outDir, step, faults }) {
   const loss = await page.evaluate(readFocusLoss).catch(() => null)
   if (!loss) return
-  const fault = {
-    key: `${step}|focus`, capture: step, url: page.url(), kind: 'focus goes to the body', element: loss.element,
-    text: '', how: `the focused element ${loss.reason}`, configs: [configName({ ...restingConfig, scheme: 'light' })],
-    screenshot: `sweep-${String(faults.length + 1).padStart(2, '0')}.png`,
-  }
-  faults.push(fault)
-  await page.screenshot({ path: path.join(outDir, fault.screenshot) })
+  const measured = { kind: 'focus goes to the body', element: loss.element, text: '', how: `the focused element ${loss.reason}` }
+  const fault = record(faults, measured, { at: step, url: page.url() })
+  if (fault) await page.screenshot({ path: path.join(outDir, fault.screenshot) })
 }
 
 export function report(faults) {
   if (!faults.length) return '# Sweep\n\nNo faults.\n'
-  const lines = faults.map((fault, i) =>
-    `${i + 1}. **${fault.kind}** at \`${fault.capture}\` (${fault.url}). ${fault.element}${fault.text ? ` "${fault.text}"` : ''} ${fault.how}. ` +
-    `Seen at: ${fault.configs.join(', ')}. Screenshot: [${fault.screenshot}](${fault.screenshot}).`)
+  const lines = faults.map((fault, i) => [
+    `${i + 1}. **${fault.kind}** on ${new URL(fault.url).pathname}: ${fault.element}${fault.text ? ` "${fault.text}"` : ''} ${fault.how}.`,
+    `   At: ${fault.at.map((at) => `\`${at}\``).join(', ')}.`,
+    ...(fault.configs.length ? [`   Configs: ${fault.configs.join(', ')}.`] : []),
+    `   Screenshot: [${fault.screenshot}](${fault.screenshot}).`,
+  ].join('\n'))
   return `# Sweep\n\n${faults.length} fault(s).\n\n${lines.join('\n')}\n`
 }

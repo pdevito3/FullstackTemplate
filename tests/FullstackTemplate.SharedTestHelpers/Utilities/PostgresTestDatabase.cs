@@ -19,7 +19,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 
     // A pool grows with the number of tests that run at once. The Npgsql default of 100 let one test run use all the
     // connections of a default Postgres.
-    private const int MaxPoolSize = 20;
+    public const int MaxPoolSize = 20;
 
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder($"postgres:{Config.PostgresImageTag}")
         .WithReuse(ReuseContainer)

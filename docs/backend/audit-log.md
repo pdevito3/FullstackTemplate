@@ -130,3 +130,4 @@ The cursor text is `{occurred_at in microseconds since 1970}_{record_id}_{ordina
 ## Telemetry
 
 The read tags its feature span with `app.audit.entity_id` and `app.audit.reads_sensitive`. A bulk insert has a `database.bulk_insert` span with `app.bulk_insert.entity_type` and `app.bulk_insert.row_count`. Npgsql adds a span for each COPY. See [feature-telemetry.md](feature-telemetry.md).
+

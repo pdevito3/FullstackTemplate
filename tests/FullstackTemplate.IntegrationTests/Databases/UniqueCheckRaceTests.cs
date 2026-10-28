@@ -10,7 +10,9 @@ using FullstackTemplate.SharedTestHelpers.Fakes.Agent;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using FullstackTemplate.SharedTestHelpers.Utilities;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
+using static FullstackTemplate.IntegrationTests.DomainEvents.DomainEventTestServices;
 
 /// <summary>
 /// Two requests can pass the duplicate check of a handler at the same time. Then the unique index stops the second
@@ -33,11 +35,13 @@ public class UniqueCheckRaceTests : TestBase
         // Act
         var add = underTest.SendAsync(new AddTenant.Command(dto));
         await pause.ReachedAsync();
-        await rival.SendAsync(new AddTenant.Command(dto));
+        var winner = await rival.SendAsync(new AddTenant.Command(dto));
         pause.Release();
 
         // Assert
         await ShouldBeConflictAsync(add, "name", "A tenant with this name already exists.");
+        winner.Name.ShouldBe(dto.Name);
+        (await TenantIdsNamedAsync(dto.Name)).ShouldBe([winner.Id]);
     }
 
     [Test]
@@ -61,11 +65,14 @@ public class UniqueCheckRaceTests : TestBase
         var update = underTest.SendAsync(new UpdateTenant.Command(tenant.Id,
             new TenantForUpdateDto { Name = name, Version = loaded.Version }));
         await pause.ReachedAsync();
-        await rival.SendAsync(new AddTenant.Command(new FakeTenantForCreationDto().Generate() with { Name = name }));
+        var winner = await rival.SendAsync(new AddTenant.Command(new FakeTenantForCreationDto().Generate() with { Name = name }));
         pause.Release();
 
         // Assert
         await ShouldBeConflictAsync(update, "name", "A tenant with this name already exists.");
+        winner.Name.ShouldBe(name);
+        (await TenantIdsNamedAsync(name)).ShouldBe([winner.Id]);
+        (await TenantIdsNamedAsync(tenant.Name)).ShouldBe([tenant.Id]);
     }
 
     [Test]
@@ -81,11 +88,13 @@ public class UniqueCheckRaceTests : TestBase
         // Act
         var add = underTest.SendAsync(new AddUser.Command(dto));
         await pause.ReachedAsync();
-        await rival.SendAsync(new AddUser.Command(dto));
+        var winner = await rival.SendAsync(new AddUser.Command(dto));
         pause.Release();
 
         // Assert
         await ShouldBeConflictAsync(add, "identifier", "A user with this identifier already exists.");
+        winner.Identifier.ShouldBe(dto.Identifier);
+        (await UserIdsWithIdentifierAsync(dto.Identifier)).ShouldBe([winner.Id]);
     }
 
     [Test]
@@ -103,11 +112,14 @@ public class UniqueCheckRaceTests : TestBase
         // Act
         var initiate = underTest.SendAsync(new InitiateUserAndTenant.Command(dto));
         await pause.ReachedAsync();
-        await rival.SendAsync(new InitiateUserAndTenant.Command(dto with { TenantName = $"Tenant {Guid.NewGuid():N}" }));
+        var winner = await rival.SendAsync(new InitiateUserAndTenant.Command(dto with { TenantName = $"Tenant {Guid.NewGuid():N}" }));
         pause.Release();
 
         // Assert
         await ShouldBeConflictAsync(initiate, "identifier", "A user with this identifier already exists.");
+        winner.User.Identifier.ShouldBe(dto.Identifier);
+        (await UserIdsWithIdentifierAsync(dto.Identifier)).ShouldBe([winner.User.Id]);
+        (await TenantIdsNamedAsync(dto.TenantName)).ShouldBeEmpty();
     }
 
     [Test]
@@ -126,11 +138,14 @@ public class UniqueCheckRaceTests : TestBase
         // Act
         var initiate = underTest.SendAsync(new InitiateUserAndTenant.Command(dto));
         await pause.ReachedAsync();
-        await rival.SendAsync(new InitiateUserAndTenant.Command(rivalDto));
+        var winner = await rival.SendAsync(new InitiateUserAndTenant.Command(rivalDto));
         pause.Release();
 
         // Assert
         await ShouldBeConflictAsync(initiate, "tenantName", "A tenant with this name already exists.");
+        winner.Tenant.Name.ShouldBe(dto.TenantName);
+        (await TenantIdsNamedAsync(dto.TenantName)).ShouldBe([winner.Tenant.Id]);
+        (await UserIdsWithIdentifierAsync(dto.Identifier)).ShouldBeEmpty();
     }
 
     [Test]
@@ -152,11 +167,15 @@ public class UniqueCheckRaceTests : TestBase
         // Act
         var add = underTest.SendAsync(new AddAgent.Command(dto));
         await pause.ReachedAsync();
-        await rival.SendAsync(new AddAgent.Command(dto));
+        var winner = await rival.SendAsync(new AddAgent.Command(dto));
         pause.Release();
 
         // Assert
         await ShouldBeConflictAsync(add, "clientId", "An agent with this client ID already exists.");
+        winner.ClientId.ShouldBe(dto.ClientId);
+        (await ReadAsync(read => read.Agents.IgnoreQueryFilters()
+            .Where(a => a.ClientId == dto.ClientId).Select(a => a.Id).ToListAsync()))
+            .ShouldBe([winner.Id]);
     }
 
     private static async Task ShouldBeConflictAsync(Task request, string property, string message)
@@ -165,4 +184,10 @@ public class UniqueCheckRaceTests : TestBase
         exception.Property.ShouldBe(property);
         exception.Message.ShouldBe(message);
     }
+
+    private static Task<List<string>> TenantIdsNamedAsync(string name)
+        => ReadAsync(read => read.Tenants.IgnoreQueryFilters().Where(t => t.Name == name).Select(t => t.Id).ToListAsync());
+
+    private static Task<List<string>> UserIdsWithIdentifierAsync(string identifier)
+        => ReadAsync(read => read.Users.IgnoreQueryFilters().Where(u => u.Identifier == identifier).Select(u => u.Id).ToListAsync());
 }

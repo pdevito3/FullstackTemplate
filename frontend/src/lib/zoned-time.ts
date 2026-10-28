@@ -15,11 +15,13 @@ import {
 export type TimeZone = string & { readonly __brand: 'TimeZone' }
 
 /**
- * Reads the zone of a place from an API field and gives its canonical ID, so `america/chicago` gives `America/Chicago`.
+ * Reads the zone of a place from an API field. It corrects the case, so `america/chicago` gives `America/Chicago`, but
+ * it keeps a new name such as `Asia/Kolkata`, which the browser knows as `Asia/Calcutta`.
  * Throws a `RangeError` for a zone that the browser does not know.
  */
 export function parseTimeZone(value: string): TimeZone {
-  return new Intl.DateTimeFormat('en-US', { timeZone: value }).resolvedOptions().timeZone as TimeZone
+  const resolved = new Intl.DateTimeFormat('en-US', { timeZone: value }).resolvedOptions().timeZone
+  return (resolved.toLowerCase() === value.toLowerCase() ? resolved : value) as TimeZone
 }
 
 /** The zone of the browser. Use it only for a time that belongs to the user, not to a place. */

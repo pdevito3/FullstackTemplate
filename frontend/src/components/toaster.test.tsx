@@ -20,10 +20,12 @@ beforeEach(() => {
   startViewTransition = vi.spyOn(document, 'startViewTransition')
 })
 
-afterEach(() => {
+afterEach(async () => {
   vi.useRealTimers()
-  vi.restoreAllMocks()
   toastQueue.clear()
+  // The clear plays a view transition. It must end here, or the next test waits for it and gets an AbortError.
+  await animationsFinished()
+  vi.restoreAllMocks()
 })
 
 // While a view transition runs, the browser hit-tests its snapshot, not the page. A panel that still slides in moves
@@ -244,4 +246,92 @@ test('on a phone on its side, a toast that came while the pointer was on the toa
   await animationsFinished()
 
   expect(page.getByRole('alertdialog').filter({ hasText: 'Could not save the changes' }).query()).not.toBeNull()
+})
+
+function CenteredDialog({ contentHeight }: { contentHeight: number }) {
+  return (
+    <ResponsiveDialog isOpen className="md:max-w-[400px]">
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle>Add filter</ResponsiveDialogTitle>
+      </ResponsiveDialogHeader>
+      <div style={{ height: contentHeight }} />
+      <ResponsiveDialogFooter>
+        <ResponsiveDialogClose>Continue</ResponsiveDialogClose>
+      </ResponsiveDialogFooter>
+    </ResponsiveDialog>
+  )
+}
+
+const twoToastsWithDescriptions = () => {
+  Notification.error('Something went wrong', { description: 'The server did not answer. Try again.' })
+  Notification.success('Changes saved', { description: 'The filter list is up to date.' })
+}
+
+// The modal starts its zoom animation after it paints.
+async function openAnimationsFinished(): Promise<void> {
+  await expect.element(page.getByRole('dialog', { name: 'Add filter' })).toBeVisible()
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  await animationsFinished()
+}
+
+function centeredDialogBox(): DOMRect {
+  return page.getByRole('dialog', { name: 'Add filter' }).element().getBoundingClientRect()
+}
+
+test('on a desktop, a centered dialog stays in the middle while no toast shows', async () => {
+  await page.viewport(900, 800)
+  await render(
+    <>
+      <CenteredDialog contentHeight={440} />
+      <Toaster />
+    </>,
+  )
+  await openAnimationsFinished()
+
+  const { top, bottom } = centeredDialogBox()
+  expect(top).toBeCloseTo(window.innerHeight - bottom, 0)
+})
+
+test('on a desktop, two toasts do not cover the button of a wide centered dialog', async () => {
+  await page.viewport(900, 800)
+  await render(
+    <>
+      <CenteredDialog contentHeight={440} />
+      <Toaster />
+    </>,
+  )
+  const dialog = page.getByRole('dialog', { name: 'Add filter' })
+  await openAnimationsFinished()
+
+  twoToastsWithDescriptions()
+  await expect.element(page.getByText('Changes saved')).toBeVisible()
+  await animationsFinished()
+
+  const continueButton = dialog.getByRole('button', { name: 'Continue' }).element()
+  const { left, right, top, height } = continueButton.getBoundingClientRect()
+  for (const x of [left + 1, right - 1]) expect(clickTargetAt(x, top + height / 2, continueButton)).toBe('target')
+  const upperToast = Math.min(boxOf('Something went wrong').top, boxOf('Changes saved').top)
+  expect(upperToast - centeredDialogBox().bottom).toBe(8)
+})
+
+test('on a desktop, a dialog taller than the room above two toasts gets shorter and keeps its button in view', async () => {
+  await page.viewport(900, 800)
+  await render(
+    <>
+      <CenteredDialog contentHeight={1200} />
+      <Toaster />
+    </>,
+  )
+  const dialog = page.getByRole('dialog', { name: 'Add filter' })
+  await openAnimationsFinished()
+
+  twoToastsWithDescriptions()
+  await expect.element(page.getByText('Changes saved')).toBeVisible()
+  await animationsFinished()
+
+  const continueButton = dialog.getByRole('button', { name: 'Continue' }).element()
+  const { left, right, top, height } = continueButton.getBoundingClientRect()
+  for (const x of [left + 1, right - 1]) expect(clickTargetAt(x, top + height / 2, continueButton)).toBe('target')
+  expect(centeredDialogBox().top).toBe(32)
+  expect(Math.min(boxOf('Something went wrong').top, boxOf('Changes saved').top) - centeredDialogBox().bottom).toBe(8)
 })

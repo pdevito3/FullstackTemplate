@@ -1,5 +1,11 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import type { Notification as AppNotification } from '@/components/notification'
 import { filterDemo } from './filter-demo.locators'
+
+interface ToastText {
+  message: string
+  description: string
+}
 
 export function filterDemoPage(page: Page) {
   const at = filterDemo(page)
@@ -29,6 +35,17 @@ export function filterDemoPage(page: Page) {
       await at.property(propertyLabel).click()
       await expect(at.control(propertyLabel)).toBeVisible()
       await expect(at.loadingControl).toHaveCount(0)
+    },
+
+    /** Shows error toasts, as a failed request does while the control is open. The filter demo sends no request. */
+    async showToasts(...toasts: ToastText[]) {
+      await page.evaluate(async (toasts) => {
+        // The Vite dev server serves each source file at its path.
+        const notificationModule: string = '/src/components/notification.ts'
+        const { Notification } = (await import(/* @vite-ignore */ notificationModule)) as { Notification: typeof AppNotification }
+        for (const { message, description } of toasts) Notification.error(message, { description })
+      }, toasts)
+      await expect(at.toasts).toHaveCount(toasts.length)
     },
 
     async closeControl(propertyLabel: string) {
@@ -151,6 +168,14 @@ export function filterDemoPage(page: Page) {
         }
         return widest
       })
+    },
+
+    async overlapOf(element: Locator, other: Locator) {
+      const a = await this.edgesOf(element)
+      const b = await this.edgesOf(other)
+      const width = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+      const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+      return width > 0 && height > 0 ? { width, height } : null
     },
 
     async edgesOf(element: Locator) {

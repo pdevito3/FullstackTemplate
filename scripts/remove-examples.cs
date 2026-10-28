@@ -119,6 +119,8 @@ internal sealed partial class AppRepo(string root)
     {
         var server = $"{Name}.Server";
         Run(root, "dotnet", "tool", "restore");
+        // dotnet-ef reads the project metadata before it builds, and that read needs the restored assets
+        Run(root, "dotnet", "restore", Path.Combine(server, $"{server}.csproj"));
         Run(root, "dotnet", "tool", "run", "dotnet-ef", "migrations", "add", SnapshotMigration,
             "--project", server, "--startup-project", server, "--output-dir", "Databases/Migrations");
 

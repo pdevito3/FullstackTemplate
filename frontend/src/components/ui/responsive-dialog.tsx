@@ -122,8 +122,9 @@ function ResponsiveDialog({
         >
           {/* Drag handle for mobile */}
           <div className="mx-auto mt-3 h-1 w-12 shrink-0 rounded-full bg-muted md:hidden" />
+          {/* The rounded corners clip the sticky header and footer, which cover the full width. */}
           <div
-            className="overflow-y-auto p-4"
+            className="overflow-y-auto p-4 md:rounded-xl"
             style={{ scrollPaddingTop: scrollPadding.top, scrollPaddingBottom: scrollPadding.bottom }}
           >
             <DialogDescriptionContext.Provider value={setDescriptionId}>
@@ -148,7 +149,10 @@ function ResponsiveDialog({
   )
 }
 
-/** Sticks to the top of the content that scrolls. Put it first in the dialog. */
+/**
+ * Sticks to the top of the content that scrolls. Put it first in the dialog.
+ * Its background covers the first 0.5rem below it. Leave a gap of at least 0.75rem, so that a focus ring there shows.
+ */
 function ResponsiveDialogHeader({
   className,
   ...props
@@ -158,8 +162,10 @@ function ResponsiveDialogHeader({
       ref={useStickyHeight("top")}
       data-slot="responsive-dialog-header"
       className={cn(
-        // The negative top and margin cover the p-4 of the content that scrolls. The min height covers the close button.
-        "sticky -top-4 z-10 -mt-4 flex flex-col gap-2 bg-background pt-4 text-center md:text-left in-data-close-button:md:min-h-9",
+        // The negative margins cover the p-4 of the content that scrolls, so a focus ring in the side gutter does not show
+        // next to the header. pb-2 covers the close button and the content just below the title. -mb-2 keeps pb-2 out of
+        // the layout, so the dialog is not taller.
+        "sticky -top-4 z-10 -mx-4 -mt-4 -mb-2 flex flex-col gap-2 bg-background px-4 pt-4 pb-2 text-center md:text-left",
         className
       )}
       {...props}
@@ -177,8 +183,9 @@ function ResponsiveDialogFooter({
       ref={useStickyHeight("bottom")}
       data-slot="responsive-dialog-footer"
       className={cn(
-        // The negative bottom and margin cover the p-4 of the content that scrolls.
-        "sticky -bottom-4 z-10 -mb-4 flex flex-col-reverse gap-2 bg-background pt-4 pb-4 sm:flex-row sm:justify-end",
+        // The negative margins cover the p-4 of the content that scrolls, so a focus ring in the side gutter does not show
+        // next to the footer.
+        "sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 bg-background px-4 pt-4 pb-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

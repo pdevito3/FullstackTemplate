@@ -26,7 +26,7 @@ public class AuditModelTests
 
         // Assert
         rootsWithNoTenant.ShouldBeEmpty(
-            "The audit log reads the tenant of a change from its aggregate root. Implement ITenantable on each entity, or give it an owner through a Cascade foreign key.");
+            "The audit log reads the tenant of a change from its aggregate root, and an entity with an optional owner key is a root when the key is null. Implement ITenantable on each entity that can be a root, or give it a required Cascade foreign key to its owner.");
     }
 
     [Test]
@@ -40,7 +40,7 @@ public class AuditModelTests
 
         // Assert
         tenantedChildren.ShouldBeEmpty(
-            "AuditSubject.Of files an action under the entity that it names as the aggregate root. Remove ITenantable from a child, because its owner gives its tenant.");
+            "AuditSubject.Of files an action under the entity that it names as the aggregate root. Remove ITenantable from a child with a required owner key, because its owner gives its tenant.");
     }
 
     [Test]
@@ -172,11 +172,12 @@ public class AuditModelTests
             "The COPY of BulkInsertAsync sends the C# value of each column, and the audit entry records it, so a database default or an identity never applies. Set the value in the entity, and remove HasDefaultValueSql, HasDefaultValue, or the identity.");
     }
 
+    // An entity with an optional owner key is a root when the key is null, so it needs a tenant of its own.
     private static List<Type> RootsWithNoTenant(IModel model)
     {
         var auditModel = AuditModel.Of(model);
         return EntityTypes(model)
-            .Where(e => auditModel.OwnerKeyOf(e) is null)
+            .Where(e => auditModel.OwnerKeyOf(e) is not { IsRequired: true })
             .Select(e => e.ClrType)
             .Where(type => type != typeof(Tenant) && !type.IsAssignableTo(typeof(ITenantable)))
             .ToList();
@@ -186,7 +187,7 @@ public class AuditModelTests
     {
         var auditModel = AuditModel.Of(model);
         return EntityTypes(model)
-            .Where(e => e.ClrType.IsAssignableTo(typeof(ITenantable)) && auditModel.OwnerKeyOf(e) is not null)
+            .Where(e => e.ClrType.IsAssignableTo(typeof(ITenantable)) && auditModel.OwnerKeyOf(e) is { IsRequired: true })
             .Select(e => e.ClrType)
             .ToList();
     }

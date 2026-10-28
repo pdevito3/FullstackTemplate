@@ -51,7 +51,8 @@ public sealed class EntityTreeTests : IAsyncDisposable
         var childCreated = await reader.AuditEntries.SingleAsync(e => e.EntityId == child.Id);
         childCreated.ShouldSatisfyAllConditions(
             e => e.Kind.ShouldBe(AuditEntryKind.Created),
-            e => e.EntityType.ShouldBe(nameof(Node)));
+            e => e.EntityType.ShouldBe(nameof(Node)),
+            e => (e.RootType, e.RootId).ShouldBe((nameof(Node), top.Id)));
     }
 
     [Test]

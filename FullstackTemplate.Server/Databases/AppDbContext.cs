@@ -446,16 +446,20 @@ public class AppDbContext(
     }
 
     // A changed child marks its Unchanged owner modified, so the owner row is written and its xmin changes (ADR 0008).
+    // A child that moves to another owner, or to no owner, also changes the aggregate of the owner that it leaves.
     private static void TouchOwnersOfChangedChildren(TrackedAggregates aggregates)
     {
         var changed = new Queue<EntityEntry<BaseEntity>>(aggregates.Changed);
         while (changed.TryDequeue(out var child))
         {
-            if (aggregates.OwnerOf(child) is not { State: EntityState.Unchanged } owner)
-                continue;
+            foreach (var owner in new[] { aggregates.OwnerOf(child), aggregates.FormerOwnerOf(child) })
+            {
+                if (owner is not { State: EntityState.Unchanged })
+                    continue;
 
-            owner.Property(e => e.LastModifiedOn).IsModified = true;
-            changed.Enqueue(owner);
+                owner.Property(e => e.LastModifiedOn).IsModified = true;
+                changed.Enqueue(owner);
+            }
         }
     }
 

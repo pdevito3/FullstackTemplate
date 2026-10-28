@@ -14,7 +14,7 @@ public abstract record ConstraintError
 
     /// <summary>
     /// Another user changed the record after the caller loaded it, for example a second current revision of one
-    /// document. The caller gets the stale-version 409, the same as for an old version.
+    /// document.
     /// </summary>
     public sealed record StaleVersion : ConstraintError;
 }

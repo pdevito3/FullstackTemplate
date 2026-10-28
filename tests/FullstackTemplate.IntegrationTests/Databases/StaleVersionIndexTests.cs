@@ -9,9 +9,9 @@ using Npgsql;
 using Shouldly;
 
 /// <summary>
-/// The schema has no stale-version index, so the test uses a model of its own on a temporary table. A temporary
-/// table lives only in the session of its connection, so other tests do not see it, and the context keeps the
-/// connection open for the test.
+/// The test uses a model of its own on a temporary table, so the production model has no fake entity. A temporary
+/// table lives only in the session of its connection, so other tests do not see it, and it goes away when the test
+/// closes the connection.
 /// </summary>
 public class StaleVersionIndexTests : TestBase
 {

@@ -144,9 +144,11 @@ Some unique indexes stop a save only when another user changed the record after 
 ```csharp
 builder.HasIndex(e => e.DocumentId)
     .IsUnique()
-    .HasFilter("is_current")
+    .HasFilter("is_current AND is_deleted = false")
     .ForStaleVersion();
 ```
+
+Keep the soft delete filter in the index, so that a deleted revision does not block a new one. The handler must make a save that is valid on the rows that it loaded, for example a save that clears the old current revision. Then the index stops only a save that lost a race, and a reload fixes it.
 
 A save that the index stops then gives the stale-version 409, the same response as an old version, so the screen offers a reload (see [concurrency.md](concurrency.md#versions)). Use `ForStaleVersion` only when the user can fix the conflict with a reload. When the user must change a value, use `ForRequestField`.
 

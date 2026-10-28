@@ -8,19 +8,19 @@ Two requests can change the same rows at the same time. Each command picks one o
 | A run again | The command sends no version, and the server decides it from the rows alone | Nothing. The command runs again on the new rows. After 20 lost runs, 409 concurrent change |
 | A lock | The rule of the command reads rows that the command does not write | Nothing. The second request waits for the first |
 
-A create of a new aggregate root writes no row that another request can change, so it needs no version and no run again. It needs a lock only when its rule reads other rows, such as a booking that checks its clinic. A unique value that two creates add at the same time gets a 409 from the unique index (see [Error responses](../backend.md#error-responses)).
+A create of a new aggregate root writes no row that another request can change, so it needs no version and no run again. It needs a lock only when its rule reads other rows, such as a booking that checks its clinic. A unique value that two creates add at the same time gets a 409 from the unique index (see [Error responses](../backend.md#error-responses)). When the index has `ForStaleVersion`, the create gets the stale-version 409.
 
 ## Versions
 
 Each entity has `Version`, the Postgres `xmin` of its row. `MapVersionToXmin` maps it for each entity, so a new entity needs no configuration for it. EF Core adds `WHERE xmin = @loaded` to each update. When another save changed the row after the load, the save throws a `StaleVersionException`. The reasons for this design are in [ADR 0008](../adr/0008-optimistic-concurrency-with-xmin.md).
-
-A unique index can also tell that another user changed the record, for example an index that permits one current revision for each document. Give such an index `ForStaleVersion` (see [entity-configurations.md](entity-configurations.md#unique-indexes)). When the index stops a save, `AppDbContext` throws a `StaleVersionException`. The caller gets the same 409 as for an old version, with the same `type`, `title`, `detail`, and `errors`. Thus the SPA handles the two in the same way. A command with `IRunsAgainWhenRaced` runs again after such a save, the same as after a failed `xmin` check.
 
 - A save that adds, changes, or removes an owned child also updates the owner row. Thus the version of the root guards the whole aggregate. An owned child is the dependent of a `Cascade` foreign key (see [entity-configurations.md](entity-configurations.md)). Change a child only through its loaded owner. The save throws when the owner of a changed child is not tracked. A child that moves to another owner, or to no owner, also updates the row of the owner that it leaves, so load that owner too.
 - The read DTO of a root shows `version`. A PUT body that replaces the fields of an edit form has a required `version`, and the entity method calls `GuardVersion` first (see [domain-entities.md](domain-entities.md#versions)).
 - `Version` is an opaque number. Compare it only for equality. A list cannot filter or sort on `version`, and `ApplyFilters` and `ApplySortOrder` return 400 for it. They also return 400 for `allowedActions`, because the handler adds it after the page loads. Postgres has no order for `xid`, so a range or a sort fails. An equality filter works in Postgres, but a list has no use for it, so it also gives 400.
 
 Do not catch a `StaleVersionException` of a command that sends a version, and do not send the command again with the new version. The caller did not see the change of the other request, so a retry overwrites it.
+
+A unique index can also tell that another user changed the record, for example an index that permits one current revision for each document. Give such an index `ForStaleVersion` (see [entity-configurations.md](entity-configurations.md#unique-indexes)). When the index stops a save, `AppDbContext` throws a `StaleVersionException`. The caller gets the same 409 as for an old version, with the same `type`, `title`, `detail`, and `errors`. Thus the SPA handles the two in the same way. A command with `IRunsAgainWhenRaced` runs again after such a save, the same as after a failed `xmin` check.
 
 ## Run again
 

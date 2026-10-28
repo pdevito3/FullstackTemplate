@@ -19,6 +19,7 @@ public class ConstraintErrorsConventionTests
         // Assert
         exception.Message.ShouldContain("{'Code'}");
         exception.Message.ShouldContain(nameof(Gadget));
+        exception.Message.ShouldContain("ForRequestField");
         exception.Message.ShouldContain("not unique");
     }
 
@@ -53,7 +54,7 @@ public class ConstraintErrorsConventionTests
         exception.Message.ShouldContain("both ForRequestField and ForStaleVersion");
     }
 
-    // EF caches a model for each context type, so each index has a context type of its own
+    // EF caches one model for each context type, so each test needs a context type of its own
     private sealed class NonUniqueIndexContext : GadgetContext
     {
         protected override void Configure(IndexBuilder<Gadget> index)

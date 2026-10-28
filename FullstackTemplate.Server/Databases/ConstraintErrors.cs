@@ -27,9 +27,8 @@ public static class ConstraintErrors
         => builder.HasAnnotation(RequestFieldAnnotation, new ConstraintError.RequestField(field, message));
 
     /// <summary>
-    /// Marks a unique index that stops a save only when another user changed the record after the caller loaded it,
-    /// for example one current revision of each document. A save that the index stops then gives the stale-version
-    /// 409, so the caller loads the record again.
+    /// Marks a unique index whose violation means that another user changed the record after the caller loaded it,
+    /// for example one current revision of each document. A save that the index stops then gives the stale-version 409.
     /// </summary>
     public static IndexBuilder<TEntity> ForStaleVersion<TEntity>(this IndexBuilder<TEntity> builder)
         => builder.HasAnnotation(StaleVersionAnnotation, new ConstraintError.StaleVersion());

@@ -101,7 +101,7 @@ const form = useForm<UserFormData>({
 
 Use `defaultValues` in an edit form, not `values`. With `values`, a refetch can put the new version under the edits of the user. The save then overwrites a change that the user did not see.
 
-When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`, and the toast shows the `detail`. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new data. Do not send the PUT again with the new version, because that overwrites the other change.
+When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`, and the toast shows the `detail`. A create can also get this type, when a unique index of the Server tells that another user changed the record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new data. Do not send the PUT again with the new version, because that overwrites the other change.
 
 ## Do not
 

@@ -38,6 +38,11 @@ describe('parseTimeZone', () => {
   it('gives the canonical ID of a zone typed in another case', () => {
     expect(parseTimeZone('america/chicago')).toBe('America/Chicago')
   })
+
+  it('keeps an ID that the browser knows by an older name, as the Server holds it', () => {
+    expect(parseTimeZone('Asia/Kolkata')).toBe('Asia/Kolkata')
+    expect(parseTimeZone('Europe/Kyiv')).toBe('Europe/Kyiv')
+  })
 })
 
 describe('todayAt', () => {

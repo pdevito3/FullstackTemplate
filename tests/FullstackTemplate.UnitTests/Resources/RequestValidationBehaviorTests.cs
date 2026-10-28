@@ -198,15 +198,15 @@ public class RequestValidationBehaviorTests
 
         // Assert
         matching.ShouldBeEmpty();
-        mismatched.ShouldBe(["GetOverdueListWithTheDueRangeEndpoint.withinDays: 1 to 365, but OverdueParametersDto has 1 to 90"]);
+        mismatched.ShouldBe(["GetOverdueListWithTheDueRangeEndpoint.withinDays: (1, 365, False, False), but OverdueParametersDto has (1, 90, False, False)"]);
         unmatched.ShouldBe(["GetDueListWithAnExtraRangeEndpoint.limit: 0 types that the endpoint builds have a range on limit"]);
     }
 
     private static IEnumerable<(ParameterInfo Parameter, RangeAttribute Range)> RangedParameters(Type endpoint)
         => endpoint.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .SelectMany(method => method.GetParameters())
-            .Select(parameter => (Parameter: parameter, Range: parameter.GetCustomAttribute<RangeAttribute>()!))
-            .Where(item => item.Range is not null);
+            .Where(parameter => parameter.IsDefined(typeof(RangeAttribute)))
+            .Select(parameter => (parameter, parameter.GetCustomAttribute<RangeAttribute>()!));
 
     private static List<string> RangeMismatches(IEnumerable<Type> endpoints)
     {
@@ -233,13 +233,16 @@ public class RequestValidationBehaviorTests
                 var name = $"{endpoint.Name}.{parameter.Name}";
                 if (dtoRanges is not [var dto])
                     mismatches.Add($"{name}: {dtoRanges.Count} types that the endpoint builds have a range on {parameter.Name}");
-                else if (!Equals(range.Minimum, dto.Range!.Minimum) || !Equals(range.Maximum, dto.Range.Maximum))
-                    mismatches.Add($"{name}: {range.Minimum} to {range.Maximum}, but {dto.Type.Name} has {dto.Range.Minimum} to {dto.Range.Maximum}");
+                else if (!Bounds(range).Equals(Bounds(dto.Range!)))
+                    mismatches.Add($"{name}: {Bounds(range)}, but {dto.Type.Name} has {Bounds(dto.Range!)}");
             }
         }
 
         return mismatches;
     }
+
+    private static (object Minimum, object Maximum, bool MinimumIsExclusive, bool MaximumIsExclusive) Bounds(RangeAttribute range)
+        => (range.Minimum, range.Maximum, range.MinimumIsExclusive, range.MaximumIsExclusive);
 
     /// <summary>
     /// The type of each object that a method of the endpoint creates or gets from a call. The IL of an async method

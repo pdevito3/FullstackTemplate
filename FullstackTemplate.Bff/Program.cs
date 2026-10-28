@@ -99,17 +99,9 @@ try
 
     app.MapDefaultEndpoints();
 
-    if (spaOrigin.DevServer is not null)
-    {
-        // A middleware after UseAuthorization, so that it sees the result of routing
-        app.UseDevServerFallback(spaOrigin);
-    }
-    else
-    {
-        // SPA fallback for client-side routing in production
-        app.MapFallback("/bff/{**path}", () => Results.NotFound());
-        app.MapFallbackToFile("index.html");
-    }
+    // A middleware after UseAuthorization, so that it sees the result of routing. A routed fallback endpoint would
+    // match each method, and routing would then pick it over the 405 of a BFF endpoint.
+    app.UseSpaFallback(spaOrigin);
 
     app.Run();
 }

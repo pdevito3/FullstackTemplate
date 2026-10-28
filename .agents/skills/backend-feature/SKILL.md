@@ -74,7 +74,7 @@ When adding a business operation to an existing entity:
 | Component | Files to Create/Modify |
 |-----------|----------------------|
 | **Domain method** | `[EntityName].cs` - Add behavior method |
-| **Domain event** | `DomainEvents/[EntityName][Action].cs` - New event |
+| **Domain event** | `DomainEvents/[EntityName][ActionPastTense].cs` - New event, with a name in the past tense |
 | **Feature** | `Features/[Action][EntityName]/[Action][EntityName].cs` - New command/query |
 | **Endpoint** | `Features/[Action][EntityName]/[Action][EntityName].Http.cs` - New `IEndpoint` |
 | **DTOs** (if needed) | `Dtos/[Action][EntityName]Dto.cs` - Request/response |
@@ -310,6 +310,13 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 5. **Add the HTTP Endpoint**
    ```csharp
    // Features/SubmitOrder/SubmitOrder.Http.cs
+   namespace FullstackTemplate.Server.Domain.Orders.Features;
+
+   using Dtos;
+   using MediatR;
+   using Microsoft.AspNetCore.Http.HttpResults;
+   using Resources.Entrypoints.Http;
+
    public sealed class SubmitOrderEndpoint : IEndpoint
    {
        public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
@@ -320,7 +327,8 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
            .RequireAuthorization()
            .ProducesProblem(StatusCodes.Status403Forbidden)
            .ProducesProblem(StatusCodes.Status404NotFound)
-           .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+           .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+           .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
        /// <summary>
        /// Submits an order for processing.
@@ -409,11 +417,13 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
 - [ ] Each text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
+- [ ] Add the entity to the entity graph with the `test-entity-graph` skill. Then list each text column with a max length in `StringColumnLengthTests`: a column that a request sets in `CallerColumns` with its domain write, a column with fixed options in `FixedOptionColumns`, or a column that only the server writes in `ServerWrittenColumns`
 - [ ] Install MediatR if not already present
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Put validation in the entity, and put database checks such as unique values in the handler
 - [ ] Add the permission of the commands to `Permission.cs` (a `Permission.Names` constant, a `PermissionEnum` entry, and a factory method), with a migration that gives it to the admins that exist
+- [ ] Add the name of the new permission to the two lists in `PermissionTests` (`list_names_returns_all_permission_names` and `get_all_returns_all_permissions`)
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
@@ -429,21 +439,23 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Entity configuration updated (constraints, value object mapping)
 - [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
-- [ ] A new text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses (see `docs/backend/domain-entities.md`)
+- [ ] A new text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
+- [ ] A new text column with a max length is in `CallerColumns`, `FixedOptionColumns`, or `ServerWrittenColumns` of `StringColumnLengthTests`. For a caller column, add the property to the input and the blueprint of the entity graph, so that the domain write can set it
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
 
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
+- [ ] Each property that the domain method sets, such as `[ActionPastTense]At`, is on the entity, the `[EntityName]Dto`, and the configuration (see "Process: New Property")
 - [ ] Domain event created (if state change is significant)
 - [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)
 - [ ] Feature folder created with the Command/Query and Handler file
-- [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist)
+- [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses
-- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler
+- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler. Add the tool name to the expected lists of `ToolsOfEachCaller` in `TenantMcpToolTests` for each caller that can use it
 - [ ] Additional DTOs created if needed
 - [ ] Telemetry added with the `feature-telemetry` skill: query tags, id tags on the feature span, a log for each state change, and metrics if support needs a rate
 - [ ] Run `dotnet build` to verify compilation

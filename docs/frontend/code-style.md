@@ -81,8 +81,8 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 2. Use named exports. A route file exports `Route`.
 3. Do not make barrel files. A barrel file is an `index.ts` that only exports from other files. Import from the file that has the code. `types/index.ts` is correct, because it holds the types.
 4. Use the `@/` alias for imports outside the current area. Use a relative import inside the area.
-5. Order imports in this sequence: packages, `@/` imports, and relative imports.
-6. Keep each file at 1000 lines or less. Split a larger file by part. For example, `calendar.tsx` imports its zoom view from `calendar-zoom.tsx` and its date presets from `calendar-presets.ts`. This rule does not apply to generated files, such as `routeTree.gen.ts` and the files in `api/generated*/`.
+5. Keep each file at 1000 lines or less. Split a larger file by part. For example, `calendar.tsx` imports its zoom view from `calendar-zoom.tsx` and its date presets from `calendar-presets.ts`. This rule does not apply to generated files, such as `routeTree.gen.ts` and the files in `api/generated*/`.
+6. Order imports in this sequence: packages, `@/` imports, and relative imports.
 
 ```typescript
 import { useQuery } from '@tanstack/react-query'

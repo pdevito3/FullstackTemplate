@@ -691,7 +691,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private sealed record IssuedTokens(string Subject, string AccessToken, string RefreshToken, string? IdToken);
 
     /// <summary>
-    /// See <see cref="HoldRefreshes"/> and <see cref="HoldingCommandInterceptor"/>.
+    /// See <see cref="HoldRefreshes"/>.
     /// </summary>
     public sealed class RequestGate
     {

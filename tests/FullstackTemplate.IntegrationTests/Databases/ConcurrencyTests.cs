@@ -9,10 +9,9 @@ using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Npgsql;
 using Shouldly;
 
 public class ConcurrencyTests : TestBase
@@ -37,22 +36,28 @@ public class ConcurrencyTests : TestBase
     }
 
     [Test]
-    public async Task two_updates_from_one_loaded_version_give_one_success_and_one_stale_version()
+    public async Task update_that_a_rival_update_beat_after_the_load_is_a_stale_version()
     {
         // Arrange
-        var (first, second, tenantId) = await TwoAdminScopesForANewTenantAsync();
-        var loaded = await first.SendAsync(new GetTenant.Query(tenantId));
+        var pause = PauseAtQuery.After("tenants.update.load");
+        await using var services = pause.BuildServices();
+        var (underTest, rival, tenantId) = await TwoAdminScopesForANewTenantAsync(services);
+        var loaded = await rival.SendAsync(new GetTenant.Query(tenantId));
+        var rivalName = $"Tenant {Guid.NewGuid():N}";
 
         // Act
-        var outcomes = await Task.WhenAll(
-            FailureOf(first.SendAsync(new UpdateTenant.Command(tenantId,
-                new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }))),
-            FailureOf(second.SendAsync(new UpdateTenant.Command(tenantId,
-                new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }))));
+        var update = underTest.SendAsync(new UpdateTenant.Command(tenantId,
+            new TenantForUpdateDto { Name = $"Tenant {Guid.NewGuid():N}", Version = loaded.Version }));
+        await pause.ReachedAsync();
+        await rival.SendAsync(new UpdateTenant.Command(tenantId,
+            new TenantForUpdateDto { Name = rivalName, Version = loaded.Version }));
+        pause.Release();
 
         // Assert
-        outcomes.Count(o => o is null).ShouldBe(1);
-        outcomes.Count(o => o is StaleVersionException).ShouldBe(1);
+        await Should.ThrowAsync<StaleVersionException>(update);
+        var saved = await new TestingServiceScope().ExecuteDbContextAsync(db =>
+            db.Tenants.IgnoreQueryFilters().SingleAsync(t => t.Id == tenantId));
+        saved.Name.ShouldBe(rivalName);
     }
 
     [Test]
@@ -82,29 +87,25 @@ public class ConcurrencyTests : TestBase
     }
 
     [Test]
-    public async Task two_permission_adds_from_one_loaded_version_give_one_success_and_one_stale_version()
+    public async Task permission_add_that_a_rival_add_beat_after_the_load_is_a_stale_version()
     {
         // Arrange
+        var pause = PauseAtQuery.After("users.add_permission.load");
+        await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)
             .AddUser(out var user, u => u.Role = "User")
             .BuildAsync();
-        await using var rowLock = await LockUserRowAsync(user.Id);
 
         // Act
-        Task<Exception?>[] adds =
-        [
-            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "manage_users"))),
-            FailureOf(new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "manage_users"))),
-        ];
-        await WaitUntilBlockedAsync(rowLock.ProcessID, adds);
-        await rowLock.CloseAsync();
-        var outcomes = await Task.WhenAll(adds);
+        var add = new TestingServiceScope(services).SendAsync(new AddUserPermission.Command(user.Id, "manage_users"));
+        await pause.ReachedAsync();
+        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "read_users"));
+        pause.Release();
 
         // Assert
-        outcomes.Count(o => o is null).ShouldBe(1);
-        outcomes.Count(o => o is StaleVersionException).ShouldBe(1);
+        await Should.ThrowAsync<StaleVersionException>(add);
         var saved = await LoadWithPermissionsAsync(new TestingServiceScope(), user.Id);
-        saved.UserPermissions.ShouldHaveSingleItem().Permission.Value.ShouldBe("manage_users");
+        saved.UserPermissions.ShouldHaveSingleItem().Permission.Value.ShouldBe("read_users");
     }
 
     [Test]
@@ -146,69 +147,18 @@ public class ConcurrencyTests : TestBase
         reloaded.Version.ShouldBe(updated.Version);
     }
 
-    private static async Task<(TestingServiceScope First, TestingServiceScope Second, string TenantId)> TwoAdminScopesForANewTenantAsync()
+    private static async Task<(TestingServiceScope First, TestingServiceScope Second, string TenantId)> TwoAdminScopesForANewTenantAsync(
+        IServiceProvider? firstServices = null)
     {
         await new TestingServiceScope().StartGraph(out _)
             .AddTenant(out var tenant)
             .AddUser(out var admin, u => u.Role = "Admin")
             .BuildAsync();
-        var first = new TestingServiceScope();
+        var first = firstServices is null ? new TestingServiceScope() : new TestingServiceScope(firstServices);
         var second = new TestingServiceScope();
         first.SetUserWithDefaults(identifier: admin.Identifier);
         second.SetUserWithDefaults(identifier: admin.Identifier);
         return (first, second, tenant.Id);
-    }
-
-    private static async Task<Exception?> FailureOf<T>(Task<T> update)
-    {
-        try
-        {
-            await update;
-            return null;
-        }
-        catch (Exception exception)
-        {
-            return exception;
-        }
-    }
-
-    // A FOR UPDATE lock on the user row does not stop a read, so a save blocks on it only after its handler loaded the
-    // user. While it holds, each handler loads the same version. The connection is outside EF, because the retrying
-    // execution strategy refuses a transaction that the caller starts.
-    private static async Task<NpgsqlConnection> LockUserRowAsync(string userId)
-    {
-        var connection = new NpgsqlConnection(
-            new TestingServiceScope().GetService<IConfiguration>().GetConnectionString(DatabaseConsts.DatabaseName));
-        await connection.OpenAsync();
-        var transaction = await connection.BeginTransactionAsync();
-        await using var command = new NpgsqlCommand("SELECT 1 FROM users WHERE id = @id FOR UPDATE", connection, transaction);
-        command.Parameters.AddWithValue("id", userId);
-        await command.ExecuteNonQueryAsync();
-        return connection;
-    }
-
-    private static async Task WaitUntilBlockedAsync(int lockPid, Task<Exception?>[] saves)
-    {
-        var database = new TestingServiceScope().GetService<AppDbContext>().Database;
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (true)
-        {
-            var blocked = (await database.SqlQuery<int>($"""
-                WITH RECURSIVE blocked(pid) AS (
-                    SELECT pid FROM pg_stat_activity WHERE {lockPid} = ANY(pg_blocking_pids(pid))
-                    UNION
-                    SELECT a.pid FROM pg_stat_activity a JOIN blocked b ON b.pid = ANY(pg_blocking_pids(a.pid))
-                )
-                SELECT count(*)::int AS "Value" FROM blocked
-                """).ToListAsync()).Single();
-            if (blocked == saves.Length)
-                return;
-            if (saves.FirstOrDefault(s => s.IsCompleted) is { } done)
-                throw new InvalidOperationException($"A save finished before the lock was released: {await done}");
-            if (DateTime.UtcNow > deadline)
-                throw new TimeoutException($"{blocked} of {saves.Length} saves waited on the lock.");
-            await Task.Delay(20);
-        }
     }
 
     private static Task<User> LoadWithPermissionsAsync(TestingServiceScope scope, string userId)

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Diagnostics;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -23,7 +24,7 @@ public static class DatabaseConflict
     /// <summary>For a write that EF does not run, such as COPY. Null when the failure is a server fault.</summary>
     public static Exception? From(PostgresException exception, IModel model) => From(exception, exception, model);
 
-    private static ConstraintConflictException? From(PostgresException postgres, Exception exception, IModel model)
+    private static Exception? From(PostgresException postgres, Exception exception, IModel model)
     {
         var defaultMessage = postgres.SqlState switch
         {
@@ -35,11 +36,13 @@ public static class DatabaseConflict
             return null;
 
         var constraint = postgres.ConstraintName ?? string.Empty;
-        var error = ConstraintErrors.Of(model).GetValueOrDefault(constraint);
-        return new ConstraintConflictException(
-            constraint,
-            error?.Field ?? string.Empty,
-            error?.Message ?? defaultMessage,
-            exception);
+        return ConstraintErrors.Of(model).GetValueOrDefault(constraint) switch
+        {
+            null => new ConstraintConflictException(constraint, string.Empty, defaultMessage, exception),
+            ConstraintError.StaleVersion => new StaleVersionException(exception),
+            ConstraintError.RequestField error => new ConstraintConflictException(constraint, error.Field, error.Message, exception),
+            var error => throw new UnreachableException(
+                $"The constraint {constraint} has a {error.GetType().FullName}, which {nameof(DatabaseConflict)} does not map to a response."),
+        };
     }
 }

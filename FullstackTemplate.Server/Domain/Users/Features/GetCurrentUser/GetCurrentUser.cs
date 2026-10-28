@@ -9,7 +9,6 @@ public static class GetCurrentUser
 {
     public sealed record Query : IRequest<CurrentUserDto>;
 
-    // The token is the only source, so a user with no user record gets an answer too
     public sealed class Handler(ICurrentUserService currentUserService) : IRequestHandler<Query, CurrentUserDto>
     {
         public Task<CurrentUserDto> Handle(Query request, CancellationToken cancellationToken)

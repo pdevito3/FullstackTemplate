@@ -30,7 +30,6 @@ interface ExampleNavProps {
   onNavigate: () => void
 }
 
-/** The sidebar submenu of the example pages. scripts/remove-examples.cs deletes it with the pages. */
 export function ExampleNav({ currentPath, onNavigate }: ExampleNavProps) {
   const isExampleActive = exampleItems.some((item) => currentPath === item.url || currentPath.startsWith(item.url + "/"))
 

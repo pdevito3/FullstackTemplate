@@ -32,7 +32,7 @@ Preconditions:
 - `doctor.sh` exits with 0.
 - The browser context is new, so `localStorage` has no `ui-theme` value.
 
-- **Home.** Open `/`. Run `page.goto('/')`. `getByRole('navigation', { name: 'breadcrumb', exact: true })` has the text `Home`. Use `exact: true`, because a page can have a breadcrumb of its own, such as `Example breadcrumb` on `/components`. `page.locator('[data-slot="sidebar"] [data-active]')` has 1 element, `Home`. No element has `data-active="false"`.
+- **Home.** Open `/`. Run `page.goto('/')`. `getByRole('navigation', { name: 'breadcrumb', exact: true })` has the text `Home`. Use `exact: true`, because a page can have a breadcrumb of its own. `page.locator('[data-slot="sidebar"] [data-active]')` has 1 element, `Home`. No element has `data-active="false"`.
 - **About.** Choose `About`. Run `page.getByRole('link', { name: 'About' }).click()`. The URL ends with `/about` and the breadcrumb is `About`.
 <!-- example:start -->
 - **Examples.** Open the submenu and choose `Filter Builder`. Run `page.getByRole('button', { name: 'Examples' }).click()`, then `page.getByRole('link', { name: 'Filter Builder' }).click()`. The URL ends with `/filter-demo`, the breadcrumb is `Filter Builder`, and the heading `Filter Builder Demo` is visible.

@@ -68,7 +68,7 @@ All test data comes from the builders in `tests/support/builders/`:
 1. A builder needs no parent. `aProblem()` alone is valid.
 2. A builder is immutable. Each method returns a new builder.
 3. A builder imports nothing from Playwright or Vitest.
-4. The types come from the generated client. A builder derives a dependent value (for example the total count of a page from its items), so the data cannot contradict itself.
+4. The types come from the generated client. A builder derives each dependent value, so the data cannot contradict itself.
 
 Set only the values that the scenario is about. If a scenario needs a value that no builder method sets, add the method to the builder.
 

@@ -7,7 +7,7 @@ dotnet run scripts/remove-examples.cs
 dotnet build FullstackTemplate.slnx
 ```
 
-Then commit the result. The script changes only a clean git tree. A second run changes nothing. If the script stops before the end, correct the cause and run it again.
+Then commit the result. The script changes only a clean git tree. A second run changes nothing. If the script stops before the end, it prints the command that undoes its changes. Correct the cause, undo the changes, and run it again.
 
 The script does these steps:
 
@@ -15,7 +15,7 @@ The script does these steps:
 2. It deletes each section between an `example:start` comment and an `example:end` comment, in all other tracked files.
 3. It writes the generated files again: the OpenAPI document of the Server, the generated API client of the SPA, and `routeTree.gen.ts`.
 
-A marker with no partner stops the script before it changes a file.
+A marker with no partner stops the script before it changes a file. Do not put a marker at the start of a line in a code block of a doc, because the script reads it as a marker.
 
 <!-- example:start -->
 ## The examples
@@ -38,4 +38,6 @@ Put example code where the script finds it:
 - Put example lines in a shared file between two comments. Use the comment form of the file: `// example:start` and `// example:end` in C# and TypeScript, `# example:start` in YAML and shell, `<!-- example:start -->` in Markdown, and `{/* example:start */}` in JSX.
 - Do not let code outside the examples use example code. After the script runs, that code does not compile.
 
+<!-- example:start -->
 The `without-examples` job of CI runs the script, runs it again to prove that the second run changes nothing, and fails if an example name stays in a tracked file. Then it builds the app and runs all of the tests. The other CI jobs test the app with the examples.
+<!-- example:end -->

@@ -16,6 +16,12 @@ for (const viewport of [
 
       expect(await shell.pageScrollRange()).toBe(0)
     })
+
+    test('the home page does not scroll', async ({ page }) => {
+      await homePage(page).open()
+
+      expect(await appShellPage(page).pageScrollRange()).toBe(0)
+    })
   })
 }
 

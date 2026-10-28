@@ -14,7 +14,7 @@ export default async ({ page, step, capture, settle, expect }) => {
   await page.addInitScript(() => {
     if (location.pathname !== '/filter-demo') return
     const samples = []
-    window.__demosPanelSamples = samples
+    window.__examplesPanelSamples = samples
     const tick = () => {
       const panel = document.querySelector('[data-slot="collapsible-content"]')
       if (panel) {
@@ -35,8 +35,8 @@ export default async ({ page, step, capture, settle, expect }) => {
   })
 
   await step('page load: the expanded Examples panel shows without a mount animation', async () => {
-    await expect.poll(() => page.evaluate(() => window.__demosPanelSamples.length)).toBe(20)
-    const samples = await page.evaluate(() => window.__demosPanelSamples)
+    await expect.poll(() => page.evaluate(() => window.__examplesPanelSamples.length)).toBe(20)
+    const samples = await page.evaluate(() => window.__examplesPanelSamples)
     for (const sample of samples) {
       expect(sample.opacity).toBe(1)
       expect(sample.fullHeight).toBeGreaterThan(0)

@@ -19,7 +19,7 @@ Domain/Tenants/
         └── TenantGrpcMappings.cs  # The maps from the DTOs to the messages
 ```
 
-Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, AuditEntries, Tenants, and Users features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `AddTenant` has MCP.
+Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, AuditEntries, Tenants, and Users features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Outside the examples, only `AddTenant` has MCP.
 
 The reason for this layout is in [ADR 0002](../adr/0002-colocate-entrypoints-with-features.md).
 

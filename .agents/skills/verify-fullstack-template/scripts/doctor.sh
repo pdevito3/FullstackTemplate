@@ -39,14 +39,8 @@ server="$(jq -r .urls.server "$stack")"
 build="$(jq -r '.build // "dev"' "$stack")"
 [[ "$(web_url "$build")" == "$web" ]] && ok "web URL $web ($build build)" || fail "the web URL changed. stack.json is stale."
 
-# An anonymous call through the SPA proxy and the BFF gets the 401 of the Server. Only the Server sends a Bearer
-# challenge with it. The 401 of the CSRF check of the BFF has no challenge.
-headers="$(curl -sk -o /dev/null -D - -H 'X-CSRF: 1' "$web/api/v1/users/me" | tr -d '\r')"
-if grep -q '^HTTP/[0-9.]* 401' <<<"$headers" && grep -qi '^www-authenticate:.*bearer' <<<"$headers"; then
-  ok "GET $web/api/v1/users/me -> the 401 of the Server"
-else
-  fail "GET $web/api/v1/users/me -> $(head -1 <<<"$headers"), not the 401 of the Server"
-fi
+server_rejects_anonymous "$web" && ok "GET $web/api/v1/users/me -> the 401 of the Server" \
+  || fail "GET $web/api/v1/users/me did not get the 401 of the Server"
 code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/bff/user")"
 [[ "$code" == "204" || "$code" == "200" ]] && ok "GET /bff/user -> $code" || fail "GET /bff/user -> $code"
 code="$(curl -sk -o /dev/null -w '%{http_code}' "$server/health")"

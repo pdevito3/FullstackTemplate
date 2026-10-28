@@ -7,7 +7,6 @@ export const usersPaths = {
 }
 
 export const usersApi = {
-  /** The signed-in user as the Server reads it from the access token. */
   currentIs(user: CurrentUserDto): MockRoute {
     return { method: 'get', path: usersPaths.current, status: 200, body: user }
   },

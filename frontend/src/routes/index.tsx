@@ -57,7 +57,6 @@ function Home() {
   )
 }
 
-// The name comes from the Server, so it shows only when the BFF sent the access token and the Server accepted it
 function SignedInUser() {
   const { data: user, isLoading, isError } = useCurrentUser()
 

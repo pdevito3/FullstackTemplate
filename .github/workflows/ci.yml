@@ -141,10 +141,11 @@ jobs:
       - name: Remove the examples
         run: dotnet run scripts/remove-examples.cs
 
-      # A second run must change nothing
-      - name: Run the script again
+      # The script changes only a clean tree, so the job commits the first run
+      - name: Fail if a second run changes a file
         run: |
           git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Remove the examples"
           dotnet run scripts/remove-examples.cs
           git add --intent-to-add --all
           git diff --exit-code --stat
@@ -152,8 +153,11 @@ jobs:
       - name: Fail on example code that the script left
         run: |
           if git ls-files | grep -E '(^|/)(Examples|examples|\(examples\))/'; then exit 1; fi
-          if git grep -n -I -i -E 'weather|forecast|filter-demo|components-showcase|get_tenant|list_tenants|update_tenant|example:(start|end)' \
-            -- ':!scripts/remove-examples.cs' ':!docs/examples.md'; then exit 1; fi
+          # git grep exits with 1 when it finds nothing, 0 on a match, and a higher code on an error
+          status=0
+          git grep -n -I -i -E 'weather|forecast|filter-demo|components-showcase|get_tenant|list_tenants|update_tenant|example:(start|end)' \
+            -- ':!scripts/remove-examples.cs' ':!docs/examples.md' || status=$?
+          [ "$status" -eq 1 ]
 
       - name: Build the solution
         run: dotnet build FullstackTemplate.slnx

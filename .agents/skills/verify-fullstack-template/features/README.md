@@ -57,6 +57,8 @@ The example pages have their feature files in `examples/`. `scripts/remove-examp
 
 ## Not mapped yet
 
+<!-- example:start -->
 - The boolean filter dialog and the add path of the date filter dialog on the filter builder. The filter builder map covers only the date edit dialog.
+<!-- example:end -->
 - Swagger UI on the server (`/swagger`). The Playwright spec `frontend/e2e/auth-flows.spec.ts` covers it.
 - The Users and Tenants JSON API. It has no UI.

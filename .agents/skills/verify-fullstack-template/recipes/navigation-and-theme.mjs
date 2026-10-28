@@ -1,4 +1,4 @@
-// Feature: navigation-and-theme. Sidebar links, Examples submenu, breadcrumb, collapse, theme. See features/navigation-and-theme.md.
+// Feature: navigation-and-theme. Sidebar links, breadcrumb, collapse, theme. See features/navigation-and-theme.md.
 export default async ({ page, step, capture, settle, expect }) => {
   const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb', exact: true })
   // The layout has a Toggle Sidebar button in the header and a rail with the same name. Use the header one.

@@ -1,11 +1,10 @@
-// Deletes the example code of the template from an app. See docs/examples.md.
+// Deletes the example code of the template. See docs/examples.md.
 //
 //   dotnet run scripts/remove-examples.cs
 //
-// The script deletes each folder named Examples, examples, or (examples), and each section between example:start and
-// example:end comments. Then it writes the API contract and the route tree of the SPA again, because the examples
-// are in them. A second run changes nothing.
+// A second run changes nothing.
 
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -22,17 +21,11 @@ try
     var root = Path.GetFullPath(Path.Combine((string)AppContext.GetData("EntryPointFileDirectoryPath")!, ".."));
     var app = new AppRepo(root);
 
-    // Find all the work first, so that a marker with no end stops the script before it changes a file
+    app.FailIfTreeHasChanges();
     var removal = app.FindExamples();
-    if (removal.IsDue)
-    {
-        app.FailIfTreeHasChanges();
-        changing = true;
-        app.Remove(removal);
-    }
 
-    // Always, so that a second run finishes the work of a first run that stopped before the end
     changing = true;
+    app.Remove(removal);
     app.WriteGeneratedFiles();
 
     Console.WriteLine(removal.IsDue
@@ -65,8 +58,6 @@ internal sealed partial class AppRepo(string root)
 {
     private const string ThisScript = "scripts/remove-examples.cs";
 
-    // The names of a folder that holds only example code. The SPA uses kebab case, and (examples) is a TanStack
-    // Router route group, which adds no segment to the URL.
     private static readonly HashSet<string> ExampleFolderNames = new(StringComparer.Ordinal) { "Examples", "examples", "(examples)" };
 
     public string Name => Path.GetFileNameWithoutExtension(
@@ -120,9 +111,6 @@ internal sealed partial class AppRepo(string root)
             WriteText(Path.Combine(root, file), text);
     }
 
-    // The same steps as the api-contract job of CI: delete the contract, so that the files of a removed endpoint go,
-    // then build the Server, which writes the OpenAPI document, and generate the client. pnpm build writes the route
-    // tree, and its tsc step fails on a file that still imports a deleted example.
     public void WriteGeneratedFiles()
     {
         foreach (var document in Directory.GetFiles(Path.Combine(root, $"{Name}.Server", "openapi"), "*.json"))
@@ -136,7 +124,6 @@ internal sealed partial class AppRepo(string root)
         Run(Frontend, "pnpm", "build");
     }
 
-    // The outermost folder of the path with an example name, or null
     private static string? ExampleFolderOf(string file)
     {
         var parts = file.Split('/');
@@ -148,7 +135,6 @@ internal sealed partial class AppRepo(string root)
         return null;
     }
 
-    // Skips symlinks and binary files
     private static string? ReadText(string path)
     {
         if (new FileInfo(path).LinkTarget is not null)
@@ -162,14 +148,13 @@ internal sealed partial class AppRepo(string root)
         return Encoding.UTF8.GetString(bytes.AsSpan().StartsWith(preamble) ? bytes[preamble.Length..] : bytes);
     }
 
-    // Keeps a UTF-8 byte order mark
     private static void WriteText(string path, string text)
     {
         var hasBom = File.ReadAllBytes(path).AsSpan().StartsWith(Encoding.UTF8.Preamble);
         File.WriteAllBytes(path, [.. hasBom ? Encoding.UTF8.Preamble : [], .. Encoding.UTF8.GetBytes(text)]);
     }
 
-    // The files that git tracks, and the new files that git does not ignore. Paths use forward slashes.
+    // git ls-files prints paths with forward slashes on every platform.
     private List<string> GitFiles() => Git("ls-files", "-z", "--cached", "--others", "--exclude-standard")
         .Split('\0', StringSplitOptions.RemoveEmptyEntries)
         .Distinct()
@@ -193,20 +178,32 @@ internal sealed partial class AppRepo(string root)
 
     private static void Run(string folder, string command, params string[] arguments)
     {
-        Console.WriteLine($"> {command} {string.Join(' ', arguments)}");
-        using var process = Process.Start(new ProcessStartInfo(command, arguments) { WorkingDirectory = folder })
-            ?? throw new RemovalException($"The script could not start {command}.");
-        process.WaitForExit();
-        if (process.ExitCode != 0)
-            throw new RemovalException($"'{command} {string.Join(' ', arguments)}' failed in {folder}. Correct the cause, then run the script again.");
+        var line = $"{command} {string.Join(' ', arguments)}";
+        Console.WriteLine($"> {line}");
+        // On Windows, pnpm is a .cmd file, and Process.Start finds only an .exe
+        var startInfo = OperatingSystem.IsWindows() && command == "pnpm"
+            ? new ProcessStartInfo("cmd.exe", ["/c", command, .. arguments])
+            : new ProcessStartInfo(command, arguments);
+        startInfo.WorkingDirectory = folder;
+        try
+        {
+            using var process = Process.Start(startInfo) ?? throw new RemovalException($"The script could not start {command}.");
+            process.WaitForExit();
+            if (process.ExitCode != 0)
+                throw new RemovalException($"'{line}' failed in {folder}.");
+        }
+        catch (Win32Exception exception)
+        {
+            throw new RemovalException($"The script could not start {command}: {exception.Message}");
+        }
     }
 
-    // The comment can be <!-- -->, //, #, or {/* */}, so that a section works in Markdown, C#, TypeScript, YAML, and
-    // JSX. The blank line before the section goes too, so that no double blank line stays.
-    [GeneratedRegex(@"(?:^[ \t]*\r?\n)?^[ \t]*(?:<!--|//|#|\{/\*) example:start\b.*?^[ \t]*(?:<!--|//|#|\{/\*) example:end\b[^\n]*\n", RegexOptions.Singleline | RegexOptions.Multiline)]
+    private const string MarkerStart = @"^[ \t]*(?:<!--|//|#|\{/\*)[ \t]*example:";
+
+    [GeneratedRegex(@"(?:^[ \t]*\r?\n)?" + MarkerStart + @"start\b.*?" + MarkerStart + @"end\b[^\n]*(?:\n|\z)", RegexOptions.Singleline | RegexOptions.Multiline)]
     private static partial Regex ExampleSectionPattern();
 
-    [GeneratedRegex(@"^[ \t]*(?:<!--|//|#|\{/\*) example:(?:start|end)\b[^\n]*", RegexOptions.Multiline)]
+    [GeneratedRegex(MarkerStart + @"(?:start|end)\b[^\n]*", RegexOptions.Multiline)]
     private static partial Regex MarkerLinePattern();
 }
 

@@ -208,7 +208,8 @@ public class OpenApiDocumentTests
             .ShouldBe(expectations.Select(e => $"{e.Name}: {e.MaxLength}"));
     }
 
-    // A new string field of a request needs [SchemaMaxLength] or [NamesOf<T>], so that a form gets its limit from the contract
+    // A new string field of a request needs [SchemaMaxLength] or [NamesOf<T>], so that a form gets its limit from the contract.
+    // A date-time string has a length that its format sets
     [Test]
     public async Task each_request_string_has_a_max_length_or_a_list_of_names()
     {
@@ -220,7 +221,8 @@ public class OpenApiDocumentTests
         static IEnumerable<string> RefsUnder(JsonNode node) =>
             Descendants(node).OfType<JsonObject>().Select(child => child["$ref"]?.GetValue<string>()).OfType<string>();
         static bool IsFreeText(JsonNode schema) =>
-            TypesOf(schema).Contains("string") && schema["maxLength"] is null && schema["enum"] is null;
+            TypesOf(schema).Contains("string") && schema["maxLength"] is null && schema["enum"] is null
+            && schema["format"]?.GetValue<string>() != "date-time";
 
         var requestSchemas = new HashSet<string>();
         var pending = new Queue<string>(Operations(root)

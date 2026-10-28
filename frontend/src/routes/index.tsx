@@ -181,7 +181,6 @@ function Index() {
           isLoading={isLoading}
           hasError={!!currentError}
           useCelsius={useCelsius}
-          isSecure={isSecureData}
           formatDate={formatDate}
           onRetry={handleRefresh}
         />
@@ -195,12 +194,11 @@ interface ForecastDaysProps {
   isLoading: boolean
   hasError: boolean
   useCelsius: boolean
-  isSecure: boolean
   formatDate: (date: string) => string
   onRetry: () => void
 }
 
-function ForecastDays({ days, isLoading, hasError, useCelsius, isSecure, formatDate, onRetry }: ForecastDaysProps) {
+function ForecastDays({ days, isLoading, hasError, useCelsius, formatDate, onRetry }: ForecastDaysProps) {
   if (isLoading) {
     return (
       <div role="status" aria-label="Loading forecast" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -225,7 +223,6 @@ function ForecastDays({ days, isLoading, hasError, useCelsius, isSecure, formatD
             key={forecast.date}
             forecast={forecast}
             useCelsius={useCelsius}
-            isSecure={isSecure}
             formatDate={formatDate}
           />
         ))}
@@ -252,7 +249,6 @@ function ForecastDays({ days, isLoading, hasError, useCelsius, isSecure, formatD
 interface WeatherCardProps {
   forecast: WeatherForecast | SecureWeatherForecast
   useCelsius: boolean
-  isSecure: boolean
   formatDate: (date: string) => string
 }
 
@@ -270,9 +266,9 @@ const SUMMARY_ICONS: Record<string, typeof CloudIcon> = {
   Scorching: FireIcon,
 }
 
-function WeatherCard({ forecast, useCelsius, isSecure, formatDate }: WeatherCardProps) {
+function WeatherCard({ forecast, useCelsius, formatDate }: WeatherCardProps) {
   return (
-    <Card role="listitem" aria-label={formatDate(forecast.date)} className={cn('transition-shadow hover:shadow-md', isSecure && 'border-chart-2/30')}>
+    <Card role="listitem" aria-label={formatDate(forecast.date)} className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>

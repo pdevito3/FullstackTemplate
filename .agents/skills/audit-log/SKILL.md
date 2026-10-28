@@ -10,7 +10,8 @@ Each save writes the audit log in its transaction, so a feature gets its audit e
 ## Procedure
 
 1. Find each case of your change, and do its steps.
-   - **A new entity, property, or value object.** Mark each property `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. A date and a decimal need a mark. Personal and secret data is `[Sensitive]`. Make a root `ITenantable`, or make the entity a child with one `Cascade` foreign key to its owner. Map a value object with `ComplexProperty`.
+   - **A new entity, property, or value object.** Mark each property `[Sensitive]` or `[NotSensitive]`, except a flag, an enum, a `Guid`, an integer, or a foreign key. A date and a decimal need a mark. Personal and secret data is `[Sensitive]`. Make a root `ITenantable`, or make the entity a child with one `Cascade` foreign key to its owner. An entity with a nullable `Cascade` owner key, such as the node of a tree, is a root when the key is null, so make it `ITenantable`. Map a value object with `ComplexProperty`.
+   - **A read model of a view.** Do not make it a `BaseEntity`, because the model build refuses a `BaseEntity` that maps to a view. Make it a class with `[NotAudited(reason)]` and `ITenantable`. See `docs/backend/entity-configurations.md`, section "Read models".
    - **A fact that changes no data**, such as an export. Declare a sealed `AuditAction` record with an `[AuditActionName]`, and mark each property that is not a flag, an enum, a `Guid`, or an integer. In the handler, call `dbContext.RecordAction` with `AuditSubject.Of(root)`, then `SaveChangesAsync`.
    - **A change of many rows.** Load the entities, change them through their methods, and save. For many new aggregates, call `dbContext.BulkInsertAsync`.
    - **A table that needs no audit**, such as a cache. Make the type a class that is not a `BaseEntity`, and give it `[NotAudited(reason)]`.

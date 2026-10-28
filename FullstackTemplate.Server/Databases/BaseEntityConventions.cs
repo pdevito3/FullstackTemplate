@@ -47,13 +47,34 @@ public static class BaseEntityConventions
             foreach (var entityType in modelBuilder.Metadata.GetEntityTypes()
                          .Where(e => e.BaseType is null && e.ClrType.IsAssignableTo(typeof(BaseEntity))))
             {
-                if (entityType.IsOwned())
-                    throw new InvalidOperationException(
-                        $"{entityType.ClrType.Name} is a BaseEntity that another entity owns. A BaseEntity must not be owned. " +
-                        "Map a value object with ComplexProperty, or give a child entity its own key and a Cascade foreign key to its owner.");
-
+                GuardRowOfATable(entityType);
                 configure(entityType);
             }
+        }
+
+        // The ID, the xmin version, the soft delete, and the audit log each need a row of a table with a key.
+        private static void GuardRowOfATable(IConventionEntityType root)
+        {
+            const string readModelFix =
+                "For a read model, use a class that is not a BaseEntity and give it [NotAudited(reason)], and ITenantable for the tenant filter.";
+
+            if (root.IsOwned())
+                throw new InvalidOperationException(
+                    $"{root.ClrType.Name} is a BaseEntity that another entity owns. A BaseEntity must not be owned. " +
+                    "Map a value object with ComplexProperty, or give a child entity its own key and a Cascade foreign key to its owner.");
+
+            if (root.FindPrimaryKey()?.Properties is not [{ Name: nameof(BaseEntity.Id) }])
+                throw new InvalidOperationException(
+                    $"{root.ClrType.Name} is a BaseEntity whose key is not its Id alone. A BaseEntity is a row of a table with its Id as the key. " +
+                    $"Give it HasKey(e => e.Id). {readModelFix}");
+
+            if (root.GetDerivedTypesInclusive().FirstOrDefault(e =>
+                    e.GetViewName() is not null || e.GetSqlQuery() is not null || e.GetFunctionName() is not null)
+                is { } readsFromAView)
+                throw new InvalidOperationException(
+                    $"{readsFromAView.ClrType.Name} is a BaseEntity that maps to a view, a SQL query, or a function. " +
+                    "A BaseEntity is a row of a table, and a query of it selects the xmin column of the table. " +
+                    $"Map it only with ToTable. {readModelFix}");
         }
     }
 

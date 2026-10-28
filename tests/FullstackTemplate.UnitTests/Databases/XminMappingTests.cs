@@ -28,21 +28,26 @@ public class XminMappingTests
     }
 
     [Test]
-    public void an_entity_mapped_to_a_view_then_to_a_table_reads_its_version_back_after_a_save()
+    public void each_entity_type_of_a_tpc_hierarchy_with_an_abstract_root_reads_its_version_back_after_a_save()
     {
         // Arrange
-        using var context = new ViewThenTableContext();
+        using var context = new AbstractTpcRootContext();
 
         // Act
-        var version = context.Model.FindEntityType(typeof(Note))!.FindProperty(nameof(BaseEntity.Version))!;
+        var versions = new[] { typeof(Note), typeof(TextNote) }
+            .Select(type => context.Model.FindEntityType(type)!)
+            .Select(e => e.FindProperty(nameof(BaseEntity.Version))!.ValueGenerated)
+            .ToList();
 
         // Assert
-        version.ValueGenerated.ShouldBe(ValueGenerated.OnAddOrUpdate);
+        versions.ShouldAllBe(v => v == ValueGenerated.OnAddOrUpdate);
     }
 
-    private sealed class Note() : BaseEntity("note");
+    private abstract class Note() : BaseEntity("note");
 
-    private sealed class ViewThenTableContext() : AppDbContext(TestOptions,
+    private sealed class TextNote : Note;
+
+    private sealed class AbstractTpcRootContext() : AppDbContext(TestOptions,
         TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
         Substitute.For<ITenantScopeProvider>(),
         new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
@@ -53,9 +58,9 @@ public class XminMappingTests
             modelBuilder.Entity<Note>(note =>
             {
                 note.HasKey(n => n.Id);
-                note.ToView("note_view");
-                note.ToTable("notes");
+                note.UseTpcMappingStrategy();
             });
+            modelBuilder.Entity<TextNote>().HasBaseType<Note>();
         }
     }
 

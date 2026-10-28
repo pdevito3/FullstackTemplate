@@ -56,18 +56,54 @@ internal sealed class TrackedAggregates
         {
             var ownerIdProperty = child.Property(ownerKey.Properties.Single().Name);
             var ownerId = child.State == EntityState.Deleted ? ownerIdProperty.OriginalValue : ownerIdProperty.CurrentValue;
-            var ownerType = ownerKey.PrincipalEntityType;
-            owner = ownerId switch
-            {
-                null when !ownerKey.IsRequired => null,
-                string id when _entries.TryGetValue((ownerType.GetRootType(), id), out var tracked) => tracked,
-                _ => throw new InvalidOperationException(
-                    $"A {child.Metadata.ClrType.Name} changed, but its {ownerType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownerType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it."),
-            };
+            owner = ownerId is null && !ownerKey.IsRequired ? null : TrackedOwner(child, ownerKey, ownerId);
         }
 
         _owners[child.Entity] = owner;
         return owner;
+    }
+
+    /// <summary>The owner that a child leaves in this save, or null when the owner key of the child did not change.</summary>
+    /// <exception cref="InvalidOperationException">The former owner is not tracked.</exception>
+    public EntityEntry<BaseEntity>? FormerOwnerOf(EntityEntry<BaseEntity> child)
+    {
+        if (child.State != EntityState.Modified || _model.OwnerKeyOf(child.Metadata) is not { } ownerKey)
+            return null;
+
+        var ownerIdProperty = child.Property(ownerKey.Properties.Single().Name);
+        return ownerIdProperty is { IsModified: true, OriginalValue: { } formerId }
+            ? TrackedOwner(child, ownerKey, formerId)
+            : null;
+    }
+
+    /// <summary>
+    /// <see cref="AuditSubject.Of{TEntity}"/> names the entity as the root. A tree node has a tenant and can have an
+    /// owner, so this checks each tracked root of an action.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">An action names a tracked entity that has an owner as its root.</exception>
+    public void GuardRootsOf(IEnumerable<AuditAction> actions)
+    {
+        foreach (var action in actions)
+        {
+            var subject = action.Subject;
+            var root = _entries.Values.FirstOrDefault(e =>
+                e.Entity.Id == subject.RootId && e.Metadata.ClrType.Name == subject.RootType);
+            if (root is null || _model.OwnerKeyOf(root.Metadata) is not { } ownerKey
+                             || root.Property(ownerKey.Properties.Single().Name).CurrentValue is null)
+                continue;
+
+            throw new InvalidOperationException(
+                $"The action {action.GetType().Name} names {subject.RootType} '{subject.RootId}' as its aggregate root, but the {subject.RootType} has an owner. Make the subject from the root at the end of its owners, such as the top node of a tree.");
+        }
+    }
+
+    private EntityEntry<BaseEntity> TrackedOwner(EntityEntry<BaseEntity> child, IForeignKey ownerKey, object? ownerId)
+    {
+        var ownerType = ownerKey.PrincipalEntityType;
+        return ownerId is string id && _entries.TryGetValue((ownerType.GetRootType(), id), out var tracked)
+            ? tracked
+            : throw new InvalidOperationException(
+                $"The {ownerType.ClrType.Name} '{ownerId}' owns a {child.Metadata.ClrType.Name} in an aggregate that changed, but the {ownerType.ClrType.Name} is not tracked. Load the {ownerType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
     }
 
     private AuditSubject SubjectOfEntry(EntityEntry<BaseEntity> entry)
@@ -82,8 +118,13 @@ internal sealed class TrackedAggregates
             root = owner;
         }
 
+        var tenantId = TenantOf(root);
+        if (!ReferenceEquals(root.Entity, entry.Entity) && entry.Entity is ITenantable tenantable && tenantable.TenantId != tenantId)
+            throw new InvalidOperationException(
+                $"{entry.Metadata.ClrType.Name} '{entry.Entity.Id}' has the tenant '{tenantable.TenantId}', but its aggregate root {root.Metadata.ClrType.Name} '{root.Entity.Id}' has the tenant '{tenantId}'. Give the {entry.Metadata.ClrType.Name} the tenant of its parent.");
+
         return new AuditSubject(entry.Metadata.ClrType.Name, entry.Entity.Id, root.Metadata.ClrType.Name,
-            root.Entity.Id, TenantOf(root));
+            root.Entity.Id, tenantId);
     }
 
     private static string TenantOf(EntityEntry<BaseEntity> root) => root.Entity switch

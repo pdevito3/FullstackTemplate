@@ -24,7 +24,7 @@ Each entry repeats the facts of its save:
 - `request_name` is the MediatR request, for example `UpdateUser.Command`. A nested request keeps the name of the outer request. The name is null for a save outside a request.
 - `trace_id` joins the save to its trace in the Aspire dashboard.
 
-Each entry names its entity (`entity_type`, `entity_id`), its aggregate root (`root_type`, `root_id`), and the tenant of the root. The root is the owner at the end of the `Cascade` foreign keys. Thus the history of a user shows the changes of its `UserPermission` rows. The tenant comes from the root, not from the caller, so the change of a domain event handler in another tenant goes to that tenant.
+Each entry names its entity (`entity_type`, `entity_id`), its aggregate root (`root_type`, `root_id`), and the tenant of the root. The root is the owner at the end of the `Cascade` foreign keys. Thus the history of a user shows the changes of its `UserPermission` rows. An entity whose optional owner key is null is its own root. The entry of a child that moves to another owner names the root after the move, and it holds the old and the new owner key. The tenant comes from the root, not from the caller, so the change of a domain event handler in another tenant goes to that tenant.
 
 The key is `(occurred_at, record_id, ordinal)`. One index serves the history of a root, and one serves the list of a tenant, each newest first. The table has no foreign keys, because an entry outlives its entity. Triggers refuse `UPDATE`, `DELETE`, and `TRUNCATE`.
 
@@ -34,7 +34,7 @@ The key is `(occurred_at, record_id, ordinal)`. One index serves the history of 
 2. Give each property of an entity `[Sensitive]` or `[NotSensitive]`. Only a plain value (a `bool`, an enum, a `Guid`, or an integer) and a foreign key need no mark. Text, a date, a time, a `decimal`, a `double`, and a value object need a mark, because each can hold personal data, such as a birth date or a salary. The C# type of the property decides, not the column type. Thus a `decimal` that a value converter stores as a number needs a mark, and an enum that it stores as text needs none. `AuditSensitivityTests` fails on a value with no mark or with both marks.
 3. Use `[Sensitive]` for personal or secret data, such as a name, an email address, or free text. Use `[NotSensitive]` for an ID or a name from a fixed set.
 4. Map each value object with `ComplexProperty`, not `OwnsOne`. A complex property can hold only simple properties, not a collection and not another complex property.
-5. Give each aggregate root a tenant of its own. A root implements `ITenantable`, or it is `Tenant`. A child gets its owner through one `Cascade` foreign key, and it does not implement `ITenantable`. See [multi-tenancy.md](../multi-tenancy.md#make-a-child-entity-multi-tenant).
+5. Give each aggregate root a tenant of its own. A root implements `ITenantable`, or it is `Tenant`. A child gets its owner through one `Cascade` foreign key, and it does not implement `ITenantable`. An entity with a nullable `Cascade` owner key is a root when the key is null, so it implements `ITenantable`, as the node of a tree does. See [multi-tenancy.md](../multi-tenancy.md#make-a-child-entity-multi-tenant) and [entity-configurations.md](entity-configurations.md#trees).
 6. Give each entity class a name that no other entity class has. An entry stores the class name.
 7. Make each entity a `BaseEntity`. An entity type that is not a `BaseEntity` has no audit. It must have `[NotAudited(reason)]` with the reason that its rows need no audit, for example `UsedDPoPProof`.
 8. Give each action a name with `[AuditActionName("snake_case")]`. Do not change the name after a release. A stored entry finds its action type by this name.
@@ -59,7 +59,7 @@ dbContext.RecordAction(new UsersExported(AuditSubject.Of(tenant), request.Format
 await dbContext.SaveChangesAsync(cancellationToken);
 ```
 
-`AuditSubject.Of` takes a `Tenant` or an `ITenantable` root, so the type, the ID, and the tenant come from the entity. The save writes the action after the data changes of the same save, under the same record id. An enum value is stored by its name.
+`AuditSubject.Of` takes a `Tenant` or an `ITenantable` root, so the type, the ID, and the tenant come from the entity. For a tree that is one aggregate, give it the top node. The save throws when the subject names a tracked node that has a parent. The save writes the action after the data changes of the same save, under the same record id. An enum value is stored by its name.
 
 ## Bulk insert
 

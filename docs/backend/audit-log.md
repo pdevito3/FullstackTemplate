@@ -59,7 +59,7 @@ dbContext.RecordAction(new UsersExported(AuditSubject.Of(tenant), request.Format
 await dbContext.SaveChangesAsync(cancellationToken);
 ```
 
-`AuditSubject.Of` takes a `Tenant` or an `ITenantable` root, so the type, the ID, and the tenant come from the entity. For a tree that is one aggregate, give it the top node. The save throws when the subject names a loaded node that has a parent. The save writes the action after the data changes of the same save, under the same record id. An enum value is stored by its name.
+`AuditSubject.Of` takes a `Tenant` or an `ITenantable` root, so the type, the ID, and the tenant come from the entity. For a tree that is one aggregate, give it the top node. The save throws when the subject names a tracked node that has a parent. The save writes the action after the data changes of the same save, under the same record id. An enum value is stored by its name.
 
 ## Bulk insert
 

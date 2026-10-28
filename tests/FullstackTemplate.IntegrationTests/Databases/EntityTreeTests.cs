@@ -63,7 +63,7 @@ public sealed class EntityTreeTests : IAsyncDisposable
         // Arrange
         await _database.StartAsync();
         var former = Node.Top();
-        var other = Node.Top();
+        var other = Node.TopIn(former.TenantId);
         var child = former.NewChild();
         await using (var writer = await CreateContextAsync())
         {
@@ -158,6 +158,8 @@ public sealed class EntityTreeTests : IAsyncDisposable
         }
 
         public static Node Top() => new();
+
+        public static Node TopIn(string tenantId) => new() { TenantId = tenantId };
 
         public Node NewChild() => new() { TenantId = TenantId, ParentId = Id };
 

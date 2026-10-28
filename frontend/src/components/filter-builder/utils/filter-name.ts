@@ -1,4 +1,5 @@
-import { format } from 'date-fns'
+import { browserTimeZone, formatInstant } from '@/lib/zoned-time'
+
 import type { DateValue, Filter } from '../types'
 import { getOperatorLabel } from './operators'
 
@@ -46,7 +47,8 @@ function formatValue(
   // DateValue
   if (typeof value === 'object' && 'mode' in value) {
     const dateValue = value as DateValue
-    const formatDate = (date: Date) => format(date, 'MMM d, yyyy')
+    const zone = dateValue.timeZone ?? browserTimeZone()
+    const formatDate = (date: Date) => formatInstant(date, zone, { month: 'short', day: 'numeric', year: 'numeric' })
 
     switch (dateValue.mode) {
       case 'before':

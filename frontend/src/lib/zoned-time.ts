@@ -25,17 +25,15 @@ export function browserTimeZone(): TimeZone {
   return getLocalTimeZone() as TimeZone
 }
 
-/** The zone as a person reads it, for example `America/Argentina/Buenos Aires`. */
 export function timeZoneLabel(zone: TimeZone): string {
   return zone.replaceAll('_', ' ')
 }
 
-/** Today at the place, as `ZonedDate.TodayAt` on the Server. The UTC date and the browser date can be another day. */
+/** Today at the place, as `ZonedDate.TodayAt` on the Server. */
 export function todayAt(zone: TimeZone, now: Date): CalendarDate {
   return toCalendarDate(fromAbsolute(now.getTime(), zone))
 }
 
-/** The date and the wall clock time of an instant at the place, as `TimeZoneId.ToLocal` on the Server. */
 export function wallClockAt(instant: Date, zone: TimeZone): CalendarDateTime {
   return toCalendarDateTime(fromAbsolute(instant.getTime(), zone))
 }

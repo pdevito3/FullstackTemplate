@@ -194,7 +194,7 @@ const form = useForm({
 })
 ```
 
-Take each limit of a form field from the generated Zod schema of its DTO, not from a copy of the number. `maxLengthOf` and `maximumOf` in `lib/api-contract.ts` read the limit. For a text field, use `stringWithMaxLengthOf`, not `z.string().max()`. The Server counts characters, but `.max()` counts UTF-16 units and refuses text that the Server takes. These functions throw when the contract has no limit. To fix that, add `[SchemaMaxLength]` or `[SchemaMaximum]` to the DTO on the Server, then regenerate the contract (see [API contract](#api-contract)).
+Take each limit of a form field from the generated Zod schema of its DTO, not from a copy of the number. `maxLengthOf` and `maximumOf` in `lib/api-contract.ts` read the limit. For a text field, use `stringWithMaxLengthOf`, not `z.string().max()`. The Server counts code points, but `.max()` counts UTF-16 units and refuses text that the Server takes. These functions throw when the contract has no limit. A `uint` field always has a maximum in the contract, so `maximumOf` does not catch a missing `[SchemaMaximum]` on a `uint`. To fix that, add `[SchemaMaxLength]` or `[SchemaMaximum]` to the DTO on the Server, then regenerate the contract (see [API contract](#api-contract)).
 
 ```typescript
 const firstName = userForCreationDtoSchema.shape.firstName

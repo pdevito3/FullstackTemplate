@@ -206,7 +206,7 @@ The `AuthProvider` setting in `FullstackTemplate.AppHost/appsettings.json` selec
   dotnet aspire run -- --AuthProvider ZeroFactor
   ```
 
-The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is for local development only.
+The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is the default provider. It is for local development only, so select another provider before you publish or deploy.
 
 ### Change the provider of a database that has users
 

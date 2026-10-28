@@ -1,0 +1,13 @@
+{
+  "scrollPartial": {
+    "value": "Uni",
+    "listOpen": false
+  },
+  "scrollPartialThenEnter": "Uni",
+  "scrollExact": "united states",
+  "scrollExactThenEnter": "united states",
+  "pointerTab": {
+    "focused": "true",
+    "value": "United Kingdom"
+  }
+}

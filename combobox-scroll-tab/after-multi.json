@@ -1,0 +1,36 @@
+{
+  "scrollPartial": {
+    "value": "ja | chips: ",
+    "listOpen": false
+  },
+  "scrollPartialThenEnter": " | chips: ",
+  "scrollExact": "java | chips: ",
+  "scrollExactThenEnter": " | chips: ",
+  "pointerTab": {
+    "focused": null,
+    "value": " | chips: "
+  },
+  "pointerExactTab": " | chips: ",
+  "arrowTab": " | chips: JavaScript",
+  "exactTab": " | chips: ",
+  "noMatchTab": {
+    "value": " | chips: ",
+    "listOpen": false
+  },
+  "pointerEnter": {
+    "focused": null,
+    "value": " | chips: "
+  },
+  "pointerExactEnter": " | chips: ",
+  "arrowEnter": " | chips: JavaScript",
+  "exactEnter": " | chips: ",
+  "noMatchEnter": {
+    "value": " | chips: ",
+    "listOpen": false
+  },
+  "escape": {
+    "value": " | chips: ",
+    "listOpen": false
+  },
+  "blurByClick": " | chips: "
+}

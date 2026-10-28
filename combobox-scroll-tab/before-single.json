@@ -1,0 +1,36 @@
+{
+  "scrollPartial": {
+    "value": "",
+    "listOpen": false
+  },
+  "scrollPartialThenEnter": "",
+  "scrollExact": "",
+  "scrollExactThenEnter": "",
+  "pointerTab": {
+    "focused": "true",
+    "value": "Preact"
+  },
+  "pointerExactTab": "Preact",
+  "arrowTab": "React",
+  "exactTab": "",
+  "noMatchTab": {
+    "value": "",
+    "listOpen": true
+  },
+  "pointerEnter": {
+    "focused": "true",
+    "value": "Preact"
+  },
+  "pointerExactEnter": "Preact",
+  "arrowEnter": "React",
+  "exactEnter": "React",
+  "noMatchEnter": {
+    "value": "zzz",
+    "listOpen": true
+  },
+  "escape": {
+    "value": "",
+    "listOpen": false
+  },
+  "blurByClick": ""
+}

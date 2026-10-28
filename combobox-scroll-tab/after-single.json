@@ -1,0 +1,36 @@
+{
+  "scrollPartial": {
+    "value": "re",
+    "listOpen": false
+  },
+  "scrollPartialThenEnter": "re",
+  "scrollExact": "react",
+  "scrollExactThenEnter": "React",
+  "pointerTab": {
+    "focused": null,
+    "value": ""
+  },
+  "pointerExactTab": "React",
+  "arrowTab": "React",
+  "exactTab": "React",
+  "noMatchTab": {
+    "value": "",
+    "listOpen": true
+  },
+  "pointerEnter": {
+    "focused": null,
+    "value": "re"
+  },
+  "pointerExactEnter": "React",
+  "arrowEnter": "React",
+  "exactEnter": "React",
+  "noMatchEnter": {
+    "value": "zzz",
+    "listOpen": true
+  },
+  "escape": {
+    "value": "",
+    "listOpen": false
+  },
+  "blurByClick": ""
+}

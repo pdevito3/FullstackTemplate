@@ -13,6 +13,7 @@ import {
   type DatePickerProps as AriaDatePickerProps,
   type DateRangePickerProps as AriaDateRangePickerProps,
   type DateValue as AriaDateValue,
+  type RangeValue as AriaRangeValue,
   type ValidationResult as AriaValidationResult,
 } from "react-aria-components"
 
@@ -143,13 +144,40 @@ function JollyDateRangePicker<T extends AriaDateValue>({
   description,
   errorMessage,
   className,
+  value,
+  defaultValue,
+  onChange,
+  onBlur,
+  isInvalid,
   ...props
 }: JollyDateRangePickerProps<T>) {
+  const [changedRange, setChangedRange] = useState<AriaRangeValue<AriaDateValue> | null>(defaultValue ?? null)
+  const range = value === undefined ? changedRange : value
+  const startYearCheck = useShortYearCheck(range?.start ?? null)
+  const endYearCheck = useShortYearCheck(range?.end ?? null)
+  const isShortYear = startYearCheck.isShortYear || endYearCheck.isShortYear
+
+  const handleChange: JollyDateRangePickerProps<T>["onChange"] = (newValue) => {
+    setChangedRange(newValue)
+    onChange?.(newValue)
+  }
+
+  const handleBlur: JollyDateRangePickerProps<T>["onBlur"] = (event) => {
+    startYearCheck.onBlur()
+    endYearCheck.onBlur()
+    onBlur?.(event)
+  }
+
   return (
     <DateRangePicker
       className={composeRenderProps(className, (className) =>
         cn("group flex flex-col gap-2", className)
       )}
+      value={value}
+      defaultValue={defaultValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      isInvalid={isShortYear || isInvalid}
       {...props}
     >
       {label && <Label>{label}</Label>}
@@ -187,7 +215,12 @@ function JollyDateRangePicker<T extends AriaDateValue>({
           {description}
         </Text>
       )}
-      {errorMessage && (
+      {isShortYear && (
+        <Text className="text-sm text-destructive" slot="errorMessage" role="alert">
+          {shortYearMessage}
+        </Text>
+      )}
+      {!isShortYear && errorMessage && (
         <Text className="text-sm text-destructive" slot="errorMessage">
           {typeof errorMessage === "function" ? "" : errorMessage}
         </Text>

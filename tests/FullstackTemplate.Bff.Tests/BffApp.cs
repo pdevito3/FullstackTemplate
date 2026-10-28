@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.AspNetCore;
 using Serilog.Core;
+using Serilog.Extensions.Logging;
 
 /// <summary>
 /// The BFF on a test server, with the <see cref="FakeIdentityProvider"/> as its identity provider, the
@@ -48,8 +49,8 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// <remarks>
     /// Each host replaces the static Serilog logger when it starts, and Program.cs closes it when the host stops, at
     /// a time that the tests do not control. So the static loggers of the BFF use the logger of the first host, and
-    /// the request log of each host uses the logger of that host. All instances share one sink, so that the events
-    /// of each instance arrive here.
+    /// the request log and the logger factory of each host use the logger of that host. All instances share one sink,
+    /// so that the events of each instance arrive here.
     /// </remarks>
     public static CapturedLogs Logs { get; } = new();
 
@@ -197,6 +198,9 @@ public sealed class BffApp : WebApplicationFactory<Program>
             // closed
             services.AddOptions<RequestLoggingOptions>()
                 .Configure<Serilog.ILogger>((options, logger) => options.Logger = logger);
+            // The logger factory of AddSerilog makes each logger on the static logger, which is the logger of the host
+            // that started last. So without this factory, the events of one host can go to the sinks of another host.
+            services.AddSingleton<ILoggerFactory>(provider => new SerilogLoggerFactory(provider.GetRequiredService<Serilog.ILogger>()));
             services.AddTestAuthorization();
             services.AddSingleton<IHostLifetime>(_startGate);
         });

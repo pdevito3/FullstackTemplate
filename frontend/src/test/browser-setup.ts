@@ -9,5 +9,7 @@ declare module 'vitest/browser' {
     holdRequests: (path: string) => Promise<void>
     /** Lets the held requests for `path` go on. */
     releaseRequests: (path: string) => Promise<void>
+    /** Moves the mouse onto the element with `role` and `name` without a scroll of the page. */
+    movePointerOnto: (role: string, name: string) => Promise<void>
   }
 }

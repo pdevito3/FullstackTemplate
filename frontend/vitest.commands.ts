@@ -43,3 +43,25 @@ export const releaseRequests: BrowserCommand<[path: string]> = async ({ page }, 
   hold.release()
   await page.unroute(hold.matcher, hold.handler)
 }
+
+type Role = Parameters<Page['getByRole']>[0]
+
+/**
+ * Moves the mouse onto the element with `role` and `name`, once the element stops moving. `userEvent.hover`
+ * scrolls the page first, and a scroll of the page closes an open list.
+ */
+export const movePointerOnto: BrowserCommand<[role: Role, name: string]> = async ({ iframe, page }, role, name) => {
+  const target = iframe.getByRole(role, { name, exact: true })
+  await target.waitFor()
+  let box = await target.boundingBox()
+  for (let tries = 0; tries < 50; tries++) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    const next = await target.boundingBox()
+    if (box && next && JSON.stringify(box) === JSON.stringify(next)) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      return
+    }
+    box = next
+  }
+  throw new Error(`The ${role} "${name}" did not stop moving`)
+}

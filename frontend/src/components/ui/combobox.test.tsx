@@ -1,6 +1,6 @@
 import { Dialog, type ComboBoxProps } from 'react-aria-components'
 import { afterEach, expect, test, vi } from 'vitest'
-import { page, userEvent } from 'vitest/browser'
+import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { Button } from '@/components/ui/button'
@@ -318,4 +318,90 @@ test('Enter with the text of a selected option that has a twin submits the form'
 
   await expect.element(input).toHaveValue('Solid')
   expect(onSubmit).toHaveBeenCalledOnce()
+})
+
+function FrameworkComboboxOnTallPage(props: Pick<ComboBoxProps<object>, 'onChange'>) {
+  return (
+    <div style={{ height: '300vh' }}>
+      <FrameworkCombobox {...props} />
+    </div>
+  )
+}
+
+test('a scroll of the page closes the list and keeps the typed text, and Enter then picks the option', async () => {
+  const screen = await render(<FrameworkComboboxOnTallPage />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+
+  window.scrollBy(0, 200)
+
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await expect.element(input).toHaveValue('vue')
+  await expect.element(input).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('Vue')
+})
+
+test('a blur after a scroll of the page still resets text with no match', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkComboboxOnTallPage onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('Vu')
+  window.scrollBy(0, 200)
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+
+  await userEvent.tab()
+
+  await expect.element(input).toHaveValue('')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+// React Aria makes the option under the pointer active only while the last input was a pointer. A click
+// on the button opens the list, and `fill` types as a paste or dictation does, with no key press.
+test.each(['{Tab}', '{Enter}'])('%s does not pick the option under the pointer', async (key) => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+
+  await userEvent.keyboard(key)
+
+  await expect.element(input).toHaveValue('')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+test.each(['{Tab}', '{Enter}'])('%s picks the option with the typed text, not the option under the pointer', async (key) => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await input.fill('vue')
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+
+  await userEvent.keyboard(key)
+
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
+})
+
+test.each(['{Tab}', '{Enter}'])('%s picks the option that the arrow keys made active, not the option under the pointer', async (key) => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await input.fill('Vu')
+  await userEvent.keyboard('{ArrowDown}')
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+
+  await userEvent.keyboard(key)
+
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
 })

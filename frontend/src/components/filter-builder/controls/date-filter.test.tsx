@@ -87,6 +87,25 @@ test('keeps the time of a filter to edit when the config has no zone', async () 
   expect(submitted.timeZone).toBe(pagoPago)
 })
 
+test('names the zone that a filter to edit reads its time in, not the zone of the config', async () => {
+  // Arrange
+  const value: DateValue = { mode: 'on', startDate: new Date('2026-08-14T20:00:00Z'), dateType: 'datetimeUtc', timeZone: pagoPago }
+  const config = { ...startsAt, timeZone: parseTimeZone('America/Chicago') }
+
+  // Act
+  await render(
+    <DateFilter
+      config={config}
+      surface="submenu"
+      initialFilter={{ id: '1', ...config, operator: Operators.EQUALS, value }}
+      onSubmit={() => {}}
+    />,
+  )
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: 'Time in Pacific/Pago Pago' })).toHaveValue('09:00')
+})
+
 test('refuses a time that the clocks of the place skip in the spring', async () => {
   // Arrange
   const newYork = parseTimeZone('America/New_York')

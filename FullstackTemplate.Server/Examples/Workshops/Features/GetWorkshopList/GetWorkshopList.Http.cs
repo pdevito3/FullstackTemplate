@@ -23,7 +23,7 @@ public sealed class GetWorkshopListEndpoint : IEndpoint
     public static async Task<Ok<PagedList<WorkshopDto>>> Handle(
         string? filters,
         string? sortOrder,
-        string? search,
+        [MaxLength(WorkshopParametersDto.SearchMaxLength)] string? search,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
         [Range(1, int.MaxValue)] int? pageSize,
         IMediator mediator,

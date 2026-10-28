@@ -8,7 +8,7 @@ import type { GetVenueListOptions, GetVenueListResponses } from '../types/get-ve
 import { client, withUnwrap } from '../../.kubb/client'
 
 /**
- * @summary Gets a paginated list of Venues.
+ * @summary Gets a paginated list of Venues. The search finds the venues whose name contains the text.
  * {@link /api/v1/venues}
  */
 export function getVenueList<ThrowOnError extends boolean = true>(options: Options<GetVenueListOptions, ThrowOnError> = {}): Unwrappable<RequestResult<GetVenueListResponses, ThrowOnError>> {

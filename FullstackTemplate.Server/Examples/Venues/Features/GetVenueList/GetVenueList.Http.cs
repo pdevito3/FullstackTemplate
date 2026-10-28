@@ -18,17 +18,18 @@ public sealed class GetVenueListEndpoint : IEndpoint
         .ProducesValidationProblem();
 
     /// <summary>
-    /// Gets a paginated list of Venues.
+    /// Gets a paginated list of Venues. The search finds the venues whose name contains the text.
     /// </summary>
     public static async Task<Ok<PagedList<VenueDto>>> Handle(
         string? filters,
         string? sortOrder,
+        [MaxLength(VenueParametersDto.SearchMaxLength)] string? search,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
         [Range(1, int.MaxValue)] int? pageSize,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var parameters = VenueParametersDto.From(pageNumber, pageSize, filters, sortOrder);
+        var parameters = VenueParametersDto.From(pageNumber, pageSize, filters, sortOrder, search);
 
         var result = await mediator.Send(new GetVenueList.Query(parameters), cancellationToken);
         return TypedResults.Ok(result);

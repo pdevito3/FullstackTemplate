@@ -11,7 +11,7 @@ export const getWorkshopListQueryFiltersSchema = z.string().optional()
 
 export const getWorkshopListQuerySortOrderSchema = z.string().optional()
 
-export const getWorkshopListQuerySearchSchema = z.string().optional()
+export const getWorkshopListQuerySearchSchema = z.string().max(200).optional()
 
 export const getWorkshopListQueryPageNumberSchema = z.int32().min(1).max(4294967).optional()
 

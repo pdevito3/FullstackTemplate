@@ -9,6 +9,10 @@ import type { WorkshopDto } from '../../models/types/workshop-dto'
 export type GetWorkshopListQuery = {
     filters?: string;
     sortOrder?: string;
+    /**
+     * @maxLength 200
+     * @type string | undefined
+    */
     search?: string;
     /**
      * @description

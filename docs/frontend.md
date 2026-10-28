@@ -134,6 +134,7 @@ Fix the cause on the Server: the DTO, an attribute such as `[NamesOf<T>]`, or a 
 | A `uint` field has no range | `UnsignedIntegerRangeTransformer` |
 | A field of names is a `string`, not a union of the names | `[NamesOf<T>]` on the DTO property, and `FixedNamesTransformer` |
 | A request field has no max length or no maximum | `[SchemaMaxLength]` or `[SchemaMaximum]` on the request DTO property, and `SchemaLimitsTransformer` |
+| A query parameter has no max length | `[MaxLength]` on the parameter of the endpoint handler |
 | A request body or a response has a type for each media type | `JsonContentTypeTransformer` |
 | A list client has no type for the `X-Pagination` header | `PaginationHeaderTransformer` |
 | A secured operation has no 401 response | `UnauthorizedResponseTransformer` |

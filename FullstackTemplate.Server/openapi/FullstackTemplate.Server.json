@@ -1746,7 +1746,7 @@
         "tags": [
           "Venues"
         ],
-        "summary": "Gets a paginated list of Venues.",
+        "summary": "Gets a paginated list of Venues. The search finds the venues whose name contains the text.",
         "operationId": "GetVenueList",
         "parameters": [
           {
@@ -1760,6 +1760,14 @@
             "name": "sortOrder",
             "in": "query",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
               "type": "string"
             }
           },
@@ -2010,6 +2018,7 @@
             "name": "search",
             "in": "query",
             "schema": {
+              "maxLength": 200,
               "type": "string"
             }
           },

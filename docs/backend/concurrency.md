@@ -51,15 +51,36 @@ Each marked command has a race test (see [Race tests](../backend.md#race-tests))
 
 A version guards the rows that a command writes. A rule over a set of rows can break with no conflict on any one row. For example, "two open bookings of a room do not overlap", or "a clinic with an open appointment cannot be deactivated". A booking reads the clinic and writes an appointment. A deactivation counts the open appointments and writes the clinic. Each reads the rows that the other writes, so no version catches the race, and a run again does not help.
 
-The template has no such rule yet, so it has no lock class. When a feature needs one, use a Postgres session advisory lock:
+`RootLock` in `Databases/` is a Postgres session advisory lock on one aggregate root. The template has one rule of this kind: `DeleteTenant` deletes the agents of the tenant, and `AddAgent` adds an agent to the tenant. Without the lock, an agent that `AddAgent` saves during `DeleteTenant` stays live in the deleted tenant. Each one runs its reads, its checks, and its save in the work of the lock:
 
-1. Give the lock two keys: a number for the kind of the root, and `hashtext` of the ID of the root. The one-key locks of the EF migrations then do not share a key with it.
-2. Take the shared lock (`pg_advisory_lock_shared`) in each write that can add to the set, such as a booking. Take the exclusive lock (`pg_advisory_lock`) in each write that needs the set empty, such as a deactivation. Bookings then do not wait on each other, and a deactivation waits for the bookings that started before it.
-3. Take the lock before the first read, and free it after the save.
-4. A session lock ends when its connection drops. So run the lock, the reads, the checks, and the save in one call of `Database.CreateExecutionStrategy().ExecuteAsync`. A transient failure then runs the whole work again on a new connection, not only the save.
-5. Start with an empty change tracker, and throw if it has changes. A retry of the strategy starts with an empty tracker, so it would save without them.
-6. If the unlock fails, end the session with `pg_terminate_backend(pg_backend_pid())`. The pool does not reset a connection when it gets it back, so the lock stays on the idle connection until the next request takes it.
-7. Write a race test that waits with `PauseAtQuery.WaitUntilBlockedAsync` until the rival waits on the lock.
+```csharp
+var added = await RootLock.Tenant.RunSharedAsync(dbContext, tenantId, async ct =>
+{
+    // Read the tenant, check it, add the agent, and save, all with ct
+}, cancellationToken);
+```
+
+For a new rule, add a field such as `RootLock.Clinic` with a new number and the area name, and obey these rules:
+
+1. Take the shared lock (`RunSharedAsync`) in each write that can add to the set, such as a booking or an agent add. Take the exclusive lock (`RunExclusiveAsync`) in each write that needs the set to stay as it read it, such as a deactivation or a tenant delete. Bookings then do not wait on each other, and a deactivation waits for the bookings that started before it.
+2. Do the first read of the rule in the work, and save in the work. The lock is free after the work. Check the root again in the work, also when the handler checked it before. For example, `AddAgent` checks that the tenant exists in the work, also for the tenant of the caller.
+3. Do not change an entity or record an action before the work. `RootLock` throws if the context has changes. A run again after a transient failure clears the tracker, so it would save without them.
+4. Do the work that leaves the process after the work, such as a log or a metric. The work can run more than one time.
+5. Send a command that takes a lock only from an entrypoint (HTTP, gRPC, or MCP). A run again after a transient failure detaches each tracked entity of the DI scope, also the entities of a handler that sent the command.
+6. Take one `RootLock` in a command. A command that holds one lock and waits for a second lock can deadlock with a command that takes the two locks in the other order.
+7. Write a race test that waits with `PauseAtQuery.WaitUntilBlockedAsync` until the rival waits on the lock. See `TenantDeleteRaceTests.cs`.
+
+`RootLock` does these steps for you:
+
+- The lock has two keys: the number of the kind of the root, and the first 4 bytes of the SHA-256 hash of the ID of the root. The one-key locks of the EF migrations then do not share a key with it. The hash is in .NET, so an ID that Postgres text cannot hold, such as an ID with a NUL, still gets a lock.
+- A session lock ends when its connection drops. So the lock, the work, and the unlock run in one call of `Database.CreateExecutionStrategy().ExecuteAsync`, on one open connection. A transient failure then runs the whole work again on a new connection, not only the save. Each run again adds a `lock.run_again` event with `app.lock.run` to the request span. The request span also has the `app.lock.mode` tag, `shared` or `exclusive`.
+- If the unlock fails, it ends the session with `pg_terminate_backend(pg_backend_pid())` and writes a warning log. The pool frees the session locks of a connection only when the next request uses the connection, so the lock would stay on the idle connection until then.
+- The SQL spans of the lock are named for the root, such as `SQL: tenants.lock_exclusive`. The duration of that span is the wait for the lock.
+- EF runs a strategy inside a strategy one time, with no retry and no check. So a save in the work looks for its audit entries itself after a transient failure (see [Lost reply of a commit](#lost-reply-of-a-commit)). If they are there, the save returns success, and the work continues. Thus a delete does not get 404, and an add does not get 409, for a save that worked. If they are not there, the whole work runs again.
+
+A command that is marked `IRunsAgainWhenRaced` can take a lock. A lost race throws out of the work, the lock is freed, and the command runs again and takes the lock again. `DeleteTenant` does this.
+
+`AddUser` takes no lock. A tenant delete does not delete the users of the tenant (see [multi-tenancy.md](../multi-tenancy.md)), so a user that `AddUser` saves during a tenant delete is the same as a user that was there before. One small gap stays: the delete clears the cached tenant lookup only of the users that it read. A new user that signs in during the save of the delete can keep the cached tenant until the result expires. `InitiateUserAndTenant` adds a new tenant, so no delete of that tenant can run at the same time.
 
 These options do not fit:
 
@@ -69,4 +90,4 @@ These options do not fit:
 
 ## Lost reply of a commit
 
-After a lost acknowledgment of a commit, the execution strategy of EF sends the save again. Before it does, the save looks for its audit entries. If they are there, the save committed, so it returns success and sets the `Version` of each saved entity. Thus the save does not run two times, and the caller does not get a 409 for a save that worked. A save that writes no audit entry, such as a save of only a `[NotAudited]` table, has nothing to look for, and it can still get a 409. See [ADR 0010](../adr/0010-domain-events-in-the-save-transaction.md).
+After a lost acknowledgment of a commit, the execution strategy of EF sends the save again. Before it does, the save looks for its audit entries. If they are there, the save committed, so it returns success and sets the `Version` of each saved entity. Thus the save does not run two times, and the caller does not get a 409 for a save that worked. A save that writes no audit entry, such as a save of only a `[NotAudited]` table, has nothing to look for, and it can still get a 409. A save in the work of a `RootLock` also looks (see [Lock](#lock)). See [ADR 0010](../adr/0010-domain-events-in-the-save-transaction.md).

@@ -22,25 +22,30 @@ public static class DeleteTenant
 
             await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
-            var tenant = await dbContext.Tenants
-                .TagWithOperationCallSite("tenants.delete.load")
-                .GetById(request.Id, cancellationToken);
-
-            var agents = await dbContext.Agents
-                .TagWithOperationCallSite("tenants.delete.load_agents")
-                .Include(a => a.Permissions)
-                .Where(a => a.TenantId == tenant.Id)
-                .ToListAsync(cancellationToken);
-            foreach (var agent in agents)
+            // The exclusive lock waits for each agent add of the tenant, so no agent comes after the agent load.
+            var agentCount = await RootLock.Tenant.RunExclusiveAsync(dbContext, request.Id, async ct =>
             {
-                dbContext.AgentPermissions.RemoveRange(agent.Permissions);
-                dbContext.Agents.Remove(agent);
-            }
+                var tenant = await dbContext.Tenants
+                    .TagWithOperationCallSite("tenants.delete.load")
+                    .GetById(request.Id, ct);
 
-            dbContext.Tenants.Remove(tenant);
-            await dbContext.SaveChangesAsync(cancellationToken);
+                var agents = await dbContext.Agents
+                    .TagWithOperationCallSite("tenants.delete.load_agents")
+                    .Include(a => a.Permissions)
+                    .Where(a => a.TenantId == tenant.Id)
+                    .ToListAsync(ct);
+                foreach (var agent in agents)
+                {
+                    dbContext.AgentPermissions.RemoveRange(agent.Permissions);
+                    dbContext.Agents.Remove(agent);
+                }
 
-            _logger.Here().Information("Deleted tenant {TenantId} and {AgentCount} agents", tenant.Id, agents.Count);
+                dbContext.Tenants.Remove(tenant);
+                await dbContext.SaveChangesAsync(ct);
+                return agents.Count;
+            }, cancellationToken);
+
+            _logger.Here().Information("Deleted tenant {TenantId} and {AgentCount} agents", request.Id, agentCount);
         }
     }
 }

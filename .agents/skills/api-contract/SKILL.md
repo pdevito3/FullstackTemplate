@@ -18,10 +18,11 @@ Regenerate after a change to any of these:
 ## Procedure
 
 1. From the repository root, build the Server: `dotnet build FullstackTemplate.Server --no-incremental`. The build must end with 0 errors. It writes one document for each API version.
+   - Use the Debug configuration, the default. A build in another configuration writes nothing.
    - A build with nothing to compile does not write the document again. `--no-incremental` makes it write the document.
    - A failed build keeps the old document. Then step 2 gives the old contract and shows no error.
 2. In `frontend/`, run `pnpm generate:api`.
-3. Stage the contract: `git add FullstackTemplate.Server/openapi frontend/src/api`. Run `pnpm generate:api` again. Then `git diff --exit-code -- FullstackTemplate.Server/openapi 'frontend/src/api/generated*'` must show nothing. A diff here is a hand edit in a generated file.
+3. Stage the contract: `git add FullstackTemplate.Server/openapi frontend/src/api`. Run `pnpm generate:api` again. Then `git diff --exit-code -- FullstackTemplate.Server/openapi 'frontend/src/api/generated*'` must show nothing. A diff here means that a generated file changed after step 2, or that two runs give different output.
 4. In `frontend/`, run `pnpm build`, `pnpm lint`, `pnpm test`, and `pnpm test:e2e`. The `api-contract` job runs the same four. `tsc` compiles the generated files, so a renamed or removed field fails at each caller.
 5. Commit the Server change, the document, and the generated files in one commit.
 

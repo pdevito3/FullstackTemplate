@@ -46,6 +46,31 @@ public class StaleVersionIndexTests : TestBase
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
     }
 
+    [Test]
+    public async Task save_that_replaces_the_current_revision_is_not_stopped()
+    {
+        // Arrange
+        await using var connection = new NpgsqlConnection(TestFixture.UnpooledConnectionString);
+        await connection.OpenAsync();
+        await using (var command = new NpgsqlCommand(
+            $"""
+            CREATE TEMP TABLE revisions (id uuid PRIMARY KEY, document_id uuid NOT NULL, is_current boolean NOT NULL);
+            CREATE UNIQUE INDEX {CurrentRevisionIndex} ON revisions (document_id) WHERE is_current;
+            """, connection))
+            await command.ExecuteNonQueryAsync();
+
+        await using var dbContext = new RevisionContext(connection);
+        var documentId = Guid.NewGuid();
+        var first = new Revision { DocumentId = documentId, IsCurrent = true };
+        dbContext.Add(first);
+        await dbContext.SaveChangesAsync();
+
+        // Act
+        dbContext.Add(new Revision { DocumentId = documentId, IsCurrent = true });
+        first.IsCurrent = false;
+        await dbContext.SaveChangesAsync();
+    }
+
     private sealed class RevisionContext(NpgsqlConnection connection) : DbContext
     {
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

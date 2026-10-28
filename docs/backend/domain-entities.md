@@ -112,6 +112,8 @@ private void GuardIfInFinalState(string field, string subject)
 }
 ```
 
+When the rule needs facts from other aggregates, or a second caller needs the same answer, use the decision shape in [features-and-cqrs.md](features-and-cqrs.md#one-rule-set-for-two-callers).
+
 ## Value objects
 
 A value object derives from `ValueObject`. It validates its value in the constructor and has a static `Of` method. See `Domain/EmailAddresses/EmailAddress.cs`. A FluentValidation rule in a value object names the request field with `OverridePropertyName`, for example `"email"`, so that the 422 has the key in `errors`.

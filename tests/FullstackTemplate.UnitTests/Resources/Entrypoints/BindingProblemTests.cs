@@ -37,16 +37,19 @@ public class BindingProblemTests
 
         // Assert
         errors.Keys.ShouldBe(["lines[1].hours"]);
-        errors["lines[1].hours"].ShouldBe(["The hours field is not a valid number."]);
-        detail.ShouldBe("The hours field is not a valid number.");
+        errors["lines[1].hours"].ShouldBe(["The hours field is not a valid number, or it is out of range."]);
+        detail.ShouldBe("The hours field is not a valid number, or it is out of range.");
     }
 
     [Test]
-    [Arguments("count", "\"two\"", "The count field is not a valid whole number.")]
-    [Arguments("count", "1.5", "The count field is not a valid whole number.")]
-    [Arguments("count", "99999999999", "The count field is not a valid whole number.")]
-    [Arguments("maybeCount", "\"two\"", "The maybeCount field is not a valid whole number.")]
-    [Arguments("hours", "null", "The hours field is not a valid number.")]
+    [Arguments("count", "\"two\"", "The count field is not a valid whole number, or it is out of range.")]
+    [Arguments("count", "1.5", "The count field is not a valid whole number, or it is out of range.")]
+    [Arguments("count", "99999999999", "The count field is not a valid whole number, or it is out of range.")]
+    [Arguments("version", "-1", "The version field is not a valid whole number, or it is out of range.")]
+    [Arguments("maybeCount", "\"two\"", "The maybeCount field is not a valid whole number, or it is out of range.")]
+    [Arguments("hours", "null", "The hours field is not a valid number, or it is out of range.")]
+    [Arguments("hours", "1e400", "The hours field is not a valid number, or it is out of range.")]
+    [Arguments("ratio", "\"half\"", "The ratio field is not a valid number.")]
     [Arguments("startsAt", "\"tomorrow\"", "The startsAt field is not a valid date and time.")]
     [Arguments("maybeStartsAt", "\"tomorrow\"", "The maybeStartsAt field is not a valid date and time.")]
     [Arguments("startsOn", "\"2026-13-01\"", "The startsOn field is not a valid date.")]
@@ -66,6 +69,24 @@ public class BindingProblemTests
         // Assert
         errors.Keys.ShouldBe([field]);
         errors[field].ShouldBe([message]);
+        detail.ShouldBe(message);
+    }
+
+    [Test]
+    [Arguments("counts", "[1, \"x\"]", "An item of the counts field is not a valid whole number, or it is out of range.")]
+    [Arguments("dates", "[\"2026-01-01\", \"x\"]", "An item of the dates field is not a valid date.")]
+    public void item_of_the_wrong_type_in_a_list_names_the_item(string field, string value, string message)
+    {
+        // Arrange
+        var exception = BindingFailureFor<EachType>($$"""{ "{{field}}": {{value}} }""");
+
+        // Act
+        var errors = BindingProblem.ErrorsFor(exception);
+        var detail = BindingProblem.DetailFor(exception);
+
+        // Assert
+        errors.Keys.ShouldBe([$"{field}[1]"]);
+        errors[$"{field}[1]"].ShouldBe([message]);
         detail.ShouldBe(message);
     }
 
@@ -152,6 +173,8 @@ public class BindingProblemTests
     private sealed record EachType
     {
         public int Count { get; init; }
+        public uint Version { get; init; }
+        public double Ratio { get; init; }
         public long? MaybeCount { get; init; }
         public decimal Hours { get; init; }
         public DateTimeOffset StartsAt { get; init; }
@@ -159,6 +182,7 @@ public class BindingProblemTests
         public DateOnly StartsOn { get; init; }
         public string Name { get; init; } = string.Empty;
         public int[] Counts { get; init; } = [];
+        public DateOnly[] Dates { get; init; } = [];
         public int?[] MaybeCounts { get; init; } = [];
         public byte[] Data { get; init; } = [];
     }

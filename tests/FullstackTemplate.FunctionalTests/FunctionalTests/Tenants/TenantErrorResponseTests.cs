@@ -106,10 +106,10 @@ public class TenantErrorResponseTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
-        problem.Detail.ShouldBe("The version field is not a valid whole number.");
+        problem.Detail.ShouldBe("The version field is not a valid whole number, or it is out of range.");
         var error = problem.Errors.ShouldHaveSingleItem();
         error.Key.ShouldBe("version");
-        error.Value.ShouldBe(["The version field is not a valid whole number."]);
+        error.Value.ShouldBe(["The version field is not a valid whole number, or it is out of range."]);
     }
 
     [Test]

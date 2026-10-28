@@ -183,7 +183,9 @@ public sealed record [EntityName]ForCreationDto
 {
     // A missing value is a 400. An empty value goes to the domain rules, which give a 422
     [RequiredField]
+    [SchemaMaxLength(typeof([EntityName]), nameof([EntityName].NameMaxLength))]
     public string Name { get; init; } = default!;
+    [SchemaMaxLength(typeof([EntityName]), nameof([EntityName].DescriptionMaxLength))]
     public string? Description { get; init; }
 }
 ```
@@ -202,7 +204,9 @@ public sealed record [EntityName]ForUpdateDto
 
     // A missing value is a 400. An empty value goes to the domain rules, which give a 422
     [RequiredField]
+    [SchemaMaxLength(typeof([EntityName]), nameof([EntityName].NameMaxLength))]
     public string Name { get; init; } = default!;
+    [SchemaMaxLength(typeof([EntityName]), nameof([EntityName].DescriptionMaxLength))]
     public string? Description { get; init; }
 }
 ```
@@ -953,21 +957,31 @@ public sealed record [EntityName]Dto
 }
 
 // [EntityName]ForCreationDto.cs
+using EmailAddresses;
+using Resources;
+
 public sealed record [EntityName]ForCreationDto
 {
     // ... existing properties
+    [SchemaMaxLength(typeof([EntityName]), nameof([EntityName].PhoneNumberMaxLength))]
     public string? PhoneNumber { get; init; }
     // A non-nullable string of a request DTO needs [RequiredField]. A missing value is then a 400
     [RequiredField]
+    [SchemaMaxLength(typeof(EmailAddress), nameof(EmailAddress.MaxLength))]
     public string Email { get; init; } = default!;
 }
 
 // [EntityName]ForUpdateDto.cs
+using EmailAddresses;
+using Resources;
+
 public sealed record [EntityName]ForUpdateDto
 {
     // ... existing properties
+    [SchemaMaxLength(typeof([EntityName]), nameof([EntityName].PhoneNumberMaxLength))]
     public string? PhoneNumber { get; init; }
     [RequiredField]
+    [SchemaMaxLength(typeof(EmailAddress), nameof(EmailAddress.MaxLength))]
     public string Email { get; init; } = default!;
 }
 ```

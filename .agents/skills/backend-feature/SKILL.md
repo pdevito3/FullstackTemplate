@@ -502,6 +502,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler. Add the tool name to the expected lists of `ToolsOfEachCaller` in `TenantMcpToolTests` for each caller that can use it
 - [ ] Additional DTOs created if needed
 - [ ] Telemetry added with the `feature-telemetry` skill: query tags, id tags on the feature span, a log for each state change, and metrics if support needs a rate
+- [ ] A command that runs again or takes a lock has a race test (see the `writing-tests` skill)
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
 

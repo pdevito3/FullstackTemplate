@@ -32,4 +32,9 @@
         <Compile Include="..\..\FullstackTemplate.AppHost\Config.cs" Link="AppHostConfig.cs" />
     </ItemGroup>
 
+    <!-- A reference to SharedTestHelpers also brings in the Server, so the tests compile its one database helper. -->
+    <ItemGroup>
+        <Compile Include="..\FullstackTemplate.SharedTestHelpers\Utilities\PauseAtQuery.cs" Link="Fakes\PauseAtQuery.cs" />
+    </ItemGroup>
+
 </Project>

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using FullstackTemplate.Bff.BackChannel;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -326,9 +327,9 @@ public class BackChannelLogoutTests
     [Test]
     public async Task a_request_that_aborts_during_the_logout_still_ends_all_the_sessions()
     {
-        var hold = new HoldingCommandInterceptor("bff_sessions.delete");
+        var pause = PauseAtQuery.Before("bff_sessions.delete");
         await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
-            options => options.AddInterceptors(hold)));
+            options => options.AddInterceptors(pause)));
         var subject = NewSubject();
         using var first = app.CreateBrowser();
         using var second = app.CreateBrowser();
@@ -337,9 +338,9 @@ public class BackChannelLogoutTests
         using var abort = new CancellationTokenSource();
 
         var post = PostAsync(app, Token(c => { c["sub"] = subject; c.Remove("sid"); }), abort.Token);
-        await hold.Gate.Arrived.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await pause.ReachedAsync();
         await abort.CancelAsync();
-        hold.Gate.Released.SetResult();
+        pause.Release();
         (await Should.ThrowAsync<Exception>(post)).ShouldBeAssignableTo<OperationCanceledException>();
 
         await WaitUntilAsync(async () =>

@@ -31,20 +31,25 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // A flaky test is a fault to correct, not a fault to hide.
   retries: 0,
-  workers: process.env.CI ? 1 : undefined,
+  // On CI, a worker for each core of the runner: each test runs in three zones. On a dev machine, half the cores.
+  workers: process.env.CI ? '100%' : undefined,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL,
-    // The page formats the dates of the forecast with the locale and the time zone of the browser.
     locale: 'en-US',
-    timezoneId: 'UTC',
     // Without an animation, the toast queue renders each toast at once, not after a view transition.
     // So an assertion on the toasts sees them all.
     reducedMotion: 'reduce',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Each test runs in UTC and in the two zones that are farthest from UTC. A page that shows a time in the zone of the
+  // browser, not of its place, shows another day in one of them. See docs/frontend/testing.md, section "Time zones".
+  projects: [
+    { name: 'utc', use: { ...devices['Desktop Chrome'], timezoneId: 'UTC' } },
+    { name: 'kiritimati', use: { ...devices['Desktop Chrome'], timezoneId: 'Pacific/Kiritimati' } },
+    { name: 'pago-pago', use: { ...devices['Desktop Chrome'], timezoneId: 'Pacific/Pago_Pago' } },
+  ],
   webServer: {
     command: `pnpm exec vite --port ${port} --strictPort`,
     url: baseURL,

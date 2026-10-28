@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { parseTimeZone } from '@/lib/zoned-time'
 
 export const Route = createFileRoute('/filter-demo')({
   component: FilterDemoPage,
@@ -165,6 +166,14 @@ function FilterDemoPage() {
       propertyLabel: 'Last Login (Offset)',
       controlType: 'date',
       dateType: 'datetimeOffset',
+    },
+    {
+      // A time of a place, such as the start of an event at a venue. The control reads it in the zone of the place.
+      propertyKey: 'startsAt',
+      propertyLabel: 'Starts At in Pago Pago',
+      controlType: 'date',
+      dateType: 'datetimeUtc',
+      timeZone: parseTimeZone('Pacific/Pago_Pago'),
     },
     {
       propertyKey: 'comments',
@@ -408,9 +417,9 @@ function FilterDemoPage() {
         </CardHeader>
         <CardContent>
           {queryString ? (
-            <div className="bg-muted p-4 rounded-md font-mono text-sm break-all">
+            <output aria-label="QueryKit string" className="block bg-muted p-4 rounded-md font-mono text-sm break-all">
               {queryString}
-            </div>
+            </output>
           ) : (
             <div className="text-muted-foreground text-sm">
               No filters applied yet

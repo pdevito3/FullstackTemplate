@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo, useEffect } from "react"
-import { CalendarDate } from "@internationalized/date"
+import { CalendarDate, endOfMonth } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -14,6 +14,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { browserTimeZone, formatDate, todayAt } from "@/lib/zoned-time"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { layoutClassNames, type CalendarLayout } from "@/components/ui/calendar-layout"
 
@@ -48,7 +49,7 @@ interface CalendarZoomProviderProps {
 
 function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderProps) {
   const state = useCalendarState()
-  const currentYear = state?.focusedDate?.year ?? new Date().getFullYear()
+  const currentYear = state?.focusedDate?.year ?? todayAt(browserTimeZone(), new Date()).year
 
   const [view, setView] = useState<CalendarView>("days")
   const [viewYear, setViewYear] = useState(currentYear)
@@ -87,7 +88,7 @@ function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderPro
 
 // Helper to get days in a month
 function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate()
+  return endOfMonth(new CalendarDate(year, month, 1)).day
 }
 
 // The month and year pickers are listboxes in a grid layout: the arrow keys move in two dimensions, and Enter or a
@@ -122,10 +123,9 @@ function MonthPickerGrid() {
   const { locale } = useLocale()
 
   const months = useMemo(() => {
-    const formatter = new Intl.DateTimeFormat(locale, { month: "short" })
     return Array.from({ length: 12 }, (_, i) => ({
       index: i + 1,
-      name: formatter.format(new Date(2024, i, 1)),
+      name: formatDate(new CalendarDate(2024, i + 1, 1), { month: "short" }, locale),
     }))
   }, [locale])
 
@@ -278,13 +278,10 @@ const CalendarHeadingZoomable = ({ layout, ...props }: CalendarHeadingZoomablePr
     }
 
     // Default: format month/year
-    const formatter = new Intl.DateTimeFormat(undefined, {
+    return formatDate(new CalendarDate(state.focusedDate.year, state.focusedDate.month, 1), {
       month: "long",
       year: "numeric",
     })
-    return formatter.format(
-      new Date(state.focusedDate.year, state.focusedDate.month - 1, 1)
-    )
   }
 
   const handleHeadingClick = () => {

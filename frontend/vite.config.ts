@@ -86,6 +86,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
+          // A zone far from UTC, so that a test that takes a date from UTC or from the machine fails on every machine.
+          // See docs/frontend/testing.md, section "Time zones".
+          env: { TZ: 'Pacific/Pago_Pago' },
           // Type-check the test files too, so that a type test (expectTypeOf, @ts-expect-error) fails pnpm test.
           typecheck: {
             enabled: true,
@@ -112,7 +115,8 @@ export default defineConfig({
           setupFiles: ['./src/test/browser-setup.ts'],
           browser: {
             enabled: true,
-            provider: playwright(),
+            // A zone far from UTC, on the other side of UTC from the unit tests. See docs/frontend/testing.md.
+            provider: playwright({ contextOptions: { timezoneId: 'Pacific/Kiritimati' } }),
             headless: true,
             instances: [{ browser: 'chromium' }],
             commands: { holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests },

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
+import { parseDate } from '@internationalized/date'
 import { Refresh01Icon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -17,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { formatDate as formatDay } from '@/lib/zoned-time'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -54,13 +56,8 @@ function Index() {
   const currentError = showSecure && auth.isLoggedIn ? secureError : error
   const isLoading = showSecure && auth.isLoggedIn ? secureLoading : loading
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
+  const formatDate = (dateString: string) =>
+    formatDay(parseDate(dateString), { weekday: 'short', month: 'short', day: 'numeric' })
 
   const handleLogin = () => login('/')
   const handleLogout = () => auth.logoutUrl && logout(auth.logoutUrl)

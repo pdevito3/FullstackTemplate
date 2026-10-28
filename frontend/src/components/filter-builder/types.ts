@@ -1,5 +1,7 @@
 // Core filter types for the FilterBuilder component
 
+import type { TimeZone } from '@/lib/zoned-time'
+
 export type ControlType = 'text' | 'multiselect' | 'date' | 'number' | 'boolean'
 
 export type OperatorType =
@@ -34,6 +36,8 @@ export interface DateValue {
   endDate?: Date // Only for 'between' mode
   exclude?: boolean // When true with 'between' mode, becomes OR logic (outside range)
   dateType?: DateType // 'date' for date-only, 'datetime' for date+time (defaults to 'date')
+  /** The zone that the dates were picked in. Without it, the dates show in the zone of the browser. */
+  timeZone?: TimeZone
 }
 
 export interface Filter {
@@ -74,6 +78,11 @@ export interface FilterConfig {
   options?: FilterOption[] // For multiselect control type
   defaultOperator?: OperatorType // Default operator when adding a filter
   dateType?: DateType // For date control: 'date' for date-only, 'datetime' for date+time (defaults to 'date')
+  /**
+   * For a date control: the zone of the place that the dates belong to. The control reads the typed times in it, and
+   * its today is today at the place. Without it, the control uses the zone of the browser.
+   */
+  timeZone?: TimeZone
 }
 
 /** Where a filter control shows: in the submenu of the Add Filter menu, or in a dialog. */

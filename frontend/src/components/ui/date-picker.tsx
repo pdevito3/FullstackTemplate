@@ -18,6 +18,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { todayAt, type TimeZone } from "@/lib/zoned-time"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -44,6 +45,8 @@ interface JollyDatePickerProps<T extends AriaDateValue>
   label?: string
   description?: string
   errorMessage?: string | ((validation: AriaValidationResult) => string)
+  /** The zone of the place that the date belongs to. The calendar marks today at that place, and opens on its month. */
+  timeZone?: TimeZone
 }
 
 function JollyDatePicker<T extends AriaDateValue>({
@@ -56,6 +59,7 @@ function JollyDatePicker<T extends AriaDateValue>({
   onChange,
   onBlur,
   isInvalid,
+  timeZone,
   ...props
 }: JollyDatePickerProps<T>) {
   const [changedDate, setChangedDate] = useState<AriaDateValue | null>(defaultValue ?? null)
@@ -100,14 +104,14 @@ function JollyDatePicker<T extends AriaDateValue>({
       </Group>
       <Popover className="w-auto p-3">
         <Dialog className="outline-none">
-          <Calendar>
+          <Calendar defaultFocusedValue={date || props.placeholderValue || !timeZone ? undefined : todayAt(timeZone, new Date())}>
             <CalendarHeading />
             <CalendarGrid>
               <CalendarGridHeader>
                 {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
               </CalendarGridHeader>
               <CalendarGridBody>
-                {(date) => <CalendarCell date={date} />}
+                {(date) => <CalendarCell date={date} timeZone={timeZone} />}
               </CalendarGridBody>
             </CalendarGrid>
           </Calendar>
@@ -137,6 +141,8 @@ interface JollyDateRangePickerProps<T extends AriaDateValue>
   label?: string
   description?: string
   errorMessage?: string | ((validation: AriaValidationResult) => string)
+  /** The zone of the place that the date belongs to. The calendar marks today at that place, and opens on its month. */
+  timeZone?: TimeZone
 }
 
 function JollyDateRangePicker<T extends AriaDateValue>({
@@ -149,6 +155,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
   onChange,
   onBlur,
   isInvalid,
+  timeZone,
   ...props
 }: JollyDateRangePickerProps<T>) {
   const [changedRange, setChangedRange] = useState<AriaRangeValue<AriaDateValue> | null>(defaultValue ?? null)
@@ -197,14 +204,14 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       </Group>
       <Popover className="w-auto p-3">
         <Dialog className="outline-none">
-          <RangeCalendar>
+          <RangeCalendar defaultFocusedValue={range || props.placeholderValue || !timeZone ? undefined : todayAt(timeZone, new Date())}>
             <CalendarHeading />
             <CalendarGrid>
               <CalendarGridHeader>
                 {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
               </CalendarGridHeader>
               <CalendarGridBody>
-                {(date) => <CalendarCell date={date} />}
+                {(date) => <CalendarCell date={date} timeZone={timeZone} />}
               </CalendarGridBody>
             </CalendarGrid>
           </RangeCalendar>

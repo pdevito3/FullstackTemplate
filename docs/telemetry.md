@@ -222,6 +222,7 @@ In Development, the console uses a `Serilog.Expressions` template. Each line sho
 
 - An exception or a status code of 500 or more gives `Error`.
 - A health probe (`/health` or `/alive`) gives `Verbose`, so the default minimum level drops it.
+- A health probe that the caller leaves during a check gives `Verbose`. `CallerCancellationHealthCheck` ends each check with the cancellation, so the exception handler gives 499, not 503. A check that runs past its own timeout still reports `Unhealthy` at `Error`.
 - All other requests give `Information`.
 
 ## Tests

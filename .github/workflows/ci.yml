@@ -3,6 +3,7 @@ name: CI
 # The api-contract job fails when the committed OpenAPI document or the generated frontend contract is not current.
 # To correct a failure, build the Server, run `pnpm generate:api` in frontend/, and commit the result.
 # The job also builds, lints, and tests the frontend against the contract, and runs the functional suite of the frontend. The test job runs the .NET tests.
+# The line-endings job fails when a tracked text file has a CR. .gitattributes stores each text file with LF.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
 # The BFF jobs (bff-tests, e2e) run only when the changes job finds a BFF change, and on workflow_dispatch.
 # There is no nightly run. See section 7 of docs/specs/home-rolled-bff.md.
@@ -104,6 +105,24 @@ jobs:
             frontend/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  line-endings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Fail on a text file with a CR
+        run: |
+          if git grep --cached -I -l $'\r'; then
+            echo "::error::The files above have CR characters. Run git add --renormalize . and commit the result."
+            exit 1
+          elif [ $? -ne 1 ]; then
+            echo "::error::git grep failed."
+            exit 2
+          fi
 
   grpc-contract:
     runs-on: ubuntu-latest

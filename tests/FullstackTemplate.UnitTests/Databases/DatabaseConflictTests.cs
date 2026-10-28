@@ -1,5 +1,6 @@
 namespace FullstackTemplate.UnitTests.Databases;
 
+using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints;
@@ -176,6 +177,20 @@ public class DatabaseConflictTests
     }
 
     [Test]
+    public void unique_violation_of_an_index_with_an_unknown_constraint_error_throws()
+    {
+        // Arrange
+        var failure = SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_revisions_number");
+
+        // Act
+        var exception = Should.Throw<UnreachableException>(() => DatabaseConflict.From(failure, new UnknownErrorContext().Model));
+
+        // Assert
+        exception.Message.ShouldContain("ix_revisions_number");
+        exception.Message.ShouldContain(typeof(UnknownError).FullName!);
+    }
+
+    [Test]
     public void other_database_failure_is_not_a_conflict()
     {
         DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation), Model).ShouldBeNull();
@@ -208,6 +223,34 @@ public class DatabaseConflictTests
                 .IsUnique()
                 .HasDatabaseName("ix_revisions_number")
                 .ForRequestField("number", "A revision with this number already exists.");
+        }
+    }
+
+    private sealed class UnknownErrorContext : DbContext
+    {
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+            => optionsBuilder.UseNpgsql("Host=unused");
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+            => configurationBuilder.MapConstraintErrors();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            var index = modelBuilder.Entity<Revision>().HasIndex(r => r.Number)
+                .IsUnique()
+                .HasDatabaseName("ix_revisions_number")
+                .ForRequestField("number", "A revision with this number already exists.");
+            var annotation = index.Metadata.GetAnnotations().Single(a => a.Value is ConstraintError);
+            index.HasAnnotation(annotation.Name, new UnknownError());
+        }
+    }
+
+    // The protected copy constructor that the compiler adds to a record lets a third subtype derive
+    private sealed record UnknownError : ConstraintError
+    {
+        public UnknownError()
+            : base(new StaleVersion())
+        {
         }
     }
 

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Diagnostics;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -37,9 +38,11 @@ public static class DatabaseConflict
         var constraint = postgres.ConstraintName ?? string.Empty;
         return ConstraintErrors.Of(model).GetValueOrDefault(constraint) switch
         {
+            null => new ConstraintConflictException(constraint, string.Empty, defaultMessage, exception),
             ConstraintError.StaleVersion => new StaleVersionException(exception),
             ConstraintError.RequestField error => new ConstraintConflictException(constraint, error.Field, error.Message, exception),
-            _ => new ConstraintConflictException(constraint, string.Empty, defaultMessage, exception),
+            var error => throw new UnreachableException(
+                $"The constraint {constraint} has a {error.GetType().FullName}, which {nameof(DatabaseConflict)} does not map to a response."),
         };
     }
 }

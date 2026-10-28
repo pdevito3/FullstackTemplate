@@ -60,7 +60,6 @@ function JollyDatePicker<T extends AriaDateValue>({
   onBlur,
   isInvalid,
   timeZone,
-  placeholderValue,
   ...props
 }: JollyDatePickerProps<T>) {
   const [changedDate, setChangedDate] = useState<AriaDateValue | null>(defaultValue ?? null)
@@ -88,7 +87,6 @@ function JollyDatePicker<T extends AriaDateValue>({
       defaultValue={defaultValue}
       onChange={handleChange}
       onBlur={handleBlur}
-      placeholderValue={placeholderValue ?? (timeZone ? (todayAt(timeZone, new Date()) as T) : undefined)}
       // Undefined when neither is set, so that React Aria keeps its own validation.
       isInvalid={yearCheck.isShortYear || isInvalid}
       {...props}
@@ -106,7 +104,7 @@ function JollyDatePicker<T extends AriaDateValue>({
       </Group>
       <Popover className="w-auto p-3">
         <Dialog className="outline-none">
-          <Calendar>
+          <Calendar defaultFocusedValue={date || props.placeholderValue || !timeZone ? undefined : todayAt(timeZone, new Date())}>
             <CalendarHeading />
             <CalendarGrid>
               <CalendarGridHeader>
@@ -158,7 +156,6 @@ function JollyDateRangePicker<T extends AriaDateValue>({
   onBlur,
   isInvalid,
   timeZone,
-  placeholderValue,
   ...props
 }: JollyDateRangePickerProps<T>) {
   const [changedRange, setChangedRange] = useState<AriaRangeValue<AriaDateValue> | null>(defaultValue ?? null)
@@ -187,7 +184,6 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       defaultValue={defaultValue}
       onChange={handleChange}
       onBlur={handleBlur}
-      placeholderValue={placeholderValue ?? (timeZone ? (todayAt(timeZone, new Date()) as T) : undefined)}
       isInvalid={isShortYear || isInvalid}
       {...props}
     >
@@ -208,7 +204,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       </Group>
       <Popover className="w-auto p-3">
         <Dialog className="outline-none">
-          <RangeCalendar>
+          <RangeCalendar defaultFocusedValue={range || props.placeholderValue || !timeZone ? undefined : todayAt(timeZone, new Date())}>
             <CalendarHeading />
             <CalendarGrid>
               <CalendarGridHeader>

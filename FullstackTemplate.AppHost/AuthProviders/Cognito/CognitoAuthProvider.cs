@@ -40,7 +40,7 @@ public sealed class CognitoAuthProvider : IAuthProvider
             {
                 context.EnvironmentVariables["FLOCI_BASE_URL"] = flociEndpoint.Url;
                 // Swagger UI on the server calls the token endpoint from the browser
-                context.EnvironmentVariables["FLOCI_SECURITY_EXTRA_CORS_ALLOWED_ORIGINS"] = clientUrls.Server.Url;
+                context.EnvironmentVariables["FLOCI_SECURITY_EXTRA_CORS_ALLOWED_ORIGINS"] = $"{clientUrls.Server.Url},{clientUrls.ServerHttp.Url}";
             })
             .WithSeedFiles(this, "/etc/floci/init/ready.d")
             .WithClientUrls(clientUrls)

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Shouldly;
 
 // An app can delete the providers that it does not use, so these tests name no provider. They cover the providers that exist.
+[NotInParallel(TestConstraints.HostEnvironment)]
 public class AuthProviderCatalogTests
 {
     public static IEnumerable<string> ProviderNames => AuthProviderCatalog.All.Select(provider => provider.Name);

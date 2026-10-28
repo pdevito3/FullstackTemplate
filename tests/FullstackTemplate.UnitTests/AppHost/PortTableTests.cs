@@ -8,11 +8,9 @@ using FullstackTemplate.AppHost.AuthProviders;
 using Shouldly;
 
 // The port table in README.md is the list that developers read, so the test holds the AppHost model to it.
+[NotInParallel(TestConstraints.HostEnvironment)]
 public partial class PortTableTests
 {
-    private const string EnvironmentVariable = "ASPNETCORE_ENVIRONMENT";
-    private static string? environmentBefore;
-
     private static readonly HashSet<(string Provider, string Resource, string Endpoint)> NoFixedPort =
     [
         // init:start - scripts/init.cs deletes the provider of the conformance suite when it renames the app
@@ -23,18 +21,6 @@ public partial class PortTableTests
     ];
 
     public static IEnumerable<string> ProviderNames => AuthProviderCatalog.All.Select(provider => provider.Name);
-
-    // A normal run starts the AppHost in Development (its launchSettings.json). Aspire reads the Kestrel endpoints of
-    // the server from appsettings.{environment}.json, with the environment from this variable of the AppHost process.
-    [Before(Class)]
-    public static void RunInDevelopment()
-    {
-        environmentBefore = Environment.GetEnvironmentVariable(EnvironmentVariable);
-        Environment.SetEnvironmentVariable(EnvironmentVariable, "Development");
-    }
-
-    [After(Class)]
-    public static void RestoreEnvironment() => Environment.SetEnvironmentVariable(EnvironmentVariable, environmentBefore);
 
     [Test]
     public void the_port_table_gives_each_port_once()
@@ -55,14 +41,25 @@ public partial class PortTableTests
         var table = ReadmePortTable().ToDictionary(row => (row.Resource, row.Endpoint), row => row.Port);
 
         // Act
-        await using var builder = await DistributedApplicationTestingBuilder.CreateAsync(
-            typeof(Isolation), [$"--AuthProvider={name}"], (options, _) => options.DisableDashboard = true);
+        // A normal run starts the AppHost in Development (its launchSettings.json). See TestConstraints.HostEnvironment.
+        var environmentBefore = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+        List<(string Resource, string Endpoint, int? Port)> endpoints;
+        try
+        {
+            await using var builder = await DistributedApplicationTestingBuilder.CreateAsync(
+                typeof(Isolation), [$"--AuthProvider={name}"], (options, _) => options.DisableDashboard = true);
+            endpoints = builder.Resources
+                .SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>(), (resource, endpoint) => (Resource: resource.Name, Endpoint: endpoint.Name, endpoint.Port))
+                .Where(endpoint => !NoFixedPort.Contains((name, endpoint.Resource, endpoint.Endpoint)))
+                .ToList();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", environmentBefore);
+        }
 
         // Assert
-        var endpoints = builder.Resources
-            .SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>(), (resource, endpoint) => (Resource: resource.Name, Endpoint: endpoint.Name, endpoint.Port))
-            .Where(endpoint => !NoFixedPort.Contains((name, endpoint.Resource, endpoint.Endpoint)))
-            .ToList();
         endpoints.ShouldNotBeEmpty();
         foreach (var (resource, endpoint, port) in endpoints)
         {

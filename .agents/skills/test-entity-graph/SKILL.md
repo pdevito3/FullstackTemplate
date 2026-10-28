@@ -93,7 +93,7 @@ These features are in `Core/`. Use them in `Blueprints.cs`, in `TestGraph.cs`, o
 |---|---|
 | Sequence | `.Derive(i => i.Number, Sequence.Of(1, n => n + 1))` fills unset values. Explicit values in the same step are skipped. Each session restarts the sequence. |
 | Sequence scope | `.PerSession()` (default), `.PerParent()`, or `.Per<Tenant>()` restarts the count for each parent or ancestor. |
-| Frozen time | `ctx.Now`, `ctx.Ago(TimeSpan)`, and `ctx.FromNow(TimeSpan)`. Time is frozen when the session starts. Pass a `TimeProvider` to `TestGraph.Start` for a fixed time. |
+| Frozen time | `ctx.Now`, `ctx.Ago(TimeSpan)`, and `ctx.FromNow(TimeSpan)`. Time is frozen when the session starts. Pass a `TimeProvider` to `TestGraph.Start` for a fixed time. For a date, use `ZonedDate.TodayAt(zone, ctx.Now)` with the zone of the entity that the date belongs to. Do not use `DateOnly.FromDateTime(ctx.Now.UtcDateTime)`. |
 | Context-aware customizer | `.AddUsers(out var users, (u, ctx) => ...)` or `builder.AddOne(bp, out var x, (e, ctx) => ...)`. `ctx` has `Seed`, `Index`, `Now`, `Next(sequence)`, `Ancestor<T>()`, `All<T>()`, and `Last<T>()`. |
 | Trait | `Blueprints.User.With(u => u.Role = "Admin")` makes a variant that sets the value on every output. |
 | Transient | `bp.AsTransient()`, or `.Transient()` after an `AddX` call. The entities are built but `BuildAsync` does not save them. |
@@ -133,6 +133,8 @@ Do these steps after the entity, its creation model, and its EF configuration ex
    ```
 
    Do not use `f.Person` in a rule. A shared `Faker` caches one person, so every entity gets the same name. Use `f.Name.FirstName()` instead.
+
+   A rule for a time zone picks it from a fixed list that has zones on both sides of UTC, for example `Pacific/Tongatapu` (UTC+13) and `America/Los_Angeles` (UTC-8). Then a test that takes today from the UTC date fails on most days, not only in the evening.
 
 2. Make the shape fakers for the entity use the rules with method groups: `RuleFor(x => x.Number, OrderRules.Number)`.
 

@@ -86,7 +86,9 @@ for r in weather-forecast login-logout secure-weather navigation-and-theme filte
 done
 ```
 
-To prove a new change, write a new recipe in the scratch folder of your run (for example `artifacts/verify/<RUN_ID>/recipes/my-change.mjs`). A recipe is an ES module with a default export. `browse.mjs` gives it these values:
+To prove a new change, write a new recipe in the scratch folder of your run (for example `artifacts/verify/<RUN_ID>/recipes/my-change.mjs`). A recipe that needs a day takes it from the time zone of the data and books its own data for that day. It does not walk from today, because the seed data does not cover each day, and a time after local midnight may not have come yet at the place.
+
+A recipe is an ES module with a default export. `browse.mjs` gives it these values:
 
 | Value | What it is |
 |---|---|

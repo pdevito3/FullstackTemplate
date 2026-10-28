@@ -159,6 +159,8 @@ public partial class UserRole : ValueObject, IFixedNames
 }
 ```
 
+A date that belongs to a place is a `ZonedDate`, for example a clinic day or the due date of a service at a yard. It holds the `DateOnly` and the `TimeZoneId` of the place. `TimeZoneId` accepts only an IANA ID that the server knows, with its exact case, such as `America/Chicago`. It refuses a Windows ID such as `Central Standard Time`. Do not store a `ZonedDate`. The entity stores the `DateOnly` and the `TimeZoneId` of its place, and makes the `ZonedDate` when it needs one. Map the `TimeZoneId` with `ComplexProperty`, and give its column `TimeZoneId.MaxLength`. Take today with `ZonedDate.TodayAt(zone, timeProvider.GetUtcNow())`, never from the UTC date. A rule that compares a date to today compares it to today at the place. `Start` is the first instant of the day. It is local midnight, or the end of a gap at midnight. `End` is the `Start` of the next day, and the day does not contain it. `TimeZoneId.ToInstant(date, time)` gives null for a time in a spring gap, and the first instant for a time in the repeated fall hour.
+
 To map a value object to a column, see [entity-configurations.md](entity-configurations.md#value-objects).
 
 ## Do not

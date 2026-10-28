@@ -1,6 +1,17 @@
 # Backend Feature Templates
 
-Complete code templates for generating a vertical slice feature. Replace `[EntityName]` with the actual entity name (e.g., `Customer`, `Order`). Replace `[entity_name]`, `[action_name]`, and `[criteria_name]` with the snake_case names (e.g., `customer`, `change_status`, `sales_region`), which the query tags and the span tags use. Replace `[ActionPastTense]` with the action in the past tense for the log (e.g., `Archived`).
+Complete code templates for generating a vertical slice feature. Replace each placeholder:
+
+- `[EntityName]`: the entity name in PascalCase (e.g., `Customer`, `SalesRegion`).
+- `[entityName]`: the entity name in camelCase, which the routes use (e.g., `customer`, `salesRegion`).
+- `[entity_name]` and `[action_name]`: the snake_case names (e.g., `sales_region`, `change_status`), which the query tags, the span tags, and the MCP tool names use.
+- `[entity name]`: the entity name in lower-case words, which the log and error messages use (e.g., `customer`, `sales region`).
+- `[prefix]`: the ID prefix of the entity (e.g., `cus`).
+- `[Action]` and `[action-route]`: the action in PascalCase and in kebab-case for the route (e.g., `Archive` and `archive`, or `ChangeStatus` and `change-status`).
+- `[ActionPastTense]`: the action in the past tense in PascalCase, which the event name and the log use (e.g., `Archived`). An event name is in the past tense (see `docs/backend/domain-events.md`).
+- `[Criteria]`, `[criteria]`, and `[criteria_name]`: the entity that a custom query filters by, in PascalCase, camelCase, and snake_case (e.g., `SalesRegion`, `salesRegion`, `sales_region`). The `[EntityName]` must have a `[Criteria]Id` foreign key.
+
+Other text in brackets, such as `[Description of the action]`, is text that you write.
 
 ## 1. Domain Entity
 
@@ -322,7 +333,7 @@ public static class Add[EntityName]
 
             // The caller adds to its own tenant. AddUser shows a request that names the tenant.
             var tenantId = dbContext.CurrentTenantScope.TenantId
-                ?? throw new ForbiddenAccessException("You can add a [EntityName] only to your own tenant.");
+                ?? throw new ForbiddenAccessException("You can add a [entity name] only to your own tenant.");
             var forCreation = request.Dto.To[EntityName]ForCreation(tenantId);
             var entity = [EntityName].Create(forCreation);
             Activity.Current?.SetTag("app.[entity_name]_id", entity.Id);
@@ -330,7 +341,7 @@ public static class Add[EntityName]
             await dbContext.[EntityName]s.AddAsync(entity, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("Added [EntityName] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("Added [entity name] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -376,7 +387,7 @@ public static class Update[EntityName]
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("Updated [EntityName] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("Updated [entity name] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -418,7 +429,7 @@ public static class Delete[EntityName]
             dbContext.[EntityName]s.Remove(entity);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("Deleted [EntityName] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("Deleted [entity name] {[EntityName]Id}", entity.Id);
         }
     }
 }
@@ -722,8 +733,13 @@ public static class Update[EntityName]Tool
         IMediator mediator,
         [Description("The [EntityName] ID.")] string id,
         [Description("The new name.")] string name,
+        // The update replaces each field, so the tool takes each field. A tool without the description clears it.
+        [Description("The new description, or null for no description.")] string? description,
+        [Description("The version of the [entity name] that the caller read. If the [entity name] changed after that, the tool gives the aborted error.")] uint version,
         CancellationToken cancellationToken)
-        => mediator.Send(new Update[EntityName].Command(id, new [EntityName]ForUpdateDto { Name = name }), cancellationToken);
+        => mediator.Send(
+            new Update[EntityName].Command(id, new [EntityName]ForUpdateDto { Name = name, Description = description, Version = version }),
+            cancellationToken);
 }
 ```
 
@@ -832,24 +848,7 @@ public abstract record DomainEvent;
 
 ### PagedList
 
-```csharp
-namespace FullstackTemplate.Server.Resources;
-
-public class PagedList<T>
-{
-    public IReadOnlyList<T> Items { get; }
-    public Pagination Pagination { get; }
-
-    public static async Task<PagedList<T>> CreateAsync(
-        IQueryable<T> source,
-        int pageNumber,
-        int pageSize,
-        CancellationToken cancellationToken = default)
-    {
-        // Implementation
-    }
-}
-```
+`PagedList<T>` in `Resources/PagedList.cs` extends `List<T>`, so the page is the list itself. It has no `Items` property. It adds the page data: `PageNumber`, `PageSize`, `TotalCount`, `TotalPages`, `HasPrevious`, and `HasNext`. Make a page with `PagedList.CreateAsync(query, pageNumber, pageSize, cancellationToken)`.
 
 ---
 
@@ -1027,7 +1026,7 @@ public static class [Action][EntityName]
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("[ActionPastTense] [EntityName] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("[ActionPastTense] [entity name] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -1074,7 +1073,7 @@ public static class [Action][EntityName]
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("[ActionPastTense] [EntityName] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("[ActionPastTense] [entity name] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -1084,14 +1083,14 @@ public static class [Action][EntityName]
 
 ### Domain Event Template
 
-**File:** `Domain/[EntityName]s/DomainEvents/[EntityName][Action].cs`
+**File:** `Domain/[EntityName]s/DomainEvents/[EntityName][ActionPastTense].cs`
 
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName][Action](
+public sealed record [EntityName][ActionPastTense](
     string [EntityName]Id,
-    DateTimeOffset [Action]At) : DomainEvent; // Add any other relevant data
+    DateTimeOffset [ActionPastTense]At) : DomainEvent; // Add any other relevant data
 ```
 
 If the action takes a reason, put the reason in the event. The event must be self-contained.
@@ -1099,10 +1098,10 @@ If the action takes a reason, put the reason in the event. The event must be sel
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 
-public sealed record [EntityName][Action](
+public sealed record [EntityName][ActionPastTense](
     string [EntityName]Id,
     string Reason,
-    DateTimeOffset [Action]At) : DomainEvent;
+    DateTimeOffset [ActionPastTense]At) : DomainEvent;
 ```
 
 ### Domain Method Template
@@ -1120,10 +1119,10 @@ public [EntityName] [Action]()
 
     // Perform state changes
     Status = [EntityName]Status.[NewStatus]();
-    [Action]At = DateTimeOffset.UtcNow;
+    [ActionPastTense]At = DateTimeOffset.UtcNow;
 
     // Queue domain event
-    QueueDomainEvent(new [EntityName][Action](Id, [Action]At));
+    QueueDomainEvent(new [EntityName][ActionPastTense](Id, [ActionPastTense]At));
 
     return this;
 }
@@ -1138,7 +1137,7 @@ public [EntityName] [Action](string reason)
     Status = [EntityName]Status.[NewStatus]();
     [Action]Reason = reason;
 
-    QueueDomainEvent(new [EntityName][Action](Id, reason, DateTimeOffset.UtcNow));
+    QueueDomainEvent(new [EntityName][ActionPastTense](Id, reason, DateTimeOffset.UtcNow));
 
     return this;
 }
@@ -1149,6 +1148,13 @@ public [EntityName] [Action](string reason)
 **File:** `Domain/[EntityName]s/Features/[Action][EntityName]/[Action][EntityName].Http.cs`
 
 ```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using Dtos;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources.Entrypoints.Http;
+
 public sealed class [Action][EntityName]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
@@ -1157,6 +1163,8 @@ public sealed class [Action][EntityName]Endpoint : IEndpoint
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
+        // The handler checks a permission, so it can return 403
+        .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
         // Declare a 400 if the action has a request body
         .ProducesValidationProblem()
@@ -1225,6 +1233,13 @@ public static class Get[EntityName]sBy[Criteria]
 **File:** `Domain/[EntityName]s/Features/Get[EntityName]sBy[Criteria]/Get[EntityName]sBy[Criteria].Http.cs`
 
 ```csharp
+namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
+
+using Dtos;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Resources.Entrypoints.Http;
+
 public sealed class Get[EntityName]sBy[Criteria]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup

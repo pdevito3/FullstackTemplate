@@ -74,7 +74,7 @@ When adding a business operation to an existing entity:
 | Component | Files to Create/Modify |
 |-----------|----------------------|
 | **Domain method** | `[EntityName].cs` - Add behavior method |
-| **Domain event** | `DomainEvents/[EntityName][Action].cs` - New event |
+| **Domain event** | `DomainEvents/[EntityName][ActionPastTense].cs` - New event |
 | **Feature** | `Features/[Action][EntityName]/[Action][EntityName].cs` - New command/query |
 | **Endpoint** | `Features/[Action][EntityName]/[Action][EntityName].Http.cs` - New `IEndpoint` |
 | **DTOs** (if needed) | `Dtos/[Action][EntityName]Dto.cs` - Request/response |

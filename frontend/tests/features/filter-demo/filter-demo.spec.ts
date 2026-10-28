@@ -129,24 +129,104 @@ for (const viewport of [
   })
 }
 
-const shortPhone = { width: 320, height: 766 }
+const shortPhone = { width: 320, height: 780 }
 
-test.describe('the Between calendar on a 320 x 766 phone', () => {
+test.describe('the Between calendar on a 320 x 780 phone', () => {
   test.use({ viewport: shortPhone })
 
-  test('keeps Add Filter on the screen in a five-week month and in the month picker', async ({ page }) => {
-    const demo = filterDemoPage(page)
-    await demo.openOn(dayInAFiveWeekMonth)
+  for (const { weeks, today } of [
+    { weeks: 'six', today: dayInASixWeekMonth },
+    { weeks: 'five', today: dayInAFiveWeekMonth },
+  ]) {
+    test(`keeps Add Filter on the screen, with the bottom margin of the sheet, in a ${weeks}-week month`, async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.openOn(today)
 
+      await demo.chooseProperty('Created Date')
+      await demo.chooseBetween('Created Date')
+
+      await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+      const addFilter = await demo.edgesOf(demo.at.addFilter('Created Date'))
+      expect(shortPhone.height - addFilter.bottom).toBe(16)
+    })
+  }
+
+  test('keeps Add Filter on the screen in the month picker', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
     await demo.chooseProperty('Created Date')
     await demo.chooseBetween('Created Date')
-
-    const addFilter = await demo.edgesOf(demo.at.addFilter('Created Date'))
-    expect(Math.abs(addFilter.bottom - shortPhone.height), 'Add Filter sits flush with the bottom edge of the screen').toBeLessThanOrEqual(1)
 
     await demo.openMonthPicker('Created Date')
 
     await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
+  })
+
+  test('shows the line above Add Filter only while the calendar scrolls under it', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    expect(await demo.lineAboveFooterOf(demo.at.addFilter('Created Date'))).toBe(true)
+
+    await demo.scrollControlToEnd('Created Date')
+
+    await expect.poll(() => demo.lineAboveFooterOf(demo.at.addFilter('Created Date'))).toBe(false)
+  })
+})
+
+test.describe('the Add Filter menu on a phone on its side', () => {
+  test.use({ viewport: { width: 667, height: 375 } })
+
+  for (const { property, submit } of [
+    { property: 'Status', submit: 'addSelected' },
+    { property: 'Created Date', submit: 'addFilter' },
+    { property: 'Comment Count', submit: 'addFilter' },
+  ] as const) {
+    test(`keeps the submit button of the ${property} control on the screen`, async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.openOn(dayInASixWeekMonth)
+
+      await demo.chooseProperty(property)
+
+      await expect(demo.at[submit](property)).toBeInViewport({ ratio: 1 })
+    })
+  }
+})
+
+test.describe('the Status control on a touch screen', () => {
+  test.use({ viewport: phone, hasTouch: true })
+
+  test('shows the Only button of each option, because a touch screen has no hover', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.chooseProperty('Status')
+
+    await expect(demo.at.onlyButtons('Status')).toHaveCount(5)
+    for (const only of await demo.at.onlyButtons('Status').all()) await expect(only).toHaveCSS('opacity', '1')
+  })
+})
+
+const toastsWithDescriptions = [
+  { message: 'Something went wrong', description: 'The server did not answer. Try again.' },
+  { message: 'Changes saved', description: 'The filter list is up to date.' },
+]
+
+test.describe('the filter dialog on a 900 x 800 screen', () => {
+  test.use({ viewport: { width: 900, height: 800 } })
+
+  test('keeps two toasts off the Add Filter button', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+
+    await demo.showToasts(...toastsWithDescriptions)
+
+    for (const toast of await demo.at.toasts.all()) {
+      expect(await demo.overlapOf(demo.at.addFilter('Created Date'), toast)).toBeNull()
+    }
   })
 })
 
@@ -448,6 +528,17 @@ const shortWindow = { width: 1280, height: 512 }
 
 test.describe('the Add Filter menu on a short desktop window', () => {
   test.use({ viewport: shortWindow })
+
+  test('keeps the Update Filter button of the edit dialog of a date filter on the screen', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.addTodayFilter('Created Date')
+
+    await demo.editFilter('Created Date')
+
+    await expect(demo.at.button('Created Date', 'Update Filter')).toBeInViewport({ ratio: 1 })
+  })
 
   test('keeps a tall control on the screen and scrolls it to its Add Filter button', async ({ page }) => {
     const demo = filterDemoPage(page)

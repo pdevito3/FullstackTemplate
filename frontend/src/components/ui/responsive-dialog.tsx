@@ -110,9 +110,12 @@ function ResponsiveDialog({
           // room of the toasts, so the sheet stops below them. The fallback is the room of one toast of one line. dvh is
           // the visible height of a phone with its toolbar shown. vh is the height without the toolbar.
           "right-0 bottom-0 left-0 max-h-[85vh] supports-[height:100dvh]:max-h-[min(85vh,calc(100dvh-var(--toast-reserve,4.5rem)))] rounded-t-xl",
+          // Desktop: centered. The toasts show at the bottom right, so the dialog keeps their room free below it: it moves
+          // up only as far as it must, and it gets shorter only when it does not fit above them. The toaster publishes
+          // --toast-region-height, and the 2rem margin covers the bottom-6 of the toasts and a gap of 0.5rem.
+          "md:top-0 md:bottom-auto md:left-1/2 md:max-h-[calc(100vh-4rem-var(--toast-region-height,0px))] md:max-w-md md:-translate-x-1/2 md:translate-y-[min(calc(50vh-50%),calc(100vh-2rem-var(--toast-region-height,0px)-100%))] md:rounded-xl",
           // Move with the toast fade, not in one frame.
-          "max-md:motion-safe:transition-[max-height] max-md:motion-safe:duration-200 max-md:motion-safe:ease-out",
-          "md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[calc(100vh-4rem)] md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl",
+          "motion-safe:transition-[max-height,translate] motion-safe:duration-200 motion-safe:ease-out",
           className
         )}
       >
@@ -186,8 +189,8 @@ function ResponsiveDialogFooter({
       data-slot="responsive-dialog-footer"
       className={cn(
         // The negative margins cover the p-4 of the content that scrolls, so a focus ring in the side gutter does not show
-        // next to the footer.
-        "sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 bg-background px-4 pt-4 pb-4 sm:flex-row sm:justify-end",
+        // next to the footer. index.css shows the top border only while content scrolls under the footer.
+        "sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t bg-background px-4 pt-4 pb-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

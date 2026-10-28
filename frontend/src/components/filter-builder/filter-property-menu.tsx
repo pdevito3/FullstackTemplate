@@ -19,9 +19,9 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { ControlType, FilterConfig, Filter } from './types'
+import type { ControlType, FilterConfig, Filter, FilterControlSurface } from './types'
 import { FilterControl, FilterControlDialog } from './controls/filter-control'
-import { FILTER_CONTROLS, type FilterControlSurface } from './controls/filter-controls'
+import { FILTER_CONTROLS } from './controls/filter-controls'
 
 interface FilterPropertyMenuProps {
   options: FilterConfig[]
@@ -126,7 +126,7 @@ function propertyKeyOf(node: { type: string; key: Key; firstChildKey?: Key | nul
  * that axis. So without the room, each control opens in the dialog.
  */
 function surfaceOf(controlType: ControlType, hasRoomForSubmenus: boolean): FilterControlSurface {
-  return hasRoomForSubmenus ? FILTER_CONTROLS[controlType].surface : 'dialog'
+  return hasRoomForSubmenus ? FILTER_CONTROLS[controlType].addMenuSurface : 'dialog'
 }
 
 interface PropertyMenuItemProps {
@@ -138,7 +138,7 @@ interface PropertyMenuItemProps {
 function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemProps) {
   // A dialog control opens after the menu closes, so its item has no submenu.
   if (surface === 'dialog') {
-    const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].surface === 'submenu'
+    const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].addMenuSurface === 'submenu'
     return (
       <DropdownMenuItem id={config.propertyKey} textValue={config.propertyLabel}>
         {config.propertyLabel}
@@ -159,7 +159,7 @@ function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemP
       {/* React Aria sets the max height of the popover to the room on the screen. */}
       <Popover placement="end top" className="w-auto overflow-y-auto p-0">
         <Dialog aria-label={`${config.propertyLabel} filter`} className="outline-none">
-          <FilterControl config={config} onSubmit={onFilterSubmit} />
+          <FilterControl config={config} surface="submenu" onSubmit={onFilterSubmit} />
         </Dialog>
       </Popover>
     </DropdownMenuSub>

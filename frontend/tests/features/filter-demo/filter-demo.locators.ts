@@ -32,6 +32,10 @@ export const filterDemo = (page: Page) => {
     monthOption: (propertyLabel: string, name: string) =>
       control(propertyLabel).getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name, exact: true }),
     addFilter: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Add Filter', exact: true }),
+    addSelected: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: /^Add \(\d+\)$/ }),
+    option: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('checkbox', { name, exact: true }),
+    onlyButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: /^Only / }),
+    toasts: page.getByRole('alertdialog'),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
   }

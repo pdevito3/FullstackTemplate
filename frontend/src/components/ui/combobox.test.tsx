@@ -1,6 +1,7 @@
-import { Dialog, type ComboBoxProps } from 'react-aria-components'
+import { Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
+import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
-import { page, userEvent } from 'vitest/browser'
+import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { Button } from '@/components/ui/button'
@@ -318,4 +319,207 @@ test('Enter with the text of a selected option that has a twin submits the form'
 
   await expect.element(input).toHaveValue('Solid')
   expect(onSubmit).toHaveBeenCalledOnce()
+})
+
+function FrameworkComboboxOnTallPage(props: Pick<ComboBoxProps<object>, 'onChange'>) {
+  return (
+    <div style={{ height: '300vh' }}>
+      <FrameworkCombobox {...props} />
+    </div>
+  )
+}
+
+test('a scroll of the page closes the list and keeps the typed text, and Enter then picks the option', async () => {
+  const screen = await render(<FrameworkComboboxOnTallPage />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+
+  window.scrollBy(0, 200)
+
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await expect.element(input).toHaveValue('vue')
+  await expect.element(input).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('Vue')
+})
+
+test('a blur after a scroll of the page still resets text with no match', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkComboboxOnTallPage onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('Vu')
+  window.scrollBy(0, 200)
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+
+  await userEvent.tab()
+
+  await expect.element(input).toHaveValue('')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+// React Aria makes the option under the pointer active only while the last input was a pointer. A click
+// on the button opens the list, and `fill` types as a paste or dictation does, with no key press.
+test.each(['{Tab}', '{Enter}'])('%s does not pick the option under the pointer', async (key) => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+
+  await userEvent.keyboard(key)
+
+  await expect.element(input).toHaveValue('')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+test.each([
+  ['{Tab}', 'textbox', 'Next field'],
+  ['{Enter}', 'combobox', 'Framework'],
+] as const)('%s picks the option with the typed text, not the option under the pointer', async (key, role, focused) => {
+  const onChange = vi.fn()
+  const screen = await render(
+    <>
+      <FrameworkCombobox onChange={onChange} />
+      <input aria-label="Next field" />
+    </>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await input.fill('vue')
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+
+  await userEvent.keyboard(key)
+
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
+  await expect.element(screen.getByRole(role, { name: focused })).toHaveFocus()
+})
+
+test.each(['{Tab}', '{Enter}'])('%s picks the option that the arrow keys made active, not the option under the pointer', async (key) => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await input.fill('Vu')
+  await userEvent.keyboard('{ArrowDown}')
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+
+  await userEvent.keyboard(key)
+
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
+})
+
+function ControlledFrameworkCombobox({ onChange }: { onChange: (key: unknown) => void }) {
+  const [value, setValue] = useState<Key | null>(null)
+  const [inputValue, setInputValue] = useState('')
+  const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+  return (
+    <div style={{ height: '300vh' }}>
+      <Combobox
+        value={value}
+        onChange={(key) => {
+          onChange(key)
+          setValue(key)
+          setInputValue(key == null ? '' : names[String(key)])
+        }}
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+      >
+        <Label>Framework</Label>
+        <ComboboxInput />
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxItem id="vue">Vue</ComboboxItem>
+            <ComboboxItem id="vue-router">Vue Router</ComboboxItem>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <input aria-label="Next field" />
+    </div>
+  )
+}
+
+test.each([
+  ['an open list', () => {}],
+  ['a list that a scroll of the page closed', () => window.scrollBy(0, 200)],
+])('Tab in %s picks the option with the typed text when the value and the text are controlled', async (_, act) => {
+  const onChange = vi.fn()
+  const screen = await render(<ControlledFrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  act()
+
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange.mock.calls).toEqual([['vue']])
+})
+
+test('a press on the button, a drag, and a release on an option picks nothing', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await commands.movePointerOnto('button', 'Show suggestions Framework')
+  await commands.pressPointer()
+  await commands.movePointerOnto('option', 'Vue Router')
+
+  await commands.releasePointer()
+
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  await expect.element(input).toHaveValue('')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+/**
+ * The names of the options whose row has a fill on the screen. A moving highlight paints the active option,
+ * so the test reads the pixels: the left edge of each row against the padding of the list.
+ */
+async function optionsWithFill() {
+  const list = page.getByRole('listbox')
+  const image = await createImageBitmap(
+    await (await fetch(`data:image/png;base64,${await list.screenshot({ save: false })}`)).blob(),
+  )
+  const canvas = new OffscreenCanvas(image.width, image.height)
+  const context = canvas.getContext('2d')!
+  context.drawImage(image, 0, 0)
+  const listBox = list.element().getBoundingClientRect()
+  const scale = image.width / listBox.width
+  const pixel = (x: number, y: number) =>
+    context.getImageData(Math.round((x - listBox.left) * scale), Math.round((y - listBox.top) * scale), 1, 1).data.join()
+  const empty = pixel(listBox.left + listBox.width / 2, listBox.top + 2)
+  return [...list.element().querySelectorAll('[role=option]')]
+    .filter((option) => {
+      const row = option.getBoundingClientRect()
+      return pixel(row.left + 3, row.top + row.height / 2) !== empty
+    })
+    .map((option) => option.textContent)
+}
+
+test('the option under the pointer has no fill while the arrow keys make another option active', async () => {
+  // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.
+  const screen = await render(
+    <div style={{ padding: 12 }}>
+      <FrameworkCombobox />
+    </div>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await input.fill('Vu')
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.poll(optionsWithFill).toEqual(['Vue Router'])
+
+  await userEvent.keyboard('{ArrowDown}')
+
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+  await expect.poll(optionsWithFill).toEqual(['Vue'])
 })

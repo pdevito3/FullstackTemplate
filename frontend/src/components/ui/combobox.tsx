@@ -131,12 +131,13 @@ function onlyOptionWithText(
 }
 
 /**
- * On Enter with typed text and no focused option, React Aria resets a
- * single-select Combobox to its selected option and drops the typed text.
- * Select the one option whose text matches. With no match, keep the typed
- * text, and do not submit the form, because the text is not the value.
+ * Enter and Tab pick the option that the arrow keys made active. With no
+ * active option, React Aria resets a single-select Combobox to its selected
+ * option and drops the typed text. Select the one option whose text matches.
+ * With no match, Enter keeps the typed text and does not submit the form,
+ * because the text is not the value. Tab moves on, and the blur resets the text.
  */
-function usePickTypedOptionOnEnter() {
+function usePickTypedOption() {
   const state = React.useContext(ComboBoxStateContext)
   const { allowsCustomValue, isReadOnly } = React.useContext(ComboboxSettingsContext)
   const { locale } = useLocale()
@@ -144,11 +145,10 @@ function usePickTypedOptionOnEnter() {
   return (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (
       !state ||
-      e.key !== "Enter" ||
+      !(e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) ||
       e.altKey ||
       e.ctrlKey ||
       e.metaKey ||
-      e.shiftKey ||
       e.repeat ||
       e.nativeEvent.isComposing ||
       // Safari ends an IME composition with an Enter that has isComposing false and keyCode 229.
@@ -172,10 +172,13 @@ function usePickTypedOptionOnEnter() {
     const key = onlyOptionWithText(state.selectionManager, state.inputValue, collator)
     if (key != null) {
       state.setValue(key)
-      if (state.isOpen) {
-        e.preventDefault()
-      }
-    } else {
+    }
+    // Tab goes on to React Aria, which closes the list, and to a focus scope,
+    // which keeps the focus in a modal.
+    if (e.key === "Tab") {
+      return
+    }
+    if (key == null || state.isOpen) {
       e.preventDefault()
     }
     e.stopPropagation()
@@ -193,12 +196,12 @@ function ComboboxInput({
   showTrigger?: boolean
   showClear?: boolean
 }) {
-  const pickTypedOptionOnEnter = usePickTypedOptionOnEnter()
+  const pickTypedOption = usePickTypedOption()
   return (
     <InputGroup className={cn("w-auto", className)}>
       <InputGroupInput
         onKeyDownCapture={(e) => {
-          pickTypedOptionOnEnter(e)
+          pickTypedOption(e)
           onKeyDownCapture?.(e)
         }}
         {...props}
@@ -237,19 +240,29 @@ function ComboboxContent({
   children?: React.ReactNode
   anchor?: React.RefObject<HTMLDivElement | null>
 }) {
+  const state = React.useContext(ComboBoxStateContext)
+  // React Aria closes the list on a scroll of the page with the close of the
+  // ComboBox, which commits the input and clears typed text that is not a pick.
+  // While the input has the focus, the list only hides, and the blur commits.
+  const listState = state && {
+    ...state,
+    close: () => (state.isFocused ? state.isOpen && state.toggle() : state.close()),
+  }
   return (
-    <PopoverPrimitive
-      data-slot="combobox-content"
-      placement={placement}
-      offset={offset}
-      crossOffset={crossOffset}
-      // React Aria sets an inline max-height from the space on the page, which
-      // overrides a class. It uses the smaller of that space and this value.
-      maxHeight={maxHeight}
-      triggerRef={anchor}
-      className={cn("relative isolate z-50 w-(--trigger-width) min-w-36 origin-(--trigger-anchor-point) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 **:data-[slot$=-item]:data-focused:bg-foreground/10 *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/30 *:data-[slot=input-group]:shadow-none", className )}
-      {...props}
-    />
+    <OverlayTriggerStateContext.Provider value={listState}>
+      <PopoverPrimitive
+        data-slot="combobox-content"
+        placement={placement}
+        offset={offset}
+        crossOffset={crossOffset}
+        // React Aria sets an inline max-height from the space on the page, which
+        // overrides a class. It uses the smaller of that space and this value.
+        maxHeight={maxHeight}
+        triggerRef={anchor}
+        className={cn("relative isolate z-50 w-(--trigger-width) min-w-36 origin-(--trigger-anchor-point) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 **:data-[slot$=-item]:data-focused:bg-foreground/10 *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/30 *:data-[slot=input-group]:shadow-none", className )}
+        {...props}
+      />
+    </OverlayTriggerStateContext.Provider>
   )
 }
 
@@ -271,6 +284,10 @@ function ComboboxList<T extends object>({
     <ListBoxPrimitive
       data-slot="combobox-list"
       {...labelProps}
+      // React Aria makes the option under the pointer the active option, and
+      // Enter and Tab pick the active option. The user who types does not look
+      // at the pointer, so only the arrow keys make an option active.
+      shouldFocusOnHover={false}
       className={composeRenderProps(className, (className) =>
         cn(
           "group/combobox-content no-scrollbar max-h-[inherit] scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
@@ -310,7 +327,7 @@ function ComboboxItem<T extends object>({
       textValue={textValue ?? (typeof children === "string" ? children : undefined)}
       className={composeRenderProps(className, (className) =>
         cn(
-          "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-focused:bg-accent data-focused:text-accent-foreground not-data-[variant=destructive]:data-focused:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+          "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none group-not-has-data-focused/combobox-content:data-hovered:bg-foreground/5 data-focused:bg-accent data-focused:text-accent-foreground not-data-[variant=destructive]:data-focused:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
           className
         )
       )}

@@ -67,16 +67,16 @@ For a new rule, add a field such as `RootLock.Clinic` with a new number and the 
 3. Do not change an entity or record an action before the work. `RootLock` throws if the context has changes. A run again after a transient failure clears the tracker, so it would save without them.
 4. Do the work that leaves the process after the work, such as a log or a metric. The work can run more than one time.
 5. Send a command that takes a lock only from an entrypoint (HTTP, gRPC, or MCP). A run again after a transient failure detaches each tracked entity of the DI scope, also the entities of a handler that sent the command.
-6. Write a race test that waits with `PauseAtQuery.WaitUntilBlockedAsync` until the rival waits on the lock. See `TenantDeleteRaceTests.cs`.
+6. Take one `RootLock` in a command. A command that holds one lock and waits for a second lock can deadlock with a command that takes the two locks in the other order.
+7. Write a race test that waits with `PauseAtQuery.WaitUntilBlockedAsync` until the rival waits on the lock. See `TenantDeleteRaceTests.cs`.
 
 `RootLock` does these steps for you:
 
 - The lock has two keys: the number of the kind of the root, and the first 4 bytes of the SHA-256 hash of the ID of the root. The one-key locks of the EF migrations then do not share a key with it. The hash is in .NET, so an ID that Postgres text cannot hold, such as an ID with a NUL, still gets a lock.
-- A session lock ends when its connection drops. So the lock, the work, and the unlock run in one call of `Database.CreateExecutionStrategy().ExecuteAsync`, on one open connection. A transient failure then runs the whole work again on a new connection, not only the save.
+- A session lock ends when its connection drops. So the lock, the work, and the unlock run in one call of `Database.CreateExecutionStrategy().ExecuteAsync`, on one open connection. A transient failure then runs the whole work again on a new connection, not only the save. Each run again adds a `lock.run_again` event with `app.lock.run` to the request span. The request span also has the `app.lock.mode` tag, `shared` or `exclusive`.
 - If the unlock fails, it ends the session with `pg_terminate_backend(pg_backend_pid())` and writes a warning log. The pool frees the session locks of a connection only when the next request uses the connection, so the lock would stay on the idle connection until then.
 - The SQL spans of the lock are named for the root, such as `SQL: tenants.lock_exclusive`. The duration of that span is the wait for the lock.
-
-Inside the work, the save does not look for its audit entries after a lost reply of the commit (see [Lost reply of a commit](#lost-reply-of-a-commit)). The strategy of the lock handles the nested save, so it runs the whole work again. A delete then gets 404, and an add can get 409 for a value that the first run saved.
+- EF runs a strategy inside a strategy one time, with no retry and no check. So a save in the work looks for its audit entries itself after a transient failure (see [Lost reply of a commit](#lost-reply-of-a-commit)). If they are there, the save returns success, and the work continues. Thus a delete does not get 404, and an add does not get 409, for a save that worked. If they are not there, the whole work runs again.
 
 A command that is marked `IRunsAgainWhenRaced` can take a lock. A lost race throws out of the work, the lock is freed, and the command runs again and takes the lock again. `DeleteTenant` does this.
 
@@ -90,4 +90,4 @@ These options do not fit:
 
 ## Lost reply of a commit
 
-After a lost acknowledgment of a commit, the execution strategy of EF sends the save again. Before it does, the save looks for its audit entries. If they are there, the save committed, so it returns success and sets the `Version` of each saved entity. Thus the save does not run two times, and the caller does not get a 409 for a save that worked. A save that writes no audit entry, such as a save of only a `[NotAudited]` table, has nothing to look for, and it can still get a 409. A save in the work of a `RootLock` also does not look (see [Lock](#lock)). See [ADR 0010](../adr/0010-domain-events-in-the-save-transaction.md).
+After a lost acknowledgment of a commit, the execution strategy of EF sends the save again. Before it does, the save looks for its audit entries. If they are there, the save committed, so it returns success and sets the `Version` of each saved entity. Thus the save does not run two times, and the caller does not get a 409 for a save that worked. A save that writes no audit entry, such as a save of only a `[NotAudited]` table, has nothing to look for, and it can still get a 409. A save in the work of a `RootLock` also looks (see [Lock](#lock)). See [ADR 0010](../adr/0010-domain-events-in-the-save-transaction.md).

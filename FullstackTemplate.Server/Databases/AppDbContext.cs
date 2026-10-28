@@ -82,6 +82,9 @@ public class AppDbContext(
 
     internal bool HasUnsavedActions => _recordedActions.Count > 0;
 
+    /// <summary>True while <see cref="RootLock"/> runs its work, so a save looks for its commit after a lost reply.</summary>
+    internal bool InLockedWork { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -195,31 +198,62 @@ public class AppDbContext(
                 .Where(e => e.State is not (EntityState.Unchanged or EntityState.Detached))
                 .ToList();
             var (occurredAt, recordId) = (auditEntries[0].OccurredAt, auditEntries[0].RecordId);
+
+            // After a lost reply of the commit, the audit entries tell whether it committed. EF dropped the Version
+            // that the failed try read back. Each row that one transaction writes has the same xmin, so the xmin of an
+            // entry gives it.
+            async Task<ExecutionResult<int>> FindCommitAsync(bool accept, CancellationToken ct)
+            {
+                var version = await AuditEntries
+                    .TagWithOperationCallSite("audit_entries.save_committed")
+                    .IgnoreQueryFilters([QueryFilterNames.Tenant])
+                    .Where(e => e.OccurredAt == occurredAt && e.RecordId == recordId)
+                    .Select(e => (uint?)EF.Property<uint>(e, AuditEntryConfiguration.TransactionId))
+                    .FirstOrDefaultAsync(ct);
+                if (version is null)
+                    return new ExecutionResult<int>(false, 0);
+
+                Telemetry.AddEvent([], "database.save.lost_reply_committed");
+                foreach (var entry in written.Where(e => e.Entity is BaseEntity))
+                    entry.Property(nameof(BaseEntity.Version)).CurrentValue = version.Value;
+                if (accept)
+                    ChangeTracker.AcceptAllChanges();
+                return new ExecutionResult<int>(true, written.Count);
+            }
+
+            // EF runs a nested strategy one time and skips its check, so in the work of a RootLock the save looks for
+            // the commit itself. Else the lock runs the whole work again, and it finds the saved rows.
+            async Task<int> SaveInLockAsync(bool accept, CancellationToken ct)
+            {
+                try
+                {
+                    return await base.SaveChangesAsync(accept, ct);
+                }
+                // The same test as the Npgsql retrying strategy, whose detector is internal.
+                catch (Exception failure) when (ExecutionStrategy.CallOnWrappedException(
+                    failure, e => e is NpgsqlException { IsTransient: true } or TimeoutException))
+                {
+                    ExecutionResult<int>? commit = null;
+                    try
+                    {
+                        commit = await FindCommitAsync(accept, ct);
+                    }
+                    catch (Exception)
+                    {
+                        // The lost reply is the failure to report. The lock then runs the work again.
+                    }
+
+                    if (commit is not { IsSuccessful: true })
+                        throw;
+                    return commit.Result;
+                }
+            }
+
             // The audit entries are in the tracker before the execution strategy runs, so a retry sends the same rows.
             return await Database.CreateExecutionStrategy().ExecuteAsync(
                 acceptAllChangesOnSuccess,
-                (_, accept, ct) => base.SaveChangesAsync(accept, ct),
-                // After a lost reply of the commit, the audit entries tell whether it committed. EF dropped the Version
-                // that the failed try read back. Each row that one transaction writes has the same xmin, so the xmin of
-                // an entry gives it.
-                async (_, accept, ct) =>
-                {
-                    var version = await AuditEntries
-                        .TagWithOperationCallSite("audit_entries.save_committed")
-                        .IgnoreQueryFilters([QueryFilterNames.Tenant])
-                        .Where(e => e.OccurredAt == occurredAt && e.RecordId == recordId)
-                        .Select(e => (uint?)EF.Property<uint>(e, AuditEntryConfiguration.TransactionId))
-                        .FirstOrDefaultAsync(ct);
-                    if (version is null)
-                        return new ExecutionResult<int>(false, 0);
-
-                    Telemetry.AddEvent([], "database.save.lost_reply_committed");
-                    foreach (var entry in written.Where(e => e.Entity is BaseEntity))
-                        entry.Property(nameof(BaseEntity.Version)).CurrentValue = version.Value;
-                    if (accept)
-                        ChangeTracker.AcceptAllChanges();
-                    return new ExecutionResult<int>(true, written.Count);
-                },
+                (_, accept, ct) => InLockedWork ? SaveInLockAsync(accept, ct) : base.SaveChangesAsync(accept, ct),
+                (_, accept, ct) => FindCommitAsync(accept, ct),
                 cancellationToken) - auditEntries.Count;
         }
         catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)

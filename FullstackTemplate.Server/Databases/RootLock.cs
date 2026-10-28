@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases;
 
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
@@ -53,7 +54,8 @@ public sealed class RootLock
         => RunAsync(dbContext, rootId, _exclusive, work, cancellationToken);
 
     // The lock ends with its connection. So the strategy runs the lock, the reads, the checks, and the save again on a
-    // new connection after a transient failure, not only the save.
+    // new connection after a transient failure, not only the save. After a lost reply of the commit, the save in the
+    // work finds its audit entries, so the work does not run again.
     private async Task<T> RunAsync<T>(AppDbContext dbContext, string rootId, Mode mode,
         Func<CancellationToken, Task<T>> work, CancellationToken cancellationToken)
     {
@@ -61,21 +63,27 @@ public sealed class RootLock
             throw new InvalidOperationException(
                 "Take the lock before the first change. A run again after a transient failure starts with an empty tracker, so it would save without the changes.");
 
+        Activity.Current?.SetTag("app.lock.mode", mode.Name);
         var key = KeyOf(rootId);
         var runs = 0;
         return await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async ct =>
         {
             if (++runs > 1)
+            {
+                Telemetry.AddEvent([("app.lock.run", runs)], "lock.run_again");
                 dbContext.DiscardLostRace();
+            }
 
             await dbContext.Database.OpenConnectionAsync(ct);
             try
             {
                 await RunSqlAsync(dbContext, mode.TakeSql, [_kind, key], ct);
+                dbContext.InLockedWork = true;
                 return await work(ct);
             }
             finally
             {
+                dbContext.InLockedWork = false;
                 await FreeAsync(dbContext, key, mode);
                 await dbContext.Database.CloseConnectionAsync();
             }

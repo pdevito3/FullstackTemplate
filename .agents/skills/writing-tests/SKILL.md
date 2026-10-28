@@ -42,6 +42,7 @@ Examples:
 | A new query hook or an error toast | `pnpm test` and `pnpm test:e2e` |
 | A new auth provider, or a change to the cookie or the refresh of the BFF | `pnpm test:e2e:stack` against that provider |
 | A change to the `/api` proxy of the Vite dev server | Both Playwright suites |
+| A new search on a list | An integration test with `%`, `_`, and `\` in the search. See `docs/backend.md`, section "Tests" |
 
 ## Write a functional test
 

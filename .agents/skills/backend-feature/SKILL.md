@@ -475,6 +475,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Install Mapperly if not already present
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Put validation in the entity, and put database checks such as unique values in the handler
+- [ ] Give each unique index `ForRequestField` with the message constant of the duplicate check of the handler (see `docs/backend/entity-configurations.md#unique-indexes`)
 - [ ] Add the permission of the commands to `Permission.cs` (a `Permission.Names` constant, a `PermissionEnum` entry, and a factory method), with a migration that gives it to the admins that exist
 - [ ] Add the name of the new permission to the two lists in `PermissionTests` (`list_names_returns_all_permission_names` and `get_all_returns_all_permissions`)
 - [ ] Consider what additional business methods the entity needs

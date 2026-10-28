@@ -45,8 +45,12 @@ public static class ConstraintErrors
         {
             foreach (var index in modelBuilder.Metadata.GetEntityTypes().SelectMany(e => e.GetDeclaredIndexes()))
             {
-                if (index.RemoveAnnotation(IndexAnnotation)?.Value is ConstraintError error)
-                    _indexes.Add((index, error));
+                if (index.RemoveAnnotation(IndexAnnotation)?.Value is not ConstraintError error)
+                    continue;
+                if (!index.IsUnique)
+                    throw new InvalidOperationException(
+                        $"The index {index.DisplayName()} of {index.DeclaringEntityType.DisplayName()} has a request field from ForRequestField, but it is not unique. Call IsUnique on the index.");
+                _indexes.Add((index, error));
             }
         }
 

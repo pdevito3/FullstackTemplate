@@ -257,9 +257,12 @@ public class AppDbContext(
                 (_, accept, ct) => FindCommitAsync(accept, ct),
                 cancellationToken) - auditEntries.Count;
         }
-        catch (DbUpdateException exception) when (DatabaseConflict.From(exception, Model) is { } conflict)
+        catch (DbUpdateException exception)
         {
-            throw conflict;
+            // Not in a filter, because a filter loses an exception that it throws.
+            if (DatabaseConflict.From(exception, Model) is { } conflict)
+                throw conflict;
+            throw;
         }
     }
 

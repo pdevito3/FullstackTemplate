@@ -47,7 +47,12 @@ export default tseslint.config(
             {
               name: 'react-aria-components',
               importNames: ['Link'],
-              message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. A React Aria Link with an href loads the whole page again.',
+              message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. The href of a React Aria Link is a string that TypeScript does not check.',
+            },
+            {
+              name: '@animate-ui/react/primitives/react-aria',
+              importNames: ['Link'],
+              message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. The href of a React Aria Link is a string that TypeScript does not check.',
             },
             {
               name: '@tanstack/react-router',

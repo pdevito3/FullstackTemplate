@@ -10,6 +10,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { HrefRouterProvider } from '@/components/ui/link'
 import { Separator } from '@/components/ui/separator'
 import {
   Breadcrumb,
@@ -36,31 +37,33 @@ function RootComponent() {
   const pageName = isNotFound ? 'Not Found' : page?.staticData.breadcrumb
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex min-w-0 items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 aria-[orientation=vertical]:h-4 aria-[orientation=vertical]:self-center"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{pageName}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+    <HrefRouterProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+            <div className="flex min-w-0 items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 aria-[orientation=vertical]:h-4 aria-[orientation=vertical]:self-center"
+              />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{pageName}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <Outlet />
           </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <Outlet />
-        </div>
-      </SidebarInset>
-      {/* The default container is a footer, which is a contentinfo landmark. */}
-      <TanStackRouterDevtools position="top-right" containerElement="div" />
-    </SidebarProvider>
+        </SidebarInset>
+        {/* The default container is a footer, which is a contentinfo landmark. */}
+        <TanStackRouterDevtools position="top-right" containerElement="div" />
+      </SidebarProvider>
+    </HrefRouterProvider>
   )
 }

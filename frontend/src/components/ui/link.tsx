@@ -7,6 +7,7 @@ import {
 } from "react-aria-components"
 
 import { createRouterLink } from "@/components/ui/create-router-link"
+import { hrefNavigateOptions } from "@/components/ui/href-navigate-options"
 
 declare module "react-aria-components" {
   interface RouterConfig {
@@ -58,3 +59,19 @@ export function RouterLinkPrimitive({
 }
 
 export const Link = createRouterLink(RouterLinkPrimitive)
+
+interface HrefRouterProviderProps {
+  children: React.ReactNode
+}
+
+/** Sends a plain React Aria `href` in the app to the router. */
+export function HrefRouterProvider({ children }: HrefRouterProviderProps) {
+  const router = useRouter()
+  return (
+    <RouterProvider
+      navigate={(href, options) => router.navigate(options ?? hrefNavigateOptions(router, href))}
+    >
+      {children}
+    </RouterProvider>
+  )
+}

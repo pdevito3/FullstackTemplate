@@ -181,7 +181,10 @@ function ComponentsPage() {
                       <BreadcrumbLink to="/">Home</BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbItem>
-                      <BreadcrumbPage>Components</BreadcrumbPage>
+                      <BreadcrumbLink to="/about">About</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>Demo</BreadcrumbPage>
                     </BreadcrumbItem>
                   </BreadcrumbList>
                 </Breadcrumb>

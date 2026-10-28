@@ -188,7 +188,9 @@ import { Link } from '@/components/ui/link'
 - `SidebarMenuLink` and `SidebarMenuSubLink` set `aria-current="page"` from their `isActive` prop, not from the router.
 - To make another link component, render `RouterLinkPrimitive` in it and wrap it with `createRouterLink`. See `BreadcrumbLink` in `components/ui/breadcrumb.tsx`.
 
-ESLint does not let you import `Link` from `react-aria-components` or from `@tanstack/react-router`. A React Aria component with a plain `href` loads the whole page again. Use a plain `href` only for an address outside the SPA, such as `/bff/login`.
+ESLint does not let you import `Link` from `react-aria-components`, `@animate-ui/react/primitives/react-aria`, or `@tanstack/react-router`.
+
+Other React Aria components take a plain `href`, for example `MenuItem` and `Tab`. The root route wraps the app in `HrefRouterProvider` from `@/components/ui/link`, so the router goes to the `href` with no page load. TypeScript does not check a plain `href`, so for a link to a route, prefer a typed wrapper made with `createRouterLink`. An `href` that has no route in the SPA, such as `/bff/login`, loads the page from the server.
 
 ## Theme
 

@@ -6,11 +6,13 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
+import { Menu, MenuItem } from 'react-aria-components'
 import { afterEach, expect, test, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
-import { Link } from '@/components/ui/link'
+import { hrefNavigateOptions } from '@/components/ui/href-navigate-options'
+import { HrefRouterProvider, Link } from '@/components/ui/link'
 
 const rootRoute = createRootRoute({ component: Outlet })
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Home })
@@ -128,4 +130,38 @@ test('a disabled link is marked disabled and does not navigate or call onPress',
 
   expect(router.state.location.pathname).toBe('/')
   expect(onPress).not.toHaveBeenCalled()
+})
+
+test('a plain href on a React Aria component goes to its route with no page load', async () => {
+  const menuRoot = createRootRoute({
+    component: () => (
+      <HrefRouterProvider>
+        <Menu aria-label="Actions">
+          <MenuItem href="/users/u_1">Open user</MenuItem>
+        </Menu>
+        <Outlet />
+      </HrefRouterProvider>
+    ),
+  })
+  const menuUserRoute = createRoute({ getParentRoute: () => menuRoot, path: '/users/$id', component: () => <h1>User page</h1> })
+  const router = createRouter({
+    routeTree: menuRoot.addChildren([menuUserRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const screen = await render(<RouterProvider router={router} />)
+
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Open user' }))
+
+  await expect.element(screen.getByRole('heading', { name: 'User page' })).toBeVisible()
+  expect(router.state.location.pathname).toBe('/users/u_1')
+})
+
+test('a plain href with no route, such as /bff/login, loads the page from the server', () => {
+  const router = createTestRouter()
+
+  expect(hrefNavigateOptions(router, '/users/u_1')).toEqual({ href: '/users/u_1' })
+  expect(hrefNavigateOptions(router, '/bff/login?returnUrl=%2F')).toEqual({
+    href: `${window.location.origin}/bff/login?returnUrl=%2F`,
+    reloadDocument: true,
+  })
 })

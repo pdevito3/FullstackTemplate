@@ -1,7 +1,6 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
-using System.Net.Sockets;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -188,7 +187,7 @@ public class ApiProxyTests
     {
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
-            ["services:server:http:0"] = $"http://127.0.0.1:{ClosedPort()}",
+            ["services:server:http:0"] = UnreachableServer.Url,
         });
         using var browser = app.CreateBrowser();
 
@@ -223,14 +222,6 @@ public class ApiProxyTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
         app.Api.DropCount(id).ShouldBe(1);
-    }
-
-    // A port with no listener: the OS gives a free port, and the listener stops at once
-    private static int ClosedPort()
-    {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
     /// <summary>

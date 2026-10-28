@@ -4,6 +4,8 @@ using System.Net;
 using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 /// <summary>
@@ -253,13 +255,12 @@ public class LoginHardeningTests
     [Test]
     public async Task a_failed_discovery_read_stops_the_bff_at_startup()
     {
-        var gone = await FakeIdentityProvider.StartAsync();
-        await gone.DisposeAsync();
-
-        var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(identityProvider: gone));
+        var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(services: services =>
+            services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme,
+                options => options.Authority = UnreachableServer.Url)));
 
         exception.ShouldBeOfType<InvalidOperationException>();
-        exception.Message.ShouldContain(gone.Issuer);
+        exception.Message.ShouldContain(UnreachableServer.Url);
     }
 
     private static string NewSubject() => $"user-{Guid.NewGuid():N}";

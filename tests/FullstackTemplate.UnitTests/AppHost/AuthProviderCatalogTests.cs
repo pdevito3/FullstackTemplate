@@ -131,7 +131,7 @@ public class AuthProviderCatalogTests
         // Arrange
         var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
         var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
-        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
+        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
 
         // Act
         var config = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls);
@@ -144,6 +144,27 @@ public class AuthProviderCatalogTests
             .Select(mount => Path.GetRelativePath(builder.AppHostDirectory, mount.Source!));
         foreach (var seed in seedMounts)
             Directory.Exists(Path.Combine(AppHostSourceDirectory(), seed)).ShouldBeTrue($"The seed folder {seed} does not exist.");
+    }
+
+    [Test]
+    [MethodDataSource(nameof(ProviderNames))]
+    public void each_endpoint_of_a_provider_has_a_fixed_port_from_the_port_table(string name)
+    {
+        // Arrange
+        var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
+        var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
+        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
+
+        // Act
+        AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls);
+
+        // Assert
+        var endpoints = builder.Resources
+            .Where(resource => resource != app.Resource)
+            .SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>(), (resource, endpoint) => (resource.Name, endpoint));
+        foreach (var (resource, endpoint) in endpoints)
+            endpoint.Port.ShouldNotBeNull().ShouldBeInRange(24700, 24799,
+                $"The {endpoint.Name} endpoint of {resource} needs a fixed port from the port table in README.md, so that a normal run uses the same port at each start.");
     }
 
     private static IConfiguration Settings(string? authProvider) => new ConfigurationBuilder()

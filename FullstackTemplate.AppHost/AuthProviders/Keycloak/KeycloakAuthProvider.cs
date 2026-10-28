@@ -17,7 +17,7 @@ public sealed class KeycloakAuthProvider : IAuthProvider
         const string realmName = "aspire";
         const string clientId = "aspire-app";
 
-        var keycloakPostgres = builder.AddPostgres("keycloak-postgres")
+        var keycloakPostgres = builder.AddPostgres("keycloak-postgres", port: 24731)
             .WithImageTag(Config.PostgresImageTag)
             .WithDataVolumeUnlessIsolated();
         var keycloakDb = keycloakPostgres.AddDatabase("keycloakdb");
@@ -25,7 +25,7 @@ public sealed class KeycloakAuthProvider : IAuthProvider
         var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0.8")
             .WithReference(keycloakDb)
             .WaitFor(keycloakDb)
-            .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
+            .WithHttpEndpoint(port: 24730, targetPort: 8080, name: "http")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")

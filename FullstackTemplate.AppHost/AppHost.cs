@@ -25,9 +25,10 @@ try
         .Enrich.WithThreadId()
         .Enrich.WithProperty("Application", "FullstackTemplate.AppHost"));
 
-    // `aspire run --isolated` gives each proxied endpoint a random port and skips the data volumes,
-    // so that worktrees can run the full stack at the same time. See Isolation.cs.
-    var postgres = builder.AddPostgres("postgres")
+    // A normal run uses the fixed ports of the port table in README.md. `aspire run --isolated` gives each proxied
+    // endpoint a random port and skips the data volumes, so that worktrees can run the full stack at the same time.
+    // See Isolation.cs.
+    var postgres = builder.AddPostgres("postgres", port: 24720)
         .WithImageTag(Config.PostgresImageTag)
         .WithDataVolumeUnlessIsolated();
     var appDb = postgres.AddDatabase("appdb");
@@ -46,9 +47,8 @@ try
     // MCP clients call the server directly, so the resource of its protected resource metadata is the URL they call.
     server.WithEnvironment("Mcp__PublicOrigin", server.GetEndpoint("https"));
 
-    // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
     var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
-        .WithEndpoint("http", endpoint => endpoint.Port = 5173)
+        .WithEndpoint("http", endpoint => endpoint.Port = 24710)
         .WithPnpm();
 
     var bff = builder.AddProject<Projects.FullstackTemplate_Bff>("bff")
@@ -75,7 +75,8 @@ try
             $"{bffForContainers.Property(EndpointProperty.Host)};host.docker.internal;localhost"));
 
     var authClientUrls = new AuthClientUrls(
-        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), bff.GetEndpoint("https"), bffForContainers);
+        webfrontend.GetEndpoint("http"), server.GetEndpoint("https"), server.GetEndpoint("http"), bff.GetEndpoint("https"),
+        bffForContainers);
     // The AuthProvider setting selects the provider. appsettings.json gives the default, and the environment
     // variable AuthProvider=Keycloak overrides it. The e2e tests find the provider from the running stack.
     var selectedProvider = AuthProviderCatalog.Select(builder.Configuration);
@@ -101,7 +102,8 @@ try
     bff.PublishWithContainerFiles(webfrontend, "wwwroot");
 
     // Labcoat finds the test projects of the solution and shows a web UI to run them. Aspire tests and publish skip it.
-    builder.AddLabcoat("tests");
+    builder.AddLabcoat("tests")
+        .WithHostPort(24705);
 
     builder.Build().Run();
 }

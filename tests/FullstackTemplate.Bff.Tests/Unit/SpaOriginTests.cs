@@ -7,14 +7,14 @@ using Shouldly;
 public class SpaOriginTests
 {
     [Test]
-    [Arguments("http://localhost:5173")]
-    [Arguments("http://localhost:5173/")]
-    [Arguments("http://localhost:5173/some/path?q=1")]
+    [Arguments("http://localhost:24710")]
+    [Arguments("http://localhost:24710/")]
+    [Arguments("http://localhost:24710/some/path?q=1")]
     public void a_return_url_goes_to_the_origin_of_the_dev_server(string devServer)
     {
         var spaOrigin = Read(new() { ["services:webfrontend:http:0"] = devServer });
 
-        spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("http://localhost:5173/assets/42?tab=x");
+        spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("http://localhost:24710/assets/42?tab=x");
     }
 
     [Test]
@@ -23,7 +23,7 @@ public class SpaOriginTests
         var spaOrigin = Read(new()
         {
             ["services:webfrontend:https:0"] = "https://localhost:5174",
-            ["services:webfrontend:http:0"] = "http://localhost:5173",
+            ["services:webfrontend:http:0"] = "http://localhost:24710",
         });
 
         spaOrigin.Resolve(LocalUrl.Root).ShouldBe("https://localhost:5174/");
@@ -40,9 +40,9 @@ public class SpaOriginTests
     }
 
     [Test]
-    [Arguments("localhost:5173")]
-    [Arguments("ftp://localhost:5173")]
-    [Arguments("http://user:secret@localhost:5173")]
+    [Arguments("localhost:24710")]
+    [Arguments("ftp://localhost:24710")]
+    [Arguments("http://user:secret@localhost:24710")]
     public void a_dev_server_that_is_not_an_http_url_stops_the_startup(string devServer)
     {
         Should.Throw<InvalidOperationException>(() => Read(new() { ["services:webfrontend:http:0"] = devServer }));

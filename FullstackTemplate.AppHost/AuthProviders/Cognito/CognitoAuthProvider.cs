@@ -30,7 +30,7 @@ public sealed class CognitoAuthProvider : IAuthProvider
 
         // The compat image has the AWS CLI that the seed script uses
         var floci = builder.AddContainer("cognito", "floci/floci", "2.3.0-compat")
-            .WithHttpEndpoint(targetPort: 4566, name: "http");
+            .WithHttpEndpoint(port: 24770, targetPort: 4566, name: "http");
         var flociEndpoint = floci.GetEndpoint("http");
 
         floci

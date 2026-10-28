@@ -50,19 +50,7 @@ entries:
           url: !Format ["%s/signin-oidc", !Env APP_FRONTEND_URL]
         - matching_mode: "strict"
           url: !Format ["%s/signin-oidc", !Env APP_BFF_URL]
-        - matching_mode: "strict"
-          url: "https://localhost:5173/signin-oidc"
-        - matching_mode: "strict"
-          url: "http://localhost:7130/signin-oidc"
-        - matching_mode: "strict"
-          url: "https://localhost:7130/signin-oidc"
-        - matching_mode: "strict"
-          url: "http://localhost:7235/signin-oidc"
-        - matching_mode: "strict"
-          url: "https://localhost:7235/signin-oidc"
         # Swagger OAuth redirect for API testing
-        - matching_mode: "strict"
-          url: "http://localhost:7554/swagger/oauth2-redirect.html"
         - matching_mode: "strict"
           url: !Format ["%s/swagger/oauth2-redirect.html", !Env APP_SERVER_URL]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]

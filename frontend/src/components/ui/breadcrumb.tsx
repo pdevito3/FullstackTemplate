@@ -19,7 +19,7 @@ function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
     <nav
       aria-label="breadcrumb"
       data-slot="breadcrumb"
-      className={cn(className)}
+      className={cn("min-w-0", className)}
       {...props}
     />
   )
@@ -33,7 +33,7 @@ function BreadcrumbList<T extends object>({
     <BreadcrumbsPrimitive
       data-slot="breadcrumb-list"
       className={cn(
-        "flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground",
+        "flex items-center gap-1.5 text-sm text-muted-foreground",
         className
       )}
       {...props}
@@ -51,7 +51,10 @@ function BreadcrumbItem({
     <BreadcrumbPrimitive
       data-slot="breadcrumb-item"
       className={composeRenderProps(className, (className) =>
-        cn("inline-flex items-center gap-1", className)
+        cn(
+          "inline-flex items-center gap-1 not-data-current:shrink-0 not-data-current:whitespace-nowrap data-current:min-w-0",
+          className
+        )
       )}
       {...props}
     >
@@ -93,7 +96,7 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={cn("font-normal text-foreground", className)}
+      className={cn("truncate font-normal text-foreground", className)}
       {...props}
     />
   )

@@ -205,4 +205,4 @@ To map a value object to a column, see [entity-configurations.md](entity-configu
 - Do not give an entity public setters.
 - Do not change an entity from a handler or a service. Add a method to the entity.
 - Do not expose a `List<T>` that callers can change.
-- Do not change a child entity without its owner. Load the owner and call a method of the owner. The save of a changed child also updates the owner row, and it throws when the owner is not loaded.
+- Do not change a child entity without its owner. Load the owner and call a method of the owner. The save of a changed child also updates the owner row, and it throws when the owner is not loaded. To move a child to another owner, load the former owner and the new owner.

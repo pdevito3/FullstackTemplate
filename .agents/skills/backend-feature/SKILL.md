@@ -462,7 +462,8 @@ public LineItem AddLineItem(Product product, int quantity)
 ### New Entity Checklist
 - [ ] Review generated entity for business logic completeness
 - [ ] Add DbSet to `AppDbContext.cs`
-- [ ] The entity is a root with `ITenantable`, or a child with one `Cascade` foreign key to its owner (see `docs/backend/audit-log.md`)
+- [ ] The entity is a root with `ITenantable`, or a child with one `Cascade` foreign key to its owner (see `docs/backend/audit-log.md`). A tree node with a nullable `Cascade` parent key is also `ITenantable` (see `docs/backend/entity-configurations.md`, section "Trees")
+- [ ] The entity maps to a table with `Id` as its key. A read model of a view is a `[NotAudited]` class, not a `BaseEntity`
 - [ ] Each property that is not a flag, an enum, a `Guid`, an integer, or a foreign key has `[Sensitive]` or `[NotSensitive]`
 - [ ] Verify entity configuration is in `Databases/EntityConfigurations/` and properly applied
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`

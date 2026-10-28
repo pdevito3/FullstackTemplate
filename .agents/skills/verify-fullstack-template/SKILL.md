@@ -28,7 +28,7 @@ S=.agents/skills/verify-fullstack-template
 
 ## Launch
 
-1. Start the stack. The command blocks until `server`, `bff`, and `webfrontend` are healthy and `/api/v1/weather` answers 200 through Vite. A cold start takes about 1 to 3 minutes.
+1. Start the stack. The command blocks until `server`, `bff`, and `webfrontend` are healthy and an anonymous `GET /api/v1/users/me` gets the 401 of the Server through Vite. A cold start takes about 1 to 3 minutes.
 
    ```bash
    $S/scripts/launch.sh            # or: $S/scripts/launch.sh <RUN_ID>
@@ -63,7 +63,7 @@ Each line starts with `ok` or `FAIL`. Exit code 0 means the stack is worth drivi
 - The current run and its `stack.json` exist.
 - The AppHost pid of this checkout is the pid that `launch.sh` recorded. Thus the stack is ours.
 - Each resource is `Running` and `Healthy`.
-- The web URL is unchanged, `/api/v1/weather` is 200, `/bff/user` is 204 or 200, and the server `/health` is 200.
+- The web URL is unchanged, an anonymous `/api/v1/users/me` is 401, `/bff/user` is 204 or 200, and the server `/health` is 200.
 - If the stack uses `DuendeDemo`, the Duende demo IdP is reachable. If it is not, no login recipe can pass. A local provider, such as ZeroFactor, is a resource of the stack, so the health check above examines it.
 - `HEAD` is the commit of the launch. If it moved, the doctor prints `warn`. Frontend code hot-reloads. For server or BFF code, run `dotnet aspire resource server rebuild --apphost FullstackTemplate.AppHost` (or `bff`).
 
@@ -189,7 +189,7 @@ Proof standards:
 - Drive the real user path: click the buttons and links that a user clicks. Do not set React state, call internal functions, or use test-only endpoints.
 - Capture the action and the result. A recipe needs a capture before and after the change of state, not only the last screen.
 - Prove side effects next to the visible result. Examples: the HTTP status and the JSON of the API response, the `__Host-bff` cookie, the `ui-theme` value in `localStorage`.
-- Compare the screen with the data. For example, each weather card must show the `summary` and the temperature of the API row, not only "5 cards".
+- Compare the screen with the data. For example, each row of a list must show the values of its API row, not only the right count of rows.
 - Read `console.log` and `network.log` after each run. These lines are normal: the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
 - Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.

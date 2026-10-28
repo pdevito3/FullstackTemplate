@@ -1,4 +1,4 @@
-// Feature: components-showcase. The /components page shows each shared UI component. See features/components-showcase.md.
+// Feature: components-showcase. The /components page shows each shared UI component. See features/examples/components-showcase.md.
 export default async ({ page, step, capture, settle, expect }) => {
   await step('open /components: all sections show', async () => {
     await page.goto('/components')
@@ -11,11 +11,11 @@ export default async ({ page, step, capture, settle, expect }) => {
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
   })
 
-  await step('sidebar: only the Demos parent and the Components item are active', async () => {
+  await step('sidebar: only the Examples parent and the Components item are active', async () => {
     const sidebar = page.locator('[data-slot="sidebar"]')
     const active = sidebar.locator('[data-active]')
     await expect(active).toHaveCount(2)
-    await expect(active.nth(0)).toHaveAccessibleName('Demos')
+    await expect(active.nth(0)).toHaveAccessibleName('Examples')
     await expect(active.nth(1)).toHaveAccessibleName('Components')
     // A false flag must not render as an attribute, because the data-active and data-inset styles match any value.
     await expect(page.locator('[data-active="false"], [data-inset="false"]')).toHaveCount(0)

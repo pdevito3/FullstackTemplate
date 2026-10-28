@@ -1,4 +1,4 @@
-// Feature: filter-builder. The demo at /filter-demo turns filters into a QueryKit string. See features/filter-builder.md.
+// Feature: filter-builder. The demo at /filter-demo turns filters into a QueryKit string. See features/examples/filter-builder.md.
 export default async ({ page, step, capture, settle, expect }) => {
   // The card titled QueryKit String shows the generated string in a monospace block.
   const queryKitCard = page.locator('[data-slot="card"]').filter({ hasText: 'QueryKit String' })
@@ -9,7 +9,7 @@ export default async ({ page, step, capture, settle, expect }) => {
   const statusBadge = badge(/^Status/)
   const propertyMenu = page.getByRole('menu', { name: 'Add Filter' })
 
-  // Record the Demos panel of the sidebar in each of the first 20 frames after it mounts.
+  // Record the Examples panel of the sidebar in each of the first 20 frames after it mounts.
   // Motion animates the height in JavaScript, so getAnimations() does not see it. Read the computed style.
   await page.addInitScript(() => {
     if (location.pathname !== '/filter-demo') return
@@ -34,7 +34,7 @@ export default async ({ page, step, capture, settle, expect }) => {
     await expect(queryKitCard).toContainText('No filters applied yet')
   })
 
-  await step('page load: the expanded Demos panel shows without a mount animation', async () => {
+  await step('page load: the expanded Examples panel shows without a mount animation', async () => {
     await expect.poll(() => page.evaluate(() => window.__demosPanelSamples.length)).toBe(20)
     const samples = await page.evaluate(() => window.__demosPanelSamples)
     for (const sample of samples) {

@@ -78,13 +78,14 @@ while :; do
 done
 
 web="$(web_url "$BUILD")"
-# The SPA can serve HTML before the proxy to the server answers. Wait for an API answer through it.
+# The SPA can serve HTML before the Vite proxy reaches the BFF. Wait for an API answer through it. An anonymous call
+# gets the 401 of the Server, so a 401 means that the SPA, the BFF, and the Server are all up.
 for _ in $(seq 1 60); do
-  code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/weather" || true)"
-  [[ "$code" == "200" ]] && break
+  code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/users/me" || true)"
+  [[ "$code" == "401" ]] && break
   sleep 2
 done
-[[ "$code" == "200" ]] || { echo "launch: $web/api/v1/weather answered $code, not 200." >&2; exit 1; }
+[[ "$code" == "401" ]] || { echo "launch: $web/api/v1/users/me answered $code, not the 401 of the Server." >&2; exit 1; }
 
 jq -n \
   --arg runId "$RUN_ID" \

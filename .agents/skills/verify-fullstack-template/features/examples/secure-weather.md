@@ -11,7 +11,7 @@ A logged-in user can change the forecast source from the public API to the secur
 
 ## How to get to it (user POV)
 
-- Log in on the home page `/`, then choose `Public API` in the controls card.
+- Open `/weather` (Examples, Weather in the sidebar), log in, then choose `Public API` in the controls card.
 - The button is not there when nobody is logged in.
 
 ## Driving it with browse.mjs
@@ -21,12 +21,12 @@ Preconditions:
 - `doctor.sh` exits with 0.
 - The browser context is new, so nobody is logged in.
 
-- **Anonymous state.** Open `/`. Run `page.goto('/')`. `getByRole('button', { name: 'Public API' })` has count 0. `fetch('/api/v1/weather/secure', { headers: { 'X-CSRF': '1' } })` in the page gives 401.
+- **Anonymous state.** Open `/weather`. Run `page.goto('/weather')`. `getByRole('button', { name: 'Public API' })` has count 0. `fetch('/api/v1/weather/secure', { headers: { 'X-CSRF': '1' } })` in the page gives 401.
 - **Log in.** Run `const { name } = await login()`. The button `Public API` is visible.
 - **Secure mode.** Choose `Public API`. Run `page.getByRole('button', { name: 'Public API' }).click()` after `waitForResponse` on `/api/v1/weather/secure`. The response is 200 and each row has `requestedBy` = `name`. The button name changes to `Secure API`.
 - **Badges.** Read the cards. Run `page.getByText('Showing authenticated data')` and `page.locator('[data-slot="badge"]').filter({ hasText: name })`. The status text is visible and the badge count is 5. Each `${row.temperatureF}°` of the secure response is visible.
 - **Public mode again.** Choose `Secure API`. Run `page.getByRole('button', { name: 'Secure API' }).click()`. The button is `Public API` again. `Showing authenticated data` and the badges have count 0.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/secure-weather.mjs`. The captures `public-mode` and `secure-mode` show the two states.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/secure-weather.mjs`. The captures `public-mode` and `secure-mode` show the two states.
 
 ## Gotchas
 

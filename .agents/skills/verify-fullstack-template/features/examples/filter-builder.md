@@ -16,12 +16,12 @@ The Filter Builder demo lets a user build a filter from typed properties and see
 - `filter-logic` changes the root operator with `Switch to OR` and `Switch to AND`.
 - `filter-clear` removes all filters.
 - `filter-output` shows the QueryKit string in the `QueryKit String` card, and the state in the `Filter State (JSON)` card.
-- `filter-sidebar-mount` shows the open `Demos` panel of the sidebar on page load without an animation.
+- `filter-sidebar-mount` shows the open `Examples` panel of the sidebar on page load without an animation.
 
 ## How to get to it (user POV)
 
 - Open `/filter-demo`.
-- In the sidebar, choose `Demos`, then `Filter Builder`.
+- In the sidebar, choose `Examples`, then `Filter Builder`.
 
 ## Driving it with browse.mjs
 
@@ -50,7 +50,7 @@ The QueryKit output is `page.locator('[data-slot="card"]').filter({ hasText: 'Qu
 - **Two values.** Open the property menu and choose `Status`. In the dialog `Status filter`, choose `Open` and `In Progress`, then `Add (2)`. The badge `Status | In | Open, In Progress` shows. `queryKit` is `status ^^ [open, in-progress]`. Remove the badge.
 - **Number filter.** Open the property menu, type `comment`, and choose `Comment Count`. The dialog `Comment Count filter` opens with the operator `Count Equals`. Run `numberFilter.getByRole('spinbutton', { name: 'Value' }).fill('5')`, then choose `Add Filter`. The badge `Comment Count | Count Equals | 5` shows. `queryKit` is `comments #== 5`.
 - **Number operator.** Remove the Comment Count badge. Open the `Comment Count filter` submenu again and press Escape. Only the submenu closes: the property menu stays open, and the page still shows the heading `Filter Builder Demo`. Choose `Comment Count` again. Choose the trigger `Count Equals Operator`. The listbox `Operator` opens with `Count Equals` selected. Choose the option `Count Greater Than` (`exact: true`). The trigger name changes to `Count Greater Than Operator`. Type `5` and choose `Add Filter`. The badge `Comment Count | Count Greater Than | 5` shows. `queryKit` is `comments #> 5`.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/filter-builder.mjs`. The captures `text-filter`, `status-submenu`, `preset-or`, `date-edit`, `grouping-selection`, `grouped`, `multiselect-two-values`, `number-filter`, `number-operator-open`, and `number-operator` show the badges, the open submenus, the group, and the QueryKit string.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/filter-builder.mjs`. The captures `text-filter`, `status-submenu`, `preset-or`, `date-edit`, `grouping-selection`, `grouped`, `multiselect-two-values`, `number-filter`, `number-operator-open`, and `number-operator` show the badges, the open submenus, the group, and the QueryKit string.
 
 ## Gotchas
 

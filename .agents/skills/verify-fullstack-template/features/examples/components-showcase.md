@@ -26,7 +26,7 @@ The Component Library page at `/components` shows each shared UI component with 
 ## How to get to it (user POV)
 
 - Open `/components`.
-- In the sidebar, choose `Demos`, then `Components`.
+- In the sidebar, choose `Examples`, then `Components`.
 
 ## Driving it with browse.mjs
 
@@ -37,7 +37,7 @@ Preconditions:
 
 - **Page.** Run `page.goto('/components')`. The heading `Component Library` is visible. `page.getByRole('grid', { name: 'Users' }).getByRole('row')` has 4 rows.
 - **Focus on load.** Right after the page load, `page.getByRole('searchbox').first()` does not have the focus. `document.activeElement` is `BODY`.
-- **Sidebar active items.** `page.locator('[data-slot="sidebar"] [data-active]')` has 2 elements: `Demos` and `Components`. No element on the page has `data-active="false"` or `data-inset="false"`.
+- **Sidebar active items.** `page.locator('[data-slot="sidebar"] [data-active]')` has 2 elements: `Examples` and `Components`. No element on the page has `data-active="false"` or `data-inset="false"`.
 - **Avatar.** Hold the request for the local image `/avatar.png` with `page.route` and reload. The first `[data-slot="avatar"]` shows `CN`, and its image is hidden. Release the request. The image shows, and `CN` is hidden.
 - **Layout.** The `Select (Dropdown)` button is as wide as its grid column (1 px tolerance). The group `Start date` is as tall as the textbox `Email`. Both are 32 px.
 - **Select.** Run `page.getByRole('button', { name: /Select \(Dropdown\)/ }).click()`, then click the option `Svelte`. The text `Selected: Svelte` shows.
@@ -56,7 +56,7 @@ Preconditions:
 - **Toast.** Click `Success`. A toast with `Changes saved` shows. Click its `Close` button. The toast goes away in less than 1000 ms. If the toast throws a `pageerror`, `browse.mjs` fails the run.
 - **Collapsible.** Click `Toggle`. The text `@radix-ui/colors` shows. Click `Toggle` again. The text hides.
 - **Mobile dialog.** Set the viewport to 390x844 and click `Open Dialog`. The dialog `Dialog Title` shows as a bottom sheet.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/components-showcase.mjs`. The captures show the page, the form controls, and each open overlay.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/components-showcase.mjs`. The captures show the page, the form controls, and each open overlay.
 
 ## Gotchas
 
@@ -67,4 +67,4 @@ Preconditions:
 - The page has two breadcrumb landmarks: the app header and the demo `Example breadcrumb`. Use `{ name: 'breadcrumb', exact: true }` for the app header.
 - The demo toast closes by itself after 5 s. Assert it right after the click. To prove that `Close` works, give the assertion a timeout of 1000 ms. The default timeout lets the toast close by itself.
 - The multi-select chips animate in. Call `settle()` before you measure them. A chip in the middle of its animation is smaller than its final size.
-- On a fresh load of `/components`, the `Demos` panel of the sidebar is open, because the route is a demo route.
+- On a fresh load of `/components`, the `Examples` panel of the sidebar is open, because the route is an example route.

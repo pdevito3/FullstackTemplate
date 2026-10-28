@@ -1,6 +1,6 @@
 # Weather forecast
 
-The home page shows a forecast of five days from the public weather API. Each card shows a date, a summary, and a temperature. The user can change the unit between Fahrenheit and Celsius, and can get new data with Refresh. No login is necessary.
+The example page `/weather` shows a forecast of five days from the public weather API. Each card shows a date, a summary, and a temperature. The user can change the unit between Fahrenheit and Celsius, and can get new data with Refresh. No login is necessary.
 
 ## Sub-features
 
@@ -11,7 +11,7 @@ The home page shows a forecast of five days from the public weather API. Each ca
 
 ## How to get to it (user POV)
 
-- Open the app root `/`.
+- Choose `Examples`, then `Weather`, in the sidebar, or open `/weather`.
 - Choose `Home` in the sidebar, or the logo link with the app name.
 
 ## Driving it with browse.mjs
@@ -21,11 +21,11 @@ Preconditions:
 - `doctor.sh` exits with 0.
 - Nobody is logged in.
 
-- **Open the page.** Open `/` and wait for the API response. Run `page.waitForResponse(r => r.url().endsWith('/api/v1/weather'))`, then `page.goto('/')`. The response is 200 with five rows. The heading `Weather Forecast` (level 1) and the button `Login` are visible.
+- **Open the page.** Open `/weather` and wait for the API response. Run `page.waitForResponse(r => r.url().endsWith('/api/v1/weather'))`, then `page.goto('/weather')`. The response is 200 with five rows. The heading `Weather Forecast` (level 1) and the button `Login` are visible.
 - **Match the data.** For each API row, find its values on the screen. Run `page.getByText(row.summary, { exact: true })` and `page.getByText(`${row.temperatureF}°`, { exact: true })`. Each is visible. `getByText('Fahrenheit', { exact: true })` has count 5.
 - **Change to Celsius.** Choose `°C`. Run `page.getByRole('button', { name: '°C' }).click()`. `getByText('Celsius', { exact: true })` has count 5, and each `${row.temperatureC}°` is visible.
 - **Refresh.** Choose `Refresh`. Run `page.getByRole('button', { name: 'Refresh' }).click()` after `waitForResponse`. A new `GET /api/v1/weather` is 200. The cards show its values, and the unit stays Celsius.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/weather-forecast.mjs`. The captures `fahrenheit`, `celsius`, and `refreshed` show the cards for each state.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/weather-forecast.mjs`. The captures `fahrenheit`, `celsius`, and `refreshed` show the cards for each state.
 
 ## Gotchas
 

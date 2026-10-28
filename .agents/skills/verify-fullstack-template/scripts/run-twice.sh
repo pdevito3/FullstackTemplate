@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Runs each recipe two times in a row on the current stack. A recipe passes only when both runs pass and each
 # restore puts the database back.
-# Usage: run-twice.sh [recipe.mjs ...]    (default: each recipe in recipes/)
+# Usage: run-twice.sh [recipe.mjs ...]    (default: each recipe in recipes/ and its folders)
 set -uo pipefail
 
 S="$(cd "$(dirname "$0")/.." && pwd)"
 recipes=("$@")
-(( ${#recipes[@]} )) || recipes=("$S"/recipes/*.mjs)
+if (( ! ${#recipes[@]} )); then
+  while IFS= read -r recipe; do recipes+=("$recipe"); done < <(find "$S/recipes" -name "*.mjs" | sort)
+fi
 
 failed=0
 summary=()

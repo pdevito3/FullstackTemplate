@@ -1,8 +1,8 @@
-// Feature: weather-forecast. Anonymous visitor. See features/weather-forecast.md.
+// Feature: weather-forecast. Anonymous visitor. See features/examples/weather-forecast.md.
 export default async ({ page, step, capture, expect }) => {
   const forecast = await step('open / and receive GET /api/v1/weather', async () => {
     const res = page.waitForResponse((r) => r.url().endsWith('/api/v1/weather') && r.request().method() === 'GET')
-    await page.goto('/')
+    await page.goto('/weather')
     const r = await res
     expect(r.status()).toBe(200)
     return r.json()

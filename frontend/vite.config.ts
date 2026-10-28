@@ -96,10 +96,12 @@ export default defineConfig({
       },
       {
         extends: true,
-        // Vite finds the dependencies of the tests before the run. A dependency that Vite finds during
-        // the run reloads the test page, and the test fails.
+        // Vite pre-bundles the test dependencies only when it has no cache, and the cache stays until
+        // the installed packages or the optimizer options change. A dependency that Vite finds during
+        // the run reloads the test page and fails the test. `force` makes Vite scan the tests on each run.
         optimizeDeps: {
           entries: ['src/**/*.test.tsx'],
+          force: true,
         },
         test: {
           name: 'browser',

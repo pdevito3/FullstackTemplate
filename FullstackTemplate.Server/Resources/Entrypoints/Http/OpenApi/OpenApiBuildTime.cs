@@ -25,6 +25,7 @@ public static class OpenApiBuildTime
             "--Auth:Authority=https://openapi-build.invalid",
             "--Auth:Audience=openapi-build",
             "--Auth:ClientId=openapi-build",
+            "--Mcp:PublicOrigin=https://openapi-build.invalid",
         ]
         : args;
 

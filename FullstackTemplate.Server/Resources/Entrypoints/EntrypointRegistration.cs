@@ -86,5 +86,6 @@ public static class EntrypointRegistration
         app.MapGrpcService<TenantsGrpcService>();
         McpToolAccess.Validate(app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection ?? []);
         app.MapMcp(McpPath).RequireAuthorization();
+        app.MapMcpResourceMetadata();
     }
 }

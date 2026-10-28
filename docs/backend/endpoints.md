@@ -150,6 +150,8 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 6. Give the method exactly one `[ToolAccess]` attribute, next to `[McpServerTool]`. It names what the handler requires. See [Tool access](#tool-access).
 7. Put no other access check in the tool. If the handler checks a permission, also name the permission in the `[Description]`, so that the model knows why a call can fail. The example is `Domain/Tenants/Features/UpdateTenant/UpdateTenant.Mcp.cs`.
 
+`/mcp` needs a token. A `401` from `/mcp` gives the URL of the protected resource metadata (RFC 9728) of the server in the `resource_metadata` parameter of its Bearer challenge. The document is at `/.well-known/oauth-protected-resource/mcp`, and it names the identity provider and the scopes. `McpResourceMetadata` serves the document and adds the parameter to the challenge. See [How an MCP client finds the provider](../authentication.md#how-an-mcp-client-finds-the-provider).
+
 ### Tool access
 
 `[ToolAccess]` has three forms:

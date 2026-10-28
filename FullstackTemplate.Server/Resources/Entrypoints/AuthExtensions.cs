@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints;
 
 using DPoP;
+using Mcp;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -50,6 +51,7 @@ public static class AuthExtensions
                     options.NameClaimType = nameClaimType;
                     options.RoleClaimType = roleClaimType;
                 });
+            services.AddMcpResourceMetadata(configuration);
             services.AddAuthorization();
             return services;
         }
@@ -91,6 +93,8 @@ public static class AuthExtensions
 
         // DPoP (RFC 9449): the DPoP scheme, the proof check, and the rejection of a bound token sent as Bearer
         services.AddDPoP(configuration);
+        // After AddDPoP, so that its challenge wraps the DPoP challenge and can put the Bearer challenge first
+        services.AddMcpResourceMetadata(configuration);
 
         services.AddAuthorization();
 

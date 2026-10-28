@@ -45,6 +45,11 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     public const string FirstPartyClientId = "test-app";
 
     /// <summary>
+    /// The origin at which MCP clients reach the test server. The MCP resource metadata names it.
+    /// </summary>
+    public const string McpPublicOrigin = "https://server.test";
+
+    /// <summary>
     /// The running factory for the assembly. Set when the fixture starts.
     /// </summary>
     public static TestingWebApplicationFactory Instance { get; private set; } = null!;
@@ -110,6 +115,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         Environment.SetEnvironmentVariable("Auth__Authority", "https://localhost");
         Environment.SetEnvironmentVariable("Auth__Audience", "test-api");
         Environment.SetEnvironmentVariable("Auth__ClientId", FirstPartyClientId);
+        Environment.SetEnvironmentVariable("Mcp__PublicOrigin", McpPublicOrigin);
         Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__0", TrustedMachineClientId);
         Environment.SetEnvironmentVariable("Tenancy__ReadAllTenantsClientIds__0", ReadOnlyMachineClientId);
 

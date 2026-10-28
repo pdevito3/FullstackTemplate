@@ -290,7 +290,19 @@ Agents need a provider that can give a client other than the first-party client 
 - Keycloak: give the client an `oidc-audience-mapper` that includes the client `aspire-app`, as the seed in `realm-export.json` does for `aspire-app`. For a machine client, set `serviceAccountsEnabled`.
 - Cognito: agents do not work. The server checks the audience in `client_id`, so it accepts only the first-party client.
 
-The server does not publish OAuth protected resource metadata (RFC 9728) for `/mcp` yet, so an MCP client must know the authority of the provider. See [issue 68](https://github.com/pdevito3/FullstackTemplate/issues/68).
+### How an MCP client finds the provider
+
+The server publishes OAuth protected resource metadata (RFC 9728) for `/mcp`. Thus an MCP client that follows the MCP authorization spec finds the provider with no settings from the operator:
+
+1. The client sends a request to `/mcp` with no token. The server answers `401`. The first challenge in `WWW-Authenticate` is `Bearer resource_metadata="{Mcp:PublicOrigin}/.well-known/oauth-protected-resource/mcp"`. If the token is not valid, the same challenge also has `error` and `error_description`. The `DPoP` challenge comes after it.
+2. The client gets that URL with no token. The JSON document has `resource`, which is `{Mcp:PublicOrigin}/mcp`, `authorization_servers`, and `scopes_supported`.
+3. The client reads the discovery document of the provider, gets a token, and calls `/mcp` with the token.
+
+`Mcp:PublicOrigin` is the origin at which MCP clients call the server, for example `https://api.example.com`. It must be an https URL with no path, query, fragment, or user info. Plain http is allowed only for a loopback host such as `localhost`. The server stops at startup if the value is missing or not valid. The AppHost sets it to the `https` endpoint of the server. In a deployment, set it to the public URL of the server.
+
+`authorization_servers` has `Auth:Authority`, the same value that the JWT bearer handler uses. The AppHost gives the BFF the same `Auth:Authority`, and the BFF checks at startup that the discovery document gives this value as the issuer. Thus each provider works with no other setting. `scopes_supported` has the scopes that Swagger UI asks for: `Auth:Scopes` if it is set, else `openid`, `profile`, and `Auth:Audience` when `Auth:UseAudienceAsScope` is `true`.
+
+Other paths of the server do not get `resource_metadata`. A request that fails a DPoP check gets only the `DPoP` challenge. This includes a DPoP-bound token that the client sends with the `Bearer` scheme. The server does not support dynamic client registration, so a tenant must register each agent first (see [Register an agent](#register-an-agent)).
 
 ## E2E tests
 

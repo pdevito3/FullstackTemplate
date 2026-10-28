@@ -75,4 +75,4 @@ Each MCP tool declares what it needs with one `[ToolAccess]` attribute: a permis
 - A service account that has a user record, as the docs told Keycloak operators to make before, is now an unknown client. The operator binds it as a machine agent or puts it on a list.
 - On MCP, an unknown client gets a `permission_denied` tool error for a read tool, which tells it to ask for a registration. Over HTTP and gRPC, the same caller gets 403 from a query that checks a permission, and an empty list or 404 from the other queries.
 - Cognito accepts only the first-party client as the audience, so agents do not work with Cognito.
-- The server does not yet publish OAuth protected resource metadata (RFC 9728) for `/mcp`. A standard MCP client needs it to find the identity provider. [Issue 68](https://github.com/pdevito3/FullstackTemplate/issues/68) tracks it.
+- The server publishes OAuth protected resource metadata (RFC 9728) for `/mcp`, so a standard MCP client finds the identity provider by itself. The fix for [issue 68](https://github.com/pdevito3/FullstackTemplate/issues/68) added it.

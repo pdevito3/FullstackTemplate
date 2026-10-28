@@ -1,5 +1,8 @@
 root = true
 
+[*]
+end_of_line = lf
+
 [*.cs]
 # CA1711 reserves the Permission suffix for System.Security permission types. Here Permission is a domain name.
 dotnet_code_quality.CA1711.allowed_suffixes = Permission

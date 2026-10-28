@@ -68,8 +68,8 @@ A request can fail more than one check. The first check that fails gives the res
 5. **403, the part of the permission rule that needs the row,** for example `GuardAllows`, or `RequireSelfOr` in `GetUserByIdentifier`, which needs the ID from the row.
 6. **409, the version.** A method that applies an edit form calls `GuardVersion` first (rule 8 of [domain-entities.md](domain-entities.md#rules)).
 7. **422, the state of the record.** A guard refuses the action in the current state, for example a final state. The guard reads only the row. If the command loads another aggregate, load it after this check.
-8. **The no-op.** If the method has a no-op, it goes here. A request that changes nothing returns success, and the method returns before it changes a value or queues an event. Examples are a move of a visit to its own day, and `AddUserPermission` for a permission that the user has. `User.Update` and `Tenant.Update` have no no-op. They apply each field and run the rules on the new values.
-9. **422 and 409, the rules on the new values.** The entity validation, a rule that reads other aggregates, and a check that needs the database, such as a unique name, run last. See [Validation](#validation).
+8. **The no-op.** If the method has a no-op, it goes here. A request that changes nothing returns success, and the method returns before it changes a value or queues an event. Examples are a move of a visit to its own day, `AddUserPermission` for a permission that the user has, and `UpdateUserRole` for the role that the user has. `User.Update` and `Tenant.Update` have no no-op. They apply each field and run the rules on the new values.
+9. **422 and 409, the rules on the new values.** The entity validation, a rule that reads other aggregates, and a check that needs the database, such as a unique name, run last. A rule that compares a value to the clock, such as a day that must not be in the past, is in this step, after the no-op. See [Validation](#validation).
 10. **409, the save.** `SaveChangesAsync` gives 409 when another request saved the row after the load. A command that runs again gives 409 only after it loses each run. See [concurrency.md](concurrency.md#run-again).
 
 The version comes before the state. A stale form must reload and show the new state. A 422 about a state that the user did not see tells the user nothing. The state comes before the no-op, so that a same-value request to a record in a final state gets the 422, not a success. The no-op comes before the rules on the new values. The record has the value already, so a rule that changed after the save of the value must not refuse a request that changes nothing.
@@ -94,7 +94,7 @@ public Visit Reschedule(VisitForReschedule forReschedule)
 }
 ```
 
-`tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs` has this example. Its tests fail when a step moves. `UserCheckOrderTests` checks the steps 2, 3, 4, 6, and 9 on the user endpoints. If a feature must use a different order, write the order and the reason in its spec, and add a test that proves the order.
+`tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs` has this example. Its tests fail when a step moves. `UserCheckOrderTests` checks the steps 2, 3, 4, 6, and 9 on the user endpoints. `AgentCheckOrderTests` checks step 3 on `AddAgentPermission`. If a feature must use a different order, write the order and the reason in its spec, and add a test that proves the order.
 
 ## One rule set for two callers
 

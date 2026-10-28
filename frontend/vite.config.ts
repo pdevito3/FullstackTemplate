@@ -101,6 +101,7 @@ export default defineConfig({
         // the run reloads the test page and fails the test. `force` makes Vite scan the tests on each run.
         optimizeDeps: {
           entries: ['src/**/*.test.tsx'],
+          include: ['react-dom/client'],
           force: true,
         },
         test: {

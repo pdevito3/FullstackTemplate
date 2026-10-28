@@ -114,7 +114,7 @@ A normal run uses the same ports at each start. All of them are in the block 247
 | 24761 | `authentik-postgres` | tcp |
 | 24770 | `cognito` | http |
 
-The dashboard ports are in `MyProject.AppHost/Properties/launchSettings.json`. The server ports are in `Kestrel:Endpoints` of `MyProject.Server/appsettings.Development.json`, and the BFF ports are in `MyProject.Bff/Properties/launchSettings.json`. The other ports are in `MyProject.AppHost/AppHost.cs` and in the class of each auth provider. A new resource takes a port in the block. A new auth provider takes the next free group of ten.
+The dashboard ports are in `MyProject.AppHost/Properties/launchSettings.json`. The server ports are in `Kestrel:Endpoints` of `MyProject.Server/appsettings.Development.json`, and the BFF ports are in `MyProject.Bff/Properties/launchSettings.json`. The other ports are in `MyProject.AppHost/AppHost.cs` and in the class of each auth provider. A new resource takes a port in the block. A new auth provider takes the next free group of ten. `PortTableTests` fails when an endpoint of the AppHost has no row in this table or has a different port.
 
 The provider seeds get the app URLs from the AppHost, so the redirect URIs agree with these ports. Keycloak and FusionAuth seed their database only when it is empty. If a provider database is from a run with other ports, delete its volume once (`docker volume ls`, then `docker volume rm <volume>`).
 

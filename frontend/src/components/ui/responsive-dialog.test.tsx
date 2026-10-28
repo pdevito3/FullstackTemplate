@@ -39,12 +39,12 @@ function LongDialog({ title, description }: { title: string; description?: strin
   )
 }
 
-function FormDialog() {
+function FormDialog({ title, description }: { title: string; description?: string }) {
   return (
     <ResponsiveDialog isOpen>
       <ResponsiveDialogHeader>
-        <ResponsiveDialogTitle>{longTitle}</ResponsiveDialogTitle>
-        <ResponsiveDialogDescription>{longDescription}</ResponsiveDialogDescription>
+        <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+        {description && <ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>}
       </ResponsiveDialogHeader>
       {Array.from({ length: 20 }, (_, index) => (
         <input key={index} aria-label={`Field ${index + 1}`} className="my-2 block h-8 w-full border" />
@@ -128,7 +128,7 @@ for (const [width, height] of [
 
   test(`at ${width}x${height} the header and footer of a long form do not hide the field in focus`, async () => {
     await page.viewport(width, height)
-    render(<FormDialog />)
+    render(<FormDialog title={longTitle} description={longDescription} />)
     await openAnimationsFinished()
 
     scrollParent(page.getByRole('textbox', { name: 'Field 1', exact: true }).element()).scrollTop = 40
@@ -145,6 +145,36 @@ for (const [width, height] of [
 
     expect(focused[0]).toBe('Field 1')
     expect(hidden).toEqual([])
+  })
+
+  test(`at ${width}x${height} a field in focus that scrolls under the header does not show around the title`, async () => {
+    await page.viewport(width, height)
+    render(<FormDialog title="Edit filter" />)
+    await openAnimationsFinished()
+
+    const field = page.getByRole('textbox', { name: 'Field 4', exact: true }).element() as HTMLElement
+    field.focus()
+    const box = scrollParent(field)
+    const title = page.getByRole('heading', { name: 'Edit filter' }).element()
+    box.scrollTop += field.getBoundingClientRect().top - title.getBoundingClientRect().top
+    expect(field.getBoundingClientRect().top).toBeCloseTo(title.getBoundingClientRect().top, 0)
+
+    // A focus ring is 3 px wide, and the text of the title reaches about 3 px below its box.
+    await expect.poll(() => {
+      const header = title.closest('[data-slot="responsive-dialog-header"]')!
+      const { left } = box.getBoundingClientRect()
+      const right = left + box.clientWidth
+      const { top, bottom } = title.getBoundingClientRect()
+      const shown = new Set<string>()
+      for (let y = top; y <= bottom + 3; y++) {
+        for (let x = left + 1; x < right; x += 2) {
+          const hit = document.elementFromPoint(x, y)
+          if (!hit || header.contains(hit) || closeButton().contains(hit)) continue
+          shown.add(hit === field ? 'the field' : hit.getAttribute('class') ?? hit.tagName)
+        }
+      }
+      return [...shown]
+    }).toEqual([])
   })
 
   test(`at ${width}x${height} the footer of a long dialog stays in view`, async () => {

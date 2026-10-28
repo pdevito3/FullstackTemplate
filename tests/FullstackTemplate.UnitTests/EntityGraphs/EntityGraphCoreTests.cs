@@ -23,19 +23,23 @@ public class EntityGraphCoreTests
 
     private static readonly InputBlueprint<Seed, TicketInput, Ticket> TicketBp = Blueprint
         .FromInput<Seed, TicketInput, Ticket>(() => new(), (input, _) => new Ticket { Number = input.Number!.Value })
-        .Derive(i => i.Number, (_, ctx) => LowestFree(ctx.All<Ticket>().Select(t => t.Number)));
+        .Derive(i => i.Number, (_, ctx, step) => LowestFree(ctx.All<Ticket>().Select(t => t.Number), step.Select(t => t.Number ?? 0)));
 
     private static readonly ChildInputBlueprint<Seed, Org, TicketInput, Ticket> OrgTicketBp = Blueprint
         .ChildFromInput<Seed, Org, TicketInput, Ticket>(() => new(), (_, input, _) => new Ticket { Number = input.Number!.Value })
-        .Derive(i => i.Number, (_, ctx) => LowestFree(ctx.All<Ticket>().Select(t => t.Number)));
+        .Derive(i => i.Number, (_, ctx, step) => LowestFree(ctx.All<Ticket>().Select(t => t.Number), step.Select(t => t.Number ?? 0)));
 
     private static readonly Blueprint<Seed, Member> LooseMemberBp = Blueprint
         .For<Seed, Member>(_ => new Member())
-        .Derive(m => m.Number, (_, ctx) => LowestFree(ctx.All<Member>().Select(m => m.Number)));
+        .Derive(m => m.Number, (_, ctx, step) => LowestFree(ctx.All<Member>().Select(m => m.Number), step.Select(m => m.Number)));
 
-    private static int LowestFree(IEnumerable<int> taken)
+    private static readonly ChildBlueprint<Seed, Org, Member> OrgMemberBp = Blueprint
+        .ChildOf<Seed, Org, Member>((org, _) => new Member { Org = org })
+        .Derive(m => m.Number, (_, ctx, step) => LowestFree(ctx.All<Member>().Select(m => m.Number), step.Select(m => m.Number)));
+
+    private static int LowestFree(IEnumerable<int> built, IEnumerable<int> step)
     {
-        var used = taken.ToHashSet();
+        var used = built.Concat(step).ToHashSet();
         var number = 1;
         while (used.Contains(number))
         {
@@ -360,6 +364,26 @@ public class EntityGraphCoreTests
 
         // Assert
         tickets.Select(t => t.Number).ShouldBe([2, 3, 1]);
+    }
+
+    [Test]
+    public void child_value_derive_sees_the_members_of_every_parent_in_a_fan_out()
+    {
+        // Act
+        Start().Add(OrgBp, out _, 2).Add(OrgTicketBp, out var tickets, _ => { }, t => t.Number = 1);
+
+        // Assert
+        tickets.Select(t => t.Number).ShouldBe([2, 1, 3, 1]);
+    }
+
+    [Test]
+    public void child_entity_value_derive_sees_the_explicit_values_of_later_siblings_in_the_same_step()
+    {
+        // Act
+        Start().AddOne(OrgBp, out _).Add(OrgMemberBp, out var members, _ => { }, m => m.Number = 1);
+
+        // Assert
+        members.Select(m => m.Number).ShouldBe([2, 1]);
     }
 
     [Test]

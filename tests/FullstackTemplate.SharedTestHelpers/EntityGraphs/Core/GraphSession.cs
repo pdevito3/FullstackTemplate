@@ -230,6 +230,7 @@ public sealed class GraphSession<TSeed>
     {
         // Reject conflicting identity links before derives, defaults, or recording any member of the step.
         ValidateAncestry(step);
+        var created = step.Select(item => item.Entity).ToArray();
         // Reserve the entire step before assigning a sequence, including explicit values later in the array.
         foreach (var derive in derives)
         {
@@ -242,7 +243,7 @@ public sealed class GraphSession<TSeed>
         {
             foreach (var derive in derives)
             {
-                derive.Apply(entity, context);
+                derive.Apply(entity, context, created);
             }
             foreach (var applyDefault in Options.Defaults)
             {
@@ -256,7 +257,6 @@ public sealed class GraphSession<TSeed>
                 transients.Add(entity);
             }
         }
-        var created = step.Select(item => item.Entity).ToArray();
         lastStep = created.Cast<object>().ToArray();
         return created;
     }

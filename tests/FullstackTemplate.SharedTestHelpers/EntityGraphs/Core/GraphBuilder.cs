@@ -294,12 +294,13 @@ public sealed class GraphBuilder<TSeed, TAnchor>
                     derive.Reserve(input, ctx);
                 }
             }
+            var inputs = step.Select(item => item.Entity).ToArray();
             List<(T Entity, GraphContext<TSeed> Context)> outputs = [];
             foreach (var (input, ctx) in step)
             {
                 foreach (var derive in bp.Derives)
                 {
-                    derive.Apply(input, ctx);
+                    derive.Apply(input, ctx, inputs);
                 }
                 var entity =
                     bp.Factory(input, ctx)

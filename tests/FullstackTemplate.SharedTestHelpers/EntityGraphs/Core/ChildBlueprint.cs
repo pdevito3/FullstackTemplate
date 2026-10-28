@@ -42,7 +42,7 @@ public sealed class ChildBlueprint<TSeed, TParent, T>
     }
 
     /// <summary>Fills a directly writable property only when it still equals its type's default value.</summary>
-    /// <remarks>This callback is fill-only, but calling ctx.Next inside it does not reserve explicit values for this property. Use Derive(property, sequence) for whole-step explicit-value reservation.</remarks>
+    /// <remarks>This callback is fill-only, but calling ctx.Next inside it does not reserve explicit values for this property. Use Derive(property, sequence) for whole-step explicit-value reservation. To see the other members of the Add step, use the overload whose function also gets the step.</remarks>
     public ChildBlueprint<TSeed, TParent, T> Derive<TProp>(
         Expression<Func<T, TProp>> property,
         Func<T, ChildContext<TSeed, TParent>, TProp> value
@@ -56,7 +56,29 @@ public sealed class ChildBlueprint<TSeed, TParent, T>
                 .. Derives,
                 new Derivation<TSeed, T, TProp>(
                     property,
-                    (entity, ctx) => value(entity, (ChildContext<TSeed, TParent>)ctx)
+                    (entity, ctx, _) => value(entity, (ChildContext<TSeed, TParent>)ctx)
+                ),
+            ],
+            IsTransient
+        );
+    }
+
+    /// <summary>Fills a directly writable property only when it still equals its type's default value. The function also gets every member of the Add step.</summary>
+    /// <remarks>The step holds the members of the current Add step in order, this member included. All customizers run before the first derive, so the step holds the explicit values of every member. Earlier members also hold the values that their derives filled. Use this overload when a derived value must not take a value of another member, for example the lowest free number. Each earlier member is also in ctx.All, with its option defaults. In a fan-out under more than one parent, the step holds the members of every parent.</remarks>
+    public ChildBlueprint<TSeed, TParent, T> Derive<TProp>(
+        Expression<Func<T, TProp>> property,
+        Func<T, ChildContext<TSeed, TParent>, IReadOnlyList<T>, TProp> value
+    )
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return new(
+            Factory,
+            Traits,
+            [
+                .. Derives,
+                new Derivation<TSeed, T, TProp>(
+                    property,
+                    (entity, ctx, step) => value(entity, (ChildContext<TSeed, TParent>)ctx, step)
                 ),
             ],
             IsTransient

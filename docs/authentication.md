@@ -300,9 +300,9 @@ The server publishes OAuth protected resource metadata (RFC 9728) for `/mcp`. Th
 
 `Mcp:PublicOrigin` is the origin at which MCP clients call the server, for example `https://api.example.com`. It must be an https URL with no path, query, fragment, or user info. Plain http is allowed only for a loopback host such as `localhost`. The server stops at startup if the value is missing or not valid. The AppHost sets it to the `https` endpoint of the server. In a deployment, set it to the public URL of the server.
 
-`authorization_servers` has `Auth:Authority`, the same value that the JWT bearer handler uses. The BFF checks at startup that the discovery document gives this value as the issuer. Thus each provider works with no other setting. `scopes_supported` has the scopes that Swagger UI asks for: `Auth:Scopes` if it is set, else `openid`, `profile`, and `Auth:Audience` when `Auth:UseAudienceAsScope` is `true`.
+`authorization_servers` has `Auth:Authority`, the same value that the JWT bearer handler uses. The AppHost gives the BFF the same `Auth:Authority`, and the BFF checks at startup that the discovery document gives this value as the issuer. Thus each provider works with no other setting. `scopes_supported` has the scopes that Swagger UI asks for: `Auth:Scopes` if it is set, else `openid`, `profile`, and `Auth:Audience` when `Auth:UseAudienceAsScope` is `true`.
 
-Other paths of the server do not get `resource_metadata`. A DPoP request that fails a DPoP check gets only the `DPoP` challenge. The server does not support dynamic client registration, so a tenant must register each agent first (see [Register an agent](#register-an-agent)).
+Other paths of the server do not get `resource_metadata`. A request that fails a DPoP check gets only the `DPoP` challenge. This includes a DPoP-bound token that the client sends with the `Bearer` scheme. The server does not support dynamic client registration, so a tenant must register each agent first (see [Register an agent](#register-an-agent)).
 
 ## E2E tests
 

@@ -79,13 +79,18 @@ done
 
 web="$(web_url "$BUILD")"
 # The SPA can serve HTML before the Vite proxy reaches the BFF. Wait for an API answer through it. An anonymous call
-# gets the 401 of the Server, so a 401 means that the SPA, the BFF, and the Server are all up.
+# gets the 401 of the Server with a Bearer challenge, so that answer means that the SPA, the BFF, and the Server are
+# all up. The 401 of the CSRF check of the BFF has no challenge.
+server_answered=false
 for _ in $(seq 1 60); do
-  code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/users/me" || true)"
-  [[ "$code" == "401" ]] && break
+  headers="$(curl -sk -o /dev/null -D - -H 'X-CSRF: 1' "$web/api/v1/users/me" | tr -d '\r' || true)"
+  if grep -q '^HTTP/[0-9.]* 401' <<<"$headers" && grep -qi '^www-authenticate:.*bearer' <<<"$headers"; then
+    server_answered=true
+    break
+  fi
   sleep 2
 done
-[[ "$code" == "401" ]] || { echo "launch: $web/api/v1/users/me answered $code, not the 401 of the Server." >&2; exit 1; }
+$server_answered || { echo "launch: $web/api/v1/users/me answered '$(head -1 <<<"$headers")', not the 401 of the Server." >&2; exit 1; }
 
 jq -n \
   --arg runId "$RUN_ID" \

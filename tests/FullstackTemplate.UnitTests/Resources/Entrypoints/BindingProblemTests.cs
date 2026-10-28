@@ -51,6 +51,9 @@ public class BindingProblemTests
     [Arguments("maybeStartsAt", "\"tomorrow\"", "The maybeStartsAt field is not a valid date and time.")]
     [Arguments("startsOn", "\"2026-13-01\"", "The startsOn field is not a valid date.")]
     [Arguments("name", "1", "The name field is not valid.")]
+    [Arguments("counts", "\"x\"", "The counts field is not valid.")]
+    [Arguments("maybeCounts", "\"x\"", "The maybeCounts field is not valid.")]
+    [Arguments("data", "5", "The data field is not valid.")]
     public void value_of_the_wrong_type_names_what_the_field_takes(string field, string value, string message)
     {
         // Arrange
@@ -155,6 +158,9 @@ public class BindingProblemTests
         public DateTime? MaybeStartsAt { get; init; }
         public DateOnly StartsOn { get; init; }
         public string Name { get; init; } = string.Empty;
+        public int[] Counts { get; init; } = [];
+        public int?[] MaybeCounts { get; init; } = [];
+        public byte[] Data { get; init; } = [];
     }
 
     private sealed record WithLines

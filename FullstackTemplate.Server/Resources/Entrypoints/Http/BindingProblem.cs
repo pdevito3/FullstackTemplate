@@ -28,7 +28,7 @@ public static partial class BindingProblem
             return missing.ToDictionary(name => name, name => new[] { MissingMemberMessage(name) });
 
         if (WrongTypeFieldOf(exception) is { } field)
-            return new() { [field] = [WrongTypeMessage(field)] };
+            return new() { [field] = [WrongTypeMessage(field, WrongTypeKindOf(exception))] };
 
         if (NotJsonFieldOf(exception) is { } notJsonField)
             return new() { [notJsonField] = [NotJsonMessage(notJsonField)] };
@@ -51,7 +51,7 @@ public static partial class BindingProblem
         if (MissingMembersOf(exception) is { Length: > 0 } missing)
             return string.Join(" ", missing.Select(MissingMemberMessage));
         if (WrongTypeFieldOf(exception) is { } field)
-            return WrongTypeMessage(field);
+            return WrongTypeMessage(field, WrongTypeKindOf(exception));
         if (NotJsonFieldOf(exception) is { } notJsonField)
             return NotJsonMessage(notJsonField);
         return exception.InnerException is JsonException jsonException ? jsonException.Message : MessageFor(exception);
@@ -73,16 +73,42 @@ public static partial class BindingProblem
 
     private static string MissingMemberMessage(string name) => $"The {name} field is required.";
 
-    // A value of the wrong type, for example a text or a null for a number, gives "The JSON value could not be converted
-    // to System.UInt32. Path: $.version | LineNumber: 0 | BytePositionInLine: 18." The message names the C# type, so the
-    // caller gets the field only.
+    // A value of the wrong type, for example a text, a null, or a value out of range for a number, gives "The JSON value
+    // could not be converted to System.UInt32. Path: $.version | LineNumber: 0 | BytePositionInLine: 18." The message
+    // names the C# type, so the caller gets the field and the kind of value that the field takes.
     private static string? WrongTypeFieldOf(BadHttpRequestException exception)
         => exception.InnerException is JsonException jsonException && WrongTypeInMessage().IsMatch(jsonException.Message)
             ? KeyOf(jsonException)
             : null;
 
-    private static string WrongTypeMessage(string key)
-        => key.Length == 0 ? "The request body is not valid." : $"The {FieldNameOf(key)} field is not valid.";
+    private static string WrongTypeMessage(string key, string? kind)
+        => key.Length == 0 ? "The request body is not valid."
+            : kind is null ? $"The {FieldNameOf(key)} field is not valid."
+            : $"The {FieldNameOf(key)} field is not a valid {kind}.";
+
+    private static string? WrongTypeKindOf(BadHttpRequestException exception)
+        => exception.InnerException is JsonException jsonException
+           && WrongTypeInMessage().Match(jsonException.Message) is { Success: true } match
+            ? ValueKinds.GetValueOrDefault(match.Groups["type"].Value)
+            : null;
+
+    private static readonly Dictionary<string, string> ValueKinds = new()
+    {
+        ["System.Byte"] = "whole number",
+        ["System.SByte"] = "whole number",
+        ["System.Int16"] = "whole number",
+        ["System.UInt16"] = "whole number",
+        ["System.Int32"] = "whole number",
+        ["System.UInt32"] = "whole number",
+        ["System.Int64"] = "whole number",
+        ["System.UInt64"] = "whole number",
+        ["System.Single"] = "number",
+        ["System.Double"] = "number",
+        ["System.Decimal"] = "number",
+        ["System.DateTime"] = "date and time",
+        ["System.DateTimeOffset"] = "date and time",
+        ["System.DateOnly"] = "date",
+    };
 
     // A value that is not JSON, for example 1.2.3 for a number, gives "'.' is an invalid end of a number. Expected 'E'
     // or 'e'. Path: $.version | LineNumber: 0 | BytePositionInLine: 32." The error of the JSON reader is the inner
@@ -117,7 +143,9 @@ public static partial class BindingProblem
     [GeneratedRegex(@"was missing required properties including: (?:'(?<name>[^']+)'[^']*)+$", RegexOptions.CultureInvariant)]
     private static partial Regex MissingMembersInMessage();
 
-    [GeneratedRegex(@"^The JSON value could not be converted to ", RegexOptions.CultureInvariant)]
+    // The type is a whole name such as System.Int32 or System.Nullable`1[System.Int32]. An array such as
+    // System.Int32[] has no type group, so a list field does not get the kind of its items.
+    [GeneratedRegex(@"^The JSON value could not be converted to (?:(?:System\.Nullable`1\[(?<type>\w+(?:\.\w+)*)\]|(?<type>\w+(?:\.\w+)*))\.(?: |$))?", RegexOptions.CultureInvariant)]
     private static partial Regex WrongTypeInMessage();
 
     [GeneratedRegex(@"(?<name>[^.\[\]]+)(?:\[\d+\])*$", RegexOptions.CultureInvariant)]

@@ -61,8 +61,12 @@ _Avoid_: Unregistered agent, guest
 
 ### Decisions
 
+**Decision shape**:
+One load into a case record, one pure decision by an ordered list of rules, and one save. A rule set with two callers, or a rule that reads facts from more than one aggregate, uses it.
+_Avoid_: Decision pattern, rule engine
+
 **Case record**:
-A record that holds each fact that one rule set reads, filled by one loader for each caller of the rules.
+A record that holds each fact that one rule set reads. One loader fills it, and each caller of the rules uses that loader.
 _Avoid_: Context, snapshot, request model
 
 **Refusal**:

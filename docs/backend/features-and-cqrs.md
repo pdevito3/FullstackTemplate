@@ -59,7 +59,7 @@ A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`
 
 ## One rule set for two callers
 
-Rule 6 puts a rule in the entity. That holds for a rule that reads only its own entity. When one rule set has two callers, use the decision shape. An example is a list of the free days and the command that books one day. Use the shape also when a rule reads facts from more than one aggregate. After the permission check, the list handler does one load and one decision for each candidate. The command handler does one load, one decision, and one save.
+Rule 6 puts a rule in the entity. That holds for a rule that reads only its own entity. When one rule set has two callers, use the decision shape. An example is a list of the free days and the command that books one day. When a rule reads facts from more than one aggregate, use the shape also. After the permission check, the list handler does one load and one decision for each candidate. The command handler does one load, one decision, and one save.
 
 The shape has five parts:
 
@@ -159,17 +159,18 @@ public static class BookingHandlers
 }
 ```
 
-`FreeDays` and `Book` are the bodies of the two handlers after the load. Each handler calls the same loader, for example an extension method `LoadBookingCaseAsync(roomId, cancellationToken)` on `AppDbContext`. The command handler then adds the booking and calls `SaveChangesAsync` one time. C# cannot see that `Decision` is closed, so the switch needs the `_` arm. A new kind of refusal gets its own arm, and until it has one, the command throws `UnreachableException`.
+`FreeDays` and `Book` are the bodies of the two handlers after the load. Each handler calls the same loader, for example an extension method `LoadBookingCaseAsync(roomId, cancellationToken)` on `AppDbContext`. The command handler then adds the booking and calls `SaveChangesAsync` one time. C# cannot see that `Decision` is closed, so the switch needs the `_` arm. A new kind of refusal gets its own arm, and until it has one, the command throws `UnreachableException`. Write the refusal kind as a span tag or a metric tag. See [feature-telemetry.md](feature-telemetry.md).
 
-The case is a snapshot. Two requests can pass `Free` at the same time and both save. Back a rule such as `Free` with a unique index or an exclusion constraint, so that the second save gives 409. See [backend.md](../backend.md#error-responses).
+The case holds the facts at the time of the load. Two requests can pass `Free` at the same time and both save. Back a rule such as `Free` with a unique index or an exclusion constraint, so that the second save gives 409. See [backend.md](../backend.md#error-responses).
 
 A rule that reads only its own entity stays a guard in the entity. See [domain-entities.md](domain-entities.md#guards). Do not add an `IRule` interface, a rule registry, or DI for the rules. One list in one file shows the order.
 
-Each use of the shape has three tests. `tests/FullstackTemplate.UnitTests/Docs/DecisionShapeExampleTests.cs` has this example and its tests:
+Each use of the shape has four tests. `tests/FullstackTemplate.UnitTests/Docs/DecisionShapeExampleTests.cs` has this example and its tests:
 
 - A table-driven unit test for each rule. Each row gives the case, the kind of refusal, the field, and the message.
 - An order test. A case that breaks each rule gets the refusal of the first rule. Make the case pass the rules one at a time, and the refusal of the next rule comes back.
 - A test that ties the callers together. The command accepts each candidate that the list offers. In an app, make this an integration test, because it also tests the loader.
+- A test that each kind of the refusal type and of the decision type is nested in its base record. C# cannot close a record hierarchy, so this test does it.
 
 ## List query
 

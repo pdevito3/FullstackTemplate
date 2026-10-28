@@ -173,6 +173,17 @@ export function filterDemoPage(page: Page) {
       })
     },
 
+    /** The left and right edges of the sticky footer that holds the button. */
+    async footerSidesOf(button: Locator) {
+      return button.evaluate((element) => {
+        let footer: Element | null = element
+        while (footer && getComputedStyle(footer).position !== 'sticky') footer = footer.parentElement
+        if (!footer) throw new Error('The button is not in a sticky footer.')
+        const { left, right } = footer.getBoundingClientRect()
+        return { left, right }
+      })
+    },
+
     async sidewaysScrollOf(propertyLabel: string) {
       return at.control(propertyLabel).evaluate((control) => {
         let widest = 0

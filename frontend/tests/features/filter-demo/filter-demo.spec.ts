@@ -180,6 +180,7 @@ test.describe('the Add Filter menu on a phone on its side', () => {
   test.use({ viewport: { width: 667, height: 375 } })
 
   for (const { property, submit } of [
+    { property: 'First Name', submit: 'addFilter' },
     { property: 'Status', submit: 'addSelected' },
     { property: 'Created Date', submit: 'addFilter' },
     { property: 'Comment Count', submit: 'addFilter' },
@@ -191,6 +192,16 @@ test.describe('the Add Filter menu on a phone on its side', () => {
       await demo.chooseProperty(property)
 
       await expect(demo.at[submit](property)).toBeInViewport({ ratio: 1 })
+    })
+
+    test(`spans the footer of the ${property} control across the sheet`, async ({ page }) => {
+      const demo = filterDemoPage(page)
+      await demo.open()
+
+      await demo.chooseProperty(property)
+
+      const sheet = await demo.edgesOf(demo.at.control(property))
+      expect(await demo.footerSidesOf(demo.at[submit](property))).toEqual({ left: sheet.left, right: sheet.right })
     })
   }
 })

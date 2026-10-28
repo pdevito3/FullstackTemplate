@@ -91,7 +91,7 @@ A unique violation gives a `ConstraintConflictException`, as in a save. A failed
 
 The checks catch mistakes, not code that wants to skip them. The guard does not see the writes of a function that a `SELECT` calls. Reflection or a suppressed ban gets past the build.
 
-To write a `[NotAudited]` table with a banned API, suppress RS0030 on the method with a justification. `BannedApiSuppressionTests` pins the files that suppress the ban, so add the file to its list. The DPoP replay cache is the example.
+To write a `[NotAudited]` table with a banned API, suppress RS0030 on the method with a justification. `BannedApiSuppressionTests` pins the files that suppress the ban, so add the file to its list. The DPoP replay cache is the example. The same list has the suppressions of the regex and reflection bans (see [source-generators.md](source-generators.md)).
 
 The migration helpers `GrantPermissionToRole`, `GrantPermissionToHoldersOf`, and `DeletePermission` write the permission tables with SQL and no audit entry. `GrantPermissionToRole` writes `user_permissions`. `GrantPermissionToHoldersOf` and `DeletePermission` write `user_permissions` and `agent_permissions`. The migration history is their record.
 

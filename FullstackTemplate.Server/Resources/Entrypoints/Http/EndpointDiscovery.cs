@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Http;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 /// <summary>
@@ -14,6 +15,8 @@ public static class EndpointDiscovery
     /// Maps the versioned group with the API version set and the filters that apply to all endpoints, then maps each
     /// <see cref="IEndpoint"/> on it. Each versioned endpoint is an <see cref="IEndpoint"/>, so no other code maps on the group.
     /// </summary>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "Startup scan. It runs one time, when the app maps its routes.")]
     public static void MapVersionedEndpoints(this WebApplication app)
     {
         var versionedGroup = app.MapGroup(VersionedRoutePrefix)

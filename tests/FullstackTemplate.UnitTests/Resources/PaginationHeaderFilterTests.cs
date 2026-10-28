@@ -28,6 +28,24 @@ public class PaginationHeaderFilterTests
     }
 
     [Test]
+    public async Task filter_names_each_page_field_in_camel_case()
+    {
+        // Arrange
+        var pagedList = PagedList.Create(Enumerable.Range(1, 3).AsQueryable(), 1, 2);
+
+        // Act
+        var headers = await HeadersAfterFilter(TypedResults.Ok(pagedList));
+
+        // Assert
+        using var header = JsonDocument.Parse(headers[PaginationMetadata.HeaderName].ToString());
+        header.RootElement.EnumerateObject().Select(p => p.Name).ShouldBe(
+        [
+            "totalCount", "pageSize", "currentPageSize", "currentStartIndex", "currentEndIndex",
+            "pageNumber", "totalPages", "hasPrevious", "hasNext",
+        ], ignoreOrder: true);
+    }
+
+    [Test]
     public async Task filter_reads_the_inner_result_of_a_union_result()
     {
         // Arrange

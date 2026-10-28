@@ -48,3 +48,47 @@ M:Npgsql.NpgsqlConnection.CloneWith(System.String);A command on a connection of 
 // The two-argument Like and ILike send ESCAPE '', so a backslash in the pattern escapes nothing and % or _ of the caller stays a wildcard.
 M:Microsoft.EntityFrameworkCore.NpgsqlDbFunctionsExtensions.ILike(Microsoft.EntityFrameworkCore.DbFunctions,System.String,System.String);The two-argument ILike sends ESCAPE ''. Build the pattern with LikePattern and pass LikePattern.EscapeCharacter as the third argument.
 M:Microsoft.EntityFrameworkCore.DbFunctionsExtensions.Like(Microsoft.EntityFrameworkCore.DbFunctions,System.String,System.String);The two-argument Like sends ESCAPE ''. Build the pattern with LikePattern and pass LikePattern.EscapeCharacter as the third argument.
+
+// A source generator does at build time what these APIs do at run time. See docs/backend/source-generators.md.
+M:System.Text.RegularExpressions.Regex.#ctor(System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.#ctor(System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.#ctor(System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.IsMatch(System.String,System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.IsMatch(System.String,System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.IsMatch(System.String,System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.IsMatch(System.ReadOnlySpan{System.Char},System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.IsMatch(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.IsMatch(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Match(System.String,System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Match(System.String,System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Match(System.String,System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Matches(System.String,System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Matches(System.String,System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Matches(System.String,System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Split(System.String,System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Split(System.String,System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Split(System.String,System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Replace(System.String,System.String,System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Replace(System.String,System.String,System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Replace(System.String,System.String,System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Replace(System.String,System.String,System.Text.RegularExpressions.MatchEvaluator);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Replace(System.String,System.String,System.Text.RegularExpressions.MatchEvaluator,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Replace(System.String,System.String,System.Text.RegularExpressions.MatchEvaluator,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Count(System.String,System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Count(System.String,System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Count(System.String,System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Count(System.ReadOnlySpan{System.Char},System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Count(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.Count(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.EnumerateSplits(System.ReadOnlySpan{System.Char},System.String);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.EnumerateSplits(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions);Use [GeneratedRegex] on a static partial method.
+M:System.Text.RegularExpressions.Regex.EnumerateSplits(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
+M:System.Activator.CreateInstance(System.Type);Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
+M:System.Activator.CreateInstance(System.Type,System.Object[]);Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
+M:System.Activator.CreateInstance(System.Type,System.Boolean);Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
+M:System.Activator.CreateInstance``1;Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
+M:System.Type.GetProperties;Check docs/backend/source-generators.md. A startup scan or a per-type cache suppresses RS0030 with the reason.
+M:System.Type.GetProperties(System.Reflection.BindingFlags);Check docs/backend/source-generators.md. A startup scan or a per-type cache suppresses RS0030 with the reason.

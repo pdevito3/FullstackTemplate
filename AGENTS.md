@@ -38,6 +38,7 @@ Read the doc for an area before you change code in that area.
 |-----|---------|
 | [docs/backend.md](docs/backend.md) | Domain structure, new features, DI, API versioning, error responses, database, tests |
 | [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, endpoints (HTTP, gRPC, MCP), domain events, EF configurations, feature telemetry, and the audit log |
+| [docs/backend/source-generators.md](docs/backend/source-generators.md) | When to use a source generator and when reflection is allowed |
 | [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |

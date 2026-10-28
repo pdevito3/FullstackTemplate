@@ -8,11 +8,6 @@ using System.Text.Json;
 /// </summary>
 public sealed class PaginationHeaderFilter : IEndpointFilter
 {
-    private static readonly JsonSerializerOptions HeaderJsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var result = await next(context);
@@ -40,6 +35,6 @@ public sealed class PaginationHeaderFilter : IEndpointFilter
 
         // The browser calls the BFF on the same origin as the SPA, so the header needs no CORS expose entry
         httpContext.Response.Headers[PaginationMetadata.HeaderName] =
-            JsonSerializer.Serialize(PaginationMetadata.From(pagedList), HeaderJsonOptions);
+            JsonSerializer.Serialize(PaginationMetadata.From(pagedList), EntrypointJsonContext.Default.PaginationMetadata);
     }
 }

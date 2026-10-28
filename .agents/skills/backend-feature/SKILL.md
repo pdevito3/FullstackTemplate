@@ -516,3 +516,4 @@ These docs give the detailed patterns:
 - `docs/backend/domain-events.md` - Domain events
 - `docs/backend/entity-configurations.md` - EF Core entity configurations
 - `docs/backend/feature-telemetry.md` - Spans, logs, and metrics for production support
+- `docs/backend/source-generators.md` - Generators before reflection. For a mapper or a regex, use the `source-generators` skill

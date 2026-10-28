@@ -113,6 +113,31 @@ public sealed class EntityTreeTests : IAsyncDisposable
             $"A Node changed, but its Node '{former.Id}' is not tracked. Load the Node, then change the Node through it.");
     }
 
+    [Test]
+    public async Task an_action_about_a_node_that_has_a_parent_fails_with_the_fix()
+    {
+        // Arrange
+        await _database.StartAsync();
+        var top = Node.Top();
+        var child = top.NewChild();
+        await using (var writer = await CreateContextAsync())
+        {
+            writer.AddRange(top, child);
+            await writer.SaveChangesAsync();
+        }
+
+        await using var context = await CreateContextAsync();
+        var loaded = await context.Set<Node>().SingleAsync(n => n.Id == child.Id);
+        context.RecordAction(new NodeExported(AuditSubject.Of(loaded)));
+
+        // Act
+        var act = () => context.SaveChangesAsync();
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldBe(
+            $"The action {nameof(NodeExported)} names Node '{child.Id}' as its aggregate root, but the Node has an owner. Make the subject from the root at the end of its owners, such as the top node of a tree.");
+    }
+
     private async Task<AppDbContext> CreateContextAsync()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -144,6 +169,9 @@ public sealed class EntityTreeTests : IAsyncDisposable
         public string? ParentId { get; private set; }
         public Node? Parent { get; private set; }
     }
+
+    [AuditActionName("node_exported")]
+    private sealed record NodeExported(AuditSubject Subject) : AuditAction(Subject);
 
     private sealed class TreeContext(DbContextOptions<AppDbContext> options, ITenantScopeProvider scopeProvider)
         : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),

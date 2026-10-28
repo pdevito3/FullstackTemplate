@@ -1,0 +1,144 @@
+name: e2e
+
+# ci.yml calls this workflow when its changes job finds a BFF change, and on workflow_dispatch.
+# A skipped job that has a matrix shows its name template, for example e2e (${{ matrix.provider }}), because GitHub
+# does not expand the matrix. The caller job has no matrix, so a skipped run shows as e2e.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - idp: keycloak
+            provider: Keycloak
+            refresh-margin: '86400'
+          # The same stack with DPoP: the BFF binds the tokens to its key (RFC 9449)
+          - idp: keycloak
+            provider: Keycloak
+            dpop: true
+            refresh-margin: '86400'
+          - idp: fusionauth
+            provider: FusionAuth
+            refresh-margin: '86400'
+          - idp: authentik
+            provider: Authentik
+            refresh-margin: '86400'
+          - idp: cognito
+            provider: Cognito
+            refresh-margin: '86400'
+          - idp: zerofactor
+            provider: ZeroFactor
+            refresh-margin: '86400'
+          # A public service, so its failure does not fail the workflow
+          - idp: duendedemo
+            provider: DuendeDemo
+            public: true
+          # The public service with DPoP. It gets no refresh margin, as the leg above.
+          - idp: duendedemo
+            provider: DuendeDemo
+            dpop: true
+            public: true
+    continue-on-error: ${{ matrix.public == true }}
+    name: ${{ matrix.provider }}${{ matrix.dpop && ' DPoP' || '' }}
+    env:
+      AuthProvider: ${{ matrix.provider }}
+      IDP: ${{ matrix.idp }}
+      DPoP: ${{ matrix.dpop == true }}
+      # run-against-stack.ts fails when the stack does not have the DPoP of the matrix
+      EXPECT_DPOP: ${{ matrix.dpop == true }}
+      # Longer than the access token lifetime of each provider, so that each API call refreshes. The BFF refresh test
+      # in auth-flows.spec.ts needs it. The public Duende service gets no margin, so that the job does not refresh on
+      # each call to it, and the test skips there.
+      BffRefreshBeforeExpirationSeconds: ${{ matrix.refresh-margin }}
+      # run-against-stack.ts fails the leg when the stack does not match an EXPECT_* variable. Thus a leg with a margin
+      # cannot pass while the BFF refresh tests skip.
+      EXPECT_REFRESH_MARGIN: ${{ matrix.refresh-margin && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Restore the .NET tools
+        run: dotnet tool restore
+
+      # The BFF calls the Server over https with the development certificate. On Linux, OpenSSL trusts it through
+      # SSL_CERT_DIR.
+      - name: Trust the development certificate
+        run: |
+          # Without SSL_CERT_DIR in this process, the command adds the OpenSSL trust but exits with 4
+          export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+          dotnet dev-certs https --trust
+          echo "SSL_CERT_DIR=$SSL_CERT_DIR" >> "$GITHUB_ENV"
+
+      - name: Install the frontend packages
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - uses: ./.github/actions/install-chromium
+
+      - name: Start the stack
+        run: dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+
+      # The BFF waits for the identity provider and reads its discovery document at startup
+      - name: Wait for healthy resources
+        run: |
+          for resource in server bff webfrontend; do
+            dotnet aspire wait "$resource" --status healthy --timeout 900 --non-interactive --apphost FullstackTemplate.AppHost
+          done
+
+      - name: Run the e2e tests
+        working-directory: frontend
+        run: pnpm test:e2e:stack
+
+      - name: Save the stack logs
+        if: always()
+        run: |
+          mkdir -p stack-logs
+          dotnet aspire logs --timestamps --non-interactive --apphost FullstackTemplate.AppHost > stack-logs/aspire.log 2>&1 || true
+          # The logs of the Aspire CLI and the AppHost process
+          cp -r ~/.aspire/logs stack-logs/aspire-cli || true
+
+      - name: Stop the stack
+        if: always()
+        run: dotnet aspire stop --non-interactive --apphost FullstackTemplate.AppHost || true
+
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-${{ matrix.idp }}${{ matrix.dpop && '-dpop' || '' }}
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            stack-logs/
+          retention-days: 30
+          if-no-files-found: ignore

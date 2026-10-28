@@ -99,7 +99,7 @@ public class BaseEntityShapeTests
         var exception = Should.Throw<InvalidOperationException>(() => context.Model);
 
         // Assert
-        exception.Message.ShouldContain($"{nameof(Tally)} is a BaseEntity with no key on its Id");
+        exception.Message.ShouldContain($"{nameof(Tally)} is a BaseEntity whose key is not its Id alone");
         exception.Message.ShouldContain("[NotAudited");
     }
 

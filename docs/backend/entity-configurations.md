@@ -43,7 +43,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(e => e.Identifier)
             .IsUnique()
-            .HasFilter("is_deleted = false");
+            .HasFilter("is_deleted = false")
+            .ForRequestField("identifier", User.IdentifierInUseMessage);
     }
 }
 ```
@@ -130,12 +131,17 @@ The context does soft deletes, so a deleted row still holds its unique value. A 
 ```csharp
 builder.HasIndex(e => e.Identifier)
     .IsUnique()
-    .HasFilter("is_deleted = false");
+    .HasFilter("is_deleted = false")
+    .ForRequestField("identifier", User.IdentifierInUseMessage);
 ```
 
 The duplicate check of the handler must count the same rows as the index. For a filtered index, keep the soft delete filter in the check. See [backend.md](../backend.md#error-responses).
 
-Give each unique index its request field and its message in `ConstraintConflictException.ConstraintErrors`, so that a duplicate gives a 409 on that field with the message of the duplicate check. `ConstraintErrorsTests` reads the indexes of the database, so it fails on a unique index with no entry. This includes an index that only a migration adds.
+Give each unique index its request field and its message with `ForRequestField`, as in the example above. Use the message constant of the entity that the duplicate check of the handler also uses. A duplicate then gives a 409 on that field with the message of the duplicate check. You change only the entity configuration. The shared code in `Databases/` does not import the domain folders for this.
+
+`ForRequestField` sets an annotation on the index. The `MapConstraintErrors` convention of `AppDbContext` moves it to a runtime annotation of the model, and `DatabaseConflict` reads it from there. A runtime annotation is not in the design-time model, so `ForRequestField` does not change the model snapshot and needs no migration.
+
+`ConstraintErrorsTests` reads the unique indexes and the exclusion constraints of the database. It fails on a constraint that has no request field. This includes an index that only a migration adds.
 
 ### Index a column of a value object
 
@@ -163,7 +169,7 @@ EF Core 10 cannot put an index on a property of a complex type. `HasIndex(e => e
    }
    ```
 
-3. Add the index to `ConstraintConflictException.ConstraintErrors`, for example `["ix_users_email"] = new("email", User.EmailInUseMessage)`.
+3. The model does not have the index, so `ForRequestField` cannot name it. Add the index to the `NotInModel` dictionary in `Databases/ConstraintErrors.cs`, for example `["ix_users_email"] = new("email", User.EmailInUseMessage)`.
 
 The model and the model snapshot do not have the index. Thus a later migration does not drop it, and `dotnet ef migrations has-pending-model-changes` finds no change. A save that the index stops gives a 409 on the field, the same as for an index in the model.
 
@@ -180,4 +186,4 @@ migrationBuilder.Sql("""
     """);
 ```
 
-Then give the constraint its request field and its message in `ConstraintConflictException.ConstraintErrors`, for example `["ex_appointments_provider_time"] = new("startsAt", Appointment.TimeTakenMessage)`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field with that message, the same as a unique index.
+The model does not have the constraint. Give the constraint its request field and its message in the `NotInModel` dictionary in `Databases/ConstraintErrors.cs`, for example `["ex_appointments_provider_time"] = new("startsAt", Appointment.TimeTakenMessage)`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field with that message, the same as a unique index.

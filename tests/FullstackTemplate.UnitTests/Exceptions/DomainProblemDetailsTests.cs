@@ -142,7 +142,8 @@ public class DomainProblemDetailsTests
     public void exclusion_violation_problem_is_a_conflict_with_the_message_under_the_field()
     {
         // Arrange
-        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"))!;
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"),
+            new AppDbContextFactory().CreateDbContext([]).Model)!;
         var context = new ProblemDetailsContext
         {
             HttpContext = new DefaultHttpContext(),

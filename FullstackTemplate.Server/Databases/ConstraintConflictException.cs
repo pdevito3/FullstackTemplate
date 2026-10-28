@@ -1,8 +1,5 @@
 namespace FullstackTemplate.Server.Databases;
 
-using Domain.Agents;
-using Domain.Tenants;
-using Domain.Users;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,14 +19,6 @@ public sealed class ConstraintConflictException(
 {
     public const string DuplicateMessage = "A record with this value already exists.";
     public const string OverlapMessage = "This value overlaps a record that exists.";
-
-    public static readonly IReadOnlyDictionary<string, ConstraintError> ConstraintErrors = new Dictionary<string, ConstraintError>
-    {
-        ["ix_tenants_name"] = new("name", Tenant.NameInUseMessage),
-        ["ix_users_identifier"] = new("identifier", User.IdentifierInUseMessage),
-        ["ix_agents_tenant_id_client_id"] = new("clientId", Agent.ClientIdInUseMessage),
-        ["ix_agents_client_id"] = new("clientId", Agent.ClientIdInUseMessage),
-    };
 
     public string Constraint { get; } = constraint;
 }

@@ -121,7 +121,8 @@ public class DomainErrorInterceptorTests
     public async Task a_save_that_a_unique_index_stops_has_the_message_of_the_check()
     {
         var conflict = DatabaseConflict.From(new PostgresException(
-            "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"))!;
+            "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"),
+            new AppDbContextFactory().CreateDbContext([]).Model)!;
 
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw conflict));

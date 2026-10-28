@@ -64,7 +64,8 @@ public class McpDomainErrorsTests
     {
         // Arrange
         var conflict = DatabaseConflict.From(new PostgresException(
-            "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"))!;
+            "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"),
+            new AppDbContextFactory().CreateDbContext([]).Model)!;
 
         // Act
         var result = await CallToolThatThrows(conflict);

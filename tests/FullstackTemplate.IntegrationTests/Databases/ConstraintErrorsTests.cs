@@ -34,6 +34,7 @@ public class ConstraintErrorsTests : TestBase
 
         // Assert
         constraints.ShouldNotBeEmpty();
-        constraints.Where(c => !ConstraintConflictException.ConstraintErrors.ContainsKey(c)).ShouldBeEmpty();
+        var errors = ConstraintErrors.Of(dbContext.Model);
+        constraints.Where(c => !errors.ContainsKey(c)).ShouldBeEmpty();
     }
 }

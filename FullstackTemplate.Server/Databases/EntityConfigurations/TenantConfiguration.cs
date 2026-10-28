@@ -20,6 +20,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         // Indexes
         builder.HasIndex(e => e.Name)
-            .IsUnique();
+            .IsUnique()
+            .ForRequestField("name", Tenant.NameInUseMessage);
     }
 }

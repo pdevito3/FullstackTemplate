@@ -69,7 +69,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         // Indexes
         builder.HasIndex(e => e.Identifier)
             .IsUnique()
-            .HasFilter("is_deleted = false");
+            .HasFilter("is_deleted = false")
+            .ForRequestField("identifier", User.IdentifierInUseMessage);
 
         builder.HasIndex(e => e.Username);
 

@@ -152,7 +152,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 public sealed record [EntityName]Updated(string Id) : DomainEvent;
 ```
 
-An event carries IDs and values, never an entity. Do not add a deleted event. The context does soft deletes, and no handler needs the event. Add a handler only when a feature needs one. See `docs/backend/domain-events.md`.
+An event carries IDs and values, never an entity. Add a deleted event only when rule 11 of `docs/backend/domain-events.md` asks for one. Add a handler only when a feature needs one. See `docs/backend/domain-events.md`.
 
 ## 3. DTOs
 
@@ -440,6 +440,8 @@ public static class Delete[EntityName]
     }
 }
 ```
+
+If a record of another domain holds the ID of the entity and must change with the delete (rule 11 of `docs/backend/domain-events.md`), add a `Delete()` method to the entity that queues `[EntityName]Deleted`, and call `dbContext.[EntityName]s.Remove(entity.Delete())`. Also run the delete in `RunExclusiveAsync` of a `RootLock` for the entity, and run each link add in `RunSharedAsync`, as rule 11 says.
 
 **File:** `Domain/[EntityName]s/Features/Get[EntityName]/Get[EntityName].cs`
 

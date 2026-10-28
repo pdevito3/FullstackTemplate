@@ -55,7 +55,7 @@ public static class UpdateUser
 
 `GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404. An ID that `EntityId.IsValid` refuses for the entity, such as an ID with U+0000, gets the same exception with no query. `user.Update` throws a `StaleVersionException` when the DTO has an old version, and `SaveChangesAsync` throws it when another request saved the row after the load. Both give 409. Do not catch it in the handler. A command that sends no version runs again instead, and a rule over other rows takes a lock. See [concurrency.md](concurrency.md) for the three cases.
 
-A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. A command that has no result implements `IRequest`, not `IRequest<T>`.
+A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. When a record of another domain links to the entity and must change with the delete, the command removes `entity.Delete()`, which queues the delete event. See rule 11 of [domain-events.md](domain-events.md#rules). A command that has no result implements `IRequest`, not `IRequest<T>`.
 
 ## One rule set for two callers
 

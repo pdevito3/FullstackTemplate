@@ -128,6 +128,16 @@ public class User : BaseEntity, ITenantable
         return this;
     }
 
+    /// <summary>
+    /// Call it in the feature that removes the user. A handler of <see cref="UserDeleted"/> in another domain can then
+    /// clear or mark a link to the user, in the same save. See <c>docs/backend/domain-events.md</c>.
+    /// </summary>
+    public User Delete()
+    {
+        QueueDomainEvent(new UserDeleted(Id));
+        return this;
+    }
+
     public bool HasPermission(Permission permission)
         => _userPermissions.Any(x => x.Permission == permission);
 

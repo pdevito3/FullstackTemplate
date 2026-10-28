@@ -30,7 +30,10 @@ The guarantee has two limits:
 8. Inject only `TimeProvider` and `IOptions<T>` into a handler. `DomainEventShapeTests` fails on any other constructor parameter.
 9. Read with LINQ in a handler. Do not use `ExecuteUpdateAsync`, `ExecuteDeleteAsync`, raw SQL (`FromSql`, `SqlQuery`, or `ExecuteSql`), or a transaction. These run outside the save. `WriteGuard` refuses them while handlers run, also on a table with no audit. It cannot see a command that you send on `Database.GetDbConnection()`, so the build bans that call in the Server. See [audit-log.md](audit-log.md#writes-that-skip-the-save).
 10. Do not send an email, call an HTTP API, or change a cache in a handler. See [Effects outside the database](#effects-outside-the-database).
-11. Do not add an event for a delete. The context does soft deletes.
+11. Add an event for a delete only when a record of another domain holds the ID of the entity and must change with the delete. For example, a technician links to a user. A soft delete keeps the row, but the query filter hides it. The link then finds no entity. A record that only keeps history, such as an audit entry, does not count. The template queues `UserDeleted`, because apps often link records to a user. Do not add an event for other deletes.
+    - Queue the event in an entity method, such as `User.Delete`. Call the method in the feature that removes the entity.
+    - In a handler of the event, clear or mark the link. The change commits in the same save. The handler runs before the save writes the delete, so a query in the handler still finds the entity.
+    - Lock the linked entity with a `RootLock`, such as a new `RootLock.User`. The feature that adds a link, or moves a link to another entity, does not write the row of the linked entity. So the version check does not stop its race with the delete. Run the add in `RunSharedAsync`, and check in the work that the entity exists. Run the delete in `RunExclusiveAsync`. `DeleteUser` takes no lock yet, because no template record links to a user. See [concurrency.md](concurrency.md#lock).
 12. Do not use an event to validate the entity that queues it. Validate in the entity.
 13. Do not open a transaction around `SaveChangesAsync`. One save is one transaction, and the context refuses an outer transaction.
 

@@ -158,6 +158,21 @@ export function filterDemoPage(page: Page) {
       })
     },
 
+    /** Whether the sticky footer that holds the button shows a line on its top edge. */
+    async lineAboveFooterOf(button: Locator) {
+      return button.evaluate((element) => {
+        let footer: Element | null = element
+        while (footer && getComputedStyle(footer).position !== 'sticky') footer = footer.parentElement
+        if (!footer) throw new Error('The button is not in a sticky footer.')
+        const { borderTopWidth, borderTopColor } = getComputedStyle(footer)
+        // A canvas reads the alpha of any color syntax, such as the oklab() of an animated color.
+        const context = document.createElement('canvas').getContext('2d')!
+        context.fillStyle = borderTopColor
+        context.fillRect(0, 0, 1, 1)
+        return parseFloat(borderTopWidth) > 0 && context.getImageData(0, 0, 1, 1).data[3] > 0
+      })
+    },
+
     async sidewaysScrollOf(propertyLabel: string) {
       return at.control(propertyLabel).evaluate((control) => {
         let widest = 0

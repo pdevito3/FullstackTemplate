@@ -18,7 +18,7 @@ interface FilterControlDefinition {
    * Where the Add Filter menu shows the control on a desktop: in a submenu next
    * to the menu, or in a dialog after the menu closes. The edit dialog shows all types.
    */
-  surface: FilterControlSurface
+  addMenuSurface: FilterControlSurface
   /**
    * The class of FilterControlDialog. Without it, the dialog uses
    * `DEFAULT_DIALOG_CLASS_NAME`, which fits the width of the control.
@@ -32,9 +32,9 @@ interface FilterControlDefinition {
  */
 export const FILTER_CONTROLS: Record<ControlType, FilterControlDefinition> = {
   // The text control has no fixed width, so its dialog keeps the default width.
-  text: { component: TextFilter, surface: 'dialog', dialogClassName: 'md:w-full md:max-w-md' },
-  multiselect: { component: MultiSelectFilter, surface: 'submenu' },
-  date: { component: DateFilter, surface: 'submenu' },
-  number: { component: NumberFilter, surface: 'submenu' },
-  boolean: { component: BooleanFilter, surface: 'submenu' },
+  text: { component: TextFilter, addMenuSurface: 'dialog', dialogClassName: 'md:w-full md:max-w-md' },
+  multiselect: { component: MultiSelectFilter, addMenuSurface: 'submenu' },
+  date: { component: DateFilter, addMenuSurface: 'submenu' },
+  number: { component: NumberFilter, addMenuSurface: 'submenu' },
+  boolean: { component: BooleanFilter, addMenuSurface: 'submenu' },
 }

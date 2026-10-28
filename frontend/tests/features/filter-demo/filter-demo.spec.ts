@@ -161,6 +161,19 @@ test.describe('the Between calendar on a 320 x 780 phone', () => {
 
     await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
   })
+
+  test('shows the line above Add Filter only while the calendar scrolls under it', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openOn(dayInASixWeekMonth)
+    await demo.chooseProperty('Created Date')
+    await demo.chooseBetween('Created Date')
+
+    expect(await demo.lineAboveFooterOf(demo.at.addFilter('Created Date'))).toBe(true)
+
+    await demo.scrollControlToEnd('Created Date')
+
+    await expect.poll(() => demo.lineAboveFooterOf(demo.at.addFilter('Created Date'))).toBe(false)
+  })
 })
 
 test.describe('the Add Filter menu on a phone on its side', () => {

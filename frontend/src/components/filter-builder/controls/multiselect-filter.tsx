@@ -150,6 +150,7 @@ export function MultiSelectFilter({
                   variant="ghost"
                   size="xs"
                   className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 any-pointer-coarse:opacity-100 transition-opacity"
+                  aria-label={`Only ${option.label}`}
                   onPress={() => selectOnly(option.value)}
                 >
                   Only

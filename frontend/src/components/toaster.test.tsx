@@ -32,7 +32,11 @@ afterEach(async () => {
 // after the test measures it.
 async function animationsFinished(): Promise<void> {
   await Promise.all(startViewTransition.mock.results.map(({ value }) => value.finished))
-  await Promise.all(document.getAnimations().map((animation) => animation.finished))
+  // The line above the dialog footer follows the scroll of the dialog, so its animation finishes only at the end.
+  const animations = document.getAnimations().filter(
+    (animation) => !(animation instanceof CSSAnimation && animation.animationName === 'dialog-footer-edge'),
+  )
+  await Promise.all(animations.map((animation) => animation.finished))
 }
 
 // A toast pauses or restarts its timer in a ResizeObserver callback. The browser runs all the callbacks of one rendering

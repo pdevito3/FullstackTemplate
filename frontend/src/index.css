@@ -294,3 +294,28 @@
     transform: translateY(-0.5rem);
   }
 }
+
+/*
+ * The top border of the sticky dialog footer shows only while content scrolls under it. It hides in the last 0.5rem
+ * of the scroll. With no scroll, the timeline is inactive and the border stays hidden. A browser with no scroll-driven
+ * animations always shows the border.
+ */
+@supports (animation-timeline: scroll()) {
+  @layer components {
+    [data-slot="responsive-dialog-footer"] {
+      border-top-color: transparent;
+      animation: dialog-footer-edge linear both;
+      animation-timeline: scroll(nearest block);
+      animation-range: calc(100% - 0.5rem) 100%;
+    }
+  }
+}
+
+@keyframes dialog-footer-edge {
+  from {
+    border-top-color: var(--color-border);
+  }
+  to {
+    border-top-color: transparent;
+  }
+}

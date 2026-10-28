@@ -126,7 +126,7 @@ function propertyKeyOf(node: { type: string; key: Key; firstChildKey?: Key | nul
  * that axis. So without the room, each control opens in the dialog.
  */
 function surfaceOf(controlType: ControlType, hasRoomForSubmenus: boolean): FilterControlSurface {
-  return hasRoomForSubmenus ? FILTER_CONTROLS[controlType].surface : 'dialog'
+  return hasRoomForSubmenus ? FILTER_CONTROLS[controlType].addMenuSurface : 'dialog'
 }
 
 interface PropertyMenuItemProps {
@@ -138,7 +138,7 @@ interface PropertyMenuItemProps {
 function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemProps) {
   // A dialog control opens after the menu closes, so its item has no submenu.
   if (surface === 'dialog') {
-    const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].surface === 'submenu'
+    const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].addMenuSurface === 'submenu'
     return (
       <DropdownMenuItem id={config.propertyKey} textValue={config.propertyLabel}>
         {config.propertyLabel}

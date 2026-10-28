@@ -80,7 +80,11 @@ async function openAnimationsFinished(): Promise<void> {
   await expect.element(page.getByRole('dialog')).toBeVisible()
   // The modal starts its animations after it paints.
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-  await Promise.all(document.getAnimations().map((animation) => animation.finished))
+  // The line above the dialog footer follows the scroll of the dialog, so its animation finishes only at the end.
+  const animations = document.getAnimations().filter(
+    (animation) => !(animation instanceof CSSAnimation && animation.animationName === 'dialog-footer-edge'),
+  )
+  await Promise.all(animations.map((animation) => animation.finished))
 }
 
 function paragraphTextUnderCloseButton(x: number, y: number): string | undefined {

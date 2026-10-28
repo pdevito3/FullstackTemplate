@@ -189,8 +189,8 @@ function ResponsiveDialogFooter({
       data-slot="responsive-dialog-footer"
       className={cn(
         // The negative margins cover the p-4 of the content that scrolls, so a focus ring in the side gutter does not show
-        // next to the footer.
-        "sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 bg-background px-4 pt-4 pb-4 sm:flex-row sm:justify-end",
+        // next to the footer. index.css shows the top border only while content scrolls under the footer.
+        "sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t bg-background px-4 pt-4 pb-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

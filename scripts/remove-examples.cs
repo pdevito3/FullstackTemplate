@@ -26,6 +26,7 @@ try
 
     changing = true;
     app.Remove(removal);
+    app.WriteModelSnapshot();
     app.WriteGeneratedFiles();
 
     Console.WriteLine(removal.IsDue
@@ -57,6 +58,7 @@ internal sealed record Removal(IReadOnlyList<string> Folders, IReadOnlyDictionar
 internal sealed partial class AppRepo(string root)
 {
     private const string ThisScript = "scripts/remove-examples.cs";
+    private const string SnapshotMigration = "RemoveExamplesSnapshot";
 
     private static readonly HashSet<string> ExampleFolderNames = new(StringComparer.Ordinal) { "Examples", "examples", "(examples)" };
 
@@ -109,6 +111,21 @@ internal sealed partial class AppRepo(string root)
             Directory.Delete(Path.Combine(root, folder), recursive: true);
         foreach (var (file, text) in removal.Sections)
             WriteText(Path.Combine(root, file), text);
+    }
+
+    // The snapshot is generated, so EF writes it again for the model with no example entities. The script deletes the
+    // migration that EF adds with it, so a new database never has the example tables. See docs/examples.md.
+    public void WriteModelSnapshot()
+    {
+        var server = $"{Name}.Server";
+        Run(root, "dotnet", "tool", "restore");
+        Run(root, "dotnet", "tool", "run", "dotnet-ef", "migrations", "add", SnapshotMigration,
+            "--project", server, "--startup-project", server, "--output-dir", "Databases/Migrations");
+
+        var migrations = Path.Combine(root, server, "Databases", "Migrations");
+        foreach (var file in Directory.GetFiles(migrations, $"*_{SnapshotMigration}.cs")
+                     .Concat(Directory.GetFiles(migrations, $"*_{SnapshotMigration}.Designer.cs")))
+            File.Delete(file);
     }
 
     public void WriteGeneratedFiles()

@@ -21,26 +21,25 @@ frontend/
   playwright.stack.config.ts     # the stack suite
   tests/
     features/
-      weather/
-        weather-forecast.locators.ts   # selectors, and nothing else
-        weather-forecast.tasks.ts      # user actions and every wait
-        weather-forecast.spec.ts       # the scenarios
+      home/
+        home.locators.ts         # selectors, and nothing else
+        home.tasks.ts            # user actions and every wait
+        home.spec.ts             # the scenarios
     support/
       api/
         mock-route.ts            # MockRoute and the request recorder
         bff-api.ts               # /bff/user, /bff/login, /bff/logout
-        weather-api.ts           # one file for each area: the canned responses
+        users-api.ts             # one file for each area: the canned responses
       auth/
         actors.ts                # named identities: as.anonymous(), as.user(name)
       builders/
-        forecast-builder.ts      # immutable fluent builders
-        problem-details-builder.ts
+        problem-details-builder.ts  # immutable fluent builders
       fixtures.ts                # `test` with the `actor` and `api` fixtures
 ```
 
 ### Mocks
 
-A mock is a `MockRoute`: a plain object with a method, a full path, a status, and a body. Each area has one file in `tests/support/api/`. Each method of the file is one answer of the API, and its name states the scenario: `weatherApi.listReturns(...)`, `weatherApi.listFails(...)`.
+A mock is a `MockRoute`: a plain object with a method, a full path, a status, and a body. Each area has one file in `tests/support/api/`. Each method of the file is one answer of the API, and its name states the scenario: `usersApi.currentIs(...)`, `usersApi.currentFails(...)`.
 
 The `api` fixture applies to each test automatically:
 
@@ -66,10 +65,10 @@ Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout
 
 All test data comes from the builders in `tests/support/builders/`:
 
-1. A builder needs no parent. `aForecast()` alone is valid.
+1. A builder needs no parent. `aProblem()` alone is valid.
 2. A builder is immutable. Each method returns a new builder.
 3. A builder imports nothing from Playwright or Vitest.
-4. The types come from the generated client. A builder derives a dependent value (for example `temperatureF` from `temperatureC`), so the data cannot contradict itself.
+4. The types come from the generated client. A builder derives a dependent value (for example the total count of a page from its items), so the data cannot contradict itself.
 
 Set only the values that the scenario is about. If a scenario needs a value that no builder method sets, add the method to the builder.
 
@@ -89,7 +88,7 @@ Use the first of these that works:
 2. A label: `getByLabel('Status')`.
 3. A `data-testid`, only if 1 and 2 do not work.
 
-Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, the forecast grid is a `list`, and each day is a `listitem` with the date as its name.
+Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, a grid of cards is a `list`, and each card is a `listitem` with its title as its name.
 
 ### Facts about this app
 

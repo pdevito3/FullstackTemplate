@@ -143,11 +143,11 @@ Fix the cause on the Server: the DTO, an attribute such as `[NamesOf<T>]`, or a 
 Each area keeps its hook and its query key factory in `domain/[area]/apis/`. The hook calls the generated client. Write the hooks and the keys by hand.
 
 ```typescript
-import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
+import { useCurrentUser } from '@/domain/users/apis/get-current-user'
 import { useAuth } from '@/domain/auth/apis/get-user'
 import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 
-const { data, isLoading, error } = useWeatherForecast()
+const { data, isLoading, error } = useCurrentUser()
 const { isLoggedIn, username, logoutUrl } = useAuth()
 const { login, logout } = useAuthActions()
 ```

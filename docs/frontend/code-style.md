@@ -104,9 +104,9 @@ const startsAt = formatInstant(new Date(visit.startsAt), zone, { hour: 'numeric'
 ```typescript
 import { useQuery } from '@tanstack/react-query'
 
-import { getWeatherForecast } from '@/api/generated/weather/clients/get-weather-forecast'
+import { getCurrentUser } from '@/api/generated/users/clients/get-current-user'
 
-import { WeatherKeys } from './weather.keys'
+import { UserKeys } from './user.keys'
 ```
 
 ## Comments

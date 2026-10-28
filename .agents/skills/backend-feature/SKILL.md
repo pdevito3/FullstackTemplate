@@ -491,6 +491,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Internal models updated (ForCreation/ForUpdate)
 - [ ] DTOs updated (Dto, ForCreationDto, ForUpdateDto as needed). The Dto has `Version`, and the ForUpdateDto has `required uint Version`
 - [ ] Mapper updated (custom mapping for value objects)
+- [ ] If the new Dto property holds data of another permission, the property needs that permission or a separate DTO, and a test shows that a caller without that permission does not get the data (see rule 12 of DTOs in `docs/backend/dtos-and-mappings.md`)
 - [ ] Entity configuration updated (constraints, value object mapping)
 - [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
@@ -509,6 +510,9 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Feature folder created with the Command/Query and Handler file
 - [ ] The command sends a version, carries `IRunsAgainWhenRaced`, or takes a lock that `docs/backend/concurrency.md` names. A create of a new aggregate root needs a lock only when its rule reads other rows
 - [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
+- [ ] Each field of the response DTO needs only the permission that the handler checks. A field with data of another permission needs that permission or a separate DTO, and a test shows that a caller without that permission does not get the data (see rule 12 of DTOs in `docs/backend/dtos-and-mappings.md`)
+- [ ] `EndpointAccessSweepTests` passes for each new endpoint, tool, and gRPC method. If each member can use it with no permission, or if it allows anonymous calls or asks for no authorization, add it to `OpenToEachMember` in the sweep with the reason
+- [ ] Each reference to a record that is not a route value `{id}` or `{identifier}` or a tool argument or gRPC field `id` or `identifier`, for example a `tenantId` in the body, has a cross-tenant test in the tests of the feature. The sweep does not check it
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses

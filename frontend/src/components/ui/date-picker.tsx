@@ -18,7 +18,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
-import type { TimeZone } from "@/lib/zoned-time"
+import { todayAt, type TimeZone } from "@/lib/zoned-time"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -45,7 +45,7 @@ interface JollyDatePickerProps<T extends AriaDateValue>
   label?: string
   description?: string
   errorMessage?: string | ((validation: AriaValidationResult) => string)
-  /** The zone of the place that the date belongs to. The calendar marks today at that place. */
+  /** The zone of the place that the date belongs to. The calendar marks today at that place, and opens on its month. */
   timeZone?: TimeZone
 }
 
@@ -60,6 +60,7 @@ function JollyDatePicker<T extends AriaDateValue>({
   onBlur,
   isInvalid,
   timeZone,
+  placeholderValue,
   ...props
 }: JollyDatePickerProps<T>) {
   const [changedDate, setChangedDate] = useState<AriaDateValue | null>(defaultValue ?? null)
@@ -87,6 +88,7 @@ function JollyDatePicker<T extends AriaDateValue>({
       defaultValue={defaultValue}
       onChange={handleChange}
       onBlur={handleBlur}
+      placeholderValue={placeholderValue ?? (timeZone ? (todayAt(timeZone, new Date()) as T) : undefined)}
       // Undefined when neither is set, so that React Aria keeps its own validation.
       isInvalid={yearCheck.isShortYear || isInvalid}
       {...props}
@@ -141,7 +143,7 @@ interface JollyDateRangePickerProps<T extends AriaDateValue>
   label?: string
   description?: string
   errorMessage?: string | ((validation: AriaValidationResult) => string)
-  /** The zone of the place that the date belongs to. The calendar marks today at that place. */
+  /** The zone of the place that the date belongs to. The calendar marks today at that place, and opens on its month. */
   timeZone?: TimeZone
 }
 
@@ -156,6 +158,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
   onBlur,
   isInvalid,
   timeZone,
+  placeholderValue,
   ...props
 }: JollyDateRangePickerProps<T>) {
   const [changedRange, setChangedRange] = useState<AriaRangeValue<AriaDateValue> | null>(defaultValue ?? null)
@@ -184,6 +187,7 @@ function JollyDateRangePicker<T extends AriaDateValue>({
       defaultValue={defaultValue}
       onChange={handleChange}
       onBlur={handleBlur}
+      placeholderValue={placeholderValue ?? (timeZone ? (todayAt(timeZone, new Date()) as T) : undefined)}
       isInvalid={isShortYear || isInvalid}
       {...props}
     >

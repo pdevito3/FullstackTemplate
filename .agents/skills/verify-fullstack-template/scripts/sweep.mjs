@@ -1,4 +1,3 @@
-// The layout and focus sweep of browse.mjs --sweep. See "Sweep" in SKILL.md.
 import path from 'node:path'
 
 const configs = [
@@ -19,8 +18,6 @@ const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdom
 const longKeys = /(^|_)(name|title|summary|description|label|note|comment|reason)$|Name$|Title$|Summary$|Description$/i
 const emailKeys = /email/i
 
-// Gives each text that the server sends a long value. A value that came once gets the same long value in each
-// later answer, so that a recipe that compares the screen with the API still matches.
 function longValues() {
   const seen = new Map()
   const longFor = (key, value) => {
@@ -30,7 +27,6 @@ function longValues() {
   const walk = (node) => {
     if (Array.isArray(node)) return node.map(walk)
     if (!node || typeof node !== 'object') return typeof node === 'string' && seen.has(node) ? seen.get(node) : node
-    // The claims of /bff/user are { type, value } pairs.
     if (typeof node.type === 'string' && typeof node.value === 'string') {
       return longKeys.test(node.type) || emailKeys.test(node.type) ? { ...node, value: longFor(node.type, node.value) } : node
     }
@@ -52,15 +48,12 @@ export async function routeLongValues(context, webUrl) {
 
 export const blockWebFonts = (context) => context.route(/\.(woff2?|ttf|otf)(\?|$)/, (route) => route.abort())
 
-// Keeps the element that has the focus last. Chrome does not always send a focusout when it moves the focus to the
-// body, for example when the focused button becomes disabled.
-export function watchFocus() {
+export function trackLastFocused() {
   document.addEventListener('focusin', (event) => {
     window.__sweepFocused = event.target
   }, true)
 }
 
-// In the page. Returns the focus loss, or null.
 function readFocusLoss() {
   const el = window.__sweepFocused
   if (!el || (document.activeElement && document.activeElement !== document.body)) return null
@@ -72,8 +65,7 @@ function readFocusLoss() {
   return { element: `${el.getAttribute('role') ?? el.tagName.toLowerCase()} "${name}"`, reason }
 }
 
-// In the page. Marks each element with a fault with data-sweep-fault and returns the measurements.
-function measureLayout() {
+function markLayoutFaults() {
   document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault'))
   const isHidden = (el) => {
     if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true
@@ -83,8 +75,7 @@ function measureLayout() {
     }
     return false
   }
-  // A scroll container lets the user scroll to the text, so only hidden and clip cut it.
-  const clipsOnly = (overflow) => overflow === 'hidden' || overflow === 'clip'
+  const clipsContent = (overflow) => overflow === 'hidden' || overflow === 'clip'
   const scrolls = (overflow) => overflow === 'auto' || overflow === 'scroll'
   const label = (el) => el.dataset.slot ?? el.closest('[data-slot]')?.dataset.slot ?? el.tagName.toLowerCase()
   const textOf = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 80)
@@ -108,8 +99,8 @@ function measureLayout() {
     const text = [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
     if (!text.length || isHidden(el)) continue
     const style = getComputedStyle(el)
-    const cutX = clipsOnly(style.overflowX) && el.scrollWidth > el.clientWidth + 1
-    const cutY = clipsOnly(style.overflowY) && el.scrollHeight > el.clientHeight + 1
+    const cutX = clipsContent(style.overflowX) && el.scrollWidth > el.clientWidth + 1
+    const cutY = clipsContent(style.overflowY) && el.scrollHeight > el.clientHeight + 1
     if (cutX || cutY) {
       const ellipsis = (cutX && style.textOverflow === 'ellipsis') || (cutY && style.webkitLineClamp !== 'none')
       if (!ellipsis) add(el, { kind: 'text is cut', how: 'cut with no ellipsis' })
@@ -119,19 +110,16 @@ function measureLayout() {
     const range = document.createRange()
     range.setStartBefore(text[0])
     range.setEndAfter(text[text.length - 1])
-    // The part of the text that the clipping parents so far let through. Past a scroll container, the text is the
-    // content of that container on that axis.
     const shown = { ...range.getBoundingClientRect().toJSON() }
     let checkX = true
     let checkY = true
     for (let node = el.parentElement; node && node !== document.body && (checkX || checkY); node = node.parentElement) {
       const nodeStyle = getComputedStyle(node)
       const clip = node.getBoundingClientRect()
-      const outX = checkX && clipsOnly(nodeStyle.overflowX) && (shown.left < clip.left - 1 || shown.right > clip.right + 1)
-      const outY = checkY && clipsOnly(nodeStyle.overflowY) && (shown.top < clip.top - 1 || shown.bottom > clip.bottom + 1)
+      const outX = checkX && clipsContent(nodeStyle.overflowX) && (shown.left < clip.left - 1 || shown.right > clip.right + 1)
+      const outY = checkY && clipsContent(nodeStyle.overflowY) && (shown.top < clip.top - 1 || shown.bottom > clip.bottom + 1)
       if (outX) Object.assign(shown, { left: Math.max(shown.left, clip.left), right: Math.min(shown.right, clip.right) })
       if (outY) Object.assign(shown, { top: Math.max(shown.top, clip.top), bottom: Math.min(shown.bottom, clip.bottom) })
-      // A text that a parent hides all of is hidden on purpose, such as the label of a collapsed sidebar item.
       if (shown.right <= shown.left || shown.bottom <= shown.top) break
       if (outX || outY) {
         add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
@@ -144,9 +132,7 @@ function measureLayout() {
   return faults
 }
 
-// Adds a measured fault to the list and returns it when it is new. A fault is the same fault on each capture and
-// config of the same page, so the report names it once with the places it showed.
-function record(faults, measured, { at, url, config }) {
+function recordFault(faults, measured, { at, url, config }) {
   const key = [new URL(url).pathname, measured.kind, measured.element, measured.text, measured.how.replace(/\d+ px/g, '')].join('|')
   const known = faults.find((fault) => fault.key === key)
   if (known) {
@@ -159,15 +145,13 @@ function record(faults, measured, { at, url, config }) {
   return fault
 }
 
-// Runs the checks at each config, then puts the page back as the recipe left it. Each new fault gets a screenshot
-// with a red outline on the element.
 export async function sweepCapture({ page, cdp, settle, outDir, capture, faults }) {
   const url = page.url()
   const scroll = await page.evaluate(() => [scrollX, scrollY])
   for (const config of configs) {
     await applyConfig(page, cdp, settle, config)
-    for (const [index, measured] of (await page.evaluate(measureLayout)).entries()) {
-      const fault = record(faults, measured, { at: capture, url, config })
+    for (const [index, measured] of (await page.evaluate(markLayoutFaults)).entries()) {
+      const fault = recordFault(faults, measured, { at: capture, url, config })
       if (fault) await screenshotOf(page, `[data-sweep-fault="${index}"]`, path.join(outDir, fault.screenshot))
     }
   }
@@ -200,7 +184,7 @@ export async function sweepFocus({ page, settle, outDir, step, faults }) {
   const loss = await page.evaluate(readFocusLoss).catch(() => null)
   if (!loss) return
   const measured = { kind: 'focus goes to the body', element: loss.element, text: '', how: `the focused element ${loss.reason}` }
-  const fault = record(faults, measured, { at: step, url: page.url() })
+  const fault = recordFault(faults, measured, { at: step, url: page.url() })
   if (fault) await page.screenshot({ path: path.join(outDir, fault.screenshot) })
 }
 

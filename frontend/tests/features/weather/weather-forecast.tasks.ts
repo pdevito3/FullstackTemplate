@@ -29,7 +29,6 @@ export function weatherForecastPage(page: Page) {
       await expect(at.loading).toBeVisible()
     },
 
-    /** How many pixels of the text of `element` go past its box, or of the page past the window. */
     async overflowOf(element: Locator) {
       return element.evaluate((node) => node.scrollWidth - node.clientWidth)
     },

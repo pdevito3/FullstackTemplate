@@ -22,7 +22,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { blockWebFonts, report, routeLongValues, sweepCapture, sweepFocus, watchFocus } from './sweep.mjs'
+import { blockWebFonts, report, routeLongValues, sweepCapture, sweepFocus, trackLastFocused } from './sweep.mjs'
 
 const args = process.argv.slice(2)
 const recipeArg = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--label')
@@ -74,7 +74,7 @@ const context = await browser.newContext({
 await context.tracing.start({ screenshots: true, snapshots: true })
 if (sweep) {
   await routeLongValues(context, stack.urls.web)
-  await context.addInitScript(watchFocus)
+  await context.addInitScript(trackLastFocused)
 }
 if (noWebFont) await blockWebFonts(context)
 const page = await context.newPage()

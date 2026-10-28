@@ -27,7 +27,6 @@ export function FilterBuilder({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editingFilter, setEditingFilter] = useState<Filter | null>(null)
   const [isGroupingMode, setIsGroupingMode] = useState(false)
-  // An action that removes the focused button moves the focus to the Add Filter button, which is always there.
   const addFilterRef = useRef<HTMLButtonElement>(null)
   const focusAddFilter = () => addFilterRef.current?.focus()
 

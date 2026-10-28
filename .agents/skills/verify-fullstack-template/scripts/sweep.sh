@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Runs each recipe with --sweep, then again with --sweep --no-web-font. The second run shows the fallback font,
-# which is wider than the web font on most systems.
 # Usage: sweep.sh [recipe.mjs ...]    (default: each recipe in recipes/)
 set -uo pipefail
 

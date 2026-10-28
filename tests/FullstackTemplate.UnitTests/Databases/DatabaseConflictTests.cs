@@ -14,7 +14,10 @@ public class DatabaseConflictTests
     // ASP.NET Core sets the default type of the status before Customize runs
     private const string DefaultConflictType = "https://tools.ietf.org/html/rfc9110#section-15.5.10";
 
+    private const string CurrentRevisionIndex = "ix_revisions_document_id_current";
+
     private static readonly IModel Model = new AppDbContextFactory().CreateDbContext([]).Model;
+    private static readonly IModel RevisionModel = new RevisionContext().Model;
 
     [Test]
     public void unique_violation_is_a_conflict_with_the_field_and_the_message_of_the_index()
@@ -120,6 +123,59 @@ public class DatabaseConflictTests
     }
 
     [Test]
+    public void unique_violation_of_a_stale_version_index_is_a_stale_version()
+    {
+        // Arrange
+        var failure = SaveFailure(PostgresErrorCodes.UniqueViolation, CurrentRevisionIndex);
+
+        // Act
+        var exception = DatabaseConflict.From(failure, RevisionModel).ShouldBeOfType<StaleVersionException>();
+
+        // Assert
+        exception.InnerException.ShouldBeSameAs(failure);
+        DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
+        DomainError.IsClientError(exception).ShouldBeTrue();
+    }
+
+    [Test]
+    public void unique_violation_of_a_stale_version_index_has_the_problem_of_a_concurrency_failure()
+    {
+        // Arrange
+        var staleIndex = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, CurrentRevisionIndex), RevisionModel)!;
+        var staleRow = DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."), Model)!;
+        var (staleIndexContext, staleRowContext) = (ContextFor(staleIndex), ContextFor(staleRow));
+
+        // Act
+        DomainProblemDetails.Customize(staleIndexContext);
+        DomainProblemDetails.Customize(staleRowContext);
+
+        // Assert
+        DomainProblemDetails.StatusCodeFor(staleIndex).ShouldBe(DomainProblemDetails.StatusCodeFor(staleRow));
+        var (problem, expected) = (staleIndexContext.ProblemDetails, staleRowContext.ProblemDetails);
+        problem.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
+        problem.Type.ShouldBe(expected.Type);
+        problem.Title.ShouldBe(expected.Title);
+        problem.Detail.ShouldBe(expected.Detail);
+        problem.Extensions.Keys.ShouldBe(expected.Extensions.Keys);
+        var errors = problem.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>();
+        var expectedErrors = expected.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>();
+        errors.Keys.ShouldBe(expectedErrors.Keys);
+        errors[StaleVersionException.Field].ShouldBe(expectedErrors[StaleVersionException.Field]);
+    }
+
+    [Test]
+    public void unique_violation_of_another_index_of_a_model_with_a_stale_version_index_is_a_conflict()
+    {
+        // Act
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_revisions_number"), RevisionModel)
+            .ShouldBeOfType<ConstraintConflictException>();
+
+        // Assert
+        exception.Property.ShouldBe("number");
+        exception.Message.ShouldBe("A revision with this number already exists.");
+    }
+
+    [Test]
     public void other_database_failure_is_not_a_conflict()
     {
         DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation), Model).ShouldBeNull();
@@ -131,6 +187,37 @@ public class DatabaseConflictTests
         Exception = exception,
         ProblemDetails = new() { Status = StatusCodes.Status409Conflict, Type = DefaultConflictType },
     };
+
+    private sealed class RevisionContext : DbContext
+    {
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+            => optionsBuilder.UseNpgsql("Host=unused");
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+            => configurationBuilder.MapConstraintErrors();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            var revision = modelBuilder.Entity<Revision>();
+            revision.HasIndex(r => r.DocumentId)
+                .IsUnique()
+                .HasFilter("is_current")
+                .HasDatabaseName(CurrentRevisionIndex)
+                .ForStaleVersion();
+            revision.HasIndex(r => r.Number)
+                .IsUnique()
+                .HasDatabaseName("ix_revisions_number")
+                .ForRequestField("number", "A revision with this number already exists.");
+        }
+    }
+
+    private sealed class Revision
+    {
+        public int Id { get; set; }
+        public int DocumentId { get; set; }
+        public int Number { get; set; }
+        public bool IsCurrent { get; set; }
+    }
 
     private static DbUpdateException SaveFailure(string sqlState, string? constraintName = null)
         => new("An error occurred while saving the entity changes.",

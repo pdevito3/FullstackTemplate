@@ -23,7 +23,7 @@ public static class DatabaseConflict
     /// <summary>For a write that EF does not run, such as COPY. Null when the failure is a server fault.</summary>
     public static Exception? From(PostgresException exception, IModel model) => From(exception, exception, model);
 
-    private static ConstraintConflictException? From(PostgresException postgres, Exception exception, IModel model)
+    private static Exception? From(PostgresException postgres, Exception exception, IModel model)
     {
         var defaultMessage = postgres.SqlState switch
         {
@@ -35,11 +35,11 @@ public static class DatabaseConflict
             return null;
 
         var constraint = postgres.ConstraintName ?? string.Empty;
-        var error = ConstraintErrors.Of(model).GetValueOrDefault(constraint);
-        return new ConstraintConflictException(
-            constraint,
-            error?.Field ?? string.Empty,
-            error?.Message ?? defaultMessage,
-            exception);
+        return ConstraintErrors.Of(model).GetValueOrDefault(constraint) switch
+        {
+            ConstraintError.StaleVersion => new StaleVersionException(exception),
+            ConstraintError.RequestField error => new ConstraintConflictException(constraint, error.Field, error.Message, exception),
+            _ => new ConstraintConflictException(constraint, string.Empty, defaultMessage, exception),
+        };
     }
 }

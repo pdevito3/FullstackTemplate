@@ -29,6 +29,7 @@ public static class EntrypointRegistration
 
         // HTTP
         builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = DomainProblemDetails.Customize);
+        builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, EntrypointJsonContext.Default));
         builder.Services.AddApiVersioningExtension();
         // A value that does not bind throws, so that DomainProblemDetails gives a 400 with the errors, not an empty 400
         builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);

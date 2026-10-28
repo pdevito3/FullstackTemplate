@@ -18,12 +18,6 @@ using ModelContextProtocol.Server;
 /// </summary>
 public static partial class McpDomainErrors
 {
-    // A kind with no field errors has no errors property, the same as an HTTP problem
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
-
     public static McpRequestHandler<CallToolRequestParams, CallToolResult> Filter(
         McpRequestHandler<CallToolRequestParams, CallToolResult> next) =>
         async (context, cancellationToken) =>
@@ -68,8 +62,7 @@ public static partial class McpDomainErrors
             IsError = true,
             Content = [new TextContentBlock { Text = $"{code}: {error.Detail ?? error.Title}" }],
             StructuredContent = JsonSerializer.SerializeToElement(
-                new { code, title = error.Title, detail = error.Detail, errors = error.Errors },
-                JsonOptions),
+                new McpToolError(code, error.Title, error.Detail, error.Errors), EntrypointJsonContext.Default.McpToolError),
         };
     }
 
@@ -129,3 +122,10 @@ public static partial class McpDomainErrors
     [GeneratedRegex(@"missing a value for the required parameter '(?<name>[^']+)'", RegexOptions.CultureInvariant)]
     private static partial Regex MissingArgumentInMessage();
 }
+
+// A kind with no field errors has no errors property, the same as an HTTP problem
+internal sealed record McpToolError(
+    string Code,
+    string Title,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Detail,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Dictionary<string, string[]>? Errors);

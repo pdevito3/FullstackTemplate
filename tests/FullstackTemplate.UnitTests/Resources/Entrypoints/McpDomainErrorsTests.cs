@@ -43,6 +43,19 @@ public class McpDomainErrorsTests
     }
 
     [Test]
+    public async Task a_kind_with_no_field_errors_has_no_errors_property()
+    {
+        // Act
+        var result = await CallToolThatThrows(new NotFoundException("The tenant was not found."));
+
+        // Assert
+        var content = result.StructuredContent.ShouldNotBeNull();
+        content.GetProperty("code").GetString().ShouldBe("not_found");
+        content.GetProperty("detail").GetString().ShouldBe("The tenant was not found.");
+        content.TryGetProperty("errors", out _).ShouldBeFalse();
+    }
+
+    [Test]
     public async Task a_json_error_with_no_argument_of_the_wrong_type_stays_a_server_fault()
     {
         // Act

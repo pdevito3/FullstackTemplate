@@ -1,6 +1,5 @@
 namespace FullstackTemplate.IntegrationTests.Databases;
 
-using System.Data.Common;
 using System.Text.Json;
 using FullstackTemplate.IntegrationTests.DomainEvents;
 using FullstackTemplate.Server.Databases;
@@ -12,9 +11,7 @@ using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 using Shouldly;
 using static FullstackTemplate.IntegrationTests.DomainEvents.DomainEventTestServices;
 
@@ -195,42 +192,4 @@ public class BulkInsertTests : TestBase
 
     private static string? NewValueOf(AuditEntry entry, string path)
         => JsonDocument.Parse(entry.Data).RootElement.GetProperty(path).GetProperty("new").GetString();
-
-    /// <summary>
-    /// Breaks the connection at the first commit after <see cref="Arm"/>, before the commit or after it. After it, the
-    /// rows are in, but the caller sees a failure, as when the acknowledgment of the commit is lost.
-    /// </summary>
-    private sealed class FailFirstCommit(bool afterCommit) : DbTransactionInterceptor
-    {
-        private int _armed;
-
-        public int Failures { get; private set; }
-
-        public void Arm() => Interlocked.Exchange(ref _armed, 1);
-
-        public override ValueTask<InterceptionResult> TransactionCommittingAsync(DbTransaction transaction,
-            TransactionEventData eventData, InterceptionResult result, CancellationToken cancellationToken = default)
-        {
-            if (!afterCommit)
-                FailWhenArmed();
-            return ValueTask.FromResult(result);
-        }
-
-        public override Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData,
-            CancellationToken cancellationToken = default)
-        {
-            if (afterCommit)
-                FailWhenArmed();
-            return Task.CompletedTask;
-        }
-
-        private void FailWhenArmed()
-        {
-            if (Interlocked.Exchange(ref _armed, 0) == 0)
-                return;
-
-            Failures++;
-            throw new NpgsqlException("Injected loss of the connection.", new IOException());
-        }
-    }
 }

@@ -131,8 +131,10 @@ public class StringColumnLengthTests
     public void the_domain_refuses_a_character_that_postgres_cannot_store_with_a_validation_error(string column, string character)
     {
         // Arrange
+        var maxLength = NonIdStringColumnsWithMaxLength()[column];
         var callerColumn = CallerColumns[column];
-        var value = callerColumn.ValueOfLength("a", 20).Insert(1, character);
+        // The value fits the column, so only the character can make the domain refuse it
+        var value = callerColumn.ValueOfLength("a", Math.Min(20, maxLength) - 1).Insert(1, character);
 
         // Act
         var write = () => callerColumn.Write(value);

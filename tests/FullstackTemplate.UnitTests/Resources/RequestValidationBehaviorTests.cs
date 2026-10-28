@@ -10,6 +10,8 @@ using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using MediatR;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
 using Shouldly;
 
 public class RequestValidationBehaviorTests
@@ -166,32 +168,114 @@ public class RequestValidationBehaviorTests
     }
 
     /// <summary>
-    /// The HTTP list endpoints keep <c>[Range]</c> on their page parameters only for the OpenAPI contract.
-    /// The behavior applies the rules of the DTO, so each copy must be the same as the rule of the DTO.
+    /// The HTTP list endpoints keep <c>[Range]</c> on their parameters only for the OpenAPI contract.
+    /// The behavior applies the rules of the DTO, so each copy must be the same as the rule of the DTO that the
+    /// endpoint builds.
     /// </summary>
     [Test]
     public void each_range_of_an_endpoint_parameter_is_the_range_of_the_dto()
     {
         // Arrange
-        var dtoRanges = typeof(BasePaginationParameters).GetProperties()
-            .Where(property => property.GetCustomAttribute<RangeAttribute>() is not null)
-            .ToDictionary(property => property.Name, property => property.GetCustomAttribute<RangeAttribute>()!, StringComparer.OrdinalIgnoreCase);
-        var parameters = typeof(IEndpoint).Assembly.GetTypes()
+        var endpoints = typeof(IEndpoint).Assembly.GetTypes()
             .Where(type => typeof(IEndpoint).IsAssignableFrom(type) && !type.IsInterface)
-            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .SelectMany(method => method.GetParameters())
-            .Where(parameter => parameter.GetCustomAttribute<RangeAttribute>() is not null)
             .ToList();
 
+        // Act
+        var mismatches = RangeMismatches(endpoints);
+
         // Assert
-        parameters.ShouldNotBeEmpty();
-        foreach (var parameter in parameters)
+        endpoints.SelectMany(RangedParameters).ShouldNotBeEmpty();
+        mismatches.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void the_range_guard_compares_a_parameter_with_the_dto_that_the_endpoint_builds()
+    {
+        // Act
+        var matching = RangeMismatches([typeof(GetDueListEndpoint), typeof(GetOverdueListEndpoint)]);
+        var mismatched = RangeMismatches([typeof(GetOverdueListWithTheDueRangeEndpoint)]);
+        var mismatchedInALambda = RangeMismatches([typeof(GetOverdueListInALambdaEndpoint)]);
+        var unmatched = RangeMismatches([typeof(GetDueListWithAnExtraRangeEndpoint)]);
+
+        // Assert
+        matching.ShouldBeEmpty();
+        mismatched.ShouldBe(["GetOverdueListWithTheDueRangeEndpoint.withinDays: (1, 365, False, False), but OverdueParametersDto has (1, 90, False, False)"]);
+        mismatchedInALambda.ShouldBe(["GetOverdueListInALambdaEndpoint.withinDays: (1, 365, False, False), but OverdueParametersDto has (1, 90, False, False)"]);
+        unmatched.ShouldBe(["GetDueListWithAnExtraRangeEndpoint.limit: 0 types that the endpoint builds have a range on limit. Build the DTO in the code of the endpoint"]);
+    }
+
+    /// <summary>
+    /// The ranged parameters of each method of the endpoint and of its nested types, so that a handler in a lambda or
+    /// a local function counts too.
+    /// </summary>
+    private static IEnumerable<(ParameterInfo Parameter, RangeAttribute Range)> RangedParameters(Type endpoint)
+        => new[] { endpoint }.Concat(NestedTypes(endpoint))
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .SelectMany(method => method.GetParameters())
+            .Where(parameter => parameter.IsDefined(typeof(RangeAttribute)))
+            .Select(parameter => (parameter, parameter.GetCustomAttribute<RangeAttribute>()!));
+
+    private static IEnumerable<Type> NestedTypes(Type type)
+        => type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic).SelectMany(nested => new[] { nested }.Concat(NestedTypes(nested)));
+
+    private static List<string> RangeMismatches(IEnumerable<Type> endpoints)
+    {
+        var modules = new Dictionary<Assembly, ModuleDefinition>();
+        var mismatches = new List<string>();
+        foreach (var endpoint in endpoints)
         {
-            var range = parameter.GetCustomAttribute<RangeAttribute>()!;
-            dtoRanges.ShouldContainKey(parameter.Name!);
-            var dtoRange = dtoRanges[parameter.Name!];
-            (range.Minimum, range.Maximum).ShouldBe((dtoRange.Minimum, dtoRange.Maximum), $"{parameter.Member.DeclaringType!.Name}.{parameter.Name}");
+            var ranged = RangedParameters(endpoint).ToList();
+            if (ranged.Count == 0)
+                continue;
+
+            if (!modules.TryGetValue(endpoint.Assembly, out var module))
+                modules[endpoint.Assembly] = module = ModuleDefinition.ReadModule(new MemoryStream(File.ReadAllBytes(endpoint.Assembly.Location)));
+            var built = BuiltTypes(endpoint, module);
+
+            foreach (var (parameter, range) in ranged)
+            {
+                var dtoRanges = built
+                    .Select(type => (Type: type, Range: type
+                        .GetProperty(parameter.Name!, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                        ?.GetCustomAttribute<RangeAttribute>()))
+                    .Where(item => item.Range is not null)
+                    .ToList();
+                var name = $"{endpoint.Name}.{parameter.Name}";
+                if (dtoRanges is not [var dto])
+                    mismatches.Add($"{name}: {dtoRanges.Count} types that the endpoint builds have a range on {parameter.Name}. Build the DTO in the code of the endpoint");
+                else if (!Bounds(range).Equals(Bounds(dto.Range!)))
+                    mismatches.Add($"{name}: {Bounds(range)}, but {dto.Type.Name} has {Bounds(dto.Range!)}");
+            }
         }
+
+        return mismatches;
+    }
+
+    private static (object Minimum, object Maximum, bool MinimumIsExclusive, bool MaximumIsExclusive) Bounds(RangeAttribute range)
+        => (range.Minimum, range.Maximum, range.MinimumIsExclusive, range.MaximumIsExclusive);
+
+    /// <summary>
+    /// The type of each object that a method of the endpoint creates or gets from a call. The IL of an async method
+    /// is in a nested state machine, so the nested types count too.
+    /// </summary>
+    private static HashSet<Type> BuiltTypes(Type endpoint, ModuleDefinition module)
+    {
+        var types = new Stack<TypeDefinition>([(TypeDefinition)module.LookupToken(endpoint.MetadataToken)]);
+        var built = new HashSet<Type>();
+        while (types.TryPop(out var type))
+        {
+            foreach (var nested in type.NestedTypes)
+                types.Push(nested);
+            foreach (var instruction in type.Methods.Where(m => m.HasBody).SelectMany(m => m.Body.Instructions))
+            {
+                if (instruction.OpCode.Code is not (Code.Call or Code.Callvirt or Code.Newobj))
+                    continue;
+                var method = endpoint.Module.ResolveMethod(((MethodReference)instruction.Operand).MetadataToken.ToInt32())!;
+                built.Add(method is MethodInfo info ? info.ReturnType : method.DeclaringType!);
+            }
+        }
+
+        return built;
     }
 
     [Test]
@@ -325,6 +409,72 @@ public class RequestValidationBehaviorTests
         public string Name { get; init; } = default!;
 
         public string? Note { get; init; }
+    }
+
+    private sealed record GetDueList(DueParametersDto Parameters) : IRequest<bool>;
+
+    private sealed record GetOverdueList(OverdueParametersDto Parameters) : IRequest<bool>;
+
+    private sealed class DueParametersDto : BasePaginationParameters
+    {
+        [Range(1, 365)]
+        public int WithinDays { get; set; } = 30;
+
+        public static DueParametersDto From(int? pageNumber, int? pageSize, int? withinDays)
+        {
+            var parameters = new DueParametersDto { WithinDays = withinDays ?? 30 };
+            parameters.SetPage(pageNumber, pageSize);
+            return parameters;
+        }
+    }
+
+    // Same property name as DueParametersDto, with a different range
+    private sealed class OverdueParametersDto : BasePaginationParameters
+    {
+        [Range(1, 90)]
+        public int WithinDays { get; set; } = 30;
+
+        public static OverdueParametersDto From(int? pageNumber, int? pageSize, int? withinDays)
+        {
+            var parameters = new OverdueParametersDto { WithinDays = withinDays ?? 30 };
+            parameters.SetPage(pageNumber, pageSize);
+            return parameters;
+        }
+    }
+
+    private static class GetDueListEndpoint
+    {
+        public static async Task<bool> Handle(
+            [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
+            [Range(1, int.MaxValue)] int? pageSize,
+            [Range(1, 365)] int? withinDays,
+            IMediator mediator,
+            CancellationToken cancellationToken)
+            => await mediator.Send(new GetDueList(DueParametersDto.From(pageNumber, pageSize, withinDays)), cancellationToken);
+    }
+
+    private static class GetOverdueListEndpoint
+    {
+        public static async Task<bool> Handle([Range(1, 90)] int? withinDays, IMediator mediator, CancellationToken cancellationToken)
+            => await mediator.Send(new GetOverdueList(OverdueParametersDto.From(null, null, withinDays)), cancellationToken);
+    }
+
+    private static class GetOverdueListWithTheDueRangeEndpoint
+    {
+        public static async Task<bool> Handle([Range(1, 365)] int? withinDays, IMediator mediator, CancellationToken cancellationToken)
+            => await mediator.Send(new GetOverdueList(OverdueParametersDto.From(null, null, withinDays)), cancellationToken);
+    }
+
+    private static class GetOverdueListInALambdaEndpoint
+    {
+        public static Delegate Handler => async ([Range(1, 365)] int? withinDays, IMediator mediator, CancellationToken cancellationToken)
+            => await mediator.Send(new GetOverdueList(OverdueParametersDto.From(null, null, withinDays)), cancellationToken);
+    }
+
+    private static class GetDueListWithAnExtraRangeEndpoint
+    {
+        public static async Task<bool> Handle([Range(0, 10)] int? limit, IMediator mediator, CancellationToken cancellationToken)
+            => await mediator.Send(new GetDueList(DueParametersDto.From(null, limit, null)), cancellationToken);
     }
 
     private static async Task<bool> Send<TResponse>(IRequest<TResponse> request)

@@ -37,8 +37,33 @@ public class BindingProblemTests
 
         // Assert
         errors.Keys.ShouldBe(["lines[1].hours"]);
-        errors["lines[1].hours"].ShouldBe(["The hours field is not valid."]);
-        detail.ShouldBe("The hours field is not valid.");
+        errors["lines[1].hours"].ShouldBe(["The hours field is not a valid number."]);
+        detail.ShouldBe("The hours field is not a valid number.");
+    }
+
+    [Test]
+    [Arguments("count", "\"two\"", "The count field is not a valid whole number.")]
+    [Arguments("count", "1.5", "The count field is not a valid whole number.")]
+    [Arguments("count", "99999999999", "The count field is not a valid whole number.")]
+    [Arguments("maybeCount", "\"two\"", "The maybeCount field is not a valid whole number.")]
+    [Arguments("hours", "null", "The hours field is not a valid number.")]
+    [Arguments("startsAt", "\"tomorrow\"", "The startsAt field is not a valid date and time.")]
+    [Arguments("maybeStartsAt", "\"tomorrow\"", "The maybeStartsAt field is not a valid date and time.")]
+    [Arguments("startsOn", "\"2026-13-01\"", "The startsOn field is not a valid date.")]
+    [Arguments("name", "1", "The name field is not valid.")]
+    public void value_of_the_wrong_type_names_what_the_field_takes(string field, string value, string message)
+    {
+        // Arrange
+        var exception = BindingFailureFor<EachType>($$"""{ "{{field}}": {{value}} }""");
+
+        // Act
+        var errors = BindingProblem.ErrorsFor(exception);
+        var detail = BindingProblem.DetailFor(exception);
+
+        // Assert
+        errors.Keys.ShouldBe([field]);
+        errors[field].ShouldBe([message]);
+        detail.ShouldBe(message);
     }
 
     [Test]
@@ -119,6 +144,17 @@ public class BindingProblemTests
     {
         public required uint Version { get; init; }
         public required DateOnly StartsOn { get; init; }
+    }
+
+    private sealed record EachType
+    {
+        public int Count { get; init; }
+        public long? MaybeCount { get; init; }
+        public decimal Hours { get; init; }
+        public DateTimeOffset StartsAt { get; init; }
+        public DateTime? MaybeStartsAt { get; init; }
+        public DateOnly StartsOn { get; init; }
+        public string Name { get; init; } = string.Empty;
     }
 
     private sealed record WithLines

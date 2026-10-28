@@ -96,7 +96,10 @@ try
         bff.WithEnvironment("Auth__RefreshBeforeExpirationSeconds", refreshMargin);
     }
 
-    webfrontend.WithReference(bff);
+    // The UI starts only when a login and an API call can work. The BFF waits for the auth provider.
+    webfrontend.WithReference(bff)
+        .WaitFor(bff)
+        .WaitFor(server);
 
     // The BFF serves the SPA in production. The server is an internal API only.
     bff.PublishWithContainerFiles(webfrontend, "wwwroot");

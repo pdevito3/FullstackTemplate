@@ -24,7 +24,6 @@ public sealed class KeycloakAuthProvider : IAuthProvider
 
         var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.0.8")
             .WithReference(keycloakDb)
-            .WaitFor(keycloakDb)
             .WithHttpEndpoint(port: 24730, targetPort: 8080, name: "http")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")

@@ -67,6 +67,7 @@ public sealed class AuthentikAuthProvider : IAuthProvider
             .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
             .WithEnvironment("AUTHENTIK_POSTGRESQL__PASSWORD", authentikDbPassword)
             .WithArgs("server")
+            .WaitFor(authentikDb)
             .WaitFor(worker)
             // Health check ensures Authentik OAuth provider is ready before server starts
             // Using OIDC discovery endpoint instead of /-/health/live/ which only checks if server is up

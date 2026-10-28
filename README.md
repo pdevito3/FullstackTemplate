@@ -84,6 +84,8 @@ This starts:
 - **React Dev Server** - Vite with hot reload
 - **Auth Provider** - the provider that the `AuthProvider` setting selects
 
+The UI starts after the BFF and the API are healthy, and the BFF starts after the auth provider is healthy. Until then, the dashboard shows the UI as `Waiting`.
+
 ### Ports
 
 A normal run uses the same ports at each start. All of them are in the block 24700 to 24799, which no common tool uses as a default. Each group of ten ports has one part of the stack:

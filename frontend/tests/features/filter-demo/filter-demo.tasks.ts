@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import type { Notification as AppNotification } from '@/components/notification'
+import { browserZone, instantIn } from '@tests/support/clock'
 import { filterDemo } from './filter-demo.locators'
 
 interface ToastText {
@@ -24,8 +25,9 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
-    async openOn(today: Date) {
-      await page.clock.setFixedTime(today)
+    /** Opens the page at noon of `today`, a date such as `2026-08-15`, in the zone of the browser. */
+    async openOn(today: string) {
+      await page.clock.setFixedTime(instantIn(`${today}T12:00`, browserZone()))
       await page.goto('/filter-demo')
       await expect(at.heading).toBeVisible()
     },

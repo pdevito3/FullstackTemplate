@@ -3,8 +3,8 @@ import { takesUpSpace } from '@tests/support/screen'
 import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
-const dayInASixWeekMonth = new Date('2026-08-15T12:00:00Z')
-const dayInAFiveWeekMonth = new Date('2026-09-15T12:00:00Z')
+const dayInASixWeekMonth = '2026-08-15'
+const dayInAFiveWeekMonth = '2026-09-15'
 
 test.describe('the Add Filter menu on a phone', () => {
   test.use({ viewport: phone })

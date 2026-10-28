@@ -469,7 +469,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Add the name of the new permission to the two lists in `PermissionTests` (`list_names_returns_all_permission_names` and `get_all_returns_all_permissions`)
 - [ ] Consider what additional business methods the entity needs
 - [ ] Run `dotnet ef migrations add Add[EntityName]` to create migration
-- [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
+- [ ] Regenerate and commit the API contract with the `api-contract` skill
 
 ### New Property Checklist
 - [ ] Property added with private setter in entity
@@ -487,7 +487,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] A new text column with a max length is in `CallerColumns`, `FixedOptionColumns`, or `ServerWrittenColumns` of `StringColumnLengthTests`. For a caller column, add the property to the input and the blueprint of the entity graph, so that the domain write can set it
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`
-- [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
+- [ ] Regenerate and commit the API contract with the `api-contract` skill
 
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
@@ -504,7 +504,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Telemetry added with the `feature-telemetry` skill: query tags, id tags on the feature span, a log for each state change, and metrics if support needs a rate
 - [ ] A command that runs again or takes a lock has a race test (see the `writing-tests` skill)
 - [ ] Run `dotnet build` to verify compilation
-- [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract
+- [ ] Regenerate and commit the API contract with the `api-contract` skill
 
 ## Reference Files
 

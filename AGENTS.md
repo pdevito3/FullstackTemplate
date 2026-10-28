@@ -88,7 +88,7 @@ pnpm test:e2e
 - Do not install the Aspire workload. It is obsolete.
 - Do not use persistent containers early in development. They keep state between restarts.
 - Do not edit generated files, such as `frontend/src/routeTree.gen.ts`, `frontend/src/api/generated*/`, `FullstackTemplate.Server/openapi/`, and the EF migration snapshots.
-- If you change the Server API, build the Server, then run `pnpm generate:api` in `frontend/`. Commit the result.
+- If you change the Server API, use the `api-contract` skill.
 
 ## Aspire
 

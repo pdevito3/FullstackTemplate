@@ -50,7 +50,7 @@ Do these steps in sequence. Each step has a doc in `docs/backend/`.
 5. Add the endpoint, and the gRPC method and the MCP tool if the feature needs them ([endpoints.md](backend/endpoints.md)).
 6. Add the domain events and their handlers ([domain-events.md](backend/domain-events.md)).
 7. Add the telemetry that production support needs: query tags, id tags on the feature span, logs, and metrics ([feature-telemetry.md](backend/feature-telemetry.md)).
-8. Build the Server, then run `pnpm generate:api` in `frontend/` (see [OpenAPI document](#openapi-document)).
+8. Regenerate the API contract with the `api-contract` skill (see [OpenAPI document](#openapi-document)).
 
 ## OpenAPI document
 

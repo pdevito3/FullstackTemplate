@@ -166,7 +166,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Ensure `ApplyConfigurationsFromAssembly` is called in OnModelCreating
 
 10. **Generate the API Contract**
-   - Build the Server, then run `pnpm generate:api` in `frontend/`
+   - Regenerate the API contract with the `api-contract` skill
    - Commit the generated files with the change. Do not edit them by hand
 
 ---
@@ -271,7 +271,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    ```
 
 12. **Generate the API Contract**
-   - Build the Server, then run `pnpm generate:api` in `frontend/`
+   - Regenerate the API contract with the `api-contract` skill
    - Commit the generated files with the change. Do not edit them by hand
 
 ---
@@ -381,7 +381,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Custom response DTO if different from standard entity DTO
 
 8. **Generate the API Contract**
-   - Build the Server, then run `pnpm generate:api` in `frontend/`
+   - Regenerate the API contract with the `api-contract` skill
    - Commit the generated files with the change. Do not edit them by hand
 
 ---

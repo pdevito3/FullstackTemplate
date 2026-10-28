@@ -17,7 +17,7 @@ Regenerate after a change to any of these:
 
 ## Procedure
 
-1. From the repository root, build the Server: `dotnet build FullstackTemplate.Server --no-incremental`. The build must end with 0 errors. It writes one document for each API version.
+1. From the repository root, build the Server: `dotnet build FullstackTemplate.Server --no-incremental`. The build must end with 0 errors. It writes one document for each API version: `FullstackTemplate.Server.json` for v1, and `FullstackTemplate.Server_v<n>.json` for each later version.
    - Use the Debug configuration, the default. A build in another configuration writes nothing.
    - A build with nothing to compile does not write the document again. `--no-incremental` makes it write the document.
    - A failed build keeps the old document. Then step 2 gives the old contract and shows no error.
@@ -26,11 +26,9 @@ Regenerate after a change to any of these:
 4. In `frontend/`, run `pnpm build`, `pnpm lint`, `pnpm test`, and `pnpm test:e2e`. The `api-contract` job runs the same four. `tsc` compiles the generated files, so a renamed or removed field fails at each caller.
 5. Commit the Server change, the document, and the generated files in one commit.
 
-The work is done when steps 3 and 4 pass, and the diff has no hand change under `frontend/src/api/generated*/` or `FullstackTemplate.Server/openapi/`.
-
 ## Fix the cause on the Server
 
-The generated files are output. Kubb writes them again on each run, so change only the Server and regenerate.
+Do not edit a file in `frontend/src/api/generated*/` or `FullstackTemplate.Server/openapi/`. These files are output. Kubb writes them again on each run, so change only the Server and regenerate.
 
 - **A generated type is wrong.** Find the property in the document. Find the transformer or the attribute that sets it in `docs/frontend.md#a-generated-type-is-wrong`. Fix the DTO, the attribute, or the transformer. A transformer can read attributes with reflection. Use the `source-generators` skill for the RS0030 rule. Add a test in `OpenApiTransformerTests` (unit) or `OpenApiDocumentTests` (functional). Then do the procedure.
 - **A generated file has a merge conflict.** Take either side of each generated file and of the document. Then do the procedure.
@@ -45,3 +43,12 @@ The rules are in `docs/frontend/server-state.md` and `docs/frontend.md`.
 - A list client (an operation name that ends in `List`) returns the full response. The hook reads the `X-Pagination` header with `parsePagination`.
 - Pick `throwOnError` by the error mode that `docs/frontend.md#api-client` gives.
 - A form takes each limit from the generated Zod schema of its DTO, with `stringWithMaxLengthOf`, `maxLengthOf`, or `maximumOf` from `lib/api-contract.ts`. If a function throws because the contract has no limit, add `[SchemaMaxLength]` or `[SchemaMaximum]` to the request DTO on the Server and regenerate. See `docs/frontend.md#forms`.
+
+## Review the result
+
+Before you call the change done, make sure that each item is true:
+
+- [ ] Step 3 shows no diff.
+- [ ] Step 4 passes.
+- [ ] The diff has no hand change under `frontend/src/api/generated*/` or `FullstackTemplate.Server/openapi/`.
+- [ ] The Server change, the document, and the generated files are in one commit.

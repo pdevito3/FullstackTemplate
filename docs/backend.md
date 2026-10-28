@@ -217,6 +217,8 @@ Each entity has `Version`, the Postgres `xmin` of its row. `MapVersionToXmin` ma
 - The read DTO of a root shows `version`. A PUT body that replaces the fields of an edit form has a required `version`, and the entity method calls `GuardVersion` first (see [domain-entities.md](backend/domain-entities.md#versions)). A command for one intent, such as a role change, a new permission, or a delete, has no version. The `xmin` check still stops its race between the load and the save.
 - `Version` is an opaque number. Compare it only for equality. A list cannot filter or sort on `version`, and `ApplyFilters` and `ApplySortOrder` return 400 for it. Postgres has no order for `xid`, so a range or a sort fails. An equality filter works in Postgres, but a list has no use for it, so it also gives 400.
 
+After a lost acknowledgment of a commit, the execution strategy of EF sends the save again. Before it does, the save looks for its audit entries. If they are there, the save committed, so it returns success and sets the `Version` of each saved entity. Thus the save does not run two times, and the caller does not get a 409 for a save that worked. A save that writes no audit entry, such as a save of only a `[NotAudited]` table, has nothing to look for, and it can still get a 409. See [ADR 0010](adr/0010-domain-events-in-the-save-transaction.md).
+
 ### Migrations
 
 ```bash

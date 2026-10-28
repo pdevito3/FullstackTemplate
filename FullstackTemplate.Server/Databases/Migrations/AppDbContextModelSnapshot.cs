@@ -238,6 +238,11 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("trace_id")
                         .IsFixedLength();
 
+                    b.Property<uint>("TransactionId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("OccurredAt", "RecordId", "Ordinal")
                         .HasName("pk_audit_entries");
 

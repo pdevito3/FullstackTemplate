@@ -1,0 +1,4 @@
+# git blame skips these commits. Run: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore(repo): convert each CRLF text file to LF
+45871d134ffc0f52cefac41bcddc1e94808ee19e

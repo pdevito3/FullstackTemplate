@@ -24,7 +24,7 @@ Run all frontend commands in `frontend/`.
 
 `pnpm test:e2e` (functional):
 
-- Run it after each change in `frontend/src`. It needs no stack. It runs each test in three zones, and it takes about a minute.
+- Run it after each change in `frontend/src`. It needs no stack. It runs each test in three zones, and it takes about three minutes.
 - CI runs it on each pull request, in the `api-contract` job.
 - It mocks the BFF. Thus it cannot find a fault in the BFF, the Server, or the IdP.
 

@@ -1,7 +1,7 @@
 // The layout and focus sweep of browse.mjs --sweep. See "Sweep" in SKILL.md.
 import path from 'node:path'
 
-export const configs = [
+const configs = [
   { width: 320, height: 640, scheme: 'light', fontSize: 16 },
   { width: 320, height: 640, scheme: 'dark', fontSize: 16 },
   { width: 390, height: 844, scheme: 'light', fontSize: 16 },
@@ -12,7 +12,7 @@ export const configs = [
   { width: 1280, height: 800, scheme: 'light', fontSize: 24 },
 ]
 const restingConfig = { width: 1280, height: 800, scheme: null, fontSize: 16 }
-export const configName = ({ width, scheme, fontSize }) => `${width}px ${scheme} ${fontSize}px font`
+const configName = ({ width, scheme, fontSize }) => `${width}px ${scheme} ${fontSize}px font`
 
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'
 const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdomain.example-company-name.com'
@@ -21,7 +21,7 @@ const emailKeys = /email/i
 
 // Gives each text that the server sends a long value. A value that came once gets the same long value in each
 // later answer, so that a recipe that compares the screen with the API still matches.
-export function longValues() {
+function longValues() {
   const seen = new Map()
   const longFor = (key, value) => {
     if (!seen.has(value)) seen.set(value, emailKeys.test(key) || value.includes('@') ? longEmail : longName)
@@ -146,7 +146,7 @@ function measureLayout() {
 
 // Adds a measured fault to the list and returns it when it is new. A fault is the same fault on each capture and
 // config of the same page, so the report names it once with the places it showed.
-export function record(faults, measured, { at, url, config }) {
+function record(faults, measured, { at, url, config }) {
   const key = [new URL(url).pathname, measured.kind, measured.element, measured.text, measured.how.replace(/\d+ px/g, '')].join('|')
   const known = faults.find((fault) => fault.key === key)
   if (known) {

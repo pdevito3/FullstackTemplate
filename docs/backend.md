@@ -255,3 +255,35 @@ To run the tests in a web UI, open the **Labcoat UI** link of the `tests` resour
 To use Labcoat without the stack, run `dotnet labcoat` from the repository root.
 
 Local runs reuse one Postgres container and create a new database for each run. If the `CI` variable is set, each run gets a new container.
+
+### Race tests
+
+A race test puts two requests in one fixed order. Write a race test for each of these:
+
+- A command that sends no version and runs again after it loses a race.
+- A command that takes a lock.
+- A rule that counts or checks other rows, such as open appointments, stock, or overlaps.
+- A unique value that two requests can add at the same time.
+
+Use `PauseAtQuery` from `tests/FullstackTemplate.SharedTestHelpers/Utilities/`. It holds the first command whose SQL has a query tag, the name that `TagWithOperationCallSite` gives the query. Thus the test names a step of the handler, not a row.
+
+1. Pause the request under test after the tag of the load that the rival must follow. Use `PauseAtQuery.After(tag)`. `PauseAtQuery.Before(tag)` holds the command before it runs.
+2. Send the request under test through `pause.BuildServices()`. Send the rival through a usual `TestingServiceScope`.
+3. Wait for `pause.ReachedAsync()`, then commit the rival. If the rival must wait on a lock of the request under test, start the rival and wait for `pause.WaitUntilBlockedAsync(rival)`.
+4. Call `pause.Release()`. Then assert the result of each request, and the end state of each row that either request writes.
+
+```csharp
+var pause = PauseAtQuery.After("users.add_permission.load");
+await using var services = pause.BuildServices();
+var add = new TestingServiceScope(services).SendAsync(new AddUserPermission.Command(user.Id, "manage_users"));
+await pause.ReachedAsync();
+await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "read_users"));
+pause.Release();
+await Should.ThrowAsync<StaleVersionException>(add);
+```
+
+Do not use `Task.WhenAll` alone for a race test. The order of two parallel requests comes from the scheduler, so the test can pass when the fix is gone.
+
+Each wait of `PauseAtQuery` fails after 30 seconds with a message that names the tag. Thus a test that does not get to the step fails, and the run does not hang.
+
+Make the fix fail one time on purpose. Remove the run again, the lock, or the version check, and make sure that the race test fails. Then put the fix back. See `tests/FullstackTemplate.IntegrationTests/Databases/ConcurrencyTests.cs` for examples.

@@ -16,6 +16,7 @@ Put a test in the lowest suite that can prove the behavior. A lower suite is fas
 | A page of the SPA: what the user sees and what the page sends to the BFF | Functional | `pnpm test:e2e` | `frontend/tests/features/**/*.spec.ts` |
 | Login, logout, the session cookie, a token refresh, DPoP, PAR, or the BFF against a real IdP | Stack | `pnpm test:e2e:stack` | `frontend/e2e/*.spec.ts` |
 | A domain rule, a handler, or a Server endpoint | .NET | `dotnet test --solution FullstackTemplate.slnx` | `tests/`. See `docs/backend.md`, section "Tests". For test data, use the `test-entity-graph` skill. |
+| Two requests that race on the same rows | .NET integration test with `PauseAtQuery` | `dotnet test --solution FullstackTemplate.slnx` | `tests/FullstackTemplate.IntegrationTests/`. See `docs/backend.md#race-tests`. |
 
 Run all frontend commands in `frontend/`.
 
@@ -89,3 +90,5 @@ pnpm test:e2e
 ```
 
 If you changed the BFF, the AppHost, or the login code, also run `pnpm test:e2e:stack` against a running stack.
+
+If the change adds a command that runs again, takes a lock, or checks a rule over other rows, add a race test.

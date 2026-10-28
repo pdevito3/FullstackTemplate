@@ -179,11 +179,25 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 2. **Add Property to Domain Entity**
    ```csharp
+   // A text value gets a max length constant. A value object, such as EmailAddress, has its own.
+   public const int PhoneNumberMaxLength = 20;
+
    // Simple property. Mark each property for the audit log, except a flag, an enum, a Guid, an integer, or a foreign key.
-   [Sensitive] public string PhoneNumber { get; private set; }
+   // A value that the caller can leave empty is nullable. A required one is a string with = default!.
+   [Sensitive] public string? PhoneNumber { get; private set; }
 
    // Value object property
    [Sensitive] public EmailAddress Email { get; private set; } = default!;
+   ```
+   - Check the text value in `Validate[EntityName]` (rule 10 of `docs/backend/domain-entities.md`). If the file has no `using FullstackTemplate.Server.Exceptions;`, write `Exceptions.ValidationException`. Check a required value with `ThrowWhenNullOrWhitespace` first, and do not put it in an `is not null` block
+   ```csharp
+   if (entity.PhoneNumber is not null)
+   {
+       ValidationException.ThrowWhenLongerThan(entity.PhoneNumber, PhoneNumberMaxLength, "phoneNumber",
+           $"A phone number can have no more than {PhoneNumberMaxLength} characters.");
+       ValidationException.ThrowWhenHasCharacterPostgresCannotStore(entity.PhoneNumber, "phoneNumber",
+           "A phone number has a character that is not allowed.");
+   }
    ```
 
 3. **Update Factory Method (if set at creation)**
@@ -196,6 +210,8 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
            PhoneNumber = forCreation.PhoneNumber,  // Add new property
        };
        // ...
+       ValidateCustomer(entity);
+       // ...
    }
    ```
 
@@ -203,8 +219,11 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    ```csharp
    public Customer Update(CustomerForUpdate forUpdate)
    {
+       GuardVersion(forUpdate.Version);
        // ... existing updates
        PhoneNumber = forUpdate.PhoneNumber;  // Add new property
+
+       ValidateCustomer(this);
        // ...
    }
    ```
@@ -227,21 +246,31 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 8. **Update Entity Configuration**
    ```csharp
    // Simple property
-   builder.Property(e => e.PhoneNumber).HasMaxLength(20);
+   builder.Property(e => e.PhoneNumber).HasMaxLength(Customer.PhoneNumberMaxLength);
 
    // Value object
    builder.ComplexProperty(e => e.Email, email =>
    {
-       email.Property(e => e.Value).HasColumnName("email").HasMaxLength(320);
+       email.Property(e => e.Value).HasColumnName("email").HasMaxLength(EmailAddress.MaxLength).IsRequired();
    });
    ```
 
-9. **Create Migration**
+9. **Update the MCP and gRPC Adapters**
+   - An MCP tool or a gRPC method that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` sets each value by name. An update sets each value, so a value that the adapter does not send becomes null
+   - Add a parameter for the property to each of these adapters and to each SPA call of the update, and send it in the DTO. For gRPC, also add the field to the messages in the `.proto` file and to the mapping of the response
+   - Follow "MCP versions" and the gRPC rules of `docs/backend/endpoints.md`: a new required parameter of an MCP tool that exists needs a new tool name (an optional parameter with the default `null`, after `CancellationToken`, keeps the name), and a gRPC field that can have no value is `optional` (see "Adding a New Property" in `templates.md`)
+
+10. **Update the Test Lists**
+   - Add the property to the input and the blueprint of the entity graph with the `test-entity-graph` skill
+   - Give a required value a `Derive` in the blueprint. If the entity has `[EntityName]Rules` and shape fakers, put a rule for each new text property, required or nullable, there. Use it in each shape faker and in the `Derive`. Otherwise an `AutoFaker` fills a nullable text with a value that is too long, and unrelated tests fail at random
+   - List each new text column, also the column of a value object, in `CallerColumns` of `StringColumnLengthTests` with its domain write (see "Adding a New Property" in `templates.md`)
+
+11. **Create Migration**
    ```bash
    dotnet ef migrations add Add[PropertyName]To[EntityName]
    ```
 
-10. **Generate the API Contract**
+12. **Generate the API Contract**
    - Build the Server, then run `pnpm generate:api` in `frontend/`
    - Commit the generated files with the change. Do not edit them by hand
 
@@ -447,6 +476,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] A property that is not a flag, an enum, a `Guid`, an integer, or a foreign key has `[Sensitive]` or `[NotSensitive]` (see `docs/backend/audit-log.md`)
 - [ ] Factory method updated (if set at creation)
 - [ ] Update method updated (if updatable)
+- [ ] Each MCP tool, gRPC method, and SPA call that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` takes and sends the new property
 - [ ] Internal models updated (ForCreation/ForUpdate)
 - [ ] DTOs updated (Dto, ForCreationDto, ForUpdateDto as needed). The Dto has `Version`, and the ForUpdateDto has `required uint Version`
 - [ ] Mapper updated (custom mapping for value objects)

@@ -859,13 +859,32 @@ public abstract record DomainEvent;
 
 ### Step 1: Add to Domain Entity
 
+Give a text value a max length constant. Check the value in `Validate[EntityName]`, and use the constant in `HasMaxLength` in step 7 (see rule 10 of `docs/backend/domain-entities.md`). A value object, such as `EmailAddress`, checks its own value and has its own constant. If the file has no `using FullstackTemplate.Server.Exceptions;`, write `Exceptions.ValidationException` as `Tenant.cs` and `User.cs` do.
+
 ```csharp
-// In [EntityName].cs - add property with private setter and its audit mark
-[Sensitive] public string PhoneNumber { get; private set; }
+// In [EntityName].cs - add the constant, and the property with a private setter and its audit mark
+public const int PhoneNumberMaxLength = 20;
+
+// A value that the caller can leave empty is nullable
+[Sensitive] public string? PhoneNumber { get; private set; }
 
 // Or for value objects
 [Sensitive] public EmailAddress Email { get; private set; } = default!;
+
+private static void Validate[EntityName]([EntityName] entity)
+{
+    // ... existing checks
+    if (entity.PhoneNumber is not null)
+    {
+        ValidationException.ThrowWhenLongerThan(entity.PhoneNumber, PhoneNumberMaxLength, "phoneNumber",
+            $"A phone number can have no more than {PhoneNumberMaxLength} characters.");
+        ValidationException.ThrowWhenHasCharacterPostgresCannotStore(entity.PhoneNumber, "phoneNumber",
+            "A phone number has a character that is not allowed.");
+    }
+}
 ```
+
+A required text value is a `string` with `= default!`, as `Name` is in the entity template. Check it with `ThrowWhenNullOrWhitespace` first, and then with the two checks, with no `is not null` block. In steps 4 and 5, give it the type that `Email` has: a `string` with `= default!` in the models, and `[RequiredField]` in the request DTOs.
 
 ### Step 2: Update Factory Method (if set at creation)
 
@@ -879,6 +898,8 @@ public static [EntityName] Create([EntityName]ForCreation forCreation)
         Email = EmailAddress.Of(forCreation.Email),
     };
     // ...
+    Validate[EntityName](entity);
+    // ...
 }
 ```
 
@@ -887,14 +908,18 @@ public static [EntityName] Create([EntityName]ForCreation forCreation)
 ```csharp
 public [EntityName] Update([EntityName]ForUpdate forUpdate)
 {
+    GuardVersion(forUpdate.Version);
     // ... existing updates
     PhoneNumber = forUpdate.PhoneNumber;
     Email = EmailAddress.Of(forUpdate.Email);
 
+    Validate[EntityName](this);
     QueueDomainEvent(new [EntityName]Updated(Id));
     return this;
 }
 ```
+
+An update sets each value of `[EntityName]ForUpdate`. A value that the caller does not send becomes null, so each caller of the update, such as an MCP tool or an edit form, must send the new property (see step 8).
 
 ### Step 4: Update Internal Models
 
@@ -932,6 +957,8 @@ public sealed record [EntityName]ForCreationDto
 {
     // ... existing properties
     public string? PhoneNumber { get; init; }
+    // A non-nullable string of a request DTO needs [RequiredField]. A missing value is then a 400
+    [RequiredField]
     public string Email { get; init; } = default!;
 }
 
@@ -940,6 +967,7 @@ public sealed record [EntityName]ForUpdateDto
 {
     // ... existing properties
     public string? PhoneNumber { get; init; }
+    [RequiredField]
     public string Email { get; init; } = default!;
 }
 ```
@@ -968,20 +996,57 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
 
         // Simple property
         builder.Property(e => e.PhoneNumber)
-            .HasMaxLength(20);
+            .HasMaxLength([EntityName].PhoneNumberMaxLength);
 
         // Value object
         builder.ComplexProperty(e => e.Email, email =>
         {
             email.Property(e => e.Value)
                 .HasColumnName("email")
-                .HasMaxLength(320);
+                .HasMaxLength(EmailAddress.MaxLength)
+                .IsRequired();
         });
 
         // Add index if frequently queried
         builder.HasIndex(e => e.PhoneNumber);
     }
 }
+```
+
+### Step 8: Update the MCP and gRPC Adapters
+
+An MCP tool or a gRPC method that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` sets each value by name. Add a parameter for the property to each of them, and send it in the DTO. Otherwise the adapter cannot set the value, an update clears it, and a required value gives 400.
+
+- MCP: a new required parameter of a tool that exists is a breaking change and needs a new tool name (see "MCP versions" in `docs/backend/endpoints.md`). To keep the tool name, add the parameter as optional with the default `null`, after `CancellationToken cancellationToken`, because C# puts optional parameters last. The MCP SDK then leaves it out of `required`. An update from a caller that does not send it clears the value.
+- gRPC: add the field to the request and the response messages in the `.proto` file, and to the mapping of the response, for example `TenantGrpcMappings`. Mark a field that can have no value `optional`. Read `Has[FieldName]` and send `null` when it is false, and set the response field only when the value is not null, because a generated setter throws on null (see the gRPC rules in `docs/backend/endpoints.md`).
+
+```csharp
+        // ...
+        CancellationToken cancellationToken,
+        [Description("The new phone number, or null for no phone number.")] string? phoneNumber = null)
+    // ...
+            new Update[EntityName].Command(id, new [EntityName]ForUpdateDto { Name = name, Description = description, PhoneNumber = phoneNumber, Version = version }),
+```
+
+### Step 9: Update the Test Lists
+
+Add the property to the input and the blueprint of the entity graph (see the `test-entity-graph` skill), so that a test can set it. A required value needs a `Derive`, so that each test gets a valid value. If the entity has `[EntityName]Rules` and shape fakers in `Fakes/[EntityName]/`, put a rule for each new text property, required or nullable, in `[EntityName]Rules`. Use it in a `RuleFor` of each shape faker, and in the `Derive` of a required value. Give the rule a value that fits the max length, for example `f.Random.String2(10, "0123456789")`. Otherwise an `AutoFaker` fills the property with random text that can be longer than the column, and unrelated tests fail at random. Then list each new text column, also the column of a value object, in `CallerColumns` of `StringColumnLengthTests` with its domain write. An email column uses the `Email` generator, not `Text`.
+
+```csharp
+// Inputs.cs, in [EntityName]Input
+public string? PhoneNumber { get; set; }
+public string? Email { get; set; }
+
+// Blueprints.cs, in the factory of the [EntityName] blueprint
+PhoneNumber = input.PhoneNumber,
+Email = input.Email!,
+
+// Blueprints.cs, after the factory of the [EntityName] blueprint
+.Derive(i => i.Email, (_, _) => Faker.Internet.Email())
+
+// StringColumnLengthTests.cs, in CallerColumns
+["[entity_name]s.phone_number"] = new("phoneNumber", Text, v => TestGraph.Start(out _).AddTenant(out _).Add[EntityName](out _, e => e.PhoneNumber = v)),
+["[entity_name]s.email"] = new("email", Email, v => TestGraph.Start(out _).AddTenant(out _).Add[EntityName](out _, e => e.Email = v)),
 ```
 
 ---

@@ -189,6 +189,7 @@ The guard reads the user and their permission rows from the database in each han
 3. Call `permissionGuard.RequireAsync(Permission.ManageOrders(), cancellationToken)` first in each handler that needs it.
 4. Declare the 403 on each HTTP endpoint of these handlers. Give each MCP tool of these handlers `[ToolAccess(Permission.Names.ManageOrders)]` (see [endpoints.md](backend/endpoints.md#tool-access)).
 5. Add an integration test for a user with the permission and a user without it.
+6. Add the name of the permission to the two lists in `PermissionTests` (`list_names_returns_all_permission_names` and `get_all_returns_all_permissions`). Each list names all the permissions, so the tests fail until you add it.
 
 To remove a permission, remove its value and add a migration that calls `DeletePermission`. A row with a name that `Permission` does not know stops each load of its user.
 

@@ -268,7 +268,7 @@ A race test puts two requests in one fixed order. Write a race test for each of 
 Use `PauseAtQuery` from `tests/FullstackTemplate.SharedTestHelpers/Utilities/`. It holds the first command whose SQL has a query tag, the name that `TagWithOperationCallSite` gives the query. Thus the test names a step of the handler, not a row.
 
 1. Pause the request under test after the tag of the load that the rival must follow. Use `PauseAtQuery.After(tag)`. `PauseAtQuery.Before(tag)` holds the command before it runs.
-2. Send the request under test through `pause.BuildServices()`. Send the rival through a usual `TestingServiceScope`.
+2. Send the request under test through `pause.BuildServices()`, from `PauseAtQueryServices.cs` of the integration tests. Send the rival through a usual `TestingServiceScope`.
 3. Wait for `pause.ReachedAsync()`, then commit the rival. If the rival must wait on a lock of the request under test, start the rival and wait for `pause.WaitUntilBlockedAsync(rival)`.
 4. Call `pause.Release()`. Then assert the result of each request, and the end state of each row that either request writes.
 

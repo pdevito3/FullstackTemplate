@@ -34,6 +34,10 @@ describe('parseTimeZone', () => {
   it('refuses a zone that the browser does not know', () => {
     expect(() => parseTimeZone('Mars/Olympus_Mons')).toThrow(RangeError)
   })
+
+  it('gives the canonical ID of a zone typed in another case', () => {
+    expect(parseTimeZone('america/chicago')).toBe('America/Chicago')
+  })
 })
 
 describe('todayAt', () => {

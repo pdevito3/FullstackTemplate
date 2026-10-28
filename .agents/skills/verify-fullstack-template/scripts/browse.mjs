@@ -111,7 +111,7 @@ async function step(name, fn) {
   const t0 = Date.now()
   try {
     const value = await fn()
-    if (sweep) await sweepFocus({ page, outDir, step: name, faults: sweepFaults })
+    if (sweep) await sweepFocus({ page, settle, outDir, step: name, faults: sweepFaults })
     log('steps.log', `ok    ${name} (${Date.now() - t0} ms)`)
     console.log(`ok    ${name}`)
     return value

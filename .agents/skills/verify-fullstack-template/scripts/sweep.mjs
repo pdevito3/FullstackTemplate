@@ -194,7 +194,9 @@ async function applyConfig(page, cdp, settle, { width, height, scheme, fontSize 
   await settle()
 }
 
-export async function sweepFocus({ page, outDir, step, faults }) {
+// An overlay gives the focus back to its trigger after its exit animation, so the check waits for the animations.
+export async function sweepFocus({ page, settle, outDir, step, faults }) {
+  await settle().catch(() => {})
   const loss = await page.evaluate(readFocusLoss).catch(() => null)
   if (!loss) return
   const measured = { kind: 'focus goes to the body', element: loss.element, text: '', how: `the focused element ${loss.reason}` }

@@ -64,6 +64,29 @@ test('shows a filter to edit at its date and time in the zone of the place', asy
   await expect.element(page.getByRole('textbox', { name: 'Time in Pacific/Pago Pago' })).toHaveValue('09:00')
 })
 
+test('keeps the time of a filter to edit when the config has no zone', async () => {
+  // Arrange
+  const value: DateValue = { mode: 'on', startDate: new Date('2026-08-14T20:00:00Z'), dateType: 'datetimeUtc', timeZone: pagoPago }
+  const config = { ...startsAt, timeZone: undefined }
+  const onSubmit = vi.fn()
+  await render(
+    <DateFilter
+      config={config}
+      surface="submenu"
+      initialFilter={{ id: '1', ...config, operator: Operators.EQUALS, value }}
+      onSubmit={onSubmit}
+    />,
+  )
+
+  // Act
+  await page.getByRole('button', { name: 'Update Filter' }).click()
+
+  // Assert
+  const submitted = onSubmit.mock.lastCall?.[0].value as DateValue
+  expect(submitted.startDate).toEqual(value.startDate)
+  expect(submitted.timeZone).toBe(pagoPago)
+})
+
 test('refuses a time that the clocks of the place skip in the spring', async () => {
   // Arrange
   const newYork = parseTimeZone('America/New_York')

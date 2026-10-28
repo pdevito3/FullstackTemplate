@@ -1,6 +1,6 @@
 # Backend Feature Templates
 
-Complete code templates for generating a vertical slice feature. Replace `[EntityName]` with the actual entity name (e.g., `Customer`, `Order`).
+Complete code templates for generating a vertical slice feature. Replace `[EntityName]` with the actual entity name (e.g., `Customer`, `Order`). Replace `[entity_name]`, `[action_name]`, and `[criteria_name]` with the snake_case names (e.g., `customer`, `change_status`, `sales_region`), which the query tags and the span tags use. Replace `[ActionPastTense]` with the action in the past tense for the log (e.g., `Archived`).
 
 ## 1. Domain Entity
 
@@ -281,11 +281,15 @@ Each command checks a permission first (see `docs/backend/features-and-cqrs.md#p
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
+using FullstackTemplate.Server.Resources;
 using MediatR;
+using Serilog;
 
 public static class Add[EntityName]
 {
@@ -294,6 +298,8 @@ public static class Add[EntityName]
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, [EntityName]Dto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
             await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
@@ -303,9 +309,12 @@ public static class Add[EntityName]
                 ?? throw new ForbiddenAccessException("You can add a [EntityName] only to your own tenant.");
             var forCreation = request.Dto.To[EntityName]ForCreation(tenantId);
             var entity = [EntityName].Create(forCreation);
+            Activity.Current?.SetTag("app.[entity_name]_id", entity.Id);
 
             await dbContext.[EntityName]s.AddAsync(entity, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Added [EntityName] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -318,10 +327,14 @@ public static class Add[EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources;
 using MediatR;
+using Serilog;
 
 public static class Update[EntityName]
 {
@@ -330,16 +343,24 @@ public static class Update[EntityName]
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, [EntityName]Dto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.[entity_name]_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
 
-            var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
+            var entity = await dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.update.load")
+                .GetById(request.Id, cancellationToken);
 
             var forUpdate = request.Dto.To[EntityName]ForUpdate();
             entity.Update(forUpdate);
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Updated [EntityName] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -352,8 +373,12 @@ public static class Update[EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources;
 using MediatR;
+using Serilog;
 
 public static class Delete[EntityName]
 {
@@ -362,14 +387,22 @@ public static class Delete[EntityName]
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.[entity_name]_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
 
-            var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
+            var entity = await dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.delete.load")
+                .GetById(request.Id, cancellationToken);
 
             dbContext.[EntityName]s.Remove(entity);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Deleted [EntityName] {[EntityName]Id}", entity.Id);
         }
     }
 }
@@ -380,6 +413,8 @@ public static class Delete[EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using MediatR;
@@ -392,7 +427,11 @@ public static class Get[EntityName]
     {
         public async Task<[EntityName]Dto> Handle(Query request, CancellationToken cancellationToken)
         {
-            var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
+            Activity.Current?.SetTag("app.[entity_name]_id", request.Id);
+
+            var entity = await dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.get_by_id")
+                .GetById(request.Id, cancellationToken);
             return entity.To[EntityName]Dto();
         }
     }
@@ -404,6 +443,7 @@ public static class Get[EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using MediatR;
@@ -422,6 +462,7 @@ public static class Get[EntityName]List
 
             // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
             var query = dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.list")
                 .AsNoTracking()
                 .To[EntityName]DtoQueryable();
 
@@ -938,10 +979,14 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources;
 using MediatR;
+using Serilog;
 
 public static class [Action][EntityName]
 {
@@ -950,15 +995,23 @@ public static class [Action][EntityName]
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, [EntityName]Dto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.[entity_name]_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
 
-            var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
+            var entity = await dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.[action_name].load")
+                .GetById(request.Id, cancellationToken);
 
             entity.[Action]();  // Call domain method
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("[ActionPastTense] [EntityName] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -973,10 +1026,14 @@ public static class [Action][EntityName]
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources;
 using MediatR;
+using Serilog;
 
 public static class [Action][EntityName]
 {
@@ -985,15 +1042,23 @@ public static class [Action][EntityName]
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, [EntityName]Dto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<[EntityName]Dto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.[entity_name]_id", request.Id);
+
             await permissionGuard.RequireAsync(Permission.Manage[EntityName]s(), cancellationToken);
 
-            var entity = await dbContext.[EntityName]s.GetById(request.Id, cancellationToken);
+            var entity = await dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.[action_name].load")
+                .GetById(request.Id, cancellationToken);
 
             entity.[Action](request.Dto.Parameter1, request.Dto.Parameter2);
 
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("[ActionPastTense] [EntityName] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -1104,6 +1169,7 @@ public sealed class [Action][EntityName]Endpoint : IEndpoint
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.[Criteria]s;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
@@ -1119,11 +1185,14 @@ public static class Get[EntityName]sBy[Criteria]
     {
         public async Task<IReadOnlyList<[EntityName]Dto>> Handle(Query request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.[criteria_name]_id", request.[Criteria]Id);
+
             // No row has an ID that is not valid, and Postgres cannot take an ID with a NUL as a parameter
             if (!EntityId.IsValid(request.[Criteria]Id, [Criteria].IdPrefix))
                 return [];
 
             var entities = await dbContext.[EntityName]s
+                .TagWithOperationCallSite("[entity_name]s.list_by_[criteria_name]")
                 .AsNoTracking()
                 .Where(e => e.[Criteria]Id == request.[Criteria]Id)
                 .To[EntityName]DtoQueryable()

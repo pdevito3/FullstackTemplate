@@ -90,8 +90,7 @@ public class BaseEntityShapeTests
     }
 
     [Test]
-    [Timeout(10_000)]
-    public async Task save_of_an_entity_that_owns_itself_fails_with_the_fix(CancellationToken cancellationToken)
+    public async Task save_of_an_entity_that_owns_itself_fails_with_the_fix()
     {
         // Arrange
         await using var context = new SelfOwnedContext();
@@ -100,8 +99,9 @@ public class BaseEntityShapeTests
         context.Add(node);
 
         // Act
-        // The save runs on the pool, so the timeout can end a walk of the owners that never ends.
-        var act = () => Task.Run(() => context.SaveChangesAsync(cancellationToken), cancellationToken);
+        // The save runs on the pool, so the time limit can end a walk of the owners that never ends. The limit is on
+        // the save only, because a cold build of the model in Add can take seconds under load.
+        var act = () => Task.Run(() => context.SaveChangesAsync()).WaitAsync(TimeSpan.FromSeconds(10));
 
         // Assert
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("form a cycle");

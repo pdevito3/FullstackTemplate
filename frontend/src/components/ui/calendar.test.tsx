@@ -8,6 +8,7 @@ import { render } from 'vitest-browser-react'
 import { Button } from '@/components/ui/button'
 import { JollyCalendar, JollyRangeCalendar } from '@/components/ui/calendar'
 import { Popover, PopoverTrigger } from '@/components/ui/popover'
+import { parseTimeZone } from '@/lib/zoned-time'
 
 // The same shape as the Pick a date popover of the components showcase.
 function DatePopover() {
@@ -473,4 +474,22 @@ test('range calendar: a short start year and a short end year are marked after t
   await expect.element(endYear).not.toHaveAttribute('aria-invalid')
   await expect.element(screen.getByText(shortYearMessage)).not.toBeInTheDocument()
   await expect.element(screen.getByRole('status', { name: 'Range' })).toHaveTextContent('2026-03-10 to 2026-03-20')
+})
+
+test('calendar: marks today and opens on today at the place of the date, not in the zone of the browser', async () => {
+  // Arrange
+  vi.useFakeTimers({ toFake: ['Date'] })
+  // 05:00 UTC on September 1 is August 31 in Pago Pago, and September 1 in Kiritimati, the zone of the component tests.
+  vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+  try {
+    // Act
+    const screen = await render(<JollyCalendar aria-label="Date" timeZone={parseTimeZone('Pacific/Pago_Pago')} />)
+
+    // Assert
+    await expect.element(screen.getByRole('button', { name: 'Select month' })).toHaveTextContent('August 2026')
+    const background = (name: RegExp) => getComputedStyle(screen.getByRole('button', { name }).element()).backgroundColor
+    expect(background(/August 31, 2026/), 'today at the place').not.toBe(background(/August 30, 2026/))
+  } finally {
+    vi.useRealTimers()
+  }
 })

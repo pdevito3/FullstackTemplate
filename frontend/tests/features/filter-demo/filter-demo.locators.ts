@@ -24,6 +24,7 @@ export const filterDemo = (page: Page) => {
     dateField: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('group', { name, exact: true }),
     dateSegment: (propertyLabel: string, field: string, part: 'month' | 'day' | 'year') =>
       control(propertyLabel).getByRole('spinbutton', { name: `${part}, ${field}`, exact: true }),
+    time: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('textbox', { name, exact: true }),
     dateMessage: (propertyLabel: string, text: string) => control(propertyLabel).getByText(text, { exact: true }),
     calendar: (propertyLabel: string) => control(propertyLabel).getByRole('grid'),
     calendarNav: (propertyLabel: string, name: 'Next' | 'Previous') =>
@@ -36,6 +37,7 @@ export const filterDemo = (page: Page) => {
     option: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('checkbox', { name, exact: true }),
     onlyButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: /^Only / }),
     toasts: page.getByRole('alertdialog'),
+    queryKit: page.getByRole('status', { name: 'QueryKit string' }),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
   }

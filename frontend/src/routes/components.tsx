@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Dialog, type Key } from 'react-aria-components'
-import { today, getLocalTimeZone, type DateValue } from '@internationalized/date'
+import type { DateValue } from '@internationalized/date'
 import { Notification03Icon, Calendar03Icon, ArrowUpDownIcon, Mail01Icon, Add01Icon, Settings01Icon, UserIcon, Calculator01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -98,6 +98,7 @@ import {
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog'
+import { browserTimeZone, todayAt } from '@/lib/zoned-time'
 
 export const Route = createFileRoute('/components')({
   component: ComponentsPage,
@@ -140,7 +141,7 @@ const countries = [
 ]
 
 function ComponentsPage() {
-  const [date, setDate] = useState<DateValue | null>(today(getLocalTimeZone()))
+  const [date, setDate] = useState<DateValue | null>(todayAt(browserTimeZone(), new Date()))
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(false)
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [selectedFramework, setSelectedFramework] = useState<Key | null>(null)

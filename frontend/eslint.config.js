@@ -69,4 +69,47 @@ export default tseslint.config(
     files: ['src/components/ui/link.tsx'],
     rules: { 'no-restricted-imports': 'off' },
   },
+  {
+    // docs/frontend/code-style.md, section "Dates and times": the SPA shows and reads a time in the zone of its place,
+    // through src/lib/zoned-time.ts. These APIs use the zone of the browser. A test sets its clock from local parts.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/zoned-time.ts', 'src/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]',
+          message: 'This uses the zone of the browser. Use formatInstant (a time of a place) or formatDate (a date with no time) from @/lib/zoned-time. For a number, use Intl.NumberFormat.',
+        },
+        {
+          selector: "MemberExpression[object.name='Intl'][property.name='DateTimeFormat']",
+          message: 'Use formatInstant (a time of a place) or formatDate (a date with no time) from @/lib/zoned-time. They set the zone.',
+        },
+        {
+          selector: 'CallExpression[arguments.length=0][callee.property.name=/^get(FullYear|Month|Date|Day|Hours|Minutes|Seconds|TimezoneOffset)$/]',
+          message: 'This reads the date or the time in the zone of the browser. Use wallClockAt(instant, zone) or todayAt(zone, now) from @/lib/zoned-time.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name=/^set(FullYear|Month|Date|Hours|Minutes|Seconds)$/]',
+          message: 'This sets the date or the time in the zone of the browser. Use instantAt(wallClock, zone) from @/lib/zoned-time.',
+        },
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length>1]",
+          message: 'This makes a time in the zone of the browser. Use new CalendarDate(...) for a date, or instantAt(wallClock, zone) from @/lib/zoned-time for a time of a place.',
+        },
+        {
+          selector: "ImportDeclaration[source.value='@internationalized/date'] > ImportSpecifier[imported.name=/^(getLocalTimeZone|today|now|DateFormatter)$/]",
+          message: 'Use todayAt(zone, now) and browserTimeZone() from @/lib/zoned-time, and its formatters. Take the zone of the place, not of the browser.',
+        },
+        {
+          selector: "ImportDeclaration[source.value=/^(react-aria|@react-aria\\u002Fi18n)(\\u002F|$)/] > ImportSpecifier[imported.name=/^(useDateFormatter|DateFormatter)$/]",
+          message: 'The React Aria date formatter formats in the zone of the browser unless it is given one. Use formatInstant (a time of a place) or formatDate (a date with no time) from @/lib/zoned-time.',
+        },
+        {
+          selector: 'ImportDeclaration[source.value=/^date-fns/]',
+          message: 'date-fns formats in the zone of the browser. Use @/lib/zoned-time.',
+        },
+      ],
+    },
+  },
 )

@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import type { Notification as AppNotification } from '@/components/notification'
+import { browserZone, instantIn } from '@tests/support/clock'
 import { filterDemo } from './filter-demo.locators'
 
 interface ToastText {
@@ -24,8 +25,15 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
-    async openOn(today: Date) {
-      await page.clock.setFixedTime(today)
+    /** Opens the page at noon of `today`, a date such as `2026-08-15`, in the zone of the browser. */
+    async openOn(today: string) {
+      await page.clock.setFixedTime(instantIn(`${today}T12:00`, browserZone()))
+      await page.goto('/filter-demo')
+      await expect(at.heading).toBeVisible()
+    },
+
+    async openAt(instant: Date) {
+      await page.clock.setFixedTime(instant)
       await page.goto('/filter-demo')
       await expect(at.heading).toBeVisible()
     },
@@ -123,6 +131,13 @@ export function filterDemoPage(page: Page) {
     async updateWithQuickSelect(propertyLabel: string, quickSelect: string) {
       await at.button(propertyLabel, quickSelect).click()
       await at.button(propertyLabel, 'Update Filter').click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
+    async addTodayAtTimeFilter(propertyLabel: string, timeLabel: string, time: string) {
+      await at.button(propertyLabel, 'Today').click()
+      await at.time(propertyLabel, timeLabel).fill(time)
+      await at.addFilter(propertyLabel).click()
       await expect(at.control(propertyLabel)).toBeHidden()
     },
 

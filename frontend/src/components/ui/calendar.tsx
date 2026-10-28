@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useState, useEffect, useCallback, useId } from "react"
-import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date"
+import { CalendarDate } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -31,6 +31,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { browserTimeZone, todayAt, type TimeZone } from "@/lib/zoned-time"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { layoutClassNames, type CalendarLayout } from "@/components/ui/calendar-layout"
 import { dateRangePresets, singleDatePresets } from "@/components/ui/calendar-presets"
@@ -166,8 +167,14 @@ const CalendarGridBody = ({
   <AriaCalendarGridBody className={cn("[&>tr>td]:p-0", className)} {...props} />
 )
 
-const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
+interface CalendarCellProps extends AriaCalendarCellProps {
+  /** The zone of the place that the date belongs to. The cell marks today at that place, not in the browser zone. */
+  timeZone?: TimeZone
+}
+
+const CalendarCell = ({ className, timeZone = browserTimeZone(), ...props }: CalendarCellProps) => {
   const isRange = Boolean(useContext(AriaRangeCalendarStateContext))
+  const today = todayAt(timeZone, new Date())
   return (
     <AriaCalendarCell
       className={composeRenderProps(className, (className, renderProps) =>
@@ -197,7 +204,7 @@ const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
           renderProps.isOutsideMonth &&
             "text-muted-foreground opacity-50 data-[selected]:bg-accent/50 data-[selected]:text-muted-foreground data-[selected]:opacity-30",
           /* Current Date */
-          renderProps.date.compare(today(getLocalTimeZone())) === 0 &&
+          renderProps.date.compare(today) === 0 &&
             !renderProps.isSelected &&
             "bg-accent text-accent-foreground",
           /* Unavailable Date */
@@ -235,6 +242,8 @@ interface JollyCalendarProps<T extends AriaDateValue>
   showQuickSelects?: boolean
   showDateInput?: boolean
   layout?: CalendarLayout
+  /** The zone of the place that the date belongs to. It decides which day is today. The default is the browser zone. */
+  timeZone?: TimeZone
   /**
    * Keeps the same height for every month and for the month and year pickers, so that a popover does not move when
    * the month or the view changes.
@@ -254,6 +263,7 @@ function JollyCalendar<T extends AriaDateValue>({
   onChange,
   value,
   autoFocus,
+  timeZone = browserTimeZone(),
   ...props
 }: JollyCalendarProps<T>) {
   // Track focused value to navigate calendar view when quick select is used
@@ -263,7 +273,7 @@ function JollyCalendar<T extends AriaDateValue>({
       const calDate = value as CalendarDate
       return new CalendarDate(calDate.year, calDate.month, calDate.day)
     }
-    return today(getLocalTimeZone())
+    return todayAt(timeZone, new Date())
   })
 
   // Sync focusedValue when value changes externally
@@ -333,7 +343,7 @@ function JollyCalendar<T extends AriaDateValue>({
           <QuickSelectsPanel
             presets={singleDatePresets}
             layout={layout}
-            onSelect={(preset) => handleQuickSelect(preset.getDate())}
+            onSelect={(preset) => handleQuickSelect(preset.getDate(timeZone))}
           />
         )}
         <Calendar
@@ -356,7 +366,7 @@ function JollyCalendar<T extends AriaDateValue>({
                   {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
                 </CalendarGridHeader>
                 <CalendarGridBody>
-                  {(date) => <CalendarCell date={date} />}
+                  {(date) => <CalendarCell date={date} timeZone={timeZone} />}
                 </CalendarGridBody>
               </CalendarGrid>
             </CalendarContent>
@@ -380,6 +390,8 @@ interface JollyRangeCalendarProps<T extends AriaDateValue>
   showQuickSelects?: boolean
   showDateInput?: boolean
   layout?: CalendarLayout
+  /** The zone of the place that the date belongs to. It decides which day is today. The default is the browser zone. */
+  timeZone?: TimeZone
   /**
    * Keeps the same height for every month and for the month and year pickers, so that a popover does not move when
    * the month or the view changes.
@@ -399,6 +411,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
   onChange,
   value,
   autoFocus,
+  timeZone = browserTimeZone(),
   ...props
 }: JollyRangeCalendarProps<T>) {
   // The view moves to the range start on mount, on a quick select, and on a typed start date. A pick in the grid
@@ -409,7 +422,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
       const start = value.start as CalendarDate
       return new CalendarDate(start.year, start.month, start.day)
     }
-    return today(getLocalTimeZone())
+    return todayAt(timeZone, new Date())
   })
 
   const handleQuickSelect = useCallback((range: { start: CalendarDate; end: CalendarDate }) => {
@@ -488,7 +501,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           <QuickSelectsPanel
             presets={dateRangePresets}
             layout={layout}
-            onSelect={(preset) => handleQuickSelect(preset.getRange())}
+            onSelect={(preset) => handleQuickSelect(preset.getRange(timeZone))}
           />
         )}
         <RangeCalendar
@@ -511,7 +524,7 @@ function JollyRangeCalendar<T extends AriaDateValue>({
                   {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
                 </CalendarGridHeader>
                 <CalendarGridBody>
-                  {(date) => <CalendarCell date={date} />}
+                  {(date) => <CalendarCell date={date} timeZone={timeZone} />}
                 </CalendarGridBody>
               </CalendarGrid>
             </CalendarContent>

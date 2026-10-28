@@ -1,5 +1,7 @@
-import { format } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
+import { toCalendarDate } from '@internationalized/date'
+
+import { browserTimeZone, offsetAt, wallClockAt } from '@/lib/zoned-time'
+
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
 import { LogicalOperators } from './operators'
@@ -109,46 +111,32 @@ function convertMultiSelectFilter(
 }
 
 /**
- * Get timezone offset string in ±HH:mm format
- */
-function getTimezoneOffset(date: Date): string {
-  const offset = -date.getTimezoneOffset()
-  const sign = offset >= 0 ? '+' : '-'
-  const hours = Math.floor(Math.abs(offset) / 60).toString().padStart(2, '0')
-  const minutes = (Math.abs(offset) % 60).toString().padStart(2, '0')
-  return `${sign}${hours}:${minutes}`
-}
-
-/**
  * Convert a date filter to QueryKit string
  */
 function convertDateFilter(propertyKey: string, _operator: string, value: DateValue): string {
-  const { mode, startDate, endDate, exclude, dateType = 'date' } = value
+  const { mode, startDate, endDate, exclude, dateType = 'date', timeZone = browserTimeZone() } = value
 
-  // Format dates as ISO 8601 strings based on dateType:
+  // Format dates as ISO 8601 strings based on dateType. The date and the wall clock time are those of the zone that the
+  // dates were picked in:
   // - date: YYYY-MM-DD
-  // - datetime: YYYY-MM-DDTHH:mm:ss (local, no timezone)
+  // - datetime: YYYY-MM-DDTHH:mm:ss (wall clock time, no zone)
   // - datetimeUtc: YYYY-MM-DDTHH:mm:ssZ (UTC)
-  // - datetimeOffset: YYYY-MM-DDTHH:mm:ss±HH:mm (with timezone offset)
+  // - datetimeOffset: YYYY-MM-DDTHH:mm:ss±HH:mm (wall clock time and its offset)
   const formatDateValue = (date: Date): string => {
+    const wallClock = wallClockAt(date, timeZone).set({ millisecond: 0 })
     switch (dateType) {
       case 'datetime':
-        // ISO 8601 local datetime: 2022-07-01T00:00:03
-        return format(date, "yyyy-MM-dd'T'HH:mm:ss")
+        return wallClock.toString()
 
       case 'datetimeUtc':
-        // ISO 8601 UTC datetime: 2022-07-01T00:00:03Z
-        // Convert local time to UTC
-        return formatInTimeZone(date, 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'")
+        return `${date.toISOString().slice(0, 19)}Z`
 
       case 'datetimeOffset':
-        // ISO 8601 datetime with offset: 2022-07-01T00:00:03+01:00
-        return format(date, "yyyy-MM-dd'T'HH:mm:ss") + getTimezoneOffset(date)
+        return wallClock.toString() + offsetAt(date, timeZone)
 
       case 'date':
       default:
-        // ISO 8601 date-only: 2022-07-01
-        return format(date, 'yyyy-MM-dd')
+        return toCalendarDate(wallClock).toString()
     }
   }
 

@@ -39,6 +39,29 @@ export default tseslint.config(
           'newlines-between': 'ignore',
         },
       ],
+      // docs/frontend.md, section "Links": a link to a route takes typed `to` and `params`, and keeps the React Aria behavior.
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-aria-components',
+              importNames: ['Link'],
+              message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. A React Aria Link with an href loads the whole page again.',
+            },
+            {
+              name: '@tanstack/react-router',
+              importNames: ['Link'],
+              message: 'Use Link from @/components/ui/link. It has the React Aria focus and press behavior.',
+            },
+          ],
+        },
+      ],
     },
+  },
+  {
+    // The router link builds on the React Aria Link.
+    files: ['src/components/ui/link.tsx'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 )

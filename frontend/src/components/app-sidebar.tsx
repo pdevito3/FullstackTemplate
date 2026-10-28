@@ -21,11 +21,11 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuLink,
   SidebarMenuSub,
-  SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarMenuSubLink,
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-variants"
@@ -81,14 +81,14 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" href="/" onPress={closeMobile}>
+            <SidebarMenuLink size="lg" to="/" onPress={closeMobile}>
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                 <span className="text-xs font-bold">{appInitials}</span>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{appName}</span>
               </div>
-            </SidebarMenuButton>
+            </SidebarMenuLink>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -102,10 +102,10 @@ export function AppSidebar() {
                   const isActive = currentPath === item.url
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton href={item.url} isActive={isActive} tooltip={item.title} onPress={closeMobile}>
+                      <SidebarMenuLink to={item.url} isActive={isActive} tooltip={item.title} onPress={closeMobile}>
                         <HugeiconsIcon icon={item.icon} />
                         <span>{item.title}</span>
-                      </SidebarMenuButton>
+                      </SidebarMenuLink>
                     </SidebarMenuItem>
                   )
                 })}
@@ -127,9 +127,9 @@ export function AppSidebar() {
                           const isActive = currentPath === item.url
                           return (
                             <SidebarMenuSubItem key={item.title} isActive={isActive}>
-                              <SidebarMenuSubButton href={item.url} isActive={isActive} onPress={closeMobile}>
+                              <SidebarMenuSubLink to={item.url} isActive={isActive} onPress={closeMobile}>
                                 <span>{item.title}</span>
-                              </SidebarMenuSubButton>
+                              </SidebarMenuSubLink>
                             </SidebarMenuSubItem>
                           )
                         })}

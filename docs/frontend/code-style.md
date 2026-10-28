@@ -66,7 +66,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 2. Use the React Aria props: `onPress` (not `onClick`) and `isDisabled` (not `disabled`) on a `Button`. Use `onAction` on a menu item. A button that becomes unavailable while it has the focus, such as a pager button, uses `aria-disabled` and ignores the press, because a disabled button loses the focus to the body.
 3. Put the trigger and its overlay as children of the trigger component. For example, put a `Button` and a `DropdownMenu` in a `DropdownMenuTrigger`. Do not use a `render` prop.
 4. Give a `Dialog` or a `Popover` a title or an `aria-label`. Give an icon-only `Button` an `aria-label`. Use a `Tooltip`, not the `title` attribute.
-5. Use `href` for a link. The `RouterProvider` in `routes/__root.tsx` sends React Aria links to TanStack Router.
+5. Use `Link` from `@/components/ui/link` for a link to a route, with `to` and `params`. See [Links](../frontend.md#links).
 6. To show a toast, call `Notification.success`, `error`, `info`, or `warning` from `@/components/notification`.
 
 ## Styles

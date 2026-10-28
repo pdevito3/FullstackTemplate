@@ -5,14 +5,14 @@ import {
   Breadcrumb as BreadcrumbPrimitive,
   Breadcrumbs as BreadcrumbsPrimitive,
   composeRenderProps,
-  Link as LinkPrimitive,
   type BreadcrumbProps,
   type BreadcrumbsProps,
-  type LinkProps,
 } from "react-aria-components"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon, MoreHorizontalCircle01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
+import { createRouterLink } from "@/components/ui/create-router-link"
+import { RouterLinkPrimitive, type RouterLinkHostProps } from "@/components/ui/link"
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -77,17 +77,18 @@ function BreadcrumbItem({
   )
 }
 
-function BreadcrumbLink({ className, ...props }: LinkProps) {
+const BreadcrumbLink = createRouterLink(function BreadcrumbLinkHost({
+  className,
+  ...props
+}: RouterLinkHostProps) {
   return (
-    <LinkPrimitive
+    <RouterLinkPrimitive
       data-slot="breadcrumb-link"
-      className={composeRenderProps(className, (className) =>
-        cn("transition-colors hover:text-foreground", className)
-      )}
+      className={cn("transition-colors hover:text-foreground", className)}
       {...props}
     />
   )
-}
+})
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   return (

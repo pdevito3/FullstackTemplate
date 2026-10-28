@@ -163,8 +163,32 @@ import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/users')({
   component: UsersPage,
+  staticData: { breadcrumb: 'Users' },
 })
 ```
+
+Each page route sets `staticData.breadcrumb`. The layout header shows it as the name of the page. A test in `src/root-route.test.tsx` fails when a page route has no breadcrumb.
+
+## Links
+
+To link to a route, use `Link` from `@/components/ui/link`. Give the path of the route in `to`, and give its params in `params`. TypeScript checks both against the route tree:
+
+```typescript
+import { Link } from '@/components/ui/link'
+
+<Link to="/users/$id" params={{ id: user.id }}>{user.fullName}</Link>
+```
+
+- Do not build the path as a string, such as `` `/users/${user.id}` ``. TypeScript does not check a string path.
+- `search`, `hash`, `replace`, and the other options of the TanStack Router `Link` also work.
+- The link is a React Aria `Link`: use `onPress`, not `onClick`. A click with Cmd, Ctrl, or Shift, and a middle-click, open the link in a new tab or window.
+- The link sets `aria-current="page"` only when it goes to the current page, with the same search params.
+- To disable a link, set `disabled`.
+- `BreadcrumbLink`, `SidebarMenuLink`, and `SidebarMenuSubLink` take the same props.
+- `SidebarMenuLink` and `SidebarMenuSubLink` set `aria-current="page"` from their `isActive` prop, not from the router.
+- To make another link component, render `RouterLinkPrimitive` in it and wrap it with `createRouterLink`. See `BreadcrumbLink` in `components/ui/breadcrumb.tsx`.
+
+ESLint does not let you import `Link` from `react-aria-components` or from `@tanstack/react-router`. A React Aria component with a plain `href` loads the whole page again. Use a plain `href` only for an address outside the SPA, such as `/bff/login`.
 
 ## Theme
 

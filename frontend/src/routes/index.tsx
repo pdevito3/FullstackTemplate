@@ -19,6 +19,7 @@ import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 
 export const Route = createFileRoute('/')({
   component: Index,
+  staticData: { breadcrumb: 'Home' },
 })
 
 function Index() {

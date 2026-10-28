@@ -108,3 +108,24 @@ test('a link to a route with params does not compile without the params', () => 
 
   expect(links).toHaveLength(2)
 })
+
+test('a disabled link is marked disabled and does not navigate or call onPress', async () => {
+  const disabledRoot = createRootRoute({
+    component: () => (
+      <Link<TestRouter, '/', '/users/$id'> to="/users/$id" params={{ id: 'u_1' }} disabled onPress={onPress}>
+        Open user
+      </Link>
+    ),
+  })
+  const router = createRouter({ routeTree: disabledRoot, history: createMemoryHistory({ initialEntries: ['/'] }) })
+  const screen = await render(<RouterProvider router={router} />)
+  const link = screen.getByRole('link', { name: 'Open user' })
+  await expect.element(link).toHaveAttribute('aria-disabled', 'true')
+
+  // Playwright does not click an element with aria-disabled. A screen reader clicks it in this way.
+  const element = link.element() as HTMLElement
+  element.click()
+
+  expect(router.state.location.pathname).toBe('/')
+  expect(onPress).not.toHaveBeenCalled()
+})

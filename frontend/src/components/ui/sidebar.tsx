@@ -7,9 +7,7 @@ import {
   Button as ButtonPrimitive,
   composeRenderProps,
   Heading,
-  Link as LinkPrimitive,
   type ButtonProps,
-  type LinkProps,
 } from "react-aria-components"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SidebarLeft01Icon } from "@hugeicons/core-free-icons"
@@ -20,6 +18,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { createRouterLink } from "@/components/ui/create-router-link"
+import { RouterLinkPrimitive, type RouterLinkHostProps } from "@/components/ui/link"
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -34,10 +34,6 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-type SidebarButtonProps =
-  | (LinkProps & { href: string })
-  | (ButtonProps & { href?: never })
 
 // Only the mobile sidebar uses the sheet. Load it lazily, so that the modal
 // code is not in the entry chunk on desktop.
@@ -447,62 +443,81 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+interface SidebarMenuButtonOptions
+  extends VariantProps<typeof sidebarMenuButtonVariants> {
+  isActive?: boolean
+  tooltip?: string | React.ComponentProps<typeof Tooltip>
+}
+
+function SidebarMenuButtonTooltip({
+  tooltip,
+  children,
+}: {
+  tooltip: SidebarMenuButtonOptions["tooltip"]
+  children: React.ReactElement
+}) {
+  const { isMobile, state } = useSidebar()
+
+  if (!tooltip) {
+    return children
+  }
+
+  const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip
+
+  return (
+    <TooltipTrigger isDisabled={state !== "collapsed" || isMobile}>
+      {children}
+      <Tooltip placement="right" {...tooltipProps} />
+    </TooltipTrigger>
+  )
+}
+
 function SidebarMenuButton({
   isActive = false,
   variant = "default",
   size = "default",
   tooltip,
+  className,
   ...props
-}: SidebarButtonProps & {
-  isActive?: boolean
-  tooltip?: string | React.ComponentProps<typeof Tooltip>
-} & VariantProps<typeof sidebarMenuButtonVariants>) {
-  const { isMobile, state } = useSidebar()
-  // Read the className after the href check narrows the props, so that
-  // composeRenderProps gets the Link or the Button className type.
-  const comp =
-    props.href !== undefined ? (
-      <LinkPrimitive
-        data-slot="sidebar-menu-button"
-        data-sidebar="menu-button"
-        data-size={size}
-        data-active={isActive || undefined}
-        aria-current={isActive ? "page" : undefined}
-        {...props}
-        className={composeRenderProps(props.className, (className) =>
-          cn(sidebarMenuButtonVariants({ variant, size }), className)
-        )}
-      />
-    ) : (
+}: ButtonProps & SidebarMenuButtonOptions) {
+  return (
+    <SidebarMenuButtonTooltip tooltip={tooltip}>
       <ButtonPrimitive
         data-slot="sidebar-menu-button"
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive || undefined}
         {...props}
-        className={composeRenderProps(props.className, (className) =>
+        className={composeRenderProps(className, (className) =>
           cn(sidebarMenuButtonVariants({ variant, size }), className)
         )}
       />
-    )
-
-  if (!tooltip) {
-    return comp
-  }
-
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    }
-  }
-
-  return (
-    <TooltipTrigger isDisabled={state !== "collapsed" || isMobile}>
-      {comp}
-      <Tooltip placement="right" {...tooltip} />
-    </TooltipTrigger>
+    </SidebarMenuButtonTooltip>
   )
 }
+
+const SidebarMenuLink = createRouterLink(function SidebarMenuLinkHost({
+  isActive = false,
+  variant = "default",
+  size = "default",
+  tooltip,
+  className,
+  ...props
+}: RouterLinkHostProps & SidebarMenuButtonOptions) {
+  return (
+    <SidebarMenuButtonTooltip tooltip={tooltip}>
+      <RouterLinkPrimitive
+        data-slot="sidebar-menu-button"
+        data-sidebar="menu-button"
+        data-size={size}
+        data-active={isActive || undefined}
+        {...props}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      />
+    </SidebarMenuButtonTooltip>
+  )
+})
 
 function SidebarMenuAction({
   className,
@@ -633,45 +648,52 @@ function SidebarMenuSubItem({
   )
 }
 
+const sidebarMenuSubButtonClassName =
+  "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground"
+
+interface SidebarMenuSubButtonOptions {
+  size?: "sm" | "md"
+  isActive?: boolean
+}
+
 function SidebarMenuSubButton({
   size = "md",
   isActive = false,
+  className,
   ...props
-}: SidebarButtonProps & {
-  size?: "sm" | "md"
-  isActive?: boolean
-}) {
-  return props.href !== undefined ? (
-    <LinkPrimitive
-      data-slot="sidebar-menu-sub-button"
-      data-sidebar="menu-sub-button"
-      data-size={size}
-      data-active={isActive || undefined}
-      aria-current={isActive ? "page" : undefined}
-      {...props}
-      className={composeRenderProps(props.className, (className) =>
-        cn(
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
-          className
-        )
-      )}
-    />
-  ) : (
+}: ButtonProps & SidebarMenuSubButtonOptions) {
+  return (
     <ButtonPrimitive
       data-slot="sidebar-menu-sub-button"
       data-sidebar="menu-sub-button"
       data-size={size}
       data-active={isActive || undefined}
       {...props}
-      className={composeRenderProps(props.className, (className) =>
-        cn(
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-sm data-[size=sm]:text-xs data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
-          className
-        )
+      className={composeRenderProps(className, (className) =>
+        cn(sidebarMenuSubButtonClassName, className)
       )}
     />
   )
 }
+
+const SidebarMenuSubLink = createRouterLink(function SidebarMenuSubLinkHost({
+  size = "md",
+  isActive = false,
+  className,
+  ...props
+}: RouterLinkHostProps & SidebarMenuSubButtonOptions) {
+  return (
+    <RouterLinkPrimitive
+      data-slot="sidebar-menu-sub-button"
+      data-sidebar="menu-sub-button"
+      data-size={size}
+      data-active={isActive || undefined}
+      {...props}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(sidebarMenuSubButtonClassName, className)}
+    />
+  )
+})
 
 export {
   Sidebar,
@@ -688,10 +710,12 @@ export {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuLink,
   SidebarMenuSkeleton,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarMenuSubLink,
   SidebarProvider,
   SidebarRail,
   SidebarSeparator,

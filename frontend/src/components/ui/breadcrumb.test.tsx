@@ -1,16 +1,17 @@
+import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage } from '@/components/ui/breadcrumb'
 
 test.each([320, 375])('a long trail stays on one line in a %i px header and truncates only the current page', async (width) => {
-  const screen = await render(
+  const trail = () => (
     <header style={{ width }} className="flex h-16 items-center gap-2">
       <div className="flex min-w-0 items-center gap-2 px-4">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Work orders</BreadcrumbLink>
+              <BreadcrumbLink to="/">Work orders</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbItem>
               <BreadcrumbPage>T-101 work order for the north yard compressor</BreadcrumbPage>
@@ -18,8 +19,10 @@ test.each([320, 375])('a long trail stays on one line in a %i px header and trun
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-    </header>,
+    </header>
   )
+  const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
+  const screen = await render(<RouterProvider router={router} />)
   await expect.element(screen.getByRole('link', { name: 'Work orders' })).toBeVisible()
 
   const header = screen.container.querySelector('header')!
@@ -35,4 +38,24 @@ test.each([320, 375])('a long trail stays on one line in a %i px header and trun
   expect(current.scrollWidth).toBeGreaterThan(current.clientWidth)
   expect(getComputedStyle(current).textOverflow).toBe('ellipsis')
   expect(current.getBoundingClientRect().right).toBeLessThanOrEqual(header.getBoundingClientRect().right)
+})
+
+test('a BreadcrumbLink as the last item is the current page: disabled, not an anchor, and not focusable', async () => {
+  const trail = () => (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink to="/">Work orders</BreadcrumbLink>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  )
+  const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
+  const screen = await render(<RouterProvider router={router} />)
+
+  const current = screen.getByRole('link', { name: 'Work orders' })
+  await expect.element(current).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(current).toHaveAttribute('aria-current', 'page')
+  await expect.element(current).not.toHaveAttribute('tabindex')
+  expect(current.element().closest('a')).toBeNull()
 })

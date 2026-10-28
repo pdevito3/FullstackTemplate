@@ -4,6 +4,7 @@ import {
   createRoute,
   createRouter,
   RouterProvider,
+  type AnyRoute,
 } from '@tanstack/react-router'
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
@@ -36,9 +37,12 @@ test('the breadcrumb of a route with params shows the name that the route declar
 
 test('each page of the app declares the name that its breadcrumb shows', () => {
   const router = createRouter({ routeTree })
+  // A pathless layout or a route with an index child is never the last match, so a child names the page.
+  const hasIndexChild = (route: AnyRoute) =>
+    Object.values((route.children ?? {}) as Record<string, AnyRoute>).some((child) => child.path === '/')
 
   const pagesWithoutBreadcrumb = Object.values(router.routesById)
-    .filter((route) => !route.isRoot && !route.children)
+    .filter((route) => !route.isRoot && route.path !== undefined && !hasIndexChild(route))
     .filter((route) => !route.options.staticData?.breadcrumb)
     .map((route) => route.fullPath)
 

@@ -92,9 +92,11 @@ The tag and the operation names come from the endpoint names (`.WithName`) and t
 
 To change the contract after a change to the Server API:
 
-1. Build the Server in Debug. The build writes `FullstackTemplate.Server/openapi/FullstackTemplate.Server.json`.
+1. Build the Server in Debug with `dotnet build FullstackTemplate.Server --no-incremental`. The build writes `FullstackTemplate.Server/openapi/FullstackTemplate.Server.json`. Without `--no-incremental`, a build with nothing to compile does not write the document again.
 2. Run `pnpm generate:api` in `frontend/`.
 3. Commit the OpenAPI document and the generated files together.
+
+The `api-contract` skill gives the full procedure and the checks.
 
 If a generated file has a merge conflict, do not merge it by hand. Accept either side, then do steps 1 and 2 again. The `api-contract` job of the `CI` workflow fails when the committed files are not current. See [ADR 0001](adr/0001-commit-generated-api-contract.md).
 
@@ -119,6 +121,21 @@ const result = await getTenantList({ query: { pageNumber: 1, pageSize: 10 }, sig
 const tenants = result.data
 const pagination = parsePagination(result)
 ```
+
+### A generated type is wrong
+
+Fix the cause on the Server: the DTO, an attribute such as `[NamesOf<T>]`, or a transformer in `FullstackTemplate.Server/Resources/Entrypoints/Http/OpenApi/`. Add a test in `OpenApiTransformerTests` or `OpenApiDocumentTests`, then regenerate. The rules of the transformers are in [backend.md](backend.md#openapi-document).
+
+| The generated type | The cause on the Server |
+|---|---|
+| A property is optional, but the DTO property is not nullable | `RequireNonNullablePropertiesTransformer` |
+| A number field also takes a string | `RemoveStringFromNumbersTransformer` |
+| A `uint` field has no range | `UnsignedIntegerRangeTransformer` |
+| A field of names is a `string`, not a union of the names | `[NamesOf<T>]` on the DTO property, and `FixedNamesTransformer` |
+| A request field has no max length or no maximum | `[SchemaMaxLength]` or `[SchemaMaximum]` on the request DTO property, and `SchemaLimitsTransformer` |
+| A request body or a response has a type for each media type | `JsonContentTypeTransformer` |
+| A list client has no type for the `X-Pagination` header | `PaginationHeaderTransformer` |
+| A secured operation has no 401 response | `UnauthorizedResponseTransformer` |
 
 ## Query hooks
 

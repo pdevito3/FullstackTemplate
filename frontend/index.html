@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/Aspire.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fullstack Template</title>
+    <script>
+      // Sets the theme class before the first paint, so that a dark page does not show a light frame while the app
+      // loads. It must use the storage key and the "system" rule of ThemeProvider (src/components/theme-provider.tsx).
+      {
+        const theme = localStorage.getItem("ui-theme")
+        const isDark = theme === "dark" || (theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)
+        document.documentElement.classList.add(isDark ? "dark" : "light")
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

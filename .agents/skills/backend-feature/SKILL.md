@@ -509,6 +509,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Feature folder created with the Command/Query and Handler file
 - [ ] The command sends a version, carries `IRunsAgainWhenRaced`, or takes a lock that `docs/backend/concurrency.md` names. A create of a new aggregate root needs a lock only when its rule reads other rows
 - [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
+- [ ] The command makes its checks in the order of `docs/backend/features-and-cqrs.md#the-order-of-the-checks`: the 403 that needs no row, the load, the 403 that needs the row, the version, the state, the no-op, then the rules on the new values. A stale request to a record in a final state gets 409, and a same-value request to it gets the 422 of the state
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses

@@ -57,6 +57,45 @@ public static class UpdateUser
 
 A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. When a record of another domain links to the entity and must change with the delete, the command calls `Remove(entity.Delete())`, which queues the delete event. See rule 11 of [domain-events.md](domain-events.md#rules). A command that has no result implements `IRequest`, not `IRequest<T>`.
 
+## The order of the checks
+
+A request can fail more than one check. The first check that fails gives the response, and the SPA and the tests read that response. Thus each command makes its checks in this order:
+
+1. **401.** The request has no valid token. The authentication runs before the handler.
+2. **400, the binding and the request validation.** A route value, a query value, or the body does not bind, for example a body with no `version`. Or a value of the request breaks an attribute such as `[RequiredField]`, which `RequestValidationBehavior` checks for each entrypoint. Both run before the handler, so a caller without the permission also gets 400. MCP is the exception. Its tool filter checks the permission of `[ToolAccess]` before the arguments bind, so a caller without the permission gets `permission_denied`.
+3. **403, the permission that needs no row, and 422 for a value that it parses.** This check is the first statement of the handler (rule 1 of [Permission checks](#permission-checks)). A self check with the ID of the request, such as `RequireSelfOr` in `GetUser`, is in this step. When the check reads a value of the request, the handler parses the value in this step. For example, `AddUserPermission` parses the permission that it gives, so an unknown permission gets 422 before the 404. A query parses its filter and its sort after this check, and a value that is not valid gets 400.
+4. **404, the load.** `GetById` gives 404 for an unknown ID, for an ID of another tenant, and for an ID that `EntityId.IsValid` refuses.
+5. **403, the part of the permission rule that needs the row,** for example `GuardAllows`, or `RequireSelfOr` in `GetUserByIdentifier`, which needs the ID from the row.
+6. **409, the version.** A method that applies an edit form calls `GuardVersion` first (rule 8 of [domain-entities.md](domain-entities.md#rules)).
+7. **422, the state of the record.** A guard refuses the action in the current state, for example a final state. The guard reads only the row. If the command loads another aggregate, load it after this check.
+8. **The no-op.** If the method has a no-op, it goes here. A request that changes nothing returns success, and the method returns before it changes a value or queues an event. Examples are a move of a visit to its own day, and `AddUserPermission` for a permission that the user has. `User.Update` and `Tenant.Update` have no no-op. They apply each field and run the rules on the new values.
+9. **422 and 409, the rules on the new values.** The entity validation, a rule that reads other aggregates, and a check that needs the database, such as a unique name, run last. See [Validation](#validation).
+10. **409, the save.** `SaveChangesAsync` gives 409 when another request saved the row after the load. A command that runs again gives 409 only after it loses each run. See [concurrency.md](concurrency.md#run-again).
+
+The version comes before the state. A stale form must reload and show the new state. A 422 about a state that the user did not see tells the user nothing. The state comes before the no-op, so that a same-value request to a record in a final state gets the 422, not a success. The no-op comes before the rules on the new values. The record has the value already, so a rule that changed after the save of the value must not refuse a request that changes nothing.
+
+A command with no version skips step 6. A query makes steps 1 to 5. A caller with no tenant fails each permission check, so it gets 403 in step 3. A query with no permission check reads through the tenant filter, so that caller gets 404 or an empty list. `GetUserByIdentifier` also gives 404 to a user with no user record and no tenant. That user sees no rows, so the 404 tells it nothing, and a new user learns from it to start a tenant.
+
+The form that moves a visit shows the day and the status, so `Reschedule` applies a field of an edit form and takes the version:
+
+```csharp
+public Visit Reschedule(VisitForReschedule forReschedule)
+{
+    GuardVersion(forReschedule.Version);
+    GuardIfCancelled();
+    if (forReschedule.Day == Day)
+        return this;
+
+    ValidationException.Must(forReschedule.Day >= forReschedule.Today, "day", "Pick today or a later day.");
+    Day = forReschedule.Day;
+    QueueDomainEvent(new VisitRescheduled(Id));
+
+    return this;
+}
+```
+
+`tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs` has this example. Its tests fail when a step moves. `UserCheckOrderTests` checks the steps 2, 3, 4, 6, and 9 on the user endpoints. If a feature must use a different order, write the order and the reason in its spec, and add a test that proves the order.
+
 ## One rule set for two callers
 
 Rule 6 puts a rule in the entity. That holds for a rule that reads only its own entity. When one rule set has two callers, use the decision shape. An example is a list of the free days and the command that books one day. When a rule reads facts from more than one aggregate, use the shape also. After the permission check, the list handler does one load and one decision for each candidate. The command handler does one load, one decision, and one save.

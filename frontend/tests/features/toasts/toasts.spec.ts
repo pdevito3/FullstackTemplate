@@ -40,6 +40,18 @@ test.describe('the toasts on a phone on its side while a bottom sheet is open', 
     await expect(demo.at.toast('Something went wrong')).toBeFocused()
     expect(await demo.shownToasts()).toEqual(['A new version is available', 'Something went wrong'])
   })
+
+  test('keep the router devtools badge off the Close button of the toast', async ({ page }) => {
+    const demo = toastDemoPage(page)
+    await demo.open()
+    await demo.waitForDevtoolsBadge()
+    await demo.showToastsByKeyboard('Info')
+
+    await demo.openBottomSheet()
+
+    await expect(demo.at.closeToast('A new version is available')).toBeVisible()
+    expect(await demo.overlapAreaOf(demo.at.closeToast('A new version is available'), demo.at.devtoolsBadge)).toBe(0)
+  })
 })
 
 // The success toast closes after 5 s, and the error toast after 6 s.

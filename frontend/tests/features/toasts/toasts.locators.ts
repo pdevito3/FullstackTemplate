@@ -12,4 +12,7 @@ export const toastDemo = (page: Page) => ({
   region: page.getByRole('region', { name: /notification/ }),
   toasts: page.getByRole('alertdialog'),
   toast: (message: string) => page.getByRole('alertdialog').filter({ hasText: message }),
+  closeToast: (message: string) =>
+    page.getByRole('alertdialog').filter({ hasText: message }).getByRole('button', { name: 'Close', exact: true }),
+  devtoolsBadge: page.getByRole('button', { name: 'Open TanStack Router Devtools' }),
 })

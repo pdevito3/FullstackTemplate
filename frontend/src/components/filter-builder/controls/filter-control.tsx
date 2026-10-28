@@ -54,20 +54,22 @@ export function FilterControlDialog({
       }}
       className={FILTER_CONTROLS[config.controlType].dialogClassName ?? DEFAULT_DIALOG_CLASS_NAME}
     >
-      {/* A control pads its sides for the submenu popover. The dialog pads its own body, so here the control does not. */}
-      <div className="flex flex-col gap-4 *:px-0">
+      <div className="flex flex-col gap-4">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
             {initialFilter ? 'Edit' : 'Add'} {config.propertyLabel} Filter
           </ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
-        <FilterControl
-          config={config}
-          initialFilter={initialFilter}
-          onSubmit={onSubmit}
-          onCancel={onCancel}
-          autoFocus
-        />
+        {/* A control pads itself for the submenu popover. The dialog pads its own body, so here the control does not. */}
+        <div className="*:p-0">
+          <FilterControl
+            config={config}
+            initialFilter={initialFilter}
+            onSubmit={onSubmit}
+            onCancel={onCancel}
+            autoFocus
+          />
+        </div>
       </div>
     </ResponsiveDialog>
   )

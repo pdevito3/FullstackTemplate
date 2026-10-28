@@ -14,6 +14,8 @@ export const filterDemo = (page: Page) => {
     control,
     loadingControl: page.getByRole('status', { name: 'Loading filter' }),
     valueGroup: (propertyLabel: string) => control(propertyLabel).getByRole('group', { name: propertyLabel, exact: true }),
+    controlTitle: (propertyLabel: string) =>
+      control(propertyLabel).getByRole('heading', { name: new RegExp(`^(Add|Edit) ${propertyLabel} Filter$`) }),
     controlLabel: (propertyLabel: string) => control(propertyLabel).getByText(propertyLabel, { exact: true }),
     button: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('button', { name, exact: true }),
     fields: (propertyLabel: string) =>

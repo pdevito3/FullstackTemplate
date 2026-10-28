@@ -80,6 +80,9 @@ function Drawer({
           // overscrollPadding adds 100vh or 100vw of padding. box-content keeps it out of the size classes.
           "group/drawer-content z-10 box-content flex flex-col bg-background text-sm will-change-transform",
           "data-[position=bottom]:max-h-[80vh] data-[position=bottom]:w-full data-[position=bottom]:rounded-t-xl data-[position=bottom]:border-t",
+          // On a phone, index.css sets --toast-reserve, the room of the toasts at the top. The drawer stops below them.
+          // To change the bottom cap, override this class with the same variant prefix.
+          "data-[position=bottom]:supports-[height:100dvh]:max-h-[min(80vh,calc(100dvh-var(--toast-reserve,0px)))]",
           "data-[position=top]:max-h-[80vh] data-[position=top]:w-full data-[position=top]:rounded-b-xl data-[position=top]:border-b",
           "data-[position=left]:h-full data-[position=left]:w-3/4 data-[position=left]:rounded-r-xl data-[position=left]:border-r data-[position=left]:sm:max-w-sm",
           "data-[position=right]:h-full data-[position=right]:w-3/4 data-[position=right]:rounded-l-xl data-[position=right]:border-l data-[position=right]:sm:max-w-sm",

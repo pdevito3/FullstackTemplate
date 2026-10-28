@@ -240,10 +240,30 @@
       :is([data-slot="sheet-content"], [data-slot="responsive-dialog-content"])[data-side="bottom"],
       [data-slot="drawer-content"][data-position="bottom"]
     ) {
+    /* Before any toast shows, keep room for one line, so that a short toast does not move the sheet. */
+    --toast-reserve: calc(1rem + max(3rem, var(--toast-region-height, 0px)) + 0.5rem);
+
+    /* ResponsiveDialog caps itself for one line of toast. This cap follows the toasts that show. */
+    @supports (height: 100dvh) {
+      [data-slot="responsive-dialog-content"][data-side="bottom"] {
+        max-height: min(85vh, calc(100dvh - var(--toast-reserve)));
+
+        /* Move with the toast fade, not in one frame. */
+        @media (prefers-reduced-motion: no-preference) {
+          transition: max-height 200ms ease-out;
+        }
+      }
+    }
+
     [data-slot="toast-region"] {
       top: 1rem;
       bottom: auto;
       flex-direction: column;
+    }
+
+    /* The router devtools badge of a development build is at the top right, where the toasts now show. */
+    &:has([data-slot="toast-region"]) .TanStackRouterDevtools {
+      display: none;
     }
 
     /* React Aria lists the newest toast first. */

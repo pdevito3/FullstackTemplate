@@ -27,4 +27,13 @@
         <ProjectReference Include="..\FullstackTemplate.SharedTestHelpers\FullstackTemplate.SharedTestHelpers.csproj" />
     </ItemGroup>
 
+    <!-- BannedSymbols.txt bans a today that comes from the UTC date or the clock of the machine -->
+    <ItemGroup>
+        <AdditionalFiles Include="..\BannedSymbols.txt" />
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
 </Project>

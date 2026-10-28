@@ -1,0 +1,6 @@
+// A test that takes today from the UTC date fails for some hours each day: from 00:00 UTC to local midnight in the
+// Americas, the UTC date is one day after the local date. A test that needs a fixed date, not today, suppresses RS0030
+// with a reason.
+P:System.DateTime.Today;A test takes today from ZonedDate.TodayAt(zone, now). The UTC date is not the local date.
+P:System.DateTime.Now;Use the frozen time of the test (ctx.Now) or a TimeProvider.
+M:System.DateOnly.FromDateTime(System.DateTime);A test takes today from ZonedDate.TodayAt(zone, now). The UTC date is not the local date.

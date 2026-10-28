@@ -20,6 +20,16 @@ export function themePage(page: Page) {
       await at.choice(choice).press('Enter')
     },
 
+    /** Loads the page again without the app script, so only index.html can set the theme class. */
+    async reloadWithoutTheApp() {
+      await page.route('**/src/main.tsx', (route) => route.abort())
+      await page.reload()
+    },
+
+    async themeClass() {
+      return page.evaluate(() => document.documentElement.className)
+    },
+
     /** The scheme that the browser uses for the scrollbars and the native controls of the page. */
     async colorScheme() {
       return page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)

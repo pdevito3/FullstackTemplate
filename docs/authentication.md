@@ -203,7 +203,7 @@ The `AuthProvider` setting in `FullstackTemplate.AppHost/appsettings.json` selec
 - To use another provider for one run, you can also give the setting as an AppHost argument after `--`:
 
   ```bash
-  dotnet aspire run -- --AuthProvider ZeroFactor
+  dotnet aspire run -- --AuthProvider Keycloak
   ```
 
 The `ZeroFactor` provider is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider with no passwords. Its login page lists the test users, and one click signs in. It is the default provider. It is for local development only, so select another provider before you publish or deploy.

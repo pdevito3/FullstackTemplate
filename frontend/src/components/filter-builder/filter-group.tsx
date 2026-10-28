@@ -63,7 +63,7 @@ export function FilterGroup({
     >
       <div className="p-2">
         {/* Group Header */}
-        <div className="flex items-center gap-1.5 mb-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
           {/* Selection Checkbox */}
           {showCheckbox && (
             <Checkbox
@@ -130,7 +130,7 @@ export function FilterGroup({
         {/* Group Contents - Horizontal Layout */}
         <div className="flex flex-wrap items-start gap-2 pl-6">
           {group.filters.map((item, index) => (
-            <div key={item.id} className="flex items-center gap-2">
+            <div key={item.id} className="flex max-w-full min-w-0 items-center gap-2">
               {isFilter(item) ? (
                 <>
                   {showCheckbox && (
@@ -167,7 +167,7 @@ export function FilterGroup({
 
               {/* Show logical operator between items */}
               {index < group.filters.length - 1 && (
-                <span className="text-xs text-muted-foreground font-medium px-1">
+                <span className="shrink-0 text-xs text-muted-foreground font-medium px-1">
                   {group.logicalOperator}
                 </span>
               )}

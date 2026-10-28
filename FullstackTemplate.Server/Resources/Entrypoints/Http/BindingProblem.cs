@@ -30,7 +30,10 @@ public static partial class BindingProblem
         if (WrongTypeFieldOf(exception) is { } field)
             return new() { [field] = [WrongTypeMessage(field)] };
 
-        // JSON that does not parse is not a field error, so the key is the JSON path, for example "$.name", as in MVC
+        if (NotJsonFieldOf(exception) is { } notJsonField)
+            return new() { [notJsonField] = [NotJsonMessage(notJsonField)] };
+
+        // Another JSON error, such as one from a converter, is not a field error, so the key is the JSON path, as in MVC
         if (exception.InnerException is JsonException jsonException)
             return new() { [jsonException.Path ?? "$"] = [jsonException.Message] };
 
@@ -49,6 +52,8 @@ public static partial class BindingProblem
             return string.Join(" ", missing.Select(MissingMemberMessage));
         if (WrongTypeFieldOf(exception) is { } field)
             return WrongTypeMessage(field);
+        if (NotJsonFieldOf(exception) is { } notJsonField)
+            return NotJsonMessage(notJsonField);
         return exception.InnerException is JsonException jsonException ? jsonException.Message : MessageFor(exception);
     }
 
@@ -70,16 +75,33 @@ public static partial class BindingProblem
 
     // A value of the wrong type, for example a text or a null for a number, gives "The JSON value could not be converted
     // to System.UInt32. Path: $.version | LineNumber: 0 | BytePositionInLine: 18." The message names the C# type, so the
-    // caller gets the field only. The path "$.lines[1].hours" gives the key "lines[1].hours", and the path "$" of the
-    // body gives the empty key.
+    // caller gets the field only.
     private static string? WrongTypeFieldOf(BadHttpRequestException exception)
-        => exception.InnerException is JsonException { Path: ['$', .. var rest] } jsonException
-           && WrongTypeInMessage().IsMatch(jsonException.Message)
-            ? rest is ['.', .. var field] ? field : rest
+        => exception.InnerException is JsonException jsonException && WrongTypeInMessage().IsMatch(jsonException.Message)
+            ? KeyOf(jsonException)
             : null;
 
-    private static string WrongTypeMessage(string field)
-        => field.Length == 0 ? "The request body is not valid." : $"The {field} field is not valid.";
+    private static string WrongTypeMessage(string key)
+        => key.Length == 0 ? "The request body is not valid." : $"The {FieldNameOf(key)} field is not valid.";
+
+    // A value that is not JSON, for example 1.2.3 for a number, gives "'.' is an invalid end of a number. Expected 'E'
+    // or 'e'. Path: $.version | LineNumber: 0 | BytePositionInLine: 32." The error of the JSON reader is the inner
+    // exception. The message shows the position in the body, so the caller gets the field only.
+    private static string? NotJsonFieldOf(BadHttpRequestException exception)
+        => exception.InnerException is JsonException { InnerException: JsonException } jsonException
+            ? KeyOf(jsonException)
+            : null;
+
+    private static string NotJsonMessage(string key)
+        => key.Length == 0 ? "The request body is not valid JSON." : $"The {FieldNameOf(key)} field is not valid JSON.";
+
+    // The path "$.lines[1].hours" gives the key "lines[1].hours", and the path "$" of the body gives the empty key
+    private static string? KeyOf(JsonException exception)
+        => exception.Path is ['$', .. var rest] ? rest is ['.', .. var field] ? field : rest : null;
+
+    // The message names only the field, as a request validation error does, so the key "lines[1].hours" gives "hours"
+    private static string FieldNameOf(string key)
+        => FieldNameInKey().Match(key) is { Success: true } match ? match.Groups["name"].Value : key;
 
     // An empty body and a JSON null give "Implicit body inferred for parameter "dto" but no body was provided."
     // An explicit [FromBody] gives "Required parameter "TenantForCreationDto dto" was not provided from body."
@@ -97,6 +119,9 @@ public static partial class BindingProblem
 
     [GeneratedRegex(@"^The JSON value could not be converted to ", RegexOptions.CultureInvariant)]
     private static partial Regex WrongTypeInMessage();
+
+    [GeneratedRegex(@"(?<name>[^.\[\]]+)(?:\[\d+\])*$", RegexOptions.CultureInvariant)]
+    private static partial Regex FieldNameInKey();
 
     [GeneratedRegex(@"but no body was provided|was not provided from body", RegexOptions.CultureInvariant)]
     private static partial Regex MissingBodyInMessage();

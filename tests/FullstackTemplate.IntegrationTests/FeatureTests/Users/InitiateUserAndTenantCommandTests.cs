@@ -77,7 +77,7 @@ public class InitiateUserAndTenantCommandTests : TestBase
     }
 
     [Test]
-    public async Task user_of_a_deleted_tenant_cannot_start_another_tenant()
+    public async Task user_of_a_deleted_tenant_can_start_a_new_tenant()
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
@@ -93,10 +93,15 @@ public class InitiateUserAndTenantCommandTests : TestBase
             .Generate();
 
         // Act
-        var act = () => testingServiceScope.SendAsync(new InitiateUserAndTenant.Command(dto));
+        var result = await testingServiceScope.SendAsync(new InitiateUserAndTenant.Command(dto));
 
         // Assert
-        var exception = await act.ShouldThrowAsync<ConflictException>();
-        exception.Message.ShouldBe("A user with this identifier already exists.");
+        result.Tenant.Id.ShouldNotBe(tenant.Id);
+        result.User.Id.ShouldNotBe(user.Id);
+        result.User.TenantId.ShouldBe(result.Tenant.Id);
+        var oldUser = await testingServiceScope.ExecuteDbContextAsync(db =>
+            db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == user.Id));
+        oldUser.IsDeleted.ShouldBeTrue();
+        oldUser.TenantId.ShouldBe(tenant.Id);
     }
 }

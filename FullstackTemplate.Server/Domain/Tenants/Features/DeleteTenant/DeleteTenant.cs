@@ -22,8 +22,9 @@ public static class DeleteTenant
 
             await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
-            // The exclusive lock waits for each agent add of the tenant, so no agent comes after the agent load.
-            var agentCount = await RootLock.Tenant.RunExclusiveAsync(dbContext, request.Id, async ct =>
+            // The exclusive lock waits for each agent add and user add of the tenant, so no agent or user comes after
+            // the load. A deleted user frees its identifier, so the same person can sign up again.
+            var (agentCount, userCount) = await RootLock.Tenant.RunExclusiveAsync(dbContext, request.Id, async ct =>
             {
                 var tenant = await dbContext.Tenants
                     .TagWithOperationCallSite("tenants.delete.load")
@@ -40,12 +41,24 @@ public static class DeleteTenant
                     dbContext.Agents.Remove(agent);
                 }
 
+                var users = await dbContext.Users
+                    .TagWithOperationCallSite("tenants.delete.load_users")
+                    .Include(u => u.UserPermissions)
+                    .Where(u => u.TenantId == tenant.Id)
+                    .ToListAsync(ct);
+                foreach (var user in users)
+                {
+                    dbContext.UserPermissions.RemoveRange(user.UserPermissions);
+                    dbContext.Users.Remove(user);
+                }
+
                 dbContext.Tenants.Remove(tenant);
                 await dbContext.SaveChangesAsync(ct);
-                return agents.Count;
+                return (agents.Count, users.Count);
             }, cancellationToken);
 
-            _logger.Here().Information("Deleted tenant {TenantId} and {AgentCount} agents", request.Id, agentCount);
+            _logger.Here().Information("Deleted tenant {TenantId}, {AgentCount} agents, and {UserCount} users",
+                request.Id, agentCount, userCount);
         }
     }
 }

@@ -51,7 +51,7 @@ Each marked command has a race test (see [Race tests](../backend.md#race-tests))
 
 A version guards the rows that a command writes. A rule over a set of rows can break with no conflict on any one row. For example, "two open bookings of a room do not overlap", or "a clinic with an open appointment cannot be deactivated". A booking reads the clinic and writes an appointment. A deactivation counts the open appointments and writes the clinic. Each reads the rows that the other writes, so no version catches the race, and a run again does not help.
 
-`RootLock` in `Databases/` is a Postgres session advisory lock on one aggregate root. The template has one rule of this kind: `DeleteTenant` deletes the agents of the tenant, and `AddAgent` adds an agent to the tenant. Without the lock, an agent that `AddAgent` saves during `DeleteTenant` stays live in the deleted tenant. Each one runs its reads, its checks, and its save in the work of the lock:
+`RootLock` in `Databases/` is a Postgres session advisory lock on one aggregate root. The template has one rule of this kind: `DeleteTenant` deletes the agents and the users of the tenant, and `AddAgent` and `AddUser` add an agent or a user to the tenant. Without the lock, an agent or a user that is saved during `DeleteTenant` stays live in the deleted tenant. A live user in a deleted tenant keeps its identifier, so that person cannot sign up again. Each one runs its reads, its checks, and its save in the work of the lock:
 
 ```csharp
 var added = await RootLock.Tenant.RunSharedAsync(dbContext, tenantId, async ct =>
@@ -80,7 +80,7 @@ For a new rule, add a field such as `RootLock.Clinic` with a new number and the 
 
 A command that is marked `IRunsAgainWhenRaced` can take a lock. A lost race throws out of the work, the lock is freed, and the command runs again and takes the lock again. `DeleteTenant` does this.
 
-`AddUser` takes no lock. A tenant delete does not delete the users of the tenant (see [multi-tenancy.md](../multi-tenancy.md)), so a user that `AddUser` saves during a tenant delete is the same as a user that was there before. One small gap stays: the delete clears the cached tenant lookup only of the users that it read. A new user that signs in during the save of the delete can keep the cached tenant until the result expires. `InitiateUserAndTenant` adds a new tenant, so no delete of that tenant can run at the same time.
+`InitiateUserAndTenant` takes no lock. It adds a new tenant, so no delete of that tenant can run at the same time.
 
 These options do not fit:
 

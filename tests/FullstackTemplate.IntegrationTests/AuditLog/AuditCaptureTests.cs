@@ -101,6 +101,63 @@ public class AuditCaptureTests : TestBase
     }
 
     [Test]
+    public async Task tenant_delete_records_a_deleted_entry_for_each_user_of_the_tenant_and_each_of_its_permissions()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUsers(out var users, u => u.Role = UserRole.Admin().Value, _ => { })
+            .BuildAsync();
+        scope.SetUserWithDefaults(identifier: users[0].Identifier);
+
+        // Act
+        await scope.SendAsync(new DeleteTenant.Command(tenant.Id));
+
+        // Assert
+        foreach (var user in users)
+        {
+            var deleted = (await EntriesOfRootAsync(user.Id)).Where(e => e.Kind == AuditEntryKind.Deleted).ToList();
+            deleted.Select(e => e.EntityId)
+                .ShouldBe(user.UserPermissions.Select(p => p.Id).Append(user.Id), ignoreOrder: true);
+            deleted.ShouldAllBe(e => e.TenantId == tenant.Id && e.RequestName == "DeleteTenant.Command");
+        }
+    }
+
+    [Test]
+    public async Task tenant_delete_soft_deletes_each_agent_of_the_tenant_and_each_of_its_permissions_and_records_them()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant)
+            .AddAgents(out var agents,
+                a => a.Permissions = [Permission.Names.ManageTenant, Permission.Names.ReadUsers],
+                a => a.Permissions = [Permission.Names.ReadAgents])
+            .BuildAsync();
+        scope.SetUserWithDefaults(identifier: admin.Identifier);
+
+        // Act
+        await scope.SendAsync(new DeleteTenant.Command(tenant.Id));
+
+        // Assert
+        foreach (var agent in agents)
+        {
+            var permissionIds = agent.Permissions.Select(p => p.Id).ToList();
+            var rows = await ReadAsync(read => read.AgentPermissions.IgnoreQueryFilters()
+                .Where(p => p.AgentId == agent.Id).ToListAsync());
+            rows.Select(p => p.Id).ShouldBe(permissionIds, ignoreOrder: true);
+            rows.ShouldAllBe(p => p.IsDeleted);
+
+            var deleted = (await EntriesOfRootAsync(agent.Id)).Where(e => e.Kind == AuditEntryKind.Deleted).ToList();
+            deleted.Select(e => e.EntityId).ShouldBe(permissionIds.Append(agent.Id), ignoreOrder: true);
+            deleted.ShouldAllBe(e => e.TenantId == tenant.Id && e.RequestName == "DeleteTenant.Command");
+        }
+    }
+
+    [Test]
     public async Task permission_removed_from_the_user_is_deleted_in_its_history_and_the_owner_touch_records_nothing()
     {
         // Arrange

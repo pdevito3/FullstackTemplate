@@ -138,7 +138,15 @@ These rules stop a caller from joining a tenant that is not theirs:
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A user of a first-party client can do this only for their own `sub`. Any other caller, an agent included, must be able to manage all tenants. Other requests get 403.
-- If a user that is not deleted already has the identifier, in any tenant, `POST /api/v1/users` and `initiate` return 409. A user belongs to one tenant only. A deleted user frees its identifier, so the same person can sign up again. A tenant delete does not delete the users of the tenant, so they keep their identifiers. As a result, `initiate` returns 409 for these users, and they cannot sign up again.
+- If a user that is not deleted already has the identifier, in any tenant, `POST /api/v1/users` and `initiate` return 409. A user belongs to one tenant only. A deleted user frees its identifier, so the same person can sign up again.
+
+## Delete a tenant
+
+`DELETE /api/v1/tenants/{id}` deletes the tenant, its agents, and its users, with the permissions of each agent and user, in one save. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete.
+
+For a user of a deleted tenant, the server finds no user record on the next request. A deleted user frees its identifier, so the same person can send `POST /api/v1/users/initiate` to start a new tenant and a new user. The new user has a new ID. The old user and its history stay in the deleted tenant. The unique index on the tenant name also covers the deleted tenants, so the new tenant needs a new name.
+
+An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)).
 
 ## Tenant endpoints
 

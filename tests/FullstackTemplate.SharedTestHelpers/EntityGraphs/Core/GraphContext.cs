@@ -50,7 +50,7 @@ public class GraphContext<TSeed>
         (TAncestor)Session.FindAncestor(ParentEntity, typeof(TAncestor));
 
     /// <summary>Gets matching entities recorded so far in creation order.</summary>
-    /// <remarks>Factories, traits, and customizers see completed earlier steps while the current step is buffered for sequence reservation. Entity derives and defaults also see earlier outputs already recorded in the current step; input derives and input factories see earlier completed steps.</remarks>
+    /// <remarks>Factories, traits, and customizers see completed earlier steps while the current step is buffered for sequence reservation. Entity derives and defaults also see earlier outputs already recorded in the current step; input derives and input factories see earlier completed steps. A derive that must see the other members of its own step uses the Derive overload whose function also gets the step.</remarks>
     public IReadOnlyList<T> All<T>() => Session.All<T>();
 
     /// <summary>Gets the last recorded matching entity or throws.</summary>

@@ -272,13 +272,14 @@ public static class GraphChildExtensions
                         derive.Reserve(input, ctx);
                     }
                 }
+                var inputs = step.Select(item => item.Entity).ToArray();
                 List<(T Entity, GraphContext<TSeed> Context)> outputs = [];
                 foreach (var (input, context) in step)
                 {
                     var ctx = (ChildContext<TSeed, TParent>)context;
                     foreach (var derive in bp.Derives)
                     {
-                        derive.Apply(input, ctx);
+                        derive.Apply(input, ctx, inputs);
                     }
                     var entity =
                         bp.Factory(ctx.Parent, input, ctx)

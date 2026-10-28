@@ -6,19 +6,19 @@ namespace FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 internal interface IDerivation<TSeed, T>
 {
     void Reserve(T entity, GraphContext<TSeed> context);
-    void Apply(T entity, GraphContext<TSeed> context);
+    void Apply(T entity, GraphContext<TSeed> context, IReadOnlyList<T> step);
 }
 
 internal sealed class Derivation<TSeed, T, TProp> : IDerivation<TSeed, T>
 {
     private readonly Func<T, TProp> get;
     private readonly Action<T, TProp> set;
-    private readonly Func<T, GraphContext<TSeed>, TProp>? value;
+    private readonly Func<T, GraphContext<TSeed>, IReadOnlyList<T>, TProp>? value;
     private readonly Sequence<TProp>? sequence;
 
     internal Derivation(
         Expression<Func<T, TProp>> property,
-        Func<T, GraphContext<TSeed>, TProp>? value,
+        Func<T, GraphContext<TSeed>, IReadOnlyList<T>, TProp>? value,
         Sequence<TProp>? sequence = null
     )
     {
@@ -62,11 +62,11 @@ internal sealed class Derivation<TSeed, T, TProp> : IDerivation<TSeed, T>
         }
     }
 
-    public void Apply(T entity, GraphContext<TSeed> context)
+    public void Apply(T entity, GraphContext<TSeed> context, IReadOnlyList<T> step)
     {
         if (EqualityComparer<TProp>.Default.Equals(get(entity), default))
         {
-            set(entity, sequence is null ? value!(entity, context) : context.Next(sequence));
+            set(entity, sequence is null ? value!(entity, context, step) : context.Next(sequence));
         }
     }
 }

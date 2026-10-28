@@ -93,6 +93,7 @@ These features are in `Core/`. Use them in `Blueprints.cs`, in `TestGraph.cs`, o
 |---|---|
 | Sequence | `.Derive(i => i.Number, Sequence.Of(1, n => n + 1))` fills unset values. Explicit values in the same step are skipped. Each session restarts the sequence. |
 | Sequence scope | `.PerSession()` (default), `.PerParent()`, or `.Per<Tenant>()` restarts the count for each parent or ancestor. |
+| Step-aware derive | `.Derive(i => i.Number, (i, ctx, step) => ...)` also gets `step`, the members of the current `Add` step in order. Use it when a derived value must not take the value of another member, for example the lowest free number. See the rule below. |
 | Frozen time | `ctx.Now`, `ctx.Ago(TimeSpan)`, and `ctx.FromNow(TimeSpan)`. Time is frozen when the session starts. Pass a `TimeProvider` to `TestGraph.Start` for a fixed time. For a date, use `ZonedDate.TodayAt(zone, ctx.Now)` with the zone of the entity that the date belongs to. Do not use `DateOnly.FromDateTime(ctx.Now.UtcDateTime)`. |
 | Context-aware customizer | `.AddUsers(out var users, (u, ctx) => ...)` or `builder.AddOne(bp, out var x, (e, ctx) => ...)`. `ctx` has `Seed`, `Index`, `Now`, `Next(sequence)`, `Ancestor<T>()`, `All<T>()`, and `Last<T>()`. |
 | Trait | `Blueprints.User.With(u => u.Role = "Admin")` makes a variant that sets the value on every output. |
@@ -102,6 +103,16 @@ These features are in `Core/`. Use them in `Blueprints.cs`, in `TestGraph.cs`, o
 | IDs | The entity makes its ID when the input `Id` is null. Set the input `Id` to give a fixed ID. In a customizer, `ctx.NewId(Order.IdPrefix)` makes a prefixed ID, because `TestGraph` sets `Ids(EntityId.New)`. |
 | Options | `GraphOptions<TestSeed>` has `SeedEntities`, `Default<TBase, TProp>`, `BeforeSave`, `AfterSave`, `TimePrecision`, and `Ids`. The options freeze at `EntityGraph.Start`. |
 | Store | `dbContext.AsGraphStore()` makes a `DbContextStore`. It adds all rows, saves once, and clears the change tracker. |
+
+Rules for a derive in one `Add` step:
+
+- All customizers and traits of the step run before the first derive. Then the derives fill the members one at a time, in order.
+- A sequence derive skips the explicit values of all members of the step that are in its scope.
+- A value derive with `(i, ctx)` does not see the explicit values of later members in its step. In an input blueprint, `ctx.All<T>()` holds only the entities of earlier steps.
+- A value derive with `(i, ctx, step)` also sees the other members of its step. Each member has its explicit values, and each earlier member also has its derived values. The current member is in `step`, with the property still unset.
+- In a child step under more than one parent, `step` holds the members of every parent, in parent order. A derive can then avoid a value that a member of another parent sets, for example a time slot of a shared provider.
+- In a plain blueprint (`Blueprint.For` or `Blueprint.ChildOf`), each earlier member of the step is also in `ctx.All<T>()`, and it also has its `GraphOptions` defaults. Use a set of values, so that a member that is in both lists counts once.
+- If a value derive picks a free value, for example a number or a time slot, use `(i, ctx, step)`. Take the values from `ctx.All<T>()` and from `step`. Then a member with no value does not get the value that a later member sets.
 
 `TestGraph` selects the seed tenant and the seed user with `SeedEntities`, so they can be parents for `Under`. A `BeforeSave` hook in `TestGraph` takes them out of the save, because `TestFixture` saves the seed once per run.
 

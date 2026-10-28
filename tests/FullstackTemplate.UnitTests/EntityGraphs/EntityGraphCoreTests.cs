@@ -21,6 +21,33 @@ public class EntityGraphCoreTests
         .ChildOf<Seed, Member, Job>((member, ctx) => new Job { Member = member, Org = ctx.Ancestor<Org>() })
         .Derive(t => t.Number, Numbers.Per<Org>());
 
+    private static readonly InputBlueprint<Seed, TicketInput, Ticket> TicketBp = Blueprint
+        .FromInput<Seed, TicketInput, Ticket>(() => new(), (input, _) => new Ticket { Number = input.Number!.Value })
+        .Derive(i => i.Number, (_, ctx, step) => LowestFree(ctx.All<Ticket>().Select(t => t.Number), step.Select(t => t.Number ?? 0)));
+
+    private static readonly ChildInputBlueprint<Seed, Org, TicketInput, Ticket> OrgTicketBp = Blueprint
+        .ChildFromInput<Seed, Org, TicketInput, Ticket>(() => new(), (_, input, _) => new Ticket { Number = input.Number!.Value })
+        .Derive(i => i.Number, (_, ctx, step) => LowestFree(ctx.All<Ticket>().Select(t => t.Number), step.Select(t => t.Number ?? 0)));
+
+    private static readonly Blueprint<Seed, Member> LooseMemberBp = Blueprint
+        .For<Seed, Member>(_ => new Member())
+        .Derive(m => m.Number, (_, ctx, step) => LowestFree(ctx.All<Member>().Select(m => m.Number), step.Select(m => m.Number)));
+
+    private static readonly ChildBlueprint<Seed, Org, Member> OrgMemberBp = Blueprint
+        .ChildOf<Seed, Org, Member>((org, _) => new Member { Org = org })
+        .Derive(m => m.Number, (_, ctx, step) => LowestFree(ctx.All<Member>().Select(m => m.Number), step.Select(m => m.Number)));
+
+    private static int LowestFree(IEnumerable<int> built, IEnumerable<int> step)
+    {
+        var used = built.Concat(step).ToHashSet();
+        var number = 1;
+        while (used.Contains(number))
+        {
+            number++;
+        }
+        return number;
+    }
+
     private static GraphBuilder<Seed, Seed> Start(
         GraphOptions<Seed>? options = null,
         IGraphStore? store = null,
@@ -319,6 +346,56 @@ public class EntityGraphCoreTests
         member.Org.ShouldBe(orgs[1]);
     }
 
+    [Test]
+    public void value_derive_sees_the_explicit_values_of_later_siblings_in_the_same_step()
+    {
+        // Act
+        Start().Add(TicketBp, out var tickets, _ => { }, _ => { }, t => t.Number = 1);
+
+        // Assert
+        tickets.Select(t => t.Number).ShouldBe([2, 3, 1]);
+    }
+
+    [Test]
+    public void child_value_derive_sees_the_explicit_values_of_later_siblings_in_the_same_step()
+    {
+        // Act
+        Start().AddOne(OrgBp, out _).Add(OrgTicketBp, out var tickets, _ => { }, _ => { }, t => t.Number = 1);
+
+        // Assert
+        tickets.Select(t => t.Number).ShouldBe([2, 3, 1]);
+    }
+
+    [Test]
+    public void child_value_derive_sees_the_members_of_every_parent_in_a_fan_out()
+    {
+        // Act
+        Start().Add(OrgBp, out _, 2).Add(OrgTicketBp, out var tickets, _ => { }, t => t.Number = 1);
+
+        // Assert
+        tickets.Select(t => t.Number).ShouldBe([2, 1, 3, 1]);
+    }
+
+    [Test]
+    public void child_entity_value_derive_sees_the_explicit_values_of_later_siblings_in_the_same_step()
+    {
+        // Act
+        Start().AddOne(OrgBp, out _).Add(OrgMemberBp, out var members, _ => { }, m => m.Number = 1);
+
+        // Assert
+        members.Select(m => m.Number).ShouldBe([2, 1]);
+    }
+
+    [Test]
+    public void entity_value_derive_sees_the_explicit_values_of_later_siblings_in_the_same_step()
+    {
+        // Act
+        Start().Add(LooseMemberBp, out var members, _ => { }, m => m.Number = 1);
+
+        // Assert
+        members.Select(m => m.Number).ShouldBe([2, 1]);
+    }
+
     public sealed record Seed(Org Org);
 
     public interface IHasLabel
@@ -346,6 +423,16 @@ public class EntityGraphCoreTests
     {
         public Member Member { get; set; } = default!;
         public Org Org { get; set; } = default!;
+        public int Number { get; set; }
+    }
+
+    public sealed class TicketInput
+    {
+        public int? Number { get; set; }
+    }
+
+    public sealed class Ticket
+    {
         public int Number { get; set; }
     }
 

@@ -33,14 +33,14 @@ public sealed class GraphOptions<TSeed>
     )
     {
         ArgumentNullException.ThrowIfNull(value);
-        var derive = new Derivation<TSeed, TBase, TProp>(property, value);
+        var derive = new Derivation<TSeed, TBase, TProp>(property, (entity, ctx, _) => value(entity, ctx));
         return Change(() =>
             Defaults.Add(
                 (entity, ctx) =>
                 {
                     if (entity is TBase typed)
                     {
-                        derive.Apply(typed, ctx);
+                        derive.Apply(typed, ctx, []);
                     }
                 }
             )

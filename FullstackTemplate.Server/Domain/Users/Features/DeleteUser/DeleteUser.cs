@@ -34,7 +34,7 @@ public static class DeleteUser
                 dbContext.UserPermissions.Remove(permission);
             }
 
-            dbContext.Users.Remove(user);
+            dbContext.Users.Remove(user.Delete());
             await dbContext.SaveChangesAsync(cancellationToken);
 
             _logger.Here().Information("Deleted user {UserId}", user.Id);

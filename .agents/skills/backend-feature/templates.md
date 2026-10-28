@@ -152,7 +152,7 @@ namespace FullstackTemplate.Server.Domain.[EntityName]s.DomainEvents;
 public sealed record [EntityName]Updated(string Id) : DomainEvent;
 ```
 
-An event carries IDs and values, never an entity. Do not add a deleted event. The context does soft deletes, and no handler needs the event. Add a handler only when a feature needs one. See `docs/backend/domain-events.md`.
+An event carries IDs and values, never an entity. Add a deleted event only when rule 11 of `docs/backend/domain-events.md` asks for one. Add a handler only when a feature needs one. See `docs/backend/domain-events.md`.
 
 ## 3. DTOs
 
@@ -440,6 +440,8 @@ public static class Delete[EntityName]
     }
 }
 ```
+
+A record of another domain can hold the ID of the entity and need a change with the delete. Then follow rule 11 of `docs/backend/domain-events.md`. Add a `Delete()` method to the entity that queues `[EntityName]Deleted`. Call `dbContext.[EntityName]s.Remove(entity.Delete())`. Run the delete in `RunExclusiveAsync` of a `RootLock`, and run each link add in `RunSharedAsync`. A delete of a parent root can also delete the entity under the lock of that root. Then use the lock of the parent. For a user, this is `RootLock.Tenant` of the tenant of the user. Read the ID of the parent from the entity before the lock. In the work, load the entity again and check that it is still under that parent.
 
 **File:** `Domain/[EntityName]s/Features/Get[EntityName]/Get[EntityName].cs`
 

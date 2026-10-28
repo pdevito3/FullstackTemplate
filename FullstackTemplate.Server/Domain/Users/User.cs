@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users;
 
+using System.ComponentModel.DataAnnotations.Schema;
 using EmailAddresses;
 using DomainEvents;
 using Models;
@@ -25,6 +26,10 @@ public class User : BaseEntity, ITenantable
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();
 
     public string FullName => $"{FirstName} {LastName}";
+
+    /// <summary>The save refuses to delete a user that did not queue <see cref="UserDeleted"/>.</summary>
+    [NotMapped]
+    internal bool DeleteQueued { get; private set; }
 
     public static User Create(UserForCreation userForCreation)
     {
@@ -125,6 +130,17 @@ public class User : BaseEntity, ITenantable
         var defaultPermissions = Role.GetDefaultPermissions();
         AddPermissions(defaultPermissions);
 
+        return this;
+    }
+
+    /// <summary>
+    /// Call it in the feature that removes the user. A handler of <see cref="UserDeleted"/> in another domain can then
+    /// clear or mark a link to the user, in the same save. See <c>docs/backend/domain-events.md</c>.
+    /// </summary>
+    public User Delete()
+    {
+        QueueDomainEvent(new UserDeleted(Id));
+        DeleteQueued = true;
         return this;
     }
 

@@ -82,6 +82,8 @@ A command that is marked `IRunsAgainWhenRaced` can take a lock. A lost race thro
 
 `InitiateUserAndTenant` takes no lock. It adds a new tenant, so no delete of that tenant can run at the same time.
 
+`DeleteTenant` queues `UserDeleted` for each user, so a handler in another domain can change its link to the user. A feature that adds a link to a user takes the shared `RootLock.Tenant` of the tenant of that user, not a lock of its own. `DeleteTenant` takes the exclusive lock of the same tenant, and `DeleteUser` takes it too when an app adds the first link to a user. Thus each command holds one lock, as rule 6 says. See rule 11 of [domain-events.md](domain-events.md#rules).
+
 These options do not fit:
 
 - **A `SERIALIZABLE` transaction around the checks and the save.** One save is one transaction ([ADR 0010](../adr/0010-domain-events-in-the-save-transaction.md)), and `AppDbContext` refuses a save inside a transaction that the handler opens.

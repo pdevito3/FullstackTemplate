@@ -16,7 +16,7 @@ using Serilog;
 /// </summary>
 public sealed class RootLock
 {
-    /// <summary>A tenant delete deletes the agents and the users of the tenant, so an agent add or a user add must not run during it.</summary>
+    /// <summary>A tenant delete deletes the agents and the users of the tenant, so an agent add, a user add, or a link add to a user must not run during it.</summary>
     public static readonly RootLock Tenant = new(1, "tenants");
 
     private static readonly ILogger Logger = Log.ForContext<RootLock>();

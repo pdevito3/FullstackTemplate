@@ -68,9 +68,13 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 
     public FailingSaves FailingSaves { get; } = new();
 
+    public StallingHealthCheck StallingHealthCheck { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(TestingConsts.FunctionalTestingEnvName);
+        // A health probe gets a Verbose request log, and a test reads it
+        builder.UseSetting("Serilog:MinimumLevel:Override:Serilog.AspNetCore.RequestLoggingMiddleware", "Verbose");
 
         builder.ConfigureLogging(logging =>
         {
@@ -97,6 +101,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
                 .WithMetrics(metrics => metrics.AddInMemoryExporter(ExportedMetrics.ExporterTarget));
             services.AddSingleton<ILogEventSink>(CapturedLogs);
             services.ConfigureDbContext<AppDbContext>((_, options) => options.AddInterceptors(FailingSaves));
+            services.AddHealthChecks().AddCheck("stalling", StallingHealthCheck);
         });
     }
 

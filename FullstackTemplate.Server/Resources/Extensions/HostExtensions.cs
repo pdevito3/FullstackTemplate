@@ -180,6 +180,8 @@ public static class HostExtensions
     {
         builder.Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+        // PostConfigure runs after all Configure calls, so it also wraps the checks that Aspire integrations add later
+        builder.Services.PostConfigure<HealthCheckServiceOptions>(CallerCancellationHealthCheck.WrapEachCheck);
 
         return builder;
     }

@@ -17,6 +17,7 @@ COPY FullstackTemplate.Bff/*.csproj FullstackTemplate.Bff/
 RUN dotnet restore FullstackTemplate.Bff/FullstackTemplate.Bff.csproj
 
 COPY FullstackTemplate.Bff/ FullstackTemplate.Bff/
+COPY FullstackTemplate.Server/Resources/Extensions/CallerCancellationHealthCheck.cs FullstackTemplate.Server/Resources/Extensions/
 WORKDIR /src/FullstackTemplate.Bff
 RUN dotnet publish -c Release -o /app/publish
 

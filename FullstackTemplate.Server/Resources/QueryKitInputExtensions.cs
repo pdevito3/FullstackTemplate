@@ -24,7 +24,7 @@ public static class QueryKitInputExtensions
         where T : class
         => Apply(FiltersParameter, () =>
         {
-            // A value of the filter goes to the query as a parameter, so it must be text that Postgres can take
+            // Filter values go to Postgres as parameters, and Postgres refuses a parameter that it cannot store
             if (!PostgresText.CanStore(filters))
                 throw new QueryInputException(FiltersParameter, $"The {FiltersParameter} value has a character that is not allowed.");
             var predicate = FilterParser.ParseFilter<T>(filters, config);

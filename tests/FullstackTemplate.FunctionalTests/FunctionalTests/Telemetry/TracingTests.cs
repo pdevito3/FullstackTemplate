@@ -78,6 +78,29 @@ public class TracingTests : TestBase
     }
 
     [Test]
+    [Arguments("name == \"VALUE\"")]
+    [Arguments("name @=* \"VALUE\"")]
+    [Arguments("name ^^ [\"VALUE\", \"other\"]")]
+    public async Task list_filter_value_is_not_in_the_sql_text_of_the_query_span(string filter)
+    {
+        // Arrange
+        var value = $"probe{Guid.NewGuid():N}";
+        using var parent = Telemetry.Source.StartActivity("test.parent").ShouldNotBeNull();
+
+        // Act
+        await SendAsync(new GetTenantList.Query(new TenantParametersDto { Filters = filter.Replace("VALUE", value, StringComparison.Ordinal) }));
+        parent.Stop();
+
+        // Assert
+        var sqlTexts = ExportedSpans()
+            .Where(a => a.TraceId == parent.TraceId && a.DisplayName.StartsWith("SQL: tenants.list", StringComparison.Ordinal))
+            .Select(a => a.GetTagItem("db.query.text") as string)
+            .ToList();
+        sqlTexts.Count.ShouldBe(2);
+        sqlTexts.ShouldAllBe(text => text != null && !text.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Test]
     public async Task feature_slice_span_parents_the_tagged_query_span()
     {
         // Arrange

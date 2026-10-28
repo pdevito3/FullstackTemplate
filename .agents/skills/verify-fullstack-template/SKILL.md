@@ -23,6 +23,7 @@ S=.agents/skills/verify-fullstack-template
 - `launch.sh` always starts an `--isolated` stack: random ports, an empty database, and a copy of the user secrets. A stack in another worktree does not conflict.
 - Each checkout can run one stack for its AppHost path. If a stack runs for this checkout and this skill did not start it, `launch.sh` stops with an error. Do not drive that stack and do not stop it. It belongs to the user. Ask the user, or work in a git worktree.
 - Each recipe run gets a new Chromium context. No cookies or `localStorage` carry over between recipes.
+- Each recipe run gets the database of the run before it. `browse.mjs` puts back the rows that a recipe wrote. See [Data](#data).
 - If you use `--auth-provider DuendeDemo`, the IdP is shared and public. Use only the demo users. Do not change data on it.
 
 ## Launch
@@ -39,7 +40,9 @@ S=.agents/skills/verify-fullstack-template
    $S/scripts/launch.sh --auth-provider DuendeDemo
    ```
 
-2. Read the last lines of the output. They give `RUN_DIR`, the `authProvider`, the `web` URL (the app), the `server` URL, and the `dashboard` URL.
+   To drive the production build of the SPA, give `--preview`. See [Production build](#production-build).
+
+2. Read the last lines of the output. They give `RUN_DIR`, the `authProvider`, the `build` (`dev` or `production`), the `web` URL (the app), the `server` URL, and the `dashboard` URL.
 
 The stack is ready when the output ends with `launch: ready.` and the URLs. The run state is in `artifacts/verify/<RUN_ID>/stack.json`. The file `artifacts/verify/.current` holds the RUN_ID of the live stack.
 
@@ -69,7 +72,7 @@ Each line starts with `ok` or `FAIL`. Exit code 0 means the stack is worth drivi
 The harness is `scripts/browse.mjs`. It loads Playwright from `frontend/node_modules`, opens Chromium at the `web` URL, runs one recipe, and saves the evidence.
 
 ```bash
-node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>]
+node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>] [--keep-data]
 ```
 
 The command prints `ok` or `FAIL` for each step, then `PASSED` or `FAILED` and the evidence path. The exit code is 0 only when the recipe does not throw, the page has no uncaught error or console error, and the recipe has no unhandled promise rejection. A step error that the recipe catches logs `FAIL` but does not fail the run.
@@ -78,15 +81,24 @@ An uncaught error in the page (a Playwright `pageerror`) fails the run, even if 
 
 An unhandled promise rejection in the recipe also fails the run. An example is a `page.waitForResponse` that the recipe did not await and that never got its response. `steps.log` records each rejection on a line that starts with `unhandled rejection:`. If a step fails while such a promise waits, the run still writes `result.json` with the error of the step.
 
-To prove a feature in the map, run its recipe:
+To prove a feature in the map, run its recipe. To prove the whole map, run each recipe two times in a row:
 
 ```bash
-for r in weather-forecast login-logout secure-weather navigation-and-theme filter-builder components-showcase; do
-  node $S/scripts/browse.mjs $S/recipes/$r.mjs
-done
+$S/scripts/run-twice.sh                       # each recipe in recipes/
+$S/scripts/run-twice.sh <recipe.mjs> ...      # only these recipes
 ```
 
-To prove a new change, write a new recipe in the scratch folder of your run (for example `artifacts/verify/<RUN_ID>/recipes/my-change.mjs`). A recipe that needs a day takes it from the time zone of the data and books its own data for that day. It does not walk from today, because the seed data does not cover each day, and a time after local midnight may not have come yet at the place.
+`run-twice.sh` ends with a table of each run: the status, the rows that the run wrote, and whether the restore put them back. It ends with `run-twice: PASSED` only when each run passed. Run it on each recipe that you add or change.
+
+To prove a new change, write a new recipe in the scratch folder of your run (for example `artifacts/verify/<RUN_ID>/recipes/my-change.mjs`).
+
+Recipe rules. Each rule stops a recipe that passes one time and fails on the next run, on the next day, or on a slow machine:
+
+- Find a row by a search, a filter, or an ID that the recipe made. Do not find it by its place on a page or in a sort order, because other rows can come before it.
+- Make the data that the recipe needs. Do not expect seed rows, and do not expect a count of rows that the recipe did not make.
+- Take "today" from the time zone of the data, never from the clock of the machine. A recipe that needs a day books its own data for that day. It does not walk from today, because the seed data does not cover each day, and a time after local midnight may not have come yet at the place.
+- Wait for a named ready state with `expect(...)`: a heading, a row, a response, or a button that is enabled again. Never wait a fixed time.
+- After an action that changes a row, read the row again before the next edit. The response or a reload gives the new `version`.
 
 A recipe is an ES module with a default export. `browse.mjs` gives it these values:
 
@@ -125,6 +137,36 @@ Selector rules:
 
 For interactive exploration, the Playwright MCP server in `.mcp.json` also works. Give it the `web` URL from `stack.json`. Put the final proof in a recipe, because only a recipe gives a repeatable result and saves the evidence in the run directory.
 
+## Data
+
+`browse.mjs` keeps the database of the stack the same across recipe runs:
+
+1. Before the recipe, it copies each table of each database (`appdb`, `bffdb`) to `artifacts/verify/<RUN_ID>/db-snapshot.json`.
+2. After the recipe, also after a failed step or a page error, it deletes and inserts only the rows that differ from the copy. Then it reads the tables again. If one still differs, the run fails with `the restore left these tables different`.
+3. `result.json` gives the rows that the restore put back in `data.changes`, for example `"appdb.public.tenants": { "added": 1, "changed": 0, "deleted": 0 }`.
+
+Each row that the restore did not touch keeps its `xmin`, which is the `version` of an entity. A row that the restore put back gets a new `xmin`. The next recipe reads its rows from the page, so it gets the new version.
+
+If a run stops before the restore (Ctrl-C, a killed process, a restore that failed), `db-snapshot.json` stays. The next `browse.mjs` run restores it first and prints `data: an earlier run did not restore the database`. The doctor prints a `warn` line while the file is there. If that restore also fails, for example after a migration changed a table, `browse.mjs` stops. Delete `db-snapshot.json` to keep the rows as they are, or launch a new stack.
+
+The restore changes only rows. The server keeps a cache of the tenant of each user for up to 30 minutes. A recipe that changes the tenant of a user or deletes a user can leave the old answer in that cache, so the next run can see it. Run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` after such a recipe.
+
+Only one recipe runs on a stack at a time. A restore would delete the rows of a second run. Do not drive the stack with the Playwright MCP server while a recipe runs, for the same reason. `browse.mjs` holds `recipe.lock` in the run directory, and a second run stops with `browse: the recipe run with pid <pid> drives this stack`.
+
+To look at the rows after a recipe, give `--keep-data`. The run then takes no copy and restores nothing, so the rows stay until the stack stops.
+
+## Production build
+
+The dev server compiles each module on request, and React runs in its development mode. Some faults show only in the production build, for example a React Aria collection that keeps old rows, or a missing chunk of a lazy route. To find them, drive the production build:
+
+```bash
+$S/scripts/launch.sh --preview
+```
+
+`--preview` builds the SPA with `vite build` into `artifacts/verify/<RUN_ID>/spa/`. The BFF serves that build from its web root, as a published BFF serves `wwwroot`, so `web` is the BFF URL. Recipes, `login()`, and `run-twice.sh` work the same way. A frontend change needs a new launch, because the build does not reload. The BFF still runs in the `Development` environment.
+
+Before a release, and after a change to a shared component in `frontend/src/components/ui/`, launch with `--preview` and run `run-twice.sh`.
+
 ## Evidence
 
 Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the recipe file name, or the value of `--label`. If that directory exists, the run writes to `<label>-2/`, then `<label>-3/`, and so on. The output line `evidence:` gives the directory.
@@ -137,7 +179,7 @@ Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the
 | `console.log` | Browser console errors and warnings, and page errors. Each page error starts with `[pageerror]`. |
 | `network.log` | Each response with status 400 or more. |
 | `trace.zip` | The Playwright trace. Open it with `pnpm --dir frontend exec playwright show-trace <path>`. |
-| `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. |
+| `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. `data` gives the rows that the restore put back. |
 | `NN-failure.png` | A capture of the page at the time of the failure. A failed step makes the capture before the cleanup of the recipe runs. A failure outside a step gets its capture after the recipe ends. |
 
 `artifacts/` is in `.gitignore`. The evidence stays after cleanup.

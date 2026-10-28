@@ -61,8 +61,17 @@ public sealed class ConformanceAuthProvider : IAuthProvider
             {
                 bff.WithExplicitStart();
                 // The suite container calls /bff/backchannel at host.docker.internal. On Linux that is the address of
-                // the Docker bridge, not loopback, so the BFF https endpoint listens on all interfaces.
-                bff.WithEndpoint("https", endpoint => endpoint.TargetHost = "0.0.0.0");
+                // the Docker bridge, not loopback, so the BFF https endpoint listens on all interfaces. Kestrel binds
+                // 0.0.0.0 itself, with no DCP proxy: a proxy for 0.0.0.0 takes a port that is free on a non-loopback
+                // address, and it uses another port on loopback when that port is in use there. Then
+                // https://localhost:<port> goes to another service. No fixed port, so that Aspire picks a port that
+                // is free on all addresses, not the port of the launch profile.
+                bff.WithEndpoint("https", endpoint =>
+                {
+                    endpoint.TargetHost = "0.0.0.0";
+                    endpoint.IsProxied = false;
+                    endpoint.Port = null;
+                });
             },
         };
     }

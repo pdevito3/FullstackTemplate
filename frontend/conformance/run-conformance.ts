@@ -112,6 +112,19 @@ function restartBff(): boolean {
   if (restart.status !== 0) {
     aspire('resource', 'bff', 'start')
   }
+  return waitForBff()
+}
+
+/** Starts the BFF, which has explicit start, or starts it again when an earlier run left it up. */
+function startBff(): boolean {
+  const start = aspire('resource', 'bff', 'start')
+  if (start.status !== 0) {
+    aspire('resource', 'bff', 'restart')
+  }
+  return waitForBff()
+}
+
+function waitForBff(): boolean {
   return aspire('wait', 'bff', '--status', 'healthy', '--timeout', '60').status === 0
 }
 
@@ -179,11 +192,15 @@ async function warmUp(api: APIRequestContext) {
   const plan = await createPlan(api, plans[0], config)
   const id = await createModule(api, plan.id, plan.modules[0].testModule, plan.modules[0].variant)
   await waitForStatus(api, id, ['WAITING'], 30_000)
-  const healthy = restartBff()
+  const healthy = startBff()
   const urls = bffUrls()
+  const bff = urls?.https.replace(/\/$/, '')
+  // The BFF answers 204 with no session. Another service at this URL fails the login of each module.
+  const user = healthy && bff ? (await api.get(`${bff}/bff/user`, { headers: { 'X-CSRF': '1' } }).catch(() => undefined))?.status() : undefined
   await api.delete(`api/runner/${id}`)
-  if (!healthy || !urls) throw new Error('The BFF does not start against the conformance suite. Read its logs: dotnet aspire logs bff')
-  return urls.https.replace(/\/$/, '')
+  if (!healthy || !bff) throw new Error('The BFF does not start against the conformance suite. Read its logs: dotnet aspire logs bff')
+  if (user !== 204) throw new Error(`${bff} is not the BFF: GET /bff/user gives ${user}, not 204. Read its URLs: dotnet aspire describe bff`)
+  return bff
 }
 
 async function drive(browser: Browser, bff: string, flow: Flow, screenshot: string, steps: string[]) {

@@ -42,7 +42,9 @@ internal sealed class TrackedAggregates
 
     public AuditSubject SubjectOf(EntityEntry<BaseEntity> changed) => _subjects[changed.Entity];
 
-    /// <summary>Null for an aggregate root.</summary>
+    /// <summary>
+    /// Null for an aggregate root. An entity whose optional owner key is null is a root.
+    /// </summary>
     /// <exception cref="InvalidOperationException">The owner is not tracked.</exception>
     public EntityEntry<BaseEntity>? OwnerOf(EntityEntry<BaseEntity> child)
     {
@@ -55,10 +57,13 @@ internal sealed class TrackedAggregates
             var ownerIdProperty = child.Property(ownerKey.Properties.Single().Name);
             var ownerId = child.State == EntityState.Deleted ? ownerIdProperty.OriginalValue : ownerIdProperty.CurrentValue;
             var ownerType = ownerKey.PrincipalEntityType;
-            owner = ownerId is string id && _entries.TryGetValue((ownerType.GetRootType(), id), out var tracked)
-                ? tracked
-                : throw new InvalidOperationException(
-                    $"A {child.Metadata.ClrType.Name} changed, but its {ownerType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownerType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
+            owner = ownerId switch
+            {
+                null when !ownerKey.IsRequired => null,
+                string id when _entries.TryGetValue((ownerType.GetRootType(), id), out var tracked) => tracked,
+                _ => throw new InvalidOperationException(
+                    $"A {child.Metadata.ClrType.Name} changed, but its {ownerType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownerType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it."),
+            };
         }
 
         _owners[child.Entity] = owner;

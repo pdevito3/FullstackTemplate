@@ -67,3 +67,13 @@ test('date range picker: with no value, opens on the month of today at the place
     vi.useRealTimers()
   }
 })
+
+test('date picker: with a time granularity and no value, renders its time segments for a place', async () => {
+  // Act
+  const screen = await render(
+    <JollyDatePicker label="Starts at" granularity="minute" timeZone={parseTimeZone('Pacific/Pago_Pago')} />,
+  )
+
+  // Assert
+  await expect.element(screen.getByRole('spinbutton', { name: 'minute, Starts at' })).toBeVisible()
+})

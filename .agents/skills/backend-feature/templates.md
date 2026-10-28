@@ -1,6 +1,6 @@
 # Backend Feature Templates
 
-Complete code templates for generating a vertical slice feature. Replace `[EntityName]` with the actual entity name (e.g., `Customer`, `Order`). Replace `[entity_name]` and `[action_name]` with the snake_case names (e.g., `customer`, `change_status`), which the query tags and the span tags use. Replace `[ActionPastTense]` with the action in the past tense for the log (e.g., `Archived`).
+Complete code templates for generating a vertical slice feature. Replace `[EntityName]` with the actual entity name (e.g., `Customer`, `Order`). Replace `[entity_name]`, `[action_name]`, and `[criteria_name]` with the snake_case names (e.g., `customer`, `change_status`, `sales_region`), which the query tags and the span tags use. Replace `[ActionPastTense]` with the action in the past tense for the log (e.g., `Archived`).
 
 ## 1. Domain Entity
 
@@ -1185,14 +1185,14 @@ public static class Get[EntityName]sBy[Criteria]
     {
         public async Task<IReadOnlyList<[EntityName]Dto>> Handle(Query request, CancellationToken cancellationToken)
         {
-            Activity.Current?.SetTag("app.[criteria]_id", request.[Criteria]Id);
+            Activity.Current?.SetTag("app.[criteria_name]_id", request.[Criteria]Id);
 
             // No row has an ID that is not valid, and Postgres cannot take an ID with a NUL as a parameter
             if (!EntityId.IsValid(request.[Criteria]Id, [Criteria].IdPrefix))
                 return [];
 
             var entities = await dbContext.[EntityName]s
-                .TagWithOperationCallSite("[entity_name]s.list_by_[criteria]")
+                .TagWithOperationCallSite("[entity_name]s.list_by_[criteria_name]")
                 .AsNoTracking()
                 .Where(e => e.[Criteria]Id == request.[Criteria]Id)
                 .To[EntityName]DtoQueryable()

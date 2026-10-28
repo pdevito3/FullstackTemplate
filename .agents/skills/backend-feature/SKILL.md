@@ -283,8 +283,12 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
        public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
            : IRequestHandler<Command, OrderDto>
        {
+           private readonly ILogger _logger = Log.ForContext<Handler>();
+
            public async Task<OrderDto> Handle(Command request, CancellationToken ct)
            {
+               Activity.Current?.SetTag("app.order_id", request.Id);
+
                await permissionGuard.RequireAsync(Permission.ManageOrders(), ct);
 
                var order = await dbContext.Orders
@@ -294,6 +298,8 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
                order.Submit();
 
                await dbContext.SaveChangesAsync(ct);
+
+               _logger.Here().Information("Submitted order {OrderId}", order.Id);
 
                return order.ToOrderDto();
            }

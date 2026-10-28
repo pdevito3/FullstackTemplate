@@ -55,7 +55,7 @@ public static class AddUser
                     .IgnoreQueryFilters([QueryFilterNames.Tenant])
                     .AnyAsync(u => u.Identifier == user.Identifier, ct);
                 if (identifierInUse)
-                    throw new ConflictException("identifier", "A user with this identifier already exists.");
+                    throw new ConflictException("identifier", User.IdentifierInUseMessage);
 
                 await dbContext.Users.AddAsync(user, ct);
                 await dbContext.SaveChangesAsync(ct);

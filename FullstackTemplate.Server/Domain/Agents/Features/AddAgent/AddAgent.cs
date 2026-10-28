@@ -67,7 +67,7 @@ public static class AddAgent
                     .AnyAsync(a => a.ClientId == agent.ClientId
                         && (a.TenantId == agent.TenantId || a.Mode.Value == AgentMode.MachineValue), ct);
                 if (clientIdInUse)
-                    throw new ConflictException(ClientIdField, "An agent with this client ID already exists.");
+                    throw new ConflictException(ClientIdField, Agent.ClientIdInUseMessage);
 
                 await dbContext.Agents.AddAsync(agent, ct);
                 await dbContext.SaveChangesAsync(ct);

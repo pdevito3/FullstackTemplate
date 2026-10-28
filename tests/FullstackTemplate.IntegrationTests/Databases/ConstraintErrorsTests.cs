@@ -4,10 +4,10 @@ using FullstackTemplate.Server.Databases;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
-public class ConstraintFieldsTests : TestBase
+public class ConstraintErrorsTests : TestBase
 {
     [Test]
-    public async Task each_unique_index_and_exclusion_constraint_in_the_schema_has_a_field()
+    public async Task each_unique_index_and_exclusion_constraint_in_the_schema_has_an_error()
     {
         // Arrange
         var dbContext = new TestingServiceScope().GetService<AppDbContext>();
@@ -34,6 +34,6 @@ public class ConstraintFieldsTests : TestBase
 
         // Assert
         constraints.ShouldNotBeEmpty();
-        constraints.Where(c => !ConstraintConflictException.ConstraintFields.ContainsKey(c)).ShouldBeEmpty();
+        constraints.Where(c => !ConstraintConflictException.ConstraintErrors.ContainsKey(c)).ShouldBeEmpty();
     }
 }

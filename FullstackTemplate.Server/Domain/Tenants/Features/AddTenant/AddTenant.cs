@@ -40,7 +40,7 @@ public static class AddTenant
                 .IgnoreQueryFilters()
                 .AnyAsync(t => t.Name == tenant.Name, cancellationToken);
             if (nameInUse)
-                throw new ConflictException("name", "A tenant with this name already exists.");
+                throw new ConflictException("name", Tenant.NameInUseMessage);
 
             await dbContext.Tenants.AddAsync(tenant, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);

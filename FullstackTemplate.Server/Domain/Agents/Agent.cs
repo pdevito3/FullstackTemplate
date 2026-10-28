@@ -21,6 +21,7 @@ public class Agent : BaseEntity, ITenantable
     public const string IdPrefix = "agt";
     public const int NameMaxLength = 200;
     public const int ClientIdMaxLength = 255;
+    public const string ClientIdInUseMessage = "An agent with this client ID already exists.";
 
     [NotSensitive] public string TenantId { get; private set; } = default!;
     [NotSensitive] public string Name { get; private set; } = default!;

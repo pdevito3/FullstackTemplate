@@ -24,20 +24,21 @@ public static class DatabaseConflict
 
     private static ConstraintConflictException? From(PostgresException postgres, Exception exception)
     {
-        var message = postgres.SqlState switch
+        var defaultMessage = postgres.SqlState switch
         {
             PostgresErrorCodes.UniqueViolation => ConstraintConflictException.DuplicateMessage,
             PostgresErrorCodes.ExclusionViolation => ConstraintConflictException.OverlapMessage,
             _ => null,
         };
-        if (message is null)
+        if (defaultMessage is null)
             return null;
 
         var constraint = postgres.ConstraintName ?? string.Empty;
+        var error = ConstraintConflictException.ConstraintErrors.GetValueOrDefault(constraint);
         return new ConstraintConflictException(
             constraint,
-            ConstraintConflictException.ConstraintFields.GetValueOrDefault(constraint, string.Empty),
-            message,
+            error?.Field ?? string.Empty,
+            error?.Message ?? defaultMessage,
             exception);
     }
 }

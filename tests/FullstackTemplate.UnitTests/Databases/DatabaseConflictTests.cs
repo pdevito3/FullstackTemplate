@@ -14,7 +14,7 @@ public class DatabaseConflictTests
     private const string DefaultConflictType = "https://tools.ietf.org/html/rfc9110#section-15.5.10";
 
     [Test]
-    public void unique_violation_is_a_conflict_on_the_field_of_the_index()
+    public void unique_violation_is_a_conflict_with_the_field_and_the_message_of_the_index()
     {
         // Act
         var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"))
@@ -23,7 +23,7 @@ public class DatabaseConflictTests
         // Assert
         exception.Constraint.ShouldBe("ix_users_identifier");
         exception.Property.ShouldBe("identifier");
-        exception.Message.ShouldBe(ConstraintConflictException.DuplicateMessage);
+        exception.Message.ShouldBe("A user with this identifier already exists.");
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
         DomainError.IsClientError(exception).ShouldBeTrue();
     }
@@ -42,7 +42,7 @@ public class DatabaseConflictTests
         context.ProblemDetails.Title.ShouldBe("The request conflicts with a record that exists.");
         var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
         error.Key.ShouldBe("identifier");
-        error.Value.ShouldBe(["A record with this value already exists."]);
+        error.Value.ShouldBe(["A user with this identifier already exists."]);
     }
 
     [Test]
@@ -60,7 +60,7 @@ public class DatabaseConflictTests
     }
 
     [Test]
-    public void exclusion_violation_is_an_overlap_conflict_on_the_field_of_the_constraint()
+    public void exclusion_violation_is_a_conflict_with_the_field_and_the_message_of_the_constraint()
     {
         // Act
         var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"))
@@ -69,7 +69,7 @@ public class DatabaseConflictTests
         // Assert
         exception.Constraint.ShouldBe("ix_tenants_name");
         exception.Property.ShouldBe("name");
-        exception.Message.ShouldBe("This value overlaps a record that exists.");
+        exception.Message.ShouldBe("A tenant with this name already exists.");
         DomainProblemDetails.StatusCodeFor(exception).ShouldBe(StatusCodes.Status409Conflict);
     }
 

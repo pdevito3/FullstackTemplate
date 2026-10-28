@@ -10,6 +10,7 @@ public class User : BaseEntity, ITenantable
     public const int FirstNameMaxLength = 200;
     public const int LastNameMaxLength = 200;
     public const int IdentifierMaxLength = 255;
+    public const string IdentifierInUseMessage = "A user with this identifier already exists.";
     public const int UsernameMaxLength = 100;
 
     [NotSensitive] public string TenantId { get; private set; } = default!;

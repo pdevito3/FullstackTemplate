@@ -111,6 +111,29 @@ public class UniqueCheckRaceTests : TestBase
     }
 
     [Test]
+    public async Task loser_of_an_initiate_race_on_the_tenant_name_gets_the_tenant_name_message()
+    {
+        // Arrange
+        var pause = PauseAtQuery.After("users.initiate.tenant_name_in_use");
+        await using var services = pause.BuildServices();
+        var dto = new FakeInitiateUserAndTenantDto().Generate();
+        var rivalDto = new FakeInitiateUserAndTenantDto().Generate() with { TenantName = dto.TenantName };
+        var underTest = new TestingServiceScope(services);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: dto.Identifier);
+        rival.SetUserWithDefaults(identifier: rivalDto.Identifier);
+
+        // Act
+        var initiate = underTest.SendAsync(new InitiateUserAndTenant.Command(dto));
+        await pause.ReachedAsync();
+        await rival.SendAsync(new InitiateUserAndTenant.Command(rivalDto));
+        pause.Release();
+
+        // Assert
+        await ShouldBeConflictAsync(initiate, "tenantName", "A tenant with this name already exists.");
+    }
+
+    [Test]
     public async Task loser_of_an_agent_add_race_gets_the_client_id_message()
     {
         // Arrange

@@ -74,6 +74,7 @@ Obey these rules:
 
 - A unit test is `*.test.ts` beside the code. It runs in Node, and Vitest also type-checks it.
 - A component test is `*.test.tsx` beside the component. It runs in Chromium with Vitest browser mode. Render with `render` from `vitest-browser-react`. To hold a request, use `commands.holdRequests` from `vitest/browser`.
+- A test that needs today sets the time with `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime`, as `calendar.test.tsx` does. Make the time from local parts, for example `new Date(2026, 7, 15, 12)`, so that its date is the same in each time zone of the machine. Do not take today from the UTC date, such as `new Date().toISOString().slice(0, 10)`. From 00:00 UTC to local midnight in the Americas, the UTC date is one day after the local date.
 - See `docs/frontend.md`, section "Commands".
 
 ## Finish

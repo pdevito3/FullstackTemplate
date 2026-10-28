@@ -243,6 +243,8 @@ The tests use [TUnit](https://tunit.dev) on Microsoft.Testing.Platform, with Sho
 
 The functional tests share one `TestingWebApplicationFactory`. Each test gets its own `FactoryClient`.
 
+A test never takes today from the UTC date. Take it from the zone of the place in the data, with `ZonedDate.TodayAt(zone, ctx.Now)`. From 00:00 UTC to local midnight in the Americas, the UTC date is one day after the local date. A test that takes today from the UTC date then fails for some hours each day, for example when the domain refuses its date as in the future. The unit, integration, functional, and shared helper projects ban `DateTime.Today`, `DateTime.Now`, `DateTimeOffset.Now`, and `DateOnly.FromDateTime` in `tests/BannedSymbols.txt` (RS0030). The Bff tests do not get the ban, because they cannot see `ZonedDate` and use a fake `TimeProvider`. For a fixed date, use `new DateOnly(year, month, day)`. For the date of a fixed instant, use `zone.ToLocal(instant).Date`. Suppress RS0030 only when neither fits, and give a reason.
+
 TUnit runs all tests in parallel, also the tests of one class. The integration and functional tests share one fixture for each assembly, which `AssemblyHooks.cs` starts and stops. Each test must create its own data and must not depend on rows from other tests. If a test reads state of the whole process, such as all exported spans, put `[NotInParallel]` on its class.
 
 A list with a search has an integration test that searches for `50%`, `a_b`, and `c\d`, and finds only the row with that text. See `tests/FullstackTemplate.IntegrationTests/Databases/LikePatternTests.cs`.

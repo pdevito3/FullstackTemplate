@@ -1,0 +1,7 @@
+// A test that takes today from the UTC date fails for some hours each day: from 00:00 UTC to local midnight in the
+// Americas, the UTC date is one day after the local date. For a fixed date, use new DateOnly(year, month, day), or
+// zone.ToLocal(instant).Date for the date of a fixed instant.
+P:System.DateTime.Today;A test takes today from ZonedDate.TodayAt(zone, now). The UTC date is not the local date.
+P:System.DateTime.Now;Use the frozen time of the test (ctx.Now) or a TimeProvider.
+P:System.DateTimeOffset.Now;Use the frozen time of the test (ctx.Now) or a TimeProvider.
+M:System.DateOnly.FromDateTime(System.DateTime);A test takes today from ZonedDate.TodayAt(zone, now). The UTC date is not the local date.

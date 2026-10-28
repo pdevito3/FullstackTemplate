@@ -1,4 +1,4 @@
-import { Dialog } from 'react-aria-components'
+import { Dialog, type ComboBoxProps } from 'react-aria-components'
 import { afterEach, expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -75,4 +75,247 @@ test('a Combobox in a submenu: Escape closes the submenu without a Duplicate key
   await expect.element(submenu).not.toBeInTheDocument()
   await expect.element(page.getByRole('menu', { name: 'Add Filter' })).toBeVisible()
   expect(errors).toEqual([])
+})
+
+test('a Combobox with only an aria-label names its list after the label', async () => {
+  const screen = await render(
+    <Combobox aria-label="Location">
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <ComboboxItem id="north">North</ComboboxItem>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>,
+  )
+
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+
+  await expect.element(page.getByRole('listbox')).toHaveAccessibleName('Suggestions Location')
+})
+
+test('a Combobox with a visible label names its list after the label', async () => {
+  const screen = await render(
+    <Combobox>
+      <Label>Framework</Label>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <ComboboxItem id="vue">Vue</ComboboxItem>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>,
+  )
+
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+
+  await expect.element(page.getByRole('listbox')).toHaveAccessibleName('Suggestions Framework')
+})
+
+test('the list of a long Combobox is at most 18rem tall on a tall page', async () => {
+  await page.viewport(1280, 1400)
+  const options = Array.from({ length: 60 }, (_, i) => `Option ${i + 1}`)
+  const screen = await render(
+    <Combobox>
+      <Label>Option</Label>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          {options.map((option) => (
+            <ComboboxItem key={option} id={option}>
+              {option}
+            </ComboboxItem>
+          ))}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>,
+  )
+
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+
+  const content = document.querySelector<HTMLElement>('[data-slot="combobox-content"]')
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  expect(content?.getBoundingClientRect().height).toBeLessThanOrEqual(18 * rem)
+})
+
+function FrameworkCombobox(
+  props: Pick<ComboBoxProps<object>, 'allowsCustomValue' | 'defaultSelectedKey' | 'menuTrigger' | 'onChange'>,
+) {
+  return (
+    <Combobox {...props}>
+      <Label>Framework</Label>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <ComboboxItem id="vue">Vue</ComboboxItem>
+          <ComboboxItem id="vue-router">Vue Router</ComboboxItem>
+          <ComboboxItem id="svelte">Svelte</ComboboxItem>
+          <ComboboxItem id="solid-1">Solid</ComboboxItem>
+          <ComboboxItem id="solid-2">Solid</ComboboxItem>
+          <ComboboxItem id="angular" isDisabled>
+            Angular
+          </ComboboxItem>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+test('Enter picks the one option whose text is the typed text', async () => {
+  const screen = await render(<FrameworkCombobox />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('vue{Enter}')
+
+  await expect.element(input).toHaveValue('Vue')
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+  await expect.element(page.getByRole('option', { name: 'Vue', exact: true })).toHaveAttribute('aria-selected', 'true')
+})
+
+test('Enter in a closed list with the text of the selected option puts back the text of the option', async () => {
+  const screen = await render(<FrameworkCombobox defaultSelectedKey="vue" menuTrigger="manual" />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.fill('vue')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue('Vue')
+})
+
+test.each([
+  ['no option has the text', 'Vu'],
+  ['two options have the text', 'Solid'],
+  ['the only option with the text is disabled', 'Angular'],
+])('Enter keeps the typed text when %s', async (_, text) => {
+  const screen = await render(<FrameworkCombobox />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard(`${text}{Enter}`)
+
+  await expect.element(input).toHaveValue(text)
+})
+
+test('Enter in a Combobox that allows a custom value keeps the text and closes the list', async () => {
+  const screen = await render(<FrameworkCombobox allowsCustomValue />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('Vu{Enter}')
+
+  await expect.element(input).toHaveValue('Vu')
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+})
+
+test('Enter that keeps the typed text in a closed list does not submit the form', async () => {
+  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+  const screen = await render(
+    <form onSubmit={onSubmit}>
+      <FrameworkCombobox defaultSelectedKey="vue" menuTrigger="manual" />
+    </form>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.fill('Vux')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue('Vux')
+  expect(onSubmit).not.toHaveBeenCalled()
+})
+
+test('Control+Enter passes to the parent and picks nothing', async () => {
+  const onKeyDown = vi.fn()
+  const onChange = vi.fn()
+  const screen = await render(
+    <div onKeyDown={(e) => onKeyDown(e.key, e.ctrlKey)}>
+      <FrameworkCombobox onChange={onChange} />
+    </div>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('Svelte{Control>}{Enter}{/Control}')
+
+  expect(onKeyDown).toHaveBeenCalledWith('Enter', true)
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+test('the Enter that ends an IME composition in Safari picks nothing', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('vue')
+  // Safari sends this Enter with isComposing false and keyCode 229.
+  input.element().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true }))
+
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+test('Enter in a read-only Combobox picks nothing', async () => {
+  const onChange = vi.fn()
+  const screen = await render(
+    <Combobox isReadOnly defaultInputValue="Vue" onChange={onChange}>
+      <Label>Framework</Label>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <ComboboxItem id="vue">Vue</ComboboxItem>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+test('Enter does not select an action option that has the typed text', async () => {
+  const onAction = vi.fn()
+  const onChange = vi.fn()
+  const screen = await render(
+    <Combobox onChange={onChange}>
+      <Label>Framework</Label>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <ComboboxItem id="vue">Vue</ComboboxItem>
+          <ComboboxItem id="new" onAction={onAction}>
+            New
+          </ComboboxItem>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('New{Enter}')
+
+  await expect.element(input).toHaveValue('New')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+test('Enter with the text of a selected option that has a twin submits the form', async () => {
+  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+  const screen = await render(
+    <form onSubmit={onSubmit}>
+      <FrameworkCombobox defaultSelectedKey="solid-1" menuTrigger="manual" />
+    </form>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue('Solid')
+  expect(onSubmit).toHaveBeenCalledOnce()
 })

@@ -25,6 +25,8 @@ import {
   type ListBoxSectionProps,
   type TagListProps,
   type TagProps,
+  useLocale,
+  type Key,
 } from "@animate-ui/react/primitives/react-aria"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
@@ -38,15 +40,33 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 
+interface ComboboxSettings {
+  ariaLabelOnly?: string
+  allowsCustomValue: boolean
+  isReadOnly: boolean
+}
+
+const ComboboxSettingsContext = React.createContext<ComboboxSettings>({
+  allowsCustomValue: false,
+  isReadOnly: false,
+})
+
 function Combobox<T extends object, M extends "single" | "multiple" = "single">(
   props: ComboBoxProps<T, M>
 ) {
+  const settings: ComboboxSettings = {
+    ariaLabelOnly: props["aria-labelledby"] ? undefined : props["aria-label"],
+    allowsCustomValue: props.allowsCustomValue ?? false,
+    isReadOnly: props.isReadOnly ?? false,
+  }
   return (
     // The same guard as in Select: in an overlay, the hidden copy that the
     // ComboBox builds its collection from inherits the open state of the
     // overlay, and React Aria throws "Duplicate key" when the overlay closes.
     <OverlayTriggerStateContext.Provider value={null}>
-      <ComboBoxPrimitive {...props} />
+      <ComboboxSettingsContext.Provider value={settings}>
+        <ComboBoxPrimitive {...props} />
+      </ComboboxSettingsContext.Provider>
     </OverlayTriggerStateContext.Provider>
   )
 }
@@ -92,19 +112,97 @@ function ComboboxClear({
   )
 }
 
+function onlyOptionWithText(
+  options: NonNullable<React.ContextType<typeof ComboBoxStateContext>>["selectionManager"],
+  text: string,
+  collator: Intl.Collator
+): Key | null {
+  const matches = [...options.collection.getKeys()].filter((key) => {
+    const node = options.collection.getItem(key)
+    return (
+      node?.type === "item" &&
+      !options.isDisabled(key) &&
+      !node.props?.href &&
+      !node.props?.onAction &&
+      collator.compare(node.textValue, text) === 0
+    )
+  })
+  return matches.length === 1 ? matches[0] : null
+}
+
+/**
+ * On Enter with typed text and no focused option, React Aria resets a
+ * single-select Combobox to its selected option and drops the typed text.
+ * Select the one option whose text matches. With no match, keep the typed
+ * text, and do not submit the form, because the text is not the value.
+ */
+function usePickTypedOptionOnEnter() {
+  const state = React.useContext(ComboBoxStateContext)
+  const { allowsCustomValue, isReadOnly } = React.useContext(ComboboxSettingsContext)
+  const { locale } = useLocale()
+
+  return (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      !state ||
+      e.key !== "Enter" ||
+      e.altKey ||
+      e.ctrlKey ||
+      e.metaKey ||
+      e.shiftKey ||
+      e.repeat ||
+      e.nativeEvent.isComposing ||
+      // Safari ends an IME composition with an Enter that has isComposing false and keyCode 229.
+      e.keyCode === 229 ||
+      allowsCustomValue ||
+      isReadOnly ||
+      state.selectionManager.selectionMode !== "single" ||
+      state.inputValue === "" ||
+      (state.isOpen && state.selectionManager.focusedKey != null)
+    ) {
+      return
+    }
+    const collator = new Intl.Collator(locale, { sensitivity: "accent" })
+    // The selection manager has all the options. While the list is closed,
+    // state.collection is the last list that showed, which can be empty.
+    const { collection, firstSelectedKey } = state.selectionManager
+    const selectedText = firstSelectedKey != null ? collection.getItem(firstSelectedKey)?.textValue : undefined
+    if (selectedText != null && collator.compare(selectedText, state.inputValue) === 0) {
+      return
+    }
+    const key = onlyOptionWithText(state.selectionManager, state.inputValue, collator)
+    if (key != null) {
+      state.setValue(key)
+      if (state.isOpen) {
+        e.preventDefault()
+      }
+    } else {
+      e.preventDefault()
+    }
+    e.stopPropagation()
+  }
+}
+
 function ComboboxInput({
   className,
   children,
   showTrigger = true,
   showClear = false,
+  onKeyDownCapture,
   ...props
 }: Omit<React.ComponentProps<"input">, "disabled"> & {
   showTrigger?: boolean
   showClear?: boolean
 }) {
+  const pickTypedOptionOnEnter = usePickTypedOptionOnEnter()
   return (
     <InputGroup className={cn("w-auto", className)}>
-      <InputGroupInput {...props} />
+      <InputGroupInput
+        onKeyDownCapture={(e) => {
+          pickTypedOptionOnEnter(e)
+          onKeyDownCapture?.(e)
+        }}
+        {...props}
+      />
       <InputGroupAddon align="inline-end">
         {showTrigger && (
           <InputGroupButton
@@ -128,6 +226,7 @@ function ComboboxContent({
   placement = "bottom",
   offset = 6,
   crossOffset = 0,
+  maxHeight = remToPx(18),
   anchor,
   ...props
 }: Omit<
@@ -144,20 +243,34 @@ function ComboboxContent({
       placement={placement}
       offset={offset}
       crossOffset={crossOffset}
+      // React Aria sets an inline max-height from the space on the page, which
+      // overrides a class. It uses the smaller of that space and this value.
+      maxHeight={maxHeight}
       triggerRef={anchor}
-      className={cn("relative isolate z-50 max-h-72 w-(--trigger-width) min-w-36 origin-(--trigger-anchor-point) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 **:data-[slot$=-item]:data-focused:bg-foreground/10 *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/30 *:data-[slot=input-group]:shadow-none", className )}
+      className={cn("relative isolate z-50 w-(--trigger-width) min-w-36 origin-(--trigger-anchor-point) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 **:data-[slot$=-item]:data-focused:bg-foreground/10 *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-8 *:data-[slot=input-group]:border-input/30 *:data-[slot=input-group]:bg-input/30 *:data-[slot=input-group]:shadow-none", className )}
       {...props}
     />
   )
+}
+
+function remToPx(rem: number) {
+  return rem * parseFloat(getComputedStyle(document.documentElement).fontSize)
 }
 
 function ComboboxList<T extends object>({
   className,
   ...props
 }: ListBoxProps<T>) {
+  const { ariaLabelOnly } = React.useContext(ComboboxSettingsContext)
+  // React Aria names the list "Suggestions" and the label of the Combobox. With
+  // only an aria-label, it takes the trigger button as the label.
+  const labelProps = ariaLabelOnly
+    ? { "aria-label": `Suggestions ${ariaLabelOnly}`, "aria-labelledby": "" }
+    : {}
   return (
     <ListBoxPrimitive
       data-slot="combobox-list"
+      {...labelProps}
       className={composeRenderProps(className, (className) =>
         cn(
           "group/combobox-content no-scrollbar max-h-[inherit] scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",

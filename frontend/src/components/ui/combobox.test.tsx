@@ -1,4 +1,5 @@
-import { Dialog, type ComboBoxProps } from 'react-aria-components'
+import { Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
+import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -376,9 +377,9 @@ test.each(['{Tab}', '{Enter}'])('%s does not pick the option under the pointer',
 })
 
 test.each([
-  ['{Tab}', 'Next field'],
-  ['{Enter}', 'Framework'],
-])('%s picks the option with the typed text, not the option under the pointer', async (key, focused) => {
+  ['{Tab}', 'textbox', 'Next field'],
+  ['{Enter}', 'combobox', 'Framework'],
+] as const)('%s picks the option with the typed text, not the option under the pointer', async (key, role, focused) => {
   const onChange = vi.fn()
   const screen = await render(
     <>
@@ -396,7 +397,7 @@ test.each([
 
   await expect.element(input).toHaveValue('Vue')
   expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
-  await expect.element(screen.getByRole('textbox', { name: focused }).or(screen.getByRole('combobox', { name: focused }))).toHaveFocus()
+  await expect.element(screen.getByRole(role, { name: focused })).toHaveFocus()
 })
 
 test.each(['{Tab}', '{Enter}'])('%s picks the option that the arrow keys made active, not the option under the pointer', async (key) => {
@@ -413,4 +414,53 @@ test.each(['{Tab}', '{Enter}'])('%s picks the option that the arrow keys made ac
 
   await expect.element(input).toHaveValue('Vue')
   expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
+})
+
+function ControlledFrameworkCombobox({ onChange }: { onChange: (key: unknown) => void }) {
+  const [value, setValue] = useState<Key | null>(null)
+  const [inputValue, setInputValue] = useState('')
+  const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+  return (
+    <div style={{ height: '300vh' }}>
+      <Combobox
+        value={value}
+        onChange={(key) => {
+          onChange(key)
+          setValue(key)
+          setInputValue(key == null ? '' : names[String(key)])
+        }}
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+      >
+        <Label>Framework</Label>
+        <ComboboxInput />
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxItem id="vue">Vue</ComboboxItem>
+            <ComboboxItem id="vue-router">Vue Router</ComboboxItem>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <input aria-label="Next field" />
+    </div>
+  )
+}
+
+test.each([
+  ['an open list', () => {}],
+  ['a list that a scroll of the page closed', () => window.scrollBy(0, 200)],
+])('Tab in %s picks the option with the typed text when the value and the text are controlled', async (_, act) => {
+  const onChange = vi.fn()
+  const screen = await render(<ControlledFrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  act()
+
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange.mock.calls).toEqual([['vue']])
 })

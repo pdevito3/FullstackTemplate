@@ -243,8 +243,11 @@ function ComboboxContent({
   const state = React.useContext(ComboBoxStateContext)
   // React Aria closes the list on a scroll of the page with the close of the
   // ComboBox, which commits the input and clears typed text that is not a pick.
-  // The focus stays in the input, so the list only hides here. A blur commits.
-  const listState = state && { ...state, close: () => state.isOpen && state.toggle() }
+  // While the input has the focus, the list only hides, and the blur commits.
+  const listState = state && {
+    ...state,
+    close: () => (state.isFocused ? state.isOpen && state.toggle() : state.close()),
+  }
   return (
     <OverlayTriggerStateContext.Provider value={listState}>
       <PopoverPrimitive

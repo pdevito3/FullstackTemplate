@@ -43,9 +43,8 @@ export function DateFilter({
 }: FilterControlProps) {
   // 'date' for date-only, 'datetime' for date+time
   const { propertyKey, propertyLabel, dateType = 'date', timeZone } = config
-  const zone = timeZone ?? browserTimeZone()
   const initialDateValue = initialFilter?.value as DateValue | undefined
-  const initialZone = initialDateValue?.timeZone ?? zone
+  const zone = initialDateValue?.timeZone ?? timeZone ?? browserTimeZone()
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
   const isMobile = useIsMobile()
@@ -53,20 +52,20 @@ export function DateFilter({
   // Convert initial values to CalendarDate
   const initialCalendarDate = useMemo(() => {
     if (initialDateValue?.startDate) {
-      return dateAt(initialDateValue.startDate, initialZone)
+      return dateAt(initialDateValue.startDate, zone)
     }
     return undefined
-  }, [initialDateValue, initialZone])
+  }, [initialDateValue, zone])
 
   const initialDateRange = useMemo((): RangeValue<AriaDateValue> | null => {
     if (initialDateValue?.mode === 'between' && initialDateValue.endDate) {
       return {
-        start: dateAt(initialDateValue.startDate, initialZone),
-        end: dateAt(initialDateValue.endDate, initialZone),
+        start: dateAt(initialDateValue.startDate, zone),
+        end: dateAt(initialDateValue.endDate, zone),
       }
     }
     return null
-  }, [initialDateValue, initialZone])
+  }, [initialDateValue, zone])
 
   const [mode, setMode] = useState<DateMode>(
     initialDateValue?.mode === 'excluding'
@@ -83,10 +82,10 @@ export function DateFilter({
   )
   // Time state for datetime mode
   const [startTime, setStartTime] = useState<string>(
-    initialDateValue?.startDate ? timeAt(initialDateValue.startDate, initialZone) : '00:00'
+    initialDateValue?.startDate ? timeAt(initialDateValue.startDate, zone) : '00:00'
   )
   const [endTime, setEndTime] = useState<string>(
-    initialDateValue?.endDate ? timeAt(initialDateValue.endDate, initialZone) : '23:59'
+    initialDateValue?.endDate ? timeAt(initialDateValue.endDate, zone) : '23:59'
   )
 
   const startCalendarDate = mode === 'between' ? (dateRange?.start as CalendarDate | undefined) : date

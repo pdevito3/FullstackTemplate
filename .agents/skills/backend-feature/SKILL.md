@@ -142,6 +142,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 6. **Generate CQRS Features**
    - Add, Update, Delete commands
    - Get single and Get list queries
+   - If the list has a search box, build the pattern with `LikePattern` and pass `LikePattern.EscapeCharacter`. See `docs/backend/features-and-cqrs.md#search-text`.
    - MediatR handlers with proper patterns
    - See: `docs/backend/features-and-cqrs.md`
 

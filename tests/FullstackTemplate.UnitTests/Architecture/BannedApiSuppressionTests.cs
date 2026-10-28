@@ -4,7 +4,7 @@ using Shouldly;
 
 /// <summary>
 /// <c>FullstackTemplate.Server/BannedSymbols.txt</c> bans the APIs that write without the save, so without an audit
-/// entry (RS0030). Code that writes a <c>[NotAudited]</c> table with one of them suppresses RS0030. This test pins the
+/// entry (RS0030). It also bans the two-argument <c>Like</c> and <c>ILike</c>, which send <c>ESCAPE ''</c>. Code that writes a <c>[NotAudited]</c> table with one of them suppresses RS0030. This test pins the
 /// files that can suppress it, so each new suppression changes this list and gets a review.
 /// </summary>
 public class BannedApiSuppressionTests

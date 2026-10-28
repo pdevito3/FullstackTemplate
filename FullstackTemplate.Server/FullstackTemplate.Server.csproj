@@ -25,7 +25,7 @@
     <InternalsVisibleTo Include="FullstackTemplate.UnitTests" />
   </ItemGroup>
 
-  <!-- BannedSymbols.txt bans the APIs that write without the save, so without an audit entry -->
+  <!-- BannedSymbols.txt bans the APIs that write without the save, so without an audit entry, and the LIKE calls with no escape character -->
   <ItemGroup>
     <AdditionalFiles Include="BannedSymbols.txt" />
   </ItemGroup>

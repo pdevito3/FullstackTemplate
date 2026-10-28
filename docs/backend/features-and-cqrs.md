@@ -103,6 +103,16 @@ public static class GetUserList
 }
 ```
 
+### Search text
+
+A free-text search of a list uses `EF.Functions.ILike(column, LikePattern.Containing(search), LikePattern.EscapeCharacter)`. A name check that ignores case uses `LikePattern.Exactly`, and a prefix match uses `LikePattern.StartingWith`. `LikePattern` escapes `%`, `_`, and `\`, so a search for `50%` or `a_b` finds only the rows with that text. A name check gives a clear error, but only a unique index on the name stops two requests that save the same name at one time.
+
+`BannedSymbols.txt` bans the two-argument `ILike` and `Like` (RS0030). They send `ESCAPE ''`, so the backslash of an escaped pattern escapes nothing.
+
+Trim the search, and give it a max length on the parameters DTO. If the search is empty after the trim, do not apply it. If the search fails `PostgresText.CanStore`, throw a `QueryInputException` with the name of the parameter. See [Validation](#validation). Apply the search before `ApplyFilters`, on the entity or on the DTO projection. The query keeps its fixed sort.
+
+A QueryKit filter needs no `LikePattern`. EF Core escapes the pattern of its contains, starts-with, and ends-with operators.
+
 ## Permission checks
 
 A handler checks the permission of the caller with one call to `IPermissionGuard`. The call is the first statement of `Handle`, so a reader of the handler sees the rule. There is no marker interface and no pipeline behavior for access.

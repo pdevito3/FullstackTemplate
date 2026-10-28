@@ -44,3 +44,7 @@ M:Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost;A command on a connection of
 P:System.Data.Common.DbTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
 P:Npgsql.NpgsqlTransaction.Connection;A command on the connection of the context skips the save and WriteGuard. Use the context.
 M:Npgsql.NpgsqlConnection.CloneWith(System.String);A command on a connection of its own skips the save and WriteGuard. Use the context.
+
+// The two-argument Like and ILike send ESCAPE '', so a backslash in the pattern escapes nothing and % or _ of the caller stays a wildcard.
+M:Microsoft.EntityFrameworkCore.NpgsqlDbFunctionsExtensions.ILike(Microsoft.EntityFrameworkCore.DbFunctions,System.String,System.String);The two-argument ILike sends ESCAPE ''. Build the pattern with LikePattern and pass LikePattern.EscapeCharacter as the third argument.
+M:Microsoft.EntityFrameworkCore.DbFunctionsExtensions.Like(Microsoft.EntityFrameworkCore.DbFunctions,System.String,System.String);The two-argument Like sends ESCAPE ''. Build the pattern with LikePattern and pass LikePattern.EscapeCharacter as the third argument.

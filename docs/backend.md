@@ -118,6 +118,7 @@ All error responses use RFC 7807 problem details. `Exceptions/DomainError.cs` cl
 | `ForbiddenAccessException` | 403. `detail` has the message |
 | `ConflictException` from a duplicate check in a handler, and `ConstraintConflictException`, which `AppDbContext` throws when a unique index (Postgres `23505`) or an exclusion constraint (`23P01`) stops a save | 409 with the default `type`. `title` is "The request conflicts with a record that exists." `detail` has the message, and `errors` has it under the named field. A `ConstraintConflictException` does not show the constraint or the values |
 | `StaleVersionException`, which `GuardVersion` throws for an old version in the request, and `AppDbContext` throws when another save changed the row after the load | 409 with `type` `urn:fullstacktemplate:problem:stale-version`. `title` is "The record changed after you loaded it." `detail` has the message, and `errors` has it under `version` |
+| `ConcurrentChangeException`, which `RaceRetryBehavior` throws when a command with no version lost the race on each run | 409 with `type` `urn:fullstacktemplate:problem:concurrent-change`. `title` is "Other users changed the record at the same time." `detail` has the message, and `errors` is empty |
 | `RequestValidationException`, from a DataAnnotations rule in `RequestValidationBehavior` | 400. `errors` has the messages for each camelCase field |
 | `QueryInputException`, for a query value that the Server cannot apply: a `filters` or `sortOrder` value that QueryKit cannot apply, a value with a character that Postgres cannot take, or a malformed `cursor` | 400. `errors` has the message under the name of the parameter |
 | Any other exception | 500 |
@@ -126,14 +127,15 @@ If a request value does not bind, or a DataAnnotations rule fails, the Server re
 
 A 422 comes from a domain rule or a FluentValidation rule. Its body also has the `ValidationProblemDetails` shape. Declare `.ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)` on each write endpoint (POST, PUT, PATCH, and DELETE). Also declare it when the endpoint has no request body, because a domain rule can fail in any write.
 
-A 409 comes from a duplicate unique value, an overlap that an exclusion constraint stops, or a record that changed after the caller loaded it. Its body also has the `ValidationProblemDetails` shape. The `type` tells the cases apart. The type `urn:fullstacktemplate:problem:stale-version` (`DomainProblemDetails.StaleVersionType`) means that the caller must load the record again and repeat the change. Any other type means that the caller must change the value of the field in `errors`.
+A 409 comes from a duplicate unique value, an overlap that an exclusion constraint stops, or a record that changed after the caller loaded it. Its body also has the `ValidationProblemDetails` shape. The `type` tells the cases apart. The type `urn:fullstacktemplate:problem:stale-version` (`DomainProblemDetails.StaleVersionType`) means that the caller must load the record again and repeat the change. The type `urn:fullstacktemplate:problem:concurrent-change` (`DomainProblemDetails.ConcurrentChangeType`) means that the caller can send the same request again. Any other type means that the caller must change the value of the field in `errors`.
 
-Each entrypoint shows the two kinds differently:
+Each entrypoint shows the three kinds differently:
 
 | Kind | HTTP | gRPC | MCP `code` |
 |------|------|------|------------|
 | Conflict with a record that exists | 409 with the default `type` | `AlreadyExists` | `already_exists` |
 | Stale version | 409 with the stale version `type` | `Aborted` | `aborted` |
+| Concurrent change | 409 with the concurrent change `type` | `Aborted` | `aborted` |
 
 Declare `.ProducesValidationProblem(StatusCodes.Status409Conflict)` on each write endpoint that changes an existing record, because each one can lose a race with another save. Also declare it on each write endpoint that can add or change a unique value.
 
@@ -213,13 +215,7 @@ A paged list query must have a fixed sort order. Without one, a row can show on 
 
 ### Concurrency
 
-Each entity has `Version`, the Postgres `xmin` of its row. `MapVersionToXmin` maps it for each entity, so a new entity needs no configuration for it. EF Core adds `WHERE xmin = @loaded` to each update. When another save changed the row after the load, the save throws a `StaleVersionException`, which gives 409. The reasons for this design are in [ADR 0008](adr/0008-optimistic-concurrency-with-xmin.md).
-
-- A save that adds, changes, or removes an owned child also updates the owner row. Thus the version of the root guards the whole aggregate. An owned child is the dependent of a `Cascade` foreign key (see [entity-configurations.md](backend/entity-configurations.md)). Change a child only through its loaded owner. The save throws when the owner of a changed child is not tracked.
-- The read DTO of a root shows `version`. A PUT body that replaces the fields of an edit form has a required `version`, and the entity method calls `GuardVersion` first (see [domain-entities.md](backend/domain-entities.md#versions)). A command for one intent, such as a role change, a new permission, or a delete, has no version. The `xmin` check still stops its race between the load and the save.
-- `Version` is an opaque number. Compare it only for equality. A list cannot filter or sort on `version`, and `ApplyFilters` and `ApplySortOrder` return 400 for it. Postgres has no order for `xid`, so a range or a sort fails. An equality filter works in Postgres, but a list has no use for it, so it also gives 400.
-
-After a lost acknowledgment of a commit, the execution strategy of EF sends the save again. Before it does, the save looks for its audit entries. If they are there, the save committed, so it returns success and sets the `Version` of each saved entity. Thus the save does not run two times, and the caller does not get a 409 for a save that worked. A save that writes no audit entry, such as a save of only a `[NotAudited]` table, has nothing to look for, and it can still get a 409. See [ADR 0010](adr/0010-domain-events-in-the-save-transaction.md).
+Each command picks a version, a run again, or a lock for a race with another request. See [concurrency.md](backend/concurrency.md).
 
 ### Migrations
 
@@ -261,7 +257,7 @@ Local runs reuse one Postgres container and create a new database for each run. 
 
 A race test puts two requests in one fixed order. Write a race test for each of these:
 
-- A command that sends no version and runs again after it loses a race.
+- A command that sends no version and runs again after it loses a race (see [concurrency.md](backend/concurrency.md#run-again)).
 - A command that takes a lock.
 - A rule that counts or checks other rows, such as open appointments, stock, or overlaps.
 - A unique value that two requests can add at the same time.
@@ -294,4 +290,4 @@ Do not use `Task.WhenAll` alone for a race test. The order of two parallel reque
 
 Each wait of `PauseAtQuery` fails after 30 seconds with a message that names the tag. As a result, a test that does not get to the step fails, and the run does not hang.
 
-Make the fix fail one time on purpose. Remove the run again, the lock, or the version check, and make sure that the race test fails. Then put the fix back. See `tests/FullstackTemplate.IntegrationTests/Databases/ConcurrencyTests.cs` for examples.
+Make the fix fail one time on purpose. Remove the run again, the lock, or the version check, and make sure that the race test fails. Then put the fix back. See `ConcurrencyTests.cs` and `RunAgainWhenRacedTests.cs` in `tests/FullstackTemplate.IntegrationTests/Databases/` for examples.

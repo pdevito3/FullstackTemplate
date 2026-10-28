@@ -61,6 +61,14 @@ public class EntrypointBoundaryTests
     }
 
     [Test]
+    public void only_an_entrypoint_creates_a_command_that_runs_again_when_raced()
+    {
+        Server.Value.CoreThatCreatesARunAgainRequest().ShouldBeEmpty(
+            "A run again discards each tracked change of the scope, also those of the handler that sent the command. " +
+            "Send the command from an entrypoint, or call the domain method of the command in the handler.");
+    }
+
+    [Test]
     public void each_kind_of_server_type_is_found()
     {
         var adapters = Server.Value.AdapterNames();
@@ -112,6 +120,19 @@ public class EntrypointBoundaryTests
             "FullstackTemplate.ArchitectureFixtures.Adapters.ToolWithDatabase",
             "FullstackTemplate.ArchitectureFixtures.Contract.Grpc.V1.HandWrittenGrpcMappings",
             "FullstackTemplate.ArchitectureFixtures.Resources.Entrypoints.PlumbingWithDatabase",
+        ]);
+    }
+
+    [Test]
+    public void rule_4_finds_core_that_creates_a_command_that_runs_again()
+    {
+        Fixtures.Value.CoreThatCreatesARunAgainRequest().ShouldBe(
+        [
+            "FullstackTemplate.ArchitectureFixtures.Core.CoreWithAsyncRunAgainCommand",
+            "FullstackTemplate.ArchitectureFixtures.Core.CoreWithRunAgainCommand",
+            "FullstackTemplate.ArchitectureFixtures.Core.CoreWithRunAgainStructInPlace",
+            "FullstackTemplate.ArchitectureFixtures.Core.CoreWithRunAgainStructOfDefault",
+            "FullstackTemplate.ArchitectureFixtures.Core.RunAgainCommandWithFactory",
         ]);
     }
 

@@ -87,28 +87,6 @@ public class ConcurrencyTests : TestBase
     }
 
     [Test]
-    public async Task permission_add_that_a_rival_add_beat_after_the_load_is_a_stale_version()
-    {
-        // Arrange
-        var pause = PauseAtQuery.After("users.add_permission.load");
-        await using var services = pause.BuildServices();
-        await new TestingServiceScope().StartGraph(out _)
-            .AddUser(out var user, u => u.Role = "User")
-            .BuildAsync();
-
-        // Act
-        var add = new TestingServiceScope(services).SendAsync(new AddUserPermission.Command(user.Id, "manage_users"));
-        await pause.ReachedAsync();
-        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(user.Id, "read_users"));
-        pause.Release();
-
-        // Assert
-        await Should.ThrowAsync<StaleVersionException>(add);
-        var saved = await LoadWithPermissionsAsync(new TestingServiceScope(), user.Id);
-        saved.UserPermissions.ShouldHaveSingleItem().Permission.Value.ShouldBe("read_users");
-    }
-
-    [Test]
     public async Task child_change_of_a_user_that_is_not_tracked_is_refused()
     {
         // Arrange

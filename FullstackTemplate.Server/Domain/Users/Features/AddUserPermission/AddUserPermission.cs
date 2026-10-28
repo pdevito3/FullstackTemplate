@@ -12,7 +12,7 @@ using Serilog;
 public static class AddUserPermission
 {
     // The endpoint sends the permission of UserPermissionDto, so the rule of the DTO is also on the command
-    public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<UserDto>;
+    public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<UserDto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {

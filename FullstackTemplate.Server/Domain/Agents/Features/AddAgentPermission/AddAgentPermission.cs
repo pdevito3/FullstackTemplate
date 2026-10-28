@@ -12,7 +12,7 @@ using Users;
 
 public static class AddAgentPermission
 {
-    public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<AgentDto>;
+    public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<AgentDto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, AgentDto>
     {

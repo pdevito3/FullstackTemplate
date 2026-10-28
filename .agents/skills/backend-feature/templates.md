@@ -415,7 +415,7 @@ using Serilog;
 
 public static class Delete[EntityName]
 {
-    public sealed record Command(string Id) : IRequest;
+    public sealed record Command(string Id) : IRequest, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command>
@@ -1085,7 +1085,7 @@ using Serilog;
 
 public static class [Action][EntityName]
 {
-    public sealed record Command(string Id) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id) : IRequest<[EntityName]Dto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, [EntityName]Dto>
@@ -1132,7 +1132,7 @@ using Serilog;
 
 public static class [Action][EntityName]
 {
-    public sealed record Command(string Id, [Action][EntityName]Dto Dto) : IRequest<[EntityName]Dto>;
+    public sealed record Command(string Id, [Action][EntityName]Dto Dto) : IRequest<[EntityName]Dto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
         : IRequestHandler<Command, [EntityName]Dto>

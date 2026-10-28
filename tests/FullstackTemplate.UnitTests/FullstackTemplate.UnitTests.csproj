@@ -14,6 +14,7 @@
         <PackageReference Include="TUnit" />
         <PackageReference Include="Shouldly" />
         <PackageReference Include="NSubstitute" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Mono.Cecil" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />

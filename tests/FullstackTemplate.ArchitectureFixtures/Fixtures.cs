@@ -24,6 +24,9 @@ namespace FullstackTemplate.ArchitectureFixtures.Core
 {
     using Adapters;
     using Contract.Grpc.V1;
+    using FullstackTemplate.Server.Domain.Users.Features;
+    using FullstackTemplate.Server.Resources;
+    using MediatR;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Resources.Entrypoints;
@@ -100,6 +103,74 @@ namespace FullstackTemplate.ArchitectureFixtures.Core
     {
         public static int Get() => Plumbing.Value;
     }
+
+    // Not rule 4: the copy method of the record creates the request itself
+    public sealed record CleanRunAgainCommand(int Value) : IRequest<int>, IRunsAgainWhenRaced;
+
+    // Rule 4: a factory method on the request lets a handler create it
+    public sealed record RunAgainCommandWithFactory(int Value) : IRequest<int>, IRunsAgainWhenRaced
+    {
+        public static RunAgainCommandWithFactory For(int value) => new(value);
+    }
+
+    // Rule 4: core creates a command of the Server that runs again when raced
+    public static class CoreWithRunAgainCommand
+    {
+        public static object Create() => new AddUserPermission.Command("usr_fixture", "read_users");
+    }
+
+    // Rule 4: core creates a command that runs again only in the state machine of an async method
+    public static class CoreWithAsyncRunAgainCommand
+    {
+        public static async Task<int> Run(ISender sender)
+        {
+            await Task.Yield();
+            return await sender.Send(new CleanRunAgainCommand(1));
+        }
+    }
+
+    // Not rule 4: a struct command that its own code does not create
+    public readonly record struct RunAgainStructCommand(int Value) : IRequest<int>, IRunsAgainWhenRaced;
+
+    // Rule 4: core builds a struct command in place, with call .ctor
+    public static class CoreWithRunAgainStructInPlace
+    {
+        public static int Create()
+        {
+            var command = new RunAgainStructCommand(1);
+            return command.Value;
+        }
+    }
+
+    // Rule 4: core builds a struct command with initobj
+    public static class CoreWithRunAgainStructOfDefault
+    {
+        public static int Create()
+        {
+            RunAgainStructCommand command = default;
+            return command.Value;
+        }
+    }
+
+    // RunAgainRequestTests: a version on the command, in a DTO of the command, and in a list of DTOs
+    public sealed record RunAgainCommandWithVersion(string Id, uint Version) : IRunsAgainWhenRaced;
+
+    public sealed record RunAgainCommandWithVersionInDto(string Id, VersionedBody Body) : IRunsAgainWhenRaced;
+
+    public sealed record RunAgainCommandWithVersionInDtoList(IReadOnlyList<VersionedBody> Lines) : IRunsAgainWhenRaced;
+
+    public readonly record struct RunAgainStructCommandWithVersion(string Id, uint Version) : IRunsAgainWhenRaced;
+
+    public readonly record struct RunAgainStructCommandWithVersionInDto(string Id, VersionedStructBody Body)
+        : IRunsAgainWhenRaced;
+
+    public readonly record struct VersionedStructBody(string Name, uint Version);
+
+    public sealed class VersionedBody
+    {
+        public string Name { get; init; } = string.Empty;
+        public uint Version { get; init; }
+    }
 }
 
 namespace FullstackTemplate.ArchitectureFixtures.Resources.Entrypoints
@@ -159,6 +230,13 @@ namespace FullstackTemplate.ArchitectureFixtures.Adapters
     public sealed class CleanEndpoint : IEndpoint
     {
         public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup.MapGet("/clean", () => "clean");
+    }
+
+    // Not rule 4: an entrypoint sends a command that runs again
+    public sealed class CleanRunAgainEndpoint : IEndpoint
+    {
+        public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup.MapPost("/run-again",
+            (MediatR.ISender sender) => sender.Send(new Core.CleanRunAgainCommand(1)));
     }
 
     // Rule 3: an endpoint uses the database

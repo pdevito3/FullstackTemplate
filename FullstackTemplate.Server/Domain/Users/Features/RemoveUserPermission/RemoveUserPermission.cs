@@ -11,7 +11,7 @@ using Serilog;
 
 public static class RemoveUserPermission
 {
-    public sealed record Command(string Id, string Permission) : IRequest<UserDto>;
+    public sealed record Command(string Id, string Permission) : IRequest<UserDto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {

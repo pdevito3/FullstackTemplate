@@ -35,6 +35,8 @@ public static class WebAppServiceConfiguration
             cfg.AddOpenBehavior(typeof(RequestTracingBehavior<,>));
             cfg.AddOpenBehavior(typeof(CallerIdentityBehavior<,>));
             cfg.AddOpenBehavior(typeof(RequestValidationBehavior<,>));
+            // Only for an IRunsAgainWhenRaced request. Each run again runs AuditRequestBehavior and the handler again.
+            cfg.AddOpenBehavior(typeof(RaceRetryBehavior<,>));
             // Innermost behavior, next to the handler whose saves it names.
             cfg.AddOpenBehavior(typeof(AuditRequestBehavior<,>));
         });

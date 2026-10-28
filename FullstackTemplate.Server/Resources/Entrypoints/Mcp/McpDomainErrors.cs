@@ -50,7 +50,7 @@ public static partial class McpDomainErrors
         DomainErrorKind.NotFound => "not_found",
         DomainErrorKind.Forbidden => "permission_denied",
         DomainErrorKind.Conflict => "already_exists",
-        DomainErrorKind.StaleVersion => "aborted",
+        DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange => "aborted",
         DomainErrorKind.Unexpected => "internal",
     };
 

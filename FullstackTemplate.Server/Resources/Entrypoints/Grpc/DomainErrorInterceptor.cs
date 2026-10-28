@@ -84,7 +84,7 @@ public sealed class DomainErrorInterceptor : Interceptor
         DomainErrorKind.NotFound => StatusCode.NotFound,
         DomainErrorKind.Forbidden => StatusCode.PermissionDenied,
         DomainErrorKind.Conflict => StatusCode.AlreadyExists,
-        DomainErrorKind.StaleVersion => StatusCode.Aborted,
+        DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange => StatusCode.Aborted,
         DomainErrorKind.Unexpected => null,
     };
 

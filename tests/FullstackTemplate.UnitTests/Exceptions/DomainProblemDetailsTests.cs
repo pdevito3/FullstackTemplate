@@ -114,6 +114,31 @@ public class DomainProblemDetailsTests
     }
 
     [Test]
+    public void concurrent_change_problem_has_its_own_type_and_no_field()
+    {
+        // Arrange
+        var exception = new ConcurrentChangeException();
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            Exception = exception,
+            ProblemDetails = new() { Status = StatusCodes.Status409Conflict, Type = DefaultConflictType },
+        };
+
+        // Act
+        var status = DomainProblemDetails.StatusCodeFor(exception);
+        DomainProblemDetails.Customize(context);
+
+        // Assert
+        status.ShouldBe(StatusCodes.Status409Conflict);
+        context.ProblemDetails.Type.ShouldBe("urn:fullstacktemplate:problem:concurrent-change");
+        context.ProblemDetails.Title.ShouldBe("Other users changed the record at the same time.");
+        context.ProblemDetails.Detail.ShouldBe(
+            "Other users changed this record at the same time, so the change did not save. Send it again.");
+        context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldBeEmpty();
+    }
+
+    [Test]
     public void exclusion_violation_problem_is_a_conflict_with_the_message_under_the_field()
     {
         // Arrange
@@ -162,6 +187,7 @@ public class DomainProblemDetailsTests
         (new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden),
         (new ConflictException("identifier", "A user with this identifier already exists."), StatusCodes.Status409Conflict),
         (new StaleVersionException(), StatusCodes.Status409Conflict),
+        (new ConcurrentChangeException(), StatusCodes.Status409Conflict),
         // These two come from the setup of the server, not from the request
         (new QueryKitDbContextTypeException("SoundsLike"), StatusCodes.Status500InternalServerError),
         (new SoundsLikeNotImplementedException("AppDbContext"), StatusCodes.Status500InternalServerError),

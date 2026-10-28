@@ -18,6 +18,12 @@ public static class DomainProblemDetails
     /// </summary>
     public const string StaleVersionType = "urn:fullstacktemplate:problem:stale-version";
 
+    /// <summary>
+    /// The <c>type</c> of the problem for a command with no version that lost the race on each run. The caller sends
+    /// it again as it is, and does not load the record first.
+    /// </summary>
+    public const string ConcurrentChangeType = "urn:fullstacktemplate:problem:concurrent-change";
+
     // A validation failure is 422: the request is well-formed, but it breaks a business rule.
     public static int StatusCodeFor(Exception exception)
     {
@@ -30,7 +36,8 @@ public static class DomainProblemDetails
             DomainErrorKind.InvalidInput => StatusCodes.Status400BadRequest,
             DomainErrorKind.NotFound => StatusCodes.Status404NotFound,
             DomainErrorKind.Forbidden => StatusCodes.Status403Forbidden,
-            DomainErrorKind.Conflict or DomainErrorKind.StaleVersion => StatusCodes.Status409Conflict,
+            DomainErrorKind.Conflict or DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange
+                => StatusCodes.Status409Conflict,
             DomainErrorKind.Unexpected => StatusCodes.Status500InternalServerError,
         };
     }
@@ -58,8 +65,12 @@ public static class DomainProblemDetails
         var problem = context.ProblemDetails;
         problem.Title = error.Title;
         problem.Detail = error.Detail;
-        if (error.Kind == DomainErrorKind.StaleVersion)
-            problem.Type = StaleVersionType;
+        problem.Type = error.Kind switch
+        {
+            DomainErrorKind.StaleVersion => StaleVersionType,
+            DomainErrorKind.ConcurrentChange => ConcurrentChangeType,
+            _ => problem.Type,
+        };
         if (error.Errors is not null)
             problem.Extensions["errors"] = error.Errors;
     }

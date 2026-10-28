@@ -94,6 +94,18 @@ public class DomainErrorInterceptorTests
     }
 
     [Test]
+    public async Task a_concurrent_change_is_aborted_with_no_field_violation()
+    {
+        var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
+            "request", _context, (_, _) => throw new ConcurrentChangeException()));
+
+        exception.StatusCode.ShouldBe(StatusCode.Aborted);
+        exception.Status.Detail.ShouldBe(
+            "Other users changed this record at the same time, so the change did not save. Send it again.");
+        exception.GetRpcStatus().ShouldNotBeNull().GetDetail<BadRequest>().ShouldBeNull();
+    }
+
+    [Test]
     public async Task a_conflict_with_a_record_that_exists_is_already_exists()
     {
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(

@@ -1,3 +1,16 @@
+# Git stores each text file with LF and checks it out with LF on each platform.
+# CI fails when a tracked text file has a CR. See the line-endings job in .github/workflows/ci.yml.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+
 # Kubb generates these files from the OpenAPI document. GitHub collapses them in diffs.
 frontend/src/api/generated*/** linguist-generated=true
 

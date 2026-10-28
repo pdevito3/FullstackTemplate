@@ -32,6 +32,12 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    async openAt(instant: Date) {
+      await page.clock.setFixedTime(instant)
+      await page.goto('/filter-demo')
+      await expect(at.heading).toBeVisible()
+    },
+
     async chooseProperty(propertyLabel: string) {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()
@@ -125,6 +131,13 @@ export function filterDemoPage(page: Page) {
     async updateWithQuickSelect(propertyLabel: string, quickSelect: string) {
       await at.button(propertyLabel, quickSelect).click()
       await at.button(propertyLabel, 'Update Filter').click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
+    async addTodayAtTimeFilter(propertyLabel: string, timeLabel: string, time: string) {
+      await at.button(propertyLabel, 'Today').click()
+      await at.time(propertyLabel, timeLabel).fill(time)
+      await at.addFilter(propertyLabel).click()
       await expect(at.control(propertyLabel)).toBeHidden()
     },
 

@@ -562,3 +562,17 @@ test.describe('the Add Filter menu on a short desktop window', () => {
     await expect(demo.at.addFilter('Scheduled At (Local)')).toBeInViewport({ ratio: 1 })
   })
 })
+
+test.describe('a date filter of a place in another zone', () => {
+  test('takes today and reads the typed time in the zone of the place, not of the browser', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    // 07:00 UTC on August 16 is 20:00 on August 15 in Pago Pago. In UTC and in Kiritimati, it is August 16.
+    await demo.openAt(new Date('2026-08-16T07:00:00Z'))
+    await demo.chooseProperty('Starts At in Pago Pago')
+
+    await demo.addTodayAtTimeFilter('Starts At in Pago Pago', 'Time in Pacific/Pago Pago', '09:00')
+
+    await expect(demo.at.editFilter('Starts At in Pago Pago')).toHaveAccessibleName(/Aug 15, 2026/)
+    await expect(demo.at.queryKit).toHaveText('startsAt == "2026-08-15T20:00:00Z"')
+  })
+})

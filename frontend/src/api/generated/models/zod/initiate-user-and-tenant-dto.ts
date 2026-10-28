@@ -6,11 +6,11 @@
 import * as z from 'zod'
 
 export const initiateUserAndTenantDtoSchema = z.object({
-  tenantName: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  identifier: z.string(),
-  email: z.string(),
-  username: z.string(),
+  tenantName: z.string().max(200),
+  firstName: z.string().max(200),
+  lastName: z.string().max(200),
+  identifier: z.string().max(255),
+  email: z.string().max(320),
+  username: z.string().max(100),
   role: z.enum(['Admin', 'User']),
 })

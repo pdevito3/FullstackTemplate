@@ -459,7 +459,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Verify entity configuration is in `Databases/EntityConfigurations/` and properly applied
 - [ ] Each foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] Each foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
-- [ ] Each text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
+- [ ] Each text value that a request sets has a max length constant that the entity validation checks, `HasMaxLength` uses, and `[SchemaMaxLength]` puts on the request DTO, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
 - [ ] Add the entity to the entity graph with the `test-entity-graph` skill. Then list each text column with a max length in `StringColumnLengthTests`: a column that a request sets in `CallerColumns` with its domain write, a column with fixed options in `FixedOptionColumns`, or a column that only the server writes in `ServerWrittenColumns`
 - [ ] Install MediatR if not already present
 - [ ] Install Mapperly if not already present
@@ -483,7 +483,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Entity configuration updated (constraints, value object mapping)
 - [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
-- [ ] A new text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
+- [ ] A new text value that a request sets has a max length constant that the entity validation checks, `HasMaxLength` uses, and `[SchemaMaxLength]` puts on the request DTO, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
 - [ ] A new text column with a max length is in `CallerColumns`, `FixedOptionColumns`, or `ServerWrittenColumns` of `StringColumnLengthTests`. For a caller column, add the property to the input and the blueprint of the entity graph, so that the domain write can set it
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`

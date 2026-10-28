@@ -4,9 +4,25 @@
 */
 
 export type UserForUpdateDto = {
+    /**
+     * @maxLength 200
+     * @type string
+    */
     firstName: string;
+    /**
+     * @maxLength 200
+     * @type string
+    */
     lastName: string;
+    /**
+     * @maxLength 320
+     * @type string
+    */
     email: string;
+    /**
+     * @maxLength 100
+     * @type string
+    */
     username: string;
     /**
      * @description The version of the user that the caller loaded. A stale version gives 409.

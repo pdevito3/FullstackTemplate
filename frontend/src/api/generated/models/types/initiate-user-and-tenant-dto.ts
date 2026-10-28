@@ -11,11 +11,35 @@ export const initiateUserAndTenantDtoRoleEnum = {
 export type InitiateUserAndTenantDtoRoleEnumKey = (typeof initiateUserAndTenantDtoRoleEnum)[keyof typeof initiateUserAndTenantDtoRoleEnum];
 
 export type InitiateUserAndTenantDto = {
+    /**
+     * @maxLength 200
+     * @type string
+    */
     tenantName: string;
+    /**
+     * @maxLength 200
+     * @type string
+    */
     firstName: string;
+    /**
+     * @maxLength 200
+     * @type string
+    */
     lastName: string;
+    /**
+     * @maxLength 255
+     * @type string
+    */
     identifier: string;
+    /**
+     * @maxLength 320
+     * @type string
+    */
     email: string;
+    /**
+     * @maxLength 100
+     * @type string
+    */
     username: string;
     role: InitiateUserAndTenantDtoRoleEnumKey;
 };

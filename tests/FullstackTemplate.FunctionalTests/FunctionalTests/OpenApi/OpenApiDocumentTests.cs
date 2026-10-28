@@ -3,6 +3,8 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.OpenApi;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FullstackTemplate.Server.Domain.Agents;
+using FullstackTemplate.Server.Domain.EmailAddresses;
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
@@ -161,6 +163,89 @@ public class OpenApiDocumentTests
 
         expectations.Select(e => $"{e.Name}: {string.Join(", ", EnumOf(e.Schema))}")
             .ShouldBe(expectations.Select(e => $"{e.Name}: {string.Join(", ", e.Names)}"));
+    }
+
+    [Test]
+    public async Task request_strings_with_a_domain_text_limit_have_its_max_length()
+    {
+        var root = await LoadDocumentAsync();
+        var schemas = root["components"]!["schemas"]!;
+
+        (string Name, int MaxLength)[] expectations =
+        [
+            ("AgentForCreationDto.name", Agent.NameMaxLength),
+            ("AgentForCreationDto.clientId", Agent.ClientIdMaxLength),
+            ("TenantForCreationDto.name", Tenant.NameMaxLength),
+            ("TenantForUpdateDto.name", Tenant.NameMaxLength),
+            ("UserForCreationDto.firstName", User.FirstNameMaxLength),
+            ("UserForCreationDto.lastName", User.LastNameMaxLength),
+            ("UserForCreationDto.identifier", User.IdentifierMaxLength),
+            ("UserForCreationDto.email", EmailAddress.MaxLength),
+            ("UserForCreationDto.username", User.UsernameMaxLength),
+            ("UserForUpdateDto.firstName", User.FirstNameMaxLength),
+            ("UserForUpdateDto.lastName", User.LastNameMaxLength),
+            ("UserForUpdateDto.email", EmailAddress.MaxLength),
+            ("UserForUpdateDto.username", User.UsernameMaxLength),
+            ("InitiateUserAndTenantDto.tenantName", Tenant.NameMaxLength),
+            ("InitiateUserAndTenantDto.firstName", User.FirstNameMaxLength),
+            ("InitiateUserAndTenantDto.lastName", User.LastNameMaxLength),
+            ("InitiateUserAndTenantDto.identifier", User.IdentifierMaxLength),
+            ("InitiateUserAndTenantDto.email", EmailAddress.MaxLength),
+            ("InitiateUserAndTenantDto.username", User.UsernameMaxLength),
+        ];
+
+        int? MaxLengthOf(string name)
+        {
+            var parts = name.Split('.');
+            return schemas[parts[0]]?["properties"]?[parts[1]]?["maxLength"]?.GetValue<int>();
+        }
+
+        expectations.Select(e => $"{e.Name}: {MaxLengthOf(e.Name)}")
+            .ShouldBe(expectations.Select(e => $"{e.Name}: {e.MaxLength}"));
+    }
+
+    // A new string field of a request needs [SchemaMaxLength] or [NamesOf<T>], so that a form gets its limit from the contract
+    [Test]
+    public async Task each_request_string_has_a_max_length_or_a_list_of_names()
+    {
+        var root = await LoadDocumentAsync();
+        var schemas = root["components"]!["schemas"]!;
+        // An entity ID is not text that a person types. The client sends an ID that it read from the API.
+        string[] entityIds = ["AgentForCreationDto.tenantId", "UserForCreationDto.tenantId"];
+
+        static IEnumerable<string> RefsUnder(JsonNode node) =>
+            Descendants(node).OfType<JsonObject>().Select(child => child["$ref"]?.GetValue<string>()).OfType<string>();
+        static bool IsFreeText(JsonNode schema) =>
+            TypesOf(schema).Contains("string") && schema["maxLength"] is null && schema["enum"] is null;
+
+        var requestSchemas = new HashSet<string>();
+        var pending = new Queue<string>(Operations(root)
+            .Select(o => o.Operation["requestBody"])
+            .OfType<JsonNode>()
+            .SelectMany(RefsUnder));
+        while (pending.TryDequeue(out var schemaRef))
+        {
+            var name = schemaRef.Split('/')[^1];
+            if (!requestSchemas.Add(name))
+                continue;
+            foreach (var nested in RefsUnder(schemas[name]!))
+                pending.Enqueue(nested);
+        }
+        var unlimited = requestSchemas
+            .SelectMany(name => (schemas[name]!["properties"]?.AsObject() ?? [])
+                .Where(property => IsFreeText(property.Value!)
+                    || (TypesOf(property.Value!).Contains("array") && property.Value!["items"] is { } items
+                        && IsFreeText(items)))
+                .Select(property => $"{name}.{property.Key}"))
+            .Except(entityIds)
+            .Order()
+            .ToList();
+
+        requestSchemas.ShouldContain("UserForCreationDto");
+        entityIds.Where(id => schemas[id.Split('.')[0]]?["properties"]?[id.Split('.')[1]] is null)
+            .ShouldBeEmpty("Remove each entity ID that the document no longer has from the exception list.");
+        unlimited.ShouldBeEmpty("Give each string field of a request DTO [SchemaMaxLength] with the domain constant that "
+            + "its entity validation checks, or [NamesOf<T>].");
     }
 
     [Test]

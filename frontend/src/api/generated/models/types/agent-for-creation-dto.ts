@@ -29,9 +29,14 @@ export type AgentForCreationDto = {
      * @type string | undefined
     */
     tenantId?: string | null;
+    /**
+     * @maxLength 200
+     * @type string
+    */
     name: string;
     /**
      * @description The client ID in the tokens of the client. Case-sensitive.
+     * @maxLength 255
      * @type string
     */
     clientId: string;

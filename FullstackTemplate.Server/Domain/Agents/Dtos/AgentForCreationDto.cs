@@ -11,10 +11,12 @@ public sealed record AgentForCreationDto
     /// </summary>
     public string? TenantId { get; init; }
     [RequiredField]
+    [SchemaMaxLength(typeof(Agent), nameof(Agent.NameMaxLength))]
     public string Name { get; init; } = default!;
 
     /// <summary>The client ID in the tokens of the client. Case-sensitive.</summary>
     [RequiredField]
+    [SchemaMaxLength(typeof(Agent), nameof(Agent.ClientIdMaxLength))]
     public string ClientId { get; init; } = default!;
 
     /// <summary>

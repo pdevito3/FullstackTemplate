@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users.Dtos;
 
+using EmailAddresses;
 using Resources;
 
 public sealed record UserForCreationDto
@@ -10,14 +11,19 @@ public sealed record UserForCreationDto
     /// </summary>
     public string? TenantId { get; init; }
     [RequiredField]
+    [SchemaMaxLength(typeof(User), nameof(User.FirstNameMaxLength))]
     public string FirstName { get; init; } = default!;
     [RequiredField]
+    [SchemaMaxLength(typeof(User), nameof(User.LastNameMaxLength))]
     public string LastName { get; init; } = default!;
     [RequiredField]
+    [SchemaMaxLength(typeof(User), nameof(User.IdentifierMaxLength))]
     public string Identifier { get; init; } = default!;
     [RequiredField]
+    [SchemaMaxLength(typeof(EmailAddress), nameof(EmailAddress.MaxLength))]
     public string Email { get; init; } = default!;
     [RequiredField]
+    [SchemaMaxLength(typeof(User), nameof(User.UsernameMaxLength))]
     public string Username { get; init; } = default!;
     [RequiredField]
     [NamesOf<UserRole>]

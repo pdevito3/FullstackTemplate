@@ -6,5 +6,5 @@
 import * as z from 'zod'
 
 export const tenantForCreationDtoSchema = z.object({
-  name: z.string(),
+  name: z.string().max(200),
 })

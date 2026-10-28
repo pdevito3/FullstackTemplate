@@ -74,8 +74,21 @@ test.describe('the weather forecast', () => {
     await weather.open()
 
     await expect(weather.at.error).toContainText('The weather service is down.')
+    await expect(weather.at.emptyMessage).toHaveCount(0)
     expect(api.all('get', weatherPaths.list)).toHaveLength(2)
     expect(await weather.at.toast('The weather service is down.').count()).toBe(1)
+  })
+
+  test('keeps the last forecast under the error when a refresh fails', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast().on('2026-03-14').summarized('Cool')))
+    const weather = weatherForecastPage(page)
+    await weather.open()
+
+    api.mock(weatherApi.listFails(aProblem().saying('The weather service is down.')))
+    await weather.refresh()
+
+    await expect(weather.at.error).toContainText('The weather service is down.')
+    await expect(weather.at.day('Sat, Mar 14')).toContainText('Cool')
   })
 })
 

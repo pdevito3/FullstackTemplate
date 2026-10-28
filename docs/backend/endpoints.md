@@ -162,7 +162,7 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 | `[ToolAccess(Permission.Names.ManageTenant)]` | A tool whose handler calls `RequireAsync` with that permission, for example `update_tenant` | `Caller.Has` gives true for the permission |
 | `[ToolAccess(ToolAccessKind.ManageAllTenants)]` | A tool whose handler checks `Caller.ManagesAllTenants`, for example `add_tenant` | The caller can manage all tenants |
 
-Use a `Permission.Names` constant, so that the compiler checks the name. If the handler checks more than one permission, name the permission that each call needs. The handler checks the others. If the handler lets a user act on their own record with `RequireSelfOrAsync`, use `ToolAccessKind.Read`, so that the handler decides. A permission in the attribute would hide the tool from that user.
+Use a `Permission.Names` constant, so that the compiler checks the name. If the handler checks more than one permission, name the permission that each call needs. The handler checks the others. If the handler lets a user act on their own record with `Caller.RequireSelfOr`, use `ToolAccessKind.Read`, so that the handler decides. A permission in the attribute would hide the tool from that user.
 
 `ToolAccessKind.Read` is stricter on MCP than on HTTP and gRPC. An unknown client gets a `permission_denied` tool error that tells it to ask for a registration. Over HTTP and gRPC, the same caller gets an empty list or 404, because the tenant filter shows it no rows.
 

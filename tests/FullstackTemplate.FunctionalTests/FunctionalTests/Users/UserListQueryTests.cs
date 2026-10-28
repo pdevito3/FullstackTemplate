@@ -201,6 +201,25 @@ public class UserListQueryTests : TestBase
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(parameter);
     }
 
+    // The handler adds the allowed actions after the page loads, so they are not a column of the query
+    [Test]
+    [Arguments("filters", "allowedActions @=* \"Del\"")]
+    [Arguments("filters", "AllowedActions.Count > 0")]
+    [Arguments("sortOrder", "allowedActions")]
+    public async Task query_on_the_allowed_actions_returns_bad_request(string parameter, string value)
+    {
+        // Arrange
+        await ArrangeTwoUsersAsync();
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?{parameter}={Uri.EscapeDataString(value)}");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe(parameter);
+    }
+
     // Makes a new tenant with two users, signs in as the second user, and returns the first user.
     // The first user is an admin with a permission, and the second user is not an admin and has only read_users.
     // So a filter on the role or on the permissions matches only the first user.

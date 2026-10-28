@@ -40,6 +40,7 @@ Endpoint gets UserForCreationDto
 8. Give the response DTO of an aggregate root `public uint Version { get; init; }`. Give each `[EntityName]ForUpdateDto` `public required uint Version { get; init; }`, and give its update model `public uint Version { get; init; }`. Mapperly maps it by name. The client sends back the version that it loaded, and the entity checks it (see [domain-entities.md](domain-entities.md#versions)). A unit test fails if a `ForUpdateDto` has no required `Version`.
 9. Mark each string property that holds a name of a value object with a fixed list of names, such as `UserRole`, with `[NamesOf<UserRole>]`. Also mark a list of such names. The value object implements `IFixedNames`. The OpenAPI document then lists the names as an enum, so the generated SPA type is a union. If the Server renames a value, the SPA build fails.
 10. Give each request field with a domain limit the attribute that names the constant: `[SchemaMaxLength(typeof(User), nameof(User.FirstNameMaxLength))]` for a string, or `[SchemaMaximum]` for a number. Use the constant that the entity validation checks. The OpenAPI document then has the limit, and an SPA form reads it from the generated Zod schema. A functional test fails if a string field of a request has no `maxLength` and no enum. An entity ID, such as `tenantId`, is the only exception.
+11. When the SPA must know if the caller can do an action on a record, put the answer on the response DTO. Use `AllowedActions`, a list of names with `[NamesOf<TAction>]`, or a flag, for example `IsFinal`. Compute the answer in the entity, with the code that the command checks (see [domain-entities.md](domain-entities.md#allowed-actions)). The mapper takes the caller, for example `user.ToUserDto(caller)`. A list query projects to the DTO, so its handler adds the actions after the page loads, as `UserMapper.AddAllowedActions` does. The SPA reads the answer. It does not copy the rule.
 
 ```csharp
 public sealed record UserDto
@@ -52,6 +53,8 @@ public sealed record UserDto
     public string Role { get; init; } = default!;
     [NamesOf<Permission>]
     public IReadOnlyList<string> Permissions { get; init; } = [];
+    [NamesOf<UserAction>]
+    public IReadOnlyList<string> AllowedActions { get; init; } = [];
 }
 ```
 
@@ -87,20 +90,25 @@ public sealed record UserForCreation
 Mapperly makes the map at build time. Do not write a reflection mapper. See [source-generators.md](source-generators.md).
 
 1. Make the mapper a `static partial class` with `[Mapper]`.
-2. Write each mapping as an extension method, for example `user.ToUserDto()`.
+2. Write each mapping as an extension method, for example `tenant.ToTenantDto()`.
 3. Add an `IQueryable` projection for list queries. Mapperly turns it into one SQL query.
 4. Map a value object to its primitive with a private method.
 5. Ignore `LastModifiedOn`, `IsDeleted`, and `DomainEvents` on the source of the DTO mapping.
+6. When the DTO has the allowed actions of the caller, write the public map by hand. It calls a private generated map that ignores `AllowedActions`, and adds the actions. The `IQueryable` projection takes the configuration of the private map.
 
 ```csharp
 [Mapper]
 public static partial class UserMapper
 {
+    public static UserDto ToUserDto(this User user, Caller caller)
+        => user.ToUserDtoWithoutActions() with { AllowedActions = NamesOf(user.AllowedActions(caller)) };
+
     [MapperIgnoreSource(nameof(User.LastModifiedOn))]
     [MapperIgnoreSource(nameof(User.IsDeleted))]
     [MapperIgnoreSource(nameof(User.DomainEvents))]
+    [MapperIgnoreTarget(nameof(UserDto.AllowedActions))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
-    public static partial UserDto ToUserDto(this User user);
+    private static partial UserDto ToUserDtoWithoutActions(this User user);
 
     public static partial IQueryable<UserDto> ToUserDtoQueryable(this IQueryable<User> queryable);
 

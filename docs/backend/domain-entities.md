@@ -114,6 +114,43 @@ private void GuardIfInFinalState(string field, string subject)
 
 When the rule needs facts from other aggregates, or a second caller needs the same answer, use the decision shape in [features-and-cqrs.md](features-and-cqrs.md#one-rule-set-for-two-callers).
 
+### Allowed actions
+
+When the SPA shows a button for an action on a record, the entity gives two methods that read one table:
+
+- `AllowedActions(caller)` gives the actions that the caller can send now. The read DTO carries them (rule 11 of [dtos-and-mappings.md](dtos-and-mappings.md)).
+- `GuardAllows(action, caller)` throws the refusal of the action. Each command of the action calls it after the load.
+
+The table is an action value object over a private SmartEnum, as `Domain/Users/UserAction.cs` is. Each option holds what the action needs, for example its permissions. The list keeps each action that the guard lets through, so the list and the guard cannot disagree. A list query that projects to the DTO has no entity, so `UserMapper.AddAllowedActions` reads the ID and the permissions of the DTO. It must call the same `UserAction.AllowedFor`, so that a row of the list and the record give the same actions. Load each part of the entity that the table reads, such as `UserPermissions`, before you map the DTO, or the list reads an empty collection. A check that reads the request, such as the permission that a request grants, stays in the command.
+
+On their own record, a member holds the permissions of the user. `User` makes the caller again from the current permissions, so the response of a command that changes them lists the actions after the change. A delegated agent keeps the permissions that it loaded, so after it changes the permissions of its own user, the response can list an action that the next request refuses with 403.
+
+```csharp
+public IReadOnlyList<UserAction> AllowedActions(Caller caller)
+{
+    var permissions = CurrentPermissions();
+    return UserAction.AllowedFor(OnThisRecord(caller, permissions), Id, permissions);
+}
+
+public void GuardAllows(UserAction action, Caller caller)
+{
+    var permissions = CurrentPermissions();
+    action.Guard(OnThisRecord(caller, permissions), Id, permissions);
+}
+```
+
+The command checks the part of the rule that needs only the ID before the load, so a caller without the permission gets 403 for any ID. Then it checks the full rule after the load:
+
+```csharp
+var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+UserAction.Delete().GuardBeforeLoad(caller, request.Id);
+
+var user = await dbContext.Users.Include(u => u.UserPermissions).GetById(request.Id, cancellationToken);
+user.GuardAllows(UserAction.Delete(), caller);
+```
+
+`UserActionTests` has the tests of the table. One test gives each action the refusal text of each case. Another checks, for each caller in a small table, that an action is in `AllowedActions` only when `GuardAllows` does not throw.
+
 ## Value objects
 
 A value object derives from `ValueObject`. It validates its value in the constructor and has a static `Of` method. See `Domain/EmailAddresses/EmailAddress.cs`. A FluentValidation rule in a value object names the request field with `OverridePropertyName`, for example `"email"`, so that the 422 has the key in `errors`.

@@ -14,5 +14,8 @@ public sealed record UserDto
     public string Role { get; init; } = default!;
     [NamesOf<Permission>]
     public IReadOnlyList<string> Permissions { get; init; } = [];
+    /// <summary>The actions that the caller can send for this user now. A button in the SPA reads this list.</summary>
+    [NamesOf<UserAction>]
+    public IReadOnlyList<string> AllowedActions { get; init; } = [];
     public uint Version { get; init; }
 }

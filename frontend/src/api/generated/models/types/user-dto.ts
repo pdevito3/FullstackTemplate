@@ -23,6 +23,16 @@ export const userDtoPermissionsEnum = {
 
 export type UserDtoPermissionsEnumKey = (typeof userDtoPermissionsEnum)[keyof typeof userDtoPermissionsEnum];
 
+export const userDtoAllowedActionsEnum = {
+    AddPermission: "AddPermission",
+    Delete: "Delete",
+    RemovePermission: "RemovePermission",
+    Update: "Update",
+    UpdateRole: "UpdateRole"
+} as const;
+
+export type UserDtoAllowedActionsEnumKey = (typeof userDtoAllowedActionsEnum)[keyof typeof userDtoAllowedActionsEnum];
+
 export type UserDto = {
     id: string;
     tenantId: string;
@@ -34,6 +44,11 @@ export type UserDto = {
     username: string;
     role: UserDtoRoleEnumKey;
     permissions: UserDtoPermissionsEnumKey[];
+    /**
+     * @description The actions that the caller can send for this user now. A button in the SPA reads this list.
+     * @type array
+    */
+    allowedActions: UserDtoAllowedActionsEnumKey[];
     /**
      * @minLength 0
      * @maxLength 4294967295

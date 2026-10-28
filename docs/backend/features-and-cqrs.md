@@ -35,19 +35,19 @@ public static class UpdateUser
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.RequireSelfOr(request.Id, Permission.ManageUsers());
-            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
-            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
+            UserAction.Update().GuardBeforeLoad(caller, request.Id);
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update.load")
+                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
+            user.GuardAllows(UserAction.Update(), caller);
 
             user.Update(request.Dto.ToUserForUpdate());
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }
@@ -190,7 +190,8 @@ public static class GetUserList
     {
         public async Task<PagedList<UserDto>> Handle(Query request, CancellationToken cancellationToken)
         {
-            await permissionGuard.RequireAsync(Permission.ReadUsers(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ReadUsers());
 
             var queryKitConfig = new CustomQueryKitConfiguration();
 
@@ -208,11 +209,13 @@ public static class GetUserList
                 ? query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(u => u.Id);
 
-            return await PagedList.CreateAsync(
+            var users = await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
+            users.AddAllowedActions(caller);
+            return users;
         }
     }
 }
@@ -252,12 +255,12 @@ public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionG
 | Method | Passes when |
 |--------|-------------|
 | `RequireAsync(permission, cancellationToken)` | The caller has the permission |
-| `RequireSelfOrAsync(userId, permission, cancellationToken)` | The caller is the user with `userId`, or the caller has the permission |
 
 `GetCallerAsync(cancellationToken)` does not throw. It gives the `Caller`, with `Permissions`, a read-only set of each permission that the caller has, and `Has(permission)`. Use it in two cases:
 
 - A rule needs the set, for example an entity method that lets only a caller with a given permission lower a critical defect. Give `caller.Permissions` to the entity method.
 - The handler makes more than one check. Load the `Caller` once, then call `caller.Require(permission)` or `caller.Require(permissions)` for each check. `RequireAsync` does the same check, so there is no second rule.
+- The user acts on their own record. Load the `Caller`, then call `caller.RequireSelfOr(userId, permission)`. It passes when the caller is the user with `userId`, or when the caller has the permission. `GetUser` does this.
 
 If the check fails, the guard throws `ForbiddenAccessException`. HTTP returns 403 with problem details, gRPC returns `PermissionDenied`, and MCP returns a `permission_denied` tool error. A request with no valid token gets 401 before the handler runs. Declare the 403 on the endpoint with `.ProducesProblem(StatusCodes.Status403Forbidden)`.
 

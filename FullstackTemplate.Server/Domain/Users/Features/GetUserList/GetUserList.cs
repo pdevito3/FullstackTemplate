@@ -16,7 +16,8 @@ public static class GetUserList
     {
         public async Task<PagedList<UserDto>> Handle(Query request, CancellationToken cancellationToken)
         {
-            await permissionGuard.RequireAsync(Permission.ReadUsers(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ReadUsers());
 
             var queryKitConfig = new CustomQueryKitConfiguration();
 
@@ -34,11 +35,13 @@ public static class GetUserList
                 ? query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(u => u.Id);
 
-            return await PagedList.CreateAsync(
+            var users = await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
+            users.AddAllowedActions(caller);
+            return users;
         }
     }
 }

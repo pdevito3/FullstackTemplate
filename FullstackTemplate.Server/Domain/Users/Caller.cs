@@ -145,11 +145,14 @@ public abstract record Caller
             throw new ForbiddenAccessException(outsider.Denial);
     }
 
+    /// <summary>True for the member with <paramref name="userId"/>, a user who acts on their own record.</summary>
+    public bool IsUser(string userId) => this is Member member && member.UserId == userId;
+
     /// <summary>Passes for the member with <paramref name="userId"/>. Any other caller needs the permission.</summary>
     /// <exception cref="ForbiddenAccessException">The caller is another user and does not hold the permission.</exception>
     public void RequireSelfOr(string userId, Permission permission)
     {
-        if (this is Member member && member.UserId == userId)
+        if (IsUser(userId))
             return;
 
         Require(permission);

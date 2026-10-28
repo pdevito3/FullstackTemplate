@@ -20,14 +20,13 @@ public static class DeleteUser
             Activity.Current?.SetTag("app.user_id", request.Id);
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageUsers());
+            UserAction.Delete().GuardBeforeLoad(caller, request.Id);
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.delete.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
-            // A delete takes away each permission of the user.
-            caller.Require(user.UserPermissions.Select(p => p.Permission));
+            user.GuardAllows(UserAction.Delete(), caller);
 
             // Remove permissions first (due to PropertyAccessMode.Field)
             foreach (var permission in user.UserPermissions.ToList())

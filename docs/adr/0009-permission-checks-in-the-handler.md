@@ -2,6 +2,8 @@
 
 Each command handler that changes the data of a tenant calls `IPermissionGuard` as its first statement, for example `await permissionGuard.RequireAsync(Permission.ManageUsers(), cancellationToken)`. Each query handler that reads the data of other users or of the agents also checks a read permission, `read_users` or `read_agents`, as `GetAuditEntryPage` checks `read_audit_log`. A command handler that returns the record of another user or of an agent also checks the read permission. A user reads their own record with no permission: `GetUser` calls `RequireSelfOrAsync`, and `GetUserByIdentifier` makes the same exception after it loads the user. The guard reads the user of the caller and their `UserPermission` rows from the database in each handler that checks, and throws `ForbiddenAccessException` when the permission is missing. The decision is in `Caller`, a pure type with five cases: a user with a user record, a delegated agent, a machine agent, a caller that can manage all tenants, and a caller with no permissions. Each case gives its permissions as a read-only set, and `Caller.Has` reads that set. The checks that throw also call `Has`, so there is one decision. `IRequireTenantAdmin`, `IAllowSelf`, and `TenantAdminBehavior` are deleted.
 
+> A later change: `GetUser` now loads the `Caller` and calls `Caller.RequireSelfOr`. `IPermissionGuard.RequireSelfOrAsync` is deleted.
+
 A handler is shared by HTTP, gRPC, and MCP. A check in the handler thus applies to each transport, and each transport maps the exception: 403 with problem details, `PermissionDenied`, or a `permission_denied` tool error.
 
 ## Considered options

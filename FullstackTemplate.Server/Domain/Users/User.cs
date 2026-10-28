@@ -130,6 +130,32 @@ public class User : BaseEntity, ITenantable
     public bool HasPermission(Permission permission)
         => _userPermissions.Any(x => x.Permission == permission);
 
+    /// <summary>
+    /// The actions that the caller can send for this user now. The read DTO carries them, so the SPA shows a button
+    /// only for an action that <see cref="GuardAllows"/> lets through.
+    /// </summary>
+    /// <remarks>Load <see cref="UserPermissions"/> first, because two actions read them.</remarks>
+    public IReadOnlyList<UserAction> AllowedActions(Caller caller)
+    {
+        var permissions = CurrentPermissions();
+        return UserAction.AllowedFor(OnThisRecord(caller, permissions), Id, permissions);
+    }
+
+    /// <summary>The check that each command of <see cref="UserAction"/> makes after it loads the user.</summary>
+    /// <exception cref="Exceptions.ForbiddenAccessException">The caller lacks a permission that the action needs.</exception>
+    public void GuardAllows(UserAction action, Caller caller)
+    {
+        var permissions = CurrentPermissions();
+        action.Guard(OnThisRecord(caller, permissions), Id, permissions);
+    }
+
+    private Permission[] CurrentPermissions() => _userPermissions.Select(x => x.Permission).ToArray();
+
+    // A member holds the permissions of their own user. After a command changes them, the caller that the handler
+    // loaded still has the old set, so the response would list the actions from before the change.
+    private Caller OnThisRecord(Caller caller, Permission[] permissions)
+        => caller.IsUser(Id) ? new Caller.Member(Id, permissions) : caller;
+
     private static void ValidateUser(User user)
     {
         Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.TenantId, "tenantId", "Please provide a tenant.");

@@ -11,12 +11,14 @@ using QueryKit.Exceptions;
 
 /// <summary>
 /// Applies the <c>filters</c> and <c>sortOrder</c> values of a list request with QueryKit.
-/// A value that QueryKit cannot apply, or that uses the version, throws a <see cref="QueryInputException"/> with the name of its parameter.
+/// A value that QueryKit cannot apply, or that uses the version or the allowed actions, throws a <see cref="QueryInputException"/> with the name of its parameter.
 /// </summary>
 public static class QueryKitInputExtensions
 {
     public const string FiltersParameter = "filters";
     public const string SortOrderParameter = "sortOrder";
+    // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
+    private const string AllowedActionsMember = "AllowedActions";
 
     public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, string filters, IQueryKitConfiguration config)
         where T : class
@@ -26,7 +28,7 @@ public static class QueryKitInputExtensions
             if (!PostgresText.CanStore(filters))
                 throw new QueryInputException(FiltersParameter, $"The {FiltersParameter} value has a character that is not allowed.");
             var predicate = FilterParser.ParseFilter<T>(filters, config);
-            RefuseVersion(FiltersParameter, predicate);
+            RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
             return query.Where(predicate);
         });
 
@@ -34,16 +36,22 @@ public static class QueryKitInputExtensions
         => Apply(SortOrderParameter, () =>
         {
             foreach (var sort in SortParser.ParseSort<T>(sortOrder, config))
-                RefuseVersion(SortOrderParameter, sort.Expression);
+                RefuseFieldsOutsideTheQuery(SortOrderParameter, sort.Expression);
             return query.ApplyQueryKitSort(sortOrder, config);
         });
 
     // A version is opaque, and Postgres has no order for its xid, so a range or a sort fails with 500 when the query runs.
+    // The handler adds AllowedActions after the page loads, so EF cannot translate a clause on it, and the query gives 500.
     // PreventFilter and PreventSort of QueryKit drop the clause and give 200 with the wrong rows, so this check gives 400.
-    private static void RefuseVersion(string parameter, Expression? expression)
+    private static void RefuseFieldsOutsideTheQuery(string parameter, Expression? expression)
     {
-        if (expression is not null && VersionReader.Reads(expression))
+        if (expression is null)
+            return;
+        if (MemberReader.Reads(expression, nameof(BaseEntity.Version)))
             throw new QueryInputException(parameter, $"The {parameter} value cannot use version. A version is opaque.");
+        if (MemberReader.Reads(expression, AllowedActionsMember))
+            throw new QueryInputException(parameter,
+                $"The {parameter} value cannot use allowedActions. The actions depend on the caller.");
     }
 
     private static TResult Apply<TResult>(string parameter, Func<TResult> apply)
@@ -66,20 +74,20 @@ public static class QueryKitInputExtensions
         }
     }
 
-    private sealed class VersionReader : ExpressionVisitor
+    private sealed class MemberReader(string memberName) : ExpressionVisitor
     {
         private bool _reads;
 
-        public static bool Reads(Expression expression)
+        public static bool Reads(Expression expression, string memberName)
         {
-            var reader = new VersionReader();
+            var reader = new MemberReader(memberName);
             reader.Visit(expression);
             return reader._reads;
         }
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            _reads |= node.Member.Name == nameof(BaseEntity.Version);
+            _reads |= node.Member.Name == memberName;
             return base.VisitMember(node);
         }
     }

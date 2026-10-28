@@ -30,6 +30,21 @@ public class InitiateUserAndTenantCommandTests : TestBase
     }
 
     [Test]
+    public async Task new_admin_gets_each_action_for_their_own_record()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        var dto = new FakeInitiateUserAndTenantDto().Generate() with { Role = "Admin" };
+        testingServiceScope.SetUserWithDefaults(identifier: dto.Identifier);
+
+        // Act
+        var result = await testingServiceScope.SendAsync(new InitiateUserAndTenant.Command(dto));
+
+        // Assert
+        result.User.AllowedActions.ShouldBe(["Update", "UpdateRole", "AddPermission", "RemovePermission", "Delete"]);
+    }
+
+    [Test]
     public async Task user_cannot_start_a_tenant_for_another_identifier()
     {
         // Arrange

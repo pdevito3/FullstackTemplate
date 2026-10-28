@@ -2246,6 +2246,7 @@
           "username",
           "role",
           "permissions",
+          "allowedActions",
           "version"
         ],
         "type": "object",
@@ -2296,6 +2297,20 @@
               ],
               "type": "string"
             }
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "AddPermission",
+                "Delete",
+                "RemovePermission",
+                "Update",
+                "UpdateRole"
+              ],
+              "type": "string"
+            },
+            "description": "The actions that the caller can send for this user now. A button in the SPA reads this list."
           },
           "version": {
             "maximum": 4294967295,

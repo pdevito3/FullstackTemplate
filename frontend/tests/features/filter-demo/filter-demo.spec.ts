@@ -602,6 +602,20 @@ test.describe('the filter builder after the focused button goes away', () => {
     await expect(demo.at.addFilterMenu).toBeFocused()
   })
 
+  test('moves the focus to Cancel when the user starts to group, and back to Add Filter after Cancel', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.toolbarButton('Group Filters').focus()
+    await page.keyboard.press('Enter')
+    await expect(demo.at.toolbarButton('Cancel')).toBeFocused()
+
+    await page.keyboard.press('Enter')
+    await expect(demo.at.toolbarButton('Cancel')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
   test('moves the focus to Add Filter after Group Selected and after Ungroup', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { FolderAddIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ export function FilterBuilder({
   const [isGroupingMode, setIsGroupingMode] = useState(false)
   const addFilterRef = useRef<HTMLButtonElement>(null)
   const focusAddFilter = () => addFilterRef.current?.focus()
+  const cancelGroupingRef = useRef<HTMLButtonElement>(null)
 
   const handleAddFilter = (filter: Omit<Filter, 'id'>) => {
     const newFilter: Filter = {
@@ -90,7 +92,8 @@ export function FilterBuilder({
   }
 
   const handleEnterGroupingMode = () => {
-    setIsGroupingMode(true)
+    flushSync(() => setIsGroupingMode(true))
+    cancelGroupingRef.current?.focus()
   }
 
   const handleCancelGrouping = () => {
@@ -171,6 +174,7 @@ export function FilterBuilder({
             </Button>
 
             <Button
+              ref={cancelGroupingRef}
               variant="outline"
               size="sm"
               onPress={handleCancelGrouping}

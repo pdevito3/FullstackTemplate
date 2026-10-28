@@ -4,6 +4,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using FullstackTemplate.Server.Resources.Entrypoints;
+using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
@@ -92,6 +93,7 @@ public class UserinfoAuthenticationTests
                 ["Auth:Authority"] = Authority,
                 ["Auth:Audience"] = "client",
                 ["Auth:ClientId"] = AppClientId,
+                [McpResourceMetadata.PublicOriginKey] = "https://server.test",
                 [UserinfoAuthenticationHandler.AccessTokenValidationKey] = "Userinfo",
             })
             .Build();

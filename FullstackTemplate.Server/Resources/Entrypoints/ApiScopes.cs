@@ -1,15 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints;
 
-/// <summary>
-/// The scopes that an OAuth client of this API asks for. Swagger UI shows them, and the MCP resource metadata lists
-/// them in <c>scopes_supported</c>.
-/// </summary>
 public static class ApiScopes
 {
-    /// <summary>
-    /// The scopes of <c>Auth:Scopes</c>, with their descriptions. If <c>Auth:Scopes</c> is not set, openid and
-    /// profile, and also <c>Auth:Audience</c> when <c>Auth:UseAudienceAsScope</c> is true (the default).
-    /// </summary>
     public static Dictionary<string, string> FromConfiguration(IConfiguration configuration)
     {
         var scopes = configuration.GetSection("Auth:Scopes").Get<Dictionary<string, string>>();

@@ -43,6 +43,8 @@ try
         // endpoint. Aspire makes one endpoint for each name and sets its Url.
         .WithCSharpRepl();
     postgres.WithParentRelationship(server);
+    // MCP clients call the server directly, so the resource of its protected resource metadata is the URL they call.
+    server.WithEnvironment("Mcp__PublicOrigin", server.GetEndpoint("https"));
 
     // The proxy keeps 5173 in a normal run. An isolated run replaces it with a random port.
     var webfrontend = builder.AddViteApp("webfrontend", "../frontend")

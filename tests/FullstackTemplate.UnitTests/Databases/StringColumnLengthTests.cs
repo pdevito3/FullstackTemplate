@@ -7,6 +7,10 @@ using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+// example:start
+using FullstackTemplate.Server.Examples.Workshops;
+using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+// example:end
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -33,6 +37,10 @@ public class StringColumnLengthTests
         ["tenants.name"] = new("name", Text, v => TestGraph.Start(out _).AddTenant(out _, t => t.Name = v)),
         ["agents.name"] = new("name", Text, v => TestGraph.Start(out _).AddTenant(out _).AddAgent(out _, a => a.Name = v)),
         ["agents.client_id"] = new("clientId", Text, v => TestGraph.Start(out _).AddTenant(out _).AddAgent(out _, a => a.ClientId = v)),
+        // example:start
+        ["venues.name"] = new("name", Text, v => TestGraph.Start(out _).AddVenue(out _, x => x.Name = v)),
+        ["workshops.title"] = new("title", Text, v => TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out _, x => x.Title = v)),
+        // example:end
     };
 
     private static readonly Dictionary<string, IReadOnlyList<string>> FixedOptionColumns = new()
@@ -42,6 +50,11 @@ public class StringColumnLengthTests
         ["audit_entries.kind"] = Enum.GetNames<AuditEntryKind>(),
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
+        // example:start
+        // A time zone is an IANA ID that the server knows, so no caller value can be longer than these
+        ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),
+        ["workshops.status"] = WorkshopStatus.ListNames(),
+        // example:end
     };
 
     private static readonly HashSet<string> ServerWrittenColumns =

@@ -6,6 +6,15 @@ using Shouldly;
 
 public class PermissionTests
 {
+    private static readonly string[] AllNames =
+    [
+        "manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive",
+        "read_users", "read_agents",
+        // example:start
+        "manage_workshops",
+        // example:end
+    ];
+
     [Test]
     public void each_factory_gives_its_permission_name()
     {
@@ -72,7 +81,7 @@ public class PermissionTests
         var names = Permission.ListNames();
 
         // Assert
-        names.ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive", "read_users", "read_agents"], ignoreOrder: true);
+        names.ShouldBe(AllNames, ignoreOrder: true);
     }
 
     [Test]
@@ -82,7 +91,7 @@ public class PermissionTests
         var permissions = Permission.GetAll();
 
         // Assert
-        permissions.Select(p => p.Value).ShouldBe(["manage_users", "manage_user_access", "manage_tenant", "manage_agents", "read_audit_log", "read_audit_log_sensitive", "read_users", "read_agents"], ignoreOrder: true);
+        permissions.Select(p => p.Value).ShouldBe(AllNames, ignoreOrder: true);
     }
 
     [Test]

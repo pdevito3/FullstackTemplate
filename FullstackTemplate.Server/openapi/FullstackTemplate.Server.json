@@ -1679,6 +1679,198 @@
         }
       }
     },
+    "/api/v1/venues": {
+      "post": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Creates a new Venue.",
+        "operationId": "AddVenue",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VenueForCreationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Gets a paginated list of Venues.",
+        "operationId": "GetVenueList",
+        "parameters": [
+          {
+            "name": "filters",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "maximum": 4294967,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-Pagination": {
+                "description": "The pagination data for the returned page, as JSON.",
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/PaginationMetadata"
+                    }
+                  }
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VenueDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/venues/{id}": {
+      "get": {
+        "tags": [
+          "Venues"
+        ],
+        "summary": "Gets a single Venue by ID.",
+        "operationId": "GetVenue",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
     "/api/v1/weather/secure": {
       "get": {
         "tags": [
@@ -1726,6 +1918,549 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/workshops": {
+      "post": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Creates a new Workshop as a draft.",
+        "operationId": "AddWorkshop",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkshopForCreationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Gets a paginated list of Workshops. The search finds the workshops whose title contains the text.",
+        "operationId": "GetWorkshopList",
+        "parameters": [
+          {
+            "name": "filters",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "maximum": 4294967,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-Pagination": {
+                "description": "The pagination data for the returned page, as JSON.",
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/PaginationMetadata"
+                    }
+                  }
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkshopDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/workshops/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Cancels a draft or scheduled Workshop.",
+        "operationId": "CancelWorkshop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/workshops/{id}/complete": {
+      "post": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Marks a scheduled Workshop as completed.",
+        "operationId": "CompleteWorkshop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/workshops/{id}": {
+      "get": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Gets a single Workshop by ID.",
+        "operationId": "GetWorkshop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Updates a draft Workshop.",
+        "operationId": "UpdateWorkshop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkshopForUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/workshops/{id}/schedule": {
+      "post": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Schedules a draft Workshop. Its start must be on a later day than today and in the opening hours, both in the\ntime zone of its venue.",
+        "operationId": "ScheduleWorkshop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
           }
         }
       }
@@ -1778,6 +2513,7 @@
                 "manage_tenant",
                 "manage_user_access",
                 "manage_users",
+                "manage_workshops",
                 "read_agents",
                 "read_audit_log",
                 "read_audit_log_sensitive",
@@ -1832,6 +2568,7 @@
                 "manage_tenant",
                 "manage_user_access",
                 "manage_users",
+                "manage_workshops",
                 "read_agents",
                 "read_audit_log",
                 "read_audit_log_sensitive",
@@ -1855,6 +2592,7 @@
               "manage_tenant",
               "manage_user_access",
               "manage_users",
+              "manage_workshops",
               "read_agents",
               "read_audit_log",
               "read_audit_log_sensitive",
@@ -2344,6 +3082,7 @@
                 "manage_tenant",
                 "manage_user_access",
                 "manage_users",
+                "manage_workshops",
                 "read_agents",
                 "read_audit_log",
                 "read_audit_log_sensitive",
@@ -2466,6 +3205,7 @@
               "manage_tenant",
               "manage_user_access",
               "manage_users",
+              "manage_workshops",
               "read_agents",
               "read_audit_log",
               "read_audit_log_sensitive",
@@ -2523,6 +3263,50 @@
           }
         }
       },
+      "VenueDto": {
+        "required": [
+          "id",
+          "name",
+          "timeZone",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "The IANA time zone of the venue, for example America/Chicago."
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      },
+      "VenueForCreationDto": {
+        "required": [
+          "name",
+          "timeZone"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "timeZone": {
+            "maxLength": 100,
+            "type": "string",
+            "description": "The IANA time zone of the venue, for example America/Chicago."
+          }
+        }
+      },
       "WeatherForecast": {
         "required": [
           "date",
@@ -2551,6 +3335,122 @@
             "format": "int32"
           }
         }
+      },
+      "WorkshopDto": {
+        "required": [
+          "id",
+          "venueId",
+          "title",
+          "startsAt",
+          "capacity",
+          "status",
+          "allowedActions",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "venueId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "enum": [
+              "Draft",
+              "Scheduled",
+              "Cancelled",
+              "Completed"
+            ],
+            "type": "string"
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Update",
+                "Schedule",
+                "Cancel",
+                "Complete"
+              ],
+              "type": "string"
+            },
+            "description": "The actions that the caller can send for this workshop now. A button in the SPA reads this list."
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      },
+      "WorkshopForCreationDto": {
+        "required": [
+          "venueId",
+          "title",
+          "startsAt",
+          "capacity"
+        ],
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capacity": {
+            "maximum": 500,
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "WorkshopForUpdateDto": {
+        "required": [
+          "title",
+          "startsAt",
+          "capacity",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capacity": {
+            "maximum": 500,
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer",
+            "description": "The version of the workshop that the caller loaded. A stale version gives 409."
+          }
+        }
       }
     }
   },
@@ -2568,7 +3468,13 @@
       "name": "Users"
     },
     {
+      "name": "Venues"
+    },
+    {
       "name": "Weather"
+    },
+    {
+      "name": "Workshops"
     }
   ]
 }

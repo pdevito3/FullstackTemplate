@@ -25,15 +25,17 @@ public class TenantExampleMcpToolTests : TestBase
 
     public static IEnumerable<Func<(string Caller, string[] Tools)>> ToolsOfEachCaller()
     {
-        yield return () => ("member", ["get_tenant", "list_tenants"]);
-        yield return () => ("admin", ["get_tenant", "list_tenants", "update_tenant"]);
-        yield return () => ("manage-all client", ["add_tenant", "get_tenant", "list_tenants", "update_tenant"]);
-        yield return () => ("read-only client", ["get_tenant", "list_tenants"]);
+        yield return () => ("member", ["get_tenant", "list_tenants", "list_workshops"]);
+        yield return () => ("admin", ["cancel_workshop", "get_tenant", "list_tenants", "list_workshops", "update_tenant"]);
+        yield return () => ("manage-all client",
+            ["add_tenant", "cancel_workshop", "get_tenant", "list_tenants", "list_workshops", "update_tenant"]);
+        yield return () => ("read-only client", ["get_tenant", "list_tenants", "list_workshops"]);
         yield return () => ("unregistered client with a user sub", []);
-        yield return () => ("admin through a delegated agent with no grant", ["get_tenant", "list_tenants"]);
+        yield return () => ("admin through a delegated agent with no grant", ["get_tenant", "list_tenants", "list_workshops"]);
         yield return () => ("admin through a delegated agent granted manage_tenant",
-            ["get_tenant", "list_tenants", "update_tenant"]);
-        yield return () => ("machine agent granted manage_tenant", ["get_tenant", "list_tenants", "update_tenant"]);
+            ["get_tenant", "list_tenants", "list_workshops", "update_tenant"]);
+        yield return () => ("machine agent granted manage_tenant",
+            ["get_tenant", "list_tenants", "list_workshops", "update_tenant"]);
     }
 
     [Test]

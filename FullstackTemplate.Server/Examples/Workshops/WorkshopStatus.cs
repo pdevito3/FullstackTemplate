@@ -1,0 +1,97 @@
+namespace FullstackTemplate.Server.Examples.Workshops;
+
+using Ardalis.SmartEnum;
+using Domain;
+using Exceptions;
+
+/// <summary>
+/// The stage of a workshop. A workshop starts as a draft. Each status names the statuses that it can move to, so
+/// <see cref="Workshop"/> and <see cref="WorkshopAction"/> read one table.
+/// </summary>
+public partial class WorkshopStatus : ValueObject, IFixedNames
+{
+    // The key in the errors of the problem is the name of the request field
+    private const string RequestField = "status";
+
+    private WorkshopStatusEnum _status = null!;
+
+    public string Value
+    {
+        get => _status.Name;
+        private set
+        {
+            if (!WorkshopStatusEnum.TryFromName(value, true, out var parsed))
+                throw new ValidationException(RequestField, $"Invalid workshop status: {value}");
+
+            _status = parsed;
+        }
+    }
+
+    public WorkshopStatus(string value)
+    {
+        ValidationException.ThrowWhenNullOrWhitespace(value, RequestField, "Please provide a workshop status.");
+        Value = value;
+    }
+
+    /// <summary>Only a draft takes changes to its title, start, and capacity.</summary>
+    public bool CanBeEdited => _status.CanBeEdited;
+
+    public bool CanMoveTo(WorkshopStatus target) => _status.Next.Contains(target._status);
+
+    /// <exception cref="ValidationException">This status cannot move to <paramref name="target"/>.</exception>
+    public WorkshopStatus MoveTo(WorkshopStatus target)
+    {
+        ValidationException.Must(CanMoveTo(target), RequestField, MoveRefusal(target));
+        return target;
+    }
+
+    /// <summary>The message of a move that this status does not allow.</summary>
+    public string MoveRefusal(WorkshopStatus target)
+        => $"A {Value.ToLowerInvariant()} workshop cannot be {target.Value.ToLowerInvariant()}.";
+
+    public override string ToString() => Value;
+
+    public static WorkshopStatus Of(string value) => new(value);
+    public static List<string> ListNames() => WorkshopStatusEnum.List.OrderBy(x => x.Value).Select(x => x.Name).ToList();
+
+    public static WorkshopStatus Draft() => new(WorkshopStatusEnum.Draft.Name);
+    public static WorkshopStatus Scheduled() => new(WorkshopStatusEnum.Scheduled.Name);
+    public static WorkshopStatus Cancelled() => new(WorkshopStatusEnum.Cancelled.Name);
+    public static WorkshopStatus Completed() => new(WorkshopStatusEnum.Completed.Name);
+
+    protected WorkshopStatus() { } // EF Core
+
+    private abstract class WorkshopStatusEnum(string name, int value)
+        : SmartEnum<WorkshopStatusEnum>(name, value)
+    {
+        public static readonly WorkshopStatusEnum Draft = new DraftType();
+        public static readonly WorkshopStatusEnum Scheduled = new ScheduledType();
+        public static readonly WorkshopStatusEnum Cancelled = new CancelledType();
+        public static readonly WorkshopStatusEnum Completed = new CompletedType();
+
+        public virtual bool CanBeEdited => false;
+
+        public abstract IReadOnlyList<WorkshopStatusEnum> Next { get; }
+
+        private sealed class DraftType() : WorkshopStatusEnum("Draft", 0)
+        {
+            public override bool CanBeEdited => true;
+            public override IReadOnlyList<WorkshopStatusEnum> Next => [Scheduled, Cancelled];
+        }
+
+        private sealed class ScheduledType() : WorkshopStatusEnum("Scheduled", 1)
+        {
+            public override IReadOnlyList<WorkshopStatusEnum> Next => [Cancelled, Completed];
+        }
+
+        private sealed class CancelledType() : WorkshopStatusEnum("Cancelled", 2)
+        {
+            public override IReadOnlyList<WorkshopStatusEnum> Next => [];
+        }
+
+        private sealed class CompletedType() : WorkshopStatusEnum("Completed", 3)
+        {
+            public override IReadOnlyList<WorkshopStatusEnum> Next => [];
+        }
+    }
+}

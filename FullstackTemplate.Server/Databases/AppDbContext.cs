@@ -8,6 +8,10 @@ using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
 using EntityConfigurations;
+// example:start
+using Examples.Venues;
+using Examples.Workshops;
+// example:end
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -35,6 +39,10 @@ public class AppDbContext(
     public DbSet<Agent> Agents => Set<Agent>();
     public DbSet<AgentPermission> AgentPermissions => Set<AgentPermission>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    // example:start
+    public DbSet<Venue> Venues => Set<Venue>();
+    public DbSet<Workshop> Workshops => Set<Workshop>();
+    // example:end
     #endregion
 
     private TenantScope? _tenantScope;

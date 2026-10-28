@@ -6,6 +6,11 @@ using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.EmailAddresses;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+// example:start
+using FullstackTemplate.Server.Domain.TimeZones;
+using FullstackTemplate.Server.Examples.Venues;
+using FullstackTemplate.Server.Examples.Workshops;
+// example:end
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
@@ -196,6 +201,12 @@ public class OpenApiDocumentTests
             ("InitiateUserAndTenantDto.identifier", User.IdentifierMaxLength),
             ("InitiateUserAndTenantDto.email", EmailAddress.MaxLength),
             ("InitiateUserAndTenantDto.username", User.UsernameMaxLength),
+            // example:start
+            ("VenueForCreationDto.name", Venue.NameMaxLength),
+            ("VenueForCreationDto.timeZone", TimeZoneId.MaxLength),
+            ("WorkshopForCreationDto.title", Workshop.TitleMaxLength),
+            ("WorkshopForUpdateDto.title", Workshop.TitleMaxLength),
+            // example:end
         ];
 
         int? MaxLengthOf(string name)
@@ -216,7 +227,14 @@ public class OpenApiDocumentTests
         var root = await LoadDocumentAsync();
         var schemas = root["components"]!["schemas"]!;
         // An entity ID is not text that a person types. The client sends an ID that it read from the API.
-        string[] entityIds = ["AgentForCreationDto.tenantId", "UserForCreationDto.tenantId"];
+        string[] entityIds =
+        [
+            "AgentForCreationDto.tenantId",
+            "UserForCreationDto.tenantId",
+            // example:start
+            "WorkshopForCreationDto.venueId",
+            // example:end
+        ];
 
         static IEnumerable<string> RefsUnder(JsonNode node) =>
             Descendants(node).OfType<JsonObject>().Select(child => child["$ref"]?.GetValue<string>()).OfType<string>();

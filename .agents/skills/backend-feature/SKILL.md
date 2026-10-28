@@ -287,7 +287,9 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
            {
                await permissionGuard.RequireAsync(Permission.ManageOrders(), ct);
 
-               var order = await dbContext.Orders.GetById(request.Id, ct);
+               var order = await dbContext.Orders
+                   .TagWithOperationCallSite("orders.submit.load")
+                   .GetById(request.Id, ct);
 
                order.Submit();
 

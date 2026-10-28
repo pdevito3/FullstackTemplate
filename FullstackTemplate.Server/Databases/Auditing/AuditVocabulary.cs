@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using Domain.AuditEntries;
@@ -52,6 +53,8 @@ internal sealed class AuditVocabulary(
     }
 
     /// <summary>The properties that <see cref="AuditValues.WriteAction"/> stores: each public one except the subject.</summary>
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "Startup scan. AuditModel makes the vocabulary one time and keeps it on the EF model.")]
     private static IEnumerable<PropertyInfo> StoredProperties(Type actionType)
         => actionType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(property => !property.IsDefined(typeof(JsonIgnoreAttribute)));

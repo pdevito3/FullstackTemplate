@@ -3,6 +3,7 @@ namespace FullstackTemplate.Server.Resources;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -104,6 +105,8 @@ internal static class RequestRules
 {
     private static readonly ConcurrentDictionary<Type, PropertyRule[]> Rules = new();
 
+    [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
+        Justification = "Per-type cache. The rules of a request type are read one time, then come from Rules.")]
     public static PropertyRule[] For(Type type) => Rules.GetOrAdd(type, static type => type
         .GetProperties(BindingFlags.Public | BindingFlags.Instance)
         .Where(property => property.GetIndexParameters().Length == 0 && property.GetMethod is not null)

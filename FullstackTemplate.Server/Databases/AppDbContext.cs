@@ -167,6 +167,7 @@ public class AppDbContext(
     /// Forgets the work of a command that lost a race, so <see cref="Resources.RaceRetryBehavior{TRequest,TResponse}"/>
     /// can run it again in the same DI scope. The lost save rolled back, so the database has none of its changes. It
     /// clears the tracked entities and the recorded audit actions, and it ends the refusal of a save after a failure.
+    /// <see cref="RootLock"/> also calls it before it runs its work again after a transient failure.
     /// </summary>
     internal void DiscardLostRace()
     {

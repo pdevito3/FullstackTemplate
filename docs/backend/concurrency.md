@@ -51,15 +51,35 @@ Each marked command has a race test (see [Race tests](../backend.md#race-tests))
 
 A version guards the rows that a command writes. A rule over a set of rows can break with no conflict on any one row. For example, "two open bookings of a room do not overlap", or "a clinic with an open appointment cannot be deactivated". A booking reads the clinic and writes an appointment. A deactivation counts the open appointments and writes the clinic. Each reads the rows that the other writes, so no version catches the race, and a run again does not help.
 
-The template has no such rule yet, so it has no lock class. When a feature needs one, use a Postgres session advisory lock:
+`RootLock` in `Databases/` is a Postgres session advisory lock on one aggregate root. The template has one rule of this kind: `DeleteTenant` deletes the agents of the tenant, and `AddAgent` adds an agent to the tenant. Without the lock, an agent that `AddAgent` saves during `DeleteTenant` stays live in the deleted tenant. Each one runs its reads, its checks, and its save in the work of the lock:
 
-1. Give the lock two keys: a number for the kind of the root, and `hashtext` of the ID of the root. The one-key locks of the EF migrations then do not share a key with it.
-2. Take the shared lock (`pg_advisory_lock_shared`) in each write that can add to the set, such as a booking. Take the exclusive lock (`pg_advisory_lock`) in each write that needs the set empty, such as a deactivation. Bookings then do not wait on each other, and a deactivation waits for the bookings that started before it.
-3. Take the lock before the first read, and free it after the save.
-4. A session lock ends when its connection drops. So run the lock, the reads, the checks, and the save in one call of `Database.CreateExecutionStrategy().ExecuteAsync`. A transient failure then runs the whole work again on a new connection, not only the save.
-5. Start with an empty change tracker, and throw if it has changes. A retry of the strategy starts with an empty tracker, so it would save without them.
-6. If the unlock fails, end the session with `pg_terminate_backend(pg_backend_pid())`. The pool does not reset a connection when it gets it back, so the lock stays on the idle connection until the next request takes it.
-7. Write a race test that waits with `PauseAtQuery.WaitUntilBlockedAsync` until the rival waits on the lock.
+```csharp
+var added = await RootLock.Tenant.RunSharedAsync(dbContext, tenantId, async ct =>
+{
+    // Read the tenant, check it, add the agent, and save, all with ct
+}, cancellationToken);
+```
+
+For a new rule, add a field such as `RootLock.Clinic` with a new number and the area name, and obey these rules:
+
+1. Take the shared lock (`RunSharedAsync`) in each write that can add to the set, such as a booking or an agent add. Take the exclusive lock (`RunExclusiveAsync`) in each write that needs the set to stay as it read it, such as a deactivation or a tenant delete. Bookings then do not wait on each other, and a deactivation waits for the bookings that started before it.
+2. Do the first read of the rule in the work, and save in the work. The lock is free after the work. Check the root again in the work, also when the handler checked it before. For example, `AddAgent` checks that the tenant exists in the work, also for the tenant of the caller.
+3. Do not change an entity or record an action before the work. `RootLock` throws if the context has changes. A run again after a transient failure clears the tracker, so it would save without them.
+4. Do the work that leaves the process after the work, such as a log or a metric. The work can run more than one time.
+5. Write a race test that waits with `PauseAtQuery.WaitUntilBlockedAsync` until the rival waits on the lock. See `TenantDeleteRaceTests.cs`.
+
+`RootLock` does these steps for you:
+
+- The lock has two keys: the number of the kind of the root, and a SHA-256 hash of the ID of the root. The one-key locks of the EF migrations then do not share a key with it. The hash is in .NET, so an ID that Postgres text cannot hold, such as an ID with a NUL, still gets a lock.
+- A session lock ends when its connection drops. So the lock, the work, and the unlock run in one call of `Database.CreateExecutionStrategy().ExecuteAsync`, on one open connection. A transient failure then runs the whole work again on a new connection, not only the save.
+- If the unlock fails, it ends the session with `pg_terminate_backend(pg_backend_pid())` and writes a warning log. The pool does not reset a connection when it gets it back, so the lock would stay on the idle connection until the next request takes it.
+- The SQL spans of the lock are named for the root, such as `SQL: tenants.lock_exclusive`. The duration of that span is the wait for the lock.
+
+Inside the work, the save does not look for its audit entries after a lost reply of the commit (see [Lost reply of a commit](#lost-reply-of-a-commit)). The strategy of the lock handles the nested save, so it runs the whole work again. A delete then gets 404, and an add can get 409 for a value that the first run saved.
+
+A command that is marked `IRunsAgainWhenRaced` can take a lock. A lost race throws out of the work, the lock is freed, and the command runs again and takes the lock again. `DeleteTenant` does this.
+
+`AddUser` takes no lock. A tenant delete does not delete the users of the tenant (see [multi-tenancy.md](../multi-tenancy.md)), so a user that `AddUser` saves during a tenant delete is the same as a user that was there before. `InitiateUserAndTenant` adds a new tenant, so no delete of that tenant can run at the same time.
 
 These options do not fit:
 

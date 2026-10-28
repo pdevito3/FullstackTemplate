@@ -36,38 +36,50 @@ public static class AddAgent
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageAgents());
 
-            var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
+            var tenantId = ResolveTenantId(request.Dto.TenantId);
             Activity.Current?.SetTag("app.tenant_id", tenantId);
-            var agent = Agent.Create(request.Dto.ToAgentForCreation(tenantId), caller);
-            Activity.Current?.SetTag("app.agent_id", agent.Id);
-            Activity.Current?.SetTag("app.agent.mode", agent.Mode.Value);
 
-            if (firstPartyClients.Value.Contains(agent.ClientId))
-                throw new ValidationException(ClientIdField,
-                    "This is the client of the app. Its users act with their own permissions, so it cannot be an agent.");
-            var tenancy = tenancyOptions.Value;
-            if (tenancy.ManageAllTenantsClientIds.Contains(agent.ClientId, StringComparer.Ordinal)
-                || tenancy.ReadAllTenantsClientIds.Contains(agent.ClientId, StringComparer.Ordinal))
-                throw new ValidationException(ClientIdField,
-                    "This client acts for all tenants, so it cannot be an agent of one tenant.");
+            // The shared lock keeps a tenant delete out until the save, so the agent does not land in a deleted tenant.
+            var added = await RootLock.Tenant.RunSharedAsync(dbContext, tenantId, async ct =>
+            {
+                var tenantExists = await dbContext.Tenants
+                    .TagWithOperationCallSite("agents.add.tenant_exists")
+                    .AnyAsync(t => t.Id == tenantId, ct);
+                if (!tenantExists)
+                    throw new ValidationException(TenantIdField, "The tenant does not exist.");
 
-            var clientIdInUse = await dbContext.Agents
-                .TagWithOperationCallSite("agents.add.client_id_in_use")
-                .IgnoreQueryFilters([QueryFilterNames.Tenant])
-                .AnyAsync(a => a.ClientId == agent.ClientId
-                    && (a.TenantId == agent.TenantId || a.Mode.Value == AgentMode.MachineValue), cancellationToken);
-            if (clientIdInUse)
-                throw new ConflictException(ClientIdField, "An agent with this client ID already exists.");
+                var agent = Agent.Create(request.Dto.ToAgentForCreation(tenantId), caller);
+                Activity.Current?.SetTag("app.agent_id", agent.Id);
+                Activity.Current?.SetTag("app.agent.mode", agent.Mode.Value);
 
-            await dbContext.Agents.AddAsync(agent, cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
+                if (firstPartyClients.Value.Contains(agent.ClientId))
+                    throw new ValidationException(ClientIdField,
+                        "This is the client of the app. Its users act with their own permissions, so it cannot be an agent.");
+                var tenancy = tenancyOptions.Value;
+                if (tenancy.ManageAllTenantsClientIds.Contains(agent.ClientId, StringComparer.Ordinal)
+                    || tenancy.ReadAllTenantsClientIds.Contains(agent.ClientId, StringComparer.Ordinal))
+                    throw new ValidationException(ClientIdField,
+                        "This client acts for all tenants, so it cannot be an agent of one tenant.");
 
-            _logger.Here().Information("Added agent {AgentId} to tenant {TenantId} in mode {Mode}", agent.Id, agent.TenantId, agent.Mode.Value);
+                var clientIdInUse = await dbContext.Agents
+                    .TagWithOperationCallSite("agents.add.client_id_in_use")
+                    .IgnoreQueryFilters([QueryFilterNames.Tenant])
+                    .AnyAsync(a => a.ClientId == agent.ClientId
+                        && (a.TenantId == agent.TenantId || a.Mode.Value == AgentMode.MachineValue), ct);
+                if (clientIdInUse)
+                    throw new ConflictException(ClientIdField, "An agent with this client ID already exists.");
 
-            return agent.ToAgentDto();
+                await dbContext.Agents.AddAsync(agent, ct);
+                await dbContext.SaveChangesAsync(ct);
+                return agent;
+            }, cancellationToken);
+
+            _logger.Here().Information("Added agent {AgentId} to tenant {TenantId} in mode {Mode}", added.Id, added.TenantId, added.Mode.Value);
+
+            return added.ToAgentDto();
         }
 
-        private async Task<string> ResolveTenantIdAsync(string? requestedTenantId, CancellationToken cancellationToken)
+        private string ResolveTenantId(string? requestedTenantId)
         {
             var scope = dbContext.CurrentTenantScope;
             if (string.IsNullOrWhiteSpace(requestedTenantId))
@@ -82,11 +94,7 @@ public static class AddAgent
             if (!scope.Includes(requestedTenantId))
                 throw new ForbiddenAccessException("You can add an agent only to your own tenant.");
 
-            var tenantExists = EntityId.IsValid(requestedTenantId, Tenants.Tenant.IdPrefix)
-                && await dbContext.Tenants
-                    .TagWithOperationCallSite("agents.add.tenant_exists")
-                    .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
-            if (!tenantExists)
+            if (!EntityId.IsValid(requestedTenantId, Tenants.Tenant.IdPrefix))
                 throw new ValidationException(TenantIdField, "The tenant does not exist.");
 
             return requestedTenantId;

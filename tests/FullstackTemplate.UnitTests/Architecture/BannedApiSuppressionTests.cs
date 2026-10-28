@@ -14,6 +14,7 @@ public class BannedApiSuppressionTests
     private static readonly string[] FilesThatSuppressTheBan =
     [
         "FullstackTemplate.Server/Databases/PostgresCopy.cs",
+        "FullstackTemplate.Server/Databases/RootLock.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/DeleteExpiredDPoPProofs/DeleteExpiredDPoPProofs.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/RegisterDPoPProof/RegisterDPoPProof.cs",
         "FullstackTemplate.Server/Databases/Auditing/AuditVocabulary.cs",

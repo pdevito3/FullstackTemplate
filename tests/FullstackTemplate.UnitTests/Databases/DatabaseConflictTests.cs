@@ -5,6 +5,7 @@ using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Npgsql;
 using Shouldly;
 
@@ -13,11 +14,13 @@ public class DatabaseConflictTests
     // ASP.NET Core sets the default type of the status before Customize runs
     private const string DefaultConflictType = "https://tools.ietf.org/html/rfc9110#section-15.5.10";
 
+    private static readonly IModel Model = new AppDbContextFactory().CreateDbContext([]).Model;
+
     [Test]
     public void unique_violation_is_a_conflict_with_the_field_and_the_message_of_the_index()
     {
         // Act
-        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"))
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"), Model)
             .ShouldBeOfType<ConstraintConflictException>();
 
         // Assert
@@ -32,7 +35,7 @@ public class DatabaseConflictTests
     public void unique_violation_problem_has_the_message_under_the_field_of_the_index()
     {
         // Arrange
-        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"))!);
+        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation, "ix_users_identifier"), Model)!);
 
         // Act
         DomainProblemDetails.Customize(context);
@@ -49,7 +52,7 @@ public class DatabaseConflictTests
     public void unique_violation_problem_does_not_show_the_constraint()
     {
         // Arrange
-        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation))!);
+        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.UniqueViolation), Model)!);
 
         // Act
         DomainProblemDetails.Customize(context);
@@ -63,7 +66,7 @@ public class DatabaseConflictTests
     public void exclusion_violation_is_a_conflict_with_the_field_and_the_message_of_the_constraint()
     {
         // Act
-        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"))
+        var exception = DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ix_tenants_name"), Model)
             .ShouldBeOfType<ConstraintConflictException>();
 
         // Assert
@@ -77,7 +80,7 @@ public class DatabaseConflictTests
     public void exclusion_violation_problem_of_an_unknown_constraint_does_not_show_the_constraint()
     {
         // Arrange
-        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ex_bookings_room_period"))!);
+        var context = ContextFor(DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ExclusionViolation, "ex_bookings_room_period"), Model)!);
 
         // Act
         DomainProblemDetails.Customize(context);
@@ -91,7 +94,7 @@ public class DatabaseConflictTests
     public void concurrency_failure_is_a_stale_version()
     {
         // Act
-        var exception = DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."))
+        var exception = DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."), Model)
             .ShouldBeOfType<StaleVersionException>();
 
         // Assert
@@ -104,7 +107,7 @@ public class DatabaseConflictTests
     public void concurrency_failure_problem_has_the_stale_version_type_and_the_message_under_the_version()
     {
         // Arrange
-        var context = ContextFor(DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."))!);
+        var context = ContextFor(DatabaseConflict.From(new DbUpdateConcurrencyException("The row changed."), Model)!);
 
         // Act
         DomainProblemDetails.Customize(context);
@@ -119,7 +122,7 @@ public class DatabaseConflictTests
     [Test]
     public void other_database_failure_is_not_a_conflict()
     {
-        DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation)).ShouldBeNull();
+        DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation), Model).ShouldBeNull();
     }
 
     private static ProblemDetailsContext ContextFor(Exception exception) => new()

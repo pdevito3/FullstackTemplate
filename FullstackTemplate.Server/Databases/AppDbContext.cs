@@ -101,6 +101,7 @@ public class AppDbContext(
         configurationBuilder.MapVersionToXmin();
         configurationBuilder.FilterSoftDeletedRecords();
         configurationBuilder.FilterByTenant(this);
+        configurationBuilder.MapConstraintErrors();
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -256,7 +257,7 @@ public class AppDbContext(
                 (_, accept, ct) => FindCommitAsync(accept, ct),
                 cancellationToken) - auditEntries.Count;
         }
-        catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
+        catch (DbUpdateException exception) when (DatabaseConflict.From(exception, Model) is { } conflict)
         {
             throw conflict;
         }
@@ -315,7 +316,7 @@ public class AppDbContext(
         catch (Exception exception)
         {
             await updateLogger.SaveChangesFailedAsync(this, exception, cancellationToken);
-            var conflict = exception is PostgresException postgres ? DatabaseConflict.From(postgres) : null;
+            var conflict = exception is PostgresException postgres ? DatabaseConflict.From(postgres, Model) : null;
             activity?.SetTag("error.type", (conflict ?? exception).GetType().FullName);
             if (conflict is not null)
                 throw conflict;

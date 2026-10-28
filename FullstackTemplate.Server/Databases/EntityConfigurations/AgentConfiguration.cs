@@ -52,11 +52,13 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
 
         builder.HasIndex(e => new { e.TenantId, e.ClientId })
             .IsUnique()
-            .HasFilter("is_deleted = false");
+            .HasFilter("is_deleted = false")
+            .ForRequestField("clientId", Agent.ClientIdInUseMessage);
 
         builder.HasIndex(e => e.ClientId)
             .IsUnique()
-            .HasFilter($"mode = '{AgentMode.MachineValue}' AND is_deleted = false");
+            .HasFilter($"mode = '{AgentMode.MachineValue}' AND is_deleted = false")
+            .ForRequestField("clientId", Agent.ClientIdInUseMessage);
 
         builder.HasIndex(e => new { e.TenantId, e.Name, e.Id });
     }

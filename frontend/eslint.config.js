@@ -102,6 +102,10 @@ export default tseslint.config(
           message: 'Use todayAt(zone, now) and browserTimeZone() from @/lib/zoned-time, and its formatters. Take the zone of the place, not of the browser.',
         },
         {
+          selector: "ImportDeclaration[source.value=/^(react-aria|@react-aria\\u002Fi18n)(\\u002F|$)/] > ImportSpecifier[imported.name=/^(useDateFormatter|DateFormatter)$/]",
+          message: 'The React Aria date formatter formats in the zone of the browser unless it is given one. Use formatInstant (a time of a place) or formatDate (a date with no time) from @/lib/zoned-time.',
+        },
+        {
           selector: 'ImportDeclaration[source.value=/^date-fns/]',
           message: 'date-fns formats in the zone of the browser. Use @/lib/zoned-time.',
         },

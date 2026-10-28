@@ -37,8 +37,56 @@ public class BindingProblemTests
 
         // Assert
         errors.Keys.ShouldBe(["lines[1].hours"]);
-        errors["lines[1].hours"].ShouldBe(["The lines[1].hours field is not valid."]);
-        detail.ShouldBe("The lines[1].hours field is not valid.");
+        errors["lines[1].hours"].ShouldBe(["The hours field is not valid."]);
+        detail.ShouldBe("The hours field is not valid.");
+    }
+
+    [Test]
+    public void value_that_is_not_valid_json_is_an_error_under_its_field()
+    {
+        // Arrange
+        var exception = BindingFailureFor("""{ "version": 1.2.3, "startsOn": "2026-01-01" }""");
+
+        // Act
+        var errors = BindingProblem.ErrorsFor(exception);
+        var detail = BindingProblem.DetailFor(exception);
+
+        // Assert
+        errors.Keys.ShouldBe(["version"]);
+        errors["version"].ShouldBe(["The version field is not valid JSON."]);
+        detail.ShouldBe("The version field is not valid JSON.");
+    }
+
+    [Test]
+    public void value_that_is_not_valid_json_in_a_child_is_an_error_under_its_path()
+    {
+        // Arrange
+        var exception = BindingFailureFor<WithLines>("""{ "lines": [{ "hours": 1 }, { "hours": 1.2.3 }] }""");
+
+        // Act
+        var errors = BindingProblem.ErrorsFor(exception);
+        var detail = BindingProblem.DetailFor(exception);
+
+        // Assert
+        errors.Keys.ShouldBe(["lines[1].hours"]);
+        errors["lines[1].hours"].ShouldBe(["The hours field is not valid JSON."]);
+        detail.ShouldBe("The hours field is not valid JSON.");
+    }
+
+    [Test]
+    public void body_that_is_not_valid_json_is_an_error_under_the_empty_key()
+    {
+        // Arrange
+        var exception = BindingFailureFor<WithLines>("not json");
+
+        // Act
+        var errors = BindingProblem.ErrorsFor(exception);
+        var detail = BindingProblem.DetailFor(exception);
+
+        // Assert
+        errors.Keys.ShouldBe([string.Empty]);
+        errors[string.Empty].ShouldBe(["The request body is not valid JSON."]);
+        detail.ShouldBe("The request body is not valid JSON.");
     }
 
     [Test]

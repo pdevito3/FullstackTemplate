@@ -13,10 +13,10 @@ using MediatR;
 /// Runs the DataAnnotations rules of each MediatR request before its handler, for every entrypoint. The rules are on
 /// the properties of the request and of each DTO in the request, at any depth. A DTO is a property whose type is a
 /// class of the assembly of its owner, for example the <c>Dto</c> of a command, or an element of a list of these
-/// classes. A broken rule throws a <see cref="RequestValidationException"/>. Each error has the camelCase JSON name of
-/// its field as the key, and that key is also the field name in the message, for example "The field pageNumber must be
-/// between 1 and 4294967." The key of a field of the request or of its body DTO is the JSON name of the field. The key
-/// of a field of a DTO below them has the path of the field, for example "shipTo.city" or "lines[1].name".
+/// classes. A broken rule throws a <see cref="RequestValidationException"/>. The key of a field of the request or of its
+/// body DTO is the camelCase JSON name of the field. The key of a field of a DTO below them has the path of the field,
+/// for example "shipTo.city" or "lines[1].name". The message names only the JSON name of the field, for example "The
+/// field pageNumber must be between 1 and 4294967." or "The name field is required." under "lines[1].name".
 /// </summary>
 public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -83,7 +83,7 @@ public sealed class RequestValidationBehavior<TRequest, TResponse> : IPipelineBe
         if (rule.Attributes.Length == 0)
             return;
 
-        var context = new ValidationContext(instance) { MemberName = rule.Property.Name, DisplayName = key };
+        var context = new ValidationContext(instance) { MemberName = rule.Property.Name, DisplayName = rule.JsonName };
         var results = new List<ValidationResult>();
         if (!Validator.TryValidateValue(value, context, results, rule.Attributes))
             errors[key] = [.. results.Select(result => result.ErrorMessage ?? "The value is not valid.")];

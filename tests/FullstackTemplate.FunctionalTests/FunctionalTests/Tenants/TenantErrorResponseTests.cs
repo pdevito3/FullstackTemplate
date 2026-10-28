@@ -66,7 +66,29 @@ public class TenantErrorResponseTests : TestBase
         result.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
-        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("$.name");
+        problem.Detail.ShouldBe("The name field is not valid JSON.");
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe("name");
+        error.Value.ShouldBe(["The name field is not valid JSON."]);
+    }
+
+    [Test]
+    public async Task value_that_is_not_valid_json_returns_bad_request_problem_on_the_field()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken("user");
+        using var content = new StringContent("""{ "name": "Acme", "version": 1.2.3 }""", Encoding.UTF8, "application/json");
+
+        // Act
+        var result = await FactoryClient.PutAsync(ApiRoutes.Tenants.Put(EntityId.New(Tenant.IdPrefix)), content);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("The version field is not valid JSON.");
+        var error = problem.Errors.ShouldHaveSingleItem();
+        error.Key.ShouldBe("version");
+        error.Value.ShouldBe(["The version field is not valid JSON."]);
     }
 
     [Test]

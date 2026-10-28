@@ -160,14 +160,22 @@ public class EndpointAccessSweepTests : TestBase
             .Select(type => type.BaseType?.GetCustomAttribute<BindServiceMethodAttribute>())
             .OfType<BindServiceMethodAttribute>()
             .Select(binding => (Google.Protobuf.Reflection.ServiceDescriptor)binding.BindType.GetProperty("Descriptor")!.GetValue(null)!)
+            .DistinctBy(service => service.FullName)
             .SelectMany(service => service.Methods)
             .ToDictionary(method => $"/{method.Service.FullName}/{method.Name}");
-        var methods = Services.GetRequiredService<EndpointDataSource>().Endpoints
+        var mapped = Services.GetRequiredService<EndpointDataSource>().Endpoints
             .Where(e => e.Metadata.GetMetadata<GrpcMethodMetadata>() is not null)
-            .Select(e => GrpcEntrypoint.From(e, descriptors))
+            .ToList();
+        var methods = mapped
+            .Where(e => descriptors.ContainsKey(GrpcEntrypoint.NameOf(e)))
+            .Select(e => GrpcEntrypoint.From(e, descriptors[GrpcEntrypoint.NameOf(e)]))
             .OrderBy(m => m.Target.Key, StringComparer.Ordinal)
             .ToList();
-        var mappedMethods = methods.Select(m => m.Target.Key).ToHashSet();
+        var mappedMethods = mapped.Select(GrpcEntrypoint.NameOf).ToHashSet();
+        var methodsWithNoDescriptor = mappedMethods
+            .Where(name => !descriptors.ContainsKey(name))
+            .Select(name => $"gRPC {name}: it is mapped, but no service of the Server implements it, so the sweep has no "
+                + "descriptor to build its request. Implement it in the Server, or sweep it in its own test.");
         var unmappedMethods = descriptors.Keys
             .Where(name => !mappedMethods.Contains(name))
             .Select(name => $"gRPC {name}: the Server implements its service, but no endpoint maps it, so the sweep did not call it.");
@@ -186,7 +194,7 @@ public class EndpointAccessSweepTests : TestBase
             {
                 return new Outcome(exception.StatusCode.ToString(), exception.Status.Detail);
             }
-        }, [.. unmappedMethods]);
+        }, [.. unmappedMethods, .. methodsWithNoDescriptor]);
 
         // Assert
         report.WriteCoverageTable();
@@ -476,12 +484,14 @@ public class EndpointAccessSweepTests : TestBase
     {
         private static readonly Marshaller<byte[]> Bytes = Marshallers.Create(bytes => bytes, bytes => bytes);
 
-        public static GrpcEntrypoint From(Endpoint endpoint, Dictionary<string, MethodDescriptor> descriptors)
+        public static string NameOf(Endpoint endpoint) => endpoint.Metadata.GetRequiredMetadata<GrpcMethodMetadata>().Method.FullName;
+
+        public static GrpcEntrypoint From(Endpoint endpoint, MethodDescriptor descriptor)
         {
             // Reflection, a test: the kind comes from the namespace of the service type
             var metadata = endpoint.Metadata.GetRequiredMetadata<GrpcMethodMetadata>();
             var method = metadata.Method;
-            var request = descriptors[method.FullName].InputType;
+            var request = descriptor.InputType;
             var target = new SweepTarget(method.FullName, $"gRPC {method.FullName}",
                 request.Fields.InDeclarationOrder().Any(f => RecordIds.NamesARecord(f.Name)));
             return new GrpcEntrypoint(target, method.Type,

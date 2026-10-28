@@ -155,9 +155,12 @@ export function DateFilter({
   ]
 
   const isValid = mode === 'between' ? dateRange?.start : date
+  // In a wide sheet, such as a phone on its side, a month grid of the full width has wide, flat day cells. The other
+  // fields and the footer use the full width, as in the other controls.
+  const calendarClassName = isMobile ? 'mx-auto w-full max-w-md' : undefined
 
   return (
-    <div className={cn('flex flex-col p-3', isMobile && 'mx-auto w-full max-w-md')}>
+    <div className="flex flex-col p-3">
       <div className="flex flex-col gap-3">
         {/* Mode selector */}
         <div className="flex gap-1 flex-wrap">
@@ -187,6 +190,7 @@ export function DateFilter({
         {/* Calendar with integrated quick selects and date input */}
         {mode === 'between' ? (
           <JollyRangeCalendar
+            className={calendarClassName}
             value={dateRange}
             onChange={setDateRange}
             showQuickSelects
@@ -199,6 +203,7 @@ export function DateFilter({
           />
         ) : (
           <JollyCalendar
+            className={calendarClassName}
             value={date}
             onChange={setDate}
             showQuickSelects

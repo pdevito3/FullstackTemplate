@@ -26,6 +26,19 @@ public class TimeZoneIdTests
     }
 
     [Test]
+    public void an_alias_id_is_accepted_after_a_lookup_of_its_wrong_case()
+    {
+        // Arrange: macOS keeps the case of the first lookup as the ID of the zone, and Linux refuses the wrong case
+        try { TimeZoneId.Of("asia/ulan_bator"); } catch (ValidationException) { }
+
+        // Act
+        var zone = TimeZoneId.Of("Asia/Ulan_Bator");
+
+        // Assert
+        zone.Value.ShouldBe("Asia/Ulan_Bator");
+    }
+
+    [Test]
     [Arguments("Central Standard Time")]
     [Arguments("america/chicago")]
     [Arguments("Mars/Olympus_Mons")]

@@ -10,17 +10,23 @@ public sealed partial class TimeZoneId : ValueObject
     private const string RequestField = "timeZone";
 
     // macOS finds "america/chicago" and keeps the first case that the process asked for as the ID of the zone. This
-    // map refuses a wrong case before the lookup. It is empty on Windows, which lists its zones by Windows ID.
+    // map refuses a wrong case of a listed zone before the lookup. It is empty on Windows, which lists its zones by
+    // Windows ID. An alias such as "Asia/Calcutta" is not listed, so macOS accepts a wrong case of an alias.
     private static readonly FrozenDictionary<string, string> IanaIdsIgnoringCase = TimeZoneInfo.GetSystemTimeZones()
         .Where(zone => zone.HasIanaId)
         .ToFrozenDictionary(zone => zone.Id, zone => zone.Id, StringComparer.OrdinalIgnoreCase);
 
     private TimeZoneInfo _zone = null!;
+    private string _value = null!;
 
     public string Value
     {
-        get => _zone.Id;
-        private set => _zone = Find(value);
+        get => _value;
+        private set
+        {
+            _zone = Find(value);
+            _value = value;
+        }
     }
 
     private TimeZoneId(string value) => Value = value;
@@ -65,7 +71,8 @@ public sealed partial class TimeZoneId : ValueObject
         var found = !wrongCase
             && TimeZoneInfo.TryFindSystemTimeZoneById(value, out zone)
             && zone.HasIanaId
-            && zone.Id == value;
+            // The cached zone of an alias keeps the case of the first lookup, so compare with no case
+            && zone.Id.Equals(value, StringComparison.OrdinalIgnoreCase);
         ValidationException.Must(found, RequestField,
             $"'{value}' is not a time zone that the server knows. Use an IANA ID such as America/Chicago.");
 

@@ -11,7 +11,7 @@
   font-family: "Nunito Sans", system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -73,6 +73,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.1363 0.0364 259.2010);
   --foreground: oklch(0.9842 0.0034 247.8575);
   --card: oklch(0.1363 0.0364 259.2010);
@@ -232,6 +233,22 @@
 }
 
 /*
+ * The router devtools badge of a development build is at the top right, where a side sheet puts its title and its
+ * Close button, and where the toasts show on a phone while a bottom sheet is open. While a modal is open, the page
+ * under it does not take input, so the badge hides.
+ */
+:root:has(
+    [data-slot="sheet-overlay"],
+    [data-slot="dialog-overlay"],
+    [data-slot="responsive-dialog-overlay"],
+    [data-slot="drawer-overlay"]
+  )
+  .TanStackRouterDevtools
+  > button {
+  display: none;
+}
+
+/*
  * On a phone, the buttons of a bottom sheet or drawer are where the toasts show. While one is open, the toasts show
  * at the top, newest nearest the top edge, and enter from above.
  */
@@ -247,11 +264,6 @@
       top: 1rem;
       bottom: auto;
       flex-direction: column;
-    }
-
-    /* The router devtools badge of a development build is at the top right, where the toasts now show. */
-    &:has([data-slot="toast-region"]) .TanStackRouterDevtools {
-      display: none;
     }
 
     /* React Aria lists the newest toast first. */

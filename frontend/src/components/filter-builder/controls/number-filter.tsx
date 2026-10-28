@@ -4,10 +4,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { OperatorType, Filter, FilterControlProps } from '../types'
 import { getDefaultOperator, getOperatorsForControlType, pickOperator } from '../utils/operators'
+import { FilterControlFooter } from './filter-control-footer'
 import { OperatorSelect } from './operator-select'
 
 export function NumberFilter({
   config,
+  surface,
   initialFilter,
   onSubmit,
   autoFocus = false,
@@ -44,34 +46,38 @@ export function NumberFilter({
   const isValid = value.trim() !== '' && !isNaN(parseFloat(value))
 
   return (
-    <div className="flex flex-col gap-3 w-full md:w-64 p-3">
-      <OperatorSelect
-        operators={availableOperators}
-        value={operator}
-        onChange={setOperator}
-        size="sm"
-      />
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={valueId}>Value</Label>
-        <Input
-          id={valueId}
-          type="number"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
-          autoFocus={autoFocus}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && isValid) {
-              handleSubmit()
-            }
-          }}
+    <div className="flex flex-col w-full md:w-64 p-3">
+      <div className="flex flex-col gap-3">
+        <OperatorSelect
+          operators={availableOperators}
+          value={operator}
+          onChange={setOperator}
+          size="sm"
         />
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={valueId}>Value</Label>
+          <Input
+            id={valueId}
+            type="number"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
+            autoFocus={autoFocus}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && isValid) {
+                handleSubmit()
+              }
+            }}
+          />
+        </div>
       </div>
 
-      <Button onPress={handleSubmit} isDisabled={!isValid} className="w-full">
-        {initialFilter ? 'Update' : 'Add'} Filter
-      </Button>
+      <FilterControlFooter surface={surface}>
+        <Button onPress={handleSubmit} isDisabled={!isValid} className="w-full">
+          {initialFilter ? 'Update' : 'Add'} Filter
+        </Button>
+      </FilterControlFooter>
     </div>
   )
 }

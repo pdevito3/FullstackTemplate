@@ -19,9 +19,9 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { ControlType, FilterConfig, Filter } from './types'
+import type { ControlType, FilterConfig, Filter, FilterControlSurface } from './types'
 import { FilterControl, FilterControlDialog } from './controls/filter-control'
-import { FILTER_CONTROLS, type FilterControlSurface } from './controls/filter-controls'
+import { FILTER_CONTROLS } from './controls/filter-controls'
 
 interface FilterPropertyMenuProps {
   options: FilterConfig[]
@@ -159,7 +159,7 @@ function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemP
       {/* React Aria sets the max height of the popover to the room on the screen. */}
       <Popover placement="end top" className="w-auto overflow-y-auto p-0">
         <Dialog aria-label={`${config.propertyLabel} filter`} className="outline-none">
-          <FilterControl config={config} onSubmit={onFilterSubmit} />
+          <FilterControl config={config} surface="submenu" onSubmit={onFilterSubmit} />
         </Dialog>
       </Popover>
     </DropdownMenuSub>

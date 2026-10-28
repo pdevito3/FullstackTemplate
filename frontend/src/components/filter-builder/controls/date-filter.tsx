@@ -13,6 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import type { DateValue, Filter, FilterControlProps } from '../types'
 import { Operators } from '../utils/operators'
+import { FilterControlFooter } from './filter-control-footer'
 
 type DateMode = 'before' | 'after' | 'between' | 'on'
 
@@ -47,6 +48,7 @@ function applyTimeToDate(date: Date, timeStr: string): Date {
 
 export function DateFilter({
   config,
+  surface,
   initialFilter,
   onSubmit,
   autoFocus = false,
@@ -155,101 +157,104 @@ export function DateFilter({
   const isValid = mode === 'between' ? dateRange?.start : date
 
   return (
-    <div className={cn('flex flex-col gap-3 p-3', isMobile && 'mx-auto w-full max-w-md')}>
-      {/* Mode selector */}
-      <div className="flex gap-1 flex-wrap">
-        {modes.map((m) => (
-          <Button
-            key={m.value}
-            variant={mode === m.value ? 'default' : 'outline'}
-            size="sm"
-            onPress={() => setMode(m.value)}
-            className={cn('flex-1 min-w-0', isMobile && 'h-8')}
-          >
-            {m.label}
-          </Button>
-        ))}
+    <div className={cn('flex flex-col p-3', isMobile && 'mx-auto w-full max-w-md')}>
+      <div className="flex flex-col gap-3">
+        {/* Mode selector */}
+        <div className="flex gap-1 flex-wrap">
+          {modes.map((m) => (
+            <Button
+              key={m.value}
+              variant={mode === m.value ? 'default' : 'outline'}
+              size="sm"
+              onPress={() => setMode(m.value)}
+              className={cn('flex-1 min-w-0', isMobile && 'h-8')}
+            >
+              {m.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Exclude checkbox */}
+        <Checkbox
+          isSelected={exclude}
+          onChange={setExclude}
+        >
+          <Label className="text-sm font-medium leading-none">
+            Exclude {mode === 'between' ? 'date range' : 'dates'}
+          </Label>
+        </Checkbox>
+
+        {/* Calendar with integrated quick selects and date input */}
+        {mode === 'between' ? (
+          <JollyRangeCalendar
+            value={dateRange}
+            onChange={setDateRange}
+            showQuickSelects
+            layout={isMobile ? 'narrow' : 'wide'}
+            // Below the md breakpoint the control shows in a bottom sheet, not an anchored popover, and an empty week
+            // there pushes Add Filter off a short screen.
+            fixedHeight={!isMobile}
+            showDateInput
+            autoFocus={autoFocus}
+          />
+        ) : (
+          <JollyCalendar
+            value={date}
+            onChange={setDate}
+            showQuickSelects
+            layout={isMobile ? 'narrow' : 'wide'}
+            fixedHeight={!isMobile}
+            showDateInput
+            autoFocus={autoFocus}
+          />
+        )}
+
+        {/* Time inputs for datetime mode */}
+        {isDateTime && (
+          <div className="flex flex-col gap-2">
+            <div className="text-xs font-medium text-muted-foreground">
+              Time
+            </div>
+            <div className="flex gap-2 items-center">
+              {mode === 'between' ? (
+                <>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">Start</Label>
+                    <Input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">End</Label>
+                    <Input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                </>
+              ) : (
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="h-8"
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Exclude checkbox */}
-      <Checkbox
-        isSelected={exclude}
-        onChange={setExclude}
-      >
-        <Label className="text-sm font-medium leading-none">
-          Exclude {mode === 'between' ? 'date range' : 'dates'}
-        </Label>
-      </Checkbox>
-
-      {/* Calendar with integrated quick selects and date input */}
-      {mode === 'between' ? (
-        <JollyRangeCalendar
-          value={dateRange}
-          onChange={setDateRange}
-          showQuickSelects
-          layout={isMobile ? 'narrow' : 'wide'}
-          // Below the md breakpoint the control shows in a bottom sheet, not an anchored popover, and an empty week
-          // there pushes Add Filter off a short screen.
-          fixedHeight={!isMobile}
-          showDateInput
-          autoFocus={autoFocus}
-        />
-      ) : (
-        <JollyCalendar
-          value={date}
-          onChange={setDate}
-          showQuickSelects
-          layout={isMobile ? 'narrow' : 'wide'}
-          fixedHeight={!isMobile}
-          showDateInput
-          autoFocus={autoFocus}
-        />
-      )}
-
-      {/* Time inputs for datetime mode */}
-      {isDateTime && (
-        <div className="flex flex-col gap-2">
-          <div className="text-xs font-medium text-muted-foreground">
-            Time
-          </div>
-          <div className="flex gap-2 items-center">
-            {mode === 'between' ? (
-              <>
-                <div className="flex-1">
-                  <Label className="text-xs text-muted-foreground">Start</Label>
-                  <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label className="text-xs text-muted-foreground">End</Label>
-                  <Input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-              </>
-            ) : (
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="h-8"
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Submit button */}
-      <Button onPress={handleSubmit} isDisabled={!isValid} className="w-full">
-        {initialFilter ? 'Update' : 'Add'} Filter
-      </Button>
+      <FilterControlFooter surface={surface}>
+        <Button onPress={handleSubmit} isDisabled={!isValid} className="w-full">
+          {initialFilter ? 'Update' : 'Add'} Filter
+        </Button>
+      </FilterControlFooter>
     </div>
   )
 }

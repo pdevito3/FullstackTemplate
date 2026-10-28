@@ -33,7 +33,7 @@ function FilterControlFallback() {
   )
 }
 
-interface FilterControlDialogProps extends Omit<FilterControlProps, 'autoFocus' | 'onCancel'> {
+interface FilterControlDialogProps extends Omit<FilterControlProps, 'surface' | 'autoFocus' | 'onCancel'> {
   onCancel: () => void
 }
 
@@ -64,6 +64,7 @@ export function FilterControlDialog({
         <div className="*:p-0">
           <FilterControl
             config={config}
+            surface="dialog"
             initialFilter={initialFilter}
             onSubmit={onSubmit}
             onCancel={onCancel}

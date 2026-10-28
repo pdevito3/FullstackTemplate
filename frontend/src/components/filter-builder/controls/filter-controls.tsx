@@ -1,5 +1,5 @@
 import { lazy, type ComponentType } from 'react'
-import type { ControlType, FilterControlProps } from '../types'
+import type { ControlType, FilterControlProps, FilterControlSurface } from '../types'
 import { BooleanFilter } from './boolean-filter'
 import { MultiSelectFilter } from './multiselect-filter'
 import { NumberFilter } from './number-filter'
@@ -11,8 +11,6 @@ const DateFilter = lazy(async () => {
   const { DateFilter } = await import('./date-filter')
   return { default: DateFilter }
 })
-
-export type FilterControlSurface = 'submenu' | 'dialog'
 
 interface FilterControlDefinition {
   component: ComponentType<FilterControlProps>

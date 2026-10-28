@@ -76,9 +76,13 @@ export interface FilterConfig {
   dateType?: DateType // For date control: 'date' for date-only, 'datetime' for date+time (defaults to 'date')
 }
 
+/** Where a filter control shows: in the submenu of the Add Filter menu, or in a dialog. */
+export type FilterControlSurface = 'submenu' | 'dialog'
+
 /** The props of each filter control. A control reads its own fields from `config`. */
 export interface FilterControlProps {
   config: FilterConfig
+  surface: FilterControlSurface
   initialFilter?: Filter
   onSubmit: (filter: Omit<Filter, 'id'>) => void
   /** Only a control that shows in a dialog has a Cancel button. */

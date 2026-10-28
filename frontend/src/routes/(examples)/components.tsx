@@ -100,7 +100,7 @@ import {
 } from '@/components/ui/responsive-dialog'
 import { browserTimeZone, todayAt } from '@/lib/zoned-time'
 
-export const Route = createFileRoute('/components')({
+export const Route = createFileRoute('/(examples)/components')({
   component: ComponentsPage,
   staticData: { breadcrumb: 'Components' },
 })

@@ -14,5 +14,4 @@ export const appShell = (page: Page) => ({
   wideContent: page.getByRole('region', { name: 'Wide content' }),
   notFoundHeading: page.getByRole('heading', { name: 'Page not found' }),
   homeLink: page.getByRole('link', { name: 'Go to the home page' }),
-  weatherHeading: page.getByRole('heading', { name: 'Weather Forecast' }),
 })

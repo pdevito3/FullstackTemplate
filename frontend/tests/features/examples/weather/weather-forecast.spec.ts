@@ -1,7 +1,7 @@
 import { bffApi, bffPaths } from '@tests/support/api/bff-api'
-import { weatherApi, weatherPaths } from '@tests/support/api/weather-api'
+import { weatherApi, weatherPaths } from '@tests/support/examples/weather-api'
 import { as } from '@tests/support/auth/actors'
-import { aForecast } from '@tests/support/builders/forecast-builder'
+import { aForecast } from '@tests/support/examples/forecast-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { expect, test } from '@tests/support/fixtures'
 import { weatherForecastPage } from './weather-forecast.tasks'
@@ -132,7 +132,7 @@ test.describe('an anonymous visitor', () => {
 
     await weather.logIn()
 
-    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/')
+    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/weather')
   })
 })
 
@@ -198,5 +198,17 @@ test.describe('the loading placeholders', () => {
 
       expect(await weather.runningAnimationsIn(weather.at.loading)).toBeGreaterThan(0)
     })
+  })
+})
+
+test.describe('the weather page on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('does not scroll when the forecast fits', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast().on('2026-03-14'), aForecast().on('2026-03-15'), aForecast().on('2026-03-16')))
+
+    await weatherForecastPage(page).open()
+
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - document.documentElement.clientHeight)).toBe(0)
   })
 })

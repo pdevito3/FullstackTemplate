@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/card'
 import { parseTimeZone } from '@/lib/zoned-time'
 
-export const Route = createFileRoute('/filter-demo')({
+export const Route = createFileRoute('/(examples)/filter-demo')({
   component: FilterDemoPage,
   staticData: { breadcrumb: 'Filter Builder' },
 })

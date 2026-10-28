@@ -1,7 +1,5 @@
-import { weatherApi } from '@tests/support/api/weather-api'
-import { aForecast } from '@tests/support/builders/forecast-builder'
 import { expect, test } from '@tests/support/fixtures'
-import { weatherForecastPage } from '../weather/weather-forecast.tasks'
+import { homePage } from '../home/home.tasks'
 import { appShellPage } from './app-shell.tasks'
 
 for (const viewport of [
@@ -21,23 +19,9 @@ for (const viewport of [
   })
 }
 
-test.describe('the home page on a desktop', () => {
-  test.use({ viewport: { width: 1280, height: 800 } })
-
-  test('does not scroll when the forecast fits', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast().on('2026-03-14'), aForecast().on('2026-03-15'), aForecast().on('2026-03-16')))
-
-    await weatherForecastPage(page).open()
-
-    expect(await appShellPage(page).pageScrollRange()).toBe(0)
-  })
-})
-
 test.describe('the landmarks of a page', () => {
-  test('the home page has one main landmark', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
-
-    await weatherForecastPage(page).open()
+  test('the home page has one main landmark', async ({ page }) => {
+    await homePage(page).open()
 
     expect(await appShellPage(page).at.mainLandmarks.count()).toBe(1)
   })
@@ -109,14 +93,13 @@ test.describe('an unknown address', () => {
     expect(shell.warnings.filter((warning) => warning.includes('notFound'))).toEqual([])
   })
 
-  test('links to the home page', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+  test('links to the home page', async ({ page }) => {
     const shell = appShellPage(page)
     await shell.openMissingPage()
 
     await shell.goHome()
 
-    await expect(shell.at.weatherHeading).toBeVisible()
+    await expect(homePage(page).at.heading).toBeVisible()
     await expect(shell.at.currentPage).toHaveText('Home')
   })
 })

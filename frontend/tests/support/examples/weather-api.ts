@@ -1,7 +1,7 @@
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
 import type { WeatherForecast } from '@/api/generated/models/types/weather-forecast'
 import type { ProblemDetails } from '@/lib/problem-details'
-import type { MockRoute } from './mock-route'
+import type { MockRoute } from '@tests/support/api/mock-route'
 
 interface Buildable<T> {
   build(): T

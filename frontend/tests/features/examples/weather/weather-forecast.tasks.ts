@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { bffPaths } from '@tests/support/api/bff-api'
-import { weatherPaths } from '@tests/support/api/weather-api'
+import { weatherPaths } from '@tests/support/examples/weather-api'
 import { weatherForecast } from './weather-forecast.locators'
 
 export function weatherForecastPage(page: Page) {
@@ -19,13 +19,13 @@ export function weatherForecastPage(page: Page) {
 
     async open() {
       const settled = Promise.all([answered(bffPaths.user), answered(weatherPaths.list)])
-      await page.goto('/')
+      await page.goto('/weather')
       await expect(at.heading).toBeVisible()
       await settled
     },
 
     async openWhileLoading() {
-      await page.goto('/')
+      await page.goto('/weather')
       await expect(at.loading).toBeVisible()
     },
 

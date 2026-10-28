@@ -44,7 +44,8 @@ export function DateFilter({
   // 'date' for date-only, 'datetime' for date+time
   const { propertyKey, propertyLabel, dateType = 'date', timeZone } = config
   const initialDateValue = initialFilter?.value as DateValue | undefined
-  const zone = initialDateValue?.timeZone ?? timeZone ?? browserTimeZone()
+  const placeZone = initialDateValue?.timeZone ?? timeZone
+  const zone = placeZone ?? browserTimeZone()
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
   const isMobile = useIsMobile()
@@ -138,7 +139,7 @@ export function DateFilter({
 
   const isValid = Boolean(startDateValue) && !isTimeInGap
   // A user can be in another zone than the place, so the label names the zone of the place.
-  const timeLabel = timeZone ? `Time in ${timeZoneLabel(timeZone)}` : 'Time'
+  const timeLabel = placeZone ? `Time in ${timeZoneLabel(placeZone)}` : 'Time'
   // In a wide sheet, such as a phone on its side, a month grid of the full width has wide, flat day cells. The other
   // fields and the footer use the full width, as in the other controls.
   const calendarClassName = isMobile ? 'mx-auto w-full max-w-md' : undefined

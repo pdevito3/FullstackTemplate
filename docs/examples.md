@@ -13,7 +13,8 @@ The script does these steps:
 
 1. It deletes each tracked folder named `Examples`, `examples`, or `(examples)`.
 2. It deletes each section between an `example:start` comment and an `example:end` comment, in all other tracked files.
-3. It writes the generated files again: the OpenAPI document of the Server, the generated API client of the SPA, and `routeTree.gen.ts`.
+3. It writes the EF Core model snapshot again, so that the snapshot has no example tables.
+4. It writes the generated files again: the OpenAPI document of the Server, the generated API client of the SPA, and `routeTree.gen.ts`.
 
 A marker with no partner stops the script before it changes a file. Do not put a marker at the start of a line in a code block of a doc, because the script reads it as a marker.
 
@@ -26,8 +27,11 @@ A marker with no partner stops the script before it changes a file. Do not put a
 | The component library at `/components` and the filter builder demo at `/filter-demo` | `frontend/src/routes/(examples)/` |
 | The `Examples` menu of the sidebar | `frontend/src/examples/example-nav.tsx` |
 | The `get_tenant`, `list_tenants`, and `update_tenant` MCP tools | `FullstackTemplate.Server/Examples/Tenants/` |
+| The venues and workshops API, its `list_workshops` and `cancel_workshop` MCP tools, and the `manage_workshops` permission | `FullstackTemplate.Server/Examples/Venues/`, `FullstackTemplate.Server/Examples/Workshops/`, `FullstackTemplate.Server/Databases/EntityConfigurations/Examples/`, `FullstackTemplate.Server/Databases/Migrations/Examples/` |
 | The tests of the examples | the `Examples/` and `examples/` folders of the test projects and of `frontend/tests/` |
 | The recipes of the example pages in the verify skill | `.agents/skills/verify-fullstack-template/features/examples/` and `recipes/examples/` |
+
+The script deletes the migration of the example tables. A database that ran it still has the `venues` and `workshops` tables and the `manage_workshops` permission. If the database of your app ran that migration, add a migration that drops the two tables and calls `migrationBuilder.DeletePermission("manage_workshops")`. A row of a permission that `Permission` does not know stops each load of its user.
 <!-- example:end -->
 
 ## Add example code

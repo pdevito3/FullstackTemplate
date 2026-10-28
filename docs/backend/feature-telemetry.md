@@ -195,6 +195,10 @@ The example obeys these rules:
 - The log and the metric come after the save. Thus they record only a change that the database kept.
 - A request for the role that the user already has changes no role. Thus it writes no log and counts nothing.
 
+<!-- example:start -->
+`ScheduleWorkshop` tags the kind of a refusal ([ScheduleWorkshop.cs:77](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L77)). It logs and counts a status change only after the save, and only when the status changed ([ScheduleWorkshop.cs:52](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L52)). The counter is in [WorkshopMetrics.cs:13](../../FullstackTemplate.Server/Examples/Workshops/WorkshopMetrics.cs#L13).
+<!-- example:end -->
+
 ## Test the telemetry
 
 If an alert, a dashboard, or a runbook uses a signal, write a test for it. A test stops a rename that breaks the alert. A log with no consumer needs no test.

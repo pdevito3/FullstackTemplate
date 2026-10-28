@@ -22,6 +22,10 @@ Do not catch a `StaleVersionException` of a command that sends a version, and do
 
 A unique index can also tell that another user changed the record, for example an index that permits one current revision for each document. Give such an index `ForStaleVersion` (see [entity-configurations.md](entity-configurations.md#unique-indexes)). When the index stops a save, `AppDbContext` throws a `StaleVersionException`. The caller gets the same 409 as for an old version, with the same `type`, `title`, `detail`, and `errors`. Thus the SPA handles the two in the same way. A command with `IRunsAgainWhenRaced` runs again after such a save, the same as after a failed `xmin` check.
 
+<!-- example:start -->
+`UpdateWorkshop` sends a version, and `Workshop.Update` checks it: [Workshop.cs:47](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L47).
+<!-- example:end -->
+
 ## Run again
 
 A command for one intent, such as a new permission, a role change, or a delete, sends no version. The `xmin` check of the owner row still stops its race between the load and the save. But the caller decided nothing on the old rows, so a 409 that says "Reload it" does not help the caller. Mark the command with `IRunsAgainWhenRaced` instead:
@@ -48,6 +52,10 @@ The tests do not see these breaks of the rules. Check them in the review:
 - A background job in the shared plumbing or the composition root that sends a marked command. `EntrypointBoundaryTests` reads only the core types. `DiscardLostRace` then clears the tracked changes of the job.
 
 Each marked command has a race test (see [Race tests](../backend.md#race-tests)). The test pauses the command after its load, commits a rival write to the same aggregate, and checks that both changes saved.
+
+<!-- example:start -->
+`ScheduleWorkshop`, `CancelWorkshop`, and `CompleteWorkshop` run again when raced: [ScheduleWorkshop.cs:15](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L15). A move to the status that the workshop has returns it with no change, so a run after its own commit gives the same end state: [Workshop.cs:80](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L80). The race tests are in [WorkshopCommandTests.cs:114](../../tests/FullstackTemplate.IntegrationTests/Examples/Workshops/WorkshopCommandTests.cs#L114).
+<!-- example:end -->
 
 ## Lock
 

@@ -172,6 +172,10 @@ Each use of the shape has four tests. `tests/FullstackTemplate.UnitTests/Docs/De
 - A test that ties the callers together. The command accepts each candidate that the list offers. In an app, make this an integration test, because it also tests the loader.
 - A test that each kind of the refusal type and of the decision type is nested in its base record. C# cannot close a record hierarchy, so this test does it.
 
+<!-- example:start -->
+The workshop example uses the shape for a rule that reads two aggregates, the workshop and the time zone of its venue. It has one caller, the command that schedules a workshop. The rules are in [WorkshopScheduling.cs:56](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L56), the proof type is in [WorkshopScheduling.cs:35](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L35), and the handler switches on the decision in [ScheduleWorkshop.cs:36](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L36).
+<!-- example:end -->
+
 ## List query
 
 A list query projects to the DTO first. Then it applies the QueryKit filter and sort to the DTO. As a result, a caller can filter and sort only on the fields that the contract shows, and not on a field such as `LastModifiedOn`.
@@ -229,6 +233,10 @@ A free-text search of a list uses `EF.Functions.ILike(column, LikePattern.Contai
 
 Trim the search, and give it a max length on the parameters DTO. If the search is empty after the trim, do not apply it. If the search fails `PostgresText.CanStore`, throw a `QueryInputException` with the name of the parameter. See [Validation](#validation). Apply the search before `ApplyFilters`, on the entity or on the DTO projection. The query keeps its fixed sort.
 
+<!-- example:start -->
+The workshop list searches the title: [GetWorkshopList.cs:32](../../FullstackTemplate.Server/Examples/Workshops/Features/GetWorkshopList/GetWorkshopList.cs#L32).
+<!-- example:end -->
+
 A QueryKit filter needs no `LikePattern`. EF Core escapes the pattern of its contains, starts-with, and ends-with operators.
 
 ## Permission checks
@@ -271,5 +279,9 @@ Obey these rules:
 3. A caller can give or take away only the permissions that it has. When a command changes the permissions of a user, also require each permission that it gives or takes away. `AddUser` gives the default permissions of the role. `AddUserPermission` and `RemoveUserPermission` give or take away one permission. `UpdateUserRole` takes away each permission of the user and gives the defaults of the new role. `DeleteUser` takes away each permission of the user.
 4. A query checks a read permission when it reads data that needs one, for example the other users (`read_users`), the agents (`read_agents`), or the audit log (`read_audit_log`). A query whose rows each member can see, such as the tenant of the caller, has no check. In both cases, the tenant filter still limits the rows that the query reads. A command that returns the record of another user or of an agent also checks the read permission, because its response shows the same data as the query. For example, `RemoveUserPermission` requires `read_users`, and `AddAgentPermission` requires `read_agents`.
 5. Do not add a permission check to an adapter. The HTTP endpoint, the gRPC method, and the MCP tool send the same request, so the check in the handler applies to each of them.
+
+<!-- example:start -->
+`AddVenue` checks `manage_workshops` first: [AddVenue.cs:24](../../FullstackTemplate.Server/Examples/Venues/Features/AddVenue/AddVenue.cs#L24).
+<!-- example:end -->
 
 For the permissions, the callers that pass, and how to add a permission, see [backend.md](../backend.md#permissions).

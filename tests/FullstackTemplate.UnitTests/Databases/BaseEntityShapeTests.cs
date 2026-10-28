@@ -90,6 +90,42 @@ public class BaseEntityShapeTests
     }
 
     [Test]
+    public void a_keyless_base_entity_fails_the_model_with_the_fix()
+    {
+        // Arrange
+        using var context = new KeylessContext();
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(() => context.Model);
+
+        // Assert
+        exception.Message.ShouldContain($"{nameof(Tally)} is a BaseEntity with no key on its Id");
+        exception.Message.ShouldContain("[NotAudited");
+    }
+
+    [Test]
+    [Arguments("view")]
+    [Arguments("table and view")]
+    [Arguments("SQL query")]
+    public void a_base_entity_that_reads_from_a_view_or_a_query_fails_the_model_with_the_fix(string mapping)
+    {
+        // Arrange
+        using AppDbContext context = mapping switch
+        {
+            "view" => new ViewContext(),
+            "table and view" => new TableAndViewContext(),
+            _ => new SqlQueryContext(),
+        };
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(() => context.Model);
+
+        // Assert
+        exception.Message.ShouldContain($"{nameof(Tally)} is a BaseEntity that maps to a view");
+        exception.Message.ShouldContain("[NotAudited");
+    }
+
+    [Test]
     public async Task save_of_an_entity_that_owns_itself_fails_with_the_fix()
     {
         // Arrange
@@ -248,6 +284,51 @@ public class BaseEntityShapeTests
                 node.HasKey(n => n.Id);
                 node.HasOne<Node>().WithMany().HasForeignKey(n => n.ParentId).OnDelete(DeleteBehavior.Cascade);
             });
+        }
+    }
+
+    private sealed class Tally(string tenantId) : BaseEntity("tly"), ITenantable
+    {
+        public string TenantId { get; private set; } = tenantId;
+        public int Count { get; private set; }
+    }
+
+    private sealed class KeylessContext : ShapeContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Tally>().HasNoKey();
+        }
+    }
+
+    private sealed class ViewContext : ShapeContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Tally>().HasKey(t => t.Id);
+            modelBuilder.Entity<Tally>().ToView("tallies_view");
+        }
+    }
+
+    private sealed class TableAndViewContext : ShapeContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Tally>().HasKey(t => t.Id);
+            modelBuilder.Entity<Tally>().ToTable("tallies").ToView("tallies_view");
+        }
+    }
+
+    private sealed class SqlQueryContext : ShapeContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Tally>().HasKey(t => t.Id);
+            modelBuilder.Entity<Tally>().ToSqlQuery("SELECT * FROM tallies");
         }
     }
 

@@ -5,7 +5,11 @@ using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
+using FullstackTemplate.Server.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Shouldly;
 
 /// <summary>The rules that the model of <see cref="AppDbContext"/> must keep, so the save can audit each change.</summary>
@@ -16,14 +20,9 @@ public class AuditModelTests
     {
         // Arrange
         using var context = new AppDbContextFactory().CreateDbContext([]);
-        var auditModel = AuditModel.Of(context.Model);
 
         // Act
-        var rootsWithNoTenant = EntityTypes(context.Model)
-            .Where(e => auditModel.OwnerKeyOf(e) is null)
-            .Select(e => e.ClrType)
-            .Where(type => type != typeof(Tenant) && !type.IsAssignableTo(typeof(ITenantable)))
-            .ToList();
+        var rootsWithNoTenant = RootsWithNoTenant(context.Model);
 
         // Assert
         rootsWithNoTenant.ShouldBeEmpty(
@@ -35,17 +34,41 @@ public class AuditModelTests
     {
         // Arrange
         using var context = new AppDbContextFactory().CreateDbContext([]);
-        var auditModel = AuditModel.Of(context.Model);
 
         // Act
-        var tenantedChildren = EntityTypes(context.Model)
-            .Where(e => e.ClrType.IsAssignableTo(typeof(ITenantable)) && auditModel.OwnerKeyOf(e) is not null)
-            .Select(e => e.ClrType)
-            .ToList();
+        var tenantedChildren = TenantedChildren(context.Model);
 
         // Assert
         tenantedChildren.ShouldBeEmpty(
             "AuditSubject.Of files an action under the entity that it names as the aggregate root. Remove ITenantable from a child, because its owner gives its tenant.");
+    }
+
+    [Test]
+    public void a_tree_whose_nodes_have_a_tenant_keeps_the_tenant_rules()
+    {
+        // Arrange
+        using var context = new TreeContext<TenantedNode>();
+
+        // Act
+        var rootsWithNoTenant = RootsWithNoTenant(context.Model);
+        var tenantedChildren = TenantedChildren(context.Model);
+
+        // Assert
+        rootsWithNoTenant.ShouldBeEmpty();
+        tenantedChildren.ShouldBeEmpty();
+    }
+
+    [Test]
+    public void a_tree_whose_nodes_have_no_tenant_breaks_the_tenant_rule_of_a_root()
+    {
+        // Arrange
+        using var context = new TreeContext<UntenantedNode>();
+
+        // Act
+        var rootsWithNoTenant = RootsWithNoTenant(context.Model);
+
+        // Assert
+        rootsWithNoTenant.ShouldBe([typeof(UntenantedNode)]);
     }
 
     [Test]
@@ -149,6 +172,53 @@ public class AuditModelTests
             "The COPY of BulkInsertAsync sends the C# value of each column, and the audit entry records it, so a database default or an identity never applies. Set the value in the entity, and remove HasDefaultValueSql, HasDefaultValue, or the identity.");
     }
 
+    private static List<Type> RootsWithNoTenant(IModel model)
+    {
+        var auditModel = AuditModel.Of(model);
+        return EntityTypes(model)
+            .Where(e => auditModel.OwnerKeyOf(e) is null)
+            .Select(e => e.ClrType)
+            .Where(type => type != typeof(Tenant) && !type.IsAssignableTo(typeof(ITenantable)))
+            .ToList();
+    }
+
+    private static List<Type> TenantedChildren(IModel model)
+    {
+        var auditModel = AuditModel.Of(model);
+        return EntityTypes(model)
+            .Where(e => e.ClrType.IsAssignableTo(typeof(ITenantable)) && auditModel.OwnerKeyOf(e) is not null)
+            .Select(e => e.ClrType)
+            .ToList();
+    }
+
     private static IEnumerable<IEntityType> EntityTypes(IModel model)
         => model.GetEntityTypes().Where(e => e.ClrType.IsAssignableTo(typeof(BaseEntity)));
+
+    private sealed class TenantedNode() : BaseEntity("tnd"), ITenantable
+    {
+        public string TenantId { get; private set; } = EntityId.New(Tenant.IdPrefix);
+        public string? ParentId { get; private set; }
+    }
+
+    private sealed class UntenantedNode() : BaseEntity("und")
+    {
+        public string? ParentId { get; private set; }
+    }
+
+    private sealed class TreeContext<TNode>() : AppDbContext(
+        new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
+        TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
+        Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+        where TNode : BaseEntity
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<TNode>(node =>
+            {
+                node.HasKey(n => n.Id);
+                node.HasOne<TNode>().WithMany().HasForeignKey("ParentId").OnDelete(DeleteBehavior.Cascade);
+            });
+        }
+    }
 }

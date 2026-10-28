@@ -47,7 +47,7 @@ public class ProviderFeatureTests
     {
         using var browser = _parBff.CreateBrowser();
 
-        var login = await browser.GetAsync("/bff/login?returnUrl=%2Fweather");
+        var login = await browser.GetAsync("/bff/login?returnUrl=%2Fitems");
 
         login.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var authorize = login.Headers.Location!;
@@ -61,7 +61,7 @@ public class ProviderFeatureTests
 
         var callback = await browser.GetAsync((await BffApp.AuthorizeAsync(authorize, $"test_sub={NewSubject()}")).PathAndQuery);
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/weather");
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/items");
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -143,7 +143,7 @@ public class ProviderFeatureTests
         using var browser = _minimalBff.CreateBrowser();
 
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _minimalProvider.TokenRequests.Where(r => r.Subject == subject).Select(r => (r.GrantType, r.ClientAuthentication)).ShouldBe(
         [

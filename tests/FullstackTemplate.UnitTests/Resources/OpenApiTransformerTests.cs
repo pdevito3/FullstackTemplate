@@ -120,7 +120,7 @@ public class OpenApiTransformerTests
     public async Task unauthorized_transformer_skips_an_operation_that_allows_anonymous_callers(bool hasAuthorize)
     {
         // Arrange
-        var operation = Operation("GetWeatherForecast", paged: false);
+        var operation = Operation("GetHealth", paged: false);
         object[] metadata = hasAuthorize ? [new AuthorizeAttribute(), new AllowAnonymousAttribute()] : [];
 
         // Act

@@ -81,7 +81,7 @@ public class LoginEndpointTests
     }
 
     [Test]
-    [Arguments("?returnUrl=%2Fweather%3Fcity%3Dx", "/weather?city=x")]
+    [Arguments("?returnUrl=%2Fitems%3Fcity%3Dx", "/items?city=x")]
     [Arguments("?returnUrl=%2Fassets%2F42", "/assets/42")]
     [Arguments("", "/")]
     public async Task the_callback_redirects_to_the_return_url_on_the_spa_dev_server(string loginQuery, string expected)
@@ -151,7 +151,7 @@ public class LoginEndpointTests
     [Test]
     [Arguments("%2F%40evil.example", "/@evil.example")]
     [Arguments("%2F%252F%252Fevil.example", "/%2F%2Fevil.example")]
-    [Arguments("%2Fweather%3Fnext%3D%2F%2Fevil.example", "/weather?next=//evil.example")]
+    [Arguments("%2Fitems%3Fnext%3D%2F%2Fevil.example", "/items?next=//evil.example")]
     public async Task a_local_return_url_that_names_another_host_stays_on_the_spa_dev_server(string returnUrl, string expected)
     {
         using var browser = BffApp.Instance.CreateBrowser();

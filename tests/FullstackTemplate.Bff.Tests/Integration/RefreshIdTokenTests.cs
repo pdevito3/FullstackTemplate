@@ -22,7 +22,7 @@ public class RefreshIdTokenTests
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60"))!;
 
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
         var tokens = await RefreshLockTests.StoredTokensAsync(app, key);
@@ -40,7 +40,7 @@ public class RefreshIdTokenTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser,
             providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token=valid"))!;
 
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
         var tokens = await RefreshLockTests.StoredTokensAsync(app, key);
@@ -67,7 +67,7 @@ public class RefreshIdTokenTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser,
             providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token={fault}"))!;
 
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         provider.RefreshCount(subject).ShouldBe(1);
@@ -91,7 +91,7 @@ public class RefreshIdTokenTests
         var gate = provider.HoldRevocations();
         try
         {
-            var call = browser.GetApiAsync("/api/v1/weather");
+            var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
             var response = await call.WaitAsync(Timeout);
@@ -123,7 +123,7 @@ public class RefreshIdTokenTests
         var gate = provider.HoldJwks();
         try
         {
-            var call = browser.GetApiAsync("/api/v1/weather");
+            var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
             gate.Released.SetResult();

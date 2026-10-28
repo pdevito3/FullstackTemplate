@@ -1,11 +1,12 @@
-namespace FullstackTemplate.Server.Domain.Tenants.Features;
+namespace FullstackTemplate.Server.Examples.Tenants.Features;
 
 using System.ComponentModel;
-using Dtos;
+using Domain.Tenants.Dtos;
+using Domain.Tenants.Features;
+using Domain.Users;
 using MediatR;
 using ModelContextProtocol.Server;
 using Resources.Entrypoints.Mcp;
-using Users;
 
 /// <summary>
 /// The MCP tool of <see cref="UpdateTenant"/>. The SDK resolves <see cref="IMediator"/> from the request services,

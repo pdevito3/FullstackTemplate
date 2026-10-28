@@ -18,7 +18,7 @@ public class RefreshFailureTests
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh=fail"))!;
 
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         provider.RefreshCount(subject).ShouldBe(1);
@@ -37,7 +37,7 @@ public class RefreshFailureTests
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh=unavailable"))!;
 
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         provider.RefreshCount(subject).ShouldBe(1);
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject).Single()}");
@@ -55,14 +55,14 @@ public class RefreshFailureTests
         // expires_in 0: the access token has expired when the login ends
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=0&test_refresh=unavailable"))!;
 
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldNotBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        await browser.GetApiAsync("/api/v1/weather");
+        await browser.GetApiAsync("/api/v1/items");
         provider.RefreshCount(subject).ShouldBe(2);
     }
 

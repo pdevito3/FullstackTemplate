@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Domain.Weather.Features;
+namespace FullstackTemplate.Server.Examples.Weather.Features;
 
 using Dtos;
 using MediatR;

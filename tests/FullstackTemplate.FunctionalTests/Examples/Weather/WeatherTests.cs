@@ -1,8 +1,8 @@
-namespace FullstackTemplate.FunctionalTests.FunctionalTests.Weather;
+namespace FullstackTemplate.FunctionalTests.Examples.Weather;
 
 using System.Net;
 using System.Net.Http.Json;
-using FullstackTemplate.Server.Domain.Weather.Dtos;
+using FullstackTemplate.Server.Examples.Weather.Dtos;
 using Shouldly;
 using TestUtilities;
 

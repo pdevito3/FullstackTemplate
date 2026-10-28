@@ -74,6 +74,7 @@ public class McpTelemetryTests : TestBase
         span.GetTagItem("gen_ai.tool.name").ShouldBe(name[..128]);
     }
 
+    // example:start
     [Test]
     public async Task an_argument_of_the_wrong_type_has_the_tool_and_the_caller_on_its_span_and_writes_no_error_log()
     {
@@ -112,6 +113,7 @@ public class McpTelemetryTests : TestBase
         span.GetTagItem("app.caller.agent_id").ShouldBe(agent.Id);
         span.GetTagItem("error.type").ShouldBeNull();
     }
+    // example:end
 
     private async Task<Agent> SignInThroughDelegatedAgentAsync()
     {

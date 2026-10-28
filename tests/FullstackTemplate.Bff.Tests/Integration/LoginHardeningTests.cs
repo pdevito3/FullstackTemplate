@@ -173,7 +173,7 @@ public class LoginHardeningTests
         // A token that expires within the refresh window, so that the next API call refreshes it
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
 
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
         provider.TokenRequests.Where(r => r.Subject == subject).Select(r => (r.GrantType, r.ClientAuthentication)).ShouldBe(
@@ -195,7 +195,7 @@ public class LoginHardeningTests
         using var browser = app.CreateBrowser();
 
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
         app.IdentityProvider.RevocationClientAuthentications(subject).ShouldBe(["client_secret_post"]);

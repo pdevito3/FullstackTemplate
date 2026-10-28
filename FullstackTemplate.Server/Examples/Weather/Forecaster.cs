@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Domain.Weather;
+namespace FullstackTemplate.Server.Examples.Weather;
 
 /// <summary>Makes random forecasts for the sample weather features.</summary>
 public static class Forecaster

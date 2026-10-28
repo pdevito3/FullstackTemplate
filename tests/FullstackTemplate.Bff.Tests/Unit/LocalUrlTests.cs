@@ -10,7 +10,7 @@ public class LocalUrlTests
     [Arguments("/a")]
     [Arguments("/a/b?c=d#e")]
     [Arguments("/a%20b")]
-    [Arguments("/weather?city=//x")]
+    [Arguments("/items?city=//x")]
     [Arguments("/caf%C3%A9")]
     [Arguments("/a/..//evil.example")]
     public void a_local_path_passes_unchanged(string returnUrl)

@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Domain.Weather.Dtos;
+namespace FullstackTemplate.Server.Examples.Weather.Dtos;
 
 public sealed record SecureWeatherForecast(DateOnly Date, int TemperatureC, string? Summary, string RequestedBy)
 {

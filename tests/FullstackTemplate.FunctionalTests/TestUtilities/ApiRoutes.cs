@@ -44,9 +44,11 @@ public static class ApiRoutes
         public static string GetPage(string entityId) => $"{Base}/audit-entries?entityId={Uri.EscapeDataString(entityId)}";
     }
 
+    // example:start
     public static class Weather
     {
         public static string Get => $"{Base}/weather";
         public static string GetSecure => $"{Base}/weather/secure";
     }
+    // example:end
 }

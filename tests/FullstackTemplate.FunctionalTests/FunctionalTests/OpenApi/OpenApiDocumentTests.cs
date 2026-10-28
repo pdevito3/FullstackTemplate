@@ -16,8 +16,13 @@ public class OpenApiDocumentTests
 {
     private const string ValidationProblemRef = "#/components/schemas/ValidationProblemDetails";
 
-    // GET /api/v1/weather is the only operation that allows anonymous callers
-    public const string AnonymousOperation = "GET /api/v1/weather";
+    // The operations that allow anonymous callers
+    public static readonly string[] AnonymousOperations =
+    [
+        // example:start
+        "GET /api/v1/weather",
+        // example:end
+    ];
 
     [Test]
     public async Task tenant_list_documents_the_pagination_header()
@@ -271,11 +276,11 @@ public class OpenApiDocumentTests
 
         var operations = Operations(root).ToList();
 
-        operations.Select(o => o.Name).ShouldContain(AnonymousOperation);
+        AnonymousOperations.ShouldBeSubsetOf(operations.Select(o => o.Name));
         foreach (var (name, _, operation) in operations)
         {
             var unauthorized = operation["responses"]?["401"];
-            if (name == AnonymousOperation)
+            if (AnonymousOperations.Contains(name))
             {
                 unauthorized.ShouldBeNull(name);
                 continue;

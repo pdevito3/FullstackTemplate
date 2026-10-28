@@ -349,7 +349,7 @@ public class RefreshLockTests
     internal static HttpClient Cookieless(BffApp app) =>
         app.CreateClient(new() { BaseAddress = BffApp.Origin, HandleCookies = false, AllowAutoRedirect = false });
 
-    internal static HttpRequestMessage ApiRequest(string cookie, string path = "/api/v1/weather")
+    internal static HttpRequestMessage ApiRequest(string cookie, string path = "/api/v1/items")
     {
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("X-CSRF", "1");

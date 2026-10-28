@@ -22,26 +22,8 @@ public static class SwaggerExtension
         IConfiguration configuration)
     {
         var authAuthority = configuration["Auth:Authority"];
-        var authAudience = configuration["Auth:Audience"];
-        var useAudienceAsScope = configuration.GetValue("Auth:UseAudienceAsScope", true);
         var hasOAuthConfig = !string.IsNullOrEmpty(authAuthority);
-
-        var scopesConfig = configuration.GetSection("Auth:Scopes").Get<Dictionary<string, string>>();
-        if (scopesConfig == null || scopesConfig.Count == 0)
-        {
-            scopesConfig = new Dictionary<string, string>
-            {
-                { "openid", "OpenID Connect scope" },
-                { "profile", "User profile information" }
-            };
-
-            // Some OAuth providers (like Keycloak) require the audience as a scope to get API access tokens
-            // Others (like FusionAuth) don't support custom scopes
-            if (useAudienceAsScope && !string.IsNullOrEmpty(authAudience))
-            {
-                scopesConfig[authAudience] = "API access scope";
-            }
-        }
+        var scopesConfig = ApiScopes.FromConfiguration(configuration);
 
         // Discover OAuth endpoints from OIDC configuration.
         // No auth provider runs during the build-time document generation, so it skips discovery.

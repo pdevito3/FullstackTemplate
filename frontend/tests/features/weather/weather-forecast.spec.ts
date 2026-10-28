@@ -200,3 +200,26 @@ test.describe('the loading placeholders', () => {
     })
   })
 })
+
+const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'
+
+test.describe('a signed-in user with a long name on a 320 px phone', () => {
+  test.use({ actor: as.user(longName), viewport: { width: 320, height: 640 } })
+
+  test('sees the long name, summary, and caller wrap in the window', async ({ page, api }) => {
+    api.mock(
+      weatherApi.listReturns(aForecast().on('2026-03-14')),
+      weatherApi.secureListReturns(aForecast().on('2026-03-14').summarized(longName).requestedBy(longName)),
+    )
+    const weather = weatherForecastPage(page)
+    await weather.open()
+
+    await weather.showSecureForecast()
+
+    await expect(weather.at.day('Sat, Mar 14')).toContainText(longName)
+    expect(await weather.pageOverflow()).toBe(0)
+    expect(await weather.overflowOf(weather.at.welcome(longName))).toBeLessThanOrEqual(0)
+    expect(await weather.overflowOf(weather.at.day('Sat, Mar 14').getByText(longName).first())).toBeLessThanOrEqual(0)
+    expect(await weather.overflowOf(weather.at.day('Sat, Mar 14').getByText(longName).last())).toBeLessThanOrEqual(0)
+  })
+})

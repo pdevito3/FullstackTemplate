@@ -576,3 +576,48 @@ test.describe('a date filter of a place in another zone', () => {
     await expect(demo.at.queryKit).toHaveText('startsAt == "2026-08-15T20:00:00Z"')
   })
 })
+
+test.describe('the filter builder after the focused button goes away', () => {
+  test('moves the focus to Add Filter when the user removes a filter with the keyboard', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.removeFilter('Labels').first().focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.removeFilter('Labels')).toHaveCount(1)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Clear', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.toolbarButton('Clear').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.toolbarButton('Clear')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Group Selected and after Ungroup', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+    await demo.at.toolbarButton('Group Filters').click()
+    for (const value of ['Bug', 'Urgent']) {
+      await demo.at.selectFilter(`Labels | Has | ${value}`).locator('xpath=ancestor::label').click()
+    }
+
+    await demo.at.groupSelected.focus()
+    await page.keyboard.press('Enter')
+    await expect(demo.at.addFilterMenu).toBeFocused()
+
+    await demo.at.toolbarButton('Ungroup').focus()
+    await page.keyboard.press('Enter')
+    await expect(demo.at.toolbarButton('Ungroup')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+})

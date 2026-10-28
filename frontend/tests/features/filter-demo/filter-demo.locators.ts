@@ -40,5 +40,8 @@ export const filterDemo = (page: Page) => {
     queryKit: page.getByRole('status', { name: 'QueryKit string' }),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
+    toolbarButton: (name: 'Clear' | 'Group Filters' | 'Ungroup' | 'Urgent Bugs') => page.getByRole('button', { name, exact: true }),
+    selectFilter: (name: string) => page.getByRole('checkbox', { name: `Select filter: ${name}`, exact: true }),
+    groupSelected: page.getByRole('button', { name: /^Group Selected/ }),
   }
 }

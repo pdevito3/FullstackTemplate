@@ -13,6 +13,7 @@ using Microsoft.OpenApi;
 using NSubstitute;
 using Shouldly;
 
+[NotInParallel(TestConstraints.HostEnvironment)]
 public class OpenApiTransformerTests
 {
     // The transformers read only the document, so the context needs no real values.

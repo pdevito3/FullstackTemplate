@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Shouldly;
 
 // An app can delete the providers that it does not use, so these tests name no provider. They cover the providers that exist.
+[NotInParallel(TestConstraints.HostEnvironment)]
 public class AuthProviderCatalogTests
 {
     public static IEnumerable<string> ProviderNames => AuthProviderCatalog.All.Select(provider => provider.Name);
@@ -131,7 +132,7 @@ public class AuthProviderCatalogTests
         // Arrange
         var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
         var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
-        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
+        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
 
         // Act
         var config = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls);

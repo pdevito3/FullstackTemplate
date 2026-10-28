@@ -8,7 +8,7 @@ public sealed class SpaOrigin
     private SpaOrigin(string? devServer) => DevServer = devServer;
 
     /// <summary>
-    /// The origin of the Vite dev server, for example <c>http://localhost:5173</c>, or null when the BFF serves the
+    /// The origin of the Vite dev server, for example <c>http://localhost:24710</c>, or null when the BFF serves the
     /// SPA from <c>wwwroot</c>.
     /// </summary>
     public string? DevServer { get; }

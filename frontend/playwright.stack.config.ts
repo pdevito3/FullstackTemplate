@@ -25,7 +25,7 @@ export default defineConfig({
   timeout: 60000, // 60 second timeout for auth flows
 
   use: {
-    baseURL: process.env.BASE_URL ?? 'http://localhost:5173',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:24710',
     // A local run has no retries, so keep the trace and the video of each failure
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

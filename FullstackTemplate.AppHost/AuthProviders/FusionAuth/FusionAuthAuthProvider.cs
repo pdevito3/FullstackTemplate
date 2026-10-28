@@ -27,7 +27,7 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
     {
         // PostgreSQL database for FusionAuth
         var fusionAuthDbPassword = builder.AddParameter("fusionauth-db-password", new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true);
-        var fusionAuthPostgres = builder.AddPostgres("fusionauth-postgres", password: fusionAuthDbPassword)
+        var fusionAuthPostgres = builder.AddPostgres("fusionauth-postgres", password: fusionAuthDbPassword, port: 24751)
             .WithImageTag(Config.PostgresImageTag)
             .WithDataVolumeUnlessIsolated();
         var fusionAuthDb = fusionAuthPostgres.AddDatabase("fusionauth-db");
@@ -37,7 +37,7 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
 
         // FusionAuth Identity Provider container
         var fusionAuth = builder.AddContainer("fusionauth", "fusionauth/fusionauth-app", "1.69.4")
-            .WithHttpEndpoint(port: 9011, targetPort: 9011, name: "http")
+            .WithHttpEndpoint(port: 24750, targetPort: 9011, name: "http")
             .WithReference(fusionAuthDb)
             .WithEnvironment(context =>
             {
@@ -50,6 +50,7 @@ public sealed class FusionAuthAuthProvider : IAuthProvider
             })
             .WithEnvironment("FUSIONAUTH_APP_MEMORY", "512M")
             .WithEnvironment("FUSIONAUTH_APP_RUNTIME_MODE", "development")
+            // The URL that FusionAuth uses to call itself in the container, so it has the container port
             .WithEnvironment("FUSIONAUTH_APP_URL", "http://localhost:9011")
             .WithEnvironment("FUSIONAUTH_APP_KICKSTART_FILE", "/usr/local/fusionauth/kickstart/kickstart.json")
             .WithEnvironment("FUSIONAUTH_APP_SILENT_MODE", "true")

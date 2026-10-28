@@ -26,7 +26,7 @@ public sealed class AuthentikAuthProvider : IAuthProvider
 
         // PostgreSQL database for Authentik
         var authentikDbPassword = builder.AddParameter("authentik-db-password", new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true);
-        var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword)
+        var authentikPostgres = builder.AddPostgres("authentik-postgres", password: authentikDbPassword, port: 24761)
             .WithImageTag(Config.PostgresImageTag)
             .WithDataVolumeUnlessIsolated();
         var authentikDb = authentikPostgres.AddDatabase("authentik-db");
@@ -55,7 +55,7 @@ public sealed class AuthentikAuthProvider : IAuthProvider
 
         // Authentik Server (parent resource for dashboard grouping)
         var server = builder.AddContainer("authentik", "ghcr.io/goauthentik/server", ImageTag)
-            .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "http")
+            .WithHttpEndpoint(port: 24760, targetPort: 9000, name: "http")
             .WithReference(authentikDb)
             .WithEnvironment("AUTHENTIK_SECRET_KEY", authentikSecretKey)
             .WithEnvironment(context =>
@@ -67,6 +67,7 @@ public sealed class AuthentikAuthProvider : IAuthProvider
             .WithEnvironment("AUTHENTIK_POSTGRESQL__NAME", "authentik-db")
             .WithEnvironment("AUTHENTIK_POSTGRESQL__PASSWORD", authentikDbPassword)
             .WithArgs("server")
+            .WaitFor(authentikDb)
             .WaitFor(worker)
             // Health check ensures Authentik OAuth provider is ready before server starts
             // Using OIDC discovery endpoint instead of /-/health/live/ which only checks if server is up

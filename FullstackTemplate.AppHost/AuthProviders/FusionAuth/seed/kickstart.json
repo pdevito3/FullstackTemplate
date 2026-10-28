@@ -33,7 +33,7 @@
             "enabled": true,
             "allowedMethods": ["GET", "POST", "OPTIONS"],
             "allowedHeaders": ["Accept", "Authorization", "Content-Type", "X-Requested-With"],
-            "allowedOrigins": ["#{ENV.APP_SERVER_URL}"],
+            "allowedOrigins": ["#{ENV.APP_SERVER_URL}", "#{ENV.APP_SERVER_HTTP_URL}"],
             "preflightMaxAgeInSeconds": 1800
           }
         }
@@ -50,28 +50,14 @@
               "#{ENV.APP_FRONTEND_URL}/signin-oidc",
               "#{ENV.APP_BFF_URL}/signin-oidc",
               "#{ENV.APP_BFF_URL}/signout-callback-oidc",
-              "https://localhost:5173/signin-oidc",
-              "http://localhost:7130/signin-oidc",
-              "https://localhost:7130/signin-oidc",
-              "http://localhost:7235/signin-oidc",
-              "https://localhost:7235/signin-oidc",
-              "http://localhost:7130/signout-callback-oidc",
-              "https://localhost:7130/signout-callback-oidc",
-              "http://localhost:7554/swagger/oauth2-redirect.html",
               "#{ENV.APP_SERVER_URL}/swagger/oauth2-redirect.html",
-              "http://localhost:5566/swagger/oauth2-redirect.html"
+              "#{ENV.APP_SERVER_HTTP_URL}/swagger/oauth2-redirect.html"
             ],
             "authorizedOriginURLs": [
               "#{ENV.APP_FRONTEND_URL}",
-              "https://localhost:5173",
-              "http://localhost:7130",
-              "https://localhost:7130",
-              "http://localhost:7235",
-              "https://localhost:7235",
-              "http://localhost:7554",
               "#{ENV.APP_SERVER_URL}",
-              "#{ENV.APP_BFF_URL}",
-              "http://localhost:5566"
+              "#{ENV.APP_SERVER_HTTP_URL}",
+              "#{ENV.APP_BFF_URL}"
             ],
             "clientAuthenticationPolicy": "NotRequiredWhenUsingPKCE",
             "clientId": "#{applicationId}",

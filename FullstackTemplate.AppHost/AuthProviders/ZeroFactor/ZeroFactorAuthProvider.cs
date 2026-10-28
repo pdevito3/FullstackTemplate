@@ -30,7 +30,7 @@ public sealed class ZeroFactorAuthProvider : IAuthProvider
         const string clientId = "aspire-app";
 
         var zeroFactor = builder.AddContainer("zerofactor", "c4l3b/0factor", "0.1.8")
-            .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http")
+            .WithHttpEndpoint(port: 24740, targetPort: 8080, name: "http")
             // The volume keeps the users that you register and the signing keys
             .WithDataVolumeUnlessIsolated("/data")
             .WithSeedFiles(this, "/opt/keycloak/data/import")

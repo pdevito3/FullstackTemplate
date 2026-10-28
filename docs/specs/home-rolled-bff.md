@@ -647,6 +647,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
   - `frontend/package.json` and `frontend/pnpm-lock.yaml`
   - The workflow file
 - `ci.yml` also counts these paths:
+  - `.github/workflows/e2e.yml`, the reusable workflow that holds the e2e matrix
   - `tests/FullstackTemplate.Bff.Tests/**`
   - `frontend/e2e/**` and `frontend/playwright.stack.config.ts`
   - `frontend/vite.config.ts` and `frontend/src/**`, the SPA and the dev server proxy that the e2e tests drive

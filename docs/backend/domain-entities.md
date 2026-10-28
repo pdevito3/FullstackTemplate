@@ -58,6 +58,9 @@ public class User : BaseEntity, ITenantable
 
     public User UpdateRole(UserRole newRole)
     {
+        if (newRole == Role)
+            return this;
+
         Role = newRole;
         ResetPermissionsToDefault();
         QueueDomainEvent(new UserUpdated(Id));

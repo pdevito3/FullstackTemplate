@@ -18,20 +18,21 @@ SERVER = "FullstackTemplate.Server"
 
 BASE = {
     "[EntityName]": "Widget",
-    "[entityName]": "widget",
+    "[entity-route]": "widget",
     "[entity_name]": "widget",
     "[entity name]": "widget",
     "[prefix]": "wdg",
     "[Criteria]": "Tenant",
     "[criteria]": "tenant",
+    "[criteria-route]": "tenant",
     "[criteria_name]": "tenant",
 }
 
 # The action templates and the domain event template come in two variants with the same file path.
 ACTIONS = [
-    {"[Action]": "Archive", "[action_name]": "archive", "[action-route]": "archive", "[ActionPastTense]": "Archived",
+    {"[Action]": "Archive", "[action_name]": "archive", "[action-route]": "archive", "[ActionPastTense]": "Archived", "[Action words]": "Archived",
      "[Description of the action]": "Archives the widget"},
-    {"[Action]": "Rename", "[action_name]": "rename", "[action-route]": "rename", "[ActionPastTense]": "Renamed",
+    {"[Action]": "Rename", "[action_name]": "rename", "[action-route]": "rename", "[ActionPastTense]": "Renamed", "[Action words]": "Renamed",
      "[Description of the action]": "Renames the widget"},
 ]
 

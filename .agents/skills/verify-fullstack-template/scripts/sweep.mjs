@@ -10,28 +10,31 @@ const configs = [
   { width: 390, height: 844, scheme: 'light', fontSize: 24 },
   { width: 1280, height: 800, scheme: 'light', fontSize: 24 },
 ]
-const restingConfig = { width: 1280, height: 800, scheme: null, fontSize: 16 }
 const configName = ({ width, scheme, fontSize }) => `${width}px ${scheme} ${fontSize}px font`
 
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'
 const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdomain.example-company-name.com'
-const longKeys = /(^|_)(name|title|summary|description|label|note|comment|reason)$|Name$|Title$|Summary$|Description$/i
-const emailKeys = /email/i
+const nameKeys = new Set(['name', 'title', 'summary', 'description', 'label', 'firstName', 'lastName', 'fullName', 'tenantName',
+  'requestedBy', 'given_name', 'family_name'])
+const emailKeys = new Set(['email'])
 
 function longValues() {
   const seen = new Map()
   const longFor = (key, value) => {
-    if (!seen.has(value)) seen.set(value, emailKeys.test(key) || value.includes('@') ? longEmail : longName)
+    if (!seen.has(value)) {
+      const id = String(seen.size).padStart(3, '0')
+      seen.set(value, emailKeys.has(key) ? longEmail.replace('@', `${id}@`) : longName.slice(0, -id.length) + id)
+    }
     return seen.get(value)
   }
+  const rewrites = (key, value) => typeof value === 'string' && value !== '' && (nameKeys.has(key) || emailKeys.has(key))
   const walk = (node) => {
     if (Array.isArray(node)) return node.map(walk)
-    if (!node || typeof node !== 'object') return typeof node === 'string' && seen.has(node) ? seen.get(node) : node
-    if (typeof node.type === 'string' && typeof node.value === 'string') {
-      return longKeys.test(node.type) || emailKeys.test(node.type) ? { ...node, value: longFor(node.type, node.value) } : node
+    if (!node || typeof node !== 'object') return node
+    if (typeof node.type === 'string' && 'value' in node) {
+      return rewrites(node.type, node.value) ? { ...node, value: longFor(node.type, node.value) } : node
     }
-    return Object.fromEntries(Object.entries(node).map(([key, value]) =>
-      [key, typeof value === 'string' && (longKeys.test(key) || emailKeys.test(key)) ? longFor(key, value) : walk(value)]))
+    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrites(key, value) ? longFor(key, value) : walk(value)]))
   }
   return walk
 }
@@ -41,8 +44,11 @@ export async function routeLongValues(context, webUrl) {
   await context.route((url) => url.origin === new URL(webUrl).origin && (url.pathname.startsWith('/api/') || url.pathname === '/bff/user'),
     async (route) => {
       const response = await route.fetch()
-      if (!(response.headers()['content-type'] ?? '').includes('json')) return route.fulfill({ response })
-      return route.fulfill({ response, json: rewrite(await response.json()) })
+      const { 'content-length': _, ...headers } = response.headers()
+      if (!(headers['content-type'] ?? '').includes('json')) return route.fulfill({ response })
+      const json = await response.json().catch(() => undefined)
+      if (json === undefined) return route.fulfill({ response })
+      return route.fulfill({ response, headers, json: rewrite(json) })
     })
 }
 
@@ -68,8 +74,10 @@ function readFocusLoss() {
 function markLayoutFaults() {
   document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault'))
   const isHidden = (el) => {
+    while (el.parentElement && getComputedStyle(el).display === 'contents') el = el.parentElement
     if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true
     for (let node = el; node; node = node.parentElement) {
+      if (getComputedStyle(node).display === 'contents') continue
       const box = node.getBoundingClientRect()
       if (getComputedStyle(node).clip !== 'auto' || (box.width <= 1 && box.height <= 1)) return true
     }
@@ -79,24 +87,48 @@ function markLayoutFaults() {
   const scrolls = (overflow) => overflow === 'auto' || overflow === 'scroll'
   const label = (el) => el.dataset.slot ?? el.closest('[data-slot]')?.dataset.slot ?? el.tagName.toLowerCase()
   const textOf = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 80)
-  const canShowFullValue = (el) => el.closest('a, button, input, select, textarea, [tabindex], [role=button], [role=link]') !== null
+  const canShowFullValue = (el) =>
+    el.closest('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [role=button], [role=link]') !== null
+  const ownText = (el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
+  const textRect = (text) => {
+    const range = document.createRange()
+    range.setStartBefore(text[0])
+    range.setEndAfter(text[text.length - 1])
+    return range.getBoundingClientRect()
+  }
   const faults = []
   const add = (el, fault) => {
-    el.setAttribute('data-sweep-fault', String(faults.length))
-    faults.push({ ...fault, element: label(el), text: textOf(el) })
+    el.setAttribute('data-sweep-fault', `${el.getAttribute('data-sweep-fault') ?? ''} ${faults.length}`.trim())
+    faults.push({ element: label(el), text: textOf(el), ...fault })
   }
 
   const width = document.documentElement.clientWidth
   if (document.documentElement.scrollWidth > width + 1) {
-    const wide = [...document.querySelectorAll('body *')].filter((el) =>
-      !isHidden(el) && el.getBoundingClientRect().right > width + 1 && (el.parentElement?.getBoundingClientRect().right ?? 0) <= width + 1)
+    const past = (right) => right > width + 1
+    const clippedInside = (node) => {
+      for (; node && node !== document.body; node = node.parentElement) {
+        if (getComputedStyle(node).overflowX !== 'visible' && !past(node.getBoundingClientRect().right)) return true
+      }
+      return false
+    }
+    const wide = [...document.querySelectorAll('body *')].filter((el) => {
+      if (isHidden(el)) return false
+      const right = el.getBoundingClientRect().right
+      const text = ownText(el)
+      if (past(right)) return !past(el.parentElement?.getBoundingClientRect().right ?? 0) && !clippedInside(el.parentElement)
+      return text.length > 0 && past(textRect(text).right) && !clippedInside(el)
+    })
     for (const el of wide.slice(0, 3)) {
-      add(el, { kind: 'page scrolls sideways', how: `ends at ${Math.round(el.getBoundingClientRect().right)} px in a ${width} px window` })
+      const right = Math.max(el.getBoundingClientRect().right, ownText(el).length ? textRect(ownText(el)).right : 0)
+      add(el, { kind: 'page scrolls sideways', how: `ends at ${Math.round(right)} px in a ${width} px window` })
+    }
+    if (!wide.length) {
+      add(document.body, { kind: 'page scrolls sideways', element: 'page', text: '', how: `is ${document.documentElement.scrollWidth} px wide in a ${width} px window` })
     }
   }
 
   for (const el of document.querySelectorAll('body *')) {
-    const text = [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
+    const text = ownText(el)
     if (!text.length || isHidden(el)) continue
     const style = getComputedStyle(el)
     const cutX = clipsContent(style.overflowX) && el.scrollWidth > el.clientWidth + 1
@@ -107,10 +139,7 @@ function markLayoutFaults() {
       else if (!canShowFullValue(el)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
       continue
     }
-    const range = document.createRange()
-    range.setStartBefore(text[0])
-    range.setEndAfter(text[text.length - 1])
-    const shown = { ...range.getBoundingClientRect().toJSON() }
+    const shown = { ...textRect(text).toJSON() }
     let checkX = true
     let checkY = true
     for (let node = el.parentElement; node && node !== document.body && (checkX || checkY); node = node.parentElement) {
@@ -145,18 +174,28 @@ function recordFault(faults, measured, { at, url, config }) {
   return fault
 }
 
+// A resize can cross a breakpoint and remount the element that has the focus. The sweep gives the focus back,
+// or forgets the last focused element, so that the next focus check does not report a loss that the sweep caused.
 export async function sweepCapture({ page, cdp, settle, outDir, capture, faults }) {
   const url = page.url()
+  const resting = { ...page.viewportSize(), scheme: 'light', fontSize: 16 }
   const scroll = await page.evaluate(() => [scrollX, scrollY])
+  const focused = await page.evaluateHandle(() => document.activeElement)
   for (const config of configs) {
     await applyConfig(page, cdp, settle, config)
     for (const [index, measured] of (await page.evaluate(markLayoutFaults)).entries()) {
       const fault = recordFault(faults, measured, { at: capture, url, config })
-      if (fault) await screenshotOf(page, `[data-sweep-fault="${index}"]`, path.join(outDir, fault.screenshot))
+      if (fault) await screenshotOf(page, `[data-sweep-fault~="${index}"]`, path.join(outDir, fault.screenshot))
     }
   }
-  await applyConfig(page, cdp, settle, restingConfig)
+  await page.evaluate(() => document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault')))
+  await applyConfig(page, cdp, settle, resting)
   await page.evaluate(([x, y]) => scrollTo(x, y), scroll)
+  await focused.evaluate((el) => {
+    if (el?.isConnected && el !== document.body) el.focus({ preventScroll: true })
+    window.__sweepFocused = document.activeElement === document.body ? null : document.activeElement
+  })
+  await focused.dispose()
 }
 
 async function screenshotOf(page, selector, file) {
@@ -166,9 +205,9 @@ async function screenshotOf(page, selector, file) {
   await el.evaluate((node) => {
     scrollTo(scrollX, node.getBoundingClientRect().top + scrollY - innerHeight / 3)
     node.style.setProperty('outline', '3px solid red', 'important')
-  }).catch(() => {})
+  }, null, { timeout: 1000 }).catch(() => {})
   await page.screenshot({ path: file })
-  await el.evaluate((node) => node.style.removeProperty('outline')).catch(() => {})
+  await el.evaluate((node) => node.style.removeProperty('outline'), null, { timeout: 1000 }).catch(() => {})
 }
 
 async function applyConfig(page, cdp, settle, { width, height, scheme, fontSize }) {
@@ -185,7 +224,7 @@ export async function sweepFocus({ page, settle, outDir, step, faults }) {
   if (!loss) return
   const measured = { kind: 'focus goes to the body', element: loss.element, text: '', how: `the focused element ${loss.reason}` }
   const fault = recordFault(faults, measured, { at: step, url: page.url() })
-  if (fault) await page.screenshot({ path: path.join(outDir, fault.screenshot) })
+  if (fault) await page.screenshot({ path: path.join(outDir, fault.screenshot) }).catch(() => {})
 }
 
 export function report(faults) {

@@ -166,15 +166,15 @@ $S/scripts/sweep.sh $S/recipes/<recipe>.mjs  # one recipe
 
 With `--sweep`, `browse.mjs` does these things:
 
-- It gives long values to the text that the server sends. Each `name`, `title`, `summary`, `description`, `label`, and email field of an `/api/` answer and of the `/bff/user` claims becomes a 100-character name with no spaces, or a long email address with a hyphen. A value that came once gets the same long value each time, so that a recipe that compares the screen with the API still passes.
-- At each full-page `capture()`, it measures the page at 320, 390, and 1280 px wide, in the light and the dark theme, and with a 24 px default font at 390 and 1280 px. Then it puts the page back to 1280x800 and to the scroll position of the recipe.
+- It gives long values to the text that the server sends. The fields are in `nameKeys` and `emailKeys` of `sweep.mjs`: `name`, `title`, `summary`, `description`, `label`, `firstName`, `lastName`, `fullName`, `tenantName`, `requestedBy`, `given_name`, `family_name`, and `email`, in an `/api/` answer and in the `/bff/user` claims. Each value becomes a 100-character name with no spaces, or a long email address with a hyphen. Each different value gets a different long value, and a value that came once gets the same long value each time, so that a recipe that compares the screen with the API still passes. An empty value stays empty. The long values are shorter than the maximum lengths of the server, so a form that saves them is valid. Add a key when a new field shows a name or a text that the user writes.
+- At each full-page `capture()`, it measures the page at 320, 390, and 1280 px wide, in the light and the dark theme, and with a 24 px default font at 390 and 1280 px. Then it puts back the viewport size of the recipe, the light theme, the scroll position, and the focus. If a resize removed the focused element, the next focus check does not report it.
 - At the end of each `step()`, it checks the focus.
 
 The checks:
 
 | Fault | What the sweep finds |
 |---|---|
-| Page scrolls sideways | The page is wider than the window. The report names the outermost elements that go past the right edge. |
+| Page scrolls sideways | The page is wider than the window. The report names the outermost elements, or the text, that go past the right edge. If it finds none, it names the page. |
 | Text is cut | Text that is wider or taller than its box, which hides the overflow, with no ellipsis. Text that runs out of a parent that hides the overflow. Text that ends with an ellipsis, with no button or link that shows the full value. Text in a scroll container is not cut. Text that is all outside its clip is hidden on purpose, for example the label of a collapsed sidebar item. |
 | Focus goes to the body | The focus is on the body, and the element that had it last was removed, disabled, hidden, or made inert. |
 

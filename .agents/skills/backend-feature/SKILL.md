@@ -254,7 +254,12 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Identify what state changes are needed
    - Determine guard conditions
 
-2. **Add Domain Method to Entity**
+2. **Choose Where the Rule Lives**
+   - Use the decision shape of `docs/backend/features-and-cqrs.md#one-rule-set-for-two-callers` in two cases. The first is when a second caller needs the same rules, such as a list of what is possible and the command that does it. The second is when a rule reads more than one aggregate
+   - Write the case record, the rule list, and the refusal type in `Domain/[Entity]s/`. Keep the command handler to one load, one `Decide`, and one save
+   - Otherwise, put the rule in a guard of the entity, as in the next step
+
+3. **Add Domain Method to Entity**
    ```csharp
    public Order Submit()
    {
@@ -268,13 +273,13 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    }
    ```
 
-3. **Create Domain Event (if needed)**
+4. **Create Domain Event (if needed)**
    ```csharp
    // DomainEvents/OrderSubmitted.cs
    public sealed record OrderSubmitted(string OrderId, DateTimeOffset SubmittedAt) : DomainEvent;
    ```
 
-4. **Create Feature (Command or Query)**
+5. **Create Feature (Command or Query)**
    ```csharp
    // Features/SubmitOrder/SubmitOrder.cs
    public static class SubmitOrder
@@ -308,7 +313,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    }
    ```
 
-5. **Add the HTTP Endpoint**
+6. **Add the HTTP Endpoint**
    ```csharp
    // Features/SubmitOrder/SubmitOrder.Http.cs
    namespace FullstackTemplate.Server.Domain.Orders.Features;
@@ -342,11 +347,11 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    }
    ```
 
-6. **Create Additional DTOs (if needed)**
+7. **Create Additional DTOs (if needed)**
    - Request DTO if the action needs input parameters
    - Custom response DTO if different from standard entity DTO
 
-7. **Generate the API Contract**
+8. **Generate the API Contract**
    - Build the Server, then run `pnpm generate:api` in `frontend/`
    - Commit the generated files with the change. Do not edit them by hand
 
@@ -393,6 +398,13 @@ public class OrderStatus : ValueObject, IFixedNames
     public static OrderStatus Submitted() => new("Submitted");
 }
 ```
+
+**One Rule Set for Two Callers:** (see `docs/backend/features-and-cqrs.md#one-rule-set-for-two-callers`)
+- A case record holds each fact that the rules read. One loader fills it for both callers
+- One static class holds the ordered rules. Each rule returns a refusal or null, and `Decide` returns the first refusal
+- The refusal is a closed set of sealed records. The handler maps each kind to an exception (409 or 422)
+- `Decide` alone makes the proof type, and the write method takes the proof
+- The list keeps each candidate that `Decide` offers. The command calls `Decide` one time and throws the refusal
 
 **Encapsulated Collections:**
 ```csharp

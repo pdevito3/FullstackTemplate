@@ -58,3 +58,21 @@ _Avoid_: Admin client, super client
 **Unknown client**:
 An OAuth client that is not the first-party client, not an all-tenants client, and not an agent for the token. It sees no data and holds no permission.
 _Avoid_: Unregistered agent, guest
+
+### Decisions
+
+**Decision shape**:
+One load into a case record, one pure decision by an ordered list of rules, and one save. A rule set with two callers, or a rule that reads facts from more than one aggregate, uses it.
+_Avoid_: Decision pattern, rule engine
+
+**Case record**:
+A record that holds each fact that one rule set reads. One loader fills it, and each caller of the rules uses that loader.
+_Avoid_: Context, snapshot, request model
+
+**Refusal**:
+The answer of a rule that blocks a change. It is one kind of a closed set, with the request field and the message, and the handler maps each kind to an exception.
+_Avoid_: Error code, failure reason
+
+**Proof type**:
+A type that only the decision makes, which the write method takes, so the write cannot run without the check.
+_Avoid_: Token, ticket, witness

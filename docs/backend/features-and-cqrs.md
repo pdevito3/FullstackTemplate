@@ -9,7 +9,7 @@ Each feature is one folder in `Domain/[EntityName]s/Features/`, for example `Fea
 3. Make the handler a `sealed class` named `Handler`. Inject services with a primary constructor.
 4. Pass the `CancellationToken` to each async call.
 5. Tag each EF query with `TagWithOperationCallSite`, and give the feature the telemetry that support needs. See [feature-telemetry.md](feature-telemetry.md).
-6. In a command, put the business logic in the entity. The handler loads the entity, calls an entity method, and calls `SaveChangesAsync`.
+6. In a command, put the business logic in the entity. The handler loads the entity, calls an entity method, and calls `SaveChangesAsync`. When one rule set has two callers, or a rule reads more than one aggregate, see [One rule set for two callers](#one-rule-set-for-two-callers).
 7. In a query, do not change data. Use `AsNoTracking()` for lists.
 8. Return a DTO. Never return an entity.
 9. In a command that changes the data of a tenant, make a permission check the first statement of the handler. Do the same in a query that reads data that needs a permission, such as the other users or the agents. See [Permission checks](#permission-checks).
@@ -56,6 +56,121 @@ public static class UpdateUser
 `GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404. An ID that `EntityId.IsValid` refuses for the entity, such as an ID with U+0000, gets the same exception with no query. `user.Update` throws a `StaleVersionException` when the DTO has an old version, and `SaveChangesAsync` throws it when another request saved the row after the load. Both give 409. Do not catch it or retry the command, because a retry with the new version overwrites a change that the caller did not see.
 
 A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. A command that has no result implements `IRequest`, not `IRequest<T>`.
+
+## One rule set for two callers
+
+Rule 6 puts a rule in the entity. That holds for a rule that reads only its own entity. When one rule set has two callers, use the decision shape. An example is a list of the free days and the command that books one day. When a rule reads facts from more than one aggregate, use the shape also. After the permission check, the list handler does one load and one decision for each candidate. The command handler does one load, one decision, and one save.
+
+The shape has five parts:
+
+1. **A case record.** It holds each fact that the rules read. One loader fills it, and both callers use that loader. Its constructor checks only that the facts belong together, for example that each booking is for the room.
+2. **An ordered list of rules** in one static class. Each rule takes the case and returns a refusal, or null when the rule passes. `Decide` returns the first refusal. The order is part of the contract, because the SPA and the tests read the first error.
+3. **A closed refusal type.** Each kind of refusal is a sealed record with the field and the message. The private constructor of the base record stops a plain derived record. C# keeps the copy constructor of a record protected, so a test checks that each kind is nested in the base record. The handler maps each kind to an exception. `Taken` gives a `ConflictException` (409), and `NotOffered` gives a `ValidationException` (422). The rules do not reference `Exceptions`.
+4. **A proof type** that only `Decide` makes. Its constructor is `internal`, and in the Server only `Decide` calls it. For a private constructor, put `Decide` in the proof type. The write method takes the proof, so the write cannot run without the check.
+5. **Two callers, one decision.** The list calls `Decide` for each candidate and keeps the offered ones. The command calls `Decide` one time and throws the refusal.
+
+```csharp
+public sealed record Room(string Id, int DaysAhead);
+
+public sealed class Booking
+{
+    private Booking(string roomId, DateOnly day) => (RoomId, Day) = (roomId, day);
+
+    public string RoomId { get; }
+    public DateOnly Day { get; }
+
+    public static Booking Create(BookableDay day) => new(day.RoomId, day.Day);
+}
+
+public sealed record BookingCase
+{
+    public BookingCase(Room room, IReadOnlyCollection<Booking> bookings, DateOnly today)
+    {
+        if (bookings.Any(b => b.RoomId != room.Id))
+            throw new ArgumentException("Give only the bookings of the room.", nameof(bookings));
+        (Room, Bookings, Today) = (room, bookings, today);
+    }
+
+    public Room Room { get; }
+    public IReadOnlyCollection<Booking> Bookings { get; }
+    public DateOnly Today { get; }
+}
+
+public abstract record Refusal
+{
+    private Refusal(string field, string message) => (Field, Message) = (field, message);
+
+    public string Field { get; }
+    public string Message { get; }
+
+    public sealed record NotOffered(string Field, string Message) : Refusal(Field, Message);
+    public sealed record Taken(string Field, string Message) : Refusal(Field, Message);
+}
+
+public sealed class BookableDay
+{
+    internal BookableDay(string roomId, DateOnly day) => (RoomId, Day) = (roomId, day);
+
+    public string RoomId { get; }
+    public DateOnly Day { get; }
+}
+
+public abstract record Decision
+{
+    private Decision() { }
+
+    public sealed record Offered(BookableDay Day) : Decision;
+    public sealed record Refused(Refusal Refusal) : Decision;
+}
+
+public static class BookingRules
+{
+    private static readonly Func<BookingCase, DateOnly, Refusal?>[] Rules = [InWindow, Free];
+
+    public static Decision Decide(BookingCase booking, DateOnly day)
+        => Rules.Select(rule => rule(booking, day)).FirstOrDefault(r => r is not null) is { } refusal
+            ? new Decision.Refused(refusal)
+            : new Decision.Offered(new BookableDay(booking.Room.Id, day));
+
+    private static Refusal.NotOffered? InWindow(BookingCase booking, DateOnly day)
+        => day < booking.Today || day > booking.Today.AddDays(booking.Room.DaysAhead)
+            ? new Refusal.NotOffered("day", $"Pick a day from today to {booking.Room.DaysAhead} days ahead.")
+            : null;
+
+    private static Refusal.Taken? Free(BookingCase booking, DateOnly day)
+        => booking.Bookings.Any(b => b.Day == day)
+            ? new Refusal.Taken("day", "Someone booked this day. Pick another day.")
+            : null;
+}
+
+public static class BookingHandlers
+{
+    public static IReadOnlyList<DateOnly> FreeDays(BookingCase booking, IEnumerable<DateOnly> candidates)
+        => candidates.Where(day => BookingRules.Decide(booking, day) is Decision.Offered).ToList();
+
+    public static Booking Book(BookingCase booking, DateOnly day) => BookingRules.Decide(booking, day) switch
+    {
+        Decision.Offered offered => Booking.Create(offered.Day),
+        Decision.Refused { Refusal: Refusal.Taken taken } => throw new ConflictException(taken.Field, taken.Message),
+        Decision.Refused { Refusal: Refusal.NotOffered notOffered }
+            => throw new ValidationException(notOffered.Field, notOffered.Message),
+        _ => throw new UnreachableException(),
+    };
+}
+```
+
+`FreeDays` and `Book` are the bodies of the two handlers after the load. Each handler calls the same loader, for example an extension method `LoadBookingCaseAsync(roomId, cancellationToken)` on `AppDbContext`. The command handler then adds the booking and calls `SaveChangesAsync` one time. C# cannot see that `Decision` is closed, so the switch needs the `_` arm. A new kind of refusal gets its own arm, and until it has one, the command throws `UnreachableException`. Write the refusal kind as a span tag or a metric tag. See [feature-telemetry.md](feature-telemetry.md).
+
+The case holds the facts at the time of the load. Two requests can pass `Free` at the same time and both save. Back a rule such as `Free` with a unique index or an exclusion constraint, so that the second save gives 409. See [backend.md](../backend.md#error-responses).
+
+A rule that reads only its own entity stays a guard in the entity. See [domain-entities.md](domain-entities.md#guards). Do not add an `IRule` interface, a rule registry, or DI for the rules. One list in one file shows the order.
+
+Each use of the shape has four tests. `tests/FullstackTemplate.UnitTests/Docs/DecisionShapeExampleTests.cs` has this example and its tests:
+
+- A table-driven unit test for each rule. Each row gives the case, the kind of refusal, the field, and the message.
+- An order test. A case that breaks each rule gets the refusal of the first rule. Make the case pass the rules one at a time, and the refusal of the next rule comes back.
+- A test that ties the callers together. The command accepts each candidate that the list offers. In an app, make this an integration test, because it also tests the loader.
+- A test that each kind of the refusal type and of the decision type is nested in its base record. C# cannot close a record hierarchy, so this test does it.
 
 ## List query
 

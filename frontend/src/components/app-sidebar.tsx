@@ -93,52 +93,54 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => {
-                const isActive = currentPath === item.url
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton href={item.url} isActive={isActive} tooltip={item.title} onPress={closeMobile}>
-                      <HugeiconsIcon icon={item.icon} />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+        <nav aria-label="Main">
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navItems.map((item) => {
+                  const isActive = currentPath === item.url
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton href={item.url} isActive={isActive} tooltip={item.title} onPress={closeMobile}>
+                        <HugeiconsIcon icon={item.icon} />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
 
-              {/* Demos submenu */}
-              <Collapsible defaultExpanded={isDemoActive} className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger className={sidebarMenuButtonVariants()} data-active={isDemoActive || undefined}>
-                    <HugeiconsIcon icon={DashboardSquare01Icon} />
-                    <span>Demos</span>
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      className="ml-auto transition-transform duration-200 group-data-[expanded]/collapsible:rotate-90"
-                    />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {demoItems.map((item) => {
-                        const isActive = currentPath === item.url
-                        return (
-                          <SidebarMenuSubItem key={item.title} isActive={isActive}>
-                            <SidebarMenuSubButton href={item.url} isActive={isActive} onPress={closeMobile}>
-                              <span>{item.title}</span>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        )
-                      })}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                {/* Demos submenu */}
+                <Collapsible defaultExpanded={isDemoActive} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger className={sidebarMenuButtonVariants()} data-active={isDemoActive || undefined}>
+                      <HugeiconsIcon icon={DashboardSquare01Icon} />
+                      <span>Demos</span>
+                      <HugeiconsIcon
+                        icon={ArrowRight01Icon}
+                        className="ml-auto transition-transform duration-200 group-data-[expanded]/collapsible:rotate-90"
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {demoItems.map((item) => {
+                          const isActive = currentPath === item.url
+                          return (
+                            <SidebarMenuSubItem key={item.title} isActive={isActive}>
+                              <SidebarMenuSubButton href={item.url} isActive={isActive} onPress={closeMobile}>
+                                <span>{item.title}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )
+                        })}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </nav>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

@@ -190,13 +190,13 @@ export function filterDemoPage(page: Page) {
           const { width, height } = element.getBoundingClientRect()
           return width > 1 && height > 1
         }
-        const headerBottom = title.parentElement!.getBoundingClientRect().bottom
+        const titleBottom = title.getBoundingClientRect().bottom
         let top = Infinity
         let bottom = -Infinity
         for (const element of sheet!.querySelectorAll('*')) {
           const box = element.getBoundingClientRect()
           const isLeaf = ['BUTTON', 'INPUT'].includes(element.tagName) || ![...element.children].some(shows)
-          if (!isLeaf || !shows(element) || box.top < headerBottom) continue
+          if (!isLeaf || !shows(element) || box.top < titleBottom) continue
           top = Math.min(top, box.top)
           bottom = Math.max(bottom, box.bottom)
         }
@@ -205,7 +205,7 @@ export function filterDemoPage(page: Page) {
           scroller = scroller.parentElement
         }
         const contentEnd = scroller.getBoundingClientRect().top + scroller.clientTop - scroller.scrollTop + scroller.scrollHeight
-        return { top: Math.round(top - headerBottom), bottom: Math.round(contentEnd - bottom) }
+        return { top: Math.round(top - titleBottom), bottom: Math.round(contentEnd - bottom) }
       }, sheet)
     },
 

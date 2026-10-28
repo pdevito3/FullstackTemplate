@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Separator } from '@/components/ui/separator'
+import type { FileRoutesByFullPath } from '@/routeTree.gen'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -34,7 +35,7 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
-const routeNames: Record<string, string> = {
+const pageNameByRoutePath: Partial<Record<keyof FileRoutesByFullPath, string>> = {
   '/': 'Home',
   '/about': 'About',
   '/components': 'Components',
@@ -44,9 +45,9 @@ const routeNames: Record<string, string> = {
 function RootComponent() {
   const router = useRouter()
   const routerState = useRouterState()
-  const currentPath = routerState.location.pathname
+  const routePath = routerState.matches[routerState.matches.length - 1]?.fullPath ?? ''
   const isNotFound = routerState.matches.some((match) => match.globalNotFound)
-  const pageName = isNotFound ? 'Not Found' : (routeNames[currentPath] ?? 'Page')
+  const pageName = isNotFound ? 'Not Found' : (pageNameByRoutePath[routePath] ?? 'Page')
 
   return (
     <RouterProvider
@@ -61,7 +62,7 @@ function RootComponent() {
               <SidebarTrigger className="-ml-1" />
               <Separator
                 orientation="vertical"
-                className="mr-2 aria-[orientation=vertical]:h-4"
+                className="mr-2 aria-[orientation=vertical]:h-4 aria-[orientation=vertical]:self-center"
               />
               <Breadcrumb>
                 <BreadcrumbList>
@@ -76,7 +77,8 @@ function RootComponent() {
             <Outlet />
           </div>
         </SidebarInset>
-        <TanStackRouterDevtools position="top-right" />
+        {/* The default container is a footer, which is a contentinfo landmark. */}
+        <TanStackRouterDevtools position="top-right" containerElement="div" />
       </SidebarProvider>
     </RouterProvider>
   )

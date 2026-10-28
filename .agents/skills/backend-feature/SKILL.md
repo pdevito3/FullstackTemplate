@@ -257,12 +257,12 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 9. **Update the MCP and gRPC Adapters**
    - An MCP tool or a gRPC method that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` sets each value by name. An update sets each value, so a value that the adapter does not send becomes null
-   - Add a parameter for the property to each of these adapters, and send it in the DTO. For gRPC, also add the field to the messages in the `.proto` file and to the mapping of the response
-   - Follow "MCP versions" and the gRPC rules of `docs/backend/endpoints.md`: a new required parameter of an MCP tool that exists needs a new tool name, and a gRPC field that can have no value is `optional` (see "Adding a New Property" in `templates.md`)
+   - Add a parameter for the property to each of these adapters and to each SPA call of the update, and send it in the DTO. For gRPC, also add the field to the messages in the `.proto` file and to the mapping of the response
+   - Follow "MCP versions" and the gRPC rules of `docs/backend/endpoints.md`: a new required parameter of an MCP tool that exists needs a new tool name (an optional parameter with the default `null`, after `CancellationToken`, keeps the name), and a gRPC field that can have no value is `optional` (see "Adding a New Property" in `templates.md`)
 
 10. **Update the Test Lists**
    - Add the property to the input and the blueprint of the entity graph with the `test-entity-graph` skill
-   - Give a required value a `Derive` in the blueprint. If the entity has `[EntityName]Rules` and shape fakers, put the rule there and use it in the `Derive` and in each shape faker
+   - Give a required value a `Derive` in the blueprint. If the entity has `[EntityName]Rules` and shape fakers, put a rule for each new text property, required or nullable, there. Use it in each shape faker and in the `Derive`. Otherwise an `AutoFaker` fills a nullable text with a value that is too long, and unrelated tests fail at random
    - List each new text column, also the column of a value object, in `CallerColumns` of `StringColumnLengthTests` with its domain write (see "Adding a New Property" in `templates.md`)
 
 11. **Create Migration**
@@ -476,7 +476,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] A property that is not a flag, an enum, a `Guid`, an integer, or a foreign key has `[Sensitive]` or `[NotSensitive]` (see `docs/backend/audit-log.md`)
 - [ ] Factory method updated (if set at creation)
 - [ ] Update method updated (if updatable)
-- [ ] Each MCP tool and gRPC method that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` takes and sends the new property
+- [ ] Each MCP tool, gRPC method, and SPA call that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` takes and sends the new property
 - [ ] Internal models updated (ForCreation/ForUpdate)
 - [ ] DTOs updated (Dto, ForCreationDto, ForUpdateDto as needed). The Dto has `Version`, and the ForUpdateDto has `required uint Version`
 - [ ] Mapper updated (custom mapping for value objects)

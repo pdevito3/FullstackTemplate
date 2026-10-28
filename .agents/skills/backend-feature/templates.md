@@ -1017,18 +1017,20 @@ public sealed class [EntityName]Configuration : IEntityTypeConfiguration<[Entity
 
 An MCP tool or a gRPC method that makes a `[EntityName]ForCreationDto` or a `[EntityName]ForUpdateDto` sets each value by name. Add a parameter for the property to each of them, and send it in the DTO. Otherwise the adapter cannot set the value, an update clears it, and a required value gives 400.
 
-- MCP: a new required parameter of a tool that exists is a breaking change and needs a new tool name (see "MCP versions" in `docs/backend/endpoints.md`).
+- MCP: a new required parameter of a tool that exists is a breaking change and needs a new tool name (see "MCP versions" in `docs/backend/endpoints.md`). To keep the tool name, add the parameter as optional with the default `null`, after `CancellationToken cancellationToken`, because C# puts optional parameters last. The MCP SDK then leaves it out of `required`. An update from a caller that does not send it clears the value.
 - gRPC: add the field to the request and the response messages in the `.proto` file, and to the mapping of the response, for example `TenantGrpcMappings`. Mark a field that can have no value `optional`. Read `Has[FieldName]` and send `null` when it is false, and set the response field only when the value is not null, because a generated setter throws on null (see the gRPC rules in `docs/backend/endpoints.md`).
 
 ```csharp
-        [Description("The new phone number, or null for no phone number.")] string? phoneNumber,
         // ...
+        CancellationToken cancellationToken,
+        [Description("The new phone number, or null for no phone number.")] string? phoneNumber = null)
+    // ...
             new Update[EntityName].Command(id, new [EntityName]ForUpdateDto { Name = name, Description = description, PhoneNumber = phoneNumber, Version = version }),
 ```
 
 ### Step 9: Update the Test Lists
 
-Add the property to the input and the blueprint of the entity graph (see the `test-entity-graph` skill), so that a test can set it. A required value needs a `Derive`, so that each test gets a valid value. If the entity has `[EntityName]Rules` and shape fakers in `Fakes/[EntityName]/`, put the rule for a required value in `[EntityName]Rules`, and use it in the `Derive` and in a `RuleFor` of each shape faker. Otherwise a faker fills it with a value that the domain refuses. Then list each new text column, also the column of a value object, in `CallerColumns` of `StringColumnLengthTests` with its domain write. An email column uses the `Email` generator, not `Text`.
+Add the property to the input and the blueprint of the entity graph (see the `test-entity-graph` skill), so that a test can set it. A required value needs a `Derive`, so that each test gets a valid value. If the entity has `[EntityName]Rules` and shape fakers in `Fakes/[EntityName]/`, put a rule for each new text property, required or nullable, in `[EntityName]Rules`. Use it in a `RuleFor` of each shape faker, and in the `Derive` of a required value. Give the rule a value that fits the max length, for example `f.Random.String2(10, "0123456789")`. Otherwise an `AutoFaker` fills the property with random text that can be longer than the column, and unrelated tests fail at random. Then list each new text column, also the column of a value object, in `CallerColumns` of `StringColumnLengthTests` with its domain write. An email column uses the `Email` generator, not `Text`.
 
 ```csharp
 // Inputs.cs, in [EntityName]Input

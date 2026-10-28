@@ -194,19 +194,29 @@ public class RequestValidationBehaviorTests
         // Act
         var matching = RangeMismatches([typeof(GetDueListEndpoint), typeof(GetOverdueListEndpoint)]);
         var mismatched = RangeMismatches([typeof(GetOverdueListWithTheDueRangeEndpoint)]);
+        var mismatchedInALambda = RangeMismatches([typeof(GetOverdueListInALambdaEndpoint)]);
         var unmatched = RangeMismatches([typeof(GetDueListWithAnExtraRangeEndpoint)]);
 
         // Assert
         matching.ShouldBeEmpty();
         mismatched.ShouldBe(["GetOverdueListWithTheDueRangeEndpoint.withinDays: (1, 365, False, False), but OverdueParametersDto has (1, 90, False, False)"]);
-        unmatched.ShouldBe(["GetDueListWithAnExtraRangeEndpoint.limit: 0 types that the endpoint builds have a range on limit"]);
+        mismatchedInALambda.ShouldBe(["GetOverdueListInALambdaEndpoint.withinDays: (1, 365, False, False), but OverdueParametersDto has (1, 90, False, False)"]);
+        unmatched.ShouldBe(["GetDueListWithAnExtraRangeEndpoint.limit: 0 types that the endpoint builds have a range on limit. Build the DTO in the code of the endpoint"]);
     }
 
+    /// <summary>
+    /// The ranged parameters of each method of the endpoint and of its nested types, so that a handler in a lambda or
+    /// a local function counts too.
+    /// </summary>
     private static IEnumerable<(ParameterInfo Parameter, RangeAttribute Range)> RangedParameters(Type endpoint)
-        => endpoint.GetMethods(BindingFlags.Public | BindingFlags.Static)
+        => new[] { endpoint }.Concat(NestedTypes(endpoint))
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             .SelectMany(method => method.GetParameters())
             .Where(parameter => parameter.IsDefined(typeof(RangeAttribute)))
             .Select(parameter => (parameter, parameter.GetCustomAttribute<RangeAttribute>()!));
+
+    private static IEnumerable<Type> NestedTypes(Type type)
+        => type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic).SelectMany(nested => new[] { nested }.Concat(NestedTypes(nested)));
 
     private static List<string> RangeMismatches(IEnumerable<Type> endpoints)
     {
@@ -232,7 +242,7 @@ public class RequestValidationBehaviorTests
                     .ToList();
                 var name = $"{endpoint.Name}.{parameter.Name}";
                 if (dtoRanges is not [var dto])
-                    mismatches.Add($"{name}: {dtoRanges.Count} types that the endpoint builds have a range on {parameter.Name}");
+                    mismatches.Add($"{name}: {dtoRanges.Count} types that the endpoint builds have a range on {parameter.Name}. Build the DTO in the code of the endpoint");
                 else if (!Bounds(range).Equals(Bounds(dto.Range!)))
                     mismatches.Add($"{name}: {Bounds(range)}, but {dto.Type.Name} has {Bounds(dto.Range!)}");
             }
@@ -452,6 +462,12 @@ public class RequestValidationBehaviorTests
     private static class GetOverdueListWithTheDueRangeEndpoint
     {
         public static async Task<bool> Handle([Range(1, 365)] int? withinDays, IMediator mediator, CancellationToken cancellationToken)
+            => await mediator.Send(new GetOverdueList(OverdueParametersDto.From(null, null, withinDays)), cancellationToken);
+    }
+
+    private static class GetOverdueListInALambdaEndpoint
+    {
+        public static Delegate Handler => async ([Range(1, 365)] int? withinDays, IMediator mediator, CancellationToken cancellationToken)
             => await mediator.Send(new GetOverdueList(OverdueParametersDto.From(null, null, withinDays)), cancellationToken);
     }
 

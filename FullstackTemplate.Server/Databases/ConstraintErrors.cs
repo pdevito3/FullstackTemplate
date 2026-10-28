@@ -8,12 +8,14 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// <summary>The <see cref="ConstraintError"/> of each unique index and each exclusion constraint of the schema.</summary>
 public static class ConstraintErrors
 {
-    private const string IndexAnnotation = "App:ConstraintError";
+    private const string RequestFieldAnnotation = "App:ConstraintError";
+    private const string StaleVersionAnnotation = "App:StaleVersionConstraint";
     private const string ModelAnnotation = "App:ConstraintErrors";
 
     /// <summary>
     /// The exclusion constraints and the unique indexes that only a migration adds, such as an index on a column of a
-    /// value object. The EF model does not have them, so <see cref="ForRequestField"/> cannot name them.
+    /// value object. The EF model does not have them, so <see cref="ForRequestField"/> and <see cref="ForStaleVersion"/>
+    /// cannot name them.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, ConstraintError> NotInModel = new Dictionary<string, ConstraintError>();
 
@@ -22,7 +24,14 @@ public static class ConstraintErrors
     /// index stops then gives a 409 on the field with the message.
     /// </summary>
     public static IndexBuilder<TEntity> ForRequestField<TEntity>(this IndexBuilder<TEntity> builder, string field, string message)
-        => builder.HasAnnotation(IndexAnnotation, new ConstraintError(field, message));
+        => builder.HasAnnotation(RequestFieldAnnotation, new ConstraintError.RequestField(field, message));
+
+    /// <summary>
+    /// Marks a unique index whose violation means that another user changed the record after the caller loaded it,
+    /// for example one current revision of each document. A save that the index stops then gives the stale-version 409.
+    /// </summary>
+    public static IndexBuilder<TEntity> ForStaleVersion<TEntity>(this IndexBuilder<TEntity> builder)
+        => builder.HasAnnotation(StaleVersionAnnotation, new ConstraintError.StaleVersion());
 
     /// <summary>The errors by constraint name.</summary>
     public static IReadOnlyDictionary<string, ConstraintError> Of(IModel model)
@@ -45,11 +54,18 @@ public static class ConstraintErrors
         {
             foreach (var index in modelBuilder.Metadata.GetEntityTypes().SelectMany(e => e.GetDeclaredIndexes()))
             {
-                if (index.RemoveAnnotation(IndexAnnotation)?.Value is not ConstraintError error)
+                var requestField = index.RemoveAnnotation(RequestFieldAnnotation)?.Value as ConstraintError;
+                var staleVersion = index.RemoveAnnotation(StaleVersionAnnotation)?.Value as ConstraintError;
+                if ((requestField ?? staleVersion) is not { } error)
                     continue;
+
+                var name = $"{index.DisplayName()} of {index.DeclaringEntityType.DisplayName()}";
+                if (requestField is not null && staleVersion is not null)
+                    throw new InvalidOperationException(
+                        $"The index {name} has both ForRequestField and ForStaleVersion. Keep the one that tells what a save that the index stops means.");
                 if (!index.IsUnique)
                     throw new InvalidOperationException(
-                        $"The index {index.DisplayName()} of {index.DeclaringEntityType.DisplayName()} has a request field from ForRequestField, but it is not unique. Call IsUnique on the index.");
+                        $"The index {name} has {(staleVersion is null ? nameof(ForRequestField) : nameof(ForStaleVersion))}, but it is not unique. Call IsUnique on the index.");
                 _indexes.Add((index, error));
             }
         }
@@ -61,10 +77,10 @@ public static class ConstraintErrors
             foreach (var (index, error) in _indexes)
             {
                 var name = index.GetDatabaseName() ?? throw new InvalidOperationException(
-                    $"The index {index.DisplayName()} of {index.DeclaringEntityType.DisplayName()} has a request field, but it is not on a table.");
+                    $"The index {index.DisplayName()} of {index.DeclaringEntityType.DisplayName()} has a constraint error, but it is not on a table.");
                 if (!errors.TryAdd(name, error))
                     throw new InvalidOperationException(
-                        $"The index {name} has a request field from ForRequestField and an entry in NotInModel. Remove the entry.");
+                        $"The index {name} has a constraint error in its configuration and an entry in NotInModel. Remove the entry.");
             }
 
             model.SetRuntimeAnnotation(ModelAnnotation, errors);

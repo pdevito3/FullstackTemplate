@@ -5,10 +5,10 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Aspire -->
-    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.1" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
     <PackageVersion Include="Labcoat.Aspire.Hosting" Version="1.1.2" />
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
     <!-- Entity Framework -->
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
@@ -82,8 +82,6 @@
          Without the pin, projects that reference the server get 10.0.12 from
          Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore, because EF Core Design is private there. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
-    <!-- Aspire.Hosting and StreamJsonRpc: GHSA-qhrr-8q5h-9q3h -->
-    <PackageVersion Include="MessagePack" Version="2.5.303" />
     <!-- Microsoft.EntityFrameworkCore.Design (through MSBuild): GHSA-2fmv-rv2c-59x7, GHSA-846f-f764-76mx -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>

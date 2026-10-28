@@ -103,7 +103,7 @@ internal sealed class TrackedAggregates
         return ownerId is string id && _entries.TryGetValue((ownerType.GetRootType(), id), out var tracked)
             ? tracked
             : throw new InvalidOperationException(
-                $"A {child.Metadata.ClrType.Name} changed, but its {ownerType.ClrType.Name} '{ownerId}' is not tracked. Load the {ownerType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
+                $"The {ownerType.ClrType.Name} '{ownerId}' owns a {child.Metadata.ClrType.Name} in an aggregate that changed, but the {ownerType.ClrType.Name} is not tracked. Load the {ownerType.ClrType.Name}, then change the {child.Metadata.ClrType.Name} through it.");
     }
 
     private AuditSubject SubjectOfEntry(EntityEntry<BaseEntity> entry)
@@ -118,8 +118,13 @@ internal sealed class TrackedAggregates
             root = owner;
         }
 
+        var tenantId = TenantOf(root);
+        if (!ReferenceEquals(root.Entity, entry.Entity) && entry.Entity is ITenantable tenantable && tenantable.TenantId != tenantId)
+            throw new InvalidOperationException(
+                $"{entry.Metadata.ClrType.Name} '{entry.Entity.Id}' has the tenant '{tenantable.TenantId}', but its aggregate root {root.Metadata.ClrType.Name} '{root.Entity.Id}' has the tenant '{tenantId}'. Give the {entry.Metadata.ClrType.Name} the tenant of its parent.");
+
         return new AuditSubject(entry.Metadata.ClrType.Name, entry.Entity.Id, root.Metadata.ClrType.Name,
-            root.Entity.Id, TenantOf(root));
+            root.Entity.Id, tenantId);
     }
 
     private static string TenantOf(EntityEntry<BaseEntity> root) => root.Entity switch

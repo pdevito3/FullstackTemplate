@@ -112,7 +112,7 @@ public class DomainEventOwnerVersionTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldBe(
-            $"A UserPermission changed, but its User '{userId}' is not tracked. Load the User, then change the UserPermission through it.");
+            $"The User '{userId}' owns a UserPermission in an aggregate that changed, but the User is not tracked. Load the User, then change the UserPermission through it.");
         (await ReadAsync(read => read.Tenants.Where(t => t.Id == scenario.Tenant.Id).Select(t => t.Name).SingleAsync()))
             .ShouldBe(scenario.Tenant.Name);
         (await ReadAsync(read => read.UserPermissions.CountAsync(p => p.UserId == userId))).ShouldBe(0);

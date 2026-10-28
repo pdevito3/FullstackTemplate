@@ -110,7 +110,33 @@ public sealed class EntityTreeTests : IAsyncDisposable
 
         // Assert
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldBe(
-            $"A Node changed, but its Node '{former.Id}' is not tracked. Load the Node, then change the Node through it.");
+            $"The Node '{former.Id}' owns a Node in an aggregate that changed, but the Node is not tracked. Load the Node, then change the Node through it.");
+    }
+
+    [Test]
+    public async Task a_node_with_a_tenant_that_is_not_the_tenant_of_its_top_node_fails_with_the_fix()
+    {
+        // Arrange
+        await _database.StartAsync();
+        var top = Node.Top();
+        await using (var writer = await CreateContextAsync())
+        {
+            writer.Add(top);
+            await writer.SaveChangesAsync();
+        }
+
+        await using var context = await CreateContextAsync();
+        var loaded = await context.Set<Node>().SingleAsync(n => n.Id == top.Id);
+        var otherTenantId = EntityId.New(Tenant.IdPrefix);
+        var child = loaded.NewChildIn(otherTenantId);
+        context.Add(child);
+
+        // Act
+        var act = () => context.SaveChangesAsync();
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldBe(
+            $"Node '{child.Id}' has the tenant '{otherTenantId}', but its aggregate root Node '{top.Id}' has the tenant '{top.TenantId}'. Give the Node the tenant of its parent.");
     }
 
     [Test]
@@ -162,6 +188,8 @@ public sealed class EntityTreeTests : IAsyncDisposable
         public static Node TopIn(string tenantId) => new() { TenantId = tenantId };
 
         public Node NewChild() => new() { TenantId = TenantId, ParentId = Id };
+
+        public Node NewChildIn(string tenantId) => new() { TenantId = tenantId, ParentId = Id };
 
         public void MoveToTop() => ParentId = null;
 

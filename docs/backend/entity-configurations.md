@@ -93,9 +93,9 @@ An entity with a foreign key to a parent of its own type is a tree, for example 
 
 For a tree that is one aggregate, obey these rules:
 
-1. Implement `ITenantable` on the node, because a node with no parent is a root. Give each new node the tenant of its parent, and move a node only under a node of the same tenant. No check finds a node with a tenant that is not the tenant of its top node. `AuditModelTests` fails when the node has no tenant.
+1. Implement `ITenantable` on the node, because a node with no parent is a root. Give each new node the tenant of its parent, and move a node only under a node of the same tenant. The save throws when a node that changes has a tenant that is not the tenant of its top node. `AuditModelTests` fails when the node has no tenant.
 2. Load each ancestor of a node before you change the node. The save throws when an ancestor is not tracked.
-3. To move a node, load its former parent and the ancestors of the former parent too. The save updates the rows of the former ancestors and of the new ancestors, so the version of each top node guards the move. The audit entry of the move names the new root and holds the old and the new parent key.
+3. To move a node, load its former parent and the ancestors of the former parent too. The save updates the rows of the former ancestors and of the new ancestors, so the version of each top node guards the move. The audit entry of the move names the new root and holds the old and the new parent key. The history of the former top node does not show the move, but its version changes.
 4. Do not bulk insert the nodes. `BulkInsertAsync` refuses a type with an owner key, also a key that is optional.
 5. Make the subject of an audit action from the top node, not from the node that the action is about. The save throws when the subject names a tracked node that has a parent. It does not see a node that you read with `AsNoTracking`.
 

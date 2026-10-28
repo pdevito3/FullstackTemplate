@@ -65,6 +65,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
     private IReadOnlyDictionary<string, string?> _settings = new Dictionary<string, string?>();
     private Action<IServiceCollection>? _services;
+    private string _environment = "Development";
     private bool _ownsDependencies;
     private readonly StartGate _startGate = new();
 
@@ -105,7 +106,8 @@ public sealed class BffApp : WebApplicationFactory<Program>
     public static BffApp StartAnotherInstance(
         IReadOnlyDictionary<string, string?>? settings = null,
         Action<IServiceCollection>? services = null,
-        FakeIdentityProvider? identityProvider = null)
+        FakeIdentityProvider? identityProvider = null,
+        string environment = "Development")
     {
         var app = new BffApp
         {
@@ -113,6 +115,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
             Api = Instance.Api,
             _settings = settings ?? new Dictionary<string, string?>(),
             _services = services,
+            _environment = environment,
         };
         try
         {
@@ -179,7 +182,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment(_environment);
         builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(_settings));
         // AddBffAuthentication reads Auth:Authority before this configuration exists, so set the authority on the

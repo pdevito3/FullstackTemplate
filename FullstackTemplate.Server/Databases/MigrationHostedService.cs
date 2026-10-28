@@ -43,6 +43,16 @@ public class MigrationHostedService<TDbContext>(
                 return;
             }
 
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<TDbContext>();
+            // The lock connects to the database, so the database must exist before the lock.
+            var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
+            if (!await databaseCreator.ExistsAsync(cancellationToken))
+            {
+                await databaseCreator.CreateAsync(cancellationToken);
+                _logger.Here().Information("Created the database for {DbContext}", typeof(TDbContext).Name);
+            }
+
             var distributedLock = new PostgresDistributedLock(
                 new PostgresAdvisoryLockKey($"{DatabaseConsts.DatabaseName}_MigrationLock", allowHashing: true),
                 connectionString);
@@ -54,12 +64,9 @@ public class MigrationHostedService<TDbContext>(
                 Telemetry.AddEvent([], "migration.lock_acquired");
                 _logger.Here().Information("Starting database migration...");
 
-                await using var scope = scopeFactory.CreateAsyncScope();
-                var context = scope.ServiceProvider.GetRequiredService<TDbContext>();
                 // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the
                 // failed read as an error. Create the table first.
-                if (await context.GetService<IRelationalDatabaseCreator>().ExistsAsync(cancellationToken))
-                    await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
+                await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
                 await context.Database.MigrateAsync(cancellationToken);
             }
 

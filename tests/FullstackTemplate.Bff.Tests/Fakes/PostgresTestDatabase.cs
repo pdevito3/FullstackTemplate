@@ -29,7 +29,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     /// <summary>The connection string for the empty database of this run.</summary>
     public string ConnectionString { get; private set; } = null!;
 
-    public async Task StartAsync()
+    public async Task StartAsync(bool createDatabase = true)
     {
         // Testcontainers finds a reusable container by its hash, but it does not lock across processes. The test
         // projects start at the same time, so each one can create a container with the same hash. The next run then
@@ -38,7 +38,8 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
         {
             await _container.StartAsync();
         }
-        await ExecuteOnServerAsync($"""CREATE DATABASE "{_databaseName}" """);
+        if (createDatabase)
+            await ExecuteOnServerAsync($"""CREATE DATABASE "{_databaseName}" """);
         ConnectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
             Database = _databaseName,

@@ -475,6 +475,10 @@ public class AppDbContext(
                     break;
 
                 case EntityState.Deleted:
+                    if (entry.Entity is User { DeleteQueued: false })
+                        throw new InvalidOperationException(
+                            "Remove a user with Remove(user.Delete()), so that the save queues UserDeleted.");
+
                     entry.State = EntityState.Modified;
                     entry.Entity.UpdateLastModifiedOn(now);
                     entry.Entity.UpdateIsDeleted(true);

@@ -121,7 +121,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 
 3. **Generate Domain Events**
    - Created and Updated events
-   - A Deleted event only when a record of another domain holds the ID of the entity and must change with the delete (rule 11 of `docs/backend/domain-events.md`)
+   - A Deleted event only for rule 11 of `docs/backend/domain-events.md`. That is, a record of another domain holds the ID of the entity and must change with the delete
    - Additional business-specific events as needed
    - Each event carries IDs and values, never an entity
    - A handler, only when a feature needs one: `IDomainEventHandler<TEvent>`, which runs in the save transaction

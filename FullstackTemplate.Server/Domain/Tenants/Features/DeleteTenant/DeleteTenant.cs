@@ -22,8 +22,9 @@ public static class DeleteTenant
 
             await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
-            // The exclusive lock waits for each agent add and user add of the tenant, so no agent or user comes after
-            // the load. A deleted user frees its identifier, so the same person can sign up again.
+            // The exclusive lock waits for each agent add, user add, or link add to a user of the tenant, so no
+            // agent, user, or link comes after the load. A deleted user frees its identifier, so the same person can
+            // sign up again.
             var (agentCount, userCount) = await RootLock.Tenant.RunExclusiveAsync(dbContext, request.Id, async ct =>
             {
                 var tenant = await dbContext.Tenants

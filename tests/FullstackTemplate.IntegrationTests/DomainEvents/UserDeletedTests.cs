@@ -62,6 +62,26 @@ public class UserDeletedTests : TestBase
     }
 
     [Test]
+    public async Task a_save_refuses_a_user_removed_without_delete()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _).AddUser(out var user, u => u.Role = "User").BuildAsync();
+
+        // Act
+        var act = () => scope.ExecuteDbContextAsync(async db =>
+        {
+            db.Users.Remove(await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == user.Id));
+            return await db.SaveChangesAsync();
+        });
+
+        // Assert
+        (await act.ShouldThrowAsync<InvalidOperationException>()).Message
+            .ShouldBe("Remove a user with Remove(user.Delete()), so that the save queues UserDeleted.");
+        (await DeletedAsync(user.Id)).ShouldBeFalse();
+    }
+
+    [Test]
     public async Task a_user_delete_that_runs_again_after_a_lost_race_commits_the_handler_change_one_time()
     {
         // Arrange

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Users;
 
+using System.ComponentModel.DataAnnotations.Schema;
 using EmailAddresses;
 using DomainEvents;
 using Models;
@@ -25,6 +26,10 @@ public class User : BaseEntity, ITenantable
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();
 
     public string FullName => $"{FirstName} {LastName}";
+
+    /// <summary>The save refuses to delete a user that did not queue <see cref="UserDeleted"/>.</summary>
+    [NotMapped]
+    internal bool DeleteQueued { get; private set; }
 
     public static User Create(UserForCreation userForCreation)
     {
@@ -135,6 +140,7 @@ public class User : BaseEntity, ITenantable
     public User Delete()
     {
         QueueDomainEvent(new UserDeleted(Id));
+        DeleteQueued = true;
         return this;
     }
 

@@ -205,6 +205,36 @@ public class RunAgainWhenRacedTests : TestBase
         saved.IsDeleted.ShouldBeTrue();
     }
 
+    [Test]
+    public async Task tenant_delete_that_a_rival_permission_add_beat_after_the_user_load_runs_again_and_deletes_it()
+    {
+        // Arrange
+        var pause = PauseAtQuery.After("tenants.delete.load_users");
+        await using var services = pause.BuildServices();
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUsers(out var users, u => u.Role = "Admin", u => u.Role = "User")
+            .BuildAsync();
+        var (admin, member) = (users[0], users[1]);
+        var underTest = new TestingServiceScope(services);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
+
+        // Act
+        var delete = underTest.SendAsync(new DeleteTenant.Command(tenant.Id));
+        await pause.ReachedAsync();
+        await rival.SendAsync(new AddUserPermission.Command(member.Id, Permission.Names.ManageUsers));
+        pause.Release();
+
+        // Assert
+        await delete;
+        (await UserPermissionsAsync(member.Id)).ShouldBeEmpty();
+        var saved = await new TestingServiceScope().ExecuteDbContextAsync(db =>
+            db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == member.Id));
+        saved.IsDeleted.ShouldBeTrue();
+    }
+
     private static Task<List<string>> UserPermissionsAsync(string userId)
         => new TestingServiceScope().ExecuteDbContextAsync(db => db.UserPermissions
             .IgnoreQueryFilters([QueryFilterNames.Tenant])

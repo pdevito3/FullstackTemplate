@@ -74,6 +74,7 @@ public sealed class PauseAtQuery : DbCommandInterceptor
         }
     }
 
+    /// <summary>Lets the held command go on.</summary>
     public void Release() => _released.TrySetResult();
 
     public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,

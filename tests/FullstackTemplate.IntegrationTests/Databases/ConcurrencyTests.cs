@@ -147,18 +147,18 @@ public class ConcurrencyTests : TestBase
         reloaded.Version.ShouldBe(updated.Version);
     }
 
-    private static async Task<(TestingServiceScope First, TestingServiceScope Second, string TenantId)> TwoAdminScopesForANewTenantAsync(
-        IServiceProvider? firstServices = null)
+    private static async Task<(TestingServiceScope UnderTest, TestingServiceScope Rival, string TenantId)> TwoAdminScopesForANewTenantAsync(
+        IServiceProvider? underTestServices = null)
     {
         await new TestingServiceScope().StartGraph(out _)
             .AddTenant(out var tenant)
             .AddUser(out var admin, u => u.Role = "Admin")
             .BuildAsync();
-        var first = firstServices is null ? new TestingServiceScope() : new TestingServiceScope(firstServices);
-        var second = new TestingServiceScope();
-        first.SetUserWithDefaults(identifier: admin.Identifier);
-        second.SetUserWithDefaults(identifier: admin.Identifier);
-        return (first, second, tenant.Id);
+        var underTest = underTestServices is null ? new TestingServiceScope() : new TestingServiceScope(underTestServices);
+        var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
+        return (underTest, rival, tenant.Id);
     }
 
     private static Task<User> LoadWithPermissionsAsync(TestingServiceScope scope, string userId)

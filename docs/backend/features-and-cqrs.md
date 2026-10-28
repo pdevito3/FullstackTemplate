@@ -109,7 +109,7 @@ A free-text search of a list uses `EF.Functions.ILike(column, LikePattern.Contai
 
 `BannedSymbols.txt` bans the two-argument `ILike` and `Like` (RS0030). They send `ESCAPE ''`, so the backslash of an escaped pattern escapes nothing.
 
-Trim the search, and give it a max length on the parameters DTO. Apply the search before `ApplyFilters`, on the entity or on the DTO projection. The query keeps its fixed sort.
+Trim the search, and give it a max length on the parameters DTO. If the search is empty after the trim, do not apply it. If the search fails `PostgresText.CanStore`, throw a `QueryInputException` with the name of the parameter. See [Validation](#validation). Apply the search before `ApplyFilters`, on the entity or on the DTO projection. The query keeps its fixed sort.
 
 A QueryKit filter needs no `LikePattern`. EF Core escapes the pattern of its contains, starts-with, and ends-with operators.
 

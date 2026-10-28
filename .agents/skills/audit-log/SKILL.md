@@ -14,7 +14,7 @@ Each save writes the audit log in its transaction, so a feature gets its audit e
    - **A fact that changes no data**, such as an export. Declare a sealed `AuditAction` record with an `[AuditActionName]`, and mark each property that is not a flag, an enum, a `Guid`, or an integer. In the handler, call `dbContext.RecordAction` with `AuditSubject.Of(root)`, then `SaveChangesAsync`.
    - **A change of many rows.** Load the entities, change them through their methods, and save. For many new aggregates, call `dbContext.BulkInsertAsync`.
    - **A table that needs no audit**, such as a cache. Make the type a class that is not a `BaseEntity`, and give it `[NotAudited(reason)]`.
-2. Build the Server. An RS0030 error names a write that skips the save. Change the write to a save. Do not suppress the error for an audited table.
+2. Build the Server. An RS0030 error for a write names a write that skips the save. Change the write to a save. Do not suppress the error for an audited table. For an RS0030 error on `Like` or `ILike`, see `docs/backend/features-and-cqrs.md`, section "Search text".
 3. Run the unit tests. `AuditModelTests` and `AuditSensitivityTests` fail on a model rule or a mark that is missing, and the message names the fix.
 4. Write an integration test that sends the command, then reads `AuditEntries` with `ReadAsync`. Assert the kind, the values, the actor, and the request name. `AuditCaptureTests` and `AuditActionTests` are the examples.
 5. In the running stack, do the change, then get `/api/v1/audit-entries?entityId={root id}` through the BFF. Make sure that the entry has the request name and the trace id of your request.

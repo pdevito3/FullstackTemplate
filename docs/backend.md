@@ -25,6 +25,8 @@ FullstackTemplate.Server/Domain/
 
 Each entrypoint file is optional. A feature has only the entrypoints that its callers need. The shared plumbing of the entrypoints is in `Resources/Entrypoints/`. See [endpoints.md](backend/endpoints.md).
 
+Keep each C# file at 1000 lines or less. Split a larger file by part, as a feature puts its handler and each entrypoint in their own files. This rule does not apply to generated files, such as the EF migrations and the model snapshot.
+
 ## Main concepts
 
 - **Rich domain entities** have private setters, factory methods, and their own business logic.

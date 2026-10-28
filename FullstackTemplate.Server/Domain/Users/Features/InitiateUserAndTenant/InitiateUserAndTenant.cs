@@ -25,7 +25,6 @@ public static class InitiateUserAndTenant
         : IRequestHandler<Command, InitiateUserAndTenantResponseDto>
     {
         private const string TenantNameField = "tenantName";
-        private const string TenantNameTaken = "A tenant with this name already exists.";
 
         private readonly ILogger _logger = Log.ForContext<Handler>();
 
@@ -68,7 +67,7 @@ public static class InitiateUserAndTenant
                 .IgnoreQueryFilters([QueryFilterNames.Tenant])
                 .AnyAsync(u => u.Identifier == user.Identifier, cancellationToken);
             if (identifierInUse)
-                throw new ConflictException("identifier", "A user with this identifier already exists.");
+                throw new ConflictException("identifier", User.IdentifierInUseMessage);
 
             // Ignore all filters: the unique index on Name also covers deleted tenants.
             var tenantNameInUse = await dbContext.Tenants
@@ -76,7 +75,7 @@ public static class InitiateUserAndTenant
                 .IgnoreQueryFilters()
                 .AnyAsync(t => t.Name == tenant.Name, cancellationToken);
             if (tenantNameInUse)
-                throw new ConflictException(TenantNameField, TenantNameTaken);
+                throw new ConflictException(TenantNameField, Tenant.NameInUseMessage);
 
             await dbContext.Users.AddAsync(user, cancellationToken);
 
@@ -88,7 +87,7 @@ public static class InitiateUserAndTenant
             // Two requests can pass the check at the same time. Then the index stops the second save.
             catch (ConstraintConflictException exception) when (exception.Constraint == "ix_tenants_name")
             {
-                throw new ConflictException(TenantNameField, TenantNameTaken);
+                throw new ConflictException(TenantNameField, Tenant.NameInUseMessage);
             }
 
             // A new tenant is a business event that someone reads later, so it is a log, not only a span.

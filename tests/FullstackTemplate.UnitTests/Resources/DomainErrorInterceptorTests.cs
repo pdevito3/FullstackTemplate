@@ -1,9 +1,11 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints.Grpc;
 using Google.Rpc;
 using Grpc.Core;
+using Npgsql;
 using NSubstitute;
 using Shouldly;
 
@@ -110,6 +112,19 @@ public class DomainErrorInterceptorTests
     {
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw new ConflictException("name", "A tenant with this name already exists.")));
+
+        exception.StatusCode.ShouldBe(StatusCode.AlreadyExists);
+        exception.Status.Detail.ShouldBe("A tenant with this name already exists.");
+    }
+
+    [Test]
+    public async Task a_save_that_a_unique_index_stops_has_the_message_of_the_check()
+    {
+        var conflict = DatabaseConflict.From(new PostgresException(
+            "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"))!;
+
+        var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
+            "request", _context, (_, _) => throw conflict));
 
         exception.StatusCode.ShouldBe(StatusCode.AlreadyExists);
         exception.Status.Detail.ShouldBe("A tenant with this name already exists.");

@@ -135,7 +135,7 @@ builder.HasIndex(e => e.Identifier)
 
 The duplicate check of the handler must count the same rows as the index. For a filtered index, keep the soft delete filter in the check. See [backend.md](../backend.md#error-responses).
 
-Give each unique index its request field in `ConstraintConflictException.ConstraintFields`, so that a duplicate gives a 409 on that field. `ConstraintFieldsTests` reads the indexes of the database, so it fails on a unique index with no entry. This includes an index that only a migration adds.
+Give each unique index its request field and its message in `ConstraintConflictException.ConstraintErrors`, so that a duplicate gives a 409 on that field with the message of the duplicate check. `ConstraintErrorsTests` reads the indexes of the database, so it fails on a unique index with no entry. This includes an index that only a migration adds.
 
 ### Index a column of a value object
 
@@ -163,7 +163,7 @@ EF Core 10 cannot put an index on a property of a complex type. `HasIndex(e => e
    }
    ```
 
-3. Add the index to `ConstraintConflictException.ConstraintFields`, for example `["ix_users_email"] = "email"`.
+3. Add the index to `ConstraintConflictException.ConstraintErrors`, for example `["ix_users_email"] = new("email", User.EmailInUseMessage)`.
 
 The model and the model snapshot do not have the index. Thus a later migration does not drop it, and `dotnet ef migrations has-pending-model-changes` finds no change. A save that the index stops gives a 409 on the field, the same as for an index in the model.
 
@@ -180,4 +180,4 @@ migrationBuilder.Sql("""
     """);
 ```
 
-Then give the constraint its request field in `ConstraintConflictException.ConstraintFields`, for example `["ex_appointments_provider_time"] = "startsAt"`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field, the same as a unique index.
+Then give the constraint its request field and its message in `ConstraintConflictException.ConstraintErrors`, for example `["ex_appointments_provider_time"] = new("startsAt", Appointment.TimeTakenMessage)`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field with that message, the same as a unique index.

@@ -1,10 +1,12 @@
 namespace FullstackTemplate.UnitTests.Resources.Entrypoints;
 
 using System.Text.Json;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using Npgsql;
 using NSubstitute;
 using Shouldly;
 
@@ -55,6 +57,23 @@ public class McpDomainErrorsTests
         var content = result.StructuredContent.ShouldNotBeNull();
         content.GetProperty("code").GetString().ShouldBe("already_exists");
         content.GetProperty("title").GetString().ShouldBe("The request conflicts with a record that exists.");
+    }
+
+    [Test]
+    public async Task a_save_that_a_unique_index_stops_has_the_message_of_the_check_on_the_field()
+    {
+        // Arrange
+        var conflict = DatabaseConflict.From(new PostgresException(
+            "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"))!;
+
+        // Act
+        var result = await CallToolThatThrows(conflict);
+
+        // Assert
+        var content = result.StructuredContent.ShouldNotBeNull();
+        content.GetProperty("code").GetString().ShouldBe("already_exists");
+        content.GetProperty("detail").GetString().ShouldBe("A tenant with this name already exists.");
+        content.GetProperty("errors").GetProperty("name")[0].GetString().ShouldBe("A tenant with this name already exists.");
     }
 
     [Test]

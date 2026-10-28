@@ -7,6 +7,7 @@ public class Tenant : BaseEntity
 {
     public const string IdPrefix = "ten";
     public const int NameMaxLength = 200;
+    public const string NameInUseMessage = "A tenant with this name already exists.";
 
     [NotSensitive] public string Name { get; private set; } = default!;
 

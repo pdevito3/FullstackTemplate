@@ -11,7 +11,7 @@ using Shouldly;
 public class ConstraintConflictTranslationTests : TestBase
 {
     [Test]
-    public async Task duplicate_save_is_a_conflict_on_the_field_of_the_index()
+    public async Task duplicate_save_is_a_conflict_with_the_field_and_the_message_of_the_index()
     {
         // Arrange
         var name = $"Tenant {Guid.NewGuid():N}";
@@ -25,6 +25,6 @@ public class ConstraintConflictTranslationTests : TestBase
         var exception = await act.ShouldThrowAsync<ConstraintConflictException>();
         exception.Constraint.ShouldBe("ix_tenants_name");
         exception.Property.ShouldBe("name");
-        exception.Message.ShouldBe(ConstraintConflictException.DuplicateMessage);
+        exception.Message.ShouldBe("A tenant with this name already exists.");
     }
 }

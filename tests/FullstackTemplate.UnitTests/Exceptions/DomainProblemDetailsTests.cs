@@ -158,10 +158,10 @@ public class DomainProblemDetailsTests
         status.ShouldBe(StatusCodes.Status409Conflict);
         context.ProblemDetails.Type.ShouldBe(DefaultConflictType);
         context.ProblemDetails.Title.ShouldBe("The request conflicts with a record that exists.");
-        context.ProblemDetails.Detail.ShouldBe("This value overlaps a record that exists.");
+        context.ProblemDetails.Detail.ShouldBe("A tenant with this name already exists.");
         var error = context.ProblemDetails.Extensions["errors"].ShouldBeOfType<Dictionary<string, string[]>>().ShouldHaveSingleItem();
         error.Key.ShouldBe("name");
-        error.Value.ShouldBe(["This value overlaps a record that exists."]);
+        error.Value.ShouldBe(["A tenant with this name already exists."]);
     }
 
     [Test]

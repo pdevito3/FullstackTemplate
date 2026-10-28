@@ -39,7 +39,7 @@ public static class UpdateTenant
                 .IgnoreQueryFilters()
                 .AnyAsync(t => t.Id != tenant.Id && t.Name == tenant.Name, cancellationToken);
             if (nameInUse)
-                throw new ConflictException("name", "A tenant with this name already exists.");
+                throw new ConflictException("name", Tenant.NameInUseMessage);
 
             await dbContext.SaveChangesAsync(cancellationToken);
 

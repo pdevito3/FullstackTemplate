@@ -98,7 +98,7 @@ public Tenant Update(TenantForUpdate tenantForUpdate)
 }
 ```
 
-A method for one intent, such as `UpdateRole` or `AddPermission`, gets no version. The context still checks the loaded version when it saves. See [backend.md](../backend.md#concurrency).
+A method for one intent, such as `UpdateRole` or `AddPermission`, gets no version. The context still checks the loaded version when it saves, and the command runs again when it loses. See [concurrency.md](concurrency.md#run-again).
 
 ## Guards
 

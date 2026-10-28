@@ -19,7 +19,7 @@ The read DTO of an aggregate root shows `version`, and a PUT body that replaces 
 - A new entity gets the token from `BaseEntity` with no configuration. The migration that adds `xmin` to the model has no DDL, because `xmin` is a system column.
 - `Version` is an opaque 32-bit number. Compare it only for equality. It changes after a dump and restore, so an edit form that is open at that time gets one 409.
 - `xmin` is specific to Postgres. The template uses only Postgres. A move to another database needs a version column.
-- A change to a child also writes the owner row and its `LastModifiedOn`. Two admins who add different permissions to one user at the same time get one 409. A client loads the record again and repeats the change.
+- A change to a child also writes the owner row and its `LastModifiedOn`. Thus two admins who add different permissions to one user at the same time race on the user row. The command sends no version, so it runs again on the new rows, and both permissions save. See [concurrency.md](../backend/concurrency.md#run-again).
 - A child must change through its loaded owner. The save throws when the owner of a changed child is not tracked.
 - A stale save that changes no value also gives 409. Thus a retry of a PUT whose response was lost gets 409, and the client loads the record again.
 - Unique violations (`23505`) and exclusion violations (`23P01`) map to 409 in one place, `DatabaseConflict.From`, together with the concurrency failure.

@@ -4,7 +4,7 @@ The audit log records each data change and each action that a handler records. `
 
 ## What a save records
 
-A save adds one audit entry for each entity that it adds, changes, or deletes, and one entry for each recorded action. All entries of one save have the same record id. After a lost acknowledgment of the commit, the save looks for this record id in `audit_entries`. If the entries are there, the save committed, and it returns success (see [Concurrency](../backend.md#concurrency)).
+A save adds one audit entry for each entity that it adds, changes, or deletes, and one entry for each recorded action. All entries of one save have the same record id. After a lost acknowledgment of the commit, the save looks for this record id in `audit_entries`. If the entries are there, the save committed, and it returns success (see [concurrency.md](concurrency.md#lost-reply-of-a-commit)).
 
 | Kind | The save | `data` holds |
 |------|----------|--------------|
@@ -14,7 +14,7 @@ A save adds one audit entry for each entity that it adds, changes, or deletes, a
 | `Restored` | sets `IsDeleted` back to false | The old and the new value of each value that also changed |
 | `Action` | saves a recorded action | Each property of the action, except its subject |
 
-The entries do not record the key, the `BaseEntity` bookkeeping (`LastModifiedOn`, `IsDeleted`, and `Version`), or the discriminator of a TPH hierarchy. The entity type of the entry names the derived type. An update that changes only these values writes no entry. Thus the owner touch of [Concurrency](../backend.md#concurrency) writes no entry.
+The entries do not record the key, the `BaseEntity` bookkeeping (`LastModifiedOn`, `IsDeleted`, and `Version`), or the discriminator of a TPH hierarchy. The entity type of the entry names the derived type. An update that changes only these values writes no entry. Thus the owner touch of [concurrency.md](concurrency.md#versions) writes no entry.
 
 Each entry repeats the facts of its save:
 

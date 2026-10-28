@@ -308,12 +308,19 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    public sealed record OrderSubmitted(string OrderId, DateTimeOffset SubmittedAt) : DomainEvent;
    ```
 
-5. **Create Feature (Command or Query)**
+5. **Pick the Concurrency Tool**
+   - Pick the concurrency tool of the command from `docs/backend/concurrency.md`: a version, a run again, or a lock
+   - A version: the command applies fields that the user saw and edited. The DTO has `required uint Version`, and the entity method calls `GuardVersion`
+   - A run again: the command sends no version, and the server decides it from the rows alone. The command carries `IRunsAgainWhenRaced`. Send it only from an entrypoint, and do the logs and the metrics after the save
+   - A lock: the rule reads rows that the command does not write, such as a count of open bookings. Write the lock in the XML comment of the command
+   - A create of a new aggregate root needs none of the three
+
+6. **Create Feature (Command or Query)**
    ```csharp
    // Features/SubmitOrder/SubmitOrder.cs
    public static class SubmitOrder
    {
-       public sealed record Command(string Id) : IRequest<OrderDto>;
+       public sealed record Command(string Id) : IRequest<OrderDto>, IRunsAgainWhenRaced;
 
        public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
            : IRequestHandler<Command, OrderDto>
@@ -342,7 +349,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    }
    ```
 
-6. **Add the HTTP Endpoint**
+7. **Add the HTTP Endpoint**
    ```csharp
    // Features/SubmitOrder/SubmitOrder.Http.cs
    namespace FullstackTemplate.Server.Domain.Orders.Features;
@@ -376,11 +383,11 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    }
    ```
 
-7. **Create Additional DTOs (if needed)**
+8. **Create Additional DTOs (if needed)**
    - Request DTO if the action needs input parameters
    - Custom response DTO if different from standard entity DTO
 
-8. **Generate the API Contract**
+9. **Generate the API Contract**
    - Regenerate the API contract with the `api-contract` skill
    - Commit the generated files with the change. Do not edit them by hand
 
@@ -495,6 +502,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Domain event created (if state change is significant)
 - [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)
 - [ ] Feature folder created with the Command/Query and Handler file
+- [ ] The command sends a version, carries `IRunsAgainWhenRaced`, or takes a lock that `docs/backend/concurrency.md` names. A create of a new aggregate root needs none
 - [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other

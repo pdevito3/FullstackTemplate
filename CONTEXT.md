@@ -29,6 +29,14 @@ _Avoid_: Row version, ETag, revision
 A change that the caller based on a version that is no longer current. The caller loads the record again and repeats the change.
 _Avoid_: Concurrency conflict, already exists
 
+**Run again**:
+What the server does with a command that sends no version when another save changed its aggregate first. The command runs again on the new rows. See `IRunsAgainWhenRaced`.
+_Avoid_: Retry, replay
+
+**Concurrent change**:
+A command with no version that lost the race on each run again. The caller can send the same request again.
+_Avoid_: Stale version, timeout
+
 ### Agents
 
 **First-party client**:

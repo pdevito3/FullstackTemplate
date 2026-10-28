@@ -14,6 +14,8 @@ Complete code templates for generating a vertical slice feature. Replace each pl
 
 Other bracketed words in the sketches, such as `[Description of the action]`, `[Condition]`, or `[NewStatus]`, are for you to fill in. C# attributes, such as `[Sensitive]`, stay as they are.
 
+An `s` after a placeholder makes the plural, and `a` before `[entity name]` is the article. Write the correct English form, for example `Categories`, `audit-entries`, or `an agent`.
+
 ## 1. Domain Entity
 
 **File:** `Domain/[EntityName]s/[EntityName].cs`
@@ -333,7 +335,7 @@ public static class Add[EntityName]
 
             // The caller adds to its own tenant. AddUser shows a request that names the tenant.
             var tenantId = dbContext.CurrentTenantScope.TenantId
-                ?? throw new ForbiddenAccessException("You can add [entity name]s only to your own tenant.");
+                ?? throw new ForbiddenAccessException("You can add a [entity name] only to your own tenant.");
             var forCreation = request.Dto.To[EntityName]ForCreation(tenantId);
             var entity = [EntityName].Create(forCreation);
             Activity.Current?.SetTag("app.[entity_name]_id", entity.Id);
@@ -731,7 +733,7 @@ public static class Update[EntityName]Tool
     [Description("Changes one [entity name]. The caller needs the manage_[entity_name]s permission in the tenant.")]
     public static Task<[EntityName]Dto> Handle(
         IMediator mediator,
-        [Description("The [entity name] ID.")] string id,
+        [Description("The [entity name] ID, for example [prefix]_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f.")] string id,
         [Description("The new name.")] string name,
         [Description("The new description, or null for no description.")] string? description,
         [Description("The version of the [entity name] that the caller read. If the [entity name] changed after that, the tool gives the aborted error.")] uint version,

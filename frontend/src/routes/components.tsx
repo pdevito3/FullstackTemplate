@@ -101,6 +101,7 @@ import {
 
 export const Route = createFileRoute('/components')({
   component: ComponentsPage,
+  staticData: { breadcrumb: 'Components' },
 })
 
 interface Framework {
@@ -177,10 +178,10 @@ function ComponentsPage() {
                 <Breadcrumb aria-label="Example breadcrumb">
                   <BreadcrumbList>
                     <BreadcrumbItem>
-                      <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                      <BreadcrumbLink to="/">Home</BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbItem>
-                      <BreadcrumbLink href="/components">Components</BreadcrumbLink>
+                      <BreadcrumbLink to="/about">About</BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbItem>
                       <BreadcrumbPage>Demo</BreadcrumbPage>

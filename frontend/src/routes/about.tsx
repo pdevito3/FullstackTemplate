@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 export const Route = createFileRoute('/about')({
   component: About,
+  staticData: { breadcrumb: 'About' },
 })
 
 function About() {

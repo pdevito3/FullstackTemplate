@@ -1,21 +1,17 @@
 import {
   createRootRoute,
   Outlet,
-  useRouter,
   useRouterState,
-  type NavigateOptions,
-  type ToOptions,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { RouterProvider } from 'react-aria-components'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { HrefRouterProvider } from '@/components/ui/link'
 import { Separator } from '@/components/ui/separator'
-import type { FileRoutesByFullPath } from '@/routeTree.gen'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,11 +19,10 @@ import {
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb'
 
-// Lets React Aria links (href) navigate with TanStack Router.
-declare module 'react-aria-components' {
-  interface RouterConfig {
-    href: ToOptions['to']
-    routerOptions: Omit<NavigateOptions, keyof ToOptions>
+declare module '@tanstack/react-router' {
+  interface StaticDataRouteOption {
+    /** The name of the page in the breadcrumb of the layout header. Each page route sets it. */
+    breadcrumb?: string
   }
 }
 
@@ -35,25 +30,14 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
-const pageNameByRoutePath: Partial<Record<keyof FileRoutesByFullPath, string>> = {
-  '/': 'Home',
-  '/about': 'About',
-  '/components': 'Components',
-  '/filter-demo': 'Filter Builder',
-}
-
 function RootComponent() {
-  const router = useRouter()
   const routerState = useRouterState()
-  const routePath = routerState.matches[routerState.matches.length - 1]?.fullPath ?? ''
+  const page = routerState.matches[routerState.matches.length - 1]
   const isNotFound = routerState.matches.some((match) => match.globalNotFound)
-  const pageName = isNotFound ? 'Not Found' : (pageNameByRoutePath[routePath] ?? 'Page')
+  const pageName = isNotFound ? 'Not Found' : page?.staticData.breadcrumb
 
   return (
-    <RouterProvider
-      navigate={(to, options) => router.navigate({ ...options, to })}
-      useHref={(to) => router.buildLocation({ to }).href}
-    >
+    <HrefRouterProvider>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -80,6 +64,6 @@ function RootComponent() {
         {/* The default container is a footer, which is a contentinfo landmark. */}
         <TanStackRouterDevtools position="top-right" containerElement="div" />
       </SidebarProvider>
-    </RouterProvider>
+    </HrefRouterProvider>
   )
 }

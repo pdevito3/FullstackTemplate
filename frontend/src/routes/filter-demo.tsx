@@ -18,6 +18,7 @@ import {
 
 export const Route = createFileRoute('/filter-demo')({
   component: FilterDemoPage,
+  staticData: { breadcrumb: 'Filter Builder' },
 })
 
 function FilterDemoPage() {

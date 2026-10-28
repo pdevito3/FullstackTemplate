@@ -99,8 +99,11 @@ export default defineConfig({
         // Vite pre-bundles the test dependencies only when it has no cache, and the cache stays until
         // the installed packages or the optimizer options change. A dependency that Vite finds during
         // the run reloads the test page and fails the test. `force` makes Vite scan the tests on each run.
+        // `react-dom/client` (from vitest-browser-react) is found only during the run. The tests that import
+        // the router, which imports `react-dom`, made that late find reload the page, so it is listed here.
         optimizeDeps: {
           entries: ['src/**/*.test.tsx'],
+          include: ['react-dom/client'],
           force: true,
         },
         test: {

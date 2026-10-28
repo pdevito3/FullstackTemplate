@@ -15,7 +15,6 @@ using global::Grpc.AspNetCore.Server;
 using global::Grpc.Core;
 using global::Google.Protobuf;
 using global::Google.Protobuf.Reflection;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,16 +29,16 @@ using TestUtilities.AccessSweep;
 public class EndpointAccessSweepTests : TestBase
 {
     // An entry that matches no entrypoint does no harm, so that the removal of a feature does not break the sweep
-    private static readonly IReadOnlyDictionary<string, string> OpenToEachMember = new Dictionary<string, string>
+    private static readonly IReadOnlyDictionary<string, Open> OpenToEachMember = new Dictionary<string, Open>
     {
-        ["GetTenant"] = "Each member reads the own tenant. The tenant filter hides each other tenant.",
-        ["GetTenantList"] = "Each member lists the own tenant. The tenant filter hides each other tenant.",
-        ["get_tenant"] = "ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others.",
-        ["list_tenants"] = "ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others.",
-        ["/fullstacktemplate.tenants.v1.TenantsService/GetTenant"] = "The gRPC method of GetTenant.",
-        ["/fullstacktemplate.tenants.v1.TenantsService/ListTenants"] = "The gRPC method of GetTenantList.",
-        ["GetSecureWeatherForecast"] = "Demo data with no tenant rows. Each signed-in caller gets the same forecast.",
-        ["GetWeatherForecast"] = "Demo of a public endpoint. It allows anonymous calls and has no tenant rows.",
+        ["GetTenant"] = new("Each member reads the own tenant. The tenant filter hides each other tenant."),
+        ["GetTenantList"] = new("Each member lists the own tenant. The tenant filter hides each other tenant."),
+        ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
+        ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
+        ["/fullstacktemplate.tenants.v1.TenantsService/GetTenant"] = new("The gRPC method of GetTenant."),
+        ["/fullstacktemplate.tenants.v1.TenantsService/ListTenants"] = new("The gRPC method of GetTenantList."),
+        ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
+        ["GetWeatherForecast"] = new("Demo of a public endpoint. It has no tenant rows.", Anonymous: true),
     };
 
     private static readonly Dictionary<string, string> InfrastructureRoutes = new()
@@ -51,11 +50,12 @@ public class EndpointAccessSweepTests : TestBase
     };
 
     // The sample body of an update sends version 0, so the control call of an update gets the stale-version code
-    private static readonly SurfaceCodes HttpCodes = new("403", "404", "409", code => code[0] == '2');
-    private static readonly SurfaceCodes McpCodes = new("permission_denied", "not_found", "aborted", code => code == "ok");
+    private static readonly SurfaceCodes HttpCodes = new("403", "404", "409", "401", code => code[0] == '2');
+    // /mcp refuses a call with no token before a tool runs. TenantMcpToolTests checks that 401.
+    private static readonly SurfaceCodes McpCodes = new("permission_denied", "not_found", "aborted", null, code => code == "ok");
     private static readonly SurfaceCodes GrpcCodes = new(
         nameof(StatusCode.PermissionDenied), nameof(StatusCode.NotFound), nameof(StatusCode.Aborted),
-        code => code == nameof(StatusCode.OK));
+        nameof(StatusCode.Unauthenticated), code => code == nameof(StatusCode.OK));
 
     private static Assembly ServerAssembly => typeof(EndpointDiscovery).Assembly;
 
@@ -86,7 +86,8 @@ public class EndpointAccessSweepTests : TestBase
             .Select(e => $"{e.DisplayName} ({e.RoutePattern.RawText}): it is outside the versioned group "
                 + $"{EndpointDiscovery.VersionedRoutePrefix}, so the sweep does not call it. Map it as an {nameof(IEndpoint)}, "
                 + $"or add it to {nameof(InfrastructureRoutes)} with the reason.");
-        // The handler of a lambda is on a closure type inside the endpoint type
+        // Reflection, a test: it reads the type of each handler. The handler of a lambda is on a closure type inside
+        // the endpoint type.
         var mappedEndpointTypes = versioned
             .SelectMany(e => TypeAndOuterTypes(e.Metadata.OfType<MethodInfo>().FirstOrDefault()?.DeclaringType))
             .ToHashSet();
@@ -112,6 +113,7 @@ public class EndpointAccessSweepTests : TestBase
         var tools = Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection ?? [];
         var entrypoints = tools.Select(McpEntrypoint.From).OrderBy(t => t.Target.Key, StringComparer.Ordinal).ToList();
         var registeredMethods = entrypoints.Select(t => t.MethodName).ToHashSet();
+        // Reflection, a test: it finds each method with [McpServerTool] in the Server
         var unregisteredTools = ServerAssembly.GetTypes()
             .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
                 | BindingFlags.Instance | BindingFlags.DeclaredOnly))
@@ -151,18 +153,22 @@ public class EndpointAccessSweepTests : TestBase
     {
         // Arrange
         var scenario = await SweepScenario.AddAsync();
-        var methods = Services.GetRequiredService<EndpointDataSource>().Endpoints
-            .Where(e => e.Metadata.GetMetadata<GrpcMethodMetadata>() is not null)
-            .Select(GrpcEntrypoint.From)
-            .OrderBy(m => m.Target.Key, StringComparer.Ordinal)
-            .ToList();
-        var mappedMethods = methods.Select(m => m.Target.Key).ToHashSet();
-        var unmappedMethods = ServerAssembly.GetTypes()
+        // Reflection, a test: it finds the generated base class of each gRPC service of the Server, and reads the
+        // descriptor of the service from the static class that Grpc.Tools generates next to it.
+        var descriptors = ServerAssembly.GetTypes()
             .Where(type => type is { IsClass: true, IsAbstract: false })
             .Select(type => type.BaseType?.GetCustomAttribute<BindServiceMethodAttribute>())
             .OfType<BindServiceMethodAttribute>()
             .Select(binding => (Google.Protobuf.Reflection.ServiceDescriptor)binding.BindType.GetProperty("Descriptor")!.GetValue(null)!)
-            .SelectMany(service => service.Methods.Select(method => $"/{service.FullName}/{method.Name}"))
+            .SelectMany(service => service.Methods)
+            .ToDictionary(method => $"/{method.Service.FullName}/{method.Name}");
+        var methods = Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .Where(e => e.Metadata.GetMetadata<GrpcMethodMetadata>() is not null)
+            .Select(e => GrpcEntrypoint.From(e, descriptors))
+            .OrderBy(m => m.Target.Key, StringComparer.Ordinal)
+            .ToList();
+        var mappedMethods = methods.Select(m => m.Target.Key).ToHashSet();
+        var unmappedMethods = descriptors.Keys
             .Where(name => !mappedMethods.Contains(name))
             .Select(name => $"gRPC {name}: the Server implements its service, but no endpoint maps it, so the sweep did not call it.");
         using var channel = CreateGrpcChannel();
@@ -187,15 +193,12 @@ public class EndpointAccessSweepTests : TestBase
         report.ShouldHaveNoGaps();
     }
 
+    // Reflection, a test: it walks the outer types of a nested type
     private static IEnumerable<Type> TypeAndOuterTypes(Type? type)
     {
         for (; type is not null; type = type.DeclaringType)
             yield return type;
     }
-
-    // The Server has no fallback policy, so an endpoint with no IAuthorizeData is open, as UnauthorizedResponseTransformer reads it
-    private static bool AllowsAnonymousCalls(EndpointMetadataCollection metadata)
-        => metadata.GetMetadata<IAllowAnonymous>() is not null || metadata.GetMetadata<IAuthorizeData>() is null;
 
     // gRPC also maps a route that answers Unimplemented for a method that no service has
     private static bool IsGrpcRoute(RouteEndpoint endpoint)
@@ -219,10 +222,13 @@ public class EndpointAccessSweepTests : TestBase
             var outcomes = new Dictionary<SweepCall, Outcome>();
             try
             {
-                foreach (var call in AccessRules.CallsFor(target))
+                foreach (var call in AccessRules.CallsFor(codes, target))
                 {
                     var (caller, ids) = await scenario.PartiesOfAsync(call);
-                    FactoryClient.SignInAsAppUser(caller.Identifier);
+                    if (caller is null)
+                        FactoryClient.DefaultRequestHeaders.Authorization = null;
+                    else
+                        FactoryClient.SignInAsAppUser(caller.Identifier);
                     outcomes[call] = await send(entrypoint, ids);
                 }
             }
@@ -265,10 +271,12 @@ public class EndpointAccessSweepTests : TestBase
             return new SweepScenario(own, other, own.Ids.Unknown());
         }
 
-        public async Task<(User Caller, RecordIds Ids)> PartiesOfAsync(SweepCall call)
+        public async Task<(User? Caller, RecordIds Ids)> PartiesOfAsync(SweepCall call)
         {
             switch (call)
             {
+                case SweepCall.NoUser:
+                    return (null, Unknown);
                 case SweepCall.MemberWithOwnTenantIds:
                     return (Own.Member, Own.Ids);
                 case SweepCall.MemberWithUnknownIds:
@@ -382,7 +390,6 @@ public class EndpointAccessSweepTests : TestBase
             var method = string.Join(",", endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? [HttpMethods.Get]);
             var name = endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName ?? $"{method} {route}";
             var target = new SweepTarget(name, $"{method} /{EndpointDiscovery.VersionedRoutePrefix}{route}",
-                AllowsAnonymousCalls(endpoint.Metadata),
                 endpoint.RoutePattern.Parameters.Any(p => RecordIds.NamesARecord(p.Name)));
             var kind = route.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
 
@@ -444,13 +451,15 @@ public class EndpointAccessSweepTests : TestBase
         {
             var schema = JsonNode.Parse(tool.ProtocolTool.InputSchema.GetRawText())!;
             var properties = schema["properties"]?.AsObject().Select(p => p.Key) ?? [];
-            // The SDK puts the method of the tool first in its metadata
+            // Reflection, a test: it reads the method of the tool and its namespace. The SDK puts the method first in
+            // its metadata.
             var method = tool.Metadata.OfType<MethodInfo>().First();
-            var target = new SweepTarget(tool.ProtocolTool.Name, $"MCP tool {tool.ProtocolTool.Name}", false,
+            var target = new SweepTarget(tool.ProtocolTool.Name, $"MCP tool {tool.ProtocolTool.Name}",
                 properties.Any(RecordIds.NamesARecord));
             return new McpEntrypoint(target, schema, KindOfNamespace(method.DeclaringType?.Namespace), NameOfMethod(method));
         }
 
+        // Reflection, a test: it names a tool method by its type
         public static string NameOfMethod(MethodInfo method) => $"{method.DeclaringType?.FullName}.{method.Name}";
 
         public Dictionary<string, object?> ArgumentsFor(RecordIds ids)
@@ -463,22 +472,21 @@ public class EndpointAccessSweepTests : TestBase
     }
 
     private sealed record GrpcEntrypoint(
-        SweepTarget Target, MethodType Type, Method<byte[], byte[]> RawMethod, Type RequestType, string Kind)
+        SweepTarget Target, MethodType Type, Method<byte[], byte[]> RawMethod, MessageDescriptor Request, string Kind)
     {
         private static readonly Marshaller<byte[]> Bytes = Marshallers.Create(bytes => bytes, bytes => bytes);
 
-        public static GrpcEntrypoint From(Endpoint endpoint)
+        public static GrpcEntrypoint From(Endpoint endpoint, Dictionary<string, MethodDescriptor> descriptors)
         {
+            // Reflection, a test: the kind comes from the namespace of the service type
             var metadata = endpoint.Metadata.GetRequiredMetadata<GrpcMethodMetadata>();
             var method = metadata.Method;
-            // The method of the Server is Method<TRequest, TResponse>, and TRequest is the generated message type
-            var requestType = method.GetType().GetGenericArguments()[0];
-            var fields = NewMessage(requestType).Descriptor.Fields.InDeclarationOrder();
-            var target = new SweepTarget(method.FullName, $"gRPC {method.FullName}", AllowsAnonymousCalls(endpoint.Metadata),
-                fields.Any(f => RecordIds.NamesARecord(f.Name)));
+            var request = descriptors[method.FullName].InputType;
+            var target = new SweepTarget(method.FullName, $"gRPC {method.FullName}",
+                request.Fields.InDeclarationOrder().Any(f => RecordIds.NamesARecord(f.Name)));
             return new GrpcEntrypoint(target, method.Type,
                 new Method<byte[], byte[]>(MethodType.Unary, method.ServiceName, method.Name, Bytes, Bytes),
-                requestType,
+                request,
                 KindOfNamespace(metadata.ServiceType.Namespace));
         }
 
@@ -486,7 +494,7 @@ public class EndpointAccessSweepTests : TestBase
         {
             if (Type != MethodType.Unary)
                 throw new SweepSetupException($"It is a {Type} method, and the sweep sends only unary calls.");
-            var message = NewMessage(RequestType);
+            var message = Request.Parser.ParseFrom(ByteString.Empty);
             foreach (var field in message.Descriptor.Fields.InDeclarationOrder())
             {
                 if (ids.ValueFor(field.Name, Kind) is not { } value)
@@ -497,7 +505,5 @@ public class EndpointAccessSweepTests : TestBase
             }
             return message.ToByteArray();
         }
-
-        private static IMessage NewMessage(Type type) => (IMessage)Activator.CreateInstance(type)!;
     }
 }

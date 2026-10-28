@@ -23,8 +23,9 @@ Run all frontend commands in `frontend/`.
 
 ## Access of a Server endpoint
 
-`EndpointAccessSweepTests` finds each HTTP endpoint, MCP tool, and gRPC method of the Server. It sends each one two calls:
+`EndpointAccessSweepTests` finds each HTTP endpoint, MCP tool, and gRPC method of the Server. It sends each one these calls:
 
+- A call with no user, with unknown IDs. The answer must be 401, or `Unauthenticated` on gRPC. MCP gets no such call, because `/mcp` refuses a call with no token before a tool runs, and `TenantMcpToolTests` checks that 401.
 - A member with no permissions, with the IDs of real records of the tenant. The answer must be 403.
 - The same member with unknown IDs. The answer must be 403, so that the answer does not tell which IDs exist.
 
@@ -40,7 +41,7 @@ Thus do not write the 403 test or the cross-tenant test of a route value `{id}` 
 
 1. Run the functional tests. If the sweep fails, its message names each endpoint, the caller, the expected status, and the actual status.
 2. If the handler has no permission check, add the check. See "Permission checks" in `docs/backend/features-and-cqrs.md`.
-3. If each member can use the endpoint with no permission, or if the endpoint allows anonymous calls or asks for no authorization, add it to `OpenToEachMember` in the sweep with the reason. The Server has no fallback policy, so an endpoint with no `.RequireAuthorization()` allows anonymous calls. The member call of an entry with the IDs of the tenant must then get a success. The member call with unknown IDs must get a success or 404. An endpoint that allows anonymous calls or asks for no authorization, and is not on the list, is a gap.
+3. If each member can use the endpoint with no permission, add it to `OpenToEachMember` in the sweep with the reason. The member call of an entry with the IDs of the tenant must then get a success. The member call with unknown IDs must get a success or 404. If the endpoint must also take a call with no user, give its entry `Anonymous: true`. The call with no user must then get a success. Each other endpoint must give 401 to a call with no user. The Server has no fallback policy, so an endpoint with no `.RequireAuthorization()` takes anonymous calls, and the sweep shows it as a gap.
 4. If the sweep cannot build the request, its message tells what to add. A route value `{id}` under a new first segment needs a record of that kind in `AddTenantAsync`.
 5. Map each HTTP endpoint as an `IEndpoint` in the versioned group. A route outside the group is a gap, unless it is in `InfrastructureRoutes` of the sweep with the reason.
 

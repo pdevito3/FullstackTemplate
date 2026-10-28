@@ -2,6 +2,7 @@ namespace FullstackTemplate.FunctionalTests.TestUtilities.AccessSweep;
 
 public enum SweepCall
 {
+    NoUser,
     MemberWithOwnTenantIds,
     MemberWithUnknownIds,
     AdminWithOtherTenantIds,
@@ -10,17 +11,26 @@ public enum SweepCall
 }
 
 /// <param name="Key">The endpoint name, the tool name, or the full gRPC method name. The allow list uses it.</param>
-public sealed record SweepTarget(string Key, string Label, bool AllowsAnonymous, bool NamesARecord);
+public sealed record SweepTarget(string Key, string Label, bool NamesARecord);
+
+/// <param name="Anonymous">A call with no user gets a success, not the code of a missing token.</param>
+public sealed record Open(string Reason, bool Anonymous = false);
 
 public sealed record Outcome(string Code, string Detail);
 
 /// <param name="StaleVersion">The code of a stale version. The handler must find the record to compare its version.</param>
-public sealed record SurfaceCodes(string Forbidden, string NotFound, string StaleVersion, Func<string, bool> IsSuccess);
+/// <param name="Unauthenticated">
+/// The code of a call with no token. It is null for a surface that refuses such a call before it reaches an entrypoint,
+/// so the sweep makes no call with no user there.
+/// </param>
+public sealed record SurfaceCodes(
+    string Forbidden, string NotFound, string StaleVersion, string? Unauthenticated, Func<string, bool> IsSuccess);
 
 public sealed class SweepSetupException(string message) : Exception(message);
 
 public static class AccessRules
 {
+    private static readonly SweepCall[] NoUserCalls = [SweepCall.NoUser];
     private static readonly SweepCall[] MemberCalls = [SweepCall.MemberWithOwnTenantIds, SweepCall.MemberWithUnknownIds];
     // The call with the IDs of the own tenant is the control of the two 404 calls, so that an ID of the wrong kind
     // cannot pass. It runs last.
@@ -28,43 +38,44 @@ public static class AccessRules
         [SweepCall.AdminWithOtherTenantIds, SweepCall.AdminWithUnknownIds, SweepCall.AdminWithOwnTenantIds];
 
     // With no record in the request, the admin calls are the same request, and no other tenant can show
-    public static IReadOnlyList<SweepCall> CallsFor(SweepTarget target)
-        => [.. MemberCalls, .. target.NamesARecord ? AdminCalls : []];
+    public static IReadOnlyList<SweepCall> CallsFor(SurfaceCodes codes, SweepTarget target)
+        => [.. codes.Unauthenticated is null ? [] : NoUserCalls, .. MemberCalls, .. target.NamesARecord ? AdminCalls : []];
 
     public static IReadOnlyList<string> Gaps(
         SurfaceCodes codes,
         SweepTarget target,
         IReadOnlyDictionary<SweepCall, Outcome> outcomes,
-        IReadOnlyDictionary<string, string> openToEachMember)
+        IReadOnlyDictionary<string, Open> openToEachMember)
     {
-        var open = openToEachMember.ContainsKey(target.Key);
+        var entry = openToEachMember.GetValueOrDefault(target.Key);
         var gaps = new List<string>();
-
-        if (target.AllowsAnonymous && !open)
-            gaps.Add($"{NameOf(target)}: it allows anonymous calls or asks for no authorization, but it is not on the "
-                + "allow list. Add it to the allow list with the reason, or require authorization.");
 
         foreach (var (call, outcome) in outcomes)
         {
-            var (accepts, expected) = ExpectationOf(codes, call, open);
+            var (accepts, expected) = ExpectationOf(codes, call, entry);
             if (!accepts(outcome.Code))
                 gaps.Add(GapLine(target, call, expected, outcome));
         }
 
         var memberOutcomes = MemberCalls.Where(outcomes.ContainsKey).Select(call => outcomes[call].Code).ToList();
-        if (open && memberOutcomes.Count > 0 && memberOutcomes.All(code => code == codes.Forbidden))
+        if (entry is not null && memberOutcomes.Count > 0 && memberOutcomes.All(code => code == codes.Forbidden))
             gaps.Add($"{NameOf(target)}: it is on the allow list, but a member with no permissions gets "
                 + $"{codes.Forbidden}. Remove the entry from the allow list.");
 
         return gaps;
     }
 
-    private static (Func<string, bool> Accepts, string Expected) ExpectationOf(SurfaceCodes codes, SweepCall call, bool open)
+    private static (Func<string, bool> Accepts, string Expected) ExpectationOf(SurfaceCodes codes, SweepCall call, Open? entry)
         => call switch
         {
-            SweepCall.MemberWithOwnTenantIds when open
+            SweepCall.NoUser when entry is { Anonymous: true }
+                => (codes.IsSuccess, "a success, because its allow-list entry is anonymous"),
+            SweepCall.NoUser
+                => (code => code == codes.Unauthenticated,
+                    $"{codes.Unauthenticated}, because no allow-list entry marks it anonymous"),
+            SweepCall.MemberWithOwnTenantIds when entry is not null
                 => (codes.IsSuccess, "a success, because it is on the allow list"),
-            SweepCall.MemberWithUnknownIds when open
+            SweepCall.MemberWithUnknownIds when entry is not null
                 => (code => codes.IsSuccess(code) || code == codes.NotFound,
                     $"a success or {codes.NotFound}, because it is on the allow list"),
             SweepCall.MemberWithOwnTenantIds or SweepCall.MemberWithUnknownIds
@@ -87,6 +98,7 @@ public static class AccessRules
 
     public static string Describe(SweepCall call) => call switch
     {
+        SweepCall.NoUser => "a call with no user, with unknown IDs",
         SweepCall.MemberWithOwnTenantIds => "a member with no permissions, with the IDs of records of the own tenant",
         SweepCall.MemberWithUnknownIds => "a member with no permissions, with unknown IDs",
         SweepCall.AdminWithOtherTenantIds => "an admin with all permissions, with the IDs of records of another tenant",

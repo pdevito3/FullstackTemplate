@@ -511,7 +511,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] The command sends a version, carries `IRunsAgainWhenRaced`, or takes a lock that `docs/backend/concurrency.md` names. A create of a new aggregate root needs a lock only when its rule reads other rows
 - [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
 - [ ] Each field of the response DTO needs only the permission that the handler checks. A field with data of another permission needs that permission or a separate DTO, and a test shows that a caller without that permission does not get the data (see rule 12 of DTOs in `docs/backend/dtos-and-mappings.md`)
-- [ ] `EndpointAccessSweepTests` passes for each new endpoint, tool, and gRPC method. If each member can use it with no permission, or if it allows anonymous calls or asks for no authorization, add it to `OpenToEachMember` in the sweep with the reason
+- [ ] `EndpointAccessSweepTests` passes for each new endpoint, tool, and gRPC method. If each member can use it with no permission, add it to `OpenToEachMember` in the sweep with the reason. If it must also take a call with no user, give the entry `Anonymous: true`
 - [ ] Each reference to a record that is not a route value `{id}` or `{identifier}` or a tool argument or gRPC field `id` or `identifier`, for example a `tenantId` in the body, has a cross-tenant test in the tests of the feature. The sweep does not check it
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other

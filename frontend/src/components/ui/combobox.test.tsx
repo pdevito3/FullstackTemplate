@@ -375,9 +375,17 @@ test.each(['{Tab}', '{Enter}'])('%s does not pick the option under the pointer',
   expect(onChange).not.toHaveBeenCalled()
 })
 
-test.each(['{Tab}', '{Enter}'])('%s picks the option with the typed text, not the option under the pointer', async (key) => {
+test.each([
+  ['{Tab}', 'Next field'],
+  ['{Enter}', 'Framework'],
+])('%s picks the option with the typed text, not the option under the pointer', async (key, focused) => {
   const onChange = vi.fn()
-  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const screen = await render(
+    <>
+      <FrameworkCombobox onChange={onChange} />
+      <input aria-label="Next field" />
+    </>,
+  )
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await input.fill('vue')
@@ -388,6 +396,7 @@ test.each(['{Tab}', '{Enter}'])('%s picks the option with the typed text, not th
 
   await expect.element(input).toHaveValue('Vue')
   expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
+  await expect.element(screen.getByRole('textbox', { name: focused }).or(screen.getByRole('combobox', { name: focused }))).toHaveFocus()
 })
 
 test.each(['{Tab}', '{Enter}'])('%s picks the option that the arrow keys made active, not the option under the pointer', async (key) => {

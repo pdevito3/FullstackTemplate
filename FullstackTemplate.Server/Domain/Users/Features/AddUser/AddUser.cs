@@ -32,34 +32,46 @@ public static class AddUser
             Activity.Current?.SetTag("app.user.role", role.Value);
             caller.Require(role.GetDefaultPermissions());
 
-            var tenantId = await ResolveTenantIdAsync(request.Dto.TenantId, cancellationToken);
+            var tenantId = ResolveTenantId(request.Dto.TenantId);
             Activity.Current?.SetTag("app.tenant_id", tenantId);
 
-            var forCreation = request.Dto.ToUserForCreation(tenantId);
-            var user = User.Create(forCreation);
-            Activity.Current?.SetTag("app.user_id", user.Id);
+            // The shared lock keeps a tenant delete out until the save, so the user does not land in a deleted tenant.
+            var added = await RootLock.Tenant.RunSharedAsync(dbContext, tenantId, async ct =>
+            {
+                // The tenant filter and the soft delete filter apply, so a deleted tenant does not exist here.
+                var tenantExists = await dbContext.Tenants
+                    .TagWithOperationCallSite("users.add.tenant_exists")
+                    .AnyAsync(t => t.Id == tenantId, ct);
+                if (!tenantExists)
+                    throw new ValidationException(TenantIdField, "The tenant does not exist.");
 
-            // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
-            var identifierInUse = await dbContext.Users
-                .TagWithOperationCallSite("users.add.identifier_in_use")
-                .IgnoreQueryFilters([QueryFilterNames.Tenant])
-                .AnyAsync(u => u.Identifier == user.Identifier, cancellationToken);
-            if (identifierInUse)
-                throw new ConflictException("identifier", "A user with this identifier already exists.");
+                var forCreation = request.Dto.ToUserForCreation(tenantId);
+                var user = User.Create(forCreation);
+                Activity.Current?.SetTag("app.user_id", user.Id);
 
-            await dbContext.Users.AddAsync(user, cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
+                // Ignore the tenant filter: the unique index on Identifier covers the live users of all tenants.
+                var identifierInUse = await dbContext.Users
+                    .TagWithOperationCallSite("users.add.identifier_in_use")
+                    .IgnoreQueryFilters([QueryFilterNames.Tenant])
+                    .AnyAsync(u => u.Identifier == user.Identifier, ct);
+                if (identifierInUse)
+                    throw new ConflictException("identifier", "A user with this identifier already exists.");
 
-            _logger.Here().Information("Added user {UserId} to tenant {TenantId} with role {Role}", user.Id, tenantId, role.Value);
+                await dbContext.Users.AddAsync(user, ct);
+                await dbContext.SaveChangesAsync(ct);
+                return user;
+            }, cancellationToken);
+
+            _logger.Here().Information("Added user {UserId} to tenant {TenantId} with role {Role}", added.Id, tenantId, role.Value);
             
             // TODO handle IDP creation
 
-            return user.ToUserDto(caller);
+            return added.ToUserDto(caller);
         }
 
         // A user adds to their own tenant. A caller that sees all tenants has no tenant of its own,
         // so it must name the tenant.
-        private async Task<string> ResolveTenantIdAsync(string? requestedTenantId, CancellationToken cancellationToken)
+        private string ResolveTenantId(string? requestedTenantId)
         {
             var scope = dbContext.CurrentTenantScope;
             if (string.IsNullOrWhiteSpace(requestedTenantId))
@@ -74,12 +86,7 @@ public static class AddUser
             if (!scope.Includes(requestedTenantId))
                 throw new ForbiddenAccessException("You can add a user only to your own tenant.");
 
-            // The tenant filter and the soft delete filter apply, so a deleted tenant does not exist here.
-            var tenantExists = EntityId.IsValid(requestedTenantId, Tenants.Tenant.IdPrefix)
-                && await dbContext.Tenants
-                    .TagWithOperationCallSite("users.add.tenant_exists")
-                    .AnyAsync(t => t.Id == requestedTenantId, cancellationToken);
-            if (!tenantExists)
+            if (!EntityId.IsValid(requestedTenantId, Tenants.Tenant.IdPrefix))
                 throw new ValidationException(TenantIdField, "The tenant does not exist.");
 
             return requestedTenantId;

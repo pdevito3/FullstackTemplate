@@ -22,13 +22,6 @@ public interface IPermissionGuard
 
     /// <exception cref="ForbiddenAccessException">The caller does not hold the permission.</exception>
     Task RequireAsync(Permission permission, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Passes for the user with <paramref name="userId"/>, a user who acts on their own record.
-    /// Any other caller needs the permission.
-    /// </summary>
-    /// <exception cref="ForbiddenAccessException">The caller is another user and does not hold the permission.</exception>
-    Task RequireSelfOrAsync(string userId, Permission permission, CancellationToken cancellationToken);
 }
 
 public sealed class PermissionGuard(
@@ -37,9 +30,6 @@ public sealed class PermissionGuard(
 {
     public async Task RequireAsync(Permission permission, CancellationToken cancellationToken)
         => (await GetCallerAsync(cancellationToken)).Require(permission);
-
-    public async Task RequireSelfOrAsync(string userId, Permission permission, CancellationToken cancellationToken)
-        => (await GetCallerAsync(cancellationToken)).RequireSelfOr(userId, permission);
 
     public async Task<Caller> GetCallerAsync(CancellationToken cancellationToken)
         => await callerIdentityResolver.GetAsync(cancellationToken) switch

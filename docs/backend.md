@@ -169,8 +169,8 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 | Caller | Result of a permission check |
 |--------|------------------------------|
 | A user with a user record | Passes if the user has the permission |
-| The user that the command is about, for `RequireSelfOrAsync`, `Caller.RequireSelfOr`, or the `unlessOwnRecord` permissions of `UserAction` | Passes. `UserAction.Update` needs `manage_users` and `read_users` only for another user, so that a user can update their own record. `UpdateRole`, `AddPermission`, and `RemovePermission` need `read_users` only for another user. The update DTO has no role, so a user cannot give themselves access. `GetUser` and `GetUserByIdentifier` use the same exception, so that a user can read their own record. |
-| A delegated agent | Passes if both its user and its grant have the permission. It does not get the exception of `RequireSelfOrAsync`. |
+| The user that the command is about, for `Caller.RequireSelfOr` or the `unlessOwnRecord` permissions of `UserAction` | Passes. `UserAction.Update` needs `manage_users` and `read_users` only for another user, so that a user can update their own record. `UpdateRole`, `AddPermission`, and `RemovePermission` need `read_users` only for another user. The update DTO has no role, so a user cannot give themselves access. `GetUser` and `GetUserByIdentifier` use the same exception, so that a user can read their own record. |
+| A delegated agent | Passes if both its user and its grant have the permission. It does not get the exception of `Caller.RequireSelfOr`. |
 | A machine agent | Passes if its grant has the permission |
 | A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
 | A client in `Tenancy:ReadAllTenantsClientIds` | 403 |

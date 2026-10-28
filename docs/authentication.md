@@ -267,7 +267,7 @@ An unknown client sees no MCP tool, and each of its calls gets a `permission_den
 
 A delegated client ID can have one agent in each tenant, so many tenants can register one MCP client. A client ID can have one machine agent in all tenants, because the token of a machine names no tenant. A duplicate gets 409, and so does a delegated agent for a client that is bound as a machine agent. An agent for a first-party client or for a client on an allow-list gets 422, because the server would never use it.
 
-The permission guard reads the agent and its grant from the database in each check. A removed permission, a deleted agent, or a deleted tenant applies on the next request. A delegated agent does not get the exception of `RequireSelfOrAsync`, so it cannot update its own user without `manage_users`.
+The permission guard reads the agent and its grant from the database in each check. A removed permission, a deleted agent, or a deleted tenant applies on the next request. A delegated agent does not get the exception of `Caller.RequireSelfOr`, so it cannot update its own user without `manage_users`.
 
 ### What an agent sees in MCP
 

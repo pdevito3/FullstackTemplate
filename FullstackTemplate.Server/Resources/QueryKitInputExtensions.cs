@@ -17,6 +17,7 @@ public static class QueryKitInputExtensions
 {
     public const string FiltersParameter = "filters";
     public const string SortOrderParameter = "sortOrder";
+    // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
     private const string AllowedActionsMember = "AllowedActions";
 
     public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, string filters, IQueryKitConfiguration config)

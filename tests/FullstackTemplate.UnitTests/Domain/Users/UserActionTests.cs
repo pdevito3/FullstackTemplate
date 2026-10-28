@@ -1,6 +1,7 @@
 namespace FullstackTemplate.UnitTests.Domain.Users;
 
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Domain.Users.Mappings;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Shouldly;
@@ -132,6 +133,27 @@ public class UserActionTests
                     Passes(() => action.GuardBeforeLoad(caller, user.Id))
                         .ShouldBeTrue($"The check before the load refuses the allowed {action} for {caller}");
             }
+        }
+    }
+
+    [Test]
+    [Arguments("User")]
+    [Arguments("Admin")]
+    public void a_row_of_the_list_query_gets_the_actions_of_the_record(string targetRole)
+    {
+        // Arrange
+        var user = UserWithRole(targetRole);
+
+        foreach (var callerOf in Callers)
+        {
+            var caller = callerOf(user);
+            var rows = new[] { user }.AsQueryable().ToUserDtoQueryable().ToList();
+
+            // Act
+            rows.AddAllowedActions(caller);
+
+            // Assert
+            rows.Single().AllowedActions.ShouldBe(user.AllowedActions(caller).Select(a => a.Value), $"for {caller}");
         }
     }
 

@@ -106,10 +106,12 @@ function ResponsiveDialog({
         data-side={isMobile ? "bottom" : undefined}
         className={cn(
           "fixed z-50 w-full bg-background text-sm ring-1 ring-foreground/10 outline-none",
-          // Mobile: bottom sheet. While it is open, index.css shows the toasts at the top: 1rem from the edge, and 3rem
-          // for one toast. The sheet stops 0.5rem below that, so the toast does not cover its drag handle. dvh is the visible
-          // height of a phone with its toolbar shown. vh is the height without the toolbar.
-          "right-0 bottom-0 left-0 max-h-[85vh] supports-[height:100dvh]:max-h-[min(85vh,calc(100dvh-4.5rem))] rounded-t-xl",
+          // Mobile: bottom sheet. While it is open, index.css shows the toasts at the top and sets --toast-reserve, the
+          // room of the toasts, so the sheet stops below them. The fallback is the room of one toast of one line. dvh is
+          // the visible height of a phone with its toolbar shown. vh is the height without the toolbar.
+          "right-0 bottom-0 left-0 max-h-[85vh] supports-[height:100dvh]:max-h-[min(85vh,calc(100dvh-var(--toast-reserve,4.5rem)))] rounded-t-xl",
+          // Move with the toast fade, not in one frame.
+          "max-md:motion-safe:transition-[max-height] max-md:motion-safe:duration-200 max-md:motion-safe:ease-out",
           "md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[calc(100vh-4rem)] md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl",
           className
         )}

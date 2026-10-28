@@ -35,7 +35,7 @@ Reflection is allowed in these kinds of code only:
 | A test or an architecture check | It does not run in the app | `tests/FullstackTemplate.UnitTests/Architecture/BoundaryScanner.cs` reads the IL with Mono.Cecil |
 | A startup scan | It runs one time | Scrutor in `Resources/Extensions/ServiceRegistrationExtension.cs` and `Databases/DomainEventRegistration.cs`. `RegisterServicesFromAssembly` of MediatR in `Resources/Extensions/WebAppServiceConfiguration.cs`. `WithToolsFromAssembly` of MCP in `Resources/Entrypoints/EntrypointRegistration.cs`. `ApplyConfigurationsFromAssembly` in `Databases/AppDbContext.cs`. `Resources/Entrypoints/Http/EndpointDiscovery.cs`. `Databases/Auditing/AuditModel.cs`, `AuditVocabulary.cs`, and `AuditSensitivity.cs`, which run one time for the EF model |
 | An OpenAPI transformer | It runs when the document is made, not for each API request | `Resources/Entrypoints/Http/OpenApi/FixedNamesTransformer.cs` reads `[NamesOf]` |
-| A per-type cache | It reads each type one time, then keeps the result | `RequestRules` in `Resources/RequestValidationBehavior.cs`. The runner of each event type in `Databases/DomainEventDispatcher.cs`. `IdPrefix<TEntity>` in `Databases/QueryableExtensions.cs` |
+| A per-type cache | It reads each type one time, then keeps the result | `RequestRules` in `Resources/RequestValidationBehavior.cs`. The runner of each event type in `Databases/DomainEventDispatcher.cs`. Its `HasHandlers` has no cache, and only the bulk insert calls it. `IdPrefix<TEntity>` in `Databases/QueryableExtensions.cs` |
 
 The paths in the table are in `FullstackTemplate.Server/`, except the test.
 
@@ -58,14 +58,14 @@ If a site calls a banned API, suppress RS0030 on the method. Start the justifica
 `FullstackTemplate.Server/BannedSymbols.txt` bans these APIs in the Server (RS0030). The error names the fix.
 
 - Each `Regex` constructor, and each static `Regex` method that takes a pattern: `IsMatch`, `Match`, `Matches`, `Split`, `Replace`, `Count`, `EnumerateMatches`, and `EnumerateSplits`.
-- `Activator.CreateInstance(Type)` and `Activator.CreateInstance(Type, object[])`.
+- `Activator.CreateInstance(Type)`, `Activator.CreateInstance(Type, object[])`, `Activator.CreateInstance(Type, bool)`, and `Activator.CreateInstance<T>()`.
 - `Type.GetProperties()` and `Type.GetProperties(BindingFlags)`.
 
 The build does not ban `GetCustomAttribute`, `MakeGenericType`, `MakeGenericMethod`, `GetField`, or the `JsonSerializer` overloads with no `JsonTypeInfo`. The `source-generators` skill and the review catch these.
 
 ## JSON
 
-`EntrypointJsonContext` has the types that the entrypoints serialize themselves: the `X-Pagination` header (`PaginationMetadata`) and the structured content of an MCP tool error (`McpToolError`). `AddEntrypoints` puts the context first in the `TypeInfoResolverChain` of the HTTP JSON options.
+`EntrypointJsonContext` has the types that the entrypoints serialize themselves. These are the `X-Pagination` header (`PaginationMetadata`) and the structured content of an MCP tool error (`McpToolError`). `AddEntrypoints` puts the context first in the `TypeInfoResolverChain` of the HTTP JSON options.
 
 These calls still use the reflection fallback:
 
@@ -74,7 +74,7 @@ These calls still use the reflection fallback:
 - `McpDomainErrors.Converts`. It reads the parameter type of a tool at run time, and it runs only after a tool call fails.
 - `FullstackTemplate.Bff/User/UserEndpoint.cs`.
 
-Keep the fallback until the template aims at native AOT. At that time, add the DTOs to a context, remove the fallback, and ban the `JsonSerializer.Serialize` and `JsonSerializer.Deserialize` overloads that take no `JsonTypeInfo`.
+Keep the fallback until the template aims at native AOT. At that time, add the DTOs to a context, and remove the fallback. Then ban the `JsonSerializer.Serialize` and `JsonSerializer.Deserialize` overloads that take no `JsonTypeInfo`.
 
 ## Logging
 

@@ -88,5 +88,7 @@ M:System.Text.RegularExpressions.Regex.EnumerateSplits(System.ReadOnlySpan{Syste
 M:System.Text.RegularExpressions.Regex.EnumerateSplits(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan);Use [GeneratedRegex] on a static partial method.
 M:System.Activator.CreateInstance(System.Type);Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
 M:System.Activator.CreateInstance(System.Type,System.Object[]);Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
+M:System.Activator.CreateInstance(System.Type,System.Boolean);Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
+M:System.Activator.CreateInstance``1;Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
 M:System.Type.GetProperties;Check docs/backend/source-generators.md. A startup scan or a per-type cache suppresses RS0030 with the reason.
 M:System.Type.GetProperties(System.Reflection.BindingFlags);Check docs/backend/source-generators.md. A startup scan or a per-type cache suppresses RS0030 with the reason.

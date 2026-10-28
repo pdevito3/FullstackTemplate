@@ -27,12 +27,7 @@ public class BffDatabaseMigratorTests
             pending.ShouldBeEmpty();
         }
 
-        // The sink also gets the events of BFF hosts that other tests run at the same time, so keep only the migration sources.
         logs.AtLeast(LogEventLevel.Error)
-            .Where(e => e.Properties.GetValueOrDefault("SourceContext")?.ToString().Trim('"') is { } source
-                && (source.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
-                    || source.StartsWith("Npgsql", StringComparison.Ordinal)
-                    || source.StartsWith("FullstackTemplate.Bff.Sessions", StringComparison.Ordinal)))
             .Select(e => $"{e.Properties.GetValueOrDefault("SourceContext")}: {e.RenderMessage(CultureInfo.InvariantCulture)}").ShouldBeEmpty();
     }
 }

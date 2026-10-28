@@ -23,9 +23,7 @@ public static class UpdateUserRole
             Activity.Current?.SetTag("app.user_id", request.Id);
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageUserAccess());
-            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
-            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
+            UserAction.UpdateRole().GuardBeforeLoad(caller, request.Id);
             var newRole = UserRole.Of(request.Role);
             Activity.Current?.SetTag("app.user.role", newRole.Value);
             caller.Require(newRole.GetDefaultPermissions());
@@ -34,8 +32,7 @@ public static class UpdateUserRole
                 .TagWithOperationCallSite("users.update_role.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
-            // The new role replaces each permission row of the user, so the caller also takes those away.
-            caller.Require(user.UserPermissions.Select(p => p.Permission));
+            user.GuardAllows(UserAction.UpdateRole(), caller);
 
             var existingPermissions = user.UserPermissions.ToList();
             var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
@@ -72,7 +69,7 @@ public static class UpdateUserRole
                 UserMetrics.RoleChanged.Add(1, new KeyValuePair<string, object?>("app.user.role", newRole.Value));
             }
 
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }

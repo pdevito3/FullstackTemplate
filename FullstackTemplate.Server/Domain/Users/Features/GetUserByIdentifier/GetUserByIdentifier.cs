@@ -44,7 +44,7 @@ public static class GetUserByIdentifier
             }
 
             caller.RequireSelfOr(user.Id, Permission.ReadUsers());
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }

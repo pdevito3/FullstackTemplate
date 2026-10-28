@@ -22,9 +22,7 @@ public static class RemoveUserPermission
             Activity.Current?.SetTag("app.user_id", request.Id);
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageUserAccess());
-            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
-            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
+            UserAction.RemovePermission().GuardBeforeLoad(caller, request.Id);
             var permission = Permission.Of(request.Permission);
             Activity.Current?.SetTag("app.permission.name", permission.Value);
             caller.Require(permission);
@@ -33,6 +31,7 @@ public static class RemoveUserPermission
                 .TagWithOperationCallSite("users.remove_permission.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
+            user.GuardAllows(UserAction.RemovePermission(), caller);
 
             var existingPermissions = user.UserPermissions.ToList();
 
@@ -53,7 +52,7 @@ public static class RemoveUserPermission
             if (user.UserPermissions.Count < existingPermissions.Count)
                 _logger.Here().Information("Removed permission {Permission} from user {UserId}", permission.Value, user.Id);
 
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }

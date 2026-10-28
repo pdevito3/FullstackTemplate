@@ -23,9 +23,7 @@ public static class AddUserPermission
             Activity.Current?.SetTag("app.user_id", request.Id);
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageUserAccess());
-            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
-            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
+            UserAction.AddPermission().GuardBeforeLoad(caller, request.Id);
             var permission = Permission.Of(request.Permission);
             Activity.Current?.SetTag("app.permission.name", permission.Value);
             caller.Require(permission);
@@ -34,6 +32,7 @@ public static class AddUserPermission
                 .TagWithOperationCallSite("users.add_permission.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
+            user.GuardAllows(UserAction.AddPermission(), caller);
 
             var existingPermissionIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
 
@@ -53,7 +52,7 @@ public static class AddUserPermission
             if (user.UserPermissions.Count > existingPermissionIds.Count)
                 _logger.Here().Information("Added permission {Permission} to user {UserId}", permission.Value, user.Id);
 
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }

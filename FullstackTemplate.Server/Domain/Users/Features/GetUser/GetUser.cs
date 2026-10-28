@@ -18,13 +18,14 @@ public static class GetUser
         {
             Activity.Current?.SetTag("app.user_id", request.Id);
 
-            await permissionGuard.RequireSelfOrAsync(request.Id, Permission.ReadUsers(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.get_by_id")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }

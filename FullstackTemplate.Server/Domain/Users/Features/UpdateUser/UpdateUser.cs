@@ -5,6 +5,7 @@ using Databases;
 using Dtos;
 using Mappings;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 
@@ -21,13 +22,14 @@ public static class UpdateUser
             Activity.Current?.SetTag("app.user_id", request.Id);
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.RequireSelfOr(request.Id, Permission.ManageUsers());
-            // The response carries the record of the user, so it needs the read permission too (ADR 0009).
-            caller.RequireSelfOr(request.Id, Permission.ReadUsers());
+            UserAction.Update().GuardBeforeLoad(caller, request.Id);
 
             var user = await dbContext.Users
                 .TagWithOperationCallSite("users.update.load")
+                .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
+
+            user.GuardAllows(UserAction.Update(), caller);
 
             var forUpdate = request.Dto.ToUserForUpdate();
             user.Update(forUpdate);
@@ -38,7 +40,7 @@ public static class UpdateUser
 
             _logger.Here().Information("Updated user {UserId}", user.Id);
 
-            return user.ToUserDto();
+            return user.ToUserDto(caller);
         }
     }
 }

@@ -16,5 +16,6 @@ export const userDtoSchema = z.object({
   username: z.string(),
   role: z.enum(['Admin', 'User']),
   permissions: z.array(z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users'])),
+  allowedActions: z.array(z.enum(['AddPermission', 'Delete', 'RemovePermission', 'Update', 'UpdateRole'])).describe('The actions that the caller can send for this user now. A button in the SPA reads this list.'),
   version: z.int().min(0).max(4294967295),
 })

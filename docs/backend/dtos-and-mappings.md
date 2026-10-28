@@ -83,6 +83,8 @@ public sealed record UserForCreation
 
 ## Mapper
 
+Mapperly makes the map at build time. Do not write a reflection mapper. See [source-generators.md](source-generators.md).
+
 1. Make the mapper a `static partial class` with `[Mapper]`.
 2. Write each mapping as an extension method, for example `user.ToUserDto()`.
 3. Add an `IQueryable` projection for list queries. Mapperly turns it into one SQL query.

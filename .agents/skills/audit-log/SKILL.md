@@ -25,7 +25,7 @@ Before you call the change done, make sure that each item is true:
 
 - [ ] Each new value of an entity or an action that is not a flag, an enum, a `Guid`, an integer, or a foreign key has one mark, and each personal value is `[Sensitive]`.
 - [ ] Each write of an audited table goes through `SaveChangesAsync` or `BulkInsertAsync`.
-- [ ] Each new RS0030 suppression is for a `[NotAudited]` table, has a justification, and is on the list of `BannedApiSuppressionTests`.
+- [ ] Each new RS0030 suppression of a write is for a `[NotAudited]` table, has a justification, and is on the list of `BannedApiSuppressionTests`. For a regex or reflection API, see the `source-generators` skill.
 - [ ] Each action has an `[AuditActionName]` that no other action has. The name of a released action is the same as before.
 - [ ] Each success path of a handler that records an action calls `SaveChangesAsync`.
 - [ ] No code or migration adds, changes, or deletes a row of `audit_entries`. The save and the bulk insert write each row.

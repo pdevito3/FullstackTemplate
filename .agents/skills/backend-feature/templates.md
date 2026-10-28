@@ -3,15 +3,16 @@
 Complete code templates for generating a vertical slice feature. Replace each placeholder:
 
 - `[EntityName]`: the entity name in PascalCase (e.g., `Customer`, `SalesRegion`).
-- `[entityName]`: the entity name in camelCase, which the routes use (e.g., `customer`, `salesRegion`).
+- `[entity-route]`: the entity name in kebab-case, which the routes use (e.g., `customer`, `sales-region`).
 - `[entity_name]` and `[action_name]`: the snake_case names (e.g., `sales_region`, `change_status`), which the query tags, the span tags, and the MCP tool names use.
 - `[entity name]`: the entity name in lower-case words, which the log and error messages use (e.g., `customer`, `sales region`).
 - `[prefix]`: the ID prefix of the entity (e.g., `cus`).
 - `[Action]` and `[action-route]`: the action in PascalCase and in kebab-case for the route (e.g., `Archive` and `archive`, or `ChangeStatus` and `change-status`).
-- `[ActionPastTense]`: the action in the past tense in PascalCase, which the event name and the log use (e.g., `Archived`). An event name is in the past tense (see `docs/backend/domain-events.md`).
-- `[Criteria]`, `[criteria]`, and `[criteria_name]`: the entity that a custom query filters by, in PascalCase, camelCase, and snake_case (e.g., `SalesRegion`, `salesRegion`, `sales_region`). The `[EntityName]` must have a `[Criteria]Id` foreign key.
+- `[ActionPastTense]`: the action in the past tense in PascalCase, which the event name uses (e.g., `Archived`, `StatusChanged`). An event name is in the past tense (see `docs/backend/domain-events.md`).
+- `[Action words]`: the action in past-tense words with a capital first letter, which the log uses (e.g., `Archived`, `Changed the status of`).
+- `[Criteria]`, `[criteria]`, `[criteria-route]`, and `[criteria_name]`: the entity that a custom query filters by, in PascalCase, camelCase, kebab-case, and snake_case (e.g., `SalesRegion`, `salesRegion`, `sales-region`, `sales_region`). The `[EntityName]` must have a `[Criteria]Id` foreign key.
 
-Other text in brackets, such as `[Description of the action]`, is text that you write.
+Other bracketed words in the sketches, such as `[Description of the action]`, `[Condition]`, or `[NewStatus]`, are for you to fill in. C# attributes, such as `[Sensitive]`, stay as they are.
 
 ## 1. Domain Entity
 
@@ -31,7 +32,6 @@ public class [EntityName] : BaseEntity, ITenantable
     // A short, unique type prefix. The ID is "[prefix]_{uuidv7}".
     public const string IdPrefix = "[prefix]";
 
-    // A max length for each text value that a request sets. The entity configuration uses the same constants.
     public const int NameMaxLength = 200;
     public const int DescriptionMaxLength = 2000;
 
@@ -333,7 +333,7 @@ public static class Add[EntityName]
 
             // The caller adds to its own tenant. AddUser shows a request that names the tenant.
             var tenantId = dbContext.CurrentTenantScope.TenantId
-                ?? throw new ForbiddenAccessException("You can add a [entity name] only to your own tenant.");
+                ?? throw new ForbiddenAccessException("You can add [entity name]s only to your own tenant.");
             var forCreation = request.Dto.To[EntityName]ForCreation(tenantId);
             var entity = [EntityName].Create(forCreation);
             Activity.Current?.SetTag("app.[entity_name]_id", entity.Id);
@@ -528,7 +528,7 @@ using Resources.Entrypoints.Http;
 public sealed class Get[EntityName]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapGet("/[entityName]s/{id}", Handle)
+        .MapGet("/[entity-route]s/{id}", Handle)
         .WithName("Get[EntityName]")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
@@ -561,7 +561,7 @@ using Resources.Entrypoints.Http;
 public sealed class Get[EntityName]ListEndpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapGet("/[entityName]s", Handle)
+        .MapGet("/[entity-route]s", Handle)
         .WithName("Get[EntityName]List")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
@@ -601,7 +601,7 @@ using Resources.Entrypoints.Http;
 public sealed class Add[EntityName]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapPost("/[entityName]s", Handle)
+        .MapPost("/[entity-route]s", Handle)
         .WithName("Add[EntityName]")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
@@ -640,7 +640,7 @@ using Resources.Entrypoints.Http;
 public sealed class Update[EntityName]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapPut("/[entityName]s/{id}", Handle)
+        .MapPut("/[entity-route]s/{id}", Handle)
         .WithName("Update[EntityName]")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
@@ -680,7 +680,7 @@ using Resources.Entrypoints.Http;
 public sealed class Delete[EntityName]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapDelete("/[entityName]s/{id}", Handle)
+        .MapDelete("/[entity-route]s/{id}", Handle)
         .WithName("Delete[EntityName]")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
@@ -728,12 +728,11 @@ public static class Update[EntityName]Tool
 {
     [McpServerTool(Name = "update_[entity_name]", Destructive = true, Idempotent = true, UseStructuredContent = true)]
     [ToolAccess(Permission.Names.Manage[EntityName]s)]
-    [Description("Changes a [EntityName]. The caller needs the manage_[entity_name]s permission in the tenant.")]
+    [Description("Changes one [entity name]. The caller needs the manage_[entity_name]s permission in the tenant.")]
     public static Task<[EntityName]Dto> Handle(
         IMediator mediator,
-        [Description("The [EntityName] ID.")] string id,
+        [Description("The [entity name] ID.")] string id,
         [Description("The new name.")] string name,
-        // The update replaces each field, so the tool takes each field. A tool without the description clears it.
         [Description("The new description, or null for no description.")] string? description,
         [Description("The version of the [entity name] that the caller read. If the [entity name] changed after that, the tool gives the aborted error.")] uint version,
         CancellationToken cancellationToken)
@@ -848,7 +847,7 @@ public abstract record DomainEvent;
 
 ### PagedList
 
-`PagedList<T>` in `Resources/PagedList.cs` extends `List<T>`, so the page is the list itself. It has no `Items` property. It adds the page data: `PageNumber`, `PageSize`, `TotalCount`, `TotalPages`, `HasPrevious`, and `HasNext`. Make a page with `PagedList.CreateAsync(query, pageNumber, pageSize, cancellationToken)`.
+`PagedList<T>` in `Resources/PagedList.cs` extends `List<T>`, so the page is the list itself. It has no `Items` property. It adds the page data, for example `PageNumber`, `PageSize`, `TotalCount`, `TotalPages`, `HasPrevious`, and `HasNext`. Make a page with `PagedList.CreateAsync(query, pageNumber, pageSize, cancellationToken)`.
 
 ---
 
@@ -1026,7 +1025,7 @@ public static class [Action][EntityName]
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("[ActionPastTense] [entity name] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("[Action words] [entity name] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -1073,7 +1072,7 @@ public static class [Action][EntityName]
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("[ActionPastTense] [entity name] {[EntityName]Id}", entity.Id);
+            _logger.Here().Information("[Action words] [entity name] {[EntityName]Id}", entity.Id);
 
             return entity.To[EntityName]Dto();
         }
@@ -1119,10 +1118,11 @@ public [EntityName] [Action]()
 
     // Perform state changes
     Status = [EntityName]Status.[NewStatus]();
-    [ActionPastTense]At = DateTimeOffset.UtcNow;
+    var now = DateTimeOffset.UtcNow;
+    [ActionPastTense]At = now;
 
     // Queue domain event
-    QueueDomainEvent(new [EntityName][ActionPastTense](Id, [ActionPastTense]At));
+    QueueDomainEvent(new [EntityName][ActionPastTense](Id, now));
 
     return this;
 }
@@ -1158,7 +1158,7 @@ using Resources.Entrypoints.Http;
 public sealed class [Action][EntityName]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapPost("/[entityName]s/{id}/[action-route]", Handle)
+        .MapPost("/[entity-route]s/{id}/[action-route]", Handle)
         .WithName("[Action][EntityName]")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)
@@ -1168,7 +1168,9 @@ public sealed class [Action][EntityName]Endpoint : IEndpoint
         .ProducesProblem(StatusCodes.Status404NotFound)
         // Declare a 400 if the action has a request body
         .ProducesValidationProblem()
-        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+        // The action is an update of the row, so it can lose a race with another save
+        .ProducesValidationProblem(StatusCodes.Status409Conflict);
 
     /// <summary>
     /// [Description of the action].
@@ -1243,7 +1245,7 @@ using Resources.Entrypoints.Http;
 public sealed class Get[EntityName]sBy[Criteria]Endpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder versionedGroup) => versionedGroup
-        .MapGet("/[entityName]s/by-[criteria]/{[criteria]Id}", Handle)
+        .MapGet("/[entity-route]s/by-[criteria-route]/{[criteria]Id}", Handle)
         .WithName("Get[EntityName]sBy[Criteria]")
         .WithTags("[EntityName]s")
         .MapToApiVersion(ApiVersions.V1)

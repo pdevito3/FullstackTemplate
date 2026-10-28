@@ -74,7 +74,7 @@ When adding a business operation to an existing entity:
 | Component | Files to Create/Modify |
 |-----------|----------------------|
 | **Domain method** | `[EntityName].cs` - Add behavior method |
-| **Domain event** | `DomainEvents/[EntityName][ActionPastTense].cs` - New event |
+| **Domain event** | `DomainEvents/[EntityName][ActionPastTense].cs` - New event, with a name in the past tense |
 | **Feature** | `Features/[Action][EntityName]/[Action][EntityName].cs` - New command/query |
 | **Endpoint** | `Features/[Action][EntityName]/[Action][EntityName].Http.cs` - New `IEndpoint` |
 | **DTOs** (if needed) | `Dtos/[Action][EntityName]Dto.cs` - Request/response |
@@ -431,8 +431,8 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Entity configuration updated (constraints, value object mapping)
 - [ ] A new foreign-key column to an entity ID has `HasMaxLength(EntityId.MaxLength)` and `UseCollation(EntityId.Collation)`
 - [ ] A new foreign key to an entity ID has a prefix check with `EntityId.IsValid` in the entity validation
-- [ ] A new text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses (see `docs/backend/domain-entities.md`)
-- [ ] A new text column with a max length is in `CallerColumns`, `FixedOptionColumns`, or `ServerWrittenColumns` of `StringColumnLengthTests`
+- [ ] A new text value that a request sets has a max length constant that the entity validation checks and `HasMaxLength` uses, and the entity validation refuses a character that Postgres cannot store with `ThrowWhenHasCharacterPostgresCannotStore` (see `docs/backend/domain-entities.md`)
+- [ ] A new text column with a max length is in `CallerColumns`, `FixedOptionColumns`, or `ServerWrittenColumns` of `StringColumnLengthTests`. For a caller column, add the property to the input and the blueprint of the entity graph, so that the domain write can set it
 - [ ] Run `dotnet build` to verify compilation
 - [ ] Run `dotnet ef migrations add Add[PropertyName]To[EntityName]`
 - [ ] Run `pnpm generate:api` in `frontend/` and commit the generated contract

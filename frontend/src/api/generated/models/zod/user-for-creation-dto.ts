@@ -7,10 +7,10 @@ import * as z from 'zod'
 
 export const userForCreationDtoSchema = z.object({
   tenantId: z.string().nullish().describe('Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.\nA user always adds to their own tenant. If a user sends a tenant, it must be their own tenant.'),
-  firstName: z.string(),
-  lastName: z.string(),
-  identifier: z.string(),
-  email: z.string(),
-  username: z.string(),
+  firstName: z.string().max(200),
+  lastName: z.string().max(200),
+  identifier: z.string().max(255),
+  email: z.string().max(320),
+  username: z.string().max(100),
   role: z.enum(['Admin', 'User']),
 })

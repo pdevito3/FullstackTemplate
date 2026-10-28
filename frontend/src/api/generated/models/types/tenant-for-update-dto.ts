@@ -4,6 +4,10 @@
 */
 
 export type TenantForUpdateDto = {
+    /**
+     * @maxLength 200
+     * @type string
+    */
     name: string;
     /**
      * @description The version of the tenant that the caller loaded. A stale version gives 409.

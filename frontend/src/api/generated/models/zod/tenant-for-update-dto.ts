@@ -6,6 +6,6 @@
 import * as z from 'zod'
 
 export const tenantForUpdateDtoSchema = z.object({
-  name: z.string(),
+  name: z.string().max(200),
   version: z.int().min(0).max(4294967295).describe('The version of the tenant that the caller loaded. A stale version gives 409.'),
 })

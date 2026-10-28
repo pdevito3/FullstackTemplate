@@ -4,5 +4,9 @@
 */
 
 export type TenantForCreationDto = {
+    /**
+     * @maxLength 200
+     * @type string
+    */
     name: string;
 };

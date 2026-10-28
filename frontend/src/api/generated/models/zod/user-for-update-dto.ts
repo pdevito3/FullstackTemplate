@@ -6,9 +6,9 @@
 import * as z from 'zod'
 
 export const userForUpdateDtoSchema = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
-  email: z.string(),
-  username: z.string(),
+  firstName: z.string().max(200),
+  lastName: z.string().max(200),
+  email: z.string().max(320),
+  username: z.string().max(100),
   version: z.int().min(0).max(4294967295).describe('The version of the user that the caller loaded. A stale version gives 409.'),
 })

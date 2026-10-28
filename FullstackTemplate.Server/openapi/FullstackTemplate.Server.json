@@ -1771,9 +1771,11 @@
             "description": "Only for a caller that sees all tenants. That caller must name the tenant. A tenant admin always adds to their\nown tenant. If a tenant admin sends a tenant, it must be their own tenant."
           },
           "name": {
+            "maxLength": 200,
             "type": "string"
           },
           "clientId": {
+            "maxLength": 255,
             "type": "string",
             "description": "The client ID in the tokens of the client. Case-sensitive."
           },
@@ -1998,21 +2000,27 @@
         "type": "object",
         "properties": {
           "tenantName": {
+            "maxLength": 200,
             "type": "string"
           },
           "firstName": {
+            "maxLength": 200,
             "type": "string"
           },
           "lastName": {
+            "maxLength": 200,
             "type": "string"
           },
           "identifier": {
+            "maxLength": 255,
             "type": "string"
           },
           "email": {
+            "maxLength": 320,
             "type": "string"
           },
           "username": {
+            "maxLength": 100,
             "type": "string"
           },
           "role": {
@@ -2187,6 +2195,7 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 200,
             "type": "string"
           }
         }
@@ -2199,6 +2208,7 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 200,
             "type": "string"
           },
           "version": {
@@ -2313,18 +2323,23 @@
             "description": "Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.\nA user always adds to their own tenant. If a user sends a tenant, it must be their own tenant."
           },
           "firstName": {
+            "maxLength": 200,
             "type": "string"
           },
           "lastName": {
+            "maxLength": 200,
             "type": "string"
           },
           "identifier": {
+            "maxLength": 255,
             "type": "string"
           },
           "email": {
+            "maxLength": 320,
             "type": "string"
           },
           "username": {
+            "maxLength": 100,
             "type": "string"
           },
           "role": {
@@ -2347,15 +2362,19 @@
         "type": "object",
         "properties": {
           "firstName": {
+            "maxLength": 200,
             "type": "string"
           },
           "lastName": {
+            "maxLength": 200,
             "type": "string"
           },
           "email": {
+            "maxLength": 320,
             "type": "string"
           },
           "username": {
+            "maxLength": 100,
             "type": "string"
           },
           "version": {

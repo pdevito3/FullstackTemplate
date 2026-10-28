@@ -14,7 +14,7 @@ A save adds one audit entry for each entity that it adds, changes, or deletes, a
 | `Restored` | sets `IsDeleted` back to false | The old and the new value of each value that also changed |
 | `Action` | saves a recorded action | Each property of the action, except its subject |
 
-The entries do not record the key or the `BaseEntity` bookkeeping: `LastModifiedOn`, `IsDeleted`, and `Version`. An update that changes only these values writes no entry. Thus the owner touch of [Concurrency](../backend.md#concurrency) writes no entry.
+The entries do not record the key, the `BaseEntity` bookkeeping (`LastModifiedOn`, `IsDeleted`, and `Version`), or the discriminator of a TPH hierarchy. The entity type of the entry names the derived type. An update that changes only these values writes no entry. Thus the owner touch of [Concurrency](../backend.md#concurrency) writes no entry.
 
 Each entry repeats the facts of its save:
 
@@ -77,6 +77,8 @@ It refuses these cases with an `InvalidOperationException`:
 - The context has pending changes. Save them first.
 - The type is a child of an owner. Add the child to its owner, then bulk insert the owner.
 - A queued domain event has a handler. The bulk insert runs no handler, so save these entities with `SaveChangesAsync`. It drops an event that has no handler, as a save does.
+
+It refuses a type that maps to more than one table, such as a derived type of a TPT hierarchy, with a `NotSupportedException`. Save it with `SaveChangesAsync`, or map the hierarchy with TPH or TPC.
 
 A unique violation gives a `ConstraintConflictException`, as in a save. A failed bulk insert ends the context, as a failed save does. The bulk insert keeps each row in the change tracker, so split a very large import into parts.
 

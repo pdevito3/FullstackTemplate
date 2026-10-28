@@ -27,6 +27,10 @@ internal static class PostgresCopy
         var sql = database.GetService<ISqlGenerationHelper>();
         foreach (var rows in tables)
         {
+            if (rows.Key.GetTableMappings().Skip(1).Any())
+                throw new NotSupportedException(
+                    $"BulkInsertAsync writes the rows of a type to one table, but {rows.Key.ClrType.Name} maps to more than one table, as a derived type of a TPT hierarchy does. Save it with SaveChangesAsync, or map the hierarchy with TPH or TPC.");
+
             var columns = EntityColumn.Of(rows.Key);
             var storeTypes = columns.Select(c => c.Property.GetRelationalTypeMapping().StoreType).ToList();
             var columnNames = string.Join(", ", columns.Select(c => sql.DelimitIdentifier(c.Property.GetColumnName())));

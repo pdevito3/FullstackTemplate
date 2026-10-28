@@ -11,7 +11,7 @@ using Resources;
 public static class BaseEntityConventions
 {
     public static void FilterSoftDeletedRecords(this ModelConfigurationBuilder configurationBuilder)
-        => configurationBuilder.ConfigureEachEntity(entityType =>
+        => configurationBuilder.ConfigureEachRootEntity(entityType =>
         {
             var row = Expression.Parameter(entityType.ClrType, "e");
             var notDeleted = Expression.Not(Expression.Property(row, nameof(BaseEntity.IsDeleted)));
@@ -23,7 +23,7 @@ public static class BaseEntityConventions
     /// and makes a new ID when the field is empty, so EF must not use the getter to set the loaded ID.
     /// </summary>
     public static void MapEntityIdToField(this ModelConfigurationBuilder configurationBuilder)
-        => configurationBuilder.ConfigureEachEntity(entityType =>
+        => configurationBuilder.ConfigureEachRootEntity(entityType =>
         {
             var idProperty = entityType.FindProperty(nameof(BaseEntity.Id))!;
             idProperty.SetField(BaseEntity.IdField);
@@ -35,18 +35,25 @@ public static class BaseEntityConventions
     public static void MapVersionToXmin(this ModelConfigurationBuilder configurationBuilder)
         => configurationBuilder.Conventions.Add(_ => new VersionToXminConvention());
 
-    private static void ConfigureEachEntity(this ModelConfigurationBuilder configurationBuilder,
+    private static void ConfigureEachRootEntity(this ModelConfigurationBuilder configurationBuilder,
         Action<IConventionEntityType> configure)
-        => configurationBuilder.Conventions.Add(_ => new EachEntityConvention(configure));
+        => configurationBuilder.Conventions.Add(_ => new EachRootEntityConvention(configure));
 
-    private sealed class EachEntityConvention(Action<IConventionEntityType> configure) : IModelFinalizingConvention
+    private sealed class EachRootEntityConvention(Action<IConventionEntityType> configure) : IModelFinalizingConvention
     {
         public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder,
             IConventionContext<IConventionModelBuilder> context)
         {
             foreach (var entityType in modelBuilder.Metadata.GetEntityTypes()
-                         .Where(e => e.ClrType.IsAssignableTo(typeof(BaseEntity))))
+                         .Where(e => e.BaseType is null && e.ClrType.IsAssignableTo(typeof(BaseEntity))))
+            {
+                if (entityType.IsOwned())
+                    throw new InvalidOperationException(
+                        $"{entityType.ClrType.Name} is a BaseEntity that another entity owns. A BaseEntity must not be owned. " +
+                        "Map a value object with ComplexProperty, or give a child entity its own key and a Cascade foreign key to its owner.");
+
                 configure(entityType);
+            }
         }
     }
 

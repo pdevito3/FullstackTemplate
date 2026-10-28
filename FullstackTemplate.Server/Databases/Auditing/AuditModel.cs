@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
-/// One value column of an entity type, with its audit facts. <c>IsRecorded</c> is false for the key and the
-/// <see cref="BaseEntity"/> bookkeeping (<c>LastModifiedOn</c> and <c>IsDeleted</c>).
+/// One value column of an entity type, with its audit facts. <c>IsRecorded</c> is false for the key, the
+/// <see cref="BaseEntity"/> bookkeeping (<c>LastModifiedOn</c> and <c>IsDeleted</c>), and the TPH discriminator.
 /// </summary>
 internal sealed record AuditedValue(string Path, EntityColumn Column, bool IsRecorded, Sensitivity Sensitivity);
 
@@ -66,7 +66,8 @@ internal sealed class AuditModel
         var property = column.Property;
         if (column.Complex is not { } complex)
             return new AuditedValue(property.Name, column,
-                IsRecorded: !property.IsPrimaryKey() && !Bookkeeping.Contains(property.Name),
+                IsRecorded: !property.IsPrimaryKey() && !Bookkeeping.Contains(property.Name)
+                            && property.DeclaringType.FindDiscriminatorProperty() != property,
                 AuditSensitivity.Of(property.PropertyInfo ?? (MemberInfo?)property.FieldInfo, property.ClrType,
                     property.IsForeignKey()));
 
@@ -86,7 +87,10 @@ internal sealed class AuditModel
     private static IForeignKey? OwnerKeyOfType(IEntityType entityType)
     {
         var ownerKeys = entityType.GetForeignKeys()
-            .Where(fk => fk.DeleteBehavior == DeleteBehavior.Cascade
+            // In TPT, EF links the table of a derived type to the table of its base type with a Cascade foreign key on
+            // the primary key. That key joins the rows of one entity, so it does not name an owner.
+            .Where(fk => !fk.IsBaseLinking()
+                         && fk.DeleteBehavior == DeleteBehavior.Cascade
                          && fk.PrincipalEntityType.ClrType.IsAssignableTo(typeof(BaseEntity)))
             .ToList();
         return ownerKeys.Count <= 1

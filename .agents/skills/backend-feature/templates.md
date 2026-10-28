@@ -1104,6 +1104,8 @@ public sealed class [Action][EntityName]Endpoint : IEndpoint
 ```csharp
 namespace FullstackTemplate.Server.Domain.[EntityName]s.Features;
 
+using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain.[Criteria]s;
 using FullstackTemplate.Server.Domain.[EntityName]s.Dtos;
 using FullstackTemplate.Server.Domain.[EntityName]s.Mappings;
 using MediatR;
@@ -1117,6 +1119,10 @@ public static class Get[EntityName]sBy[Criteria]
     {
         public async Task<IReadOnlyList<[EntityName]Dto>> Handle(Query request, CancellationToken cancellationToken)
         {
+            // No row has an ID that is not valid, and Postgres cannot take an ID with a NUL as a parameter
+            if (!EntityId.IsValid(request.[Criteria]Id, [Criteria].IdPrefix))
+                return [];
+
             var entities = await dbContext.[EntityName]s
                 .AsNoTracking()
                 .Where(e => e.[Criteria]Id == request.[Criteria]Id)

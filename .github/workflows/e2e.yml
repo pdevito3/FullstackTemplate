@@ -1,8 +1,8 @@
 name: e2e
 
 # ci.yml calls this workflow when its changes job finds a BFF change, and on workflow_dispatch.
-# A skipped job that has a matrix shows its name template, for example e2e (${{ matrix.provider }}), because GitHub
-# does not expand the matrix. The caller job has no matrix, so a skipped run shows as e2e.
+# GitHub does not expand the matrix of a job that its if skips. So a skipped matrix job in ci.yml showed its raw name
+# template, e2e (${{ matrix.provider }}), as its check name. The caller job has no matrix, so a skipped run shows as e2e.
 
 on:
   workflow_call:

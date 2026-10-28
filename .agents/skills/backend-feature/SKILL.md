@@ -311,9 +311,9 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 5. **Pick the Concurrency Tool**
    - Pick the concurrency tool of the command from `docs/backend/concurrency.md`: a version, a run again, or a lock
    - A version: the command applies fields that the user saw and edited. The DTO has `required uint Version`, and the entity method calls `GuardVersion`
-   - A run again: the command sends no version, and the server decides it from the rows alone. The command carries `IRunsAgainWhenRaced`. Send it only from an entrypoint, and do the logs and the metrics after the save
+   - A run again: the command sends no version, and the server decides it from the rows alone. The command carries `IRunsAgainWhenRaced`. Send it only from an entrypoint, save one time, and do the logs and the metrics after the save. A second run after its own commit must give the same end state, so do not mark a command that adds to a value, such as an increment
    - A lock: the rule reads rows that the command does not write, such as a count of open bookings. Write the lock in the XML comment of the command
-   - A create of a new aggregate root needs none of the three
+   - A create of a new aggregate root needs no version and no run again. It needs a lock only when its rule reads other rows
 
 6. **Create Feature (Command or Query)**
    ```csharp
@@ -502,7 +502,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] Domain event created (if state change is significant)
 - [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)
 - [ ] Feature folder created with the Command/Query and Handler file
-- [ ] The command sends a version, carries `IRunsAgainWhenRaced`, or takes a lock that `docs/backend/concurrency.md` names. A create of a new aggregate root needs none
+- [ ] The command sends a version, carries `IRunsAgainWhenRaced`, or takes a lock that `docs/backend/concurrency.md` names. A create of a new aggregate root needs a lock only when its rule reads other rows
 - [ ] Each command calls `IPermissionGuard` as its first statement, with a permission from `Permission.cs` (a new permission has a migration that gives it to the admins that exist, and its name is in the two lists of `PermissionTests`)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other

@@ -8,7 +8,7 @@ Two requests can change the same rows at the same time. Each command picks one o
 | A run again | The command sends no version, and the server decides it from the rows alone | Nothing. The command runs again on the new rows. After 20 lost runs, 409 concurrent change |
 | A lock | The rule of the command reads rows that the command does not write | Nothing. The second request waits for the first |
 
-A create of a new aggregate root writes no row that another request can change, so it needs none of the three. A unique value that two creates add at the same time gets a 409 from the unique index (see [Error responses](../backend.md#error-responses)).
+A create of a new aggregate root writes no row that another request can change, so it needs no version and no run again. It needs a lock only when its rule reads other rows, such as a booking that checks its clinic. A unique value that two creates add at the same time gets a 409 from the unique index (see [Error responses](../backend.md#error-responses)).
 
 ## Versions
 
@@ -29,13 +29,15 @@ public sealed record Command(string Id, [property: RequiredField] string Permiss
     : IRequest<UserDto>, IRunsAgainWhenRaced;
 ```
 
-`RaceRetryBehavior` catches the `StaleVersionException` of a marked command. It calls `AppDbContext.DiscardLostRace`, which clears the tracked entities and the recorded audit actions. Then it waits for a short random time and runs the handler again in the same DI scope. The lost save rolled back, so the database has none of its changes. The caller, the validation, and the request span stay those of the first run. Each lost run adds a `race.lost` event with `app.race.run` to the request span. After 20 lost runs, the behavior throws a `ConcurrentChangeException`.
+`RaceRetryBehavior` catches the `StaleVersionException` of a marked command. It calls `AppDbContext.DiscardLostRace`, which clears the tracked entities and the recorded audit actions. Then it waits for a short random time and runs the handler again in the same DI scope. The lost save rolled back, so the database has none of its changes. The caller, the validation, and the request span stay those of the first run. Each lost run that runs again adds a `race.lost` event with `app.race.run` to the request span. After 20 lost runs, the behavior throws a `ConcurrentChangeException`.
 
 Obey these rules for a marked command. A test enforces the first two.
 
 1. The request has no `Version`, also in a DTO in it. With a version, a lost race is a stale version on each run. The behavior then runs the command 20 times, and the caller gets a concurrent change, not the stale version that it must get. `RunAgainRequestTests` fails on such a request.
 2. Send the command only from an entrypoint (HTTP, gRPC, or MCP), not from a handler or a domain event handler. `DiscardLostRace` clears each tracked change of the DI scope, also the changes of the handler that sent the command. `EntrypointBoundaryTests` fails when core code creates a marked command.
 3. Do the work that leaves the process, such as a log of the change, a metric, or a call to another service, after the save. The handler runs again from the start, so the work before the save runs one time for each run.
+4. The handler saves one time. A second run after a lost second save would apply the first save again.
+5. The handler gives the same end state when it runs again after its own commit, such as an add of a permission that is already there. In the window of [Lost reply of a commit](#lost-reply-of-a-commit), a save that committed can fail its `xmin` check, and the command runs again. A delete then gets 404 for a delete that worked. Do not mark a command that adds to a value, such as an increment.
 
 Each marked command has a race test (see [Race tests](../backend.md#race-tests)). The test pauses the command after its load, commits a rival write to the same aggregate, and checks that both changes saved.
 

@@ -168,13 +168,8 @@ public class AppDbContext(
     /// can run it again in the same DI scope. The lost save rolled back, so the database has none of its changes. It
     /// clears the tracked entities and the recorded audit actions, and it ends the refusal of a save after a failure.
     /// </summary>
-    /// <exception cref="InvalidOperationException">A save runs, because a domain event handler sent the command.</exception>
     internal void DiscardLostRace()
     {
-        if (_saveStage is SaveStage.Dispatching or SaveStage.Saving)
-            throw new InvalidOperationException(
-                "A save on this AppDbContext runs, so its changes cannot be discarded. Send the command from an entrypoint.");
-
         ChangeTracker.Clear();
         _recordedActions.Clear();
         _saveStage = SaveStage.Idle;

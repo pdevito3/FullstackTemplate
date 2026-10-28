@@ -107,6 +107,12 @@ namespace FullstackTemplate.ArchitectureFixtures.Core
     // Not rule 4: the copy method of the record creates the request itself
     public sealed record CleanRunAgainCommand(int Value) : IRequest<int>, IRunsAgainWhenRaced;
 
+    // Rule 4: a factory method on the request lets a handler create it
+    public sealed record RunAgainCommandWithFactory(int Value) : IRequest<int>, IRunsAgainWhenRaced
+    {
+        public static RunAgainCommandWithFactory For(int value) => new(value);
+    }
+
     // Rule 4: core creates a command of the Server that runs again when raced
     public static class CoreWithRunAgainCommand
     {

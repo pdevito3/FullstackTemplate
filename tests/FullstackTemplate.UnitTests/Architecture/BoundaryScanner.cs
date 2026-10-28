@@ -106,13 +106,13 @@ public sealed partial class BoundaryScanner
 
     /// <summary>
     /// Rule 4: the core types that create an <see cref="IRunsAgainWhenRaced"/> request. A run again discards each
-    /// tracked change of the DI scope, so only an entrypoint sends one. The request type itself, for example in the copy
-    /// method of a record, does not count.
+    /// tracked change of the DI scope, so only an entrypoint sends one. The copy method of a record request does not
+    /// count.
     /// </summary>
     public string[] CoreThatCreatesARunAgainRequest()
         => CoreTypes()
-            .Where(type => !IsRunAgainRequest(type) && type.Methods
-                .Where(method => method.HasBody)
+            .Where(type => type.Methods
+                .Where(method => method.HasBody && method.Name != "<Clone>$")
                 .SelectMany(method => method.Body.Instructions)
                 .Any(instruction => instruction.OpCode == OpCodes.Newobj
                     && instruction.Operand is MethodReference constructor

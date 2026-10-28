@@ -92,7 +92,7 @@ The context finds each handler in the DI container. You do not register a handle
 - The events run in the order that the entities queued them.
 - A handler can change an entity whose method queues a new event. The new event runs in the same save. After 10 rounds of new events, the save throws an exception, because the handlers then form a cycle.
 - A query in a handler reads the committed rows. It does not see the rows that this save adds. To get an entity that this save adds, use `FindAsync` or `DbSet.Local`. These two do not apply the tenant filter to the entities that the context tracks. If the save can have entities of more than one tenant, compare the `TenantId` of the entity with the tenant of the event.
-- To change a child of an aggregate, such as a `UserPermission` of a `User`, load the root with a tracked query and change the child through the root. The save then changes the version of the root, so a caller that loaded the root before gets a 409. If the context does not track the root, the save throws an `InvalidOperationException` and writes nothing. See [concurrency.md](concurrency.md#versions).
+- To change a child of an aggregate, such as a `UserPermission` of a `User`, load the root with a tracked query and change the child through the root. The save then changes the version of the root, so a caller that loaded the root before gets a 409, or runs again if its command has no version. If the context does not track the root, the save throws an `InvalidOperationException` and writes nothing. See [concurrency.md](concurrency.md#versions).
 - To refuse the change, throw a domain exception, for example a `ValidationException`. The save then writes nothing.
 
 ## Errors

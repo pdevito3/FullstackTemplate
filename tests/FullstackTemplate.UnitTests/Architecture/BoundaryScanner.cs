@@ -3,6 +3,7 @@ namespace FullstackTemplate.UnitTests.Architecture;
 using System.CodeDom.Compiler;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using global::Grpc.Core;
 using ModelContextProtocol.Server;
@@ -103,6 +104,24 @@ public sealed partial class BoundaryScanner
         return TypesWithDependencyOnAny(adaptersAndPlumbing, DatabaseNamespaces, []);
     }
 
+    /// <summary>
+    /// Rule 4: the core types that create an <see cref="IRunsAgainWhenRaced"/> request. A run again discards each
+    /// tracked change of the DI scope, so only an entrypoint sends one. The request type itself, for example in the copy
+    /// method of a record, does not count.
+    /// </summary>
+    public string[] CoreThatCreatesARunAgainRequest()
+        => CoreTypes()
+            .Where(type => !IsRunAgainRequest(type) && type.Methods
+                .Where(method => method.HasBody)
+                .SelectMany(method => method.Body.Instructions)
+                .Any(instruction => instruction.OpCode == OpCodes.Newobj
+                    && instruction.Operand is MethodReference constructor
+                    && IsRunAgainRequest(constructor.DeclaringType)))
+            .Select(type => Outermost(type).FullName)
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
     /// <summary>The top-level adapter types.</summary>
     public HashSet<string> AdapterNames()
         => AllTypes()
@@ -155,6 +174,20 @@ public sealed partial class BoundaryScanner
             || type.Fields.Any(Marked)
             || type.Properties.Any(Marked)
             || type.NestedTypes.Any(HasGeneratedCode);
+    }
+
+    private static bool IsRunAgainRequest(TypeReference type)
+    {
+        var assemblyName = type.Scope switch
+        {
+            ModuleDefinition module => module.Assembly.Name.Name,
+            AssemblyNameReference reference => reference.Name,
+            _ => null,
+        };
+        var reflected = assemblyName is null
+            ? null
+            : Type.GetType($"{type.GetElementType().FullName.Replace('/', '+')}, {assemblyName}");
+        return reflected is not null && typeof(IRunsAgainWhenRaced).IsAssignableFrom(reflected);
     }
 
     private bool IsSharedPlumbing(TypeDefinition outer)

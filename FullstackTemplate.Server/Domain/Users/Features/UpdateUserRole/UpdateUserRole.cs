@@ -12,7 +12,7 @@ using Serilog;
 public static class UpdateUserRole
 {
     // The endpoint sends the role of UpdateUserRoleDto, so the rule of the DTO is also on the command
-    public sealed record Command(string Id, [property: RequiredField] string Role) : IRequest<UserDto>;
+    public sealed record Command(string Id, [property: RequiredField] string Role) : IRequest<UserDto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {

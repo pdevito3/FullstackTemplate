@@ -28,6 +28,21 @@ public class McpDomainErrorsTests
     }
 
     [Test]
+    public async Task a_concurrent_change_is_an_aborted_tool_error_with_its_own_title()
+    {
+        // Act
+        var result = await CallToolThatThrows(new ConcurrentChangeException());
+
+        // Assert
+        result.IsError.ShouldBe(true);
+        result.Content.OfType<TextContentBlock>().ShouldHaveSingleItem().Text.ShouldBe(
+            "aborted: Other users changed this record at the same time, so the change did not save. Send it again.");
+        var content = result.StructuredContent.ShouldNotBeNull();
+        content.GetProperty("code").GetString().ShouldBe("aborted");
+        content.GetProperty("title").GetString().ShouldBe("Other users changed the record at the same time.");
+    }
+
+    [Test]
     public async Task a_conflict_is_an_already_exists_tool_error()
     {
         // Act

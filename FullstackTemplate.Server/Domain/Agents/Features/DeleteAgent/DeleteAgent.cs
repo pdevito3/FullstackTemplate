@@ -10,7 +10,7 @@ using Users;
 
 public static class DeleteAgent
 {
-    public sealed record Command(string Id) : IRequest;
+    public sealed record Command(string Id) : IRequest, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
     {

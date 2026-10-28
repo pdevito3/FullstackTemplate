@@ -12,7 +12,7 @@ using Users;
 
 public static class RemoveAgentPermission
 {
-    public sealed record Command(string Id, string Permission) : IRequest<AgentDto>;
+    public sealed record Command(string Id, string Permission) : IRequest<AgentDto>, IRunsAgainWhenRaced;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, AgentDto>
     {

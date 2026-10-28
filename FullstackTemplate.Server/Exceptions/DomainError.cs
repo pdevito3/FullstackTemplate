@@ -30,6 +30,11 @@ public enum DomainErrorKind
     /// </summary>
     StaleVersion,
 
+    /// <summary>
+    /// A command with no version lost the race on its rows on each run. The caller can send it again as it is.
+    /// </summary>
+    ConcurrentChange,
+
     /// <summary>A server fault. Its message stays on the server.</summary>
     Unexpected,
 }
@@ -50,6 +55,7 @@ public sealed record DomainError(
     private const string ValidationTitle = "One or more validation errors occurred.";
     private const string ConflictTitle = "The request conflicts with a record that exists.";
     private const string StaleVersionTitle = "The record changed after you loaded it.";
+    private const string ConcurrentChangeTitle = "Other users changed the record at the same time.";
 
     /// <summary>
     /// Classifies an exception. An exception that is not a domain exception is <see cref="DomainErrorKind.Unexpected"/>.
@@ -82,6 +88,8 @@ public sealed record DomainError(
             StaleVersionTitle,
             ex.Message,
             new() { [StaleVersionException.Field] = [ex.Message] }),
+        // No request field is wrong, but a 409 has the ValidationProblemDetails shape, so the errors property stays
+        ConcurrentChangeException ex => new(DomainErrorKind.ConcurrentChange, ConcurrentChangeTitle, ex.Message, []),
         // A conflict keeps the errors property when no field is known, because a 409 has the ValidationProblemDetails shape
         ConflictException ex => new(
             DomainErrorKind.Conflict,

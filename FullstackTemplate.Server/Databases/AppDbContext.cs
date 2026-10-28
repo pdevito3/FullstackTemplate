@@ -117,7 +117,8 @@ public class AppDbContext(
     /// <summary>
     /// Runs the handlers of the queued domain events, then saves the changes and the handler changes in one
     /// transaction. <see cref="DbContext.SaveChangesAsync(CancellationToken)"/> also calls this overload.
-    /// A failed save ends the context, so a retry must use a new DI scope.
+    /// A failed save ends the context, so a retry must use a new DI scope. Only
+    /// <see cref="Resources.RaceRetryBehavior{TRequest,TResponse}"/> runs a command again in the same scope.
     /// </summary>
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
@@ -160,6 +161,23 @@ public class AppDbContext(
             _saveStage = SaveStage.Broken;
             throw;
         }
+    }
+
+    /// <summary>
+    /// Forgets the work of a command that lost a race, so <see cref="Resources.RaceRetryBehavior{TRequest,TResponse}"/>
+    /// can run it again in the same DI scope. The lost save rolled back, so the database has none of its changes. It
+    /// clears the tracked entities and the recorded audit actions, and it ends the refusal of a save after a failure.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A save runs, because a domain event handler sent the command.</exception>
+    internal void DiscardLostRace()
+    {
+        if (_saveStage is SaveStage.Dispatching or SaveStage.Saving)
+            throw new InvalidOperationException(
+                "A save on this AppDbContext runs, so its changes cannot be discarded. Send the command from an entrypoint.");
+
+        ChangeTracker.Clear();
+        _recordedActions.Clear();
+        _saveStage = SaveStage.Idle;
     }
 
     private async Task<int> SaveInStages(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken)

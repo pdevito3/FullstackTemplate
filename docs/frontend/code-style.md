@@ -11,6 +11,7 @@ These rules apply to the TypeScript and React code in `frontend/src/`. `pnpm lin
 5. Give an explicit return type to each exported function, except a hook or a short arrow function.
 6. Use `async` and `await`, not `.then` chains.
 7. Use `import type` for an import that is only a type.
+8. A file under `src/domain/` reads the answers of the Server and formats them. It does not decide a business rule. See rule 8 of [server-state.md](server-state.md#rules).
 
 ```typescript
 export const USER_ROLES = ['Admin', 'User'] as const

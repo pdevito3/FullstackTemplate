@@ -287,6 +287,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
    - Use the decision shape of `docs/backend/features-and-cqrs.md#one-rule-set-for-two-callers` in two cases. The first is when a second caller needs the same rules, such as a list of what is possible and the command that does it. The second is when a rule reads more than one aggregate
    - Write the case record, the rule list, and the refusal type in `Domain/[Entity]s/`. Keep the command handler to one load, one `Decide`, and one save
    - Otherwise, put the rule in a guard of the entity, as in the next step
+   - If the SPA shows a button for the action, add the action to the action value object of the entity, such as `UserAction`, so that it is in `AllowedActions`. The command calls `GuardAllows` first after the load. See `docs/backend/domain-entities.md#allowed-actions`
 
 3. **Add Domain Method to Entity**
    ```csharp
@@ -498,6 +499,7 @@ public LineItem AddLineItem(Product product, int quantity)
 
 ### New Feature Checklist
 - [ ] Domain method added to entity with proper guards
+- [ ] If the SPA shows a button for the action: the action is in the action value object, the read DTO has `AllowedActions`, and the command calls `GuardAllows`
 - [ ] Each property that the domain method sets, such as `[ActionPastTense]At`, is on the entity, the `[EntityName]Dto`, and the configuration (see "Process: New Property")
 - [ ] Domain event created (if state change is significant)
 - [ ] The handler writes through `SaveChangesAsync` or `BulkInsertAsync`. A fact that changes no data is an audit action that the handler records and saves (see `docs/backend/audit-log.md`)

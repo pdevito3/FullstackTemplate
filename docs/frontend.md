@@ -30,6 +30,7 @@ frontend/src/
 ├── domain/                 # One folder for each business area
 │   └── [area]/
 │       ├── apis/          # API functions, query hooks, and *.keys.ts
+│       ├── components/    # Components for this area
 │       └── types/         # Types for this area
 ├── components/
 │   ├── ui/                # Shared UI components (shadcn/ui, React Aria, and Animate UI)

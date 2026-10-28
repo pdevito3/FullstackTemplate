@@ -11,6 +11,7 @@ Server state is the data that the API returns. TanStack Query owns it. It caches
 5. Call the generated client in a hand-written hook in `domain/[area]/apis/`. Do not write an API function or a DTO type by hand. Kubb generates them. See [frontend.md](../frontend.md#api-contract).
 6. After a mutation, invalidate each query that the mutation changes.
 7. Show the loading state and the error state of each query.
+8. Show what the Server allows. Do not copy a state machine, a permission check, or a business limit. To show a button for an action, read `allowedActions` or a flag of the DTO. If the DTO does not have the answer, add it on the Server (rule 11 of [dtos-and-mappings.md](../backend/dtos-and-mappings.md)). `domain/users/components/user-actions.tsx` shows a button for each allowed action of a user.
 
 ## Key factory
 
@@ -113,4 +114,10 @@ const [user, setUser] = useState(data)
 useEffect(() => {
   getUser({ path: { id: userId } }).then(setUser)
 }, [userId])
+
+// Wrong: copies the permission rule of the Server
+const canDelete = me.permissions.includes('manage_users')
+
+// Right: reads the answer of the Server
+const canDelete = user.allowedActions.includes('Delete')
 ```

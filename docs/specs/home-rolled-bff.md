@@ -92,7 +92,7 @@ The browser sees exactly these endpoints, headers, claims, and status codes. Eac
 | `/local-api/hello` | GET | yes | The sample local API. |
 | `/api/{**catch-all}` | any | yes | The proxy to `<server>/api/...`. `/api` itself also matches. Route matching is case-insensitive. |
 | `/health`, `/alive` | GET | no | The service-defaults health checks. |
-| `/` and the SPA fallback | GET | no | A redirect to the Vite URL in development. The SPA from `wwwroot` otherwise. |
+| `/` and the SPA fallback | GET, HEAD | no | A redirect to the Vite URL in development. The SPA from `wwwroot` otherwise. Only for a request that no endpoint matches, so a wrong method on an endpoint gets its 405. |
 
 These paths go away on purpose ([Duende BFF features to drop](https://github.com/pdevito3/FullstackTemplate/issues/22)): `/bff/silent-login`, `/bff/silent-login-callback`, `/bff/diagnostics`, and the front-channel `/signout-oidc`. A request to one of these paths gets the SPA fallback or a 404, like any unknown path.
 
@@ -473,7 +473,7 @@ Each startup warning of section 3.3 is one structured log with the feature name.
 9. The `X-CSRF` middleware
 10. `UseAuthorization`
 11. The endpoints: `/bff/*`, `/local-api/hello`, the `/api` forwarder, and the health checks
-12. With a Vite URL, the dev fallback, which sends a GET that no endpoint matches to the same path and query on Vite. Without a Vite URL, the SPA fallback to `index.html`, except for a path under `/bff`, which keeps its 404.
+12. The SPA fallback, for a GET or HEAD that no endpoint matches. With a Vite URL, it sends the request to the same path and query on Vite. Without a Vite URL, it serves `index.html`, except for a path with a file extension. In both cases, a path that starts with `/api`, `/bff`, or an OIDC callback path, and a path under `/health` or `/alive`, keep their 404.
 
 There is no startup filter. Each step is visible in `Program.cs`.
 

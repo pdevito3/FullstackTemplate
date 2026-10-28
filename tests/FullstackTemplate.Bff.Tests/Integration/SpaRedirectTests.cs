@@ -58,14 +58,22 @@ public class SpaRedirectTests
     [Arguments("/bffx")]
     [Arguments("/api%2Fx")]
     [Arguments("/signin-oidcx")]
-    public async Task an_unknown_path_that_vite_proxies_to_the_bff_keeps_its_404(string path)
+    [Arguments("/bff%2Fx")]
+    [Arguments("/BFF%2fuser")]
+    public async Task an_unknown_path_that_vite_proxies_to_the_bff_keeps_its_404_on_a_dev_or_published_bff(string path)
     {
-        using var browser = BffApp.Instance.CreateBrowser();
+        await using var published = StartPublished();
 
-        var response = await browser.GetAsync(path);
+        foreach (var app in new[] { BffApp.Instance, published })
+        {
+            using var browser = app.CreateBrowser();
 
-        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        response.Headers.Location.ShouldBeNull();
+            var response = await browser.GetAsync(path);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            response.Headers.Location.ShouldBeNull();
+            (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
+        }
     }
 
     [Test]
@@ -175,6 +183,71 @@ public class SpaRedirectTests
             response.Headers.Contains("Access-Control-Allow-Origin").ShouldBeFalse();
             response.Headers.Contains("Access-Control-Allow-Credentials").ShouldBeFalse();
         }
+    }
+
+    [Test]
+    [Arguments("POST", "/bff/user", "GET")]
+    [Arguments("PUT", "/bff/user", "GET")]
+    [Arguments("GET", "/bff/backchannel", "POST")]
+    [Arguments("POST", "/bff/logout", "GET")]
+    public async Task a_wrong_method_on_a_bff_endpoint_gets_405_on_a_dev_or_published_bff(string method, string path, string allow)
+    {
+        await using var published = StartPublished();
+
+        foreach (var app in new[] { BffApp.Instance, published })
+        {
+            using var browser = app.CreateBrowser();
+            var request = new HttpRequestMessage(new HttpMethod(method), path);
+            request.Headers.Add("X-CSRF", "1");
+
+            var response = await browser.SendAsync(request);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.MethodNotAllowed);
+            response.Content.Headers.Allow.ShouldBe([allow]);
+        }
+    }
+
+    [Test]
+    [Arguments("/")]
+    [Arguments("/about?tab=team&x=1")]
+    public async Task a_head_of_a_page_redirects_as_a_get_does(string path)
+    {
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        var get = await browser.GetAsync(path);
+        var head = await browser.SendAsync(new HttpRequestMessage(HttpMethod.Head, path));
+
+        head.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        head.Headers.Location.ShouldBe(get.Headers.Location);
+    }
+
+    [Test]
+    public async Task a_published_bff_answers_a_head_of_a_page_as_a_get()
+    {
+        await using var published = StartPublished();
+        using var browser = published.CreateBrowser();
+
+        var response = await browser.SendAsync(new HttpRequestMessage(HttpMethod.Head, "/about?tab=team&x=1"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("text/html");
+        response.Content.Headers.ContentLength.ShouldBe(IndexHtml.Length);
+    }
+
+    [Test]
+    [Arguments("GET", "/assets/missing.js")]
+    [Arguments("GET", "/about/logo.png")]
+    [Arguments("POST", "/about")]
+    [Arguments("DELETE", "/")]
+    public async Task a_published_bff_keeps_the_404_of_a_missing_file_or_a_page_that_is_not_a_get(string method, string path)
+    {
+        await using var published = StartPublished();
+        using var browser = published.CreateBrowser();
+
+        var response = await browser.SendAsync(new HttpRequestMessage(new HttpMethod(method), path));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
     }
 
     /// <summary>

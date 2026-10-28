@@ -92,7 +92,7 @@ public sealed class RootLock
         }
         catch (Exception exception)
         {
-            // The pool does not reset a connection that it gets back, so the lock would stay on the idle connection.
+            // The pool frees the session locks only when the next request uses the connection, so the lock would stay until then.
             Logger.Here().Warning(exception, "Could not free the {LockMode} lock of {LockArea}, so the session ends",
                 mode.Name, _area);
             try

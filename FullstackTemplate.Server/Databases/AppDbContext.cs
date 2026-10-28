@@ -7,11 +7,13 @@ using Domain.Agents;
 using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
+using EntityConfigurations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Resources;
 using Services;
@@ -169,8 +171,39 @@ public class AppDbContext(
         var auditEntries = PrepareWrite(await callerIdentityResolver.GetAsync(cancellationToken));
         try
         {
+            if (auditEntries.Count == 0)
+                return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+
+            var written = ChangeTracker.Entries()
+                .Where(e => e.State is not (EntityState.Unchanged or EntityState.Detached))
+                .ToList();
+            var (occurredAt, recordId) = (auditEntries[0].OccurredAt, auditEntries[0].RecordId);
             // The audit entries are in the tracker before the execution strategy runs, so a retry sends the same rows.
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken) - auditEntries.Count;
+            return await Database.CreateExecutionStrategy().ExecuteAsync(
+                acceptAllChangesOnSuccess,
+                (_, accept, ct) => base.SaveChangesAsync(accept, ct),
+                // After a lost reply of the commit, the audit entries tell whether it committed. EF dropped the Version
+                // that the failed try read back. Each row that one transaction writes has the same xmin, so the xmin of
+                // an entry gives it.
+                async (_, accept, ct) =>
+                {
+                    var version = await AuditEntries
+                        .TagWithOperationCallSite("audit_entries.save_committed")
+                        .IgnoreQueryFilters([QueryFilterNames.Tenant])
+                        .Where(e => e.OccurredAt == occurredAt && e.RecordId == recordId)
+                        .Select(e => (uint?)EF.Property<uint>(e, AuditEntryConfiguration.TransactionId))
+                        .FirstOrDefaultAsync(ct);
+                    if (version is null)
+                        return new ExecutionResult<int>(false, 0);
+
+                    Telemetry.AddEvent([], "database.save.lost_reply_committed");
+                    foreach (var entry in written.Where(e => e.Entity is BaseEntity))
+                        entry.Property(nameof(BaseEntity.Version)).CurrentValue = version.Value;
+                    if (accept)
+                        ChangeTracker.AcceptAllChanges();
+                    return new ExecutionResult<int>(true, written.Count);
+                },
+                cancellationToken) - auditEntries.Count;
         }
         catch (DbUpdateException exception) when (DatabaseConflict.From(exception) is { } conflict)
         {

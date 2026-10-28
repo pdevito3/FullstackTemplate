@@ -4,7 +4,7 @@ The audit log records each data change and each action that a handler records. `
 
 ## What a save records
 
-A save adds one audit entry for each entity that it adds, changes, or deletes, and one entry for each recorded action. All entries of one save have the same record id.
+A save adds one audit entry for each entity that it adds, changes, or deletes, and one entry for each recorded action. All entries of one save have the same record id. After a lost acknowledgment of the commit, the save looks for this record id in `audit_entries`. If the entries are there, the save committed, and it returns success (see [Concurrency](../backend.md#concurrency)).
 
 | Kind | The save | `data` holds |
 |------|----------|--------------|
@@ -68,7 +68,7 @@ await dbContext.SaveChangesAsync(cancellationToken);
 - It sets `LastModifiedOn` and writes a `Created` entry for each row, the children of the roots too.
 - It writes the recorded actions of the context.
 - It writes all rows in one transaction, and it raises the save events of EF, so each `SaveChangesInterceptor` runs. Thus `TenantLookupInterceptor` forgets a cached miss of each new user.
-- After a lost acknowledgment of the commit, it looks for its record id in `audit_entries`. If the rows are there, it returns success.
+- After a lost acknowledgment of the commit, it looks for its record id in `audit_entries`, as a save does. If the rows are there, it returns success.
 - After it, the entities are tracked and `Unchanged`, with their `Version`. A later save can change them.
 - It returns the number of entity rows that it wrote, the children too.
 
@@ -124,9 +124,9 @@ The cursor text is `{occurred_at in microseconds since 1970}_{record_id}_{ordina
 
 - The unit tests check the model rules (`AuditModelTests`), the marks (`AuditSensitivityTests`), the diff (`AuditDiffTests`), the stored format (`AuditValuesTests`), the redaction (`AuditRedactionTests`), and the guard (`WriteGuardTests`).
 - To test the entries of a feature, send its command, then read `AuditEntries` with `ReadAsync` in an integration test. `AuditCaptureTests` and `AuditActionTests` are the examples.
-- `BulkInsertTests` proves the bulk insert against Postgres, also a lost commit and a conflict.
+- `BulkInsertTests` proves the bulk insert against Postgres, also a lost commit and a conflict. `LostCommitReplyTests` proves a save after a lost commit.
 - `GetAuditEntryPageTests` proves the endpoint and the redaction for each permission.
 
 ## Telemetry
 
-The read tags its feature span with `app.audit.entity_id` and `app.audit.reads_sensitive`. A bulk insert has a `database.bulk_insert` span with `app.bulk_insert.entity_type` and `app.bulk_insert.row_count`. Npgsql adds a span for each COPY. See [feature-telemetry.md](feature-telemetry.md).
+The read tags its feature span with `app.audit.entity_id` and `app.audit.reads_sensitive`. A bulk insert has a `database.bulk_insert` span with `app.bulk_insert.entity_type` and `app.bulk_insert.row_count`. Npgsql adds a span for each COPY. A save that finds its audit entries after a lost acknowledgment of the commit adds the span event `database.save.lost_reply_committed`. See [feature-telemetry.md](feature-telemetry.md).

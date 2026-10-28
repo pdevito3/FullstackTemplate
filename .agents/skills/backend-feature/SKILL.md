@@ -362,6 +362,7 @@ Add a GetOrdersByCustomer query that returns orders for a specific customer
 ### Domain Entity Design
 - Use private setters for all properties
 - Create static factory method `Create()` for entity creation
+- Make the ID of a new entity before the save, as `BaseEntity` does. Do not use a key that the database makes. The audit entries of the save need the ID, and after a lost reply of the commit the save finds them, so it does not add a second row
 - Use `Update()` method for modifications. Its first line is `GuardVersion(forUpdate.Version)`, so that a stale edit form gives 409
 - Implement guard methods for business rules
 - Use value objects for complex domain concepts

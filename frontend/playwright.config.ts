@@ -31,7 +31,8 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // A flaky test is a fault to correct, not a fault to hide.
   retries: 0,
-  workers: process.env.CI ? 1 : undefined,
+  // On CI, a worker for each core of the runner: each test runs in three zones. On a dev machine, half the cores.
+  workers: process.env.CI ? '100%' : undefined,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL,

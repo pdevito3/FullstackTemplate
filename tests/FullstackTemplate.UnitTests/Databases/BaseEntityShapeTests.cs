@@ -100,7 +100,7 @@ public class BaseEntityShapeTests
 
         // Act
         // The save runs on the pool, so the time limit can end a walk of the owners that never ends. The limit is on
-        // the save only: Add builds the model first, and a cold build of the model can take seconds under load.
+        // the save only, because a cold build of the model in Add can take seconds under load.
         var act = () => Task.Run(() => context.SaveChangesAsync()).WaitAsync(TimeSpan.FromSeconds(10));
 
         // Assert

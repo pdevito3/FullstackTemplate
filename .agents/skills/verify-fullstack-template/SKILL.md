@@ -139,6 +139,7 @@ Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the
 | `trace.zip` | The Playwright trace. Open it with `pnpm --dir frontend exec playwright show-trace <path>`. |
 | `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. |
 | `NN-failure.png` | A capture of the page at the time of the failure. A failed step makes the capture before the cleanup of the recipe runs. A failure outside a step gets its capture after the recipe ends. |
+| `sweep.md`, `sweep.json`, `sweep-NN.png` | With `--sweep` only. Each layout and focus fault, the captures and configs where it showed, and a screenshot with a red outline on the element. See [Sweep](#sweep). |
 
 `artifacts/` is in `.gitignore`. The evidence stays after cleanup.
 
@@ -149,8 +150,35 @@ Proof standards:
 - Prove side effects next to the visible result. Examples: the HTTP status and the JSON of the API response, the `__Host-bff` cookie, the `ui-theme` value in `localStorage`.
 - Compare the screen with the data. For example, each weather card must show the `summary` and the temperature of the API row, not only "5 cards".
 - Read `console.log` and `network.log` after each run. These lines are normal: the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
-- Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
+- Run the sweep on each recipe that your change touches. Then look at the screenshots with [ui-review.md](ui-review.md). Report each fault, even if it is not part of your change.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
+
+## Sweep
+
+The sweep finds the layout and focus faults that a 1280x800 screenshot does not show. Run it on each recipe that your change touches, or on all recipes:
+
+```bash
+$S/scripts/sweep.sh                          # each recipe in recipes/
+$S/scripts/sweep.sh $S/recipes/<recipe>.mjs  # one recipe
+```
+
+`sweep.sh` runs each recipe two times: with `--sweep`, and with `--sweep --no-web-font`. The second run blocks the font files, so the page shows the fallback font, as before the web font loads. It prints `sweep: PASSED` or `sweep: FAILED`. A fault fails the run. To run the sweep on one run of a recipe, give `--sweep` to `browse.mjs`.
+
+With `--sweep`, `browse.mjs` does these things:
+
+- It gives long values to the text that the server sends. Each `name`, `title`, `summary`, `description`, `label`, and email field of an `/api/` answer and of the `/bff/user` claims becomes a 100-character name with no spaces, or a long email address with a hyphen. A value that came once gets the same long value each time, so that a recipe that compares the screen with the API still passes.
+- At each full-page `capture()`, it measures the page at 320, 390, and 1280 px wide, in the light and the dark theme, and with a 24 px default font at 390 and 1280 px. Then it puts the page back to 1280x800 and to the scroll position of the recipe.
+- At the end of each `step()`, it checks the focus.
+
+The checks:
+
+| Fault | What the sweep finds |
+|---|---|
+| Page scrolls sideways | The page is wider than the window. The report names the outermost elements that go past the right edge. |
+| Text is cut | Text that is wider or taller than its box, which hides the overflow, with no ellipsis. Text that runs out of a parent that hides the overflow. Text that ends with an ellipsis, with no button or link that shows the full value. Text in a scroll container is not cut. Text that is all outside its clip is hidden on purpose, for example the label of a collapsed sidebar item. |
+| Focus goes to the body | The focus is on the body, and the element that had it last was removed, disabled, hidden, or made inert. |
+
+The sweep checks the focus only at the end of each step. Make a step for each action that can move the focus.
 
 ## Cleanup
 

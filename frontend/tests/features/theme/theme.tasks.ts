@@ -26,6 +26,10 @@ export function themePage(page: Page) {
       await page.reload()
     },
 
+    async storeTheme(value: string) {
+      await page.evaluate((stored) => localStorage.setItem('ui-theme', stored), value)
+    },
+
     async themeClass() {
       return page.evaluate(() => document.documentElement.className)
     },

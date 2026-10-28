@@ -63,4 +63,16 @@ test.describe('the theme of the first paint', () => {
 
     expect(await theme.themeClass()).toBe('dark')
   })
+
+  test('keeps the class of the OS when the stored theme is not a known value', async ({ page }) => {
+    const theme = themePage(page)
+    await theme.useOsScheme('dark')
+    await theme.open()
+    await theme.storeTheme('blue')
+
+    await page.reload()
+
+    await expect(theme.at.heading).toBeVisible()
+    expect(await theme.themeClass()).toBe('dark')
+  })
 })

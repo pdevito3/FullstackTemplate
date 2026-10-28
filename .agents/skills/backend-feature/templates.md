@@ -441,7 +441,7 @@ public static class Delete[EntityName]
 }
 ```
 
-If a record of another domain holds the ID of the entity and must change with the delete (rule 11 of `docs/backend/domain-events.md`), add a `Delete()` method to the entity that queues `[EntityName]Deleted`, and call `dbContext.[EntityName]s.Remove(entity.Delete())`. Also run the delete in `RunExclusiveAsync` of a `RootLock` for the entity, and run each link add in `RunSharedAsync`, as rule 11 says.
+If a record of another domain holds the ID of the entity and must change with the delete (rule 11 of `docs/backend/domain-events.md`), add a `Delete()` method to the entity that queues `[EntityName]Deleted`, and call `dbContext.[EntityName]s.Remove(entity.Delete())`. Also run the delete in `RunExclusiveAsync` of a `RootLock`, and run each link add in `RunSharedAsync`, as rule 11 says. When the delete of a parent root also deletes the entity under the lock of that root, use the lock of the parent. For a user, this is `RootLock.Tenant` of the tenant of the user.
 
 **File:** `Domain/[EntityName]s/Features/Get[EntityName]/Get[EntityName].cs`
 

@@ -49,7 +49,7 @@ public static class DeleteTenant
                 foreach (var user in users)
                 {
                     dbContext.UserPermissions.RemoveRange(user.UserPermissions);
-                    dbContext.Users.Remove(user);
+                    dbContext.Users.Remove(user.Delete());
                 }
 
                 dbContext.Tenants.Remove(tenant);

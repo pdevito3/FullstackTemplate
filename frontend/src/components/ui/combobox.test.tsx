@@ -243,6 +243,19 @@ test('Control+Enter passes to the parent and picks nothing', async () => {
   expect(onChange).not.toHaveBeenCalled()
 })
 
+test('the Enter that ends an IME composition in Safari picks nothing', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+
+  await input.click()
+  await userEvent.keyboard('vue')
+  // Safari sends this Enter with isComposing false and keyCode 229.
+  input.element().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true }))
+
+  expect(onChange).not.toHaveBeenCalled()
+})
+
 test('Enter in a read-only Combobox picks nothing', async () => {
   const onChange = vi.fn()
   const screen = await render(

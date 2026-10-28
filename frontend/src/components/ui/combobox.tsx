@@ -151,6 +151,8 @@ function usePickTypedOptionOnEnter() {
       e.shiftKey ||
       e.repeat ||
       e.nativeEvent.isComposing ||
+      // Safari ends an IME composition with an Enter that has isComposing false and keyCode 229.
+      e.keyCode === 229 ||
       allowsCustomValue ||
       isReadOnly ||
       state.selectionManager.selectionMode !== "single" ||

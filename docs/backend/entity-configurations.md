@@ -139,9 +139,20 @@ The duplicate check of the handler must count the same rows as the index. For a 
 
 Give each unique index its request field and its message with `ForRequestField`, as in the example above. Use the message constant of the entity that the duplicate check of the handler also uses. A duplicate then gives a 409 on that field with the message of the duplicate check. You change only the entity configuration. The shared code in `Databases/` does not import the domain folders for this.
 
-`ForRequestField` sets an annotation on the index. The `MapConstraintErrors` convention of `AppDbContext` moves it to a runtime annotation of the model, and `DatabaseConflict` reads it from there. A runtime annotation is not in the design-time model, so `ForRequestField` does not change the model snapshot and needs no migration.
+Some unique indexes stop a save only when another user changed the record after the caller loaded it. For example, an index that permits one current revision for each document stops the second of two users who each save a new current revision. Give such an index `ForStaleVersion` in place of `ForRequestField`:
 
-`ConstraintErrorsTests` reads the unique indexes and the exclusion constraints of the database. It fails on a constraint that has no request field. This includes an index that only a migration adds.
+```csharp
+builder.HasIndex(e => e.DocumentId)
+    .IsUnique()
+    .HasFilter("is_current")
+    .ForStaleVersion();
+```
+
+A save that the index stops then gives the stale-version 409, the same response as an old version, so the screen offers a reload (see [concurrency.md](concurrency.md#versions)). Use `ForStaleVersion` only when the user can fix the conflict with a reload. When the user must change a value, use `ForRequestField`.
+
+`ForRequestField` and `ForStaleVersion` each set an annotation on the index. The `MapConstraintErrors` convention of `AppDbContext` moves it to a runtime annotation of the model, and `DatabaseConflict` reads it from there. A runtime annotation is not in the design-time model, so neither method changes the model snapshot or needs a migration. The model build fails when an index that is not unique has one of the two, or when an index has both.
+
+`ConstraintErrorsTests` reads the unique indexes and the exclusion constraints of the database. It fails on a constraint that has neither a request field nor a stale version. This includes an index that only a migration adds.
 
 ### Index a column of a value object
 
@@ -169,7 +180,7 @@ EF Core 10 cannot put an index on a property of a complex type. `HasIndex(e => e
    }
    ```
 
-3. The model does not have the index, so `ForRequestField` cannot name it. Add the index to the `NotInModel` dictionary in `Databases/ConstraintErrors.cs`, for example `["ix_users_email"] = new("email", User.EmailInUseMessage)`.
+3. The model does not have the index, so `ForRequestField` cannot name it. Add the index to the `NotInModel` dictionary in `Databases/ConstraintErrors.cs`, for example `["ix_users_email"] = new ConstraintError.RequestField("email", User.EmailInUseMessage)`. For a stale-version index, use `new ConstraintError.StaleVersion()`.
 
 The model and the model snapshot do not have the index. Thus a later migration does not drop it, and `dotnet ef migrations has-pending-model-changes` finds no change. A save that the index stops gives a 409 on the field, the same as for an index in the model.
 
@@ -186,4 +197,4 @@ migrationBuilder.Sql("""
     """);
 ```
 
-The model does not have the constraint. Give the constraint its request field and its message in the `NotInModel` dictionary in `Databases/ConstraintErrors.cs`, for example `["ex_appointments_provider_time"] = new("startsAt", Appointment.TimeTakenMessage)`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field with that message, the same as a unique index.
+The model does not have the constraint. Give the constraint its request field and its message in the `NotInModel` dictionary in `Databases/ConstraintErrors.cs`, for example `["ex_appointments_provider_time"] = new ConstraintError.RequestField("startsAt", Appointment.TimeTakenMessage)`. A save that the constraint stops (Postgres `23P01`) then gives a 409 on that field with that message, the same as a unique index.

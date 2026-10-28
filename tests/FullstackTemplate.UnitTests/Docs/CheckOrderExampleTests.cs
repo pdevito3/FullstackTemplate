@@ -139,8 +139,8 @@ public class CheckOrderExampleTests
         var sampleInClass = string.Join('\n', sample.Split('\n').Select(line => line.Length == 0 ? line : "    " + line));
 
         // Assert
-        sample.ShouldStartWith("public Visit Reschedule");
-        source.ShouldContain(sampleInClass);
+        sample.ShouldStartWith("public Visit Reschedule", Case.Sensitive);
+        source.ShouldContain(sampleInClass, Case.Sensitive);
     }
 
     private static string FindRepositoryRoot()

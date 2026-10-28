@@ -24,7 +24,7 @@ Run all frontend commands in `frontend/`.
 
 `pnpm test:e2e` (functional):
 
-- Run it after each change in `frontend/src`. It needs no stack and takes about 10 seconds.
+- Run it after each change in `frontend/src`. It needs no stack. It runs each test in three zones, and it takes about a minute.
 - CI runs it on each pull request, in the `api-contract` job.
 - It mocks the BFF. Thus it cannot find a fault in the BFF, the Server, or the IdP.
 
@@ -59,6 +59,8 @@ Read `docs/frontend/testing.md` before you write one. Then do these steps:
 
 Obey these rules:
 
+- Each functional test runs in three zones: `UTC`, `Pacific/Kiritimati` (UTC+14), and `Pacific/Pago_Pago` (UTC-11). A test of a page with no place sets its clock with `instantIn(wallClock, browserZone())` from `@tests/support/clock`.
+- A time of a place shows and reads in the zone of the place (`docs/frontend/code-style.md`, section "Dates and times"). Test it with a place in a zone far from the browser, at an instant at which the date of the place is not the browser date or the UTC date. See "Time zones" in `docs/frontend/testing.md`. The test `a date filter of a place in another zone` in `filter-demo.spec.ts` checks this rule for the date filter, and `date-filter.test.tsx` and `calendar.test.tsx` check it for the controls.
 - Import `test` and `expect` from `@tests/support/fixtures`.
 - Use a role and a name for a selector. If the element has no role or name, give it one in the app.
 - Do not use `page.waitForTimeout`, `test.only`, or retries.
@@ -76,6 +78,7 @@ Obey these rules:
 - A unit test is `*.test.ts` beside the code. It runs in Node, and Vitest also type-checks it.
 - A component test is `*.test.tsx` beside the component. It runs in Chromium with Vitest browser mode. Render with `render` from `vitest-browser-react`. To hold a request, use `commands.holdRequests` from `vitest/browser`.
 - A test that needs today sets the time with `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime`, as `calendar.test.tsx` does. Make the time from local parts, for example `new Date(2026, 7, 15, 12)`, so that its date is the same in each time zone of the machine. Do not take today from the UTC date, such as `new Date().toISOString().slice(0, 10)`. From 00:00 UTC to local midnight in the Americas, the UTC date is one day after the local date.
+- The unit tests run in `Pacific/Pago_Pago` and the component tests in `Pacific/Kiritimati`. See "Time zones" in `docs/frontend/testing.md`.
 - See `docs/frontend.md`, section "Commands".
 
 ## Finish

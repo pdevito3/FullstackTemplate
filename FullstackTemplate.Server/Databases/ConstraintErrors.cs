@@ -55,7 +55,13 @@ public static class ConstraintErrors
         {
             var errors = new Dictionary<string, ConstraintError>(NotInModel);
             foreach (var (index, error) in _indexes)
-                errors.Add(index.GetDatabaseName()!, error);
+            {
+                var name = index.GetDatabaseName() ?? throw new InvalidOperationException(
+                    $"The index {index.DisplayName()} of {index.DeclaringEntityType.DisplayName()} has a request field, but it is not on a table.");
+                if (!errors.TryAdd(name, error))
+                    throw new InvalidOperationException(
+                        $"The index {name} has a request field from ForRequestField and an entry in NotInModel. Remove the entry.");
+            }
 
             model.SetRuntimeAnnotation(ModelAnnotation, errors);
             return model;

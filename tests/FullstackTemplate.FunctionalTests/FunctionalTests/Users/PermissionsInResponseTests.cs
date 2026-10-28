@@ -19,8 +19,8 @@ using TestUtilities;
 
 /// <summary>
 /// A handler that loads a user or an agent without its permissions maps an empty list, and the response tells the
-/// caller that the owner has no permissions (issue 99). Each request whose response has a user or an agent has a case
-/// here, and the case compares the permissions of the response with the rows in the database.
+/// caller that the owner has no permissions (issue 99). Each request whose response has a type with a Permissions
+/// property has a case here, and the case compares the permissions of the response with the rows in the database.
 /// </summary>
 public class PermissionsInResponseTests : TestBase
 {
@@ -140,36 +140,39 @@ public class PermissionsInResponseTests : TestBase
     }
 
     [Test]
-    public void each_request_that_returns_a_user_or_an_agent_has_a_case()
+    public void each_request_whose_response_has_permissions_has_a_case()
     {
         // Arrange
         var requests = typeof(UserDto).Assembly.GetTypes()
             .Where(t => t is { IsAbstract: false, IsInterface: false })
-            .Where(t => ResponseTypesOf(t).Any(r => HasUserOrAgent(r, [])))
+            .Where(t => ResponseTypesOf(t).Any(r => HasPermissions(r, [])))
             .Select(Name);
 
         // Assert
         Cases.Keys.ShouldBe(requests, ignoreOrder: true,
-            "Each request whose response has a UserDto or an AgentDto needs a case in Cases.");
+            "Each request whose response has a Server type with a Permissions property needs a case in Cases.");
     }
 
     private static IEnumerable<Type> ResponseTypesOf(Type request)
         => request.GetInterfaces()
-            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>))
+            .Where(i => i.IsGenericType
+                        && (i.GetGenericTypeDefinition() == typeof(IRequest<>)
+                            || i.GetGenericTypeDefinition() == typeof(IStreamRequest<>)))
             .Select(i => i.GetGenericArguments()[0]);
 
-    private static bool HasUserOrAgent(Type type, HashSet<Type> seen)
+    private static bool HasPermissions(Type type, HashSet<Type> seen)
     {
-        if (type == typeof(UserDto) || type == typeof(AgentDto))
-            return true;
         if (!seen.Add(type))
             return false;
         if (type.HasElementType)
-            return HasUserOrAgent(type.GetElementType()!, seen);
-        if (type.IsGenericType && type.GetGenericArguments().Any(t => HasUserOrAgent(t, seen)))
+            return HasPermissions(type.GetElementType()!, seen);
+        if (type.IsGenericType && type.GetGenericArguments().Any(t => HasPermissions(t, seen)))
             return true;
-        return type.Assembly == typeof(UserDto).Assembly
-               && type.GetProperties().Any(p => HasUserOrAgent(p.PropertyType, seen));
+        if (type.Assembly != typeof(UserDto).Assembly)
+            return false;
+        var properties = type.GetProperties();
+        return properties.Any(p => p.Name == nameof(UserDto.Permissions))
+               || properties.Any(p => HasPermissions(p.PropertyType, seen));
     }
 
     private static string Name(Type request) => $"{request.DeclaringType?.Name}.{request.Name}";

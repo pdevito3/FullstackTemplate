@@ -54,6 +54,9 @@ jobs:
     timeout-minutes: 60
     env:
       AuthProvider: Conformance
+      # The runner has Docker and Podman. With no setting, Aspire probes both and can pick Podman when the Docker probe
+      # is slow (#281). So pick Docker, the runtime of the Docker Compose suite.
+      ASPIRE_CONTAINER_RUNTIME: docker
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:

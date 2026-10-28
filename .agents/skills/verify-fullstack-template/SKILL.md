@@ -149,7 +149,7 @@ Each row that the restore did not touch keeps its `xmin`, which is the `version`
 
 If a run stops before the restore (Ctrl-C, a killed process, a restore that failed), `db-snapshot.json` stays. The next `browse.mjs` run restores it first and prints `data: an earlier run did not restore the database`. The doctor prints a `warn` line while the file is there. If that restore also fails, for example after a migration changed a table, `browse.mjs` stops. Delete `db-snapshot.json` to keep the rows as they are, or launch a new stack.
 
-The restore changes only rows. The server keeps a cache of the tenant of each user for up to 30 minutes. A recipe that changes the tenant of a user or deletes a user can leave the old answer in that cache, so the next run can see it. Run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` after such a recipe.
+The restore changes only rows. The server keeps a cache of the tenant of each user for up to 30 minutes. A recipe that adds, deletes, or moves a user, or changes a tenant, can leave the old answer in that cache, so the next run can see it. Run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` after such a recipe.
 
 Only one recipe runs on a stack at a time. A restore would delete the rows of a second run. Do not drive the stack with the Playwright MCP server while a recipe runs, for the same reason. `browse.mjs` holds `recipe.lock` in the run directory, and a second run stops with `browse: the recipe run with pid <pid> drives this stack`.
 

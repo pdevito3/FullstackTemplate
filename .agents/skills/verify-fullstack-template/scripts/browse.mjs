@@ -21,7 +21,7 @@
 //   trace.zip      the Playwright trace (open with: pnpm --dir frontend exec playwright show-trace <path>)
 //   result.json    passed or failed, with the error, the page errors, and the rows that the restore put back
 import { execSync } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -55,16 +55,22 @@ const isAlive = (pid) => {
     return e.code === 'EPERM'
   }
 }
+// The link makes the lock with its pid in one step, so that another run never reads an empty lock.
+const lockTemp = `${lockFile}.${process.pid}`
+writeFileSync(lockTemp, String(process.pid))
 try {
-  writeFileSync(lockFile, String(process.pid), { flag: 'wx' })
+  linkSync(lockTemp, lockFile)
 } catch (e) {
   if (e.code !== 'EEXIST') throw e
   const owner = Number(readFileSync(lockFile, 'utf8'))
   if (owner > 0 && isAlive(owner)) {
     console.error(`browse: the recipe run with pid ${owner} drives this stack. Run one recipe at a time, because a restore deletes the rows of a run that writes at the same time.`)
+    rmSync(lockTemp)
     process.exit(2)
   }
   writeFileSync(lockFile, String(process.pid))
+} finally {
+  rmSync(lockTemp)
 }
 process.on('exit', () => {
   if (existsSync(lockFile) && readFileSync(lockFile, 'utf8') === String(process.pid)) rmSync(lockFile)

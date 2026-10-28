@@ -56,8 +56,16 @@ function DateRange({ initialRange }: { initialRange: RangeValue<DateValue> }) {
 
 const august2026 = { start: new CalendarDate(2026, 8, 1), end: new CalendarDate(2026, 8, 31) }
 
+// In a range pick, React Aria moves the focus to the day under the pointer. The pointer stays where an earlier
+// test left it, and Chrome sends a pointerenter to the day that renders under it at a time that depends on the load.
+// So a keyboard test of the grid moves the pointer off the grid first.
+function movePointerOffGrid() {
+  return userEvent.hover(page.getByRole('status', { name: 'Range' }))
+}
+
 test('range calendar: Enter on the start day keeps the focus on that day', async () => {
   const screen = await render(<DateRange initialRange={august2026} />)
+  await movePointerOffGrid()
   screen.getByRole('button', { name: /August 15, 2026/ }).element().focus()
 
   await userEvent.keyboard('{Enter}')
@@ -72,6 +80,7 @@ test('range calendar: Enter on the start day keeps the focus on that day', async
 
 test('range calendar: Enter on the end day in the next month keeps the focus and the month of that day', async () => {
   const screen = await render(<DateRange initialRange={august2026} />)
+  await movePointerOffGrid()
   screen.getByRole('button', { name: /August 15, 2026/ }).element().focus()
 
   await userEvent.keyboard('{Enter}{ArrowDown}{ArrowDown}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{Enter}')

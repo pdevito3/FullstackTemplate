@@ -464,3 +464,62 @@ test.each([
   await expect.element(input).toHaveValue('Vue')
   expect(onChange.mock.calls).toEqual([['vue']])
 })
+
+test('a press on the button, a drag, and a release on an option picks nothing', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await commands.movePointerOnto('button', 'Show suggestions Framework')
+  await commands.pressPointer()
+  await commands.movePointerOnto('option', 'Vue Router')
+
+  await commands.releasePointer()
+
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  await expect.element(input).toHaveValue('')
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+/**
+ * The names of the options whose row has a fill on the screen. A moving highlight paints the active option,
+ * so the test reads the pixels: the left edge of each row against the padding of the list.
+ */
+async function optionsWithFill() {
+  const list = page.getByRole('listbox')
+  const image = await createImageBitmap(
+    await (await fetch(`data:image/png;base64,${await list.screenshot({ save: false })}`)).blob(),
+  )
+  const canvas = new OffscreenCanvas(image.width, image.height)
+  const context = canvas.getContext('2d')!
+  context.drawImage(image, 0, 0)
+  const listBox = list.element().getBoundingClientRect()
+  const scale = image.width / listBox.width
+  const pixel = (x: number, y: number) =>
+    context.getImageData(Math.round((x - listBox.left) * scale), Math.round((y - listBox.top) * scale), 1, 1).data.join()
+  const empty = pixel(listBox.left + listBox.width / 2, listBox.top + 2)
+  return [...list.element().querySelectorAll('[role=option]')]
+    .filter((option) => {
+      const row = option.getBoundingClientRect()
+      return pixel(row.left + 3, row.top + row.height / 2) !== empty
+    })
+    .map((option) => option.textContent)
+}
+
+test('the option under the pointer has no fill while the arrow keys make another option active', async () => {
+  // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.
+  const screen = await render(
+    <div style={{ padding: 12 }}>
+      <FrameworkCombobox />
+    </div>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await input.fill('Vu')
+  await commands.movePointerOnto('option', 'Vue Router')
+  await expect.poll(optionsWithFill).toEqual(['Vue Router'])
+
+  await userEvent.keyboard('{ArrowDown}')
+
+  await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
+  await expect.poll(optionsWithFill).toEqual(['Vue'])
+})

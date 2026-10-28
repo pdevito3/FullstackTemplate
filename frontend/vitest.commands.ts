@@ -65,3 +65,13 @@ export const movePointerOnto: BrowserCommand<[role: Role, name: string]> = async
   }
   throw new Error(`The ${role} "${name}" did not stop moving`)
 }
+
+/** Presses the left mouse button where the mouse is. */
+export const pressPointer: BrowserCommand<[]> = async ({ page }) => {
+  await page.mouse.down()
+}
+
+/** Releases the left mouse button where the mouse is. */
+export const releasePointer: BrowserCommand<[]> = async ({ page }) => {
+  await page.mouse.up()
+}

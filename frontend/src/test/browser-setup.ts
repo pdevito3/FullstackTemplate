@@ -11,5 +11,9 @@ declare module 'vitest/browser' {
     releaseRequests: (path: string) => Promise<void>
     /** Moves the mouse onto the element with `role` and `name` without a scroll of the page. */
     movePointerOnto: (role: string, name: string) => Promise<void>
+    /** Presses the left mouse button where the mouse is. */
+    pressPointer: () => Promise<void>
+    /** Releases the left mouse button where the mouse is. */
+    releasePointer: () => Promise<void>
   }
 }

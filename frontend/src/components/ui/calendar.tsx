@@ -123,14 +123,14 @@ function keepFocusOnRangeStart(state: RangeCalendarState | null) {
 }
 
 // React Aria finds today in state.timeZone, the zone of the browser, for the "Today" name and the data-today attribute
-// of a cell. It also formats whole days in that zone, which gives the same day in each zone. The grid sets the zone of
-// the place in the state, in place, as keepFocusOnRangeStart does.
+// of a cell. It also formats whole days in that zone, which gives the same day in each zone, except on a day that the
+// zone skipped. The grid sets the zone of the place in the state, in place, as keepFocusOnRangeStart does.
 function setZoneOfToday(state: { readonly timeZone: string } | null, timeZone: TimeZone | undefined) {
   if (state && timeZone) Object.assign(state, { timeZone })
 }
 
 interface CalendarGridProps extends AriaCalendarGridProps {
-  /** The zone of the place that the dates belong to. The cells mark today at that place. The default is the browser zone. */
+  /** The zone of the place that the dates belong to. The cells mark today at that place. The default is the zone of a ZonedDateTime value, else the browser zone. */
   timeZone?: TimeZone
 }
 

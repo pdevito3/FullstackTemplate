@@ -479,7 +479,8 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					return "the stored name";
 				case IPropertyReferenceOperation { Property.Name: "Name" or "FullName" } property when IsReflectionType(property.Instance?.Type ?? property.Property.ContainingType):
 					return "the type name";
-				case IInvocationOperation { TargetMethod: { Name: "GetName" or "GetNames", ContainingType.SpecialType: SpecialType.System_Enum } }:
+				case IInvocationOperation { TargetMethod: { Name: "GetName" or "GetNames", ContainingType.SpecialType: SpecialType.System_Enum } } names
+					when EnumOf(names) is not { } type || IsCodeEnum(type):
 					return "the enum value";
 				case { Type: { } type } when ElementOf(type) is { } element && (IsCodeEnum(element) || IsFixedName(element)):
 					return element.TypeKind == TypeKind.Enum ? "the enum value" : "the stored name";
@@ -531,15 +532,15 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			_ => CodeOf(value, depth),
 		};
 
-		// The list of strings that a call copies: the source of a LINQ call such as ToList() or Order(), or the instance of
-		// a collection method such as List<string>.ToArray()
+		// The list of strings that a call copies: the source of a LINQ or a collection extension such as ToList() or
+		// ToImmutableArray(), or the instance of a collection method such as List<string>.ToArray()
 		private static IOperation? SourceOfStrings(IInvocationOperation invocation)
 		{
 			if (!IsStrings(invocation.Type))
 				return null;
 
 			var method = invocation.TargetMethod;
-			var source = method.IsExtensionMethod && IsIn(method.ContainingType, "System.Linq") && invocation.Arguments.Length > 0
+			var source = method.IsExtensionMethod && (IsIn(method.ContainingType, "System.Linq") || IsIn(method.ContainingType, "System.Collections")) && invocation.Arguments.Length > 0
 				? invocation.Arguments[0].Value
 				: !method.IsStatic && IsIn(method.ContainingType, "System.Collections") ? invocation.Instance : null;
 
@@ -592,6 +593,11 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				&& !(IsIn(type, "System")
 					&& !type.Locations.Any(static l => l.IsInSource)
 					&& type.GetMembers().OfType<IFieldSymbol>().Where(static f => f.HasConstantValue).All(static f => PlainWord.IsMatch(f.Name)));
+
+		// The enum of Enum.GetName<T>(value), Enum.GetNames<T>(), or Enum.GetNames(typeof(T))
+		private static ITypeSymbol? EnumOf(IInvocationOperation invocation)
+			=> invocation.TargetMethod.TypeArguments.FirstOrDefault()
+				?? (invocation.Arguments.Length > 0 && Unwrap(invocation.Arguments[0].Value) is ITypeOfOperation typeOf ? typeOf.TypeOperand : null);
 
 		private static bool IsReflectionType(ITypeSymbol? type)
 			=> type?.ToDisplayString() is "System.Type" or "System.Reflection.MemberInfo" or "System.Reflection.TypeInfo";

@@ -4,7 +4,7 @@ These rules apply to each text that a user reads: the `detail` and `errors` of a
 
 ## Rules
 
-1. **Name each thing as the screen names it.** Use the display name of a state, a role, a permission, or a place. Do not show an enum name (`CheckedIn`), a permission code (`manage_users`), a type name (`AuditEntry`), an ID (`ast_01h...`), or a time zone ID (`Asia/Bangkok`). Give the value object or the entity a property with the words, as `Permission.Words` gives "manage users". Write the words out. Words made from the code, such as `Value.Replace("_", " ")`, fail the check. Check: `UserMessageAnalyzer` (below) catches the common forms of a code name, an enum or stored name, a type name, and an ID. It is not complete. It does not catch an IANA ID in a plain string. A field whose input is a code, such as a time zone field that takes an IANA ID, can show the value that the user typed, as `TimeZoneId` does.
+1. **Name each thing as the screen names it.** Use the display name of a state, a role, a permission, or a place. Do not show an enum name (`CheckedIn`), a permission code (`manage_users`), a type name (`AuditEntry`), an ID (`ast_01h...`), or a time zone ID (`Asia/Bangkok`). Give the value object or the entity a property with the words, as `Permission.Words` gives "manage users". Write the words out. Words made from the code, such as `Value.Replace("_", " ")`, fail the check when the message shows them directly. In a `Select` lambda, the check does not catch them. Check: `UserMessageAnalyzer` (below) catches the common forms of a code name, an enum or stored name, a type name, and an ID. It is not complete. It does not catch an IANA ID in a plain string. A field whose input is a code, such as a time zone field that takes an IANA ID, can show the value that the user typed, as `TimeZoneId` does.
 2. **Say who did it only when the Server knows it.** Do not say "another user" when the same user can have made the change, for example in a second tab. Do not tell the loser of a race on a create that "the record changed", because it did not load a record. No check.
 3. **Say what happened, then what the user can do next.** For example "This record changed after you loaded it. Reload it, then make your change again." A message that only says that the save failed is not enough. No check.
 4. **Give one rule one message.** Put the message in one constant, and use the constant in each path that can break the rule. For example, the handler check and the unique index of a tenant name both use `Tenant.NameInUseMessage` (see [Error responses](backend.md#error-responses)). Check: `ConstraintErrorsTests` fails when a unique index has no request field and message. No check makes the handler check and the index use the same constant.
@@ -44,7 +44,7 @@ Then it fails the build:
 
 | Rule | Fails when |
 |------|------------|
-| `FSTMSG001` | The text has a snake_case word or a PascalCase word with two or more parts. Or the message shows an enum value, the stored name of a SmartEnum or an `IFixedNames` value object (its `Value`, its `Name`, or its `ToString`), a list of enum values or stored names (such as `Enum.GetValues<T>()`, `Enum.GetNames<T>()`, `ListNames()` of an `IFixedNames` type, or `KindEnum.List.Select(x => x.Name)`), a type name (`Type.Name` or `Type.FullName`), or `nameof`. An enum of .NET in a `System` namespace whose names are each one plain word, such as `DayOfWeek`, is not a code: "the Monday block" reads as the screen names it. |
+| `FSTMSG001` | The text has a snake_case word or a PascalCase word with two or more parts. Or the message shows an enum value, the stored name of a SmartEnum or an `IFixedNames` value object (its `Value`, its `Name`, or its `ToString`), a list of enum values or stored names (such as `Enum.GetValues<T>()`, `Enum.GetNames<T>()`, `ListNames()` of an `IFixedNames` type, or `KindEnum.List.Select(x => x.Name)`), a type name (`Type.Name` or `Type.FullName`), or `nameof`. An enum of .NET in a namespace that starts with `System`, whose names are each one capital letter and then lower-case letters, such as `DayOfWeek`, is not a code: "the Monday block" reads as the screen names it. This test looks only at the shape of the names, so it also accepts names such as `DateTimeKind.Utc`. |
 | `FSTMSG002` | The message shows an ID: a member, a local, or a parameter whose name is `Id` or ends in `Id`, such as `{defectId}` or `{agent.ClientId}`, or a value of a type whose name ends in `Id`, such as a `TimeZoneId` value. |
 
 The error says what to write instead. `UserMessageAnalyzerTests` has a failing case for each kind, among them the permission code of CarePoint 112, the status name of CarePoint 32, and the raw ID of Fleet 76. A message for a developer, such as an `InvalidOperationException` about the model, is not a user message, so it can name types and IDs.
@@ -53,7 +53,8 @@ A brand name with two capitals, such as ZeroFactor or GitHub, matches the Pascal
 
 These forms are not checked. The list names the forms that are known. It is not complete.
 
-- A text that a lambda or a delegate builds, other than a `WithMessage` function and the `Select` of a list. For example, `items.Aggregate((a, b) => a + b)`.
+- A text that a lambda or a delegate builds, other than a `WithMessage` function. For example, `items.Aggregate((a, b) => a + b)`.
+- In the `Select` of a list, the check catches only an enum value or a stored name that the lambda returns, alone or in a text, such as `p => $"'{p.Value}'"`. It does not catch a code word in the text of the lambda, an ID, or a name that a method changes, such as `p => p.Value.Replace("_", " ")` or `k => k.ToString().ToLowerInvariant()`. A `Select` over a list of stored names, such as `ListNames().Select(n => n.ToLowerInvariant())`, is caught.
 - A text that a `StringBuilder` builds.
 - A value that `+=` adds to a local or a parameter.
 - The `content` of `Results.Text` or `Results.Content` when the `statusCode` is not a constant.
@@ -64,7 +65,7 @@ These forms are not checked. The list names the forms that are known. It is not 
 - A `WithMessage` that takes a method group, such as `.WithMessage(Describe)`.
 - The `params` arguments of a string method, such as `string.Join(", ", nameof(Kind.Created), nameof(Kind.Deleted))` or `string.Join(", ", Mode.Delegated, Mode.Machine)`.
 - An array or a collection expression of `nameof`, such as `[nameof(Kind.Created), nameof(Kind.Deleted)]`.
-- A `Select` that changes an enum name with a string method, such as `Enum.GetValues<Kind>().Select(k => k.ToString().ToLowerInvariant())`.
+- A list that a spread or a constructor copies, such as `[.. Grade.ListNames()]` or `new List<string>(Grade.ListNames())`.
 - A list that a `foreach` loop fills with `Add`, such as `foreach (var p in Permission.ListNames()) names.Add(p);`. A `ListNames()` method of an `IFixedNames` type is caught by its name, also when a loop builds it.
 
 The text of an MCP tool error starts with a code such as `permission_denied`, so that a model can match on it. `McpDomainErrors.CodeFor` suppresses `FSTMSG001` for these codes.

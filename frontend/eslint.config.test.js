@@ -102,13 +102,13 @@ describe('server-state/no-copied-state', () => {
   it.each([
     ['function A1(props) { const [name] = useState(props.record.name) }', 'the prop `props`'],
     ['function A2({ name }) { const [n] = useState(name) }', 'the prop `name`'],
-    ["function A3({ id }) { const { data } = useWorkshopQ(id); const [n] = useState(data?.name ?? '') }", 'the result of `useWorkshopQ`'],
+    ["function A3({ id }) { const { data } = useRoomQ(id); const [n] = useState(data?.name ?? '') }", 'the result of `useRoomQ`'],
     ['function A4({ name }) { const copy = name; const [n] = useState(() => copy) }', 'the prop `name`'],
     ['function A5({ name }) { const [n, setN] = useState(name); useEffect(() => setN(name), [name]) }', 'the prop `name`'],
     ['function useCopy(value) { const [copy] = useState(value); return copy }', 'the argument `value`'],
-    ['function A6({ id }) { const query = useWorkshopQ(id); const [n] = useState(query.data?.name) }', 'the result of `useWorkshopQ`'],
-    ['function A7({ id }) { const { data: initialRecord } = useWorkshopQ(id); const [r] = useState(initialRecord) }', 'the result of `useWorkshopQ`'],
-    ['function A8({ id }) { const initialRecord = useWorkshopQ(id).data; const [r] = useState(initialRecord) }', 'the result of `useWorkshopQ`'],
+    ['function A6({ id }) { const query = useRoomQ(id); const [n] = useState(query.data?.name) }', 'the result of `useRoomQ`'],
+    ['function A7({ id }) { const { data: initialRecord } = useRoomQ(id); const [r] = useState(initialRecord) }', 'the result of `useRoomQ`'],
+    ['function A8({ id }) { const initialRecord = useRoomQ(id).data; const [r] = useState(initialRecord) }', 'the result of `useRoomQ`'],
   ])('reports the probe %s', (code, source) => {
     expect(serverStateMessages(code)).toEqual([`no-copied-state: This state copies ${source}`])
   })

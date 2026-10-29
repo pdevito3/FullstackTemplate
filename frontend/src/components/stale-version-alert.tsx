@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import type { SaveProblem } from '@/components/refused-save-alert'
 
 interface StaleVersionAlertProps {
-  /** The name of the record in the text, such as `workshop`. */
+  /** The name of the record in the text, such as `room`. */
   noun: string
   problem: SaveProblem | null
   isLoadingLatest: boolean

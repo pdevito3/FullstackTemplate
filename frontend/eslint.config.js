@@ -324,78 +324,38 @@ export const queryKeyHasInputsRule = {
   },
 }
 
-const fieldsOfType = (pattern) => {
-  const type = pattern.typeAnnotation?.typeAnnotation
-  if (type?.type !== 'TSTypeLiteral')
-    return null
-  const names = type.members.map((member) => member.type === 'TSPropertySignature' && !member.computed
-    ? member.key.name ?? member.key.value
-    : null)
-  return names.includes(null) ? null : names
-}
-
 export const keyHasEachParamRule = {
   meta: {
     type: 'problem',
     schema: [],
     messages: {
-      partial: 'The key uses only a part of `{{name}}`, or none of it, so two requests that differ in another value share one cache entry. Put all of `{{name}}` in the key (docs/frontend/server-state.md, rule 3).',
-      field: 'The key leaves out `{{name}}` of this parameter, so two requests that differ in `{{name}}` share one cache entry. Put `{{name}}` in the key (docs/frontend/server-state.md, rule 3).',
-      apart: 'The key takes apart a parameter of type `{{type}}`, so the lint cannot see a field that the pattern leaves out, and two requests that differ in that field share one cache entry. Take the parameter whole and put it in the key, such as `(params: {{type}}) => [..., params]` (docs/frontend/server-state.md, rule 3).',
+      whole: 'Put the parameter `{{name}}` in the key whole, as an item of the array that the key factory returns, such as `[..., {{name}}]`. Do not take it apart, read a field of it, copy it, spread it, or give it to a call. A key that has only a part of it can leave out a value of the request, so two pages or two dates share one cache entry (docs/frontend/server-state.md, rule 3).',
+      pattern: 'Take this parameter whole, give it a name, and put it in the key as an item of the array that the key factory returns, such as `(params: ListParams) => [..., params]`. A pattern, a default, or a rest element can leave out a value of the request, so two pages or two dates share one cache entry (docs/frontend/server-state.md, rule 3).',
     },
   },
   create(context) {
     const { sourceCode } = context
-    const isWholeUse = ({ identifier }) => {
-      const { parent } = identifier
-      if (parent.type !== 'MemberExpression' || parent.object !== identifier)
-        return true
-      return parent.parent.type === 'CallExpression' && parent.parent.callee === parent
+    const unwrap = (node) => ['TSAsExpression', 'TSSatisfiesExpression'].includes(node.parent.type) ? unwrap(node.parent) : node
+    const ownerOf = (node) => node.type.endsWith('FunctionExpression') || node.type === 'FunctionDeclaration' ? node : ownerOf(node.parent)
+    const isItemOfKey = (identifier, fn) => {
+      if (identifier.parent.type !== 'ArrayExpression')
+        return false
+      const key = unwrap(identifier.parent)
+      return (key.parent === fn && fn.body === key)
+        || (key.parent.type === 'ReturnStatement' && ownerOf(key.parent) === fn)
     }
     const check = (fn) => {
-      const variables = sourceCode.getDeclaredVariables(fn)
-      const checkName = (identifier, fields) => {
-        const variable = variables.find((v) => v.identifiers.includes(identifier))
-        if (!variable || variable.references.some(isWholeUse))
-          return
-        if (!fields) {
-          context.report({ node: identifier, messageId: 'partial', data: { name: identifier.name } })
-          return
+      for (const param of fn.params) {
+        if (param.type !== 'Identifier') {
+          context.report({ node: param, messageId: 'pattern' })
+          continue
         }
-        const read = new Set(variable.references.map(({ identifier: { parent } }) => !parent.computed && parent.property?.name))
-        for (const name of fields.filter((field) => !read.has(field)))
-          context.report({ node: identifier, messageId: 'field', data: { name } })
+        const variable = sourceCode.getDeclaredVariables(fn).find((v) => v.identifiers.includes(param))
+        if (variable.references.length === 0 || !variable.references.every(({ identifier }) => isItemOfKey(identifier, fn)))
+          context.report({ node: param, messageId: 'whole', data: { name: param.name } })
       }
-      const visit = (node) => {
-        switch (node.type) {
-          case 'AssignmentPattern':
-            return visit(node.left)
-          case 'Identifier':
-            return checkName(node, fieldsOfType(node))
-          case 'RestElement':
-            return visit(node.argument)
-          case 'ObjectPattern': {
-            const fields = fieldsOfType(node)
-            const hasRest = node.properties.some((p) => p.type === 'RestElement')
-            if (!hasRest && !fields) {
-              const annotation = node.typeAnnotation?.typeAnnotation
-              context.report({ node, messageId: 'apart', data: { type: annotation ? sourceCode.getText(annotation) : 'unknown' } })
-            }
-            const taken = node.properties.map((p) => p.type === 'Property' && !p.computed ? p.key.name ?? p.key.value : null)
-            if (!hasRest && fields)
-              for (const name of fields.filter((field) => !taken.includes(field)))
-                context.report({ node, messageId: 'field', data: { name } })
-            return node.properties.forEach((p) => visit(p.type === 'Property' ? p.value : p))
-          }
-          default: {
-            const annotation = node.typeAnnotation?.typeAnnotation
-            return context.report({ node, messageId: 'apart', data: { type: annotation ? sourceCode.getText(annotation) : 'unknown' } })
-          }
-        }
-      }
-      fn.params.forEach(visit)
     }
-    return { 'Property > ArrowFunctionExpression.value': check, 'Property > FunctionExpression.value': check }
+    return { ':function': check }
   },
 }
 

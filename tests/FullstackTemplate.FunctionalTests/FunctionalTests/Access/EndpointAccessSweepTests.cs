@@ -11,6 +11,10 @@ using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+// example:start
+using FullstackTemplate.Server.Examples.Workshops;
+using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+// example:end
 using global::Grpc.AspNetCore.Server;
 using global::Grpc.Core;
 using global::Google.Protobuf;
@@ -37,6 +41,11 @@ public class EndpointAccessSweepTests : TestBase
         ["/fullstacktemplate.tenants.v1.TenantsService/ListTenants"] = new("The gRPC method of GetTenantList."),
         ["GetCurrentUser"] = new("Each signed-in caller reads the own identity. It takes no ID and reads no tenant rows."),
         // example:start
+        ["GetVenue"] = new("Each member reads the venues of the own tenant. The tenant filter hides each other tenant."),
+        ["GetVenueList"] = new("Each member lists the venues of the own tenant. The tenant filter hides each other tenant."),
+        ["GetWorkshop"] = new("Each member reads the workshops of the own tenant. The allowed actions show what the caller can do."),
+        ["GetWorkshopList"] = new("Each member lists the workshops of the own tenant. The tenant filter hides each other tenant."),
+        ["list_workshops"] = new("ToolAccessKind.Read. Each member lists the workshops of the own tenant, and the tenant filter hides the others."),
         ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
         ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
         ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
@@ -338,21 +347,39 @@ public class EndpointAccessSweepTests : TestBase
             .AddTenant(out var tenant)
             .AddUsers(out var users, u => u.Role = "User", u => u.Role = "Admin", u => u.Role = "User")
             .Under(tenant)
+            // example:start
+            .AddVenue(out var venue)
+            .AddWorkshop(out var workshop)
+            .Under(tenant)
+            // example:end
             .AddAgent(out var agent);
         var (member, admin, otherUser) = (users[0], users[1], users[2]);
         foreach (var permission in member.UserPermissions.ToList())
             member.RemovePermission(permission);
         admin.AddPermissions(Permission.GetAll());
+        // example:start
+        // A scheduled workshop, so that the control call of each workshop action, Complete too, is a move that the status allows
+        var offered = (ScheduleDecision.Offered)WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, DateTimeOffset.UtcNow));
+        workshop.Schedule(offered.Start);
+        // example:end
 
         await InsertAsync(tenant);
         await InsertAsync(users);
         await InsertAsync(agent);
+        // example:start
+        await InsertAsync(venue);
+        await InsertAsync(workshop);
+        // example:end
 
         var idsByKind = new Dictionary<string, string>
         {
             ["users"] = otherUser.Id,
             ["agents"] = agent.Id,
             ["tenants"] = tenant.Id,
+            // example:start
+            ["venues"] = venue.Id,
+            ["workshops"] = workshop.Id,
+            // example:end
         };
         return new TenantRecords(member, admin, new RecordIds(idsByKind, otherUser.Identifier));
     }

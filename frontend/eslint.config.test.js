@@ -160,9 +160,87 @@ describe('server-state/query-key-has-inputs', () => {
 
     expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `node`'])
   })
+
+  it('reports a field that the query function reads when the key has another field of the same value', () => {
+    const code = `function useRecords(params) {
+      return useQuery({ queryKey: RecordKeys.list(params.search), queryFn: () => getRecordList({ query: { search: params.search, pageNumber: params.page } }) })
+    }`
+
+    expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `params.page`'])
+  })
+
+  it('reports a whole value that the query function reads when the key has only a field of it', () => {
+    const code = `function useRecords(params) {
+      return useQuery({ queryKey: [...RecordKeys.lists(), { search: params.search }], queryFn: () => getRecordList({ query: { ...params } }) })
+    }`
+
+    expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `params`'])
+  })
+
+  it('takes a field of a value when the key has the whole value or the same field', () => {
+    const code = `function useRecords(params, filter) {
+      return [
+        useQuery({ queryKey: RecordKeys.list(params), queryFn: () => getRecordList({ query: { search: params.search.trim(), pageNumber: params.page } }) }),
+        useQuery({ queryKey: ['records', filter.text, filter.page], queryFn: () => getRecordList({ query: { search: filter.text, pageNumber: filter.page } }) }),
+      ]
+    }`
+
+    expect(serverStateMessages(code)).toEqual([])
+  })
+
+  it.each([
+    ['useQuery({ queryKey: ["x", id], queryFn: () => get({ id, page }) })', ['page'], 'id, page'],
+    ['useQuery({ queryKey: ["x", params], queryFn: () => get({ ...params, tenantId }) })', ['tenantId'], 'params, tenantId'],
+    ['queryOptions({ queryKey: ["x", id], queryFn: () => get({ id, date }) })', ['date'], 'id, date'],
+    ['useQuery({ queryKey: ["x", params], queryFn: ({ signal }) => get({ page: params.page, search: params.search, size: PAGE_SIZE, signal }) })', [], 'params'],
+    ['useQuery({ queryKey: ["x", params], queryFn: () => get({ filter: toFilter(params.search) }) })', [], 'params'],
+    ['useQuery({ queryKey: ["x", id], queryFn: () => get({ id, options: { suppressErrorToast: opts.suppress } }) })', [], 'id, opts'],
+    ['useQuery({ queryKey: ["x", search.trim()], queryFn: () => get({ search: search.trim() }) })', [], 'search'],
+    ['useInfiniteQuery({ queryKey: ["x", search], queryFn: ({ pageParam, signal }) => get({ search, pageParam, signal }), initialPageParam: 1, getNextPageParam: () => 2 })', [], 'search'],
+  ])('checks the probe %s', (call, names, parameters) => {
+    const code = `const PAGE_SIZE = 10\nfunction useProbe(${parameters}) { return ${call} }`
+
+    expect(serverStateMessages(code)).toEqual(names.map((name) => `query-key-has-inputs: The query function reads \`${name}\``))
+  })
 })
 
 describe('server-state/key-has-each-param', () => {
+  it('reports a parameter that the key takes apart when the pattern cannot show each field', () => {
+    const code = `export const RecordKeys = {
+      all: ['records'] as const,
+      list: ({ search }: RecordListParams) => [...RecordKeys.all, 'list', { search }] as const,
+      untyped: ({ search }) => [...RecordKeys.all, 'list', { search }] as const,
+    }`
+
+    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([
+      'key-has-each-param: The key takes apart a parameter of type `RecordListParams`',
+      'key-has-each-param: The key takes apart a parameter of type `unknown`',
+    ])
+  })
+
+  it('reports a field of an inline type that the pattern leaves out', () => {
+    const code = `export const RecordKeys = {
+      all: ['records'] as const,
+      list: ({ search }: { search: string; page?: number }, page: number) => [...RecordKeys.all, search] as const,
+    }`
+
+    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([
+      'key-has-each-param: The key leaves out `page` of this parameter',
+      'key-has-each-param: The key uses only a part of `page`',
+    ])
+  })
+
+  it('takes a pattern with each field of its inline type, and a rest element that the key uses whole', () => {
+    const code = `export const RecordKeys = {
+      all: ['records'] as const,
+      list: ({ search, page }: { search: string; page: number }) => [...RecordKeys.all, { search, page }] as const,
+      rest: ({ search, ...rest }: RecordListParams) => [...RecordKeys.all, search, rest] as const,
+      fields: (params: { search: string; page: number }) => [...RecordKeys.all, { search: params.search, page: params.page }] as const,
+    }`
+
+    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])
+  })
+
   it('reports a parameter that the key reads only through a field, or does not read', () => {
     const code = `export const RecordKeys = {
       all: ['records'] as const,

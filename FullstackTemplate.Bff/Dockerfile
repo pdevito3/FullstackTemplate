@@ -4,6 +4,7 @@ WORKDIR /app
 # Corepack uses the pnpm version of packageManager in package.json
 RUN corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY frontend/patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY frontend/ .
 RUN pnpm build

@@ -5,11 +5,16 @@ import { AuthKeys } from './auth.keys'
 
 /**
  * Fetch user claims from BFF. Returns null when nobody is signed in: the BFF answers 204 for an
- * anonymous visitor. A 4xx or 5xx status is an error, and apiClient shows it in a toast.
+ * anonymous visitor. A 4xx or 5xx status is an error, and apiClient shows it in a toast. Any other
+ * body that is not a list, such as the index.html of a dev server with no BFF, is an error too.
  */
 export async function getUser(): Promise<BffClaim[] | null> {
-  const response = await apiClient.get<BffClaim[]>('/bff/user')
-  return response.status === 204 ? null : response.data
+  const response = await apiClient.get<unknown>('/bff/user')
+  if (response.status === 204) return null
+  if (!Array.isArray(response.data)) {
+    throw new Error(`GET /bff/user answered ${response.status} with a body that is not a list of claims.`)
+  }
+  return response.data
 }
 
 /**

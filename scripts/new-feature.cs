@@ -28,9 +28,11 @@ try
 
     spec.RequireFreeNamesIn(repo);
     var plan = Plan.For(spec, repo);
-    repo.RequireNoPendingModelChanges(spec);
-    var result = repo.Apply(plan);
+    repo.RequireModelThatMatches(spec);
+    var result = repo.Apply(plan, spec);
     var migration = repo.AddMigration(spec);
+    if (result.Written.Count > 0 && migration.Count == 0)
+        repo.RequireNoPendingModelChangesAfterWrite(spec, result);
 
     Console.WriteLine(result.Written.Count + migration.Count == 0
         ? $"The {spec.Names.Words} feature is already in the app. The script changed nothing."
@@ -510,7 +512,7 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
     }
 
     /// <summary>Checks each file before it writes one, so that a refusal changes nothing.</summary>
-    public ApplyResult Apply(Plan plan)
+    public ApplyResult Apply(Plan plan, Spec spec)
     {
         var conflicts = new List<string>();
         var writes = new List<FileWrite>();
@@ -551,7 +553,8 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
             throw new FeatureException(
                 "The script changed no files. These files exist and differ from what it writes:\n  "
                 + string.Join("\n  ", conflicts)
-                + "\nThe script writes only new files. If an older run wrote them, make the change by hand, or delete them and run again.");
+                + "\nThe script writes only new files. If an older run wrote them, make the change by hand.\n"
+                + UndoAdvice(spec));
 
         foreach (var file in writes)
         {
@@ -566,18 +569,54 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
     }
 
     /// <summary>
-    /// Before the first run writes the entity, stops when the model has changes that no migration has. The migration of
-    /// the feature would take them in.
+    /// Before the script writes a file, stops when a part of the feature is in the app but its entity is not: a new
+    /// entity would not match the migration and the model snapshot. Before the first run, also stops when the model has
+    /// changes that no migration has, because the migration of the feature would take them in.
     /// </summary>
-    public void RequireNoPendingModelChanges(Spec spec)
+    public void RequireModelThatMatches(Spec spec)
     {
-        if (HasMigration(spec) || File.Exists(Path.Combine(root, spec.Names.EntityFile)))
+        var n = spec.Names;
+        if (File.Exists(Path.Combine(root, n.EntityFile)))
             return;
 
-        var server = $"{app}.Server";
-        Run("dotnet", ["restore", Path.Combine(server, $"{server}.csproj")], NoChangeFailure);
-        RunEf(NoChangeFailure, "migrations", "has-pending-model-changes", "--project", server, "--startup-project", server);
+        var context = $"{Server}/Databases/AppDbContext.cs";
+        var parts = MigrationFiles(spec);
+        if (File.ReadAllText(Path.Combine(root, context)).Contains($"DbSet<{n.Entity}>", StringComparison.Ordinal))
+            parts.Add(context);
+        if (parts.Count > 0)
+            throw new FeatureException($"""
+                The script changed no files. {n.EntityFile} is not in the app, but these parts of the feature are:
+                  {string.Join("\n  ", parts)}
+                A run now would write an entity that the migration and the model snapshot do not match.
+                {UndoAdvice(spec)}
+                """);
+
+        BuildServer("The script changed no files. The Server does not build, so dotnet-ef cannot check its model. "
+            + "Correct the errors above, then run the script again.");
+        RunEf(NoChangeFailure, "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
     }
+
+    /// <summary>How to run the script again with other properties after a run wrote the feature.</summary>
+    public static string UndoAdvice(Spec spec) => $"""
+        To give the feature other properties, undo the first run, and then run the script again. Restore each file
+        that the run changed, the model snapshot too, and delete each file that it added, the migration {spec.Names.Migration} too.
+        When the run is not committed, git restore and git clean do this. When it is, git revert of its commit does.
+        """;
+
+    /// <summary>
+    /// After a run that wrote files but found the migration in the app, stops when the model has changes that no
+    /// migration has. A run must not end well with a model that the database does not match.
+    /// </summary>
+    public void RequireNoPendingModelChangesAfterWrite(Spec spec, ApplyResult result)
+    {
+        var failure = "The script wrote the files above, but the model of the Server has changes that no migration has. "
+            + $"The migration {spec.Names.Migration} was in the app already. Delete the files that the script wrote, or "
+            + "add a migration of the changes.\n  " + string.Join("\n  ", result.Written);
+        BuildServer(failure);
+        RunEf(failure, "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
+    }
+
+    private string Server => $"{app}.Server";
 
     private const string NoChangeFailure =
         "The script changed no files. The model of the Server has changes that no migration has, or dotnet-ef could not " +
@@ -586,23 +625,28 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
     private const string MigrationFailure =
         "The script wrote the feature files but no migration. Correct the build, then run the script again.";
 
-    private bool HasMigration(Spec spec)
-        => Directory.EnumerateFiles(Path.Combine(root, $"{app}.Server", "Databases", "Migrations"),
-            $"*_{spec.Names.Migration}.cs", SearchOption.AllDirectories).Any();
+    private List<string> MigrationFiles(Spec spec)
+        => Directory.EnumerateFiles(Path.Combine(root, Server, "Databases", "Migrations"),
+                $"*_{spec.Names.Migration}*.cs", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/'))
+            .Where(file => Regex.IsMatch(Path.GetFileName(file), $@"^\d+_{spec.Names.Migration}(?:\.Designer)?\.cs$"))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+    // dotnet-ef hides the compiler errors of its own build, so the script builds first and gives --no-build
+    private void BuildServer(string failure) => Run("dotnet", ["build", Path.Combine(Server, $"{Server}.csproj")], failure);
 
     /// <summary>Adds the migration once. It gives the new permission to each admin that exists.</summary>
     public IReadOnlyList<string> AddMigration(Spec spec)
     {
         var n = spec.Names;
-        var server = $"{app}.Server";
-        var folder = Path.Combine(root, server, "Databases", "Migrations");
-        if (HasMigration(spec))
+        var folder = Path.Combine(root, Server, "Databases", "Migrations");
+        if (MigrationFiles(spec).Count > 0)
             return [];
 
-        // dotnet-ef reads the project metadata before it builds, and that read needs the restored assets
-        Run("dotnet", ["restore", Path.Combine(server, $"{server}.csproj")], MigrationFailure);
-        RunEf(MigrationFailure, "migrations", "add", n.Migration, "--project", server, "--startup-project", server,
-            "--output-dir", "Databases/Migrations");
+        BuildServer(MigrationFailure);
+        RunEf(MigrationFailure, "migrations", "add", n.Migration, "--project", Server, "--startup-project", Server,
+            "--output-dir", "Databases/Migrations", "--no-build");
 
         var migration = Directory.GetFiles(folder, $"*_{n.Migration}.cs").Single();
         var text = File.ReadAllText(migration);

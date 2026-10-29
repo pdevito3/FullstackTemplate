@@ -96,7 +96,7 @@ jobs:
           (
             cd ../template-change
             echo "// A template change to an example." >> FullstackTemplate.Server/Examples/Tenants/Features/GetTenant/GetTenant.Mcp.cs
-            perl -0pi -e 's/(<!-- example:start -->\n)/$1A template change in an example section.\n/' docs/frontend.md
+            perl -0pi -e 's/(<!-- example:(start) -->\n)/$1A template change in an example section.\n/' docs/frontend.md
             echo "A template change to the core." >> docs/frontend.md
             printf 'export {}\n' > 'frontend/src/routes/(examples)/template-change.tsx'
             git add --all

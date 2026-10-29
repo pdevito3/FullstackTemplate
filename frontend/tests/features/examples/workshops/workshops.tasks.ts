@@ -38,6 +38,24 @@ export function workshopsPage(page: Page) {
       await at.newCapacity.fill(capacity)
     },
 
+    async pickVenue(name: string) {
+      await at.newVenue.fill(name)
+      await at.venueOption(name).click()
+      await expect(at.newVenue).toHaveValue(name)
+    },
+
+    async openEditForm(id: string) {
+      const settled = answered('GET', workshopPaths.one(id))
+      await page.goto(`/workshops/${id}/edit`)
+      await expect(at.editForm).toBeVisible()
+      await settled
+    },
+
+    async setEditHour(hour: string) {
+      await at.editStartHour.click()
+      await page.keyboard.type(hour)
+    },
+
     async addAndOpenDetail(id: string, venueId: string) {
       const settled = Promise.all([
         answered('POST', workshopPaths.list),

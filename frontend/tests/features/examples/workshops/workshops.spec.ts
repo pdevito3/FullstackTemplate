@@ -44,32 +44,80 @@ test.describe('the workshops', () => {
     expect(api.last('put', workshopPaths.one(id))?.body).toMatchObject({ version: 2 })
   })
 
-  test('adds a workshop with the start that the user types', async ({ page, api }) => {
-    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
-    const { id, venueId } = workshop.build()
-    api.mock(workshopsApi.venueListReturns([venue]), workshopsApi.venueIs(venue), workshopsApi.createSaves(workshop), workshopsApi.oneIs(workshop))
-    const workshops = workshopsPage(page)
-    await workshops.openNewForm(venueId)
-    await workshops.fillNew({ title: 'Intro to Kubb', start: '060120270930A', capacity: '12' })
+  // At 07:00 UTC on August 16, it is August 15 in Pacific/Pago_Pago and August 16 in UTC and in Pacific/Kiritimati
+  const now = new Date('2026-08-16T07:00:00Z')
+  const harbor = aVenue().named('Harbor Hall').inZone('Pacific/Pago_Pago')
 
-    await workshops.addAndOpenDetail(id, venueId)
+  test('adds a workshop with the start that the user types, read in the time zone of the venue that the user picks', async ({ page, api }) => {
+    await page.clock.setFixedTime(now)
+    const workshop = aWorkshop().titled('Intro to Kubb').at(harbor)
+    const { id } = workshop.build()
+    api.mock(
+      workshopsApi.venueListReturns([venue, harbor]),
+      workshopsApi.venueIs(venue),
+      workshopsApi.venueIs(harbor),
+      workshopsApi.createSaves(workshop),
+      workshopsApi.oneIs(workshop),
+    )
+    const workshops = workshopsPage(page)
+    await workshops.openNewForm(venue.build().id)
+    await expect(workshops.at.newStartZone('America/Chicago')).toBeVisible()
+    await workshops.fillNew({ title: 'Intro to Kubb', start: '081620260930A', capacity: '12' })
+    await workshops.pickVenue('Harbor Hall')
+
+    await expect(workshops.at.newStartZone('Pacific/Pago Pago')).toBeVisible()
+    await workshops.addAndOpenDetail(id, harbor.build().id)
 
     await expect(workshops.at.detailHeading('Intro to Kubb')).toBeVisible()
     const body = api.last('post', workshopPaths.list)?.body as { startsAt: string }
-    expect(body).toMatchObject({ venueId, title: 'Intro to Kubb', capacity: 12 })
-    expect(new Date(body.startsAt).getTime()).toBe(Date.UTC(2027, 5, 1, 9, 30))
+    expect(body).toMatchObject({ venueId: harbor.build().id, title: 'Intro to Kubb', capacity: 12 })
+    expect(new Date(body.startsAt).getTime()).toBe(Date.UTC(2026, 7, 16, 20, 30))
   })
 
-  test('shows the details that the API gives, in the time zone of the browser', async ({ page, api }) => {
-    const workshop = aWorkshop().titled('Intro to Kubb').at(venue).startingAt('2026-06-01T15:00:00+00:00').withCapacity(12)
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+  test('refuses a start in the hour that the clocks skip at the venue, and does not add it', async ({ page, api }) => {
+    api.mock(workshopsApi.venueListReturns([venue]), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openNewForm(venue.build().id)
+    await workshops.fillNew({ title: 'Intro to Kubb', start: '031420270230A', capacity: '12' })
 
-    await workshopsPage(page).openDetail(workshop.build().id, workshop.build().venueId)
+    await workshops.at.add.click()
 
-    const { details } = workshopsPage(page).at
-    await expect(details).toContainText('Jun 1, 2026, 3:00 PM')
-    await expect(details).toContainText('12')
-    await expect(details).toContainText('Main Hall')
+    await expect(workshops.at.newForm.getByText(
+      'This time does not exist in America/Chicago on that day, because the clocks go forward. Choose another time.',
+    )).toBeVisible()
+    expect(api.last('post', workshopPaths.list)).toBeUndefined()
+  })
+
+  test('shows the start in the time zone of the venue, in the list and on the detail', async ({ page, api }) => {
+    await page.clock.setFixedTime(now)
+    const workshop = aWorkshop().titled('Intro to Kubb').at(harbor).startingAt('2026-08-16T07:00:00+00:00').withCapacity(12)
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(harbor))
+    const workshops = workshopsPage(page)
+    await workshops.openList()
+
+    await expect(workshops.at.row('Intro to Kubb')).toContainText('Aug 15, 2026, 8:00 PM GMT-11')
+
+    await workshops.openWorkshop('Intro to Kubb', workshop.build().id, harbor.build().id)
+
+    await expect(workshops.at.details).toContainText('Aug 15, 2026, 8:00 PM GMT-11')
+    await expect(workshops.at.details).toContainText('12')
+    await expect(workshops.at.details).toContainText('Harbor Hall')
+  })
+
+  test('edits the start in the time zone of the venue', async ({ page, api }) => {
+    await page.clock.setFixedTime(now)
+    const workshop = aWorkshop().titled('Intro to Kubb').at(harbor).startingAt('2026-08-16T07:00:00+00:00')
+    const { id } = workshop.build()
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(harbor), workshopsApi.updateSaves(workshop.savedAgain()))
+    const workshops = workshopsPage(page)
+    await workshops.openEditForm(id)
+    await expect(workshops.at.editStartZone('Pacific/Pago Pago')).toBeVisible()
+
+    await workshops.setEditHour('9')
+    await workshops.saveAndOpenDetail(id, harbor.build().id)
+
+    const body = api.last('put', workshopPaths.one(id))?.body as { startsAt: string }
+    expect(new Date(body.startsAt).getTime()).toBe(Date.UTC(2026, 7, 16, 8, 0))
   })
 
   test('schedules a draft, and then shows only the actions that the API allows', async ({ page, api }) => {

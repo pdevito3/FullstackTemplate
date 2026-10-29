@@ -9,10 +9,6 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
-/// <summary>
-/// Measures the time and the heap of the delete of a tenant with many users. It runs only when a filter names it, and
-/// <c>TENANT_DELETE_BENCHMARK_USERS</c> sets the number of users. See docs/multi-tenancy.md, section "Delete a tenant".
-/// </summary>
 public class TenantDeleteCostBenchmark : TestBase
 {
     private static readonly TimeSpan SampleInterval = TimeSpan.FromMilliseconds(20);
@@ -53,7 +49,6 @@ public class TenantDeleteCostBenchmark : TestBase
             + $"peak_heap_mb={peak / 1048576} heap_growth_mb={(peak - heapBefore) / 1048576} allocated_mb={allocated / 1048576}");
     }
 
-    // GC.GetTotalMemory reads the managed heap of the whole test process, and a sample can miss a short peak
     private static async Task<long> SamplePeakHeapAsync(CancellationToken stop)
     {
         var peak = 0L;

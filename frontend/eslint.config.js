@@ -28,7 +28,6 @@ const linkImports = [
 // The actions of a Playwright Page or Frame that take a selector string first. A Locator has the same actions with no selector.
 const selectorActions = 'click|dblclick|fill|type|press|pressSequentially|check|uncheck|setChecked|hover|tap|focus|selectOption|setInputFiles|dispatchEvent|textContent|innerText|innerHTML|getAttribute|inputValue|isChecked|isDisabled|isEditable|isEnabled|isHidden|isVisible|waitForSelector|dragAndDrop'
 const stringSelectorMessage = 'Do not give a selector string to an action. Find the element with getByRole or getByLabel in the *.locators.ts file of the feature, and call the action on that Locator.'
-// e2e/ has no features. The selectors of the login page of an IdP are in its file in e2e/idps/.
 const stackSelectorMessage = 'Do not give a selector string to an action. Put a selector of the login page of an IdP in its e2e/idps/*.json file and call the action on page.locator(idp.<name>Selector). For the app or Swagger UI, find the element with getByRole or getByLabel and call the action on that Locator.'
 
 const isPlaywright = (type, names) => {

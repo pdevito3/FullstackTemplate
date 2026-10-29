@@ -223,6 +223,26 @@ public class WorkshopCommandTests : TestBase
         page.Items[0].Values.ShouldContain(v => v.Name.StartsWith(nameof(Workshop.Status)) && v.New == "Cancelled");
     }
 
+    [Test]
+    public async Task the_audit_entry_of_an_added_workshop_names_the_member_who_added_it_as_its_organizer()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out var seed).AddVenue(out var venue).BuildAsync();
+
+        // Act
+        var added = await testingServiceScope.SendAsync(
+            new AddWorkshop.Command(new FakeWorkshopForCreationDto(venue.Id).Generate()));
+
+        // Assert
+        added.OrganizerId.ShouldBe(seed.User.Id);
+        var page = await testingServiceScope.SendAsync(
+            new GetAuditEntryPage.Query(AuditEntryParametersDto.From(added.Id, null, 10)));
+        var created = page.Items.ShouldHaveSingleItem();
+        created.Kind.ShouldBe("Created");
+        created.Values.ShouldContain(v => v.Name == nameof(Workshop.OrganizerId) && v.New == seed.User.Id && !v.Hidden);
+    }
+
     private static WorkshopForUpdateDto ForUpdate(WorkshopDto workshop) => new()
     {
         Title = workshop.Title,

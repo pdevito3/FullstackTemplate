@@ -26,7 +26,10 @@ public static partial class WorkshopMapper
         for (var i = 0; i < workshops.Count; i++)
         {
             var status = WorkshopStatus.Of(workshops[i].Status);
-            workshops[i] = workshops[i] with { AllowedActions = NamesOf(WorkshopAction.AllowedFor(caller, status)) };
+            workshops[i] = workshops[i] with
+            {
+                AllowedActions = NamesOf(WorkshopAction.AllowedFor(caller, workshops[i].OrganizerId, status)),
+            };
         }
     }
 
@@ -38,7 +41,7 @@ public static partial class WorkshopMapper
 
     [MapperIgnoreSource(nameof(WorkshopForCreationDto.VenueId))]
     [MapperIgnoreTarget(nameof(WorkshopForCreation.Id))]
-    public static partial WorkshopForCreation ToWorkshopForCreation(this WorkshopForCreationDto dto);
+    public static partial WorkshopForCreation ToWorkshopForCreation(this WorkshopForCreationDto dto, string? organizerId);
 
     public static partial WorkshopForUpdate ToWorkshopForUpdate(this WorkshopForUpdateDto dto);
 

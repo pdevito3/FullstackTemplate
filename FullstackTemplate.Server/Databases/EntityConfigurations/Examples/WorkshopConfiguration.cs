@@ -36,6 +36,10 @@ public sealed class WorkshopConfiguration : IEntityTypeConfiguration<Workshop>
             .HasForeignKey(e => e.VenueId)
             .OnDelete(DeleteBehavior.ClientNoAction);
 
+        builder.Property(e => e.OrganizerId)
+            .HasMaxLength(EntityId.MaxLength)
+            .UseCollation(EntityId.Collation);
+
         builder.Property(e => e.Title)
             .IsRequired()
             .HasMaxLength(Workshop.TitleMaxLength);

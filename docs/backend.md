@@ -161,7 +161,7 @@ A command, or a query that reads data that needs a permission, checks a permissi
 | `read_agents` | `GetAgentList`, `GetAgent`. `AddAgentPermission` and `RemoveAgentPermission`, because they return the agent. |
 
 <!-- example:start -->
-The example permission `manage_workshops` is required by `AddVenue`, `AddWorkshop`, `UpdateWorkshop`, `ScheduleWorkshop`, `CancelWorkshop`, and `CompleteWorkshop`. Its migration gives it to the admins that exist: [20261028225322_AddWorkshopsExample.cs:81](../FullstackTemplate.Server/Databases/Migrations/Examples/20261028225322_AddWorkshopsExample.cs#L81).
+The example permission `manage_workshops` is required by `AddVenue`, `AddWorkshop`, `UpdateWorkshop`, `ScheduleWorkshop`, `CancelWorkshop`, and `CompleteWorkshop`. Its migration gives it to the admins that exist: [20261029095936_AddWorkshopsExample.cs](../FullstackTemplate.Server/Databases/Migrations/Examples/20261029095936_AddWorkshopsExample.cs). After the load, the last four commands also check the row: the caller must be the organizer of the workshop, the member who added it, or have `manage_tenant`. Thus the example adds no second permission.
 <!-- example:end -->
 
 The role of a user gives the default permissions. `UserRole.GetDefaultPermissions` gives each permission to `Admin` and no permission to `User`. `User.Create` and `UpdateRole` write the defaults as rows. After that, `AddUserPermission` and `RemoveUserPermission` change the rows, and the rows decide. The guard does not read the role.

@@ -32,7 +32,8 @@ public static class AddWorkshop
                 .FirstOrDefaultAsync(v => v.Id == request.Dto.VenueId, cancellationToken)
                 ?? throw new ValidationException("venueId", "The venue does not exist.");
 
-            var workshop = Workshop.Create(venue, request.Dto.ToWorkshopForCreation());
+            var organizerId = (caller as Caller.Member)?.UserId;
+            var workshop = Workshop.Create(venue, request.Dto.ToWorkshopForCreation(organizerId));
             Activity.Current?.SetTag("app.workshop_id", workshop.Id);
 
             await dbContext.Workshops.AddAsync(workshop, cancellationToken);

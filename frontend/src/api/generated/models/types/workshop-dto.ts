@@ -49,6 +49,11 @@ export type WorkshopDto = {
     */
     allowedActions: WorkshopDtoAllowedActionsEnumKey[];
     /**
+     * @description The user ID of the member who added the workshop. Null when an agent or system work added it.
+     * @type string | undefined
+    */
+    organizerId?: string | null;
+    /**
      * @minLength 0
      * @maxLength 4294967295
      * @type integer

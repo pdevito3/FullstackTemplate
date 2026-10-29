@@ -28,6 +28,7 @@ public static class CancelWorkshop
             var workshop = await dbContext.Workshops
                 .TagWithOperationCallSite("workshops.cancel.load")
                 .GetById(request.Id, cancellationToken);
+            workshop.GuardChangeBy(caller);
             Activity.Current?.SetTag("app.venue_id", workshop.VenueId);
 
             var wasCancelled = workshop.Status == WorkshopStatus.Cancelled();

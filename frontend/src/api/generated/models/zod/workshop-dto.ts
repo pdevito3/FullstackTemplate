@@ -14,5 +14,6 @@ export const workshopDtoSchema = z.object({
   capacity: z.int32(),
   status: z.enum(['Draft', 'Scheduled', 'Cancelled', 'Completed']),
   allowedActions: z.array(z.enum(['Update', 'Schedule', 'Cancel', 'Complete'])).describe('The actions that the caller can send for this workshop now. A button in the SPA reads this list.'),
+  organizerId: z.string().nullish().describe('The user ID of the member who added the workshop. Null when an agent or system work added it.'),
   version: z.int().min(0).max(4294967295),
 })

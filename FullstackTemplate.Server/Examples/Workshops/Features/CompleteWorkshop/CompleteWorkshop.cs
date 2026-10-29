@@ -28,6 +28,7 @@ public static class CompleteWorkshop
             var workshop = await dbContext.Workshops
                 .TagWithOperationCallSite("workshops.complete.load")
                 .GetById(request.Id, cancellationToken);
+            workshop.GuardChangeBy(caller);
             Activity.Current?.SetTag("app.venue_id", workshop.VenueId);
 
             var wasCompleted = workshop.Status == WorkshopStatus.Completed();

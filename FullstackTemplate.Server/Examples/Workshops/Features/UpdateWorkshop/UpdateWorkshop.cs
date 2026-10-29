@@ -28,6 +28,7 @@ public static class UpdateWorkshop
             var workshop = await dbContext.Workshops
                 .TagWithOperationCallSite("workshops.update.load")
                 .GetById(request.Id, cancellationToken);
+            workshop.GuardChangeBy(caller);
 
             workshop.Update(request.Dto.ToWorkshopForUpdate());
             await dbContext.SaveChangesAsync(cancellationToken);

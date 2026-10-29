@@ -3402,6 +3402,13 @@
             },
             "description": "The actions that the caller can send for this workshop now. A button in the SPA reads this list."
           },
+          "organizerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The user ID of the member who added the workshop. Null when an agent or system work added it."
+          },
           "version": {
             "maximum": 4294967295,
             "minimum": 0,

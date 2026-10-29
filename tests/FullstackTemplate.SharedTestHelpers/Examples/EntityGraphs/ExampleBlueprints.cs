@@ -37,6 +37,7 @@ public static class ExampleBlueprints
                 Title = input.Title!,
                 StartsAt = input.StartsAt!.Value,
                 Capacity = input.Capacity!.Value,
+                OrganizerId = input.OrganizerId,
             }))
         .Derive(i => i.Title, (_, _) => WorkshopRules.Title(Faker))
         .Derive(i => i.StartsAt, (_, ctx) => WorkshopRules.StartsAt(ctx.Parent.TimeZone, ctx.Now))

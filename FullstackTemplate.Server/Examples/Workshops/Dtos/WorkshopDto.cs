@@ -16,5 +16,7 @@ public sealed record WorkshopDto
     /// <summary>The actions that the caller can send for this workshop now. A button in the SPA reads this list.</summary>
     [NamesOf<WorkshopAction>]
     public IReadOnlyList<string> AllowedActions { get; init; } = [];
+    /// <summary>The user ID of the member who added the workshop. Null when an agent or system work added it.</summary>
+    public string? OrganizerId { get; init; }
     public uint Version { get; init; }
 }

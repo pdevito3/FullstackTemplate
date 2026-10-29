@@ -24,10 +24,12 @@ public partial class WorkshopAction : ValueObject, IFixedNames
 
     public void GuardCaller(Caller caller) => caller.Require(_action.Permission);
 
-    internal static IReadOnlyList<WorkshopAction> AllowedFor(Caller caller, WorkshopStatus status)
+    internal static IReadOnlyList<WorkshopAction> AllowedFor(Caller caller, string? organizerId, WorkshopStatus status)
         => WorkshopActionEnum.List
             .OrderBy(action => action.Value)
-            .Where(action => caller.Has(action.Permission) && action.AppliesTo(status))
+            .Where(action => caller.Has(action.Permission)
+                && Workshop.IsChangeableBy(caller, organizerId)
+                && action.AppliesTo(status))
             .Select(action => new WorkshopAction(action))
             .ToList();
 

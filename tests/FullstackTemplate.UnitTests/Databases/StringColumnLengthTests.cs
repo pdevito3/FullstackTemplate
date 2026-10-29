@@ -68,6 +68,9 @@ public class StringColumnLengthTests
         "audit_entries.root_type",
         "audit_entries.tenant_id",
         "audit_entries.trace_id",
+        // example:start
+        "workshops.organizer_id",
+        // example:end
     ];
 
     [Test]

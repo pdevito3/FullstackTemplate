@@ -12,6 +12,7 @@ public class Workshop : BaseEntity, ITenantable
     public const string IdPrefix = "wks";
     public const int TitleMaxLength = 200;
     public const int CapacityMaximum = 500;
+    public const string ChangeRefusedMessage = "Only the organizer of this workshop or a tenant admin can change it.";
 
     [NotSensitive] public string TenantId { get; private set; } = default!;
     [NotSensitive] public string VenueId { get; private set; } = default!;
@@ -19,6 +20,9 @@ public class Workshop : BaseEntity, ITenantable
     [NotSensitive] public DateTimeOffset StartsAt { get; private set; }
     [NotSensitive] public int Capacity { get; private set; }
     [NotSensitive] public WorkshopStatus Status { get; private set; } = default!;
+
+    /// <summary>The user ID of the member who added the workshop. Null when an agent or system work added it.</summary>
+    [NotSensitive] public string? OrganizerId { get; private set; }
 
     public static Workshop Create(Venue venue, WorkshopForCreation workshopForCreation)
     {
@@ -30,6 +34,7 @@ public class Workshop : BaseEntity, ITenantable
             StartsAt = workshopForCreation.StartsAt.ToUniversalTime(),
             Capacity = workshopForCreation.Capacity,
             Status = WorkshopStatus.Draft(),
+            OrganizerId = workshopForCreation.OrganizerId,
         };
         if (workshopForCreation.Id is not null)
             workshop.SetId(workshopForCreation.Id);
@@ -68,7 +73,18 @@ public class Workshop : BaseEntity, ITenantable
 
     public Workshop Complete() => MoveTo(WorkshopStatus.Completed());
 
-    public IReadOnlyList<WorkshopAction> AllowedActions(Caller caller) => WorkshopAction.AllowedFor(caller, Status);
+    public IReadOnlyList<WorkshopAction> AllowedActions(Caller caller) => WorkshopAction.AllowedFor(caller, OrganizerId, Status);
+
+    /// <summary>The rule on the row that each command of <see cref="WorkshopAction"/> checks after the load.</summary>
+    /// <exception cref="ForbiddenAccessException">The caller is not the organizer and cannot manage the tenant.</exception>
+    public void GuardChangeBy(Caller caller)
+    {
+        if (!IsChangeableBy(caller, OrganizerId))
+            throw new ForbiddenAccessException(ChangeRefusedMessage);
+    }
+
+    internal static bool IsChangeableBy(Caller caller, string? organizerId)
+        => (organizerId is not null && caller.IsUser(organizerId)) || caller.Has(Permission.ManageTenant());
 
     private Workshop MoveTo(WorkshopStatus target)
     {

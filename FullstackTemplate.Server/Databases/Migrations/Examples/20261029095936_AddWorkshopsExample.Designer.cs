@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FullstackTemplate.Server.Databases.Migrations.Examples
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261028225322_AddWorkshopsExample")]
+    [Migration("20261029095936_AddWorkshopsExample")]
     partial class AddWorkshopsExample
     {
         /// <inheritdoc />
@@ -537,6 +537,12 @@ namespace FullstackTemplate.Server.Databases.Migrations.Examples
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_on");
+
+                    b.Property<string>("OrganizerId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("organizer_id")
+                        .UseCollation("C");
 
                     b.Property<DateTimeOffset>("StartsAt")
                         .HasColumnType("timestamp with time zone")

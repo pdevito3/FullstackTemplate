@@ -43,6 +43,7 @@ namespace FullstackTemplate.Server.Databases.Migrations.Examples
                     title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     starts_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     capacity = table.Column<int>(type: "integer", nullable: false),
+                    organizer_id = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true, collation: "C"),
                     status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     last_modified_on = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),

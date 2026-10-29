@@ -28,6 +28,7 @@ public static class ScheduleWorkshop
 
             var schedule = await LoadCaseAsync(request.Id, cancellationToken);
             var workshop = schedule.Workshop;
+            workshop.GuardChangeBy(caller);
             var wasScheduled = workshop.Status == WorkshopStatus.Scheduled();
 
             switch (WorkshopScheduling.Decide(schedule))

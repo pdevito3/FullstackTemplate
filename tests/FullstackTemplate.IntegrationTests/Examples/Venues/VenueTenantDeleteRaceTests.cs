@@ -50,7 +50,7 @@ public class VenueTenantDeleteRaceTests : TestBase
     public async Task tenant_delete_during_a_venue_add_waits_and_then_deletes_the_new_venue()
     {
         // Arrange
-        // The hold is at the insert. A save after the work of the lock holds no lock there, so the delete does not wait.
+        // EF tags no insert, so the hold matches its SQL. A save after the work of the lock holds no lock at the insert.
         var pause = PauseAtQuery.Before("INSERT INTO venues");
         await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)

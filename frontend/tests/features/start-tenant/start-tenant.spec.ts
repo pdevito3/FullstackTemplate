@@ -89,7 +89,8 @@ for (const viewport of [
   test.describe(`the notice at ${viewport.width}x${viewport.height}`, () => {
     test.use({ actor: as.userWithNoTenant('Ada Lovelace'), viewport })
 
-    test('spans the main area under the header, so that it does not depend on the width of a page', async ({ page }) => {
+    test('spans the main area under the header, so that it does not depend on the width of a page', async ({ page, api }) => {
+      api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }))
       const start = startTenantPage(page)
 
       await start.openAsSignedIn('/')

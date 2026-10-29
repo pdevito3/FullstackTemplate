@@ -18,7 +18,7 @@ export const startTenant = (page: Page) => {
     login: page.getByRole('button', { name: 'Login', exact: true }),
     started: (tenantName: string) => page.getByText(`You started ${tenantName}. You are its admin`, { exact: false }),
     homeLink: page.getByRole('main').getByRole('link', { name: 'Go to the home page' }),
-    homeHeading: page.getByRole('heading', { name: 'Weather Forecast', level: 1 }),
+    homeHeading: page.getByRole('heading', { name: 'Fullstack Template', level: 1 }),
     main: page.getByRole('main'),
     lookupFailure: page.getByRole('main').getByRole('alert'),
     tryAgain: page.getByRole('button', { name: 'Try Again' }),

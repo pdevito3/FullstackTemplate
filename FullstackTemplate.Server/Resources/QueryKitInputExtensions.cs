@@ -43,6 +43,7 @@ public static partial class QueryKitInputExtensions
                 throw new QueryInputException(FiltersParameter, FilterCharacterMessage);
             var predicate = FilterParser.ParseFilter<T>(filters, config);
             RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
+            RefusePartsOfFields<T>(FiltersParameter, predicate);
             RefuseNullThatTheQueryCannotRun(predicate);
             return query.Where(predicate);
         });
@@ -51,7 +52,10 @@ public static partial class QueryKitInputExtensions
         => Apply<T, IOrderedQueryable<T>>(SortOrderParameter, () =>
         {
             foreach (var sort in SortParser.ParseSort<T>(sortOrder, config))
+            {
                 RefuseFieldsOutsideTheQuery(SortOrderParameter, sort.Expression);
+                RefusePartsOfFields<T>(SortOrderParameter, sort.Expression);
+            }
             return query.ApplyQueryKitSort(sortOrder, config);
         });
 
@@ -67,6 +71,15 @@ public static partial class QueryKitInputExtensions
         if (MemberReader.Reads(expression, AllowedActionsMember))
             throw new QueryInputException(parameter,
                 $"The {Words(parameter)} cannot use the allowed actions, because they depend on the user. Choose another field.");
+    }
+
+    // QueryKit reads a member of a field, such as startsAt.ticks, also a private one. EF cannot translate most of them, and
+    // the query fails with 500 when it runs. So a filter or a sort uses only the fields of the list.
+    private static void RefusePartsOfFields<T>(string parameter, Expression? expression)
+    {
+        if (expression is not null && PartReader.Reads(expression))
+            throw new QueryInputException(parameter,
+                $"The {Words(parameter)} can use a field of the list, not a part of a field. Use one of these fields: {FieldsOf<T>()}.");
     }
 
     // QueryKit parses these filters, and the query fails with 500 when it runs:
@@ -182,6 +195,26 @@ public static partial class QueryKitInputExtensions
         protected override Expression VisitMember(MemberExpression node)
         {
             _reads |= node.Member.Name == memberName;
+            return base.VisitMember(node);
+        }
+    }
+
+    private sealed class PartReader : ExpressionVisitor
+    {
+        private bool _reads;
+
+        public static bool Reads(Expression expression)
+        {
+            var reader = new PartReader();
+            reader.Visit(expression);
+            return reader._reads;
+        }
+
+        // Value and HasValue of a nullable field are the field itself
+        protected override Expression VisitMember(MemberExpression node)
+        {
+            _reads |= node.Expression is MemberExpression owner
+                && !(Nullable.GetUnderlyingType(owner.Type) is not null && node.Member.Name is "Value" or "HasValue");
             return base.VisitMember(node);
         }
     }

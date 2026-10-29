@@ -246,6 +246,33 @@ public class OpenApiDocumentTests
     }
 
     [Test]
+    public async Task request_numbers_with_a_domain_range_have_its_minimum_and_maximum()
+    {
+        // Arrange
+        var root = await LoadDocumentAsync();
+        var schemas = root["components"]!["schemas"]!;
+
+        (string Name, int Minimum, int Maximum)[] expectations =
+        [
+            // example:start
+            ("WorkshopForCreationDto.capacity", 1, Workshop.CapacityMaximum),
+            ("WorkshopForUpdateDto.capacity", 1, Workshop.CapacityMaximum),
+            // example:end
+        ];
+
+        string RangeOf(string name)
+        {
+            var parts = name.Split('.');
+            var property = schemas[parts[0]]?["properties"]?[parts[1]];
+            return $"{property?["minimum"]?.ToJsonString()} to {property?["maximum"]?.ToJsonString()}";
+        }
+
+        // Act & Assert
+        expectations.Select(e => $"{e.Name}: {RangeOf(e.Name)}")
+            .ShouldBe(expectations.Select(e => $"{e.Name}: {e.Minimum} to {e.Maximum}"));
+    }
+
+    [Test]
     public async Task each_request_string_has_a_max_length_or_a_list_of_names()
     {
         // Arrange

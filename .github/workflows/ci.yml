@@ -282,6 +282,19 @@ jobs:
           setup_only: true
 
       # example:start
+      # scripts/remove-examples.cs builds the SPA again
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        if: matrix.examples == 'remove'
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: matrix.examples == 'remove'
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
       - name: Remove the examples
         if: matrix.examples == 'remove'
         run: |

@@ -84,7 +84,7 @@ public class RemoveAgentPermissionCommandTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
-            .ShouldBe("You need the manage_agents permission to do this.");
+            .ShouldBe("You cannot manage agents. Ask a tenant admin for access.");
         (await LiveGrantOfAsync(agent.Id)).ShouldBe([Permission.Names.ManageTenant]);
     }
 

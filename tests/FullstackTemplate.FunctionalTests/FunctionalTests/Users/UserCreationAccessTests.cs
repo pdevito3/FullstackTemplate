@@ -126,7 +126,7 @@ public class UserCreationAccessTests : TestBase
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need the manage_users permission to do this.");
+        await ShouldBeForbiddenAsync(result, "You cannot manage users. Ask a tenant admin for access.");
         var added = await ExecuteDbContextAsync(db => db.Users.IgnoreQueryFilters()
             .AnyAsync(u => u.Identifier == dto.Identifier));
         added.ShouldBeFalse();
@@ -143,7 +143,7 @@ public class UserCreationAccessTests : TestBase
         var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Users.UpdateRole(member.Id), new { role = "Admin" });
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need the manage_user_access permission to do this.");
+        await ShouldBeForbiddenAsync(result, "You cannot manage the access of users. Ask a tenant admin for access.");
     }
 
     [Test]

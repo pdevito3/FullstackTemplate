@@ -18,7 +18,7 @@ function About() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground leading-relaxed">
-              This is a demo application built with .NET Aspire and React, showcasing modern distributed application development.
+              This app runs on .NET Aspire and React.
             </p>
             <p className="text-muted-foreground leading-relaxed">
               The stack includes:

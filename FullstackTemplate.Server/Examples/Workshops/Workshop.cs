@@ -46,7 +46,7 @@ public class Workshop : BaseEntity, ITenantable
     {
         GuardVersion(workshopForUpdate.Version);
         ValidationException.Must(Status.CanBeEdited, "status",
-            $"A {Status.Value.ToLowerInvariant()} workshop cannot be changed.");
+            $"A {Status.Words} workshop cannot be changed.");
 
         Title = workshopForUpdate.Title;
         StartsAt = workshopForUpdate.StartsAt.ToUniversalTime();

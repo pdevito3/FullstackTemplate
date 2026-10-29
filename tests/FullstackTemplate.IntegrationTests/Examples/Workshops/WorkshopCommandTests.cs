@@ -87,7 +87,7 @@ public class WorkshopCommandTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>())
-            .Message.ShouldBe("You need the manage_workshops permission to do this.");
+            .Message.ShouldBe("You cannot manage workshops. Ask a tenant admin for access.");
         var read = await testingServiceScope.SendAsync(new GetWorkshop.Query(workshop.Id));
         read.AllowedActions.ShouldBeEmpty();
     }

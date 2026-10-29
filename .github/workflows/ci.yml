@@ -159,12 +159,7 @@ jobs:
             -- ':!scripts/remove-examples.cs' ':!docs/examples.md' ':!**/Migrations/*.Designer.cs' || status=$?
           [ "$status" -eq 1 ]
 
-      - name: Build the solution
-        run: dotnet build FullstackTemplate.slnx
-
-      - name: Run the .NET tests
-        run: dotnet test --solution FullstackTemplate.slnx --no-build
-
+      # The frontend tests run first, because after the .NET tests on the same runner the Vitest browser can hang at its start
       - name: Lint the frontend
         working-directory: frontend
         run: pnpm lint
@@ -178,6 +173,12 @@ jobs:
       - name: Run the functional tests
         working-directory: frontend
         run: pnpm test:e2e
+
+      - name: Build the solution
+        run: dotnet build FullstackTemplate.slnx
+
+      - name: Run the .NET tests
+        run: dotnet test --solution FullstackTemplate.slnx --no-build
   # example:end
 
   line-endings:

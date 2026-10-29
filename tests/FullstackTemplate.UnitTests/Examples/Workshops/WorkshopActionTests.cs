@@ -70,7 +70,7 @@ public class WorkshopActionTests
         var act = () => WorkshopAction.Cancel().GuardCaller(new Caller.Member("usr_caller", []));
 
         // Assert
-        act.ShouldThrow<ForbiddenAccessException>().Message.ShouldBe("You need the manage_workshops permission to do this.");
+        act.ShouldThrow<ForbiddenAccessException>().Message.ShouldBe("You cannot manage workshops. Ask a tenant admin for access.");
     }
 
     // A command that changes nothing does not count: a second cancel goes through, but the SPA shows no button for it

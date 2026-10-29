@@ -44,6 +44,9 @@ public static partial class McpDomainErrors
     /// <summary>
     /// The code of each kind. The names match the gRPC status codes, so a caller sees one vocabulary.
     /// </summary>
+    // The text of a tool error starts with this code, so that a model can match on it. It is a code by design, not a
+    // name for the screen.
+#pragma warning disable FSTMSG001
     public static string CodeFor(DomainErrorKind kind) => kind switch
     {
         DomainErrorKind.Validation or DomainErrorKind.InvalidInput => "invalid_argument",
@@ -53,6 +56,7 @@ public static partial class McpDomainErrors
         DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange => "aborted",
         DomainErrorKind.Unexpected => "internal",
     };
+#pragma warning restore FSTMSG001
 
     private static CallToolResult ToToolError(DomainError error)
     {

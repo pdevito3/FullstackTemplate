@@ -21,6 +21,12 @@ public partial class Permission : ValueObject, IFixedNames
         Value = value;
     }
 
+    /// <summary>
+    /// What the permission lets a user do, as a message says it after "You cannot", for example "manage users". A
+    /// message shows these words, not <see cref="Value"/> (docs/messages.md).
+    /// </summary>
+    public string Words => _permission.Words;
+
     public override string ToString() => Value;
 
     public static Permission Of(string value) => new(value);
@@ -74,18 +80,21 @@ public partial class Permission : ValueObject, IFixedNames
         // example:end
     }
 
-    private sealed class PermissionEnum(string name, int value) : SmartEnum<PermissionEnum>(name, value)
+    private sealed class PermissionEnum(string name, int value, string words) : SmartEnum<PermissionEnum>(name, value)
     {
-        public static readonly PermissionEnum ManageUsers = new(Names.ManageUsers, 0);
-        public static readonly PermissionEnum ManageUserAccess = new(Names.ManageUserAccess, 1);
-        public static readonly PermissionEnum ManageTenant = new(Names.ManageTenant, 2);
-        public static readonly PermissionEnum ManageAgents = new(Names.ManageAgents, 3);
-        public static readonly PermissionEnum ReadAuditLog = new(Names.ReadAuditLog, 4);
-        public static readonly PermissionEnum ReadAuditLogSensitive = new(Names.ReadAuditLogSensitive, 5);
-        public static readonly PermissionEnum ReadUsers = new(Names.ReadUsers, 6);
-        public static readonly PermissionEnum ReadAgents = new(Names.ReadAgents, 7);
+        public static readonly PermissionEnum ManageUsers = new(Names.ManageUsers, 0, "manage users");
+        public static readonly PermissionEnum ManageUserAccess = new(Names.ManageUserAccess, 1, "manage the access of users");
+        public static readonly PermissionEnum ManageTenant = new(Names.ManageTenant, 2, "manage the tenant");
+        public static readonly PermissionEnum ManageAgents = new(Names.ManageAgents, 3, "manage agents");
+        public static readonly PermissionEnum ReadAuditLog = new(Names.ReadAuditLog, 4, "read the audit log");
+        public static readonly PermissionEnum ReadAuditLogSensitive =
+            new(Names.ReadAuditLogSensitive, 5, "read the sensitive values of the audit log");
+        public static readonly PermissionEnum ReadUsers = new(Names.ReadUsers, 6, "see the users of the tenant");
+        public static readonly PermissionEnum ReadAgents = new(Names.ReadAgents, 7, "see the agents of the tenant");
         // example:start
-        public static readonly PermissionEnum ManageWorkshops = new(Names.ManageWorkshops, 8);
+        public static readonly PermissionEnum ManageWorkshops = new(Names.ManageWorkshops, 8, "manage workshops");
         // example:end
+
+        public string Words { get; } = words;
     }
 }

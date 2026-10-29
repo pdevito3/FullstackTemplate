@@ -32,6 +32,9 @@ public partial class WorkshopStatus : ValueObject, IFixedNames
         Value = value;
     }
 
+    /// <summary>The status as the screen names it, for a message.</summary>
+    public string Words => _status.Words;
+
     /// <summary>Only a draft takes changes to its title, start, and capacity.</summary>
     public bool CanBeEdited => _status.CanBeEdited;
 
@@ -45,7 +48,7 @@ public partial class WorkshopStatus : ValueObject, IFixedNames
     }
 
     public string MoveRefusal(WorkshopStatus target)
-        => $"A {Value.ToLowerInvariant()} workshop cannot be {target.Value.ToLowerInvariant()}.";
+        => $"A {Words} workshop cannot be {target.Words}.";
 
     public override string ToString() => Value;
 
@@ -59,7 +62,7 @@ public partial class WorkshopStatus : ValueObject, IFixedNames
 
     protected WorkshopStatus() { } // EF Core
 
-    private abstract class WorkshopStatusEnum(string name, int value)
+    private abstract class WorkshopStatusEnum(string name, int value, string words)
         : SmartEnum<WorkshopStatusEnum>(name, value)
     {
         public static readonly WorkshopStatusEnum Draft = new DraftType();
@@ -67,27 +70,29 @@ public partial class WorkshopStatus : ValueObject, IFixedNames
         public static readonly WorkshopStatusEnum Cancelled = new CancelledType();
         public static readonly WorkshopStatusEnum Completed = new CompletedType();
 
+        public string Words { get; } = words;
+
         public virtual bool CanBeEdited => false;
 
         public abstract IReadOnlyList<WorkshopStatusEnum> Next { get; }
 
-        private sealed class DraftType() : WorkshopStatusEnum("Draft", 0)
+        private sealed class DraftType() : WorkshopStatusEnum("Draft", 0, "draft")
         {
             public override bool CanBeEdited => true;
             public override IReadOnlyList<WorkshopStatusEnum> Next => [Scheduled, Cancelled];
         }
 
-        private sealed class ScheduledType() : WorkshopStatusEnum("Scheduled", 1)
+        private sealed class ScheduledType() : WorkshopStatusEnum("Scheduled", 1, "scheduled")
         {
             public override IReadOnlyList<WorkshopStatusEnum> Next => [Cancelled, Completed];
         }
 
-        private sealed class CancelledType() : WorkshopStatusEnum("Cancelled", 2)
+        private sealed class CancelledType() : WorkshopStatusEnum("Cancelled", 2, "cancelled")
         {
             public override IReadOnlyList<WorkshopStatusEnum> Next => [];
         }
 
-        private sealed class CompletedType() : WorkshopStatusEnum("Completed", 3)
+        private sealed class CompletedType() : WorkshopStatusEnum("Completed", 3, "completed")
         {
             public override IReadOnlyList<WorkshopStatusEnum> Next => [];
         }

@@ -422,7 +422,7 @@ public class AppDbContext(
             {
                 _narrowedTenantScope = TenantQueryFilterExtension.TenantIdOfDomainEvent(entry) is { } tenantId
                     ? TenantScope.ForTenant(tenantId)
-                    : null;
+                    : outer;
                 try
                 {
                     await domainEventDispatcher.DispatchAsync(queuedEvent.Event, this, cancellationToken);

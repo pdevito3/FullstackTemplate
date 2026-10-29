@@ -93,9 +93,15 @@ public class AddAgentCommandTests : TestBase
         var add = underTest.SendAsync(new AddAgent.Command(dto));
 
         // Assert
-        (await Should.ThrowAsync<ForbiddenAccessException>(add.WaitAsync(TimeSpan.FromSeconds(10)))).Message
-            .ShouldBe("Only a client that can manage all tenants can do this.");
-        pause.Release();
+        try
+        {
+            (await Should.ThrowAsync<ForbiddenAccessException>(pause.WaitUntilBlockedAsync(add))).Message
+                .ShouldBe("Only a client that can manage all tenants can do this.");
+        }
+        finally
+        {
+            pause.Release();
+        }
         await delete;
     }
 

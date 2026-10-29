@@ -29,7 +29,7 @@ A marker with no partner stops the script before it changes a file. A change to 
 | The `Examples` menu of the sidebar | `frontend/src/examples/example-nav.tsx` |
 | The `get_tenant`, `list_tenants`, and `update_tenant` MCP tools | `FullstackTemplate.Server/Examples/Tenants/` |
 | The venues and workshops API, its `list_workshops` and `cancel_workshop` MCP tools, and the `manage_workshops` permission | `FullstackTemplate.Server/Examples/Venues/`, `FullstackTemplate.Server/Examples/Workshops/`, `FullstackTemplate.Server/Databases/EntityConfigurations/Examples/`, `FullstackTemplate.Server/Databases/Migrations/Examples/` |
-| The workshop pages at `/workshops` and `/venues/new`: the list, the detail, the edit and create forms, and the venue picker | `frontend/src/examples/workshops/`, `frontend/src/examples/venues/`, `frontend/src/examples/components/`, `frontend/src/routes/(examples)/workshops/`, `frontend/src/routes/(examples)/venues/` |
+| The workshop pages at `/workshops` and `/venues/new`: the list, the detail, the edit and create forms, and the venue picker | `frontend/src/examples/workshops/`, `frontend/src/examples/venues/`, `frontend/src/routes/(examples)/workshops/`, `frontend/src/routes/(examples)/venues/` |
 | The tests of the examples | the `Examples/` and `examples/` folders of the test projects, of `frontend/tests/`, and of `frontend/src/` |
 | The recipes of the example pages in the verify skill | `.agents/skills/verify-fullstack-template/features/examples/` and `recipes/examples/` |
 
@@ -43,6 +43,7 @@ Put example code where the script finds it:
 - Put a file that is only an example in a folder named `Examples` (.NET), `examples` (the SPA and the tests), or `(examples)` (a TanStack Router route group, which adds no segment to the URL).
 - Put example lines in a shared file between two comments. Use the comment form of the file: `// example:start` and `// example:end` in C# and TypeScript, `# example:start` in YAML and shell, `<!-- example:start -->` in Markdown, and `{/* example:start */}` in JSX.
 - Do not let code outside the examples use example code. After the script runs, that code does not compile.
+- Keep each `// new-feature:<slot>` marker of `scripts/new-feature.cs` out of an example section. The new-feature script adds its lines above the marker, also in an app with no examples.
 
 <!-- example:start -->
 The `without-examples` job of CI runs the script, runs it again to prove that the second run changes nothing, and fails if an example name stays in a tracked file. Then it builds the app and runs all of the tests. The other CI jobs test the app with the examples.

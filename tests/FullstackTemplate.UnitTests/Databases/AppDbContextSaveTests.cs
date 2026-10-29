@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -125,6 +126,7 @@ public sealed class AppDbContextSaveTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Note>().HasKey(n => n.Id);
         }
     }

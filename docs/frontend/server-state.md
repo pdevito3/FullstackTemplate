@@ -13,6 +13,12 @@ Server state is the data that the API returns. TanStack Query owns it. It caches
 7. Show the loading state and the error state of each query.
 8. Show what the Server allows. Do not copy a state machine, a permission check, or a business limit. To show a button for an action, read `allowedActions` or a flag of the DTO. If the DTO does not have the answer, add it on the Server (rule 11 of [dtos-and-mappings.md](../backend/dtos-and-mappings.md)). `domain/users/components/user-actions.tsx` shows a button for each allowed action of a user.
 
+Check: `pnpm lint` fails on these forms. The rules are in `frontend/eslint.config.js`.
+
+- Rule 2 (`server-state/no-copied-state`): a `useState` whose first value is a prop, an argument of a hook, or the `data` of a hook result such as `useQuery`, also through a field, `?.`, `??`, `? :`, or a local `const`. Another value of a hook, such as `useIsMobile()` or `query.isSuccess`, passes. A prop or a hook argument whose name starts with `initial` or `default` is a first value that the user owns from then on, so it passes. A value that a call computes, such as `useState(() => parse(value))`, passes too. So does state that the render sets again from its source, also with a changed value such as `setText(value.trim())` (client-state.md, "Effects"), and state that a timer sets later, as a debounce does. No check finds a copy inside an object, an array, a template, or a call, such as `useState({ name: record.name })`, a copy from `Route.useSearch()`, a copy of a hook that returns server data that is not in `data`, a copy into `useReducer`, or a copy into a context.
+- Rule 3 (`server-state/query-key-has-inputs`): a local value that the `queryFn` reads and the `queryKey` does not, in `useQuery`, `queryOptions`, `useInfiniteQuery`, and the other query calls. It compares fields: a key with `params` covers `params.page`, and a key with only `params.search` does not. A local that comes only from values in the key, such as `const search = params.search.trim()`, passes, and so does a local `const` of a literal, such as `const pageSize = 25`. A local that a hook makes, such as `useDebouncedValue(search)`, does not, because the hook can return another value. `useMemo` and `useCallback` are the exceptions. A value in the `options` of the client, such as `suppressErrorToast`, does not change the data, so it passes. No check finds a value that a helper function reads for the `queryFn`, or a value in `useQueries`. A local in the key covers all of the value that it comes from, so a key with `page` from `const { page } = params` covers each field of `params`.
+- Rule 3 in a key factory (`server-state/key-has-each-param`): in a `*.keys.ts` file, each parameter of each function must be an item of the array that the function returns, as the identifier itself: `(params: ListParams) => [..., params]`. Each other form fails: a pattern such as `({ search }: ListParams)`, a default value, a rest element, a destructure or an alias in the body, a field such as `params.search`, a call such as `date.toISOString()`, a spread, the parameter inside an object such as `{ search }`, and a parameter that the key does not use. Each of these forms can leave out a value of the request, and the lint cannot see every field of a named type.
+
 <!-- example:start -->
 In the workshop example, the detail page shows a button only for each entry of `allowedActions`: [`WorkshopActions`](<../../frontend/src/examples/workshops/components/workshop-actions.tsx>). A `Record` of the generated union gives each action its label, so a new action on the Server fails the build until it has one: [`LABELS`](<../../frontend/src/examples/workshops/components/workshop-actions.tsx>).
 <!-- example:end -->
@@ -25,7 +31,7 @@ Order the key parts from the most general to the most specific. Then you can inv
 export const UserKeys = {
   all: ['users'] as const,
   lists: () => [...UserKeys.all, 'list'] as const,
-  list: (filters: string) => [...UserKeys.lists(), { filters }] as const,
+  list: (filters: string) => [...UserKeys.lists(), filters] as const,
   details: () => [...UserKeys.all, 'detail'] as const,
   detail: (id: string) => [...UserKeys.details(), id] as const,
 }
@@ -68,7 +74,8 @@ export function useUpdateUser() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UserForUpdateDto }) => updateUser({ path: { id }, body }),
+    mutationFn: ({ id, body }: { id: string; body: UserForUpdateDto }) =>
+      updateUser({ path: { id }, body, options: { suppressErrorToast: true } }),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: UserKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: UserKeys.lists() })
@@ -76,6 +83,8 @@ export function useUpdateUser() {
   })
 }
 ```
+
+After a delete, the page calls `leaveDeletedRecord` from [`lib/leave-deleted-record.ts`](../../frontend/src/lib/leave-deleted-record.ts) in the `onSuccess` of `mutate`. It invalidates the lists, goes to the next page, and only then removes the detail of the deleted record. Do not remove the detail in the `onSuccess` of the mutation hook: the detail page is still on the screen, its query reads the removed key again at the next render, and that read gets a 404 next to the toast of the delete. Cancel and remove do not stop a query that is on the screen.
 
 For an optimistic update, change only the query cache. In `onMutate`, cancel the queries, keep the old data, and set the new data. In `onError`, put back the old data. In `onSettled`, invalidate the queries.
 
@@ -99,9 +108,13 @@ retry: (failureCount, error) => {
 },
 ```
 
+A form that shows each refusal itself, with `useServerErrors`, sends `{ suppressErrorToast: true }` in the `options` of its mutation, so the error does not show twice (messages.md, "In the SPA").
+
 <!-- example:start -->
-A form that shows each refusal itself sends `suppressErrorToast`, so the error does not show twice: [`useUpdateWorkshop`](<../../frontend/src/examples/workshops/apis/update-workshop.ts>). `refusalOf` puts each validation message on its field, and every other message above the buttons: [`refusalOf`](<../../frontend/src/examples/components/use-server-errors.ts>).
+The workshop forms do this: [`useUpdateWorkshop`](<../../frontend/src/examples/workshops/apis/update-workshop.ts>).
 <!-- example:end -->
+
+`useServerErrors` shows a refusal in the form: each validation message on its field, a stale version as its own problem, and every other message in `RefusedSaveAlert` above the buttons. See [`refusalOf`](../../frontend/src/hooks/use-server-errors.ts) and [`RefusedSaveAlert`](../../frontend/src/components/refused-save-alert.tsx).
 
 ## Cache times
 
@@ -121,10 +134,10 @@ const form = useForm<UserFormData>({
 
 Use `defaultValues` in an edit form, not `values`. With `values`, a refetch can put the new version under the edits of the user. The save then overwrites a change that the user did not see.
 
-When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`, and the toast shows the `detail`. A create can also get this type, when a unique index of the Server tells that another user changed the record. For a create, keep the input of the user and refetch the list or the parent record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new data. Do not send the PUT again with the new version, because that overwrites the other change.
+When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`. A create can also get this type, when a unique index of the Server tells that another user changed the record. For a create, keep the input of the user and refetch the list or the parent record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new record. After the reload, a field that the new record changed shows the saved value, and each other field keeps the edit of the user. [`latestOverEdits`](../../frontend/src/lib/latest-over-edits.ts) sorts the fields. Name the fields that changed, and move the focus to the first of them. Do not send the PUT again with the new version, because that overwrites the other change.
 
 <!-- example:start -->
-In the workshop example, the edit form keeps the loaded version in `defaultValues`: [`WorkshopEditForm`](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx>). `isStaleVersionError` reads the type: [`isStaleVersionError`](<../../frontend/src/lib/problem-details.ts>). `Load the latest` refetches the detail and resets the form, on the same page: [`handleLoadLatest`](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx>) and [`EditWorkshopPage`](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx>). The form shows the problem itself, so this save sends no toast.
+In the workshop example, the edit form keeps the loaded version in `defaultValues`: [`WorkshopEditForm`](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx>). `isStaleVersionError` reads the type: [`isStaleVersionError`](<../../frontend/src/lib/problem-details.ts>). `Load the latest` refetches the detail, keeps the edits that the latest save did not change, and names the fields that it changed, on the same page: [`handleLoadLatest`](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx>) and [`EditWorkshopPage`](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx>). The form shows the problem itself, so this save sends no toast.
 <!-- example:end -->
 
 ## Do not

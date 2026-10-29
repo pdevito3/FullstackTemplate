@@ -24,16 +24,20 @@ No MediatR behavior runs FluentValidation validators. Do not add a `Validator` c
 
 ## Command
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/UpdateUser/UpdateUser.cs -->
 ```csharp
 public static class UpdateUser
 {
     public sealed record Command(string Id, UserForUpdateDto Dto) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
-        : IRequestHandler<Command, UserDto>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, UserDto>
     {
+        private readonly ILogger _logger = Log.ForContext<Handler>();
+
         public async Task<UserDto> Handle(Command request, CancellationToken cancellationToken)
         {
+            Activity.Current?.SetTag("app.user_id", request.Id);
+
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             UserAction.Update().GuardBeforeLoad(caller, request.Id);
 
@@ -41,11 +45,15 @@ public static class UpdateUser
                 .TagWithOperationCallSite("users.update.load")
                 .Include(u => u.UserPermissions)
                 .GetById(request.Id, cancellationToken);
+
             user.GuardAllows(UserAction.Update(), caller);
 
-            user.Update(request.Dto.ToUserForUpdate());
-
+            var forUpdate = request.Dto.ToUserForUpdate();
+            user.Update(forUpdate);
+            // ...
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.Here().Information("Updated user {UserId}", user.Id);
 
             return user.ToUserDto(caller);
         }
@@ -78,6 +86,7 @@ A command with no version skips step 6. A query makes steps 1 to 5. A caller wit
 
 The form that moves a visit shows the day and the status, so `Reschedule` applies a field of an edit form and takes the version:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs -->
 ```csharp
 public Visit Reschedule(VisitForReschedule forReschedule)
 {
@@ -112,6 +121,7 @@ The shape has five parts:
 4. **A proof type** that only `Decide` makes. Its constructor is `internal`, and in the Server only `Decide` calls it. For a private constructor, put `Decide` in the proof type. The write method takes the proof, so the write cannot run without the check.
 5. **Two callers, one decision.** The list calls `Decide` for each candidate and keeps the offered ones. The command calls `Decide` one time and throws the refusal.
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/DecisionShapeExampleTests.cs -->
 ```csharp
 public sealed record Room(string Id, int DaysAhead);
 
@@ -227,6 +237,7 @@ Each DTO field must translate to SQL. If a DTO field comes from a computed entit
 
 `ApplyFilters` and `ApplySortOrder` wrap QueryKit. When the input is not valid, they throw a `QueryInputException` with the name of the parameter, which gives 400.
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/GetUserList/GetUserList.cs -->
 ```csharp
 public static class GetUserList
 {
@@ -284,17 +295,23 @@ A QueryKit filter needs no `LikePattern`. EF Core escapes the pattern of its con
 
 ## Permission checks
 
-A handler checks the permission of the caller with one call to `IPermissionGuard`. The call is the first statement of `Handle`, so a reader of the handler sees the rule. There is no marker interface and no pipeline behavior for access.
+A handler checks the permission of the caller with one call to `IPermissionGuard`. The call is the first check of `Handle`, so a reader of the handler sees the rule. There is no marker interface and no pipeline behavior for access.
 
+<!-- code: FullstackTemplate.Server/Domain/Agents/Features/DeleteAgent/DeleteAgent.cs -->
 ```csharp
 public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
 {
+    private readonly ILogger _logger = Log.ForContext<Handler>();
+
     public async Task Handle(Command request, CancellationToken cancellationToken)
     {
-        await permissionGuard.RequireAsync(Permission.ManageUsers(), cancellationToken);
+        Activity.Current?.SetTag("app.agent_id", request.Id);
 
-        var user = await dbContext.Users
-            .TagWithOperationCallSite("users.delete.load")
+        await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
+
+        var agent = await dbContext.Agents
+            .TagWithOperationCallSite("agents.delete.load")
+            .Include(a => a.Permissions)
             .GetById(request.Id, cancellationToken);
         // ...
     }

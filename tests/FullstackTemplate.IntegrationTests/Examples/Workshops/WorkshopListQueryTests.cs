@@ -80,7 +80,6 @@ public class WorkshopListQueryTests : TestBase
         (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("search");
     }
 
-    // Each filter is the string that querykit-converter.ts of the SPA writes for a text value or a list of values
     public static IEnumerable<(string, string[])> FiltersThatTheFilterBuilderWrites =>
     [
         ("title == \"\"\"Say \"hi\" now\"\"\"", ["Say \"hi\" now"]),

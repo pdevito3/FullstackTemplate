@@ -89,9 +89,9 @@ function convertTextFilter(propertyKey: string, operator: string, value: string)
 }
 
 /**
- * Writes a text value as a QueryKit string literal. QueryKit reads an unquoted value as a name, a number, or `null`,
- * and it has no escape in `"..."`. So a value with a quote goes in a raw literal: the value between runs of quotes
- * that are longer than each run in the value, and at least three long.
+ * QueryKit reads an unquoted value as a name, a number, or `null`, and it has no escape in `"..."`. So a value with a
+ * quote goes in a raw literal: the value between runs of quotes that are longer than each run in the value, and at
+ * least three long.
  */
 function quoteText(value: string): string {
   const text = withoutEndQuotes(value)

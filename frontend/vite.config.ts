@@ -8,19 +8,16 @@ import { playwright } from '@vitest/browser-playwright'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests } from './vitest.commands'
 
-// Vendor libraries that the root layout loads on every page. Each group gets
-// its own chunk, so the entry chunk stays small and the browser can cache the
-// libraries apart from the app code. Do not add libraries that only lazy
-// routes use: a manual chunk loads with the entry.
+// Vendor libraries that can load on the first page. Each group gets its own
+// chunk, so the entry chunk stays small and the browser can cache the
+// libraries apart from the app code. A chunk loads only on a page that uses it.
 const vendorChunks: Record<string, string[]> = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
   query: ['@tanstack/react-query', '@tanstack/query-core'],
   motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
-  // example:start
-  // The workshop routes check their URL search with zod, and validateSearch loads with the entry
+  // The router does not split validateSearch, so a route that checks its search with zod loads zod on the first page
   zod: ['zod'],
-  // example:end
 }
 
 function vendorChunk(id: string): string | undefined {

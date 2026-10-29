@@ -121,25 +121,26 @@ public partial class DocCodeBlockTests
 
             if (lines[(open + 1)..end].All(l => l.Trim() is "" or "// ..."))
                 faults.Add($"{docPath} line {lineNumber}: the C# block has no code.");
-            else if (FirstLineNotInSource(lines[(open + 1)..end], text) is { } missing)
-                faults.Add($"{docPath} line {lineNumber}: the C# block differs from {path} at '{missing}'. Copy the lines from the file again.");
+            else if (FirstLineNotInSource(lines, open + 1, end, text) is { } missing)
+                faults.Add($"{docPath} line {missing + 1}: the C# block differs from {path} at '{lines[missing].Trim()}'. Copy the lines from the file again.");
         }
 
         return faults;
     }
 
     // Each part between two "// ..." lines must be a run of lines of the source, after the end of the part before it.
-    // Blank lines do not count.
-    private static string? FirstLineNotInSource(string[] block, string source)
+    // Blank lines do not count. Gives the index in lines of the first line of the block that is not in the source.
+    private static int? FirstLineNotInSource(string[] lines, int start, int end, string source)
     {
         var sourceLines = source.ReplaceLineEndings("\n").Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
-        var parts = new List<List<string>> { new() };
-        foreach (var line in block.Select(l => l.Trim()).Where(l => l.Length > 0))
+        var parts = new List<List<(string Text, int Index)>> { new() };
+        for (var n = start; n < end; n++)
         {
+            var line = lines[n].Trim();
             if (line == "// ...")
                 parts.Add([]);
-            else
-                parts[^1].Add(line);
+            else if (line.Length > 0)
+                parts[^1].Add((line, n));
         }
 
         var from = 0;
@@ -148,9 +149,10 @@ public partial class DocCodeBlockTests
             if (part.Count == 0)
                 continue;
 
-            var at = IndexOfRun(sourceLines, part, from);
+            var texts = part.Select(l => l.Text).ToList();
+            var at = IndexOfRun(sourceLines, texts, from);
             if (at < 0)
-                return part[LongestMatchedPrefix(sourceLines, part, from)];
+                return part[LongestMatchedPrefix(sourceLines, texts, from)].Index;
             from = at + part.Count;
         }
 

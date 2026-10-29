@@ -26,28 +26,32 @@ const linkImports = [
 
 // The actions of a Playwright Page or Frame that take a selector string first. A Locator has the same actions with no selector.
 const selectorActions = 'click|dblclick|fill|type|press|pressSequentially|check|uncheck|setChecked|hover|tap|focus|selectOption|setInputFiles|dispatchEvent|textContent|innerText|innerHTML|getAttribute|inputValue|isChecked|isDisabled|isEditable|isEnabled|isHidden|isVisible|waitForSelector|dragAndDrop'
-// The Locator form of these actions takes no string first.
-const noStringActions = 'click|dblclick|check|uncheck|hover|tap|focus|textContent|innerText|innerHTML|inputValue|isChecked|isDisabled|isEditable|isEnabled|isHidden|isVisible|waitForSelector'
 const stringSelectorMessage = 'Do not give a selector string to an action. Find the element with getByRole or getByLabel in the *.locators.ts file of the feature, and call the action on that Locator.'
-const isString = ":matches([type='TemplateLiteral'], [type='Literal'][value=/^/])"
-const onPage = '[callee.object.name=/^(page|frame)$/], [callee.object.property.name=/^(page|frame)$/]'
+
+const isPageOrFrame = (type) => {
+  const symbol = type.getSymbol()
+  return (symbol?.getName() === 'Page' || symbol?.getName() === 'Frame')
+    && symbol.declarations?.some((declaration) => declaration.getSourceFile().fileName.includes('/playwright-core/'))
+}
+
+const noPageActionRule = {
+  meta: { type: 'problem', schema: [], messages: { selector: stringSelectorMessage } },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    return {
+      [`CallExpression > MemberExpression.callee[property.name=/^(${selectorActions})$/]`](callee) {
+        const type = services.getTypeAtLocation(callee.object)
+        if ((type.isUnion() ? type.types : [type]).some(isPageOrFrame))
+          context.report({ node: callee.parent, messageId: 'selector' })
+      },
+    }
+  },
+}
 
 // docs/frontend/testing.md, section "Locators, tasks, and specs". Each message names the fix.
 const testFileRules = [
   {
     selector: 'CallExpression[callee.property.name=/^\\$\\$?(eval)?$/]',
-    message: stringSelectorMessage,
-  },
-  {
-    selector: `CallExpression[callee.property.name=/^(${selectorActions})$/]:matches(${onPage})`,
-    message: stringSelectorMessage,
-  },
-  {
-    selector: `CallExpression[callee.property.name=/^(${noStringActions})$/]:not(${onPage}):has(> ${isString}:first-child)`,
-    message: stringSelectorMessage,
-  },
-  {
-    selector: `CallExpression[callee.property.name=/^(${selectorActions})$/][arguments.length>1][arguments.1.type!=/^(ObjectExpression|Identifier)$/]:not(${onPage}):has(> ${isString}:first-child)`,
     message: stringSelectorMessage,
   },
   {
@@ -128,7 +132,14 @@ export default tseslint.config(
   },
   {
     files: ['tests/**/*.ts'],
-    rules: { 'no-restricted-syntax': ['error', ...testFileRules] },
+    languageOptions: {
+      parserOptions: { project: './tsconfig.tests.json', tsconfigRootDir: import.meta.dirname },
+    },
+    plugins: { playwright: { rules: { 'no-page-action': noPageActionRule } } },
+    rules: {
+      'no-restricted-syntax': ['error', ...testFileRules],
+      'playwright/no-page-action': 'error',
+    },
   },
   {
     files: ['tests/**/*.spec.ts'],

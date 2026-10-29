@@ -3,6 +3,7 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 using System.Reflection;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
@@ -12,14 +13,16 @@ using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 /// <summary>
-/// A tenant delete soft-deletes each row that the tenant owns. The test finds the tenant-owned types in the EF model,
-/// not in a list, so its assert covers a new tenant-owned entity with no change. An app that adds one can prove its
-/// delete with an arrange that adds a row of it.
+/// The assert reads the tenant-owned types from the EF model, so it covers a new tenant-owned entity once the arrange
+/// adds a row of it.
 /// </summary>
 public class TenantDeleteOwnedRowsTests : TestBase
 {
-    private static readonly MethodInfo IdsOfType = typeof(TenantDeleteOwnedRowsTests)
-        .GetMethod(nameof(LiveIdsAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
+    private static readonly MethodInfo IdsOfTenant = typeof(TenantDeleteOwnedRowsTests)
+        .GetMethod(nameof(IdsOfTheTenantOfTheCallerAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly MethodInfo LiveIds = typeof(TenantDeleteOwnedRowsTests)
+        .GetMethod(nameof(LiveIdsInAnyTenantAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     [Test]
     public async Task tenant_delete_soft_deletes_each_row_of_each_tenant_owned_type()
@@ -33,7 +36,7 @@ public class TenantDeleteOwnedRowsTests : TestBase
             .AddAgent(out _, a => a.Permissions = [Permission.Names.ReadAgents])
             .BuildAsync();
         scope.SetUserWithDefaults(identifier: admin.Identifier);
-        var owned = await scope.ExecuteDbContextAsync(db => LiveIdsOfEachOwnedTypeAsync(db, ids: null));
+        var owned = await scope.ExecuteDbContextAsync(db => EachOwnedTypeAsync(db, type => Run(IdsOfTenant, type, db)));
         owned.Where(type => type.Value.Count > 0).Select(type => type.Key)
             .ShouldBe(["Agent", "AgentPermission", "User", "UserPermission"], ignoreOrder: true);
 
@@ -41,34 +44,33 @@ public class TenantDeleteOwnedRowsTests : TestBase
         await scope.SendAsync(new DeleteTenant.Command(tenant.Id));
 
         // Assert
-        var stillLive = await new TestingServiceScope().ExecuteDbContextAsync(db => LiveIdsOfEachOwnedTypeAsync(db, owned));
+        var stillLive = await new TestingServiceScope().ExecuteDbContextAsync(db =>
+            EachOwnedTypeAsync(db, type => Run(LiveIds, type, db, owned[type.Name])));
         stillLive.Where(type => type.Value.Count > 0).ShouldBeEmpty();
     }
 
-    /// <summary>
-    /// The live IDs of each root type with the tenant filter, except the tenant. With <paramref name="ids"/>, only those
-    /// IDs, in any tenant. Without them, the rows of the tenant of the caller.
-    /// </summary>
-    private static async Task<Dictionary<string, List<string>>> LiveIdsOfEachOwnedTypeAsync(
-        AppDbContext db, Dictionary<string, List<string>>? ids)
+    /// <summary>Each root type with the tenant filter, except the tenant and the audit log, which keeps its entries.</summary>
+    private static async Task<Dictionary<string, List<string>>> EachOwnedTypeAsync(
+        AppDbContext db, Func<Type, Task<List<string>>> idsOf)
     {
         var ownedTypes = db.Model.GetEntityTypes().Where(e => e.BaseType is null
             && e.ClrType != typeof(Tenant)
-            && e.ClrType.IsAssignableTo(typeof(BaseEntity))
+            && e.ClrType != typeof(AuditEntry)
             && e.FindDeclaredQueryFilter(QueryFilterNames.Tenant) is not null);
 
-        var live = new Dictionary<string, List<string>>();
+        var result = new Dictionary<string, List<string>>();
         foreach (var type in ownedTypes)
-        {
-            var load = IdsOfType.MakeGenericMethod(type.ClrType);
-            live[type.ClrType.Name] = await (Task<List<string>>)load.Invoke(null, [db, ids?[type.ClrType.Name]])!;
-        }
+            result[type.ClrType.Name] = await idsOf(type.ClrType);
 
-        return live;
+        return result;
     }
 
-    private static Task<List<string>> LiveIdsAsync<TEntity>(AppDbContext db, List<string>? ids) where TEntity : BaseEntity
-        => ids is null
-            ? db.Set<TEntity>().Select(e => e.Id).ToListAsync()
-            : db.Set<TEntity>().IgnoreQueryFilters([QueryFilterNames.Tenant]).Where(e => ids.Contains(e.Id)).Select(e => e.Id).ToListAsync();
+    private static Task<List<string>> Run(MethodInfo query, Type entityType, params object[] arguments)
+        => (Task<List<string>>)query.MakeGenericMethod(entityType).Invoke(null, arguments)!;
+
+    private static Task<List<string>> IdsOfTheTenantOfTheCallerAsync<TEntity>(AppDbContext db) where TEntity : BaseEntity
+        => db.Set<TEntity>().Select(e => e.Id).ToListAsync();
+
+    private static Task<List<string>> LiveIdsInAnyTenantAsync<TEntity>(AppDbContext db, List<string> ids) where TEntity : BaseEntity
+        => db.Set<TEntity>().IgnoreQueryFilters([QueryFilterNames.Tenant]).Where(e => ids.Contains(e.Id)).Select(e => e.Id).ToListAsync();
 }

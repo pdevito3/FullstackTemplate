@@ -146,6 +146,27 @@ public class WorkshopCheckOrderTests : TestBase
     }
 
     [Test]
+    public async Task an_update_with_the_current_values_of_a_cancelled_workshop_is_refused_on_the_status()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        var cancel = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Cancel(workshop.Id), new { });
+        var cancelled = (await cancel.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Workshops.Update(workshop.Id), new
+        {
+            title = cancelled.Title, startsAt = cancelled.StartsAt, capacity = cancelled.Capacity, version = cancelled.Version,
+        });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("status");
+    }
+
+    [Test]
     public async Task a_schedule_with_no_version_is_a_bad_request()
     {
         // Arrange

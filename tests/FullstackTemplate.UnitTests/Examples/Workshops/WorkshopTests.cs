@@ -72,7 +72,7 @@ public class WorkshopTests
     }
 
     [Test]
-    public void an_update_of_a_scheduled_workshop_is_refused()
+    public void an_update_with_the_current_values_of_a_cancelled_workshop_is_refused_on_the_status()
     {
         // Arrange
         TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out var workshop);
@@ -85,6 +85,34 @@ public class WorkshopTests
         var refusal = act.ShouldThrow<ValidationException>();
         refusal.Property.ShouldBe("status");
         refusal.Message.ShouldBe("A cancelled workshop cannot be changed.");
+    }
+
+    [Test]
+    public void an_update_with_the_current_values_changes_nothing_and_queues_no_event()
+    {
+        // Arrange
+        TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out var workshop);
+        var current = ForUpdate(workshop) with { StartsAt = workshop.StartsAt.ToOffset(TimeSpan.FromHours(-6)) };
+
+        // Act
+        workshop.Update(current);
+
+        // Assert
+        workshop.StartsAt.Offset.ShouldBe(TimeSpan.Zero);
+        workshop.DomainEvents.OfType<WorkshopUpdated>().ShouldBeEmpty();
+    }
+
+    [Test]
+    public void an_update_that_changes_one_value_queues_the_update()
+    {
+        // Arrange
+        TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out var workshop);
+
+        // Act
+        workshop.Update(ForUpdate(workshop) with { Capacity = workshop.Capacity == 1 ? 2 : 1 });
+
+        // Assert
+        workshop.DomainEvents.OfType<WorkshopUpdated>().ShouldBe([new WorkshopUpdated(workshop.Id)]);
     }
 
     [Test]

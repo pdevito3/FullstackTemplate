@@ -583,7 +583,7 @@ test.describe('the filter builder after the focused button goes away', () => {
     await demo.open()
     await demo.at.toolbarButton('Urgent Bugs').click()
 
-    await demo.at.removeFilter('Labels').first().focus()
+    await demo.at.removeFilterNamed('Labels | Has | Bug').focus()
     await page.keyboard.press('Enter')
 
     await expect(demo.at.removeFilter('Labels')).toHaveCount(1)
@@ -622,7 +622,7 @@ test.describe('the filter builder after the focused button goes away', () => {
     await demo.at.toolbarButton('Urgent Bugs').click()
     await demo.at.toolbarButton('Group Filters').click()
     for (const value of ['Bug', 'Urgent']) {
-      await demo.at.selectFilter(`Labels | Has | ${value}`).locator('xpath=ancestor::label').click()
+      await demo.select(demo.at.selectFilter(`Labels | Has | ${value}`))
     }
 
     await demo.at.groupSelected.focus()
@@ -642,7 +642,7 @@ test.describe('the filter builder after a click removes the clicked button', () 
     await demo.open()
     await demo.at.toolbarButton('Urgent Bugs').click()
 
-    await demo.at.removeFilter('Labels').first().click()
+    await demo.at.removeFilterNamed('Labels | Has | Bug').click()
 
     await expect(demo.at.removeFilter('Labels')).toHaveCount(1)
     await expect(demo.at.addFilterMenu).toBeFocused()
@@ -664,9 +664,9 @@ test.describe('the filter builder after a click removes the clicked button', () 
     await demo.open()
     await demo.at.toolbarButton('Complex Nested Query').click()
 
-    await demo.at.group(1).getByRole('button', { name: 'Delete group' }).click()
+    await demo.at.groupAction(1, 'Delete group').click()
 
-    await expect(demo.at.groupBadge(1)).toHaveCount(0)
+    await expect(demo.at.group(1)).toHaveCount(0)
     await expect(demo.at.addFilterMenu).toBeFocused()
   })
 })
@@ -676,10 +676,10 @@ test.describe('the filter builder after a key removes a button in a nested group
     const demo = filterDemoPage(page)
     await demo.openNestedGroups()
 
-    await demo.at.group(2).getByRole('button', { name: /^Remove filter: First Name/ }).focus()
+    await demo.at.removeFilterNamed('First Name | Equals | Jane').focus()
     await page.keyboard.press('Enter')
 
-    await expect(demo.at.group(2).getByRole('button', { name: /^Remove filter: First Name/ })).toHaveCount(0)
+    await expect(demo.at.removeFilterNamed('First Name | Equals | Jane')).toHaveCount(0)
     await expect(demo.at.addFilterMenu).toBeFocused()
   })
 
@@ -687,10 +687,10 @@ test.describe('the filter builder after a key removes a button in a nested group
     const demo = filterDemoPage(page)
     await demo.openNestedGroups()
 
-    await demo.at.group(2).getByRole('button', { name: 'Delete group' }).focus()
+    await demo.at.groupAction(2, 'Delete group').focus()
     await page.keyboard.press('Enter')
 
-    await expect(demo.at.groupBadge(2)).toHaveCount(0)
+    await expect(demo.at.group(2)).toHaveCount(0)
     await expect(demo.at.addFilterMenu).toBeFocused()
   })
 
@@ -698,10 +698,10 @@ test.describe('the filter builder after a key removes a button in a nested group
     const demo = filterDemoPage(page)
     await demo.openNestedGroups()
 
-    await demo.at.group(2).getByRole('button', { name: 'Ungroup' }).focus()
+    await demo.at.groupAction(2, 'Ungroup').focus()
     await page.keyboard.press('Enter')
 
-    await expect(demo.at.groupBadge(2)).toHaveCount(0)
+    await expect(demo.at.group(2)).toHaveCount(0)
     await expect(demo.at.addFilterMenu).toBeFocused()
   })
 })
@@ -715,10 +715,9 @@ test.describe('a filter group on a 390 px phone', () => {
 
     await demo.at.toolbarButton('Complex Nested Query').click()
 
-    const group = demo.at.group(1)
-    for (const action of ['Ungroup', 'Delete group']) {
-      const badge = await demo.edgesOf(demo.at.groupBadge(1))
-      const button = await demo.edgesOf(group.getByRole('button', { name: action }).first())
+    const badge = await demo.edgesOf(demo.at.groupBadge(1))
+    for (const action of ['Ungroup', 'Delete group'] as const) {
+      const button = await demo.edgesOf(demo.at.groupAction(1, action))
       expect(button.top, action).toBeLessThan(badge.bottom)
       expect(button.bottom, action).toBeGreaterThan(badge.top)
     }

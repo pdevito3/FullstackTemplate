@@ -38,15 +38,30 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
-    /** The Complex Nested Query preset with its group put in a new group with the John filter: depth 1 holds depth 2. */
+    // React Aria hides the native input, so the click goes to its label, as a user clicks.
+    async select(checkbox: Locator) {
+      await checkbox.locator('xpath=ancestor::label').click()
+    },
+
+    // Chromium only (CDP). It keeps the 13:16 ratio of the fixed font to the standard font of Chromium.
+    async useDefaultFontSize(px: number) {
+      const cdp = await page.context().newCDPSession(page)
+      await cdp.send('Page.setFontSizes', { fontSizes: { standard: px, fixed: Math.round((px * 13) / 16) } })
+    },
+
+    /** How far the content of the element goes past its right edge. */
+    async overflowOf(element: Locator) {
+      return element.evaluate((node) => node.scrollWidth - node.clientWidth)
+    },
+
     async openNestedGroups() {
       await this.open()
       await at.toolbarButton('Complex Nested Query').click()
       await at.toolbarButton('Group Filters').click()
-      await at.group(1).getByRole('checkbox', { name: 'Select group' }).locator('xpath=ancestor::label').click()
-      await page.getByRole('checkbox', { name: /^Select filter: First Name \| Equals \| John/ }).locator('xpath=ancestor::label').click()
+      await this.select(at.groupAction(1, 'Select group'))
+      await this.select(at.selectFilter('First Name | Equals | John'))
       await at.groupSelected.click()
-      await expect(at.groupBadge(2)).toBeVisible()
+      await expect(at.group(2)).toBeVisible()
     },
 
     async chooseProperty(propertyLabel: string) {

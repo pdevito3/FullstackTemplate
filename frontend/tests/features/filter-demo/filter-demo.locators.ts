@@ -5,6 +5,11 @@ export const filterDemo = (page: Page) => {
   // The Add Filter submenu names its dialog. The Add and Edit dialogs take their name from the title.
   const control = (propertyLabel: string) =>
     dialog(`${propertyLabel} filter`).or(dialog(`Add ${propertyLabel} Filter`)).or(dialog(`Edit ${propertyLabel} Filter`))
+  // A group holds the groups nested in it, so its own buttons are found in its header.
+  const groupHeader = (depth: number) =>
+    page
+      .locator('[data-slot="filter-group-header"]')
+      .filter({ has: page.getByText(`Group (Depth ${depth})`, { exact: true }) })
 
   return {
     heading: page.getByRole('heading', { name: 'Filter Builder Demo' }),
@@ -40,13 +45,15 @@ export const filterDemo = (page: Page) => {
     queryKit: page.getByRole('status', { name: 'QueryKit string' }),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
+    /** `name` is the full name of the filter, for example `Labels | Has | Bug`. */
+    removeFilterNamed: (name: string) => page.getByRole('button', { name: `Remove filter: ${name}`, exact: true }),
     toolbarButton: (name: 'Cancel' | 'Clear' | 'Complex Nested Query' | 'Group Filters' | 'Ungroup' | 'Urgent Bugs') =>
       page.getByRole('button', { name, exact: true }),
     selectFilter: (name: string) => page.getByRole('checkbox', { name: `Select filter: ${name}`, exact: true }),
     groupSelected: page.getByRole('button', { name: /^Group Selected/ }),
-    groupBadge: (depth: number) => page.locator('[data-slot="badge"]').filter({ hasText: `Group (Depth ${depth})` }),
-    /** The group of a depth, from its header to its filters. */
-    group: (depth: number) =>
-      page.locator('[data-slot="card"]').filter({ has: page.locator('[data-slot="badge"]').getByText(`Group (Depth ${depth})`, { exact: true }) }).last(),
+    group: (depth: number) => page.getByRole('group', { name: `Group (Depth ${depth})`, exact: true }),
+    groupBadge: (depth: number) => groupHeader(depth).getByText(`Group (Depth ${depth})`, { exact: true }),
+    groupAction: (depth: number, name: 'Ungroup' | 'Delete group' | 'Select group') =>
+      groupHeader(depth).getByRole(name === 'Select group' ? 'checkbox' : 'button', { name, exact: true }),
   }
 }

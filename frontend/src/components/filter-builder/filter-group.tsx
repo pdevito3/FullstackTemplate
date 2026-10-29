@@ -55,6 +55,8 @@ export function FilterGroup({
 
   return (
     <Card
+      role="group"
+      aria-label={`Group (Depth ${depth})`}
       className={cn(
         'border-l-4 transition-all p-0',
         depthColor,
@@ -63,7 +65,7 @@ export function FilterGroup({
     >
       <div className="p-2">
         {/* Group Header */}
-        <div className="flex items-start gap-1.5 mb-1.5">
+        <div data-slot="filter-group-header" className="flex items-start gap-1.5 mb-1.5">
           {/* The group details wrap, and the actions stay on the first line. */}
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             {/* Selection Checkbox */}

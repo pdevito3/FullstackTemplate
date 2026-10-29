@@ -1,15 +1,21 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { commands } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { routeTree } from '@/routeTree.gen'
 
 test('a session answer that is not a list of claims shows that the membership check failed', async () => {
-  // The Vite dev server answers a path that no proxy takes with its index.html.
-  await commands.answerRequests([{ method: 'GET', path: '/bff/user', body: '<!doctype html>' }])
-  onTestFinished(() => commands.answerRequests([]))
+  // A dev server with no BFF answered each path with its index.html.
+  await commands.answerRequests([
+    {
+      method: 'GET',
+      path: '/bff/user',
+      contentType: 'text/html',
+      body: '<!doctype html><html><body><div id="root"></div></body></html>',
+    },
+  ])
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/'] }) })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 

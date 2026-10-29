@@ -776,6 +776,22 @@ test.describe('a nested filter group on a 320 px phone with a 24 px font', () =>
   })
 })
 
+test.describe('a filter in a nested group on a 320 px phone with a 24 px font', () => {
+  test.use({ viewport: { width: 320, height: 640 } })
+
+  test('reads as one phrase, with no more lines than its words need', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await useDefaultFontSize(page, 24)
+
+    await demo.openNestedGroups()
+
+    for (const propertyLabel of ['First Name', 'Comment Count']) {
+      const lines = await demo.linesOfBadgeAndOfItsWordsAsParagraph(demo.at.filterBadgeEdit(2, propertyLabel))
+      expect(lines.badge, lines.words).toBeLessThanOrEqual(lines.paragraph)
+    }
+  })
+})
+
 test.describe('a filter group with one short filter on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 

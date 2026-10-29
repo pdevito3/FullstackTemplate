@@ -38,7 +38,7 @@ async function renderLayoutAt(path: string) {
       <>
         <h1>Links</h1>
         <Link to="/about">Open the page with a heading</Link>
-        <Link to="/components">Open the page with no heading</Link>
+        <Link to="/start-tenant">Open the page with no heading</Link>
       </>
     ),
   })
@@ -55,7 +55,7 @@ async function renderLayoutAt(path: string) {
   })
   const noHeadingRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/components',
+    path: '/start-tenant',
     staticData: { breadcrumb: 'No heading' },
     component: () => <p>A page with no heading</p>,
   })

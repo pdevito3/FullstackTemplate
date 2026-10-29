@@ -52,7 +52,7 @@ public static class AccessRules
 
         foreach (var (call, outcome) in outcomes)
         {
-            var (accepts, expected) = ExpectationOf(codes, call, entry);
+            var (accepts, expected) = ExpectationOf(codes, call, entry, target);
             if (!accepts(outcome.Code))
                 gaps.Add(GapLine(target, call, expected, outcome));
         }
@@ -65,12 +65,15 @@ public static class AccessRules
         return gaps;
     }
 
-    private static (Func<string, bool> Accepts, string Expected) ExpectationOf(SurfaceCodes codes, SweepCall call, Open? entry)
+    private static (Func<string, bool> Accepts, string Expected) ExpectationOf(
+        SurfaceCodes codes, SweepCall call, Open? entry, SweepTarget target)
         => call switch
         {
-            SweepCall.NoUser when entry is { Anonymous: true }
+            SweepCall.NoUser when entry is { Anonymous: true } && target.NamesARecord
                 => (code => codes.IsSuccess(code) || code == codes.NotFound,
                     $"a success or {codes.NotFound}, because its allow-list entry is anonymous"),
+            SweepCall.NoUser when entry is { Anonymous: true }
+                => (codes.IsSuccess, "a success, because its allow-list entry is anonymous"),
             SweepCall.NoUser
                 => (code => code == codes.Unauthenticated,
                     $"{codes.Unauthenticated}, because no allow-list entry marks it anonymous"),

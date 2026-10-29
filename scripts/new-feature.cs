@@ -71,6 +71,7 @@ internal sealed record Field(string Name, Kind Kind, bool Optional, bool Sensiti
     public string Json => Naming.Camel(Name);
     public string Snake => Naming.Snake(Name);
     public string Words => Naming.Words(Name);
+    public string Label => Naming.Label(Name);
     public bool NeedsMark => Kind is Kind.Text or Kind.Date or Kind.Instant;
 
     public string Type => Kind switch
@@ -93,7 +94,7 @@ internal sealed record Names(string App, string Entity, string Plural, string Pr
     public string KebabPlural => SnakePlural.Replace('_', '-');
     public string Words => Naming.Words(Entity);
     public string WordsPlural => Naming.Words(Plural);
-    public string A => "aeiou".Contains(Words[0]) ? "an" : "a";
+    public string A => Naming.Article(Words);
     public string Permission => $"Manage{Plural}";
     public string PermissionName => $"manage_{SnakePlural}";
     public string PermissionWords => $"manage {WordsPlural}";
@@ -273,6 +274,23 @@ internal static class Naming
     public static string Snake(string pascal) => Regex.Replace(pascal, "(?<=[a-z0-9])(?=[A-Z])", "_").ToLowerInvariant();
 
     public static string Words(string pascal) => Snake(pascal).Replace('_', ' ');
+
+    // "a" or "an" goes by the first sound of the words, not the first letter: a unit, a one, an hour
+    private static readonly string[] SoundStartsWithConsonant = ["uni", "use", "usa", "usu", "uti", "ure", "uri", "eu", "one", "once"];
+    private static readonly string[] SoundStartsWithVowel = ["hour", "honest", "honor", "honour", "heir"];
+
+    public static string Article(string words)
+    {
+        bool StartsWithAny(string[] prefixes) => prefixes.Any(p => words.StartsWith(p, StringComparison.Ordinal));
+        if (StartsWithAny(SoundStartsWithVowel))
+            return "an";
+        if (StartsWithAny(SoundStartsWithConsonant))
+            return "a";
+        return "aeiou".Contains(words[0]) ? "an" : "a";
+    }
+
+    /// <summary>The words of a property as a form shows them as its label: "Due on" for DueOn.</summary>
+    public static string Label(string pascal) => char.ToUpperInvariant(Words(pascal)[0]) + Words(pascal)[1..];
 
     public static string Plural(string pascal)
     {
@@ -647,25 +665,30 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
 /// </summary>
 internal static class Texts
 {
-    public static string Missing(Spec s, Field f) => $"Please provide the {f.Words} of the {s.Names.Words}.";
+    // A property can have any name, such as IsFragile or DueOn, so a message names it by its label in quotes and
+    // calls it a value. "The due on of the shipment" is not English, and "The "Due on" value of a shipment" is.
+    private static string Value(Field f) => $"\"{f.Label}\" value";
+
+    public static string Missing(Spec s, Field f) => $"Please give the {s.Names.Words} a value for \"{f.Label}\".";
 
     public static string TooLong(Spec s, Field f, string limit)
-        => $"The {f.Words} of {s.Names.A} {s.Names.Words} can have no more than {limit} characters.";
+        => $"The {Value(f)} of {s.Names.A} {s.Names.Words} can have no more than {limit} characters.";
 
-    public static string BadCharacter(Spec s, Field f) => $"The {f.Words} of {s.Names.A} {s.Names.Words} has a character that is not allowed.";
+    public static string BadCharacter(Spec s, Field f) => $"The {Value(f)} of {s.Names.A} {s.Names.Words} has a character that is not allowed.";
 
     public static string OutOfRange(Spec s, Field f, string minimum, string maximum)
-        => $"The {f.Words} of {s.Names.A} {s.Names.Words} is from {minimum} to {maximum}.";
+        => $"The {Value(f)} of {s.Names.A} {s.Names.Words} is from {minimum} to {maximum}.";
 
     public static string AddToOtherTenant(Spec s) => $"You can add {s.Names.A} {s.Names.Words} only to your own tenant.";
 
     public static string ToolParameter(Spec s, Field f) => f.Kind switch
     {
-        Kind.Date => $"The {f.Words} of the {s.Names.Words}, for example 2026-01-02.",
-        Kind.Instant => $"The {f.Words} of the {s.Names.Words}, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
-        Kind.Int => $"The {f.Words} of the {s.Names.Words}, a whole number. A value out of range gives the invalid_argument error.",
-        Kind.Text when f.Optional => $"The {f.Words} of the {s.Names.Words}. Leave it out for none.",
-        _ => $"The {f.Words} of the {s.Names.Words}.",
+        Kind.Date => $"The {Value(f)} of the {s.Names.Words}, a date such as 2026-01-02.",
+        Kind.Instant => $"The {Value(f)} of the {s.Names.Words}, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
+        Kind.Int => $"The {Value(f)} of the {s.Names.Words}, a whole number. A value out of range gives the invalid_argument error.",
+        Kind.Bool => $"The {Value(f)} of the {s.Names.Words}: true or false.",
+        Kind.Text when f.Optional => $"The {Value(f)} of the {s.Names.Words}. Leave it out for none.",
+        _ => $"The {Value(f)} of the {s.Names.Words}.",
     };
 
     public static string AddTool(Spec s)
@@ -675,7 +698,7 @@ internal static class Texts
 
     public static string ListTool(Spec s) => $"Gets one page of the {s.Names.WordsPlural} of the caller's tenant, with the page data.";
 
-    public static string Search(Spec s) => $"A text that the {s.Title.Words} contains, with no regard to case.";
+    public static string Search(Spec s) => $"A text that the {Value(s.Title)} contains, with no regard to case.";
 
     public static string Filters(Spec s)
         => $"A QueryKit filter on the fields of {s.Names.A} {s.Names.Words}, for example: {s.Title.Json} @=* \"text\"";
@@ -1367,7 +1390,7 @@ internal static class Templates
                     .ProducesValidationProblem();
 
                 /// <summary>
-                /// Gets a page of {{n.WordsPlural}}. The search finds the {{n.WordsPlural}} whose {{s.Title.Words}} contains the text.
+                /// Gets a page of {{n.WordsPlural}}. The search finds the {{n.WordsPlural}} whose "{{s.Title.Label}}" value contains the text.
                 /// </summary>
                 public static async Task<Ok<PagedList<{{n.Entity}}Dto>>> Handle(
                     string? filters,
@@ -1651,7 +1674,7 @@ internal static class Templates
               optional int32 page_size = 2;
               optional string filters = 3;
               optional string sort_order = 4;
-              // A text that the {{s.Title.Words}} contains, with no regard to case.
+              // {{Texts.Search(s)}}
               optional string search = 5;
             }
 

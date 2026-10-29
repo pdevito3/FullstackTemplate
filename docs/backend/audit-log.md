@@ -128,7 +128,7 @@ The cursor text is `{occurred_at in microseconds since 1970}_{record_id}_{ordina
 - `GetAuditEntryPageTests` proves the endpoint and the redaction for each permission.
 
 <!-- example:start -->
-In the workshop example, [WorkshopCommandTests.cs:204](../../tests/FullstackTemplate.IntegrationTests/Examples/Workshops/WorkshopCommandTests.cs#L204) reads the audit entries of the workshop commands.
+In the workshop example, [WorkshopCommandTests.cs](../../tests/FullstackTemplate.IntegrationTests/Examples/Workshops/WorkshopCommandTests.cs) reads the audit entries of the workshop commands.
 <!-- example:end -->
 
 ## Telemetry

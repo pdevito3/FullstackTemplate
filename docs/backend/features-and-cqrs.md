@@ -96,6 +96,10 @@ public Visit Reschedule(VisitForReschedule forReschedule)
 
 `tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs` has this example. Its tests fail when a step moves. `UserCheckOrderTests` checks the steps 2, 3, 4, 6, and 9 on the user endpoints. `AgentCheckOrderTests` checks step 3 on `AddAgentPermission` and on the first grant of `AddAgent`. `AddAgentCommandTests` checks that the 403 for a machine agent comes before the tenant lock and the tenant query of `AddAgent`. If a feature must use a different order, write the order and the reason in its spec, and add a test that proves the order.
 
+<!-- example:start -->
+The workshop commands are a real sample of the steps 4 to 9. `UpdateWorkshop`, `ScheduleWorkshop`, `CancelWorkshop`, and `CompleteWorkshop` load the workshop (step 4), then call `Workshop.GuardChangeBy` (step 5). `Workshop.Update` checks the version, the status, and the no-op, then runs the validation (steps 6 to 9). `WorkshopScheduling.Decide` checks the version, the status, and the no-op of a scheduled workshop, then the rules of the start. `WorkshopCheckOrderTests` sends one request that breaks two steps and asserts the response of the first: [WorkshopCheckOrderTests.cs](../../tests/FullstackTemplate.FunctionalTests/Examples/Workshops/WorkshopCheckOrderTests.cs). `WorkshopSchedulingTests` checks the order of `Decide`: [WorkshopSchedulingTests.cs](../../tests/FullstackTemplate.UnitTests/Examples/Workshops/WorkshopSchedulingTests.cs).
+<!-- example:end -->
+
 ## One rule set for two callers
 
 Rule 6 puts a rule in the entity. That holds for a rule that reads only its own entity. When one rule set has two callers, use the decision shape. An example is a list of the free days and the command that books one day. When a rule reads facts from more than one aggregate, use the shape also. After the permission check, the list handler does one load and one decision for each candidate. The command handler does one load, one decision, and one save.

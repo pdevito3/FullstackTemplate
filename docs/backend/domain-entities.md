@@ -118,7 +118,7 @@ private void GuardIfInFinalState(string field, string subject)
 When the rule needs facts from other aggregates, or a second caller needs the same answer, use the decision shape in [features-and-cqrs.md](features-and-cqrs.md#one-rule-set-for-two-callers).
 
 <!-- example:start -->
-In the workshop example, `Workshop.Update` checks the version first, then refuses a status that cannot change: [Workshop.cs:45](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L45).
+In the workshop example, `Workshop.Update` checks the version first, then refuses a status that cannot change, then returns with no change when each value is the current value: [Workshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs).
 <!-- example:end -->
 
 ### Allowed actions
@@ -159,7 +159,7 @@ user.GuardAllows(UserAction.Delete(), caller);
 `UserActionTests` has the tests of the table. One test gives each action the refusal text of each case. Another checks, for each caller in a small table, that an action is in `AllowedActions` only when `GuardAllows` does not throw.
 
 <!-- example:start -->
-In the workshop example, each action needs only a permission. The command calls `WorkshopAction.GuardCaller` before the load ([WorkshopAction.cs:25](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs#L25)), and the entity refuses a status that does not permit the action. `Workshop.AllowedActions` ([Workshop.cs:71](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L71)) and `WorkshopMapper.AddAllowedActions` ([WorkshopMapper.cs:24](../../FullstackTemplate.Server/Examples/Workshops/Mappings/WorkshopMapper.cs#L24)) call the same `WorkshopAction.AllowedFor` ([WorkshopAction.cs:27](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs#L27)).
+In the workshop example, the command calls `WorkshopAction.GuardCaller` before the load, so a caller without `manage_workshops` gets 403 for any ID ([WorkshopAction.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs)). After the load, `Workshop.GuardChangeBy` permits only the organizer of the workshop or a caller with `manage_tenant`, and then the entity refuses a status that does not permit the action ([Workshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs)). `Workshop.AllowedActions` and `WorkshopMapper.AddAllowedActions` ([WorkshopMapper.cs](../../FullstackTemplate.Server/Examples/Workshops/Mappings/WorkshopMapper.cs)) call the same `WorkshopAction.AllowedFor` with the organizer and the status. `WorkshopActionTests` checks, for each caller in a small table, that an action is in `AllowedActions` only when the command does not refuse it.
 <!-- example:end -->
 
 ## Value objects

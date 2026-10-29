@@ -139,6 +139,19 @@ describe('server-state/query-key-has-inputs', () => {
     expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `debounced`'])
   })
 
+  it('takes a useMemo or useCallback local that comes only from values in the key', () => {
+    const code = `function useRecords(search, id) {
+      const filter = useMemo(() => build(search), [search])
+      const load = useCallback(() => getRecord(id), [id])
+      return [
+        useQuery({ queryKey: RecordKeys.list({ search }), queryFn: () => getRecordList({ query: { filter } }) }),
+        useQuery({ queryKey: RecordKeys.detail(id), queryFn: () => load() }),
+      ]
+    }`
+
+    expect(serverStateMessages(code)).toEqual([])
+  })
+
   it('reports a local that refers to itself, and does not overflow the stack', () => {
     const code = `function useRecord(id) {
       const node = { self: () => node.id, id }

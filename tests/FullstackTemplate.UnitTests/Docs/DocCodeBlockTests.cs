@@ -6,7 +6,7 @@ using Shouldly;
 /// <summary>
 /// Each C# block of docs/backend/*.md comes from a file that the build compiles. The line before the block names the
 /// file: <c>&lt;!-- code: path/from/the/root.cs --&gt;</c>. Each part of the block between two <c>// ...</c> lines
-/// must be in the file as the same lines, in the same order. The indent of a line does not count.
+/// must be in the file as the same lines, in the same order. The indent of a line and a blank line do not count.
 /// </summary>
 public partial class DocCodeBlockTests
 {
@@ -119,12 +119,13 @@ public partial class DocCodeBlockTests
         return faults;
     }
 
-    // Each part between two "// ..." lines must be a run of lines of the source, after the end of the part before it
+    // Each part between two "// ..." lines must be a run of lines of the source, after the end of the part before it.
+    // Blank lines do not count.
     private static string? FirstLineNotInSource(string[] block, string source)
     {
-        var sourceLines = source.ReplaceLineEndings("\n").Split('\n').Select(l => l.Trim()).ToArray();
+        var sourceLines = source.ReplaceLineEndings("\n").Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
         var parts = new List<List<string>> { new() };
-        foreach (var line in block.Select(l => l.Trim()))
+        foreach (var line in block.Select(l => l.Trim()).Where(l => l.Length > 0))
         {
             if (line == "// ...")
                 parts.Add([]);
@@ -133,7 +134,7 @@ public partial class DocCodeBlockTests
         }
 
         var from = 0;
-        foreach (var part in parts.Select(p => p.SkipWhile(l => l.Length == 0).Reverse().SkipWhile(l => l.Length == 0).Reverse().ToList()))
+        foreach (var part in parts)
         {
             if (part.Count == 0)
                 continue;

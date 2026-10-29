@@ -17,6 +17,7 @@ Each entity has one EF Core configuration class in `Databases/EntityConfiguratio
 
 ## Example
 
+<!-- code: FullstackTemplate.Server/Databases/EntityConfigurations/UserConfiguration.cs -->
 ```csharp
 public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
@@ -31,6 +32,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(User.FirstNameMaxLength);
 
+        // ...
         builder.Property(e => e.TenantId)
             .IsRequired()
             .HasMaxLength(EntityId.MaxLength)
@@ -41,16 +43,19 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.ClientNoAction);
 
+        // ...
         builder.HasIndex(e => e.Identifier)
             .IsUnique()
             .HasFilter("is_deleted = false")
             .ForRequestField("identifier", User.IdentifierInUseMessage);
+        // ...
     }
 }
 ```
 
 ## Value objects
 
+<!-- code: FullstackTemplate.Server/Databases/EntityConfigurations/UserConfiguration.cs -->
 ```csharp
 builder.ComplexProperty(e => e.Email, email =>
 {
@@ -71,6 +76,7 @@ EF Core 10 cannot put an index on a column of a complex property. To index one, 
 
 An entity keeps a child collection in a private field. Tell EF Core to use the field:
 
+<!-- code: FullstackTemplate.Server/Databases/EntityConfigurations/UserConfiguration.cs -->
 ```csharp
 builder.HasMany(e => e.UserPermissions)
     .WithOne(up => up.User)
@@ -83,8 +89,9 @@ builder.Navigation(e => e.UserPermissions)
 
 Give the child a navigation to its parent, and get its tenant through the parent. See [multi-tenancy.md](../multi-tenancy.md#make-a-child-entity-multi-tenant).
 
+<!-- code: FullstackTemplate.Server/Databases/EntityConfigurations/UserPermissionConfiguration.cs -->
 ```csharp
-builder.ApplyTenanting(up => up.User.TenantId);
+builder.ApplyTenanting(e => e.User.TenantId);
 ```
 
 When you delete the parent, load the children and remove each child in the handler. See `Domain/Users/Features/DeleteUser/DeleteUser.cs`.
@@ -115,15 +122,16 @@ A `BaseEntity` is a row of a table. Its ID, its `xmin` version, the soft delete 
 3. In its configuration, call `HasNoKey()` and `ToView("view_name")`.
 4. Create the view with `migrationBuilder.Sql` in a migration. EF does not create a view. Leave out the deleted rows in the view (`WHERE NOT is_deleted`), because the soft delete filter does not apply to a class that is not a `BaseEntity`.
 
+<!-- code: tests/FullstackTemplate.IntegrationTests/Databases/ReadModelViewTests.cs -->
 ```csharp
 [NotAudited("A read model of a view. The save never writes it.")]
-public sealed class BoxCount : ITenantable
+private sealed class BoxCount : ITenantable
 {
     public string TenantId { get; private set; } = null!;
     public int Count { get; private set; }
 }
-
-builder.HasNoKey().ToView("box_counts");
+// ...
+modelBuilder.Entity<BoxCount>().HasNoKey().ToView("box_counts");
 ```
 
 `ReadModelViewTests` is the example.
@@ -132,6 +140,7 @@ builder.HasNoKey().ToView("box_counts");
 
 The context does soft deletes, so a deleted row still holds its unique value. A unique index on a column of a soft-deleted entity also blocks the values of deleted rows. If a deleted row must free its value, add a filter to the index. `UserConfiguration` does this for `Identifier`, so that a deleted user can sign up again:
 
+<!-- code: FullstackTemplate.Server/Databases/EntityConfigurations/UserConfiguration.cs -->
 ```csharp
 builder.HasIndex(e => e.Identifier)
     .IsUnique()
@@ -145,6 +154,7 @@ Give each unique index its request field and its message with `ForRequestField`,
 
 Some unique indexes stop a save only when another user changed the record after the caller loaded it. For example, an index that permits one current revision for each document stops the second of two users who each save a new current revision. Give such an index `ForStaleVersion` in place of `ForRequestField`:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/EntityConfigurationExampleTests.cs -->
 ```csharp
 builder.HasIndex(e => e.DocumentId)
     .IsUnique()
@@ -167,6 +177,7 @@ EF Core 10 cannot put an index on a property of a complex type. `HasIndex(e => e
 1. Add an empty migration with `dotnet ef migrations add` (see [backend.md](../backend.md#migrations)). The configuration does not change, so EF writes an empty `Up` and `Down`.
 2. Create the index in `Up`, and drop it in `Down`. Use the column name that the `ComplexProperty` mapping gives with `HasColumnName`.
 
+   <!-- code: tests/FullstackTemplate.UnitTests/Docs/EntityConfigurationExampleTests.cs -->
    ```csharp
    protected override void Up(MigrationBuilder migrationBuilder)
    {
@@ -194,6 +205,7 @@ The model and the model snapshot do not have the index. Thus a later migration d
 
 An exclusion constraint stops two rows that overlap, for example two appointments of one provider at the same time. EF Core cannot configure one, so add it with SQL in the migration. A constraint with `=` on a scalar column in a `gist` index needs the `btree_gist` extension:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/EntityConfigurationExampleTests.cs -->
 ```csharp
 migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS btree_gist;");
 migrationBuilder.Sql("""

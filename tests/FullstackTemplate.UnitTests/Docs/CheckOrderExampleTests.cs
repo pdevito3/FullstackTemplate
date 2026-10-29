@@ -122,35 +122,4 @@ public class CheckOrderExampleTests
         visit.Day.ShouldBe(Day.AddDays(1));
         visit.DomainEvents.ShouldHaveSingleItem().ShouldBe(new VisitRescheduled(visit.Id));
     }
-
-    [Test]
-    public void the_doc_shows_the_reschedule_method_of_this_file()
-    {
-        // Arrange
-        var root = FindRepositoryRoot();
-        var doc = File.ReadAllText(Path.Combine(root, "docs", "backend", "features-and-cqrs.md")).ReplaceLineEndings("\n");
-        var source = File.ReadAllText(Path.Combine(root, "tests", "FullstackTemplate.UnitTests", "Docs",
-            "CheckOrderExampleTests.cs")).ReplaceLineEndings("\n");
-
-        // Act
-        var section = doc[doc.IndexOf("\n## The order of the checks\n", StringComparison.Ordinal)..];
-        var start = section.IndexOf("```csharp\n", StringComparison.Ordinal) + "```csharp\n".Length;
-        var sample = section[start..section.IndexOf("\n```", start, StringComparison.Ordinal)];
-        var sampleInClass = string.Join('\n', sample.Split('\n').Select(line => line.Length == 0 ? line : "    " + line));
-
-        // Assert
-        sample.ShouldStartWith("public Visit Reschedule", Case.Sensitive);
-        source.ShouldContain(sampleInClass, Case.Sensitive);
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "FullstackTemplate.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Could not find FullstackTemplate.slnx above the test output directory.");
-    }
 }

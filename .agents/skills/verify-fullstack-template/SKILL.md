@@ -195,6 +195,7 @@ Proof standards:
 - Run the sweep on each recipe that your change touches. Then look at the screenshots with [ui-review.md](ui-review.md). Report each fault, even if it is not part of your change.
 - Read each message on the screen: each alert, toast, field error, and dialog text. Report a message that breaks a rule of [docs/messages.md](../../../docs/messages.md), for example one that shows a code such as `manage_users`, an ID, or a 24-hour time next to a 12-hour field.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
+- At the end of a slice of a spec in `docs/specs/`, run `SpecRuleTests` (see `docs/specs/TEMPLATE.md`, section "Rules"). Each rule of the slice needs a test that names its ID.
 
 ## Sweep
 

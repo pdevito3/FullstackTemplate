@@ -54,8 +54,12 @@ export function TextFilter({
   const text = value.trim()
   const endQuote = hasEndQuote(text)
   const canSubmit = text !== '' && !endQuote
+  const [checked, setChecked] = useState(false)
+  // A quote at the end can be the start of a quote inside the text, so wait until the user is done typing.
+  const showEndQuote = endQuote && (checked || text.startsWith('"'))
 
   const handleSubmit = () => {
+    setChecked(true)
     if (!canSubmit) {
       return
     }
@@ -90,10 +94,14 @@ export function TextFilter({
           <Input
             autoFocus={autoFocus}
             id={valueId}
-            aria-invalid={endQuote || undefined}
-            aria-describedby={endQuote ? errorId : undefined}
+            aria-invalid={showEndQuote || undefined}
+            aria-describedby={showEndQuote ? errorId : undefined}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setChecked(false)
+            }}
+            onBlur={() => setChecked(true)}
             placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -101,7 +109,7 @@ export function TextFilter({
               }
             }}
           />
-          {endQuote && (
+          {showEndQuote && (
             <p id={errorId} role="alert" className="text-destructive text-sm">
               {TEXT_END_QUOTE_MESSAGE}
             </p>

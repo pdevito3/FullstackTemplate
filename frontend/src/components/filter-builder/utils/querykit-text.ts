@@ -9,7 +9,7 @@ export function hasEndQuote(value: string): boolean {
 
 const END_QUOTE_RULE = 'A filter value cannot start or end with a quote.'
 
-export const TEXT_END_QUOTE_MESSAGE = `${END_QUOTE_RULE} Remove the quote, or choose Contains and type the text inside the quotes.`
+export const TEXT_END_QUOTE_MESSAGE = `${END_QUOTE_RULE} Remove the quote at the start or the end.`
 
 export function optionsEndQuoteMessage(optionLabels: string[]): string {
   return optionLabels.length === 1

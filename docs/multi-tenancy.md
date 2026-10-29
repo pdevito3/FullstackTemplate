@@ -138,15 +138,16 @@ These rules stop a caller from joining a tenant that is not theirs:
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A user of a first-party client can do this only for their own `sub`. Any other caller, an agent included, must be able to manage all tenants. Other requests get 403.
+- The SPA page `Start a tenant` (`/start-tenant`) sends `initiate` for the signed-in user, with the role `Admin`. Each page of the SPA shows a notice that links to it when `GET /api/v1/users/by-identifier/{sub}` gives 404 for the signed-in user. A new database has no user records, so this is the way in for the first user.
 - If a user that is not deleted already has the identifier, in any tenant, `POST /api/v1/users` and `initiate` return 409. A user belongs to one tenant only. A deleted user frees its identifier, so the same person can sign up again.
 
 ## Delete a tenant
 
-`DELETE /api/v1/tenants/{id}` deletes the tenant, its agents, and its users, with the permissions of each agent and user, in one save. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete.
+`DELETE /api/v1/tenants/{id}` deletes the tenant and each row that it owns, in one save. A row that the tenant owns is a row of an entity type that the tenant filter covers: an agent, a user, the permissions of each, and each tenant-owned entity of your app. `TenantOwnedRows` in `Databases/` finds these types in the EF model, so a new tenant-owned entity needs no change in `DeleteTenant`. The delete covers only `BaseEntity` types. The audit log, a read model, and each other tenant-owned table that is not a `BaseEntity` keep their rows. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete.
 
 For a user of a deleted tenant, the server finds no user record on the next request. A deleted user frees its identifier, so the same person can send `POST /api/v1/users/initiate` to start a new tenant and a new user. The new user has a new ID. The old user and its history stay in the deleted tenant. The unique index on the tenant name also covers the deleted tenants, so the new tenant needs a new name.
 
-An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)).
+An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)). The add of a new tenant-owned aggregate root must take the shared lock too. If it does not, a row that it saves during the delete stays live in the deleted tenant. A child add, such as a permission add, takes no lock. It changes the version of its owner, and the delete loads each owner before its children, so the save of the delete fails its version check and runs again.
 
 ## Tenant endpoints
 

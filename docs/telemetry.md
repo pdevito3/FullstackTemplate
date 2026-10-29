@@ -153,6 +153,8 @@ Use a stable dotted name in the form `area.operation`. Never put an id or other 
 
 `PagedList.CreateAsync` runs two queries on the tagged query that it gets: the count and the page. It tags the count query with `TagAsCountQuery`, which adds the `count` suffix to the name. Thus the count of `users.list` is `SQL: users.list.count`, and the page is `SQL: users.list`.
 
+A tenant delete loads the rows of each tenant-owned table with its own query, in `Databases/TenantOwnedRows.cs`. Each query is named `tenants.delete.load_{table}`, for example `SQL: tenants.delete.load_agent_permissions`. The call site of each is `TenantOwnedRows.LoadRowsAsync`.
+
 ## Queries with no parent span
 
 The Npgsql command filter exports a query span only when a recorded activity is current. This rule drops two types of orphan traces:

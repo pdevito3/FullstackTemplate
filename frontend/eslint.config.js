@@ -28,6 +28,7 @@ const linkImports = [
 // The actions of a Playwright Page or Frame that take a selector string first. A Locator has the same actions with no selector.
 const selectorActions = 'click|dblclick|fill|type|press|pressSequentially|check|uncheck|setChecked|hover|tap|focus|selectOption|setInputFiles|dispatchEvent|textContent|innerText|innerHTML|getAttribute|inputValue|isChecked|isDisabled|isEditable|isEnabled|isHidden|isVisible|waitForSelector|dragAndDrop'
 const stringSelectorMessage = 'Do not give a selector string to an action. Find the element with getByRole or getByLabel in the *.locators.ts file of the feature, and call the action on that Locator.'
+const stackSelectorMessage = 'Do not give a selector string to an action. Put a selector of the login page of an IdP in its e2e/idps/*.json file and call the action on page.locator(idp.<name>Selector). For the app or Swagger UI, find the element with getByRole or getByLabel and call the action on that Locator.'
 
 const isPlaywright = (type, names) => {
   const symbol = type.getSymbol()
@@ -42,9 +43,9 @@ const takesSelector = (type, action) =>
 const noPageActionRule = {
   meta: {
     type: 'problem',
-    schema: [],
+    schema: [{ type: 'string' }],
     messages: {
-      selector: stringSelectorMessage,
+      selector: '{{message}}',
       any: 'This value has the type any, so the lint cannot check this call. Give the value its type, such as Page or Locator.',
     },
   },
@@ -56,27 +57,27 @@ const noPageActionRule = {
         if (type.flags & ts.TypeFlags.Any)
           context.report({ node: callee.parent, messageId: 'any' })
         else if ((type.isUnion() ? type.types : [type]).some((part) => takesSelector(part, callee.property.name)))
-          context.report({ node: callee.parent, messageId: 'selector' })
+          context.report({ node: callee.parent, messageId: 'selector', data: { message: context.options[0] } })
       },
     }
   },
 }
 
-const selectorStringRule = {
+const selectorStringRule = (message) => ({
   selector: 'CallExpression[callee.property.name=/^\\$\\$?(eval)?$/]',
-  message: stringSelectorMessage,
-}
+  message,
+})
 
 const testOnlyRule = {
   selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
   message: 'Remove test.only. CI runs each test.',
 }
 
-const externalPageFileRules = [selectorStringRule, testOnlyRule]
+const externalPageFileRules = [selectorStringRule(stackSelectorMessage), testOnlyRule]
 
 // docs/frontend/testing.md, section "Locators, tasks, and specs". Each message names the fix.
 const testFileRules = [
-  selectorStringRule,
+  selectorStringRule(stringSelectorMessage),
   {
     selector: "CallExpression[callee.property.name='nth'], CallExpression[arguments.length=0][callee.property.name=/^(first|last)$/]",
     message: 'Do not find an element by its position. Give the element a role and a name in the app, and find it by them in the *.locators.ts file of the feature.',
@@ -156,19 +157,18 @@ export default tseslint.config(
       parserOptions: { project: './tsconfig.tests.json', tsconfigRootDir: import.meta.dirname },
     },
     plugins: { playwright: { rules: { 'no-page-action': noPageActionRule } } },
-    rules: {
-      'playwright/no-page-action': 'error',
-    },
   },
   {
     files: ['tests/**/*.ts'],
     rules: {
+      'playwright/no-page-action': ['error', stringSelectorMessage],
       'no-restricted-syntax': ['error', ...testFileRules],
     },
   },
   {
     files: ['e2e/**/*.ts'],
     rules: {
+      'playwright/no-page-action': ['error', stackSelectorMessage],
       'no-restricted-syntax': ['error', ...externalPageFileRules],
     },
   },

@@ -5,7 +5,7 @@
   "password": "password123!",
   "usernameSelector": "#username",
   "passwordSelector": "#password",
-  "submitSelector": "button:has-text(\"Sign in\")",
+  "submitSelector": "role=button[name=\"Sign in\" s]",
   "capabilities": {
     "revocation": false,
     "issuerParameter": false,

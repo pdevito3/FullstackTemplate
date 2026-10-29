@@ -49,6 +49,18 @@ public class TenantOwnedRowsTests
     }
 
     [Test]
+    public void each_type_whose_rows_outlive_their_tenant_gives_a_reason()
+    {
+        // Act
+        var noReason = TypesWhoseRowsOutliveTheirTenant
+            .Where(type => string.IsNullOrWhiteSpace(type.Value))
+            .Select(type => type.Key.Name);
+
+        // Assert
+        noReason.ShouldBeEmpty("Give each type in the list the reason that its rows stay after the delete of their tenant.");
+    }
+
+    [Test]
     public void the_tenant_check_finds_a_type_with_no_tenant_filter_and_each_table_that_the_tenant_delete_skips()
     {
         // Arrange

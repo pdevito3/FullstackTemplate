@@ -5,9 +5,9 @@
   "password": "password123!",
   "usernameSelector": "[placeholder=\"Email or Username\"]",
   "passwordSelector": "[placeholder=\"Please enter your password\"]",
-  "submitSelector": "button:has-text(\"Log in\")",
+  "submitSelector": "role=button[name=\"Log in\" s]",
   "twoStepLogin": true,
-  "secondStepSubmitSelector": "button:has-text(\"Continue\")",
+  "secondStepSubmitSelector": "role=button[name=\"Continue\" s]",
   "capabilities": {
     "revocation": true,
     "issuerParameter": false,

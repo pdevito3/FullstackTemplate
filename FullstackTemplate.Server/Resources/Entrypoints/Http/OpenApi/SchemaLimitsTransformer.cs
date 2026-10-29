@@ -48,12 +48,20 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
             schema.Maximum = maximum.Maximum.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (schema is { Minimum: { } low, Maximum: { } high }
-            && decimal.Parse(low, CultureInfo.InvariantCulture) > decimal.Parse(high, CultureInfo.InvariantCulture))
+        if (schema is { Minimum: { } low, Maximum: { } high } && IsMoreThan(low, high))
             throw NoValuePasses(property, low, high);
 
         return Task.CompletedTask;
     }
+
+    // A bound is a JSON number, so another transformer can write one past the decimal range, such as 1E+300. A decimal
+    // holds more digits than a double, so it is the first choice
+    private static bool IsMoreThan(string low, string high) =>
+        decimal.TryParse(low, NumberStyles.Float, CultureInfo.InvariantCulture, out var lowDecimal)
+        && decimal.TryParse(high, NumberStyles.Float, CultureInfo.InvariantCulture, out var highDecimal)
+            ? lowDecimal > highDecimal
+            : double.Parse(low, NumberStyles.Float, CultureInfo.InvariantCulture)
+              > double.Parse(high, NumberStyles.Float, CultureInfo.InvariantCulture);
 
     private static InvalidOperationException WrongSchemaType(
         JsonPropertyInfo property, string attribute, OpenApiSchema schema, string allowed) =>

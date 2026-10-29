@@ -99,3 +99,18 @@ test('shows each validation message of the Server on its field', async () => {
   await expect.element(form.screen.getByText('A workshop with this title already starts at this time.')).toBeVisible()
   await expect.element(form.screen.getByRole('alert').filter({ hasText: 'Only a draft can be edited.' })).toBeVisible()
 })
+
+test('puts the focus on the field that the Server refused, so a keyboard user is at the fault', async () => {
+  const refused = new ProblemDetailsError({
+    type: 'validation',
+    title: 'One or more validation errors occurred.',
+    status: 422,
+    errors: { capacity: ['The venue has room for 15 people.'] },
+  })
+  const form = await renderForm(vi.fn().mockRejectedValue(refused))
+
+  await userEvent.click(form.save)
+
+  await expect.element(form.screen.getByText('The venue has room for 15 people.')).toBeVisible()
+  await expect.element(form.capacity).toHaveFocus()
+})

@@ -69,7 +69,7 @@ Each line starts with `ok` or `FAIL`. Exit code 0 means the stack is worth drivi
 
 ## Drive
 
-The harness is `scripts/browse.mjs`. It loads Playwright from `frontend/node_modules`, opens Chromium at the `web` URL, runs one recipe, and saves the evidence.
+The harness is `scripts/browse.mjs`. It loads Playwright from `frontend/node_modules`, opens Chromium at the `web` URL, runs one recipe, and saves the evidence. It hides the TanStack Router Devtools button of the dev build, because the production build has no devtools. In a narrow window, the button covers the right end of the header, and a tap on the current page fails with `intercepts pointer events`.
 
 ```bash
 node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>] [--keep-data]

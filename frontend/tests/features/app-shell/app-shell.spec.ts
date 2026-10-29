@@ -125,3 +125,19 @@ test.describe('the mobile sidebar with a 24 px default font', () => {
     expect(sheet!.x + sheet!.width).toBeLessThanOrEqual(390)
   })
 })
+
+test.describe('the mobile sidebar on a 320 px phone with a 24 px default font', () => {
+  test.use({ viewport: { width: 320, height: 640 } })
+
+  test('shows the whole app name', async ({ page }) => {
+    const shell = appShellPage(page)
+    await useDefaultFontSize(page, 24)
+    await shell.openAbout()
+
+    await shell.openMobileSidebar()
+
+    const name = shell.at.mobileSidebarAppName
+    await expect(name).toBeVisible()
+    expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true)
+  })
+})

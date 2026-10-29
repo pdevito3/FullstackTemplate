@@ -65,7 +65,7 @@ export function AppSidebar() {
                 <span className="text-xs font-bold">{appInitials}</span>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{appName}</span>
+                <span className="line-clamp-2 font-semibold group-data-[collapsible=icon]:sr-only">{appName}</span>
               </div>
             </SidebarMenuLink>
           </SidebarMenuItem>

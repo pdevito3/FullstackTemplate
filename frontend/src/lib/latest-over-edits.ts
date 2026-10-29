@@ -1,3 +1,8 @@
+import type { DateValue } from '@internationalized/date'
+
+/** A value that compares by its text. An object such as `{ id, name }` does not: each one is `[object Object]`. */
+type FieldValue = string | number | boolean | DateValue | null | undefined
+
 export interface LatestOverEdits<F extends string> {
   changed: F[]
   kept: F[]
@@ -10,11 +15,11 @@ export interface LatestOverEdits<F extends string> {
  */
 export function latestOverEdits<F extends string>(
   loaded: Partial<Record<F, unknown>>,
-  edited: Partial<Record<F, unknown>>,
-  latest: Partial<Record<F, unknown>>,
+  edited: Partial<Record<F, FieldValue>>,
+  latest: Partial<Record<F, FieldValue>>,
   fields: readonly F[],
 ): LatestOverEdits<F> {
-  const same = (a: unknown, b: unknown) => String(a) === String(b)
+  const same = (a: unknown, b: FieldValue) => String(a) === String(b)
   const changed = fields.filter((field) => !same(loaded[field], latest[field]))
   const kept = fields.filter((field) => !changed.includes(field) && !same(edited[field], latest[field]))
   return { changed, kept }

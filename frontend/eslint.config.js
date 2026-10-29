@@ -144,11 +144,13 @@ export const noCopiedStateRule = {
       seen.add(variable)
       const { parent } = identifier
       const property = parent.type === 'MemberExpression' && parent.object === identifier && !parent.computed ? parent.property.name : null
-      if (isFirstValueName(variable.name) || (property && isFirstValueName(property)))
-        return null
-      if (variable.defs[0]?.type === 'Parameter')
-        return `the prop \`${variable.name}\``
+      const isParameter = variable.defs[0]?.type === 'Parameter'
       const init = initOf(variable)
+      const isCopy = Boolean(init) && !hookCalledBy(init) && copiedRoots(init).length > 0
+      if ((isFirstValueName(variable.name) && !isCopy) || (property && isFirstValueName(property)))
+        return null
+      if (isParameter)
+        return `the prop \`${variable.name}\``
       const hook = init && hookCalledBy(init)
       if (hook)
         return ownStateHooks.has(hook) ? null : `the result of \`${hook}\``
@@ -234,11 +236,16 @@ export const queryKeyHasInputsRule = {
         if (!queryKey || !queryFn || !['ArrowFunctionExpression', 'FunctionExpression'].includes(queryFn.type))
           return
         const inKey = keyVariables(queryKey)
+        const comesFromKey = (variable) => {
+          const init = initOf(variable)
+          const values = init ? referencesIn(sourceCode, init).map((ref) => ref.resolved).filter((v) => isLocal(v) && isValue(v)) : []
+          return values.length > 0 && values.every((v) => inKey.has(v) || comesFromKey(v))
+        }
         const reported = new Set()
         for (const ref of referencesIn(sourceCode, queryFn)) {
           const variable = ref.resolved
           if (!isLocal(variable) || within(variable.scope.block, queryFn) || !isValue(variable) || inKey.has(variable)
-            || reported.has(variable) || isInClientOptions(ref.identifier, queryFn))
+            || comesFromKey(variable) || reported.has(variable) || isInClientOptions(ref.identifier, queryFn))
             continue
           reported.add(variable)
           context.report({ node: ref.identifier, messageId: 'missing', data: { name: variable.name } })
@@ -258,15 +265,21 @@ export const keyHasEachParamRule = {
     },
   },
   create(context) {
+    const isWholeUse = ({ identifier }) => {
+      const { parent } = identifier
+      if (parent.type !== 'MemberExpression' || parent.object !== identifier)
+        return true
+      return parent.parent.type === 'CallExpression' && parent.parent.callee === parent
+    }
     const check = (fn) => {
       for (const variable of context.sourceCode.getDeclaredVariables(fn)) {
-        const whole = variable.references.some(({ identifier }) =>
-          !(identifier.parent.type === 'MemberExpression' && identifier.parent.object === identifier))
-        if (!whole)
+        if (variable.defs[0]?.type === 'FunctionName')
+          continue
+        if (!variable.references.some(isWholeUse))
           context.report({ node: variable.identifiers[0], messageId: 'partial', data: { name: variable.name } })
       }
     }
-    return { ArrowFunctionExpression: check, FunctionExpression: check }
+    return { 'Property > ArrowFunctionExpression.value': check, 'Property > FunctionExpression.value': check }
   },
 }
 

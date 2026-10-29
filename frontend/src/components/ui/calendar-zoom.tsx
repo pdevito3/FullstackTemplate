@@ -49,12 +49,13 @@ interface CalendarZoomProviderProps {
 
 function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderProps) {
   const state = useCalendarState()
-  const initialYear = state?.focusedDate?.year ?? todayAt(browserTimeZone(), new Date()).year
+  const currentYear = state?.focusedDate?.year ?? todayAt(browserTimeZone(), new Date()).year
 
   const [view, setView] = useState<CalendarView>("days")
-  const [viewYear, setViewYear] = useState(initialYear)
+  // eslint-disable-next-line server-state/no-copied-state -- the user moves the shown year, and the effect below follows the focused date
+  const [viewYear, setViewYear] = useState(currentYear)
   const [viewDecadeStart, setViewDecadeStart] = useState(
-    Math.floor(initialYear / 12) * 12
+    Math.floor(currentYear / 12) * 12
   )
 
   // Sync viewYear when calendar's focused date changes

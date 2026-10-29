@@ -338,6 +338,22 @@ jobs:
           git add --intent-to-add --all
           git diff --exit-code --stat
 
+      # The files of a feature are gone, but its migration is not. A run with other properties would write an entity
+      # that the migration does not match, so the script must stop and name the migration.
+      - name: Fail if a run again after a delete keeps a migration that does not match
+        run: |
+          git show --name-only --diff-filter=A --format= HEAD | grep Carrier | grep -v /Migrations/ | xargs rm
+          if dotnet run scripts/new-feature.cs -- Carrier --fields "Name:text, Rating:int" > run-again.log 2>&1; then
+            cat run-again.log
+            echo "::error::The script ran again on a kept migration and exited 0."
+            exit 1
+          fi
+          cat run-again.log
+          grep --quiet "AddCarriers" run-again.log
+          rm run-again.log
+          git reset --quiet --hard HEAD
+          git clean --force -d --quiet
+
       - name: Lint the gRPC contract
         run: buf lint
 

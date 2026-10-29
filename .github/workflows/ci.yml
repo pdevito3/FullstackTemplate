@@ -153,7 +153,6 @@ jobs:
       - name: Fail on example code that the script left
         run: |
           if git ls-files | grep -E '(^|/)(Examples|examples|\(examples\))/'; then exit 1; fi
-          # A new example adds the names that only it uses to this list. See docs/examples.md.
           # git grep exits with 1 when it finds nothing, 0 on a match, and a higher code on an error
           status=0
           git grep -n -I -i -E 'weather|forecast|filter-demo|components-showcase|get_tenant|list_tenants|update_tenant|workshop|(^|[^e])venue|example:(start|end)' \

@@ -79,7 +79,6 @@ internal sealed partial class App(string root)
 {
     private const string InitScript = "scripts/init.cs";
 
-    // scripts/remove-examples.cs writes this file when it deletes the example code of the template from the app
     private const string ExamplesRemovedRecord = "scripts/examples-removed.txt";
     private const string RemoveExamplesScript = "scripts/remove-examples.cs";
 
@@ -141,12 +140,11 @@ internal sealed partial class App(string root)
             Console.WriteLine($"These lines of the app keep the template name. The template side of the merge has the name of the app, so a change of the template to one of these lines gives a conflict:\n  {string.Join("\n  ", keptLines.Take(20))}");
 
         Console.WriteLine($"Rename the template to {Name}, with the display name \"{displayName}\". If init.cs gave the app another display name, give it with --display-name.");
-        // Without the examples on both sides, the merge cannot add an example again or give a conflict in one
         var removeExamples = File.Exists(Path.Combine(root, ExamplesRemovedRecord));
         if (removeExamples)
             Console.WriteLine($"The app deleted the example code ({ExamplesRemovedRecord}), so the script deletes it from both template commits with their {RemoveExamplesScript}. Each run builds the copy, so it takes a few minutes.");
-        var renamedBase = Renamed(baseCommit, tip, displayName, removeExamples);
-        var renamedTip = Renamed(tip, tip, displayName, removeExamples);
+        var renamedBase = AsApp(baseCommit, tip, displayName, removeExamples);
+        var renamedTip = AsApp(tip, tip, displayName, removeExamples);
         Git(root, "update-ref", "refs/template-merge/base", renamedBase);
         Git(root, "update-ref", "refs/template-merge/tip", renamedTip);
 
@@ -302,10 +300,7 @@ internal sealed partial class App(string root)
             Git(root, out _, "worktree", "prune");
     }
 
-    // Checks out the commit in a temporary worktree, renames it with the init.cs of the new template commit, and
-    // commits the result. The same init.cs on both sides keeps a change of init.cs out of the merge. For an app that
-    // deleted the examples, the remove-examples.cs of the commit then deletes them from the copy, as it did in the app.
-    private string Renamed(string commit, string tip, string displayName, bool removeExamples)
+    private string AsApp(string commit, string tip, string displayName, bool removeExamples)
     {
         var folder = Path.Combine(Path.GetTempPath(), $"{CopyFolderPrefix}{Guid.NewGuid():N}");
         Git(root, Quiet("worktree", "add", "--quiet", "--detach", folder, commit));
@@ -327,7 +322,7 @@ internal sealed partial class App(string root)
             if (removeExamples)
             {
                 if (!File.Exists(Path.Combine(folder, RemoveExamplesScript)))
-                    throw new MergeException($"The app deleted the examples, but the template commit {Describe(commit)} has no {RemoveExamplesScript}. Give a newer base with --base.");
+                    throw new MergeException($"The app deleted the examples, but the template commit {Describe(commit)} has no {RemoveExamplesScript}, so the app has changes of a newer template commit. To find the last template commit that the app has all changes of, run the script with --find-base.");
                 Run(folder, "dotnet", "run", RemoveExamplesScript);
                 Git(folder, "add", "-A");
                 Git(folder, Quiet("commit", "--no-verify", "--allow-empty", "--quiet", "-m", $"template-merge: the examples of {Short(commit)} deleted"));
@@ -414,7 +409,7 @@ internal sealed partial class App(string root)
     [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate|fullstack-template|Fullstack Template")]
     private static partial Regex TemplateName();
 
-    // The folder of a temporary worktree of Renamed
+    // The folder of a temporary worktree of AsApp
     private const string CopyFolderPrefix = "template-merge-";
 
     [GeneratedRegex("^" + CopyFolderPrefix + "[0-9a-f]{32}$")]

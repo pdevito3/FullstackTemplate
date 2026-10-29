@@ -192,11 +192,16 @@ const isInClientOptions = (identifier, queryFn) => {
   return false
 }
 
+const isConstant = (node) => node?.type === 'Literal' || (node?.type === 'TemplateLiteral' && node.expressions.length === 0)
+  || (node?.type === 'UnaryExpression' && isConstant(node.argument))
+
 const isValue = (variable) => {
   const def = variable.defs[0]
   if (!def || ['FunctionName', 'ImportBinding', 'ClassName'].includes(def.type))
     return false
   const init = initOf(variable)
+  if (def.parent?.kind === 'const' && def.node.id.type === 'Identifier' && isConstant(init))
+    return false
   return !(init && (['ArrowFunctionExpression', 'FunctionExpression'].includes(init.type) || hookCalledBy(init) === 'useQueryClient'))
 }
 

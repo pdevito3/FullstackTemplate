@@ -65,9 +65,9 @@ export function FilterGroup({
     >
       <div className="p-2">
         {/* Group Header */}
-        <div data-slot="filter-group-header" className="flex items-start gap-1.5 mb-1.5">
-          {/* The group details wrap, and the actions stay on the first line. */}
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        {/* In a narrow group, the actions wrap below the details, and each AND wraps below its filter. */}
+        <div data-slot="filter-group-header" className="flex flex-wrap items-start gap-1.5 mb-1.5">
+          <div className="flex flex-1 flex-wrap items-center gap-1.5">
             {/* Selection Checkbox */}
             {showCheckbox && (
               <Checkbox
@@ -100,7 +100,7 @@ export function FilterGroup({
             </span>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
             {/* Ungroup Button */}
             <TooltipTrigger>
               <Button
@@ -132,11 +132,11 @@ export function FilterGroup({
         </div>
 
         {/* Group Contents - Horizontal Layout */}
-        <div className="flex flex-wrap items-start gap-2 pl-6">
+        <div className="flex flex-wrap items-start gap-2 pl-3 sm:pl-6">
           {group.filters.map((item, index) => (
-            <div key={item.id} className="flex max-w-full min-w-0 items-center gap-2">
+            <div key={item.id} className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
               {isFilter(item) ? (
-                <>
+                <div className="flex min-w-0 items-center gap-2">
                   {showCheckbox && (
                     <Checkbox
                       aria-label={`Select filter: ${getFilterName(item)}`}
@@ -150,7 +150,7 @@ export function FilterGroup({
                     onRemove={() => onRemoveFilter(item.id)}
                     onEdit={() => onEditFilter(item)}
                   />
-                </>
+                </div>
               ) : (
                 <div className="w-full">
                   <FilterGroup

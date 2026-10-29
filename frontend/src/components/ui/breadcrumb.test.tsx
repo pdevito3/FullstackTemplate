@@ -149,3 +149,34 @@ test('a current page that truncated under an earlier name is a link when it fits
   await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
 })
+
+test('a current page with no room left on the line moves to the next line and shows its name', async () => {
+  const screen = await render(
+    <div style={{ width: 290 }}>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink to="/">Work orders</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink to="/">North yard compressors</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Demo</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    </div>,
+    { wrapper: ({ children }) => <RouterProvider router={createRouter({ routeTree: createRootRoute({ component: () => children }), history: createMemoryHistory() })} /> },
+  )
+  const current = screen.getByRole('link', { name: 'Demo' })
+  await expect.element(current).toBeVisible()
+
+  const name = current.element() as HTMLElement
+  const first = screen.getByRole('link', { name: 'Work orders' }).element().getBoundingClientRect()
+  const crumb = screen.getByRole('link', { name: 'North yard compressors' }).element().getBoundingClientRect()
+  expect(crumb.top).toBe(first.top)
+  expect(name.getBoundingClientRect().top).toBeGreaterThan(crumb.bottom)
+  expect(name.clientWidth).toBeGreaterThan(0)
+  expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth)
+})

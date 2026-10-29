@@ -22,7 +22,12 @@ async function renderLayoutAt(path: string) {
     getParentRoute: () => rootRoute,
     path: '/users/$id',
     staticData: { breadcrumb: 'User' },
-    component: () => <h1>User</h1>,
+    component: () => (
+      <>
+        <h1>User</h1>
+        <button type="button">Next user</button>
+      </>
+    ),
   })
   // The paths are paths of the app, so that the links type-check. The pages are those of the test.
   const linksRoute = createRoute({
@@ -101,9 +106,29 @@ test('a click on the content after the focus move does not give the focus to the
   expect(document.activeElement).toBe(document.body)
 })
 
+test('a click on the content after the focus move to the main landmark does not keep the focus on it', async () => {
+  const { screen } = await renderLayoutAt('/')
+  await userEvent.click(screen.getByRole('link', { name: 'Open the page with no heading' }))
+  await expect.element(screen.getByRole('main')).toHaveFocus()
+
+  await userEvent.click(screen.getByText('A page with no heading'))
+
+  expect(document.activeElement).toBe(document.body)
+})
+
+test('a navigation that leaves the focus on a control in the page announces the page', async () => {
+  const { screen, router } = await renderLayoutAt('/users/u_1')
+  ;(screen.getByRole('button', { name: 'Next user' }).element() as HTMLElement).focus()
+
+  router.history.push('/users/u_2')
+
+  await expect.element(screen.getByTestId('page-announcement')).toHaveTextContent('User')
+  await expect.element(screen.getByRole('button', { name: 'Next user' })).toHaveFocus()
+})
+
 test('two navigations in a row to pages with the same name each change the text of the status region', async () => {
   const { screen, router } = await renderLayoutAt('/users/u_1')
-  const region = document.querySelector('[data-slot="page-announcement"]')!
+  const region = screen.getByTestId('page-announcement').element()
   const texts: string[] = []
   new MutationObserver(() => texts.push(region.textContent ?? '')).observe(region, { childList: true, characterData: true, subtree: true })
   const trigger = screen.getByRole('button', { name: 'Toggle Sidebar' }).first()

@@ -3,7 +3,7 @@ export default async ({ page, step, capture, settle, expect }) => {
   const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb', exact: true })
   // The layout has a Toggle Sidebar button in the header and a rail with the same name. Use the header one.
   const toggleSidebar = page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' }).first()
-  const announcement = page.locator('[data-slot="page-announcement"]')
+  const announcement = page.getByTestId('page-announcement')
 
   await step('a link in the page: Go to the home page on a missing page gives the focus to the h1 of Home', async () => {
     await page.goto('/no-such-page')

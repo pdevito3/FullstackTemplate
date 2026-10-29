@@ -92,6 +92,21 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
+    [Arguments("jane@example.com")]
+    [Arguments("Name jane@example.com")]
+    public void the_span_does_not_get_the_text_of_the_sort_order(string sortOrder)
+    {
+        // Arrange
+        using var activity = _source.StartActivity("list").ShouldNotBeNull();
+
+        // Act
+        Should.Throw<QueryInputException>(() => Rows.ApplySortOrder(sortOrder, new CustomQueryKitConfiguration()));
+
+        // Assert
+        activity.Events.ShouldHaveSingleItem().Tags.ShouldAllBe(tag => !(tag.Value ?? "").ToString()!.Contains("jane@example.com"));
+    }
+
+    [Test]
     public void filter_longer_than_its_maximum_gets_the_too_long_message()
     {
         // Arrange

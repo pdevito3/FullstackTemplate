@@ -21,6 +21,7 @@ public static class QueryKitInputExtensions
     public const string FilterNotReadMessage = "The filter could not be read. Change the filter, then try again.";
     public const string SortOrderNotReadMessage = "The sort order could not be read. Change the sort, then try again.";
     public const string FilterTooLongMessage = "The filter is too long. Remove a condition or shorten a value, then try again.";
+    public const string FilterCharacterMessage = "The filter has a character that is not allowed. Remove it, then try again.";
     public const string FilterTooDeepMessage = "The filter has too many nested groups. Remove a group, then try again.";
     // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
     private const string AllowedActionsMember = "AllowedActions";
@@ -31,7 +32,7 @@ public static class QueryKitInputExtensions
         {
             // Filter values go to Postgres as parameters, and Postgres refuses a parameter that it cannot store
             if (!PostgresText.CanStore(filters))
-                throw new QueryInputException(FiltersParameter, "The filter has a character that is not allowed. Remove it, then try again.");
+                throw new QueryInputException(FiltersParameter, FilterCharacterMessage);
             var predicate = FilterParser.ParseFilter<T>(filters, config);
             RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
             return query.Where(predicate);
@@ -78,7 +79,7 @@ public static class QueryKitInputExtensions
         // The message names .NET types, so the response gets a fixed message and the trace gets the exception.
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
-            Activity.Current?.AddException(exception);
+            AddToSpan(exception);
             throw new QueryInputException(parameter, NotReadMessage(parameter), exception);
         }
     }
@@ -86,7 +87,7 @@ public static class QueryKitInputExtensions
     // A span never holds user-entered text, and the message of QueryKit can hold a value of the filter, as in "The value
     // 'x' is not a valid Int32". So the span gets only a message that holds no input: the place of a parse fault, or a
     // limit. The stack trace is that of the exception alone, because ToString() adds the messages of inner exceptions.
-    private static void AddToSpan(QueryKitException exception)
+    private static void AddToSpan(Exception exception)
     {
         var message = exception switch
         {

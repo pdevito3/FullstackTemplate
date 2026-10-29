@@ -30,7 +30,7 @@ Preconditions:
 - On ZeroFactor, `admin@example.com` (`Admin User`), the user that `login()` signs in by default, gets `manage_workshops` this way. So does `user@example.com`, when it starts its own tenant.
 
 - **No tenant.** Run `await login()`. Open `/workshops`. The text `Start a tenant to add workshops.` shows, and the page has no `New workshop` or `New venue` link.
-- **Onboard.** In the region `No tenant`, click `Start a tenant`. Fill `Tenant name` in the form `Start a tenant` and click `Start tenant`. `POST /api/v1/users/initiate` gives 201 with `user.role` = `Admin`.
+- **Onboard.** In the region `No tenant`, click `Start a tenant`. Fill `Tenant name` in the form `Start a tenant` and click `Start a tenant`. `POST /api/v1/users/initiate` gives 201 with `user.role` = `Admin`.
 - **Empty list.** Click `Examples`, then `Workshops`. The heading `Workshops` and the empty text show.
 - **Add a venue.** Click `New venue`. Fill `Name`. Fill `Time zone` with `Pacific/Pago_Pago`, a zone that is not the zone of the browser. Click `Add venue`. `POST /api/v1/venues` gives 201. The URL is `/workshops/new?venueId=<id>`, and the combobox `Venue` has the name of the venue. The hint of `Starts at` is `The time in Pago Pago.`, the place of the zone and not its ID.
 - **Add a workshop.** Fill `Title`. Click the month segment of the group `Starts at` and type a date 30 days after today at the venue, at 09:30 AM. The `POST` sends `startsAt` as 20:30 UTC of that day. Fill `Capacity`. Click `Add workshop`. `POST /api/v1/workshops` gives 201. The page is the detail page: the heading is the title, and the status is `Draft`.

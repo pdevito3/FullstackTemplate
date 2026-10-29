@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 
 import { cn } from '@/lib/utils'
 
@@ -8,25 +8,11 @@ interface PageHeadingProps {
   ref?: RefObject<HTMLHeadingElement | null>
 }
 
+// The root layout moves the focus to the heading after a navigation. tabIndex lets a page move it there after an action.
 export function PageHeading({ children, className, ref }: PageHeadingProps) {
-  const ownRef = useRef<HTMLHeadingElement>(null)
-  const headingRef = ref ?? ownRef
-
-  useEffect(() => {
-    const heading = headingRef.current
-    if (heading && focusIsAboveOrOn(heading)) {
-      heading.focus()
-    }
-  }, [headingRef])
-
   return (
-    <h1 ref={headingRef} tabIndex={-1} className={cn('text-3xl font-bold tracking-tight outline-none', className)}>
+    <h1 ref={ref} tabIndex={-1} className={cn('text-3xl font-bold tracking-tight outline-none', className)}>
       {children}
     </h1>
   )
-}
-
-function focusIsAboveOrOn(heading: HTMLElement) {
-  const active = document.activeElement
-  return !active || active === document.body || active.contains(heading)
 }

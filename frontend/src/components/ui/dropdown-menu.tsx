@@ -51,7 +51,7 @@ function DropdownMenu({
       placement={placement}
       offset={offset}
       crossOffset={crossOffset}
-      className={cn("z-50 w-(--trigger-width) min-w-32 origin-(--trigger-anchor-point) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none data-exiting:overflow-hidden **:data-[slot$=-item]:data-focused:bg-foreground/10", className )}
+      className={cn("z-50 w-(--trigger-width) max-w-overlay min-w-32 origin-(--trigger-anchor-point) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none data-exiting:overflow-hidden **:data-[slot$=-item]:data-focused:bg-foreground/10", className )}
     >
       <MenuPrimitive
         className="max-h-[inherit] overflow-x-hidden overflow-y-auto outline-hidden"

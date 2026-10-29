@@ -480,6 +480,29 @@ test('a press on the button, a drag, and a release on an option picks nothing', 
   expect(onChange).not.toHaveBeenCalled()
 })
 
+test('the list of a Combobox as wide as the page fits in the page, and ArrowDown and Enter pick an option', async () => {
+  const onChange = vi.fn()
+  const screen = await render(<FrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  expect(input.element().closest('[data-slot="input-group"]')?.getBoundingClientRect().width).toBe(
+    document.documentElement.clientWidth,
+  )
+
+  await screen.getByRole('button', { name: /^Show suggestions/ }).click()
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  const content = document.querySelector<HTMLElement>('[data-slot="combobox-content"]')!
+  await Promise.all(content.getAnimations().map((animation) => animation.finished))
+  const list = content.getBoundingClientRect()
+  expect(list.left).toBeGreaterThanOrEqual(0)
+  expect(list.right).toBeLessThanOrEqual(document.documentElement.clientWidth)
+  await userEvent.keyboard('{ArrowDown}')
+  await userEvent.keyboard('{Enter}')
+
+  expect(window.scrollX).toBe(0)
+  await expect.element(input).toHaveValue('Vue')
+  expect(onChange).toHaveBeenCalledWith('vue')
+})
+
 /**
  * The names of the options whose row has a fill on the screen. A moving highlight paints the active option,
  * so the test reads the pixels: the left edge of each row against the padding of the list.
@@ -506,12 +529,7 @@ async function optionsWithFill() {
 }
 
 test('the option under the pointer has no fill while the arrow keys make another option active', async () => {
-  // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.
-  const screen = await render(
-    <div style={{ padding: 12 }}>
-      <FrameworkCombobox />
-    </div>,
-  )
+  const screen = await render(<FrameworkCombobox />)
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await input.fill('Vu')

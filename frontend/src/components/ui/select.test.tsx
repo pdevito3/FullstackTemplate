@@ -155,3 +155,26 @@ test('the parts of a Select value keep their size and their gap in the trigger',
   expect({ width: dot.width, height: dot.height }).toEqual({ width: 8, height: 8 })
   expect([name.left - dot.right, email.left - name.right]).toEqual([8, 8])
 })
+
+test('the list of a Select as wide as the page fits in the page', async () => {
+  const screen = await render(
+    <Select aria-label="Operator" className="w-full">
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem id="equals">Equals</SelectItem>
+      </SelectContent>
+    </Select>,
+  )
+  expect(screen.getByRole('button').element().getBoundingClientRect().width).toBe(document.documentElement.clientWidth)
+
+  await screen.getByRole('button').click()
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+
+  const content = document.querySelector<HTMLElement>('[data-slot="select-content"]')!
+  await Promise.all(content.getAnimations().map((animation) => animation.finished))
+  expect(content.getBoundingClientRect().left).toBeGreaterThanOrEqual(0)
+  expect(content.getBoundingClientRect().right).toBeLessThanOrEqual(document.documentElement.clientWidth)
+  expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
+})

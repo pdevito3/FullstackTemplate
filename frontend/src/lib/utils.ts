@@ -1,5 +1,8 @@
 import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
+
+// The custom utilities of index.css, so that a class of the caller replaces them.
+const twMerge = extendTailwindMerge({ extend: { classGroups: { "max-w": [{ "max-w": ["overlay"] }] } } })
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

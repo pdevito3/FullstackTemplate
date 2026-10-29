@@ -27,6 +27,7 @@ export const workshops = (page: Page) => {
     newTitle: newForm.getByRole('textbox', { name: 'Title' }),
     newStart: newForm.getByRole('group', { name: 'Starts at' }),
     newStartZone: (zone: string) => newForm.getByText(`The time in ${zone}.`, { exact: true }),
+    newStartWithNoZone: newForm.getByText('The time at the venue that you pick.', { exact: true }),
     newVenue: newForm.getByRole('combobox', { name: 'Venue' }),
     venueOption: (name: string) => page.getByRole('option', { name, exact: true }),
     newCapacity: newForm.getByRole('spinbutton', { name: 'Capacity' }),

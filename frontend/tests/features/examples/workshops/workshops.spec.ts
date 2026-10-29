@@ -181,4 +181,22 @@ test.describe('the workshops', () => {
     await expect(page).toHaveURL('/workshops?search=Kubb')
     await expect(workshops.at.row('Kubb basics')).toBeVisible()
   })
+
+  test('opens the new workshop form with no venue and no toast when the venue of the link does not exist', async ({ page, api }) => {
+    const missingId = aVenue().build().id
+    api.mock(workshopsApi.venueListReturns([venue]), workshopsApi.venueFails(missingId, aProblem().notFound('The venue does not exist.')))
+    const workshops = workshopsPage(page)
+
+    await workshops.openNewForm(missingId)
+
+    await expect(workshops.at.newVenue).toHaveValue('')
+    await expect(workshops.at.newStartWithNoZone).toBeVisible()
+    await expect(workshops.at.toasts).toHaveCount(0)
+
+    await workshops.fillNew({ title: 'Intro to Kubb', start: '081620260930A', capacity: '12' })
+    await workshops.at.add.click()
+
+    await expect(workshops.at.newForm.getByText('Pick a venue.', { exact: true })).toBeVisible()
+    expect(api.last('post', workshopPaths.list)).toBeUndefined()
+  })
 })

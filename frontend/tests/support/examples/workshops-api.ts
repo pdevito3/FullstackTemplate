@@ -79,6 +79,11 @@ export const workshopsApi = {
     }
   },
 
+  venueFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
+    const body = problem.build()
+    return { method: 'get', path: workshopPaths.venue(id), status: body.status ?? 500, body }
+  },
+
   venueIs(venue: Buildable<VenueDto>): MockRoute {
     const body = venue.build()
     return { method: 'get', path: workshopPaths.venue(body.id), status: 200, body }

@@ -34,6 +34,17 @@ class ProblemDetailsBuilder {
     })
   }
 
+  /** The 404 of a record that does not exist, as the Server sends it. */
+  notFound(detail: string) {
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'https://tools.ietf.org/html/rfc9110#section-15.5.5',
+      title: 'The specified resource was not found.',
+      status: 404,
+      detail,
+    })
+  }
+
   /** The 422 of a request that the Server refused, with the messages of each request field. */
   invalid(errors: Record<string, string[]>) {
     return new ProblemDetailsBuilder({

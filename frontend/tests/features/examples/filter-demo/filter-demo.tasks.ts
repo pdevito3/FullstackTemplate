@@ -136,6 +136,14 @@ export function filterDemoPage(page: Page) {
       await expect(at.dateField(propertyLabel, field)).toHaveText(/^mm.*dd.*yyyy$/)
     },
 
+    async addTextFilter(propertyLabel: string, value: string) {
+      await at.addFilterMenu.click()
+      await at.property(propertyLabel).click()
+      await at.control(propertyLabel).getByRole('textbox', { name: 'Value', exact: true }).fill(value)
+      await at.addFilter(propertyLabel).click()
+      await expect(at.control(propertyLabel)).toBeHidden()
+    },
+
     async addBooleanFilter(propertyLabel: string, value: 'True' | 'False') {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()

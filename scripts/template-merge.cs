@@ -214,7 +214,8 @@ internal sealed partial class App(string root)
             .Select(line => line.Split('\0'))
             .ToLookup(parts => parts[1], parts => parts[0], StringComparer.Ordinal);
         var pullHeads = PullHeads(templateRef);
-        string[] appForms = [$"Projects.{Name.Replace('.', '_')}_", Name, Name.ToLowerInvariant(), Name.ToLowerInvariant().Replace('.', '-'), DisplayName];
+        string[] appForms = [.. new[] { $"Projects.{Name.Replace('.', '_')}_", Name, Name.ToLowerInvariant(), Name.ToLowerInvariant().Replace('.', '-'), DisplayName }
+            .OrderByDescending(form => form.Length)];
         var subjectOnly = new List<string>();
         bool Has(string commit, string subject)
         {
@@ -258,8 +259,8 @@ internal sealed partial class App(string root)
     // The diff of the commit with each form of the name made one placeholder, and with no blob IDs or line numbers, so
     // that a copy of a template commit in the app has the same changes as the template commit
     private string ChangesOf(string commit, Func<string, string> withoutName)
-        => string.Join('\n', Lines(Git(root, "show", "--format=", "--no-color", "--no-ext-diff", commit))
-            .Where(line => !line.StartsWith("index ", StringComparison.Ordinal) && !line.StartsWith("@@", StringComparison.Ordinal))
+        => string.Join('\n', Lines(Git(root, "show", "--format=", "--no-color", "--no-ext-diff", "--no-show-signature", commit))
+            .Where(line => !DiffLineWithNumbers().IsMatch(line))
             .Select(withoutName));
 
     // The head commit of each pull request of the template remote, by number. An empty map when the remote has none or
@@ -282,17 +283,22 @@ internal sealed partial class App(string root)
     // A run that was killed during the rename keeps its temporary worktree registered, and its folder can stay
     private void RemoveStaleCopies()
     {
-        foreach (var line in Lines(Git(root, "worktree", "list", "--porcelain")))
-            if (line.StartsWith("worktree ", StringComparison.Ordinal) && CopyFolderName().IsMatch(Path.GetFileName(line["worktree ".Length..])))
-                Git(root, out _, "worktree", "remove", "--force", line["worktree ".Length..]);
-        Git(root, out _, "worktree", "prune");
+        var stale = Lines(Git(root, "worktree", "list", "--porcelain"))
+            .Where(line => line.StartsWith("worktree ", StringComparison.Ordinal))
+            .Select(line => line["worktree ".Length..])
+            .Where(path => CopyFolderName().IsMatch(Path.GetFileName(path)))
+            .ToList();
+        foreach (var path in stale.Where(Directory.Exists))
+            Git(root, out _, "worktree", "remove", "--force", path);
+        if (stale.Any(path => !Directory.Exists(path)))
+            Git(root, out _, "worktree", "prune");
     }
 
     // Checks out the commit in a temporary worktree, renames it with the init.cs of the new template commit, and
     // commits the result. The same init.cs on both sides keeps a change of init.cs out of the merge.
     private string Renamed(string commit, string tip, string displayName)
     {
-        var folder = Path.Combine(Path.GetTempPath(), $"template-merge-{Guid.NewGuid():N}");
+        var folder = Path.Combine(Path.GetTempPath(), $"{CopyFolderPrefix}{Guid.NewGuid():N}");
         Git(root, Quiet("worktree", "add", "--quiet", "--detach", folder, commit));
         try
         {
@@ -391,8 +397,14 @@ internal sealed partial class App(string root)
     private static partial Regex TemplateName();
 
     // The folder of a temporary worktree of Renamed
-    [GeneratedRegex("^template-merge-[0-9a-f]{32}$")]
+    private const string CopyFolderPrefix = "template-merge-";
+
+    [GeneratedRegex("^" + CopyFolderPrefix + "[0-9a-f]{32}$")]
     private static partial Regex CopyFolderName();
+
+    // The lines of a diff that hold blob IDs, line numbers, or a rename percentage
+    [GeneratedRegex("^(index |@@|similarity index |dissimilarity index )")]
+    private static partial Regex DiffLineWithNumbers();
 
     // The number that a squash merge of GitHub puts at the end of the subject, as "fix: a fault (#94)"
     [GeneratedRegex(@"\(#(?<number>\d+)\)$")]

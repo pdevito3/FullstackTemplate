@@ -24,6 +24,21 @@ export function workshopsPage(page: Page) {
       return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     },
 
+    /** The text of each segment that does not show whole inside the box of its date field. */
+    async segmentsCutIn(field: Locator, segments: Locator) {
+      const box = await field.evaluate((node) => node.getBoundingClientRect().toJSON() as DOMRect)
+      return segments.evaluateAll(
+        (nodes, box) =>
+          nodes
+            .filter((node) => {
+              const { top, bottom, left, right } = node.getBoundingClientRect()
+              return top < box.top || bottom > box.bottom || left < box.left || right > box.right
+            })
+            .map((node) => node.textContent),
+        box,
+      )
+    },
+
     async openList() {
       const settled = answered('GET', workshopPaths.list)
       await page.goto('/workshops')

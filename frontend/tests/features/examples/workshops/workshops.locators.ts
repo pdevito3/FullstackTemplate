@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test'
 export const workshops = (page: Page) => {
   const editForm = page.getByRole('form', { name: 'Edit workshop' })
   const newForm = page.getByRole('form', { name: 'New workshop' })
+  const newStart = newForm.getByRole('group', { name: 'Starts at' })
+  const editStart = editForm.getByRole('group', { name: 'Starts at' })
   const staleAlert = editForm.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
 
   return {
@@ -25,7 +27,9 @@ export const workshops = (page: Page) => {
     editLink: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }).getByRole('link', { name: 'Edit' }),
     newForm,
     newTitle: newForm.getByRole('textbox', { name: 'Title' }),
-    newStartMonth: newForm.getByRole('group', { name: 'Starts at' }).getByRole('spinbutton', { name: /^month/ }),
+    newStart,
+    newStartSegments: newStart.getByRole('spinbutton'),
+    newStartMonth: newStart.getByRole('spinbutton', { name: /^month/ }),
     newStartZone: (zone: string) => newForm.getByText(`The time in ${zone}.`, { exact: true }),
     newStartWithNoZone: newForm.getByText('The time at the venue that you pick.', { exact: true }),
     newVenue: newForm.getByRole('combobox', { name: 'Venue' }),
@@ -35,7 +39,9 @@ export const workshops = (page: Page) => {
     add: newForm.getByRole('button', { name: 'Add workshop' }),
     editForm,
     title: editForm.getByRole('textbox', { name: 'Title' }),
-    editStartHour: editForm.getByRole('group', { name: 'Starts at' }).getByRole('spinbutton', { name: /^hour/ }),
+    editStart,
+    editStartSegments: editStart.getByRole('spinbutton'),
+    editStartHour: editStart.getByRole('spinbutton', { name: /^hour/ }),
     editStartZone: (zone: string) => editForm.getByText(`The time in ${zone}.`, { exact: true }),
     save: editForm.getByRole('button', { name: 'Save', exact: true }),
     staleAlert,

@@ -4,6 +4,7 @@ import { aVenue } from '@tests/support/examples/venue-builder'
 import { aWorkshop } from '@tests/support/examples/workshop-builder'
 import { workshopPaths, workshopsApi } from '@tests/support/examples/workshops-api'
 import { expect, test } from '@tests/support/fixtures'
+import { useDefaultFontSize } from '@tests/support/screen'
 import { workshopsPage } from './workshops.tasks'
 
 test.describe('the workshops', () => {
@@ -218,5 +219,34 @@ test.describe('a workshop with a long title at a venue with a long name, on a 32
     expect(await workshops.pageOverflow()).toBe(0)
     expect(await workshops.textOverflowPast(workshops.at.detailHeading(longName))).toBeLessThanOrEqual(0)
     expect(await workshops.textOverflowPast(workshops.at.details)).toBeLessThanOrEqual(0)
+  })
+})
+
+test.describe('the start field on a 390 px phone with a 24 px default font', () => {
+  test.use({ actor: as.user('Ana Admin'), viewport: { width: 390, height: 844 } })
+
+  const venue = aVenue().named('Main Hall')
+
+  test('the new form shows each segment of the start inside the field', async ({ page, api }) => {
+    api.mock(workshopsApi.venueListReturns([venue]), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await useDefaultFontSize(page, 24)
+
+    await workshops.openNewForm(venue.build().id)
+
+    await expect(workshops.at.newStartSegments).toHaveCount(6)
+    expect(await workshops.segmentsCutIn(workshops.at.newStart, workshops.at.newStartSegments)).toEqual([])
+  })
+
+  test('the edit form shows each segment of the start inside the field', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await useDefaultFontSize(page, 24)
+
+    await workshops.openEditForm(workshop.build().id)
+
+    await expect(workshops.at.editStartSegments).toHaveCount(6)
+    expect(await workshops.segmentsCutIn(workshops.at.editStart, workshops.at.editStartSegments)).toEqual([])
   })
 })

@@ -62,5 +62,5 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
 
     private static InvalidOperationException NoValuePasses(JsonPropertyInfo property, string minimum, string maximum) =>
         new($"{property.DeclaringType.Name}.{property.Name} has the minimum {minimum} and the maximum {maximum}, so no value passes. "
-            + "Give [SchemaMinimum] a value that is not more than the value of [SchemaMaximum].");
+            + "Give it a minimum that is not more than its maximum.");
 }

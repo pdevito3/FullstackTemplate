@@ -45,7 +45,7 @@ const noPageActionRule = {
     schema: [],
     messages: {
       selector: stringSelectorMessage,
-      any: 'This value has the type any, so the lint cannot see if it is a Playwright Page. Give the value its Playwright type.',
+      any: 'This value has the type any, so the lint cannot check this call. Give the value its type, such as Page or Locator.',
     },
   },
   create(context) {

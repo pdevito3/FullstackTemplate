@@ -4,7 +4,7 @@ export const datePickerDemo = (page: Page) => {
   const picker = (label: string) => page.getByRole('group', { name: label, exact: true })
 
   return {
-    heading: page.getByRole('heading', { name: 'Component Library' }),
+    heading: page.getByRole('heading', { name: 'Shared components' }),
     picker,
     segment: (label: string, part: 'month' | 'day' | 'year') =>
       picker(label).getByRole('spinbutton', { name: `${part}, ${label}`, exact: true }),

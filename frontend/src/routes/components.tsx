@@ -138,6 +138,19 @@ const countries = [
   { value: 'de', label: 'Germany' },
   { value: 'fr', label: 'France' },
   { value: 'jp', label: 'Japan' },
+  { value: 'br', label: 'Brazil' },
+  { value: 'in', label: 'India' },
+  { value: 'mx', label: 'Mexico' },
+  { value: 'es', label: 'Spain' },
+  { value: 'it', label: 'Italy' },
+  { value: 'nl', label: 'Netherlands' },
+  { value: 'se', label: 'Sweden' },
+  { value: 'no', label: 'Norway' },
+  { value: 'ie', label: 'Ireland' },
+  { value: 'nz', label: 'New Zealand' },
+  { value: 'kr', label: 'South Korea' },
+  { value: 'sg', label: 'Singapore' },
+  { value: 'ch', label: 'Switzerland' },
 ]
 
 function ComponentsPage() {

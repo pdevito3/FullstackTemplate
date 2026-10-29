@@ -3,7 +3,7 @@ import * as z from 'zod'
 
 import { tenantForUpdateDtoSchema } from '@/api/generated/models/zod/tenant-for-update-dto'
 import { userForCreationDtoSchema } from '@/api/generated/models/zod/user-for-creation-dto'
-import { maxLengthOf, maximumOf, stringWithMaxLengthOf } from '@/lib/api-contract'
+import { maxLengthOf, maximumOf, minimumOf, stringWithMaxLengthOf } from '@/lib/api-contract'
 
 describe('maxLengthOf', () => {
   const contract = userForCreationDtoSchema.shape.firstName
@@ -73,5 +73,22 @@ describe('maximumOf', () => {
     ['an integer', z.int()],
   ])('throws when the contract gives %s no maximum', (_, contract) => {
     expect(() => maximumOf(contract)).toThrow('The API contract gives this field no maximum.')
+  })
+})
+
+describe('minimumOf', () => {
+  it('reads the minimum that the generated schema checks', () => {
+    const contract = tenantForUpdateDtoSchema.shape.version
+    const minimum = minimumOf(contract)
+
+    expect(contract.safeParse(minimum).success).toBe(true)
+    expect(contract.safeParse(minimum - 1).success).toBe(false)
+  })
+
+  it.each([
+    ['a number', z.number()],
+    ['an integer', z.int()],
+  ])('throws when the contract gives %s no minimum', (_, contract) => {
+    expect(() => minimumOf(contract)).toThrow('The API contract gives this field no minimum.')
   })
 })

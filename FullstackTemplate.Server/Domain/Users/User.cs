@@ -5,7 +5,7 @@ using EmailAddresses;
 using DomainEvents;
 using Models;
 
-public class User : BaseEntity, ITenantable
+public class User : BaseEntity, ITenantable, IDeletedWithEvent
 {
     public const string IdPrefix = "usr";
     public const int FirstNameMaxLength = 200;
@@ -146,6 +146,10 @@ public class User : BaseEntity, ITenantable
         DeleteQueued = true;
         return this;
     }
+
+    BaseEntity IDeletedWithEvent.Delete() => Delete();
+
+    bool IDeletedWithEvent.DeleteQueued => DeleteQueued;
 
     public bool HasPermission(Permission permission)
         => _userPermissions.Any(x => x.Permission == permission);

@@ -239,6 +239,14 @@ export function filterDemoPage(page: Page) {
       return width > 0 && height > 0 ? { width, height } : null
     },
 
+    /** Whether the vertical middle of each element is inside the other: the two are on one line. */
+    async onOneLine(element: Locator, other: Locator) {
+      const a = await this.edgesOf(element)
+      const b = await this.edgesOf(other)
+      const middle = (edges: typeof a) => (edges.top + edges.bottom) / 2
+      return middle(a) > b.top && middle(a) < b.bottom && middle(b) > a.top && middle(b) < a.bottom
+    },
+
     async edgesOf(element: Locator) {
       const box = await element.boundingBox()
       if (!box) throw new Error('The element is not on the page.')

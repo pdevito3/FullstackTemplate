@@ -12,9 +12,13 @@ export function PageHeading({ children, className, ref }: PageHeadingProps) {
   const ownRef = useRef<HTMLHeadingElement>(null)
   const headingRef = ref ?? ownRef
 
+  // After a navigation the root puts the focus on the page content, which holds this heading. A heading that loads
+  // after that takes the focus from the content, but not from a control in it.
   useEffect(() => {
-    if (!document.activeElement || document.activeElement === document.body) {
-      headingRef.current?.focus()
+    const heading = headingRef.current
+    const active = document.activeElement
+    if (heading && (!active || active === document.body || active.contains(heading))) {
+      heading.focus()
     }
   }, [headingRef])
 

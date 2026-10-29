@@ -45,6 +45,27 @@ export function workshopsPage(page: Page) {
       )
     },
 
+    // The test moves the clock past each pending announcement of the layout, so a silent status region is proof.
+    async controlTheClock() {
+      await page.clock.install()
+    },
+
+    async letPendingAnnouncementsPass() {
+      await page.clock.runFor(1_000)
+    },
+
+    async pressNewWorkshopLink() {
+      await at.newWorkshopLink.press('Enter')
+      await expect(at.newForm).toBeVisible()
+    },
+
+    async pressWorkshopLink(title: string, id: string, venueId: string) {
+      const settled = Promise.all([answered('GET', workshopPaths.one(id)), answered('GET', workshopPaths.venue(venueId))])
+      await at.titleLink(title).press('Enter')
+      await expect(at.detailHeading(title)).toBeVisible()
+      await settled
+    },
+
     async openList() {
       const settled = answered('GET', workshopPaths.list)
       await page.goto('/workshops')

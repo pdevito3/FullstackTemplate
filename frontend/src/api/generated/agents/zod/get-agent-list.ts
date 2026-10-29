@@ -8,7 +8,7 @@ import { agentDtoSchema } from '../../models/zod/agent-dto'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const getAgentListQueryFiltersSchema = z.string().optional()
+export const getAgentListQueryFiltersSchema = z.string().max(2000).optional()
 
 export const getAgentListQuerySortOrderSchema = z.string().optional()
 

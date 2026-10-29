@@ -8,7 +8,7 @@ import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { userDtoSchema } from '../../models/zod/user-dto'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const getUserListQueryFiltersSchema = z.string().optional()
+export const getUserListQueryFiltersSchema = z.string().max(2000).optional()
 
 export const getUserListQuerySortOrderSchema = z.string().optional()
 

@@ -290,6 +290,19 @@ const selectorStringRule = (message) => ({
   message,
 })
 
+// docs/messages.md, rule 1: words made from a code, such as "Pago Pago" from Pacific/Pago_Pago, are not the words of the screen.
+const codeToWordsMessage = 'Do not make words from a code (docs/messages.md, rule 1). Name a time zone with timeZoneLabel(zone) from @/lib/zoned-time. Give another code a property or a map with its words.'
+export const codeToWordsRules = [
+  {
+    selector: "CallExpression[callee.property.name=/^replace(All)?$/]:matches([arguments.0.value='_'], [arguments.0.regex.pattern=/_/]):matches([arguments.1.value=' '], [arguments.1.quasis.0.value.cooked=' '][arguments.1.expressions.length=0])",
+    message: codeToWordsMessage,
+  },
+  {
+    selector: "CallExpression[callee.property.name='join'][arguments.0.value=' '][callee.object.callee.property.name='split'][callee.object.arguments.0.value='_']",
+    message: codeToWordsMessage,
+  },
+]
+
 const testOnlyRule = {
   selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
   message: 'Remove test.only. CI runs each test.',
@@ -472,7 +485,13 @@ export default tseslint.config(
           selector: 'ImportDeclaration[source.value=/^date-fns/]',
           message: 'date-fns formats in the zone of the browser. Use @/lib/zoned-time.',
         },
+        ...codeToWordsRules,
       ],
     },
+  },
+  {
+    // The zone helpers may use the zone of the browser, but they name a zone in words too.
+    files: ['src/lib/zoned-time.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...codeToWordsRules] },
   },
 )

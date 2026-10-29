@@ -9,6 +9,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 - The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. No feature in this map reads or writes app data. A login writes a BFF session row, and the restore deletes it.
 <!-- example:start -->
 - The weather endpoints of the example page make random data at each request.
+- The workshops example writes app data. Its recipe first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
 <!-- example:end -->
 - The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.
@@ -53,6 +54,7 @@ The example pages have their feature files in `examples/`. `scripts/remove-examp
 - [Secure weather](./examples/secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
 - [Filter builder](./examples/filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
 - [Components showcase](./examples/components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
+- [Workshops](./examples/workshops.md) covers `/workshops` and `/venues/new`: a venue, a workshop in it, the edit form with the stale-version reload, the action buttons from `allowedActions`, and the search in the URL.
 <!-- example:end -->
 
 ## Not mapped yet

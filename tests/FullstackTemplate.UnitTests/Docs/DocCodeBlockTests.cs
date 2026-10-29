@@ -128,8 +128,6 @@ public partial class DocCodeBlockTests
         return faults;
     }
 
-    // Each part between two "// ..." lines must be a run of lines of the source, after the end of the part before it.
-    // Blank lines do not count. Gives the index in lines of the first line of the block that is not in the source.
     private static int? FirstLineNotInSource(string[] lines, int start, int end, string source)
     {
         var sourceLines = source.ReplaceLineEndings("\n").Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();

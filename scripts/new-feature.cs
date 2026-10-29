@@ -63,11 +63,7 @@ catch (Exception exception) when (exception is IOException or UnauthorizedAccess
 
 internal sealed class FeatureException(string message) : Exception(message);
 
-/// <summary>
-/// The kind of a property. <see cref="Zone"/> is the time zone that the script adds for a <see cref="ZonedDate"/>, and
-/// <see cref="Ref"/> is the ID of another entity of the tenant.
-/// </summary>
-internal enum Kind { Text, Int, Bool, Date, Instant, ZonedDate, Zone, Ref }
+internal enum Kind { Text, Int, Bool, Date, Instant, ZonedDate, TimeZone, ParentId }
 
 [Flags]
 internal enum Entrypoints { None = 0, Http = 1, Grpc = 2, Mcp = 4 }
@@ -77,16 +73,13 @@ internal sealed record Field(string Name, Kind Kind, bool Optional, bool Sensiti
     public string Camel => Naming.Identifier(Naming.Camel(Name));
     public string Json => Naming.Camel(Name);
     public string Snake => Naming.Snake(Name);
-    /// <summary>The words of the property. A reference has the words of the entity: "carrier" for CarrierId.</summary>
-    public string Words => Naming.Words(Kind == Kind.Ref ? Name[..^"Id".Length] : Name);
+    public string Words => Naming.Words(Kind == Kind.ParentId ? Name[..^"Id".Length] : Name);
 
-    /// <summary>The words as a form shows them as its label: "Due on" for DueOn.</summary>
     public string Label => char.ToUpperInvariant(Words[0]) + Words[1..];
 
     public bool NeedsMark => Kind is not (Kind.Int or Kind.Bool);
 
-    /// <summary>The add sets the value, and an update does not change it.</summary>
-    public bool CreateOnly => Kind is Kind.Ref or Kind.Zone;
+    public bool CreateOnly => Kind is Kind.ParentId or Kind.TimeZone;
 
     public string Type => Kind switch
     {
@@ -95,14 +88,11 @@ internal sealed record Field(string Name, Kind Kind, bool Optional, bool Sensiti
         Kind.Bool => "bool",
         Kind.Date or Kind.ZonedDate => "DateOnly",
         Kind.Instant => "DateTimeOffset",
-        Kind.Zone or Kind.Ref => "string",
+        Kind.TimeZone or Kind.ParentId => "string",
     };
 }
 
-/// <summary>The entity that a <see cref="Kind.Ref"/> property refers to, as the app declares it.</summary>
-/// <param name="Namespace">The namespace of the entity, for example App.Server.Domain.Carriers.</param>
-/// <param name="GraphNamespace">The namespace of its entity graph blueprint, which holds its Add method.</param>
-internal sealed record Parent(string Entity, string Namespace, string Plural, string GraphNamespace)
+internal sealed record Parent(string Entity, string Namespace, string Plural, string BlueprintNamespace)
 {
     public string Var => Naming.Identifier(Naming.Camel(Entity));
     public string Snake => Naming.Snake(Entity);
@@ -133,17 +123,14 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
 {
     public Field Title => Fields[0];
     public bool Has(Entrypoints entrypoint) => Entrypoints.HasFlag(entrypoint);
-    public Field? Ref => Fields.FirstOrDefault(f => f.Kind == Kind.Ref);
-    public bool HasZone => Fields.Any(f => f.Kind == Kind.Zone);
+    public Field? Ref => Fields.FirstOrDefault(f => f.Kind == Kind.ParentId);
+    public bool HasZone => Fields.Any(f => f.Kind == Kind.TimeZone);
 
-    /// <summary>The properties that an update sets.</summary>
     public IEnumerable<Field> Updatable => Fields.Where(f => !f.CreateOnly);
 
-    /// <summary>The properties of the creation model. The parent of a reference goes to Create on its own.</summary>
-    public IEnumerable<Field> Created => Fields.Where(f => f.Kind != Kind.Ref);
+    public IEnumerable<Field> CreationFields => Fields.Where(f => f.Kind != Kind.ParentId);
 
-    /// <summary>The step of a graph that adds the parent before the entity, or nothing.</summary>
-    public string ParentStep => Parent is { } p ? $".Add{p.Entity}(out _)" : "";
+    public string ParentGraphStep => Parent is { } p ? $".Add{p.Entity}(out _)" : "";
 
     private static readonly HashSet<string> Reserved = new(StringComparer.Ordinal)
         { "Id", "TenantId", "Version", "LastModifiedOn", "IsDeleted", "DomainEvents", "IdPrefix", "Create", "Update", "Delete" };
@@ -166,7 +153,6 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         --messages     Print each text of the feature that a person reads, and change no file.
         """;
 
-    /// <summary>Reads the arguments. It does not look at the files of the app: see <see cref="RequireFreeNamesIn"/>.</summary>
     public static Spec Parse(string[] args, string app, string protoPackage)
     {
         if (args.Length == 0 || args.Contains("--help") || args.Contains("-h"))
@@ -201,7 +187,7 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         var parsed = ParseFields(fields ?? throw new FeatureException($"Give the properties with --fields.\n\n{Usage}"));
         if (parsed.Any(f => f.Name == entity))
             throw new FeatureException($"A property must not have the name of the entity, {entity}.");
-        if (parsed.Any(f => f.Kind == Kind.Ref && f.Name == $"{entity}Id"))
+        if (parsed.Any(f => f.Kind == Kind.ParentId && f.Name == $"{entity}Id"))
             throw new FeatureException($"An entity cannot refer to itself. Remove {entity}:ref.");
         var points = ParseEntrypoints(entrypoints ?? "http");
         if (points.HasFlag(Entrypoints.Grpc) && parsed.FirstOrDefault(f => f.Kind is Kind.Date or Kind.ZonedDate) is { } date)
@@ -211,7 +197,6 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         return new Spec(new Names(app, entity, plural, prefix, protoPackage), parsed, points);
     }
 
-    /// <summary>Stops when a name of the feature is in use in the app, and finds the entity of a reference.</summary>
     public Spec CheckedIn(Repo repo)
     {
         var n = Names;
@@ -244,11 +229,11 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
                 "date" => Kind.Date,
                 "zoned-date" => Kind.ZonedDate,
                 "instant" => Kind.Instant,
-                "ref" => Kind.Ref,
+                "ref" => Kind.ParentId,
                 _ => throw new FeatureException(
                     $"The kind '{kindText}' of {given} is not known. Use text, text?, int, bool, date, zoned-date, instant, or ref."),
             };
-            var name = kind == Kind.Ref ? $"{given}Id" : given;
+            var name = kind == Kind.ParentId ? $"{given}Id" : given;
             if (Reserved.Contains(name))
                 throw new FeatureException($"The property name {name} is reserved. Each entity has a member with this name.");
             if (fields.Any(f => f.Name == name))
@@ -262,7 +247,7 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
                     ? true
                     : throw new FeatureException($"The mark '{pieces[2]}' of {name} is not known. Use public.")
                 : false;
-            if (isPublic && kind is Kind.Int or Kind.Bool or Kind.Ref)
+            if (isPublic && kind is Kind.Int or Kind.Bool or Kind.ParentId)
                 throw new FeatureException($"A value of the kind {kindText} needs no mark. Remove :public from {given}.");
 
             fields.Add(new Field(name, kind, optional,
@@ -271,15 +256,14 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
 
         if (fields.Count == 0 || fields[0] is not { Kind: Kind.Text, Optional: false })
             throw new FeatureException("The first property must be required text, such as Name:text. The list searches and sorts by it.");
-        if (fields.Count(f => f.Kind == Kind.Ref) > 1)
+        if (fields.Count(f => f.Kind == Kind.ParentId) > 1)
             throw new FeatureException("An entity can have one ref. Make the other references by hand after the run.");
 
-        // A day is a date only in a place, so each zoned date is a day in the time zone of the entity
         if (fields.FindIndex(f => f.Kind == Kind.ZonedDate) is var first and >= 0)
         {
             if (fields.Any(f => f.Name == "TimeZone"))
                 throw new FeatureException("A zoned-date adds the property TimeZone. Give the other property another name.");
-            fields.Insert(first, new Field("TimeZone", Kind.Zone, Optional: false, Sensitive: false));
+            fields.Insert(first, new Field("TimeZone", Kind.TimeZone, Optional: false, Sensitive: false));
         }
         return fields;
     }
@@ -331,7 +315,6 @@ internal static class Naming
 
     public static string Words(string pascal) => Snake(pascal).Replace('_', ' ');
 
-    // "a" or "an" goes by the first sound of the words, not the first letter: a unit, a one, an hour
     private static readonly string[] SoundStartsWithConsonant = ["uni", "use", "usa", "usu", "uti", "ure", "uri", "eu", "one", "once"];
     private static readonly string[] SoundStartsWithVowel = ["hour", "honest", "honor", "honour", "heir"];
 
@@ -450,7 +433,7 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
         var sweep = $"tests/{n.App}.FunctionalTests/FunctionalTests/Access/EndpointAccessSweepTests.cs";
         var permissionFile = $"{n.Server}/Domain/Users/Permission.cs";
         var value = repo.NextPermissionValue(permissionFile, n.Permission);
-        var step = spec.ParentStep;
+        var step = spec.ParentGraphStep;
         var sweepParent = spec.Parent is { } p ? $"{n.Var}{p.Entity}" : null;
         var columnsTest = $"tests/{n.App}.UnitTests/Databases/StringColumnLengthTests.cs";
 
@@ -479,7 +462,7 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
         var columns = spec.Fields.Where(f => f.Kind == Kind.Text).Select(f =>
             $"[\"{n.SnakePlural}.{f.Snake}\"] = new(\"{f.Json}\", Text, v => TestGraph.Start(out _){step}.Add{n.Entity}(out _, x => x.{f.Name} = v)),").ToList();
         list.Add(new(columnsTest, "caller-columns", $"[\"{n.SnakePlural}.{spec.Title.Snake}\"]", columns));
-        if (spec.Fields.FirstOrDefault(f => f.Kind == Kind.Zone) is { } zone)
+        if (spec.Fields.FirstOrDefault(f => f.Kind == Kind.TimeZone) is { } zone)
             list.Add(new(columnsTest, "fixed-option-columns", $"[\"{n.SnakePlural}.{zone.Snake}\"]",
                 [$"[\"{n.SnakePlural}.{zone.Snake}\"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),"]));
 
@@ -548,10 +531,6 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
             .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/'))
             .Where(file => !file.Contains("/obj/") && !file.Contains("/bin/"));
 
-    /// <summary>
-    /// Finds the entity of a reference: a tenant-owned entity of the Server with a DbSet, and with a blueprint under the
-    /// tenant in the entity graph, as the script writes them.
-    /// </summary>
     public Parent FindParent(string entity)
     {
         var declaration = new Regex($@"\bclass\s+{entity}\s*:[^{{]*\bBaseEntity\b[^{{]*\bITenantable\b");
@@ -659,11 +638,6 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         return new ApplyResult([.. writes.Select(w => w.Path), .. edits.Keys.Order(StringComparer.Ordinal)]);
     }
 
-    /// <summary>
-    /// Before the script writes a file, stops when a part of the feature is in the app but its entity is not: a new
-    /// entity would not match the migration and the model snapshot. Before the first run, also stops when the model has
-    /// changes that no migration has, because the migration of the feature would take them in.
-    /// </summary>
     public void RequireModelThatMatches(Spec spec)
     {
         var n = spec.Names;
@@ -687,17 +661,12 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         RunEf(NoChangeFailure, "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
     }
 
-    /// <summary>How to run the script again with other properties after a run wrote the feature.</summary>
     public static string UndoAdvice(Spec spec) => $"""
         To give the feature other properties, undo the first run, and then run the script again. Restore each file
         that the run changed, the model snapshot too, and delete each file that it added, the migration {spec.Names.Migration} too.
         When the run is not committed, git restore and git clean do this. When it is, git revert of its commit does.
         """;
 
-    /// <summary>
-    /// After a run that wrote files but found the migration in the app, stops when the model has changes that no
-    /// migration has. A run must not end well with a model that the database does not match.
-    /// </summary>
     public void RequireNoPendingModelChangesAfterWrite(Spec spec, ApplyResult result)
     {
         var failure = "The script wrote the files above, but the model of the Server has changes that no migration has. "
@@ -797,25 +766,19 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
     private static partial Regex PermissionValue();
 }
 
-/// <summary>
-/// The texts of the feature that a person or a model reads: the messages of the domain rules and the descriptions of
-/// the MCP tools. <c>--messages</c> prints them, so that a test can read them for any name.
-/// </summary>
 internal static class Texts
 {
-    // A property can have any name, such as IsFragile or DueOn, so a message names it by its label in quotes and
-    // calls it a value. "The due on of the shipment" is not English, and "The "Due on" value of a shipment" is.
-    private static string Value(Field f) => $"\"{f.Label}\" value";
+    private static string QuotedLabel(Field f) => $"\"{f.Label}\" value";
 
     public static string Missing(Spec s, Field f) => $"Please give the {s.Names.Words} a value for \"{f.Label}\".";
 
     public static string TooLong(Spec s, Field f, string limit)
-        => $"The {Value(f)} of {s.Names.A} {s.Names.Words} can have no more than {limit} characters.";
+        => $"The {QuotedLabel(f)} of {s.Names.A} {s.Names.Words} can have no more than {limit} characters.";
 
-    public static string BadCharacter(Spec s, Field f) => $"The {Value(f)} of {s.Names.A} {s.Names.Words} has a character that is not allowed.";
+    public static string BadCharacter(Spec s, Field f) => $"The {QuotedLabel(f)} of {s.Names.A} {s.Names.Words} has a character that is not allowed.";
 
     public static string OutOfRange(Spec s, Field f, string minimum, string maximum)
-        => $"The {Value(f)} of {s.Names.A} {s.Names.Words} is from {minimum} to {maximum}.";
+        => $"The {QuotedLabel(f)} of {s.Names.A} {s.Names.Words} is from {minimum} to {maximum}.";
 
     public static string AddToOtherTenant(Spec s) => $"You can add {s.Names.A} {s.Names.Words} only to your own tenant.";
 
@@ -823,15 +786,15 @@ internal static class Texts
 
     public static string ToolParameter(Spec s, Field f) => f.Kind switch
     {
-        Kind.Date => $"The {Value(f)} of the {s.Names.Words}, a date such as 2026-01-02.",
-        Kind.ZonedDate => $"The {Value(f)} of the {s.Names.Words}, a date such as 2026-01-02 in the time zone of the {s.Names.Words}.",
-        Kind.Zone => $"The time zone of the {s.Names.Words}, an IANA ID such as America/Chicago. An update does not change it.",
-        Kind.Ref => $"The ID of the {f.Words} of the {s.Names.Words}. An ID that the caller cannot see gives the invalid_argument error. An update does not change it.",
-        Kind.Instant => $"The {Value(f)} of the {s.Names.Words}, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
-        Kind.Int => $"The {Value(f)} of the {s.Names.Words}, a whole number. A value out of range gives the invalid_argument error.",
-        Kind.Bool => $"The {Value(f)} of the {s.Names.Words}: true or false.",
-        Kind.Text when f.Optional => $"The {Value(f)} of the {s.Names.Words}. Leave it out for none.",
-        _ => $"The {Value(f)} of the {s.Names.Words}.",
+        Kind.Date => $"The {QuotedLabel(f)} of the {s.Names.Words}, a date such as 2026-01-02.",
+        Kind.ZonedDate => $"The {QuotedLabel(f)} of the {s.Names.Words}, a date such as 2026-01-02 in the time zone of the {s.Names.Words}.",
+        Kind.TimeZone => $"The time zone of the {s.Names.Words}, an IANA ID such as America/Chicago. An update does not change it.",
+        Kind.ParentId => $"The ID of the {f.Words} of the {s.Names.Words}. An ID that the caller cannot see gives the invalid_argument error. An update does not change it.",
+        Kind.Instant => $"The {QuotedLabel(f)} of the {s.Names.Words}, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
+        Kind.Int => $"The {QuotedLabel(f)} of the {s.Names.Words}, a whole number. A value out of range gives the invalid_argument error.",
+        Kind.Bool => $"The {QuotedLabel(f)} of the {s.Names.Words}: true or false.",
+        Kind.Text when f.Optional => $"The {QuotedLabel(f)} of the {s.Names.Words}. Leave it out for none.",
+        _ => $"The {QuotedLabel(f)} of the {s.Names.Words}.",
     };
 
     public static string AddTool(Spec s)
@@ -841,7 +804,7 @@ internal static class Texts
 
     public static string ListTool(Spec s) => $"Gets one page of the {s.Names.WordsPlural} of the caller's tenant, with the page data.";
 
-    public static string Search(Spec s) => $"A text that the {Value(s.Title)} contains, with no regard to case.";
+    public static string Search(Spec s) => $"A text that the {QuotedLabel(s.Title)} contains, with no regard to case.";
 
     public static string Filters(Spec s)
         => $"A QueryKit filter on the fields of {s.Names.A} {s.Names.Words}, for example: {s.Title.Json} @=* \"text\"";
@@ -849,7 +812,6 @@ internal static class Texts
     public static string UpdateTool(Spec s)
         => $"Updates {s.Names.A} {s.Names.Words} of the caller's tenant. The caller needs the {s.Names.PermissionName} permission in the tenant.";
 
-    /// <summary>Each text, one to a line, with a key before it. A limit shows as the name of its constant.</summary>
     public static IEnumerable<string> All(Spec s)
     {
         yield return $"add to other tenant: {AddToOtherTenant(s)}";
@@ -869,7 +831,7 @@ internal static class Texts
                 case Kind.Date or Kind.ZonedDate or Kind.Instant:
                     yield return $"{f.Name} missing: {Missing(s, f)}";
                     break;
-                case Kind.Ref:
+                case Kind.ParentId:
                     yield return $"{f.Name} not found: {ParentMissing(f)}";
                     break;
             }
@@ -897,20 +859,18 @@ internal static class Templates
 
     private static string Mark(Field f) => f.NeedsMark ? (f.Sensitive ? "[Sensitive] " : "[NotSensitive] ") : "";
 
-    // A text goes into a C# string literal, so a quote and a backslash need an escape
-    private static string Cs(string text) => text.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    private static string EscapeForCs(string text) => text.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
-    private static string Missing(Spec s, Field f) => Cs(Texts.Missing(s, f));
+    private static string Missing(Spec s, Field f) => EscapeForCs(Texts.Missing(s, f));
 
-    private static string TooLong(Spec s, Field f, string owner) => Cs(Texts.TooLong(s, f, $"{{{owner}{f.Name}MaxLength}}"));
+    private static string TooLong(Spec s, Field f, string owner) => EscapeForCs(Texts.TooLong(s, f, $"{{{owner}{f.Name}MaxLength}}"));
 
-    private static string BadCharacter(Spec s, Field f) => Cs(Texts.BadCharacter(s, f));
+    private static string BadCharacter(Spec s, Field f) => EscapeForCs(Texts.BadCharacter(s, f));
 
     private static string OutOfRange(Spec s, Field f, string owner)
-        => Cs(Texts.OutOfRange(s, f, $"{{{owner}{f.Name}Minimum}}", $"{{{owner}{f.Name}Maximum}}"));
+        => EscapeForCs(Texts.OutOfRange(s, f, $"{{{owner}{f.Name}Minimum}}", $"{{{owner}{f.Name}Maximum}}"));
 
-    // A string that must have a value starts as default! for the nullable analysis
-    private static bool IsRequiredString(Field f) => f.Kind is Kind.Zone or Kind.Ref || f is { Kind: Kind.Text, Optional: false };
+    private static bool IsRequiredString(Field f) => f.Kind is Kind.TimeZone or Kind.ParentId || f is { Kind: Kind.Text, Optional: false };
 
     private static string ModelProperty(Field f) => IsRequiredString(f)
         ? $"public string {f.Name} {{ get; init; }} = default!;"
@@ -919,14 +879,13 @@ internal static class Templates
     private static string Assign(Field f, string source) => f.Kind switch
     {
         Kind.Instant => $"{f.Name} = {source}.{f.Name}.ToUniversalTime()",
-        Kind.Zone => $"{f.Name} = TimeZoneId.Of({source}.{f.Name})",
+        Kind.TimeZone => $"{f.Name} = TimeZoneId.Of({source}.{f.Name})",
         _ => $"{f.Name} = {source}.{f.Name}",
     };
 
     private static IEnumerable<string> CopyForUpdate(Spec s, string source)
         => s.Updatable.Select(f => $"{f.Name} = {source}.{f.Name},").Append($"Version = {source}.Version,");
 
-    /// <summary>The usings of a file, each one only once, with the System ones first as the rest of the app sorts them.</summary>
     private static string Usings(params IEnumerable<string?>[] groups)
         => string.Join("\n", groups.SelectMany(g => g).OfType<string>().Distinct()
             .OrderBy(u => u == "System" || u.StartsWith("System.", StringComparison.Ordinal) ? 0 : 1)
@@ -942,12 +901,12 @@ internal static class Templates
             Kind.Int => new[] { $"public const int {f.Name}Minimum = 0;", $"public const int {f.Name}Maximum = 10_000;" },
             _ => [],
         });
-        var properties = s.Fields.Select(f => f.Kind == Kind.Zone
+        var properties = s.Fields.Select(f => f.Kind == Kind.TimeZone
             ? $"{Mark(f)}public TimeZoneId {f.Name} {{ get; private set; }} = default!;"
             : IsRequiredString(f)
                 ? $"{Mark(f)}public string {f.Name} {{ get; private set; }} = default!;"
                 : $"{Mark(f)}public {f.Type} {f.Name} {{ get; private set; }}");
-        var create = s.Fields.Select(f => f.Kind == Kind.Ref ? $"{f.Name} = {p!.Var}.Id," : Assign(f, $"{n.Var}ForCreation") + ",");
+        var create = s.Fields.Select(f => f.Kind == Kind.ParentId ? $"{f.Name} = {p!.Var}.Id," : Assign(f, $"{n.Var}ForCreation") + ",");
         var update = s.Updatable.Select(f => Assign(f, $"{n.Var}ForUpdate") + ";");
         var same = string.Join("\n            && ", s.Updatable.Select(f => f.Kind == Kind.Instant
             ? $"{n.Var}ForUpdate.{f.Name}.ToUniversalTime() == {f.Name}"
@@ -1043,8 +1002,7 @@ internal static class Templates
                 """,
             ],
             Kind.Date or Kind.ZonedDate or Kind.Instant => [$"ValidationException.MustNot({value} == default, \"{f.Json}\", \"{Missing(s, f)}\");"],
-            // TimeZoneId.Of checks the time zone, and the parent of a reference is an entity that exists
-            Kind.Bool or Kind.Zone or Kind.Ref => [],
+            Kind.Bool or Kind.TimeZone or Kind.ParentId => [],
         };
     }
 
@@ -1061,7 +1019,7 @@ internal static class Templates
         {
             /// <summary>A fixed ID with the prefix of the entity. When it is null, the entity makes a new ID.</summary>
             public string? Id { get; init; }
-        {{(s.Parent is null ? "    public string TenantId { get; init; } = default!;\n" : "")}}{{Block(s.Created.Select(ModelProperty), 4)}}
+        {{(s.Parent is null ? "    public string TenantId { get; init; } = default!;\n" : "")}}{{Block(s.CreationFields.Select(ModelProperty), 4)}}
         }
         """;
 
@@ -1094,8 +1052,8 @@ internal static class Templates
             Kind.Text when f.Optional => $"[SchemaMaxLength(typeof({e}), nameof({e}.{f.Name}MaxLength))]\npublic string? {f.Name} {{ get; init; }}",
             Kind.Text => $"[RequiredField]\n[SchemaMaxLength(typeof({e}), nameof({e}.{f.Name}MaxLength))]\npublic string {f.Name} {{ get; init; }} = default!;",
             Kind.Int => $"[SchemaMinimum(typeof({e}), nameof({e}.{f.Name}Minimum))]\n[SchemaMaximum(typeof({e}), nameof({e}.{f.Name}Maximum))]\npublic required int {f.Name} {{ get; init; }}",
-            Kind.Ref => $"[RequiredField]\n[SchemaMaxLength(typeof(EntityId), nameof(EntityId.MaxLength))]\npublic string {f.Name} {{ get; init; }} = default!;",
-            Kind.Zone => $"[RequiredField]\n[SchemaMaxLength(typeof(TimeZoneId), nameof(TimeZoneId.MaxLength))]\npublic string {f.Name} {{ get; init; }} = default!;",
+            Kind.ParentId => $"[RequiredField]\n[SchemaMaxLength(typeof(EntityId), nameof(EntityId.MaxLength))]\npublic string {f.Name} {{ get; init; }} = default!;",
+            Kind.TimeZone => $"[RequiredField]\n[SchemaMaxLength(typeof(TimeZoneId), nameof(TimeZoneId.MaxLength))]\npublic string {f.Name} {{ get; init; }} = default!;",
             _ => $"public required {f.Type} {f.Name} {{ get; init; }}",
         };
     }
@@ -1192,7 +1150,7 @@ internal static class Templates
         {
             Kind.Text when f.Optional => $"builder.Property(e => e.{f.Name})\n    .HasMaxLength({e}.{f.Name}MaxLength);",
             Kind.Text => $"builder.Property(e => e.{f.Name})\n    .IsRequired()\n    .HasMaxLength({e}.{f.Name}MaxLength);",
-            Kind.Ref => $$"""
+            Kind.ParentId => $$"""
                 builder.Property(e => e.{{f.Name}})
                     .IsRequired()
                     .HasMaxLength(EntityId.MaxLength)
@@ -1203,7 +1161,7 @@ internal static class Templates
                     .HasForeignKey(e => e.{{f.Name}})
                     .OnDelete(DeleteBehavior.ClientNoAction);
                 """,
-            Kind.Zone => $$"""
+            Kind.TimeZone => $$"""
                 builder.ComplexProperty(e => e.{{f.Name}}, timeZone =>
                 {
                     timeZone.Property(t => t.Value)
@@ -1265,7 +1223,7 @@ internal static class Templates
                         .FirstOrDefaultAsync(x => x.Id == request.Dto.{{r.Name}}, ct)
                     : null;
                 if ({{p.Var}} is null)
-                    throw new ValidationException("{{r.Json}}", "{{Cs(Texts.ParentMissing(r))}}");
+                    throw new ValidationException("{{r.Json}}", "{{EscapeForCs(Texts.ParentMissing(r))}}");
                 """,
                 "",
                 $"var {v} = {n.Entity}.Create({p.Var}, request.Dto.To{n.Entity}ForCreation());",
@@ -1304,7 +1262,7 @@ internal static class Templates
             {{Block(start, 12)}}
 
                         var tenantId = dbContext.CurrentTenantScope.TenantId
-                            ?? throw new ForbiddenAccessException("{{Cs(Texts.AddToOtherTenant(s))}}");
+                            ?? throw new ForbiddenAccessException("{{EscapeForCs(Texts.AddToOtherTenant(s))}}");
                         Activity.Current?.SetTag("app.tenant_id", tenantId);
 
                         // The shared lock keeps a tenant delete out until the save, so the {{n.Words}} does not land in a deleted tenant.
@@ -1697,7 +1655,7 @@ internal static class Templates
 
     private static string ToolParameter(Spec s, Field f)
     {
-        var description = $"[Description(\"{Cs(Texts.ToolParameter(s, f))}\")]";
+        var description = $"[Description(\"{EscapeForCs(Texts.ToolParameter(s, f))}\")]";
         return f.Optional ? $"{description} string? {f.Camel} = null," : $"{description} {f.Type} {f.Camel},";
     }
 
@@ -1739,7 +1697,7 @@ internal static class Templates
             {
                 [McpServerTool(Name = "add_{{n.Snake}}", Destructive = false, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
-                [Description("{{Cs(Texts.AddTool(s))}}")]
+                [Description("{{EscapeForCs(Texts.AddTool(s))}}")]
                 public static Task<{{n.Entity}}Dto> Handle(
             {{Block(ToolParameters(s, forUpdate: false), 8)}})
                     => mediator.Send(new Add{{n.Entity}}.Command(
@@ -1759,7 +1717,7 @@ internal static class Templates
             {
                 [McpServerTool(Name = "get_{{n.Snake}}", ReadOnly = true, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
-                [Description("{{Cs(Texts.GetTool(s))}}")]
+                [Description("{{EscapeForCs(Texts.GetTool(s))}}")]
                 public static Task<{{n.Entity}}Dto> Handle(
                     IMediator mediator,
                     [Description("The {{n.Words}} ID, for example {{n.Prefix}}_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f.")] string id,
@@ -1779,14 +1737,14 @@ internal static class Templates
             {
                 [McpServerTool(Name = "list_{{n.SnakePlural}}", ReadOnly = true, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
-                [Description("{{Cs(Texts.ListTool(s))}}")]
+                [Description("{{EscapeForCs(Texts.ListTool(s))}}")]
                 public static async Task<McpPage<{{n.Entity}}Dto>> Handle(
                     IMediator mediator,
                     CancellationToken cancellationToken,
-                    [Description("{{Cs(Texts.Search(s))}}")] string? search = null,
+                    [Description("{{EscapeForCs(Texts.Search(s))}}")] string? search = null,
                     [Description("The page number. The first page is 1. Leave it out for the first page.")] int? pageNumber = null,
                     [Description("The number of {{n.WordsPlural}} on a page, at least 1. Leave it out for the default size. A value more than the maximum gives the maximum. The result gives the size that was used.")] int? pageSize = null,
-                    [Description("{{Cs(Texts.Filters(s))}}")] string? filters = null,
+                    [Description("{{EscapeForCs(Texts.Filters(s))}}")] string? filters = null,
                     [Description("A QueryKit sort order, for example: -{{s.Title.Json}}")] string? sortOrder = null)
                 {
                     var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder, search);
@@ -1808,7 +1766,7 @@ internal static class Templates
                 // An update overwrites the values, so the tool is not additive: the MCP spec says destructive.
                 [McpServerTool(Name = "update_{{n.Snake}}", Destructive = true, Idempotent = true, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
-                [Description("{{Cs(Texts.UpdateTool(s))}}")]
+                [Description("{{EscapeForCs(Texts.UpdateTool(s))}}")]
                 public static Task<{{n.Entity}}Dto> Handle(
             {{Block(ToolParameters(s, forUpdate: true), 8)}})
                     => mediator.Send(new Update{{n.Entity}}.Command(id,
@@ -1821,7 +1779,7 @@ internal static class Templates
     private static string ProtoType(Field f) => f.Kind switch
     {
         Kind.Text => f.Optional ? "optional string" : "string",
-        Kind.Ref => "string",
+        Kind.ParentId => "string",
         Kind.Int => "int32",
         Kind.Bool => "bool",
         Kind.Instant => "google.protobuf.Timestamp",
@@ -2117,20 +2075,20 @@ internal static class Templates
         public sealed class {{s.Names.Entity}}Input
         {
             public string? Id { get; set; }
-        {{Block(s.Created.Select(f => $"\npublic {InputType(f)} {f.Name} {{ get; set; }}"), 4)}}
+        {{Block(s.CreationFields.Select(f => $"\npublic {InputType(f)} {f.Name} {{ get; set; }}"), 4)}}
         }
         """;
 
     public static string Blueprint(Spec s)
     {
         var n = s.Names;
-        var given = s.Created.Select(f => f.Kind switch
+        var given = s.CreationFields.Select(f => f.Kind switch
         {
             Kind.Text when f.Optional => $"{f.Name} = input.{f.Name},",
-            Kind.Text or Kind.Zone => $"{f.Name} = input.{f.Name}!,",
+            Kind.Text or Kind.TimeZone => $"{f.Name} = input.{f.Name}!,",
             _ => $"{f.Name} = input.{f.Name}!.Value,",
         });
-        var derives = s.Created.Select(f => $".Derive(i => i.{f.Name}, (_, _) => {n.Entity}Rules.{f.Name}(Faker))").ToList();
+        var derives = s.CreationFields.Select(f => $".Derive(i => i.{f.Name}, (_, _) => {n.Entity}Rules.{f.Name}(Faker))").ToList();
         derives[^1] += ";";
         var (owner, ownerVar) = s.Parent is { } p ? (p.Entity, p.Var) : ("Tenant", "tenant");
         string[] values = s.Parent is null ? ["Id = input.Id,", "TenantId = tenant.Id,", .. given] : ["Id = input.Id,", .. given];
@@ -2170,16 +2128,16 @@ internal static class Templates
             Kind.Int => $"f.Random.Int({e}.{f.Name}Minimum, {e}.{f.Name}Maximum)",
             Kind.Bool => "f.Random.Bool()",
             Kind.Date or Kind.ZonedDate => "DateOnly.FromDayNumber(f.Random.Int(738_000, 740_000))",
-            Kind.Zone => "f.PickRandom(TimeZones)",
+            Kind.TimeZone => "f.PickRandom(TimeZones)",
             Kind.Instant => "DateTimeOffset.FromUnixTimeSeconds(f.Random.Long(1_600_000_000, 1_900_000_000))",
-            Kind.Ref => throw new InvalidOperationException("A reference has no rule: the graph adds its parent."),
+            Kind.ParentId => throw new InvalidOperationException("A reference has no rule: the graph adds its parent."),
         };
     }
 
     public static string Rules(Spec s)
     {
         var n = s.Names;
-        var rules = s.Created.Select(f => $"public static {f.Type.TrimEnd('?')} {f.Name}(Faker f) => {RuleBody(s, f)};");
+        var rules = s.CreationFields.Select(f => $"public static {f.Type.TrimEnd('?')} {f.Name}(Faker f) => {RuleBody(s, f)};");
         var zones = s.HasZone
             ? "private static readonly string[] TimeZones =\n    [\"Pacific/Tongatapu\", \"Asia/Tokyo\", \"Europe/Berlin\", \"America/Chicago\", \"America/Los_Angeles\", \"Pacific/Honolulu\"];\n\n"
             : "";
@@ -2205,7 +2163,7 @@ internal static class Templates
     public static string FakeForCreationDto(Spec s)
     {
         var n = s.Names;
-        var rules = s.Created.Select(f => $"RuleFor(x => x.{f.Name}, {n.Entity}Rules.{f.Name});").ToList();
+        var rules = s.CreationFields.Select(f => $"RuleFor(x => x.{f.Name}, {n.Entity}Rules.{f.Name});").ToList();
         var parameters = "";
         if (s.Ref is { } r)
         {
@@ -2258,7 +2216,7 @@ internal static class Templates
         var n = s.Names;
         var (e, v, t) = (n.Entity, n.Var, s.Title.Name);
         var copy = CopyForUpdate(s, v);
-        var step = s.ParentStep;
+        var step = s.ParentGraphStep;
         var (addFirst, parentAssert) = s.Parent is { } p
             ? ($".Add{p.Entity}(out var {p.Var})", $"\n        {v}.{s.Ref!.Name}.ShouldBe({p.Var}.Id);")
             : ("", "");
@@ -2280,7 +2238,7 @@ internal static class Templates
             """ : "";
         var usings = Usings([$"{n.Server}.Domain.{n.Plural}", $"{n.Server}.Domain.{n.Plural}.DomainEvents",
             $"{n.Server}.Domain.{n.Plural}.Models", $"{n.Server}.Exceptions", $"{n.App}.SharedTestHelpers.EntityGraphs",
-            s.Parent?.GraphNamespace, "Shouldly"]);
+            s.Parent?.BlueprintNamespace, "Shouldly"]);
         return $$"""
             namespace {{n.App}}.UnitTests.Domain.{{n.Plural}};
 
@@ -2399,7 +2357,7 @@ internal static class Templates
         var n = s.Names;
         var (e, v, t) = (n.Entity, n.Var, s.Title.Name);
         var sameValues = s.Fields.Select(f => $"loaded.{f.Name}.ShouldBe(dto.{f.Name});");
-        var step = s.ParentStep;
+        var step = s.ParentGraphStep;
         var (addParent, fake, parentArrange, parentTests) = ("", $"new Fake{e}ForCreationDto()", "", "");
         if (s.Parent is { } p && s.Ref is { } r)
         {
@@ -2422,7 +2380,7 @@ internal static class Templates
                     // Assert
                     var refusal = await act.ShouldThrowAsync<ValidationException>();
                     refusal.Property.ShouldBe("{{r.Json}}");
-                    refusal.Message.ShouldBe("{{Cs(Texts.ParentMissing(r))}}");
+                    refusal.Message.ShouldBe("{{EscapeForCs(Texts.ParentMissing(r))}}");
                 }
 
                 [Test]
@@ -2441,7 +2399,7 @@ internal static class Templates
         }
         var usings = Usings([n.Ns, $"{n.Ns}.Dtos", $"{n.Ns}.Features", $"{n.Server}.Exceptions",
             $"{n.App}.IntegrationTests.Databases", $"{n.App}.SharedTestHelpers.EntityGraphs",
-            $"{n.App}.SharedTestHelpers.Fakes.{n.Plural}", $"{n.App}.SharedTestHelpers.Utilities", s.Parent?.GraphNamespace,
+            $"{n.App}.SharedTestHelpers.Fakes.{n.Plural}", $"{n.App}.SharedTestHelpers.Utilities", s.Parent?.BlueprintNamespace,
             "Microsoft.EntityFrameworkCore", "Shouldly"]);
         return $$"""
             namespace {{n.App}}.IntegrationTests.FeatureTests.{{n.Plural}};
@@ -2596,7 +2554,7 @@ internal static class Templates
         var n = s.Names;
         var (e, t) = (n.Entity, s.Title.Name);
         var usings = Usings([$"{n.Ns}.Dtos", $"{n.Ns}.Features", $"{n.Server}.Exceptions",
-            $"{n.App}.SharedTestHelpers.EntityGraphs", s.Parent?.GraphNamespace, "Shouldly"]);
+            $"{n.App}.SharedTestHelpers.EntityGraphs", s.Parent?.BlueprintNamespace, "Shouldly"]);
         return $$"""
             namespace {{n.App}}.IntegrationTests.FeatureTests.{{n.Plural}};
 
@@ -2610,7 +2568,7 @@ internal static class Templates
                     // Arrange
                     var testingServiceScope = new TestingServiceScope();
                     var marker = Guid.NewGuid().ToString("N");
-                    await testingServiceScope.StartGraph(out _){{s.ParentStep}}
+                    await testingServiceScope.StartGraph(out _){{s.ParentGraphStep}}
                         .Add{{n.Plural}}(out _,
                             x => x.{{t}} = $"North {marker}",
                             x => x.{{t}} = $"{marker} 50% full",
@@ -2666,7 +2624,7 @@ internal static class Templates
             : ("", $"new Fake{e}ForCreationDto()");
         var usings = Usings([$"{n.Ns}.Features", $"{n.Server}.Domain.Tenants.Features", $"{n.Server}.Exceptions",
             $"{n.Server}.Resources", $"{n.App}.IntegrationTests.Databases", $"{n.App}.SharedTestHelpers.EntityGraphs",
-            $"{n.App}.SharedTestHelpers.Fakes.{n.Plural}", $"{n.App}.SharedTestHelpers.Utilities", s.Parent?.GraphNamespace,
+            $"{n.App}.SharedTestHelpers.Fakes.{n.Plural}", $"{n.App}.SharedTestHelpers.Utilities", s.Parent?.BlueprintNamespace,
             "Microsoft.EntityFrameworkCore", "Shouldly"]);
         return $$"""
             namespace {{n.App}}.IntegrationTests.FeatureTests.{{n.Plural}};
@@ -2743,9 +2701,8 @@ internal static class Templates
             """;
     }
 
-    /// <summary>The using of the namespace that has the Add method of the parent, when a test file does not have it yet.</summary>
     private static string ParentGraphUsing(Spec s)
-        => s.Parent is { } p && p.GraphNamespace != $"{s.Names.App}.SharedTestHelpers.EntityGraphs" ? $"\nusing {p.GraphNamespace};" : "";
+        => s.Parent is { } p && p.BlueprintNamespace != $"{s.Names.App}.SharedTestHelpers.EntityGraphs" ? $"\nusing {p.BlueprintNamespace};" : "";
 
     private static string FunctionalArrange(Spec s) => $$"""
         private async Task<{{s.Names.Entity}}> Add{{s.Names.Entity}}AndSignInAsync(string role)
@@ -2753,7 +2710,7 @@ internal static class Templates
             await StartGraph()
                 .AddTenant(out var tenant)
                 .AddUser(out var user, u => u.Role = role)
-                .Under(tenant){{s.ParentStep}}.Add{{s.Names.Entity}}(out var {{s.Names.Var}})
+                .Under(tenant){{s.ParentGraphStep}}.Add{{s.Names.Entity}}(out var {{s.Names.Var}})
                 .BuildAsync();
             SignInAs(user.Identifier);
             return {{s.Names.Var}};
@@ -2856,8 +2813,8 @@ internal static class Templates
         Kind.Int => $"{entity}.{f.Name}Minimum",
         Kind.Bool => "true",
         Kind.Date or Kind.ZonedDate => forMcp ? "\"2026-01-02\"" : "new DateOnly(2026, 1, 2)",
-        Kind.Zone => "\"America/Chicago\"",
-        Kind.Ref => f.Camel,
+        Kind.TimeZone => "\"America/Chicago\"",
+        Kind.ParentId => f.Camel,
         Kind.Instant => forMcp ? "\"2027-01-15T08:00:00Z\"" : "Timestamp.FromDateTimeOffset(DateTimeOffset.FromUnixTimeSeconds(1_800_000_000))",
     };
 
@@ -2979,8 +2936,8 @@ internal static class Templates
             $"{n.Server}.Domain.{n.Plural}.Grpc.V1",
             $"{n.App}.SharedTestHelpers.EntityGraphs",
         };
-        if (s.Parent is { } graph && graph.GraphNamespace != usings[^1])
-            usings.Add(graph.GraphNamespace);
+        if (s.Parent is { } graph && graph.BlueprintNamespace != usings[^1])
+            usings.Add(graph.BlueprintNamespace);
         if (HasInstant(s))
             usings.Add("global::Google.Protobuf.WellKnownTypes");
         usings.AddRange(["global::Grpc.Core", "Shouldly", "TestUtilities"]);

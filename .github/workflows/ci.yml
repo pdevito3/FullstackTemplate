@@ -318,8 +318,6 @@ jobs:
           git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Remove the examples"
       # example:end
 
-      # The two samples have each property kind, each operation, and each entrypoint. A shipment refers to a carrier.
-      # Protobuf has no date, so the gRPC sample has none.
       - name: Generate the sample features
         run: |
           dotnet run scripts/new-feature.cs -- Carrier --entrypoints http,mcp \
@@ -338,8 +336,6 @@ jobs:
           git add --intent-to-add --all
           git diff --exit-code --stat
 
-      # The files of a feature are gone, but its migration is not. A run with other properties would write an entity
-      # that the migration does not match, so the script must stop and name the migration.
       - name: Fail if a run again after a delete keeps a migration that does not match
         run: |
           git show --name-only --diff-filter=A --format= HEAD | grep Carrier | grep -v /Migrations/ | xargs rm

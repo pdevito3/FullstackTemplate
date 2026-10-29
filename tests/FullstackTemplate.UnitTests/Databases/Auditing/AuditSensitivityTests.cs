@@ -144,7 +144,6 @@ public class AuditSensitivityTests
     private sealed record UsersExportedAgain(AuditSubject Subject) : AuditAction(Subject);
 }
 
-/// <summary>The tenant of <see cref="AppDbContext"/> and a <see cref="Payslip"/> whose values have converters.</summary>
 file sealed class ConvertedValuesContext() : AppDbContext(
     new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
     TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),

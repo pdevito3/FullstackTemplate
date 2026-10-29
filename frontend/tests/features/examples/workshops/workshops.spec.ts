@@ -167,4 +167,18 @@ test.describe('the workshops', () => {
     expect(api.last('get', workshopPaths.list)?.query.get('pageNumber')).toBe('1')
     await expect(workshops.at.row('Kubb basics')).toBeVisible()
   })
+
+  test('shows an empty page past the end of the list, with a link to the first page', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([], { total: 25, pageNumber: 5 }))
+    const workshops = workshopsPage(page)
+    await workshops.openListAt('/workshops?search=Kubb&page=5')
+
+    await expect(workshops.at.emptyPage).toContainText('There are no workshops on page 5.')
+
+    api.mock(workshopsApi.listReturns([aWorkshop().titled('Kubb basics')], { total: 25 }))
+    await workshops.goToFirstPage()
+
+    await expect(page).toHaveURL('/workshops?search=Kubb')
+    await expect(workshops.at.row('Kubb basics')).toBeVisible()
+  })
 })

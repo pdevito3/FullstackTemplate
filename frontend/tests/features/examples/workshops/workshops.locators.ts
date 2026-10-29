@@ -16,6 +16,9 @@ export const workshops = (page: Page) => {
     details: page.getByRole('region', { name: 'Details' }),
     status: (status: string) => page.getByText(status, { exact: true }),
     toast: (text: string) => page.getByRole('alertdialog').filter({ hasText: text }),
+    toasts: page.getByRole('alertdialog'),
+    emptyPage: page.getByText(/^There are no workshops on page \d+\./),
+    firstPageLink: page.getByRole('link', { name: 'Go to page 1' }),
     actions: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }),
     actionButton: (title: string, name: string) =>
       page.getByRole('group', { name: `Actions for ${title}` }).getByRole('button', { name, exact: true }),

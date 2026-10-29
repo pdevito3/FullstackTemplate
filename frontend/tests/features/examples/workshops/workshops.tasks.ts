@@ -23,6 +23,19 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    async openListAt(path: string) {
+      const settled = answered('GET', workshopPaths.list)
+      await page.goto(path)
+      await expect(at.listHeading).toBeVisible()
+      await settled
+    },
+
+    async goToFirstPage() {
+      const settled = answered('GET', workshopPaths.list)
+      await at.firstPageLink.click()
+      await settled
+    },
+
     async openNewForm(venueId: string) {
       const settled = answered('GET', workshopPaths.venue(venueId))
       await page.goto(`/workshops/new?venueId=${venueId}`)

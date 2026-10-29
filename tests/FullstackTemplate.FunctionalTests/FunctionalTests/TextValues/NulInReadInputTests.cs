@@ -34,6 +34,9 @@ public class NulInReadInputTests : TestBase
         (ApiRoutes.Workshops.GetList, "filters"),
         (ApiRoutes.Workshops.GetList, "sortOrder"),
         (ApiRoutes.Workshops.GetList, "search"),
+        (ApiRoutes.Venues.GetList, "filters"),
+        (ApiRoutes.Venues.GetList, "sortOrder"),
+        (ApiRoutes.Venues.GetList, "search"),
         // example:end
     ];
 

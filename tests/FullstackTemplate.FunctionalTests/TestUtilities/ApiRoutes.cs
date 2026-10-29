@@ -53,6 +53,7 @@ public static class ApiRoutes
 
     public static class Venues
     {
+        public static string GetList => $"{Base}/venues";
         public static string Create => $"{Base}/venues";
     }
 

@@ -356,6 +356,68 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    [Arguments("-1", "-2")]
+    [Arguments("1", "-1")]
+    [Arguments("-1.4", "-1.5")]
+    [Arguments("1E+5", "-1E+6")]
+    [Arguments("1E-1", "1E-2")]
+    [Arguments("-1E-2", "-1E-1")]
+    [Arguments("10", "9.99")]
+    [Arguments("0.0001", "1E-5")]
+    [Arguments("0E+5", "-1")]
+    [Arguments("1E-9", "-0.0E+3")]
+    [Arguments("11111111111111111111111111111111111111111111111112", "11111111111111111111111111111111111111111111111111")]
+    [Arguments("2e3", "1e3")]
+    [Arguments("1001", "1e3")]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_in_any_number_form(
+        string minimum, string maximum)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum {minimum} and the maximum {maximum}");
+    }
+
+    [Test]
+    [Arguments("-2", "-1")]
+    [Arguments("-1", "1")]
+    [Arguments("-1.5", "-1.4")]
+    [Arguments("-2E+3", "-1E+3")]
+    [Arguments("1.5", "10")]
+    [Arguments("9.99", "10")]
+    [Arguments("5", "5")]
+    [Arguments("1.0", "1E0")]
+    [Arguments("1E0", "1.0")]
+    [Arguments("0.1", "1E-1")]
+    [Arguments("1E-1", "0.1")]
+    [Arguments("0E+5", "-0")]
+    [Arguments("-0", "0")]
+    [Arguments("-0.0E+3", "0")]
+    [Arguments("0", "-0.0E+3")]
+    [Arguments("11111111111111111111111111111111111111111111111111", "11111111111111111111111111111111111111111111111112")]
+    [Arguments("11111111111111111111111111111111111111111111111111", "11111111111111111111111111111111111111111111111111")]
+    [Arguments("1e3", "1000")]
+    [Arguments("1000", "1e3")]
+    public async Task limits_transformer_accepts_a_minimum_not_more_than_the_maximum_in_any_number_form(
+        string minimum, string maximum)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var weight = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(BoundsDto)].Properties.ShouldNotBeNull()["weight"];
+        (weight.Minimum, weight.Maximum).ShouldBe((minimum, maximum));
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_member_that_is_not_a_public_static_number_field()
     {
         // Arrange

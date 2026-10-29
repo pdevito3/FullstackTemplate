@@ -40,7 +40,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
     const form = page.getByRole('form', { name: 'Start a tenant' })
     await form.getByLabel('Tenant name', { exact: true }).fill(`Verify ${stamp}`)
     const started = answered('POST', /^\/api\/v1\/users\/initiate$/)
-    await form.getByRole('button', { name: 'Start tenant' }).click()
+    await form.getByRole('button', { name: 'Start a tenant' }).click()
     const res = await started
     expect(res.status()).toBe(201)
     const body = await res.json()

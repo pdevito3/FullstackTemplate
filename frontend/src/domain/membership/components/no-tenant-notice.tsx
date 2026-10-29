@@ -17,7 +17,7 @@ export function NoTenantNotice() {
     return (
       <section
         aria-label="Membership check"
-        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        className="mb-4 flex flex-wrap items-center justify-between gap-3 border-y border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         <p className="min-w-0">{membership.message}</p>
         {membership.retry && <Button variant="outline" size="sm" onPress={membership.retry}>Try Again</Button>}
@@ -30,7 +30,7 @@ export function NoTenantNotice() {
   return (
     <section
       aria-label="No tenant"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm"
+      className="mb-4 flex flex-wrap items-center justify-between gap-3 border-y border-border bg-muted/50 px-4 py-3 text-sm"
     >
       <p className="min-w-0">
         You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.

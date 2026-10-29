@@ -61,7 +61,12 @@ try
     // services:webfrontend tells the BFF that the Vite dev server serves the SPA. A published BFF serves the SPA
     // from wwwroot, so it must not get the reference.
     if (builder.ExecutionContext.IsRunMode)
-        bff.WithReference(webfrontend);
+    {
+        if (builder.Configuration["SpaBuild"] is { Length: > 0 } spaBuild)
+            bff.WithEnvironment("ASPNETCORE_WEBROOT", Path.GetFullPath(spaBuild));
+        else
+            bff.WithReference(webfrontend);
+    }
     // The identity provider containers call /bff/backchannel through this endpoint. The Aspire container tunnel
     // gives it its own host and port. With the tunnel off, the host is host.docker.internal.
     var bffForContainers = bff.GetEndpoint("http", KnownNetworkIdentifiers.DefaultAspireContainerNetwork);

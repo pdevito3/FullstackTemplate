@@ -77,11 +77,16 @@ describe('a text filter', () => {
     ['operators and brackets', 'a && b || (c) [d]', 'title @=* "a && b || (c) [d]"'],
     ['a quote, in a raw literal', 'a"b', 'title @=* """a"b"""'],
     ['three quotes, in a raw literal with longer delimiters', 'a"""b', 'title @=* """"a"""b""""'],
-    ['quotes at the start and the end, which QueryKit cannot keep', '"Paul"', 'title @=* "Paul"'],
-    ['a quote inside quotes at the ends', '"a"b"', 'title @=* """a"b"""'],
   ])('with %s', (_, value, query) => {
     expect(textQuery(value)).toBe(query)
   })
+
+  it.each(['"Paul"', '"Quoted', 'quote"', '"', '""'])(
+    'with %s throws, because QueryKit cannot hold a quote at the start or the end and would match other text',
+    (value) => {
+      expect(() => textQuery(value)).toThrow('QueryKit cannot hold a quote at the start or the end of a value')
+    },
+  )
 })
 
 describe('a multiselect filter', () => {

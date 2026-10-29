@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 
 const string Usage = """
     Usage: dotnet run template-merge.cs -- [--ref <Commit>] [--base <Commit>] [--display-name <DisplayName>]
-           dotnet run template-merge.cs -- --find-base [--ref <Commit>]
+           dotnet run template-merge.cs -- --find-base [--ref <Commit>] [--display-name <DisplayName>]
 
       --ref <Commit>              The template commit to merge. The default is template/main.
       --base <Commit>             The last template commit that the app has all changes of. The default is the merge
@@ -62,9 +62,11 @@ for (var i = 0; i < args.Length; i++)
 
 try
 {
+    if (displayName is not null && !App.IsDisplayName(displayName))
+        throw new MergeException($"'{displayName}' is not a display name. Use words of letters and digits, with one space, dot, hyphen, or apostrophe between them.");
     var app = new App(App.RootOf(Directory.GetCurrentDirectory()));
     if (findBase)
-        app.PrintBase(templateRef);
+        app.PrintBase(templateRef, displayName ?? app.DisplayName);
     else
         app.Merge(templateRef, baseRef, displayName ?? app.DisplayName);
     return 0;
@@ -78,6 +80,9 @@ catch (MergeException exception)
 internal sealed partial class App(string root)
 {
     private const string InitScript = "scripts/init.cs";
+
+    private const string ExamplesRemovedRecord = "scripts/examples-removed.txt";
+    private const string RemoveExamplesScript = "scripts/remove-examples.cs";
 
     // The git files of a merge, a cherry-pick, a revert, and a rebase that is open
     private static readonly string[] OpenOperations = ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"];
@@ -94,12 +99,15 @@ internal sealed partial class App(string root)
     public string DisplayName
         => File.Exists(Path.Combine(root, "frontend", "index.html"))
             && TitlePattern().Match(File.ReadAllText(Path.Combine(root, "frontend", "index.html"))) is { Success: true } title
-            && DisplayNamePattern().IsMatch(title.Groups["title"].Value.Trim())
+            && IsDisplayName(title.Groups["title"].Value.Trim())
                 ? title.Groups["title"].Value.Trim()
                 : Name;
 
+    public static bool IsDisplayName(string text) => DisplayNamePattern().IsMatch(text);
+
     public void Merge(string templateRef, string? baseRef, string displayName)
     {
+        using var mergeLock = LockTheMergeRefsAndWorktrees();
         if (Git(root, "status", "--porcelain", "--untracked-files=all").Length > 0)
             throw new MergeException("The git tree has changes. Commit or stash the changes, then run the script again.");
         if (OpenOperations.Any(name => Path.Exists(GitPath(name))))
@@ -112,7 +120,7 @@ internal sealed partial class App(string root)
             : MergeBase(tip) is { } mergeBase
                 ? mergeBase
                 : throw new MergeException($"The app and {templateRef} have no shared commit. Give the last template commit that the app has all changes of with --base. To find it, run the script with --find-base.");
-        if (baseRef is null && FoundBase(templateRef, tip, baseCommit) is ({ } found, var subjectOnly) && found != baseCommit)
+        if (baseRef is null && FoundBase(templateRef, tip, baseCommit, displayName) is ({ } found, var subjectOnly) && found != baseCommit)
             throw new MergeException($"The merge base {Describe(baseCommit)} is old. The app seems to have all changes of the newer template commit {Describe(found)}, because an earlier update merged the branch of a template pull request or copied its commits.{SubjectOnlyNote(subjectOnly)}\nRun the script again with --base {Short(found)}. To merge from the merge base, give --base {Short(baseCommit)}.");
         if (Git(root, out _, "merge-base", "--is-ancestor", baseCommit, tip) != 0)
             throw new MergeException($"{Short(baseCommit)} is not a commit of the template history of {Short(tip)}.");
@@ -137,8 +145,11 @@ internal sealed partial class App(string root)
             Console.WriteLine($"These lines of the app keep the template name. The template side of the merge has the name of the app, so a change of the template to one of these lines gives a conflict:\n  {string.Join("\n  ", keptLines.Take(20))}");
 
         Console.WriteLine($"Rename the template to {Name}, with the display name \"{displayName}\". If init.cs gave the app another display name, give it with --display-name.");
-        var renamedBase = Renamed(baseCommit, tip, displayName);
-        var renamedTip = Renamed(tip, tip, displayName);
+        var removeExamples = File.Exists(Path.Combine(root, ExamplesRemovedRecord));
+        if (removeExamples)
+            Console.WriteLine($"The app deleted the example code ({ExamplesRemovedRecord}), so the script deletes it from both template commits with their {RemoveExamplesScript}. Each run builds the copy, so it takes a few minutes.");
+        var renamedBase = AsApp(baseCommit, tip, displayName, removeExamples);
+        var renamedTip = AsApp(tip, tip, displayName, removeExamples);
         Git(root, "update-ref", "refs/template-merge/base", renamedBase);
         Git(root, "update-ref", "refs/template-merge/tip", renamedTip);
 
@@ -175,12 +186,12 @@ internal sealed partial class App(string root)
         Console.WriteLine("The changes of the template in the names of the app: git diff refs/template-merge/base refs/template-merge/tip");
     }
 
-    public void PrintBase(string templateRef)
+    public void PrintBase(string templateRef, string displayName)
     {
         var tip = Tip(templateRef);
         var mergeBase = MergeBase(tip);
         Console.WriteLine(mergeBase is null ? $"The app and {templateRef} have no shared commit." : $"The merge base is {Describe(mergeBase)}.");
-        Console.WriteLine(FoundBase(templateRef, tip, mergeBase) is ({ } found, var subjectOnly)
+        Console.WriteLine(FoundBase(templateRef, tip, mergeBase, displayName) is ({ } found, var subjectOnly)
             ? $"The newest template commit that the app has all changes of is {Describe(found)}.{SubjectOnlyNote(subjectOnly)}\nMerge with: dotnet run template-merge.cs -- --base {Short(found)}"
             : "The app has no template commit. Give the template commit that init.cs made the app from with --base.");
     }
@@ -207,14 +218,14 @@ internal sealed partial class App(string root)
     // change. A subject that the app has for another reason, also one with the same pull request number, can take the
     // walk too far, so the walk also gives each commit that matched only by its subject and not by its changes, for the
     // user to check.
-    private (string? Commit, List<string> SubjectOnly) FoundBase(string templateRef, string tip, string? mergeBase)
+    private (string? Commit, List<string> SubjectOnly) FoundBase(string templateRef, string tip, string? mergeBase, string displayName)
     {
         var appCommits = Lines(Git(root, "rev-list", "HEAD")).ToHashSet(StringComparer.Ordinal);
         var appCommitsBySubject = Lines(mergeBase is null ? Git(root, "log", "--format=%H%x00%s", "HEAD") : Git(root, "log", "--format=%H%x00%s", "HEAD", "--not", mergeBase))
             .Select(line => line.Split('\0'))
             .ToLookup(parts => parts[1], parts => parts[0], StringComparer.Ordinal);
         var pullHeads = PullHeads(templateRef);
-        string[] appForms = [.. new[] { $"Projects.{Name.Replace('.', '_')}_", Name, Name.ToLowerInvariant(), Name.ToLowerInvariant().Replace('.', '-'), DisplayName }
+        string[] appForms = [.. new[] { $"Projects.{Name.Replace('.', '_')}_", Name, Name.ToLowerInvariant(), Name.ToLowerInvariant().Replace('.', '-'), displayName }
             .OrderByDescending(form => form.Length)];
         var subjectOnly = new List<string>();
         bool Has(string commit, string subject)
@@ -280,6 +291,20 @@ internal sealed partial class App(string root)
 
     private string Describe(string commit) => Git(root, "log", "-1", "--format=%h %s", commit).Trim();
 
+    // The system releases the lock of a killed run.
+    private FileStream LockTheMergeRefsAndWorktrees()
+    {
+        var path = Path.GetFullPath(Path.Combine(root, Git(root, "rev-parse", "--git-common-dir").Trim(), "template-merge.lock"));
+        try
+        {
+            return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException exception)
+        {
+            throw new MergeException($"{exception.Message} If another run of the script merges into this repo now, wait until it ends, then run the script again.");
+        }
+    }
+
     // A run that was killed during the rename keeps its temporary worktree registered, and its folder can stay
     private void RemoveStaleCopies()
     {
@@ -294,9 +319,7 @@ internal sealed partial class App(string root)
             Git(root, out _, "worktree", "prune");
     }
 
-    // Checks out the commit in a temporary worktree, renames it with the init.cs of the new template commit, and
-    // commits the result. The same init.cs on both sides keeps a change of init.cs out of the merge.
-    private string Renamed(string commit, string tip, string displayName)
+    private string AsApp(string commit, string tip, string displayName, bool removeExamples)
     {
         var folder = Path.Combine(Path.GetTempPath(), $"{CopyFolderPrefix}{Guid.NewGuid():N}");
         Git(root, Quiet("worktree", "add", "--quiet", "--detach", folder, commit));
@@ -314,6 +337,15 @@ internal sealed partial class App(string root)
 
             Git(folder, "add", "-A");
             Git(folder, Quiet("commit", "--no-verify", "--allow-empty", "--quiet", "-m", $"template-merge: {Short(commit)} renamed to {Name}"));
+
+            if (removeExamples)
+            {
+                if (!File.Exists(Path.Combine(folder, RemoveExamplesScript)))
+                    throw new MergeException($"The app deleted the examples, but the template commit {Describe(commit)} has no {RemoveExamplesScript}, so the app has changes of a newer template commit. To find the last template commit that the app has all changes of, run the script with --find-base.");
+                Run(folder, "dotnet", "run", RemoveExamplesScript);
+                Git(folder, "add", "-A");
+                Git(folder, Quiet("commit", "--no-verify", "--allow-empty", "--quiet", "-m", $"template-merge: the examples of {Short(commit)} deleted"));
+            }
             return Git(folder, "rev-parse", "HEAD").Trim();
         }
         finally
@@ -396,7 +428,7 @@ internal sealed partial class App(string root)
     [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate|fullstack-template|Fullstack Template")]
     private static partial Regex TemplateName();
 
-    // The folder of a temporary worktree of Renamed
+    // The folder of a temporary worktree of AsApp
     private const string CopyFolderPrefix = "template-merge-";
 
     [GeneratedRegex("^" + CopyFolderPrefix + "[0-9a-f]{32}$")]

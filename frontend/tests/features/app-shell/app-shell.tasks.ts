@@ -1,5 +1,4 @@
 import { expect, type Locator, type Page } from '@playwright/test'
-import { weatherPaths } from '@tests/support/api/weather-api'
 import { appShell } from './app-shell.locators'
 
 export function appShellPage(page: Page) {
@@ -30,19 +29,13 @@ export function appShellPage(page: Page) {
     },
 
     async goHome() {
-      const settled = page.waitForResponse(
-        (r) => r.request().method() === 'GET' && new URL(r.url()).pathname === weatherPaths.list,
-      )
       await at.homeLink.click()
-      await settled
+      await page.waitForURL('/')
     },
 
     async pressHomeLink() {
-      const settled = page.waitForResponse(
-        (r) => r.request().method() === 'GET' && new URL(r.url()).pathname === weatherPaths.list,
-      )
       await at.homeLink.press('Enter')
-      await settled
+      await page.waitForURL('/')
     },
 
     async pressAboutNavigationLink() {

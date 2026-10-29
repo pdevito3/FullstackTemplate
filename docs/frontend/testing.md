@@ -11,6 +11,26 @@ The frontend has four test suites. Put a test in the lowest suite that can prove
 
 CI runs the unit, component, and functional suites on each pull request. CI runs the stack suite when the `changes` job finds a change on the login path: the BFF, the AppHost, the SPA, or the stack suite. See the `bff` filter in `.github/workflows/ci.yml`.
 
+## The component suite
+
+A component test renders one component, or one route with `createMemoryHistory`, in Chromium. A component that loads data gets its answers from `commands.answerRequests`. It answers each request to `/api/*` and `/bff/*` that matches the method, the path, and the query parameters of an answer. A later answer wins, so put the most specific answer last. A request with no answer goes on to the dev server and fails. Remove the answers at the end of the test:
+
+```ts
+await commands.answerRequests([
+  { method: 'GET', path: '/api/v1/users', headers: { 'x-pagination': pagination }, body: [user] },
+  { method: 'GET', path: '/api/v1/users', query: { pageNumber: '2' }, headers: { 'x-pagination': page2 }, body: [other] },
+])
+onTestFinished(() => commands.answerRequests([]))
+```
+
+A component that takes a save function as a prop does not need answers. Give it a `vi.fn()` that resolves, or that rejects with a `ProblemDetailsError`.
+
+A click on an option of a combobox can scroll the page, and a scroll of the page closes the list. Pick an option with `userEvent.keyboard('{ArrowDown}{Enter}')`.
+<!-- example:start -->
+
+The workshop example has these component tests: the limits of the contract and the stale-version reload of the edit form ([`refuses a title and a capacity over the limits of the contract`](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx>), [`after a stale save, loads the latest`](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx>)), the venue picker with a pick that is not on the first page ([`shows a picked venue that is not on the first page`](<../../frontend/src/examples/venues/components/venue-picker.test.tsx>)), and the search and the page of the list in the URL ([`puts the page in the URL`](<../../frontend/src/examples/workshops/workshop-list.test.tsx>)).
+<!-- example:end -->
+
 ## The functional suite
 
 `pnpm test:e2e` starts the Vite dev server on a free port. Then it runs the specs in Chromium. No BFF, Server, or IdP runs. The suite mocks each request to `/api/*` and `/bff/*` in the browser with `page.route`. The hooks, the components, the generated clients, and `apiClient` all run.
@@ -21,26 +41,27 @@ frontend/
   playwright.stack.config.ts     # the stack suite
   tests/
     features/
-      weather/
-        weather-forecast.locators.ts   # selectors, and nothing else
-        weather-forecast.tasks.ts      # user actions and every wait
-        weather-forecast.spec.ts       # the scenarios
+      home/
+        home.locators.ts         # selectors, and nothing else
+        home.tasks.ts            # user actions and every wait
+        home.spec.ts             # the scenarios
     support/
       api/
         mock-route.ts            # MockRoute and the request recorder
         bff-api.ts               # /bff/user, /bff/login, /bff/logout
-        weather-api.ts           # one file for each area: the canned responses
+        users-api.ts             # one file for each area: the canned responses
       auth/
         actors.ts                # named identities: as.anonymous(), as.user(name)
       builders/
-        forecast-builder.ts      # immutable fluent builders
-        problem-details-builder.ts
+        problem-details-builder.ts  # immutable fluent builders
       fixtures.ts                # `test` with the `actor` and `api` fixtures
 ```
 
+A test of a shared component, such as the date picker, the overlays, or the toasts, opens `src/test/fixtures/shared-components.html`. This page shows the components in the layout of the app. Do not test a shared component on an example page, because `scripts/remove-examples.cs` deletes the example pages and their tests. Only the Vite dev server serves the page, so it is not in the production build.
+
 ### Mocks
 
-A mock is a `MockRoute`: a plain object with a method, a full path, a status, and a body. Each area has one file in `tests/support/api/`. Each method of the file is one answer of the API, and its name states the scenario: `weatherApi.listReturns(...)`, `weatherApi.listFails(...)`.
+A mock is a `MockRoute`: a plain object with a method, a full path, a status, and a body. Each area has one file in `tests/support/api/`. Each method of the file is one answer of the API, and its name states the scenario: `usersApi.currentIs(...)`, `usersApi.currentFails(...)`.
 
 The `api` fixture applies to each test automatically:
 
@@ -66,12 +87,18 @@ Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout
 
 All test data comes from the builders in `tests/support/builders/`:
 
-1. A builder needs no parent. `aForecast()` alone is valid.
+1. A builder needs no parent. `aProblem()` alone is valid.
 2. A builder is immutable. Each method returns a new builder.
 3. A builder imports nothing from Playwright or Vitest.
-4. The types come from the generated client. A builder derives a dependent value (for example `temperatureF` from `temperatureC`), so the data cannot contradict itself.
+4. The types come from the generated client. A builder derives each dependent value, so the data cannot contradict itself.
 
 Set only the values that the scenario is about. If a scenario needs a value that no builder method sets, add the method to the builder.
+
+`aProblem().staleVersion()` and `aProblem().invalid(errors)` make the 409 of a stale save and the 422 of a validation problem, as the Server sends them.
+<!-- example:start -->
+
+The workshop builder gives each status the actions that a caller with `manage_workshops` gets, and `seenByReader()` takes them away: [`MANAGER_ACTIONS`](<../../frontend/tests/support/examples/workshop-builder.ts>). The spec of the workshops walks from the list to the detail and the edit form, and reloads after a stale save: [`opens a workshop from the list`](<../../frontend/tests/features/examples/workshops/workshops.spec.ts>). It reads and shows each start in the zone of the venue, at a fixed clock on which the day at the venue is not the UTC day: [`adds a workshop with the start that the user types`](<../../frontend/tests/features/examples/workshops/workshops.spec.ts>).
+<!-- example:end -->
 
 ### Locators, tasks, and specs
 
@@ -91,9 +118,9 @@ Use the first of these that works:
 2. A label: `getByLabel('Status')`.
 3. A `data-testid`, only if 1 and 2 do not work.
 
-Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, the forecast grid is a `list`, and each day is a `listitem` with the date as its name.
+Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, a grid of cards is a `list`, and each card is a `listitem` with its title as its name.
 
-Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads the type of the object, so it fails on each action of a Playwright `Page` or `Frame` with any name, such as `popup.fill('#name', name)` or `page.mainFrame().fill(selector, name)`. A union type, such as `Page | Frame`, counts. A value of type `any` does not. It also fails on each `$`, `$$`, `$eval`, and `$$eval`. No check finds a CSS class or a tag chain in `locator()`.
+Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads the type of the object, so it fails on each action of a Playwright `Page` or `Frame` with any name, such as `popup.fill('#name', name)` or `page.mainFrame().fill(selector, name)`. A union type, such as `Page | Frame`, counts. So does `waitForSelector` of an `ElementHandle`. So does an action on a value of type `any`: give the value its type, such as `Page` or `Locator`. It also fails on each `$`, `$$`, `$eval`, and `$$eval`. In `e2e/`, the lint fails on a selector string, on `test.only`, and on an action on a value of type `any`. Its message there names the `e2e/idps/*.json` file of the IdP as the place for a selector of a login page. The rules for a position, a wait for a time, and the locators of a feature do not apply there, because the stack suite drives the login pages of the IdPs and Swagger UI. No check finds a CSS class or a tag chain in `locator()`.
 
 ### Facts about this app
 
@@ -115,10 +142,16 @@ A page that shows a time in the zone of the browser, not of its place, shows ano
 
 Each functional test runs once in each project. To run one project, add `--project=kiritimati`.
 
-- A test of a page with no place sets its clock in the zone of the browser. Use `instantIn(wallClock, browserZone())` from `@tests/support/clock`, as `openOn` in `filter-demo.tasks.ts` does. Then today is the same date in each project.
+- A test of a page with no place sets its clock in the zone of the browser. Use `instantIn(wallClock, browserZone())` from `@tests/support/clock`. Then today is the same date in each project.
+<!-- example:start -->
+- `openOn` in `filter-demo.tasks.ts` sets the clock of a page with no place.
+<!-- example:end -->
 - A test of a time of a place gives the place a zone far from the browser, and sets the clock to an instant at which the date of the place is not the date of the browser or the UTC date. For example, at 07:00 UTC on August 16, it is August 15 in `Pacific/Pago_Pago` and August 16 in UTC and in `Pacific/Kiritimati`. Write the instant in UTC, such as `new Date('2026-08-16T07:00:00Z')`, so that it is the same instant in each project.
 - A test of a zone with a daylight saving time change, such as a time in a spring gap, sets the zone in its describe with `test.use({ timezoneId: 'America/New_York' })`, and runs only in the `utc` project, because the zone of each project is then the same. `browserZone()` gives the zone of the project, not the zone of `test.use`.
-- The tests that check this rule are `a date filter of a place in another zone` in `filter-demo.spec.ts`, `date-filter.test.tsx`, `date-picker.test.tsx`, `calendar: marks today and opens on today at the place of the date` in `calendar.test.tsx`, `querykit-converter.test.ts`, and `zoned-time.test.ts`. The forecast specs in `weather-forecast.spec.ts` fail in `pago-pago` when the page formats a `DateOnly` as midnight UTC.
+- The tests that check this rule are `date-filter.test.tsx`, `date-picker.test.tsx`, `calendar: marks today and opens on today at the place of the date` in `calendar.test.tsx`, `querykit-converter.test.ts`, and `zoned-time.test.ts`.
+<!-- example:start -->
+- `a date filter of a place in another zone` in `filter-demo.spec.ts` also checks it. The forecast specs in `weather-forecast.spec.ts` fail in `pago-pago` when the page formats a `DateOnly` as midnight UTC.
+<!-- example:end -->
 
 ### Add a feature
 

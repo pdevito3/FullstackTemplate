@@ -6,6 +6,11 @@ using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.EmailAddresses;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+// example:start
+using FullstackTemplate.Server.Domain.TimeZones;
+using FullstackTemplate.Server.Examples.Venues;
+using FullstackTemplate.Server.Examples.Workshops;
+// example:end
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
@@ -16,8 +21,12 @@ public class OpenApiDocumentTests
 {
     private const string ValidationProblemRef = "#/components/schemas/ValidationProblemDetails";
 
-    // GET /api/v1/weather is the only operation that allows anonymous callers
-    public const string AnonymousOperation = "GET /api/v1/weather";
+    public static readonly string[] AnonymousOperations =
+    [
+        // example:start
+        "GET /api/v1/weather",
+        // example:end
+    ];
 
     [Test]
     public async Task tenant_list_documents_the_pagination_header()
@@ -217,6 +226,12 @@ public class OpenApiDocumentTests
             ("InitiateUserAndTenantDto.identifier", User.IdentifierMaxLength),
             ("InitiateUserAndTenantDto.email", EmailAddress.MaxLength),
             ("InitiateUserAndTenantDto.username", User.UsernameMaxLength),
+            // example:start
+            ("VenueForCreationDto.name", Venue.NameMaxLength),
+            ("VenueForCreationDto.timeZone", TimeZoneId.MaxLength),
+            ("WorkshopForCreationDto.title", Workshop.TitleMaxLength),
+            ("WorkshopForUpdateDto.title", Workshop.TitleMaxLength),
+            // example:end
         ];
 
         int? MaxLengthOf(string name)
@@ -230,7 +245,33 @@ public class OpenApiDocumentTests
             .ShouldBe(expectations.Select(e => $"{e.Name}: {e.MaxLength}"));
     }
 
-    // A new string field of a request needs [SchemaMaxLength] or [NamesOf<T>], so that a form gets its limit from the contract
+    [Test]
+    public async Task request_numbers_with_a_domain_range_have_its_minimum_and_maximum()
+    {
+        // Arrange
+        var root = await LoadDocumentAsync();
+        var schemas = root["components"]!["schemas"]!;
+
+        (string Name, int Minimum, int Maximum)[] expectations =
+        [
+            // example:start
+            ("WorkshopForCreationDto.capacity", Workshop.CapacityMinimum, Workshop.CapacityMaximum),
+            ("WorkshopForUpdateDto.capacity", Workshop.CapacityMinimum, Workshop.CapacityMaximum),
+            // example:end
+        ];
+
+        string RangeOf(string name)
+        {
+            var parts = name.Split('.');
+            var property = schemas[parts[0]]?["properties"]?[parts[1]];
+            return $"{property?["minimum"]?.ToJsonString()} to {property?["maximum"]?.ToJsonString()}";
+        }
+
+        // Act & Assert
+        expectations.Select(e => $"{e.Name}: {RangeOf(e.Name)}")
+            .ShouldBe(expectations.Select(e => $"{e.Name}: {e.Minimum} to {e.Maximum}"));
+    }
+
     [Test]
     public async Task each_request_string_has_a_max_length_or_a_list_of_names()
     {
@@ -238,12 +279,20 @@ public class OpenApiDocumentTests
         var root = await LoadDocumentAsync();
         var schemas = root["components"]!["schemas"]!;
         // An entity ID is not text that a person types. The client sends an ID that it read from the API.
-        string[] entityIds = ["AgentForCreationDto.tenantId", "UserForCreationDto.tenantId"];
+        string[] entityIds =
+        [
+            "AgentForCreationDto.tenantId",
+            "UserForCreationDto.tenantId",
+            // example:start
+            "WorkshopForCreationDto.venueId",
+            // example:end
+        ];
 
         static IEnumerable<string> RefsUnder(JsonNode node) =>
             Descendants(node).OfType<JsonObject>().Select(child => child["$ref"]?.GetValue<string>()).OfType<string>();
         static bool IsFreeText(JsonNode schema) =>
-            TypesOf(schema).Contains("string") && schema["maxLength"] is null && schema["enum"] is null;
+            TypesOf(schema).Contains("string") && schema["maxLength"] is null && schema["enum"] is null
+            && schema["format"]?.GetValue<string>() != "date-time";
 
         var requestSchemas = new HashSet<string>();
         var pending = new Queue<string>(Operations(root)
@@ -307,11 +356,11 @@ public class OpenApiDocumentTests
         var operations = Operations(root).ToList();
 
         // Assert
-        operations.Select(o => o.Name).ShouldContain(AnonymousOperation);
+        AnonymousOperations.ShouldBeSubsetOf(operations.Select(o => o.Name));
         foreach (var (name, _, operation) in operations)
         {
             var unauthorized = operation["responses"]?["401"];
-            if (name == AnonymousOperation)
+            if (AnonymousOperations.Contains(name))
             {
                 unauthorized.ShouldBeNull(name);
                 continue;

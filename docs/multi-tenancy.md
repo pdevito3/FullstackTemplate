@@ -122,7 +122,7 @@ The migration hosted service does not use a system scope. Migrations do not read
 
 ## Domain event handlers
 
-A domain event handler runs in the tenant of the `ITenantable` entity or the `Tenant` that queued the event. While the handler runs, the scope of the context is `TenantScope.ForTenant` of that tenant, so the filter shows the rows of this tenant only. This is also true when the caller has `TenantScope.AllTenants` or `TenantScope.NoTenant`. After the handler, the context uses the scope of the caller again. The handler of an event from an entity with no tenant runs in the scope of the caller. See [domain-events.md](backend/domain-events.md#handlers).
+A domain event handler runs in the tenant of the `ITenantable` entity or the `Tenant` that queued the event. While the handler runs, the scope of the context is `TenantScope.ForTenant` of that tenant, so the filter shows the rows of this tenant only. This is also true when the caller has `TenantScope.AllTenants` or `TenantScope.NoTenant`. After the handler, the context uses the scope of the caller again. The handler of an event from an entity with no tenant runs in the scope of the save: the scope of the caller, or the scope of one tenant when the Server code runs the save in a narrowed scope of that tenant. See [domain-events.md](backend/domain-events.md#handlers).
 
 ## Row scope and capability
 
@@ -145,9 +145,24 @@ These rules stop a caller from joining a tenant that is not theirs:
 
 `DELETE /api/v1/tenants/{id}` deletes the tenant and each row that it owns, in one save. A row that the tenant owns is a row of an entity type that the tenant filter covers: an agent, a user, the permissions of each, and each tenant-owned entity of your app. `TenantOwnedRows` in `Databases/` finds these types in the EF model, so a new tenant-owned entity needs no change in `DeleteTenant`. The delete covers only `BaseEntity` types. The audit log, a read model, and each other tenant-owned table that is not a `BaseEntity` keep their rows. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete.
 
+`TenantOwnedRowsTests` finds each entity type with a `TenantId` property or the tenant filter. The test fails if a type with a `TenantId` has no tenant filter, or if a type has a table that the delete skips. A type with a `TenantId` always needs the tenant filter. The delete deletes only `BaseEntity` rows, so make a type whose rows go with their tenant a `BaseEntity`. The audit log is on the list of the test that keeps its rows after the delete. To keep the rows of another type, add the type to that list with the reason.
+
+The delete loads all the rows into memory and saves them in one transaction, while it holds the exclusive lock of the tenant. The cost grows with the number of rows. The test users had a random role, so some had permission rows too, and each deleted row writes an audit entry. In a Debug build on a busy machine, the delete of a tenant with 20,000 users took 17 s and 39 s in two runs, and the heap grew by about 1.8 GB. The delete of 50,000 users took 43 s, and the heap grew by about 4 GB in one run. That is 1 ms to 2 ms and about 80 KB of heap for each user. The heap growth is the peak managed heap of the test process during the delete, less the heap before the delete. The peak is a sample every 20 ms, so it can miss a short peak. The test process also runs the server, so the heap is that of the test and the server together. A Release build and another machine give other numbers.
+
+`TenantDeleteCostBenchmark` in `tests/FullstackTemplate.IntegrationTests` makes these numbers. It has `[Explicit]`, so it runs only when a filter names it, and CI does not run it. `TENANT_DELETE_BENCHMARK_USERS` sets the number of users, and the default is 1,000. To run it, use this command from the root of the repository. Docker must run, because the test starts a PostgreSQL container. Remove `-c Release` for a Debug build.
+
+```bash
+TENANT_DELETE_BENCHMARK_USERS=20000 dotnet run --project tests/FullstackTemplate.IntegrationTests -c Release -- \
+  --treenode-filter '/*/*/TenantDeleteCostBenchmark/*' --output detailed | grep '^users='
+```
+
+The line gives the users of the tenant (with the admin), the time of the delete, the heap before the delete, the peak heap, the heap growth, and the bytes that the process allocated during the delete. The test fails if a user of the tenant is not deleted.
+
+During the delete, each add that takes the shared lock of the tenant waits. If a tenant of your app can own more than about 10,000 users or other aggregate roots, change the delete to save in batches.
+
 For a user of a deleted tenant, the server finds no user record on the next request. A deleted user frees its identifier, so the same person can send `POST /api/v1/users/initiate` to start a new tenant and a new user. The new user has a new ID. The old user and its history stay in the deleted tenant. The unique index on the tenant name also covers the deleted tenants, so the new tenant needs a new name.
 
-An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)). The add of a new tenant-owned aggregate root must take the shared lock too. If it does not, a row that it saves during the delete stays live in the deleted tenant. A child add, such as a permission add, takes no lock. It changes the version of its owner, and the delete loads each owner before its children, so the save of the delete fails its version check and runs again.
+An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)). The add of a new tenant-owned aggregate root must take the shared lock too. If it does not, a row that it saves during the delete stays live in the deleted tenant. A child add, such as a permission add, takes no lock. It changes the version of its owner, and the delete loads each owner before its children, so the save of the delete fails its version check and runs again. A child has a required Cascade key to its owner. An entity with another kind of key to its owner is an aggregate root, so it needs `ITenantable`, and its add must take the shared lock.
 
 ## Tenant endpoints
 

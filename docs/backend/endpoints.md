@@ -7,11 +7,11 @@ Each adapter lives in the folder of its feature, next to the request and the han
 ```
 Domain/Tenants/
 ├── Features/
-│   └── GetTenant/
-│       ├── GetTenant.cs           # Core: the MediatR query and its handler
-│       ├── GetTenant.Http.cs      # HTTP: GetTenantEndpoint, an IEndpoint
-│       ├── GetTenant.Grpc.cs      # gRPC: the GetTenant method of the partial TenantsGrpcService
-│       └── GetTenant.Mcp.cs       # MCP: GetTenantTool, an [McpServerToolType] static class
+│   └── AddTenant/
+│       ├── AddTenant.cs           # Core: the MediatR command and its handler
+│       ├── AddTenant.Http.cs      # HTTP: AddTenantEndpoint, an IEndpoint
+│       ├── AddTenant.Grpc.cs      # gRPC: the AddTenant method of the partial TenantsGrpcService
+│       └── AddTenant.Mcp.cs       # MCP: AddTenantTool, an [McpServerToolType] static class
 └── Grpc/
     └── v1/
         ├── tenants.proto          # The gRPC v1 contract
@@ -19,7 +19,7 @@ Domain/Tenants/
         └── TenantGrpcMappings.cs  # The maps from the DTOs to the messages
 ```
 
-Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, AuditEntries, Tenants, Users, and Weather features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Only `GetTenant`, `GetTenantList`, `AddTenant`, and `UpdateTenant` have MCP.
+Each adapter is optional. A feature has only the adapters that it needs, and it can have none. For example, a feature that only a domain event handler or a background job sends has no adapter. A feature with no file for a transport is not exposed on that transport. Now, all of the Agents, AuditEntries, Tenants, and Users features have HTTP. Only `GetTenant`, `GetTenantList`, and `AddTenant` have gRPC. Outside the examples, only `AddTenant` has MCP.
 
 The reason for this layout is in [ADR 0002](../adr/0002-colocate-entrypoints-with-features.md).
 
@@ -140,7 +140,7 @@ To make a breaking change, add v2 next to v1:
 
 ## MCP
 
-Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTenantList/GetTenantList.Mcp.cs`.
+Each MCP tool is a static class. The example is `Domain/Tenants/Features/AddTenant/AddTenant.Mcp.cs`.
 
 1. Add a `public static class [FeatureName]Tool` with `[McpServerToolType]` in `[FeatureName].Mcp.cs`. Use the namespace of the feature. `WithToolsFromAssembly` finds the class.
 2. Give it one `public static` method with `[McpServerTool(Name = "...", UseStructuredContent = true)]` and a `[Description]`. Set `ReadOnly = true` for a read, and `Destructive = false` for an add.
@@ -148,7 +148,7 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 4. Give each other parameter a `[Description]`. These parameters are the input schema.
 5. Return the DTO. For a list, return `McpPage.From(result)`, so that the result has the page data.
 6. Give the method exactly one `[ToolAccess]` attribute, next to `[McpServerTool]`. It names what the handler requires. See [Tool access](#tool-access).
-7. Put no other access check in the tool. If the handler checks a permission, also name the permission in the `[Description]`, so that the model knows why a call can fail. The example is `Domain/Tenants/Features/UpdateTenant/UpdateTenant.Mcp.cs`.
+7. Put no other access check in the tool. If the handler checks a permission, also name the permission in the `[Description]`, so that the model knows why a call can fail.
 
 `/mcp` needs a token. A `401` from `/mcp` gives the URL of the protected resource metadata (RFC 9728) of the server in the `resource_metadata` parameter of its Bearer challenge. The document is at `/.well-known/oauth-protected-resource/mcp`, and it names the identity provider and the scopes. `McpResourceMetadata` serves the document and adds the parameter to the challenge. See [How an MCP client finds the provider](../authentication.md#how-an-mcp-client-finds-the-provider).
 
@@ -158,8 +158,8 @@ Each MCP tool is a static class. The example is `Domain/Tenants/Features/GetTena
 
 | Attribute | Use it for | A caller sees and can call the tool if |
 |---|---|---|
-| `[ToolAccess(ToolAccessKind.Read)]` | A read with no permission check, for example `get_tenant` | The caller is recognized: each caller except an unknown client and an anonymous request. The tenant filter decides the rows. |
-| `[ToolAccess(Permission.Names.ManageTenant)]` | A tool whose handler calls `RequireAsync` with that permission, for example `update_tenant` | `Caller.Has` gives true for the permission |
+| `[ToolAccess(ToolAccessKind.Read)]` | A read with no permission check, for example a tool that gets one record | The caller is recognized: each caller except an unknown client and an anonymous request. The tenant filter decides the rows. |
+| `[ToolAccess(Permission.Names.ManageTenant)]` | A tool whose handler calls `RequireAsync` with that permission, for example a tool that renames a tenant | `Caller.Has` gives true for the permission |
 | `[ToolAccess(ToolAccessKind.ManageAllTenants)]` | A tool whose handler checks `Caller.ManagesAllTenants`, for example `add_tenant` | The caller can manage all tenants |
 
 Use a `Permission.Names` constant, so that the compiler checks the name. If the handler checks more than one permission, name the permission that each call needs. The handler checks the others. If the handler lets a user act on their own record with `Caller.RequireSelfOr`, use `ToolAccessKind.Read`, so that the handler decides. A permission in the attribute would hide the tool from that user.
@@ -176,10 +176,14 @@ The attribute repeats the permission of the handler. If the two differ, the resu
 
 `McpCallTelemetry.Filter` is the first call filter. It puts the tool name (`gen_ai.tool.name`), the caller tags, and the `error.type` of a failed call on the span of the HTTP request. A call that fails before its feature runs has no feature span, so this span is the only one that names the tool and the caller. The `error.type` is the `code` of a tool error, or the type of the exception that the SDK answers. The name of an unknown tool comes from the caller, so the tag has its first 128 characters, with the control characters removed. A call to an unknown tool gets the JSON-RPC error `-32602` of the SDK. The SDK logs this error at `Error`, but it is a client error, so `McpProtocolErrorLogFilter` drops the log.
 
+<!-- example:start -->
+In the workshop example, `list_workshops` is a read tool ([`GetWorkshopListTool`](../../FullstackTemplate.Server/Examples/Workshops/Features/GetWorkshopList/GetWorkshopList.Mcp.cs)), and `cancel_workshop` names the permission of its handler ([`CancelWorkshopTool`](../../FullstackTemplate.Server/Examples/Workshops/Features/CancelWorkshop/CancelWorkshop.Mcp.cs)).
+<!-- example:end -->
+
 ### MCP versions
 
 MCP has no version segment. The contract of a tool is its name and its input schema.
 
 - You can add an optional parameter, or change a description. A caller that does not know the change still works.
-- A breaking change gets a new tool name, for example `list_tenants_v2`: a removed or renamed parameter, a new required parameter, a changed type, or a changed meaning. Add the new tool as a new static class.
-- Keep the old tool, and mark it deprecated in its description, for example: "Deprecated: use list_tenants_v2. Gets one page of ...". Remove it when no caller uses it.
+- A breaking change gets a new tool name, for example `add_tenant_v2`: a removed or renamed parameter, a new required parameter, a changed type, or a changed meaning. Add the new tool as a new static class.
+- Keep the old tool, and mark it deprecated in its description, for example: "Deprecated: use add_tenant_v2. Adds a tenant ...". Remove it when no caller uses it.

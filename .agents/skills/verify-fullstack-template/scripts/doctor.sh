@@ -39,8 +39,8 @@ server="$(jq -r .urls.server "$stack")"
 build="$(jq -r '.build // "dev"' "$stack")"
 [[ "$(web_url "$build")" == "$web" ]] && ok "web URL $web ($build build)" || fail "the web URL changed. stack.json is stale."
 
-code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/weather")"
-[[ "$code" == "200" ]] && ok "GET $web/api/v1/weather -> 200" || fail "GET $web/api/v1/weather -> $code"
+server_rejects_anonymous "$web" && ok "GET $web/api/v1/users/me -> the 401 of the Server" \
+  || fail "GET $web/api/v1/users/me did not get the 401 of the Server"
 code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/bff/user")"
 [[ "$code" == "204" || "$code" == "200" ]] && ok "GET /bff/user -> $code" || fail "GET /bff/user -> $code"
 code="$(curl -sk -o /dev/null -w '%{http_code}' "$server/health")"

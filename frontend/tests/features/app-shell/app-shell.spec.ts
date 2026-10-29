@@ -1,8 +1,6 @@
-import { weatherApi } from '@tests/support/api/weather-api'
-import { aForecast } from '@tests/support/builders/forecast-builder'
 import { expect, test } from '@tests/support/fixtures'
 import { useDefaultFontSize } from '@tests/support/screen'
-import { weatherForecastPage } from '../weather/weather-forecast.tasks'
+import { homePage } from '../home/home.tasks'
 import { appShellPage } from './app-shell.tasks'
 
 for (const viewport of [
@@ -19,26 +17,18 @@ for (const viewport of [
 
       expect(await shell.pageScrollRange()).toBe(0)
     })
+
+    test('the home page does not scroll', async ({ page }) => {
+      await homePage(page).open()
+
+      expect(await appShellPage(page).pageScrollRange()).toBe(0)
+    })
   })
 }
 
-test.describe('the home page on a desktop', () => {
-  test.use({ viewport: { width: 1280, height: 800 } })
-
-  test('does not scroll when the forecast fits', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast().on('2026-03-14'), aForecast().on('2026-03-15'), aForecast().on('2026-03-16')))
-
-    await weatherForecastPage(page).open()
-
-    expect(await appShellPage(page).pageScrollRange()).toBe(0)
-  })
-})
-
 test.describe('the landmarks of a page', () => {
-  test('the home page has one main landmark', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
-
-    await weatherForecastPage(page).open()
+  test('the home page has one main landmark', async ({ page }) => {
+    await homePage(page).open()
 
     expect(await appShellPage(page).at.mainLandmarks.count()).toBe(1)
   })
@@ -110,33 +100,30 @@ test.describe('an unknown address', () => {
     expect(shell.warnings.filter((warning) => warning.includes('notFound'))).toEqual([])
   })
 
-  test('links to the home page', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+  test('links to the home page', async ({ page }) => {
     const shell = appShellPage(page)
     await shell.openMissingPage()
 
     await shell.goHome()
 
-    await expect(shell.at.weatherHeading).toBeVisible()
+    await expect(homePage(page).at.heading).toBeVisible()
     await expect(shell.at.currentPage).toHaveText('Home')
   })
 })
 
 test.describe('the focus after a navigation', () => {
-  test('a link in the page moves the focus to the level 1 heading of the new page', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+  test('a link in the page moves the focus to the level 1 heading of the new page', async ({ page }) => {
     const shell = appShellPage(page)
     await shell.openMissingPage()
 
     await shell.pressHomeLink()
 
-    await expect(shell.at.weatherHeading).toBeFocused()
+    await expect(homePage(page).at.heading).toBeFocused()
   })
 
-  test('a sidebar link keeps the focus on the link and announces the new page', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+  test('a sidebar link keeps the focus on the link and announces the new page', async ({ page }) => {
     const shell = appShellPage(page)
-    await weatherForecastPage(page).open()
+    await homePage(page).open()
 
     await shell.pressAboutNavigationLink()
 
@@ -145,12 +132,11 @@ test.describe('the focus after a navigation', () => {
     await expect(shell.at.pageAnnouncement).toHaveAttribute('role', 'status')
   })
 
-  test('a click on the content after the focus moves to the heading leaves the focus on the body', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+  test('a click on the content after the focus moves to the heading leaves the focus on the body', async ({ page }) => {
     const shell = appShellPage(page)
     await shell.openMissingPage()
     await shell.pressHomeLink()
-    await expect(shell.at.weatherHeading).toBeFocused()
+    await expect(homePage(page).at.heading).toBeFocused()
 
     await shell.clickBlankContent()
 
@@ -161,10 +147,9 @@ test.describe('the focus after a navigation', () => {
 test.describe('the focus after a navigation on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
-  test('a link of the mobile sidebar gives the focus back to the sidebar trigger and announces the new page', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+  test('a link of the mobile sidebar gives the focus back to the sidebar trigger and announces the new page', async ({ page }) => {
     const shell = appShellPage(page)
-    await weatherForecastPage(page).open()
+    await homePage(page).open()
     await shell.openMobileSidebar()
 
     await shell.openAboutFromMobileSidebar()

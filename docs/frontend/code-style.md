@@ -13,6 +13,10 @@ These rules apply to the TypeScript and React code in `frontend/src/`. `pnpm lin
 7. Use `import type` for an import that is only a type.
 8. A file under `src/domain/` reads the answers of the Server and formats them. It does not decide a business rule. See rule 8 of [server-state.md](server-state.md#rules).
 
+<!-- example:start -->
+In the workshop example, a `Record` of a generated union maps each status to its badge variant: [`VARIANTS`](<../../frontend/src/examples/workshops/components/workshop-status-badge.tsx>).
+<!-- example:end -->
+
 ```typescript
 export const USER_ROLES = ['Admin', 'User'] as const
 export type UserRole = (typeof USER_ROLES)[number]
@@ -29,6 +33,10 @@ function isUserDto(value: unknown): value is UserDto {
 3. React 19 passes `ref` as a prop. Do not use `forwardRef`.
 4. Name a handler prop `onX`. Name the handler inside the component `handleX`.
 5. Use an early return for a loading, empty, or error state. Do not nest ternaries.
+
+<!-- example:start -->
+The workshop list returns early for its loading, error, and empty states: [`WorkshopRows`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
+<!-- example:end -->
 6. Load a heavy component or library with `lazy` or a dynamic `import()`.
 
 ```typescript
@@ -63,7 +71,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 - An animated component imports from `react-aria-components` what Animate UI does not re-export, for example `OverlayTriggerStateContext` in `select.tsx`.
 
 1. Use a component from `components/ui/`. If it does not exist, add it with `pnpm dlx shadcn@latest add <name>`. Then run `pnpm dlx @animate-ui/cli@latest animate <name>`. If Animate UI has an animation for the component, import the primitives from `@animate-ui/react/primitives/react-aria`. If not, import them from `react-aria-components`. Do not add a second UI library.
-2. Use the React Aria props: `onPress` (not `onClick`) and `isDisabled` (not `disabled`) on a `Button`. Use `onAction` on a menu item. A button that becomes unavailable while it has the focus, such as a pager button, uses `aria-disabled` and ignores the press, because a disabled button loses the focus to the body.
+2. Use the React Aria props: `onPress` (not `onClick`) and `isDisabled` (not `disabled`) on a `Button`. Use `onAction` on a menu item. A button that becomes unavailable while it has the focus, such as a pager button, uses `aria-disabled` and ignores the press, because a disabled button loses the focus to the body. Then move the focus to a control that still works, as `PagerButtons` in `components/ui/pager.tsx` moves it from Next to Previous on the last page.
 3. Put the trigger and its overlay as children of the trigger component. For example, put a `Button` and a `DropdownMenu` in a `DropdownMenuTrigger`. Do not use a `render` prop.
 4. Give a `Dialog` or a `Popover` a title or an `aria-label`. Give an icon-only `Button` an `aria-label`. Use a `Tooltip`, not the `title` attribute.
 5. Use `Link` from `@/components/ui/link` for a link to a route, with `to` and `params`. See [Links](../frontend.md#links).
@@ -78,9 +86,13 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 4. A table cell wraps its text. Give `whitespace-nowrap` to a cell that holds a code, a date, an amount, an email address, or a badge, so that only prose wraps.
 5. Outside a table, each text that comes from data wraps or shows its full value on demand. A name or an email address can have no spaces, so give it `wrap-anywhere`, and give `min-w-0` to its flex item. A text that truncates is in a button or a link that shows the full value. The sweep of the verify skill finds the text that does not obey this rule.
 
+<!-- example:start -->
+In `WorkshopRows` of the [workshop list](<../../frontend/src/routes/(examples)/workshops/index.tsx>), only the title wraps. The start, the capacity, and the status have `whitespace-nowrap`. A phone has no room for four columns, so there the title cell shows the start and the capacity under the title, and the table has only the title and the status.
+<!-- example:end -->
+
 ## Dates and times
 
-A time that belongs to a place, such as a clinic visit or the start of an event at a venue, shows and reads in the zone of the place. The user can be in another zone. The Server gives the zone as an IANA ID, as `TimeZoneId` holds it. See `ZonedDate` in [domain-entities.md](../backend/domain-entities.md). `src/lib/zoned-time.ts` is the SPA side of `TimeZoneId` and `ZonedDate`. Only that file reads the zone of the browser. `pnpm lint` refuses the common browser-zone APIs in all other files of `src/`, except the tests.
+A time that belongs to a place, such as a clinic visit or the start of an event at a hall, shows and reads in the zone of the place. The user can be in another zone. The Server gives the zone as an IANA ID, as `TimeZoneId` holds it. See `ZonedDate` in [domain-entities.md](../backend/domain-entities.md). `src/lib/zoned-time.ts` is the SPA side of `TimeZoneId` and `ZonedDate`. Only that file reads the zone of the browser. `pnpm lint` refuses the common browser-zone APIs in all other files of `src/`, except the tests.
 
 1. Read the zone of the place from its API field with `parseTimeZone`. Use `browserTimeZone()` only for a time that belongs to the user, not to a place, or on a page with no place.
 2. Take today at the place with `todayAt(zone, new Date())`, never from the UTC date or the browser date.
@@ -106,9 +118,9 @@ const startsAt = formatInstant(new Date(visit.startsAt), zone, { hour: 'numeric'
 ```typescript
 import { useQuery } from '@tanstack/react-query'
 
-import { getWeatherForecast } from '@/api/generated/weather/clients/get-weather-forecast'
+import { getCurrentUser } from '@/api/generated/users/clients/get-current-user'
 
-import { WeatherKeys } from './weather.keys'
+import { UserKeys } from './user.keys'
 ```
 
 ## Comments

@@ -24,7 +24,7 @@ public class RefreshIdTokenTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60"))!;
 
         // Act
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         // Assert
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
@@ -45,7 +45,7 @@ public class RefreshIdTokenTests
             providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token=valid"))!;
 
         // Act
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         // Assert
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
@@ -75,7 +75,7 @@ public class RefreshIdTokenTests
             providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token={fault}"))!;
 
         // Act
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -102,7 +102,7 @@ public class RefreshIdTokenTests
         try
         {
             // Act
-            var call = browser.GetApiAsync("/api/v1/weather");
+            var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
             var response = await call.WaitAsync(Timeout);
@@ -137,7 +137,7 @@ public class RefreshIdTokenTests
         try
         {
             // Act
-            var call = browser.GetApiAsync("/api/v1/weather");
+            var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
             gate.Released.SetResult();

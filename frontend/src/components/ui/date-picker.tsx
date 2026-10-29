@@ -2,7 +2,7 @@
 
 import { Calendar03Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useState } from "react"
+import { useImperativeHandle, useRef, useState, type Ref } from "react"
 import {
   DatePicker as AriaDatePicker,
   DateRangePicker as AriaDateRangePicker,
@@ -47,6 +47,8 @@ interface JollyDatePickerProps<T extends AriaDateValue>
   errorMessage?: string | ((validation: AriaValidationResult) => string)
   /** The zone of the place that the date belongs to. The calendar marks today at that place, and opens on its month. */
   timeZone?: TimeZone
+  /** Its focus() puts the focus on the first segment, so that a form can focus the picker of a refused field. */
+  ref?: Ref<{ focus: () => void }>
 }
 
 function JollyDatePicker<T extends AriaDateValue>({
@@ -60,8 +62,13 @@ function JollyDatePicker<T extends AriaDateValue>({
   onBlur,
   isInvalid,
   timeZone,
+  ref,
   ...props
 }: JollyDatePickerProps<T>) {
+  const groupRef = useRef<HTMLDivElement>(null)
+  useImperativeHandle(ref, () => ({
+    focus: () => groupRef.current?.querySelector<HTMLElement>('[role="spinbutton"]')?.focus(),
+  }), [])
   const [changedDate, setChangedDate] = useState<AriaDateValue | null>(defaultValue ?? null)
   const date = value === undefined ? changedDate : value
   const yearCheck = useShortYearCheck(date)
@@ -92,7 +99,7 @@ function JollyDatePicker<T extends AriaDateValue>({
       {...props}
     >
       {label && <Label>{label}</Label>}
-      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
+      <Group ref={groupRef} className="relative flex min-h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-0.5 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
         <DateInput className="flex-1" variant="ghost" />
         <Button
           variant="ghost"

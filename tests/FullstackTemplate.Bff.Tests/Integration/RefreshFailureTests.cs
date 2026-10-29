@@ -20,7 +20,7 @@ public class RefreshFailureTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh=fail"))!;
 
         // Act
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -42,7 +42,7 @@ public class RefreshFailureTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh=unavailable"))!;
 
         // Act
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         // Assert
         provider.RefreshCount(subject).ShouldBe(1);
@@ -63,7 +63,7 @@ public class RefreshFailureTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=0&test_refresh=unavailable"))!;
 
         // Act
-        var response = await browser.GetApiAsync("/api/v1/weather");
+        var response = await browser.GetApiAsync("/api/v1/items");
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -71,7 +71,7 @@ public class RefreshFailureTests
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldNotBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        await browser.GetApiAsync("/api/v1/weather");
+        await browser.GetApiAsync("/api/v1/items");
         provider.RefreshCount(subject).ShouldBe(2);
     }
 

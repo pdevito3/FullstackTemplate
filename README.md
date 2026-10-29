@@ -167,6 +167,9 @@ After creating your project:
 2. **Read `AGENTS.md` and `docs/`** for development patterns and guides
 3. **Add your first entity** using the patterns in `docs/backend/`
 4. **Build your features** with the included CQRS patterns
+<!-- example:start -->
+5. **Delete the example code** when you do not need it: `dotnet run scripts/remove-examples.cs`. See [docs/examples.md](docs/examples.md).
+<!-- example:end -->
 
 ## Development with Claude Code
 

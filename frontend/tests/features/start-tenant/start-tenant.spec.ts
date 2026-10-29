@@ -1,7 +1,6 @@
 import { membershipApi, membershipPaths } from '@tests/support/api/membership-api'
-import { weatherApi } from '@tests/support/api/weather-api'
+import { usersApi } from '@tests/support/api/users-api'
 import { actorSubject, as } from '@tests/support/auth/actors'
-import { aForecast } from '@tests/support/builders/forecast-builder'
 import { aStartedTenant } from '@tests/support/builders/user-builder'
 import { expect, test } from '@tests/support/fixtures'
 import { startTenantPage } from './start-tenant.tasks'
@@ -10,7 +9,7 @@ test.describe('a signed-in user with no tenant', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
   test('follows the notice on the home page and starts a tenant as its admin', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()), membershipApi.startReturns(aStartedTenant('Acme')))
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.startReturns(aStartedTenant('Acme')))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/')
     await start.followNotice()
@@ -35,7 +34,7 @@ test.describe('a signed-in user with no tenant', () => {
   })
 
   test('sees no notice on the home page after the start', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()), membershipApi.startReturns(aStartedTenant('Acme')))
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.startReturns(aStartedTenant('Acme')))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
     // The Server has the user record after the start.
@@ -90,8 +89,7 @@ for (const viewport of [
   test.describe(`the notice at ${viewport.width}x${viewport.height}`, () => {
     test.use({ actor: as.userWithNoTenant('Ada Lovelace'), viewport })
 
-    test('spans the main area under the header, so that it does not depend on the width of a page', async ({ page, api }) => {
-      api.mock(weatherApi.listReturns(aForecast()))
+    test('spans the main area under the header, so that it does not depend on the width of a page', async ({ page }) => {
       const start = startTenantPage(page)
 
       await start.openAsSignedIn('/')
@@ -121,7 +119,7 @@ test.describe('a signed-in user whose lookup the Server refuses', () => {
 
   test('sees the reason of the Server on the home page too', async ({ page, api }) => {
     api.mock(
-      weatherApi.listReturns(aForecast()),
+      usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }),
       membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'),
     )
     const start = startTenantPage(page)
@@ -136,7 +134,7 @@ test.describe('a member of a tenant', () => {
   test.use({ actor: as.user('Bob Smith') })
 
   test('is told on the start page that they have a tenant, and sees no notice on the home page', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Bob Smith' }))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
     await expect(start.at.alreadyMember).toBeVisible()

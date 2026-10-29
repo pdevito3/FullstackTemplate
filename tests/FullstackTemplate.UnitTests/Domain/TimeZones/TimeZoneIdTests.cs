@@ -67,7 +67,7 @@ public class TimeZoneIdTests
     [Test]
     public void zones_with_the_same_id_are_equal()
     {
-        // Assert
+        // Act & Assert
         TimeZoneId.Of("America/Chicago").ShouldBe(Chicago);
         TimeZoneId.Of("America/Denver").ShouldNotBe(Chicago);
     }

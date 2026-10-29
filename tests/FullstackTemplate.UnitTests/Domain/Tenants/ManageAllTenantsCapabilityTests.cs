@@ -44,35 +44,44 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_tenant()
     {
+        // Arrange
         var handler = new AddTenant.Handler(_dbContext, new PermissionGuard(_dbContext, _callerIdentityResolver));
 
+        // Act
         var act = () => handler.Handle(new AddTenant.Command(new FakeTenantForCreationDto().Generate()),
             CancellationToken.None);
 
+        // Assert
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_start_a_tenant()
     {
+        // Arrange
         var handler = new InitiateUserAndTenant.Handler(_dbContext, _callerIdentityResolver);
 
+        // Act
         var act = () => handler.Handle(
             new InitiateUserAndTenant.Command(new FakeInitiateUserAndTenantDto().Generate()),
             CancellationToken.None);
 
+        // Assert
         await act.ShouldThrowAsync<ForbiddenAccessException>();
     }
 
     [Test]
     public async Task caller_that_sees_all_tenants_without_the_capability_cannot_add_a_user()
     {
+        // Arrange
         var permissionGuard = new PermissionGuard(_dbContext, _callerIdentityResolver);
         var handler = new AddUser.Handler(_dbContext, permissionGuard);
 
+        // Act
         var act = () => handler.Handle(new AddUser.Command(new FakeUserForCreationDto().Generate()),
             CancellationToken.None);
 
+        // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
             .ShouldBe("This client has no permissions. It can read only the data that needs no permission.");
     }

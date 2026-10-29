@@ -19,8 +19,10 @@ public sealed class AppDbContextSaveTests
     [Test]
     public void sync_save_is_refused()
     {
+        // Arrange
         using var dbContext = CreateContext();
 
+        // Act & Assert
         var exception = Should.Throw<NotSupportedException>(() => dbContext.SaveChanges());
 
         exception.Message.ShouldContain("SaveChangesAsync");
@@ -46,9 +48,13 @@ public sealed class AppDbContextSaveTests
     [Test]
     public void contexts_with_the_handler_write_guard_share_one_internal_service_provider()
     {
+        // Arrange
         using var first = CreateContext();
+
+        // Act
         using var second = CreateContext();
 
+        // Assert
         second.GetService<IModelSource>().ShouldBeSameAs(first.GetService<IModelSource>());
     }
 

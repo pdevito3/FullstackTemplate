@@ -16,6 +16,7 @@ public class EfBffSessionStoreTests
     [NotInParallel(BffSessionStoreContractTests.EndedRowDeletes)]
     public async Task each_cleanup_delete_takes_its_batch_from_the_start_of_an_expiry_index()
     {
+        // Arrange
         var capture = new NonQueryCapture();
         var options = new DbContextOptionsBuilder<BffDbContext>();
         BffSessionExtensions.ConfigureBffDb(options, BffApp.Database.ConnectionString);
@@ -23,9 +24,11 @@ public class EfBffSessionStoreTests
         await using var dbContext = new BffDbContext(options.Options);
         var store = new EfBffSessionStore(dbContext, TimeProvider.System);
 
+        // Act
         // A time in the past, so that the deletes change no row of another test
         await store.DeleteEndedAsync(new DateTimeOffset(1990, 1, 1, 0, 0, 0, TimeSpan.Zero), 10, CancellationToken.None);
 
+        // Assert
         capture.Commands.ShouldNotBeEmpty();
         await using var connection = new NpgsqlConnection(BffApp.Database.ConnectionString);
         await connection.OpenAsync();

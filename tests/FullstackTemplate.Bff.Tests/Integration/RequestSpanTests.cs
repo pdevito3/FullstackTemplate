@@ -26,11 +26,14 @@ public sealed class RequestSpanTests : IDisposable
     [Test]
     public async Task request_span_keeps_the_query_keys_and_hides_the_values()
     {
+        // Arrange
         var key = $"probe_{Guid.NewGuid():N}";
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.GetAsync($"/api/v1/users?filters=email%20%40%3D*%20%22jane%22&{key}=jane");
 
+        // Assert
         // The BFF does not forward the request, so the fake API makes no second span with this query
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var request = await WaitForSpanAsync(key);

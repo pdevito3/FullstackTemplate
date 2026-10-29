@@ -8,13 +8,16 @@ public class ProxyLogTests
     [Test]
     public async Task a_proxied_request_outside_development_logs_no_query_value()
     {
+        // Arrange
         var path = $"/api/v1/probe-{Guid.NewGuid():N}";
         var filter = $"jane-{Guid.NewGuid():N}";
         await using var app = BffApp.StartAnotherInstance(environment: "Production");
         using var browser = app.CreateBrowser();
 
+        // Act
         var response = await browser.GetApiAsync($"{path}?filters=email%20%40%3D*%20%22{filter}%22");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.ReadEchoAsync()).Path.ShouldBe(path);
         await WaitForRequestLogAsync(path);

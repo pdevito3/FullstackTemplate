@@ -14,10 +14,12 @@ public class BffDatabaseMigratorTests
     [Test]
     public async Task startup_migration_on_a_missing_database_creates_it_and_logs_no_error()
     {
+        // Arrange
         await using var database = new PostgresTestDatabase();
         await database.StartAsync(createDatabase: false);
         var logs = new CapturedLogs();
 
+        // Act
         await using (var app = BffApp.StartAnotherInstance(
             new Dictionary<string, string?> { [$"ConnectionStrings:{BffDbContext.DatabaseName}"] = database.ConnectionString },
             services => services.AddSingleton<ILogEventSink>(logs)))
@@ -27,6 +29,7 @@ public class BffDatabaseMigratorTests
             pending.ShouldBeEmpty();
         }
 
+        // Assert
         logs.AtLeast(LogEventLevel.Error)
             .Select(e => $"{e.Properties.GetValueOrDefault("SourceContext")}: {e.RenderMessage(CultureInfo.InvariantCulture)}").ShouldBeEmpty();
     }

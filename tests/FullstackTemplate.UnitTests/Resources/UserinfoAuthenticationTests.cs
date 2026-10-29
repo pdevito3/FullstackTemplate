@@ -25,16 +25,20 @@ public class UserinfoAuthenticationTests
     [Test]
     public void userinfo_validation_outside_development_fails_at_startup()
     {
+        // Act
         var exception = Should.Throw<InvalidOperationException>(() => BuildServices(Environments.Production));
 
+        // Assert
         exception.Message.ShouldContain(UserinfoAuthenticationHandler.AccessTokenValidationKey);
     }
 
     [Test]
     public async Task a_token_that_the_userinfo_endpoint_accepts_authenticates_with_the_userinfo_claims()
     {
+        // Act
         var result = await AuthenticateAsync("Bearer good-token");
 
+        // Assert
         result.Succeeded.ShouldBeTrue();
         result.Principal!.Identity!.Name.ShouldBe("Ada");
         result.Principal.FindFirstValue("sub").ShouldBe("user-1");
@@ -43,16 +47,20 @@ public class UserinfoAuthenticationTests
     [Test]
     public async Task a_userinfo_response_with_no_client_claim_gets_the_client_of_the_app()
     {
+        // Act
         var result = await AuthenticateAsync("Bearer good-token");
 
+        // Assert
         result.Principal.ShouldNotBeNull().FindFirstValue("client_id").ShouldBe(AppClientId);
     }
 
     [Test]
     public async Task a_userinfo_response_with_a_client_claim_keeps_it()
     {
+        // Act
         var result = await AuthenticateAsync("Bearer agent-token");
 
+        // Assert
         var principal = result.Principal.ShouldNotBeNull();
         principal.FindFirstValue("azp").ShouldBe("other-client");
         principal.FindFirstValue("client_id").ShouldBeNull();
@@ -61,8 +69,10 @@ public class UserinfoAuthenticationTests
     [Test]
     public async Task a_token_that_the_userinfo_endpoint_rejects_fails()
     {
+        // Act
         var result = await AuthenticateAsync("Bearer other-token");
 
+        // Assert
         result.Succeeded.ShouldBeFalse();
         result.Failure.ShouldNotBeNull();
     }
@@ -70,8 +80,10 @@ public class UserinfoAuthenticationTests
     [Test]
     public async Task a_request_with_no_bearer_token_has_no_result()
     {
+        // Act
         var result = await AuthenticateAsync(null);
 
+        // Assert
         result.None.ShouldBeTrue();
     }
 

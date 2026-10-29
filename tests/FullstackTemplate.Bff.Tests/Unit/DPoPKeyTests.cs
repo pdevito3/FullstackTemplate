@@ -17,6 +17,7 @@ public class DPoPKeyTests
     [Test]
     public void an_es256_key_on_p256_passes()
     {
+        // Act & Assert
         Read(DPoPTestKey.Create().Jwk).ShouldNotBeNull();
     }
 
@@ -25,18 +26,21 @@ public class DPoPKeyTests
     [Arguments("ES512", "P-521")]
     public void an_ec_key_with_the_alg_of_its_curve_passes(string alg, string crv)
     {
+        // Act & Assert
         Read(EcKey(alg, crv)).ShouldNotBeNull();
     }
 
     [Test]
     public void an_rsa_key_with_ps256_passes()
     {
+        // Act & Assert
         Read(RsaKey("PS256")).ShouldNotBeNull();
     }
 
     [Test]
     public void an_ec_key_with_an_rsa_alg_fails()
     {
+        // Act & Assert
         var exception = Should.Throw<InvalidOperationException>(() => Read(EcKey("RS256", "P-256")));
 
         exception.Message.ShouldContain("needs a RSA key");
@@ -45,6 +49,7 @@ public class DPoPKeyTests
     [Test]
     public void es256_with_a_p384_key_fails()
     {
+        // Act & Assert
         var exception = Should.Throw<InvalidOperationException>(() => Read(EcKey("ES256", "P-384")));
 
         exception.Message.ShouldContain("curve P-256");
@@ -54,6 +59,7 @@ public class DPoPKeyTests
     [Test]
     public void an_rsa_key_with_an_ec_alg_fails()
     {
+        // Act & Assert
         Should.Throw<InvalidOperationException>(() => Read(RsaKey("ES256"))).Message.ShouldContain("needs a EC key");
     }
 
@@ -63,15 +69,18 @@ public class DPoPKeyTests
     [Arguments("EdDSA")]
     public void an_alg_that_is_not_an_asymmetric_proof_alg_fails(string alg)
     {
+        // Act & Assert
         Should.Throw<InvalidOperationException>(() => Read(EcKey(alg, "P-256"))).Message.ShouldContain("not an asymmetric algorithm");
     }
 
     [Test]
     public void a_private_part_of_another_key_fails()
     {
+        // Arrange
         var key = Members(DPoPTestKey.Create().Jwk);
         key["d"] = Members(DPoPTestKey.Create().Jwk)["d"];
 
+        // Act & Assert
         var exception = Should.Throw<InvalidOperationException>(() => Read(JsonSerializer.Serialize(key)));
 
         // Linux fails the signature and macOS fails the verify, with the same message

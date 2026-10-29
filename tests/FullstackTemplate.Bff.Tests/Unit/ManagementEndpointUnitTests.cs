@@ -22,12 +22,15 @@ public class ManagementEndpointUnitTests
     [Test]
     public async Task login_returns_404_when_the_handler_has_no_discovery_document()
     {
+        // Arrange
         var context = new DefaultHttpContext();
         var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = null };
 
+        // Act
         await LoginEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options),
             SpaOrigin.FromConfiguration(new ConfigurationBuilder().Build()));
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
     }
 
@@ -37,6 +40,7 @@ public class ManagementEndpointUnitTests
     [Arguments("/base", "a b&c", "/base/bff/logout?sid=a%20b%26c")]
     public void the_logout_url_has_the_path_base_and_the_encoded_sid(string pathBase, string? sessionId, string expected)
     {
+        // Act & Assert
         UserEndpoint.LogoutUrl(new PathString(pathBase), sessionId).ShouldBe(expected);
     }
 
@@ -47,6 +51,7 @@ public class ManagementEndpointUnitTests
     [Arguments("/api/v1/x", "?slide=false", true)]
     public async Task only_bff_user_with_slide_false_skips_the_sliding_renewal(string path, string query, bool shouldRenew)
     {
+        // Arrange
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Path = path;
         httpContext.Request.QueryString = new QueryString(query);
@@ -58,19 +63,24 @@ public class ManagementEndpointUnitTests
             ShouldRenew = true,
         };
 
+        // Act
         await UserEndpoint.SuppressSlideWhenRequested(context);
 
+        // Assert
         context.ShouldRenew.ShouldBe(shouldRenew);
     }
 
     [Test]
     public async Task backchannel_returns_400_when_the_handler_has_no_discovery_document()
     {
+        // Arrange
         var context = BackChannelRequest();
         var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = null };
 
+        // Act
         await HandleBackChannelAsync(context, options);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
     }
@@ -78,11 +88,14 @@ public class ManagementEndpointUnitTests
     [Test]
     public async Task backchannel_returns_400_when_the_discovery_document_cannot_be_read()
     {
+        // Arrange
         var context = BackChannelRequest();
         var options = new OpenIdConnectOptions { Configuration = null, ConfigurationManager = new FailingConfigurationManager() };
 
+        // Act
         await HandleBackChannelAsync(context, options);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         context.Response.Headers.CacheControl.ToString().ShouldBe("no-cache, no-store");
     }

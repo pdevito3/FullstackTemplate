@@ -181,6 +181,7 @@ public class TelemetryTests : IDisposable
     [Test]
     public void trace_context_parse_rejects_a_null_context()
     {
+        // Act & Assert
         Telemetry.TryParseTraceContext(null, out _).ShouldBeFalse();
     }
 }

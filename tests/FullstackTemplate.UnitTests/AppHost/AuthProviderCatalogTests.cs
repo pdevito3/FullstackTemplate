@@ -73,7 +73,7 @@ public class AuthProviderCatalogTests
         var root = Path.GetDirectoryName(appHost)!;
         var provider = AuthProviderCatalog.Select(Settings(name));
 
-        // Assert
+        // Act & Assert
         File.Exists(Path.Combine(appHost, "AuthProviders", name, $"{name}AuthProvider.cs")).ShouldBeTrue(
             $"The class {name}AuthProvider must be in AuthProviders/{name}/, because scripts/init.cs finds the providers by folder.");
         File.Exists(Path.Combine(root, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json")).ShouldBe(provider.RunsE2eTests,

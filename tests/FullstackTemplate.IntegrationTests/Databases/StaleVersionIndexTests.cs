@@ -65,7 +65,7 @@ public class StaleVersionIndexTests : TestBase
         dbContext.Add(first);
         await dbContext.SaveChangesAsync();
 
-        // Act
+        // Act & Assert - the save does not throw
         dbContext.Add(new Revision { DocumentId = documentId, IsCurrent = true });
         first.IsCurrent = false;
         await dbContext.SaveChangesAsync();

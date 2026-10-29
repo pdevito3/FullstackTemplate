@@ -9,12 +9,15 @@ public class LogInjectionTests
     [Test]
     public async Task a_path_with_an_encoded_crlf_cannot_forge_a_log_line()
     {
+        // Arrange
         var marker = Guid.NewGuid().ToString("N");
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         // No X-CSRF header, so the CSRF check writes a Warning with the path
         await browser.GetAsync($"/api/{marker}%0D%0A[12:00:00 ERR] forged");
 
+        // Assert
         var warning = await WaitForAsync(marker, e => e.Level == LogEventLevel.Warning);
         var request = await WaitForAsync(marker, e => e.Properties.ContainsKey("RequestPath"));
 

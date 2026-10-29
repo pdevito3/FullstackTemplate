@@ -24,7 +24,7 @@ public class EntityIdPrefixAnalyzerTests
     [Test]
     public void the_longest_prefix_makes_an_id_of_the_maximum_length()
     {
-        // Assert
+        // Act & Assert
         EntityIdPrefixAnalyzer.MaxPrefixLength.ShouldBe(EntityId.MaxPrefixLength);
         (EntityIdPrefixAnalyzer.MaxPrefixLength + "_".Length + 32).ShouldBe(EntityId.MaxLength);
         EntityId.New(new string('a', EntityIdPrefixAnalyzer.MaxPrefixLength)).Length.ShouldBe(EntityId.MaxLength);

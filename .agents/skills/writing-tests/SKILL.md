@@ -94,4 +94,6 @@ pnpm test:e2e
 
 If you changed the BFF, the AppHost, or the login code, also run `pnpm test:e2e:stack` against a running stack.
 
+For a .NET test, mark the parts with `// Arrange`, `// Act`, and `// Assert` (`docs/backend.md`, section "Tests"). `TestMarkerTests` fails on each test without them.
+
 If the change adds a command that runs again, takes a lock, or checks a rule over other rows, add a race test.

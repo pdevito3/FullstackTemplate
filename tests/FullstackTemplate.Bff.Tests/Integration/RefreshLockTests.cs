@@ -30,6 +30,7 @@ public class RefreshLockTests
     [Test]
     public async Task parallel_calls_on_two_hosts_make_one_refresh_and_all_get_the_new_token()
     {
+        // Arrange
         var app = BffApp.Instance;
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -39,6 +40,8 @@ public class RefreshLockTests
 
         using var first = Cookieless(app);
         using var second = Cookieless(other);
+
+        // Act
         var calls = Enumerable.Range(0, CallsPerHost)
             .SelectMany(_ => new[] { first, second })
             .Select(client => client.SendAsync(ApiRequest(cookie)))
@@ -50,6 +53,7 @@ public class RefreshLockTests
         gate.Released.SetResult();
         var responses = await Task.WhenAll(calls).WaitAsync(Timeout);
 
+        // Assert
         provider.RefreshCount(subject).ShouldBe(1);
         var issued = provider.IssuedAccessTokens(subject);
         issued.Count.ShouldBe(2);
@@ -68,6 +72,7 @@ public class RefreshLockTests
     [Test]
     public async Task a_lock_wait_that_reaches_the_limit_keeps_the_session_and_sends_the_current_token()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Bff:Refresh:LockTimeout"] = "00:00:00.300",
@@ -79,8 +84,10 @@ public class RefreshLockTests
         await using var holder = await HoldLockAsync(key);
         using var browser = Cookieless(app);
 
+        // Act
         var response = await browser.SendAsync(ApiRequest(cookie));
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject).Single()}");
         provider.RefreshCount(subject).ShouldBe(0);
@@ -91,6 +98,7 @@ public class RefreshLockTests
     [Test]
     public async Task an_invalid_grant_on_one_host_ends_the_session_and_the_waiter_on_the_other_host_sends_no_second_refresh()
     {
+        // Arrange
         var app = BffApp.Instance;
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -100,6 +108,7 @@ public class RefreshLockTests
         using var first = Cookieless(app);
         using var second = Cookieless(other);
 
+        // Act
         var firstCall = first.SendAsync(ApiRequest(cookie));
         await gate.Arrived.Task.WaitAsync(Timeout);
         var secondCall = second.SendAsync(ApiRequest(cookie));
@@ -107,6 +116,7 @@ public class RefreshLockTests
         gate.Released.SetResult();
         var responses = await Task.WhenAll(firstCall, secondCall).WaitAsync(Timeout);
 
+        // Assert
         provider.RefreshCount(subject).ShouldBe(1);
         foreach (var response in responses)
         {
@@ -121,6 +131,7 @@ public class RefreshLockTests
     [Test]
     public async Task two_calls_on_one_host_share_one_refresh_in_process()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance();
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -128,6 +139,7 @@ public class RefreshLockTests
         var gate = provider.HoldRefreshes(subject);
         using var browser = Cookieless(app);
 
+        // Act
         var firstCall = browser.SendAsync(ApiRequest(cookie));
         await gate.Arrived.Task.WaitAsync(Timeout);
         var secondCall = browser.SendAsync(ApiRequest(cookie));
@@ -137,6 +149,7 @@ public class RefreshLockTests
         gate.Released.SetResult();
         var responses = await Task.WhenAll(firstCall, secondCall).WaitAsync(Timeout);
 
+        // Assert
         provider.RefreshCount(subject).ShouldBe(1);
         var newAccessToken = provider.IssuedAccessTokens(subject)[1];
         foreach (var response in responses)
@@ -151,6 +164,7 @@ public class RefreshLockTests
     [Test]
     public async Task an_abort_of_the_call_that_runs_the_refresh_does_not_stop_the_refresh_of_its_waiter()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance();
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -159,6 +173,7 @@ public class RefreshLockTests
         using var browser = Cookieless(app);
         using var abort = new CancellationTokenSource();
 
+        // Act
         var firstCall = browser.SendAsync(ApiRequest(cookie), abort.Token);
         await gate.Arrived.Task.WaitAsync(Timeout);
         var secondCall = browser.SendAsync(ApiRequest(cookie));
@@ -167,6 +182,8 @@ public class RefreshLockTests
         await abort.CancelAsync();
         gate.Released.SetResult();
         var response = await secondCall.WaitAsync(Timeout);
+
+        // Assert
         await Should.ThrowAsync<OperationCanceledException>(firstCall.WaitAsync(Timeout));
 
         provider.RefreshCount(subject).ShouldBe(1);
@@ -181,6 +198,7 @@ public class RefreshLockTests
     [Test]
     public async Task an_abort_after_the_identity_provider_rotated_the_refresh_token_still_writes_the_new_tokens()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance();
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -189,6 +207,7 @@ public class RefreshLockTests
         using var browser = Cookieless(app);
         using var abort = new CancellationTokenSource();
 
+        // Act
         var call = browser.SendAsync(ApiRequest(cookie), abort.Token);
         await gate.Arrived.Task.WaitAsync(Timeout);
         // A row lock makes the token write wait after the identity provider answered.
@@ -201,6 +220,7 @@ public class RefreshLockTests
             await WaitForNoBlockedWriteAsync(rowLock, TimeSpan.FromSeconds(1));
         }
 
+        // Assert
         await Should.ThrowAsync<OperationCanceledException>(call.WaitAsync(Timeout));
 
         provider.RefreshCount(subject).ShouldBe(1);
@@ -214,6 +234,7 @@ public class RefreshLockTests
     [Test]
     public async Task a_hung_identity_provider_reaches_the_token_request_timeout_and_releases_the_lock()
     {
+        // Arrange
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var app = StartWithClock(clock);
         var provider = app.IdentityProvider;
@@ -223,11 +244,13 @@ public class RefreshLockTests
         using var browser = Cookieless(app);
         try
         {
+            // Act
             var call = browser.SendAsync(ApiRequest(cookie));
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(ClockedTokenRequestTimeout);
             var response = await call.WaitAsync(Timeout);
 
+            // Assert
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject).Single()}");
             provider.RefreshCount(subject).ShouldBe(1);
@@ -243,6 +266,7 @@ public class RefreshLockTests
     [Test]
     public async Task a_wait_for_the_refresh_of_another_call_on_the_same_host_outlasts_the_lock_timeout_and_the_token_request()
     {
+        // Arrange
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var app = StartWithClock(clock);
         var provider = app.IdentityProvider;
@@ -257,6 +281,7 @@ public class RefreshLockTests
             // identity provider. The second call still waits for its result.
             await using (await HoldLockAsync(key))
             {
+                // Act
                 firstCall = browser.SendAsync(ApiRequest(cookie));
                 await WaitForLockWaiterAsync(key);
                 secondCall = browser.SendAsync(ApiRequest(cookie));
@@ -269,6 +294,7 @@ public class RefreshLockTests
             gate.Released.SetResult();
             var responses = await Task.WhenAll(firstCall, secondCall).WaitAsync(Timeout);
 
+            // Assert
             provider.RefreshCount(subject).ShouldBe(1);
             var newAccessToken = provider.IssuedAccessTokens(subject)[1];
             foreach (var response in responses)
@@ -288,6 +314,7 @@ public class RefreshLockTests
     [Test]
     public async Task a_wait_for_the_refresh_of_another_call_on_the_same_host_reaches_its_limit()
     {
+        // Arrange
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var app = StartWithClock(clock);
         var provider = app.IdentityProvider;
@@ -297,12 +324,14 @@ public class RefreshLockTests
         Task<HttpResponseMessage> firstCall;
         await using (await HoldLockAsync(key))
         {
+            // Act
             firstCall = browser.SendAsync(ApiRequest(cookie));
             await WaitForLockWaiterAsync(key);
             var secondCall = browser.SendAsync(ApiRequest(cookie));
             await WaitForInProcessWaiterAsync(app);
             clock.Advance(app.Services.GetRequiredService<IOptionsMonitor<RefreshOptions>>().CurrentValue.InProcessWaitLimit);
 
+            // Assert
             // The second call stops its wait with a temporary failure and sends the current token
             var second = await secondCall.WaitAsync(Timeout);
             second.StatusCode.ShouldBe(HttpStatusCode.OK);

@@ -17,13 +17,16 @@ public class ApiProxyTests
     [Test]
     public async Task an_anonymous_request_goes_to_the_api_path_with_no_token_and_no_cookie()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/weather?city=x");
         request.Headers.Add("X-CSRF", "1");
         request.Headers.Add("Cookie", "other=1");
 
+        // Act
         var echo = await (await browser.SendAsync(request)).ReadEchoAsync();
 
+        // Assert
         echo.Method.ShouldBe("POST");
         echo.Path.ShouldBe("/api/v1/weather");
         echo.Headers.ShouldNotContainKey("Authorization");
@@ -36,11 +39,14 @@ public class ApiProxyTests
     [Test]
     public async Task a_signed_in_request_gets_the_access_token_and_no_cookie()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-proxy");
 
+        // Act
         var response = await browser.GetApiAsync("/api/v1/weather");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var echo = await response.ReadEchoAsync();
         echo.Headers["Authorization"].ShouldStartWith("Bearer at-");
@@ -50,13 +56,16 @@ public class ApiProxyTests
     [Test]
     public async Task a_token_that_expires_soon_is_refreshed_and_the_renewed_cookie_reaches_the_browser()
     {
+        // Arrange
         var provider = BffApp.Instance.IdentityProvider;
         using var browser = BffApp.Instance.CreateBrowser();
         // 60 seconds is less than the 120 seconds of RefreshBeforeExpiration, so each call refreshes
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-refresh&test_expires_in=60");
 
+        // Act
         var response = await browser.GetApiAsync("/api/v1/weather");
 
+        // Assert
         provider.RefreshCount("user-refresh").ShouldBe(1);
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldStartWith("Bearer at-");
         response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=", StringComparison.Ordinal));
@@ -65,10 +74,12 @@ public class ApiProxyTests
     [Test]
     public async Task a_token_with_no_expires_in_is_not_refreshed_by_default()
     {
+        // Arrange
         var provider = BffApp.Instance.IdentityProvider;
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-no-expires-in&test_expires_in=omit");
 
+        // Act & Assert
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -78,6 +89,7 @@ public class ApiProxyTests
     [Test]
     public async Task the_default_access_token_lifetime_applies_to_the_login_and_to_each_refresh_with_no_expires_in()
     {
+        // Arrange
         // 60 seconds is less than the 120 seconds of RefreshBeforeExpiration, so each call refreshes
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
@@ -86,7 +98,10 @@ public class ApiProxyTests
         using var browser = app.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-default-lifetime&test_expires_in=omit");
 
+        // Act
         var first = await browser.GetApiAsync("/api/v1/weather");
+
+        // Assert
         app.IdentityProvider.RefreshCount("user-default-lifetime").ShouldBe(1);
         var second = await browser.GetApiAsync("/api/v1/weather");
 
@@ -98,14 +113,17 @@ public class ApiProxyTests
     [Test]
     public async Task a_browser_authorization_or_dpop_header_never_reaches_the_api_for_an_anonymous_request()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/weather");
         request.Headers.Add("X-CSRF", "1");
         request.Headers.Add("Authorization", "Bearer from-the-browser");
         request.Headers.Add("DPoP", "proof-from-the-browser");
 
+        // Act
         var echo = await (await browser.SendAsync(request)).ReadEchoAsync();
 
+        // Assert
         echo.Headers.ShouldNotContainKey("Authorization");
         echo.Headers.ShouldNotContainKey("DPoP");
     }
@@ -113,6 +131,7 @@ public class ApiProxyTests
     [Test]
     public async Task a_signed_in_request_reaches_the_api_with_only_the_bff_token()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-only-bff-token");
         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/weather");
@@ -120,8 +139,10 @@ public class ApiProxyTests
         request.Headers.Add("Authorization", "Bearer from-the-browser");
         request.Headers.Add("DPoP", "proof-from-the-browser");
 
+        // Act
         var echo = await (await browser.SendAsync(request)).ReadEchoAsync();
 
+        // Assert
         echo.Headers["Authorization"].ShouldStartWith("Bearer at-");
         echo.Headers["Authorization"].ShouldNotContain("from-the-browser");
         echo.Headers["Authorization"].ShouldNotContain(",");
@@ -131,11 +152,14 @@ public class ApiProxyTests
     [Test]
     public async Task a_set_cookie_from_the_api_never_reaches_the_browser()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-api-cookie");
 
+        // Act
         var response = await browser.GetApiAsync(ApiPathThatSetsCookies);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Headers.Contains("Set-Cookie").ShouldBeFalse();
         // The session cookie of the browser still works
@@ -145,12 +169,15 @@ public class ApiProxyTests
     [Test]
     public async Task a_set_cookie_from_the_api_is_removed_and_the_renewed_bff_cookie_still_reaches_the_browser()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         // 60 seconds is less than the 120 seconds of RefreshBeforeExpiration, so the call refreshes and renews the cookie
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-api-cookie-refresh&test_expires_in=60");
 
+        // Act
         var response = await browser.GetApiAsync(ApiPathThatSetsCookies);
 
+        // Assert
         BffApp.Instance.IdentityProvider.RefreshCount("user-api-cookie-refresh").ShouldBe(1);
         var cookies = response.Headers.GetValues("Set-Cookie").ToList();
         cookies.ShouldNotContain(c => c.Contains("from-the-api", StringComparison.Ordinal));
@@ -163,10 +190,13 @@ public class ApiProxyTests
     [Test]
     public async Task the_local_api_answers_with_the_header()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.GetApiAsync("/local-api/hello");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.ReadJsonAsync()).GetProperty("message").GetString().ShouldBe("Hello from BFF!");
     }
@@ -174,10 +204,13 @@ public class ApiProxyTests
     [Test]
     public async Task the_api_root_goes_to_the_api_root_of_the_server()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.GetApiAsync("/api");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.ReadEchoAsync()).Path.ShouldBe("/api");
     }
@@ -185,32 +218,39 @@ public class ApiProxyTests
     [Test]
     public async Task an_unreachable_server_gives_502()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["services:server:http:0"] = UnreachableServer.Url,
         });
         using var browser = app.CreateBrowser();
 
+        // Act
         var response = await browser.GetApiAsync("/api/v1/weather");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
     }
 
     [Test]
     public async Task a_server_that_does_not_answer_in_time_gives_504()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(services: services =>
             services.Replace(ServiceDescriptor.Singleton<IForwarderHttpClientFactory, ShortTimeoutForwarderHttpClientFactory>()));
         using var browser = app.CreateBrowser();
 
+        // Act
         var response = await browser.GetApiAsync("/api/test/hang").WaitAsync(TimeSpan.FromSeconds(15));
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.GatewayTimeout);
     }
 
     [Test]
     public async Task a_post_that_fails_at_the_server_is_not_sent_again()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance();
         using var browser = app.CreateBrowser();
         // A pooled connection to the server first, so that the POST goes on a reused connection, the case in which
@@ -218,8 +258,10 @@ public class ApiProxyTests
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
         var id = Guid.NewGuid().ToString("N");
 
+        // Act
         var response = await browser.SendApiAsync(HttpMethod.Post, $"/api/test/drop/{id}");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
         app.Api.DropCount(id).ShouldBe(1);
     }

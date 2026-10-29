@@ -148,7 +148,7 @@ public class RemoveUserPermissionCommandTests : TestBase
             .AddUser(out var createdUser, u => u.Role = "User")
             .BuildAsync();
 
-        // Act - Add permission
+        // Add permission
         var addCommand = new AddUserPermission.Command(createdUser.Id, "manage_tenant");
         var afterAdd = await testingServiceScope.SendAsync(addCommand);
         afterAdd.Permissions.ShouldContain("manage_tenant");

@@ -193,6 +193,7 @@ public class DatabaseConflictTests
     [Test]
     public void other_database_failure_is_not_a_conflict()
     {
+        // Act & Assert
         DatabaseConflict.From(SaveFailure(PostgresErrorCodes.ForeignKeyViolation), Model).ShouldBeNull();
     }
 

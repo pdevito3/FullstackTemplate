@@ -21,11 +21,14 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task a_login_starts_one_session_and_a_logout_ends_it_with_reason_logout()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
+        // Assert
         _metrics.Sum("bff.sessions.started").ShouldBe(1);
         _metrics.TagsOf("bff.sessions.started").ShouldAllBe(tags => tags.Count == 0);
         _metrics.Sum("bff.sessions.ended").ShouldBe(1);
@@ -35,14 +38,17 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task a_back_channel_logout_ends_each_session_with_reason_backchannel_logout()
     {
+        // Arrange
         var subject = NewSubject();
         using var first = BffApp.Instance.CreateBrowser();
         using var second = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(first, providerQuery: $"test_sub={subject}");
         await BffApp.SignInAsync(second, providerQuery: $"test_sub={subject}");
 
+        // Act
         var response = await BackChannelLogoutTests.PostAsync(BackChannelLogoutTests.Token(c => { c["sub"] = subject; c.Remove("sid"); }));
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         _metrics.Sum("bff.sessions.ended").ShouldBe(2);
         _metrics.Sum("bff.sessions.ended", ("reason", "backchannel_logout")).ShouldBe(2);
@@ -51,6 +57,7 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task the_cleanup_ends_each_deleted_session_with_reason_expiry()
     {
+        // Arrange
         var app = BffApp.Instance;
         var past = new TestClock(DateTimeOffset.UtcNow.AddDays(-2));
         foreach (var session in new[]
@@ -60,8 +67,10 @@ public sealed class BffMetricsTests : IDisposable
                  })
             await app.WithStoreAsync(store => store.CreateAsync(session, CancellationToken.None));
 
+        // Act
         var deleted = await app.Services.GetRequiredService<BffSessionCleanupService>().CleanupAsync(CancellationToken.None);
 
+        // Assert
         deleted.ShouldBeGreaterThanOrEqualTo(2);
         _metrics.Sum("bff.sessions.ended").ShouldBe(deleted);
         _metrics.Sum("bff.sessions.ended", ("reason", "expiry")).ShouldBe(deleted);
@@ -70,9 +79,11 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task a_refresh_with_invalid_grant_is_one_permanent_failure()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60&test_refresh=fail");
 
+        // Act & Assert
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
@@ -84,9 +95,11 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task a_refresh_with_a_503_is_one_temporary_failure_and_ends_no_session()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60&test_refresh=unavailable");
 
+        // Act & Assert
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
@@ -97,6 +110,7 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task a_lock_timeout_is_one_temporary_failure_and_ends_no_session()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Bff:Refresh:LockTimeout"] = "00:00:00.300",
@@ -106,6 +120,7 @@ public sealed class BffMetricsTests : IDisposable
         await using var holder = await RefreshLockTests.HoldLockAsync(key);
         using var browser = RefreshLockTests.Cookieless(app);
 
+        // Act & Assert
         (await browser.SendAsync(RefreshLockTests.ApiRequest(cookie))).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
@@ -116,9 +131,11 @@ public sealed class BffMetricsTests : IDisposable
     [Test]
     public async Task a_successful_refresh_is_no_failure()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60");
 
+        // Act & Assert
         (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(0);

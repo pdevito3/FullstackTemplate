@@ -9,10 +9,13 @@ public class UserEndpointTests
     [Test]
     public async Task an_anonymous_request_gets_204_with_an_empty_body()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.GetApiAsync("/bff/user");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
     }
@@ -20,11 +23,14 @@ public class UserEndpointTests
     [Test]
     public async Task a_signed_in_request_gets_the_session_claims_and_then_the_management_claims()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-claims&test_sid=sid%2B1");
 
+        // Act
         var response = await browser.GetApiAsync("/bff/user");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Content.Headers.ContentType!.MediaType.ShouldBe("application/json");
         var claims = (await response.ReadJsonAsync()).EnumerateArray().ToList();
@@ -52,22 +58,28 @@ public class UserEndpointTests
     [Test]
     public async Task the_logout_url_has_no_sid_when_the_session_has_none()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-no-sid");
 
+        // Act
         var claims = (await (await browser.GetApiAsync("/bff/user")).ReadJsonAsync()).EnumerateArray().ToList();
 
+        // Assert
         Value(claims, "bff:logout_url").GetString().ShouldBe("/bff/logout");
     }
 
     [Test]
     public async Task the_session_state_of_the_authorize_response_comes_last()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-state&test_session_state=state-1");
 
+        // Act
         var claims = (await (await browser.GetApiAsync("/bff/user")).ReadJsonAsync()).EnumerateArray().ToList();
 
+        // Assert
         claims[^1].GetProperty("type").GetString().ShouldBe("bff:session_state");
         claims[^1].GetProperty("value").GetString().ShouldBe("state-1");
     }
@@ -75,10 +87,13 @@ public class UserEndpointTests
     [Test]
     public async Task the_callback_sets_the_session_cookie_with_the_current_attributes()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-cookie");
 
+        // Assert
         var cookie = callback.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("__Host-bff=", StringComparison.Ordinal));
         cookie.ShouldContain("path=/", Case.Insensitive);
         cookie.ShouldContain("secure", Case.Insensitive);

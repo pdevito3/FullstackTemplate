@@ -55,9 +55,12 @@ public class WriteGuardTests
 
     [Test]
     public void sql_that_names_no_guarded_table_runs_from_each_source()
-        => Sources
+    {
+        // Act & Assert
+        Sources
             .Where(source => WriteGuard.Refusal(source, "DELETE FROM used_dpop_proofs", false, GuardedTables) is not null)
             .ShouldBeEmpty();
+    }
 
     [Test]
     [Arguments("DO $$ BEGIN UPDATE users SET first_name = 'x'; END $$")]
@@ -77,9 +80,12 @@ public class WriteGuardTests
 
     [Test]
     public void refusal_names_the_table_and_the_way_to_write_it()
-        => WriteGuard.Refusal(CommandSource.ExecuteUpdate, WriteOfUsers, false, GuardedTables).ShouldBe(
+    {
+        // Act & Assert
+        WriteGuard.Refusal(CommandSource.ExecuteUpdate, WriteOfUsers, false, GuardedTables).ShouldBe(
             "users is audited, so write it through SaveChangesAsync or BulkInsertAsync. ExecuteUpdate, ExecuteDelete, " +
             "and raw SQL do not write audit entries. An entity type that needs no audit has [NotAudited(reason)].");
+    }
 
     [Test]
     public void handler_runs_only_linq_queries_even_on_a_table_with_no_audit()

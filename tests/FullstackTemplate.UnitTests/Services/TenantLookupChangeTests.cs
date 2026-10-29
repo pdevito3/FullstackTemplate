@@ -32,8 +32,10 @@ public class TenantLookupChangeTests
     [MethodDataSource(nameof(UserCases))]
     public void user_change_decides_the_stale_identifiers(string scenario, UserEntry entry, string[] stale)
     {
+        // Act
         var change = Read([entry], []);
 
+        // Assert
         change.StaleIdentifiers.ShouldBe(stale, ignoreOrder: true, customMessage: scenario);
         change.ChangedTenantIds.ShouldBeEmpty(scenario);
     }
@@ -42,8 +44,10 @@ public class TenantLookupChangeTests
     [MethodDataSource(nameof(TenantCases))]
     public void tenant_change_decides_the_changed_tenants(string scenario, TenantEntry entry, string[] changed)
     {
+        // Act
         var change = Read([], [entry]);
 
+        // Assert
         change.ChangedTenantIds.ShouldBe(changed, ignoreOrder: true, customMessage: scenario);
         change.StaleIdentifiers.ShouldBeEmpty(scenario);
     }
@@ -51,6 +55,7 @@ public class TenantLookupChangeTests
     [Test]
     public void one_save_gives_each_stale_identifier_once()
     {
+        // Act
         var change = Read(
             [
                 Entry(EntityState.Modified, new("old", TenantA, false), new("new", TenantA, false)),
@@ -58,6 +63,7 @@ public class TenantLookupChangeTests
             ],
             []);
 
+        // Assert
         change.StaleIdentifiers.ShouldBe(["old", "new"], ignoreOrder: true);
     }
 

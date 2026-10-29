@@ -171,7 +171,7 @@ public class CallerTests
     [MethodDataSource(nameof(PermissionSetCases))]
     public void permissions_hold_exactly_what_require_lets_through(string @case, Caller caller, Permission[] held)
     {
-        // Assert
+        // Act & Assert
         caller.Permissions.ShouldBe(held, ignoreOrder: true);
         foreach (var permission in Permission.GetAll())
         {

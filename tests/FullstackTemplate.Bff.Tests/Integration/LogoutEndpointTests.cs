@@ -13,11 +13,14 @@ public class LogoutEndpointTests
     [Arguments("?sid=SID-1")]
     public async Task a_session_with_a_sid_needs_the_same_sid(string query)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-sid-check&test_sid=sid-1");
 
+        // Act
         var response = await browser.GetAsync($"/bff/logout{query}");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(response, "Invalid Session ID", "sid");
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -25,12 +28,15 @@ public class LogoutEndpointTests
     [Test]
     public async Task logout_with_the_sid_revokes_the_refresh_token_ends_the_session_and_redirects_to_end_session()
     {
+        // Arrange
         var provider = BffApp.Instance.IdentityProvider;
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout&test_sid=sid-2");
 
+        // Act
         var response = await browser.GetAsync("/bff/logout?sid=sid-2");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var location = response.Headers.Location!;
         location.GetLeftPart(UriPartial.Path).ShouldBe($"{provider.Issuer}/endsession");
@@ -48,14 +54,17 @@ public class LogoutEndpointTests
     [Arguments("drop")]
     public async Task a_revocation_error_does_not_stop_the_logout(string revokeMode)
     {
+        // Arrange
         var app = BffApp.Instance;
         var provider = app.IdentityProvider;
         var subject = $"user-logout-revoke-{revokeMode}";
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_revoke={revokeMode}"))!;
 
+        // Act
         var response = await browser.GetAsync("/bff/logout");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.GetLeftPart(UriPartial.Path).ShouldBe($"{provider.Issuer}/endsession");
         provider.WasRefreshTokenRevoked(subject).ShouldBeTrue();
@@ -67,11 +76,14 @@ public class LogoutEndpointTests
     [Test]
     public async Task a_session_with_no_sid_needs_no_sid()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout-no-sid");
 
+        // Act
         var response = await browser.GetAsync("/bff/logout");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.GetLeftPart(UriPartial.Path).ShouldBe($"{BffApp.Instance.IdentityProvider.Issuer}/endsession");
     }
@@ -83,10 +95,13 @@ public class LogoutEndpointTests
     [Arguments("?sid=other&returnUrl=%2Fbye", "/bye")]
     public async Task an_anonymous_logout_redirects_to_the_return_url_with_no_identity_provider_round_trip(string query, string expected)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.GetAsync($"/bff/logout{query}");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + expected);
     }
@@ -94,13 +109,16 @@ public class LogoutEndpointTests
     [Test]
     public async Task a_logout_with_a_cookie_of_an_ended_session_redirects_to_the_return_url_with_no_identity_provider_round_trip()
     {
+        // Arrange
         var app = BffApp.Instance;
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout-ended-session"))!;
         await app.WithStoreAsync(store => store.DeleteAsync(key, CancellationToken.None));
 
+        // Act
         var response = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
         response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
@@ -109,13 +127,16 @@ public class LogoutEndpointTests
     [Test]
     public async Task with_end_session_without_id_token_hint_a_logout_with_a_cookie_of_an_ended_session_ends_the_provider_session()
     {
+        // Arrange
         await using var app = StartWithEndSessionWithoutIdTokenHint();
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout-ended-session-no-hint"))!;
         await app.WithStoreAsync(store => store.DeleteAsync(key, CancellationToken.None));
 
+        // Act
         var response = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var location = response.Headers.Location!;
         location.GetLeftPart(UriPartial.Path).ShouldBe($"{app.IdentityProvider.Issuer}/endsession");
@@ -134,11 +155,14 @@ public class LogoutEndpointTests
     [Test]
     public async Task with_end_session_without_id_token_hint_a_logout_with_no_cookie_has_no_identity_provider_round_trip()
     {
+        // Arrange
         await using var app = StartWithEndSessionWithoutIdTokenHint();
         using var browser = app.CreateBrowser();
 
+        // Act
         var response = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/bye");
     }
@@ -149,10 +173,13 @@ public class LogoutEndpointTests
     [Arguments("%2Fa%0D%0ALocation%3A%20https%3A%2F%2Fevil.example")]
     public async Task a_return_url_that_is_not_local_gets_400_problem(string returnUrl)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.GetAsync($"/bff/logout?returnUrl={returnUrl}");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(response, "Invalid return url", "returnUrl");
     }
 
@@ -161,13 +188,16 @@ public class LogoutEndpointTests
     [Arguments("%2Fcaf%C3%A9", "/caf%C3%A9")]
     public async Task the_signed_out_callback_redirects_to_the_return_url_on_the_spa_dev_server(string returnUrl, string expected)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout-callback");
         var logout = await browser.GetAsync($"/bff/logout?returnUrl={returnUrl}");
         var state = BffApp.Query(logout.Headers.Location!)["state"];
 
+        // Act
         var callback = await browser.GetAsync($"/signout-callback-oidc?state={Uri.EscapeDataString(state!)}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + expected);
     }
@@ -175,13 +205,16 @@ public class LogoutEndpointTests
     [Test]
     public async Task a_return_url_over_the_limit_falls_back_to_the_root_after_the_signed_out_callback()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-logout-long");
         var logout = await browser.GetAsync($"/bff/logout?returnUrl=/{new string('a', 2048)}");
         var state = BffApp.Query(logout.Headers.Location!)["state"];
 
+        // Act
         var callback = await browser.GetAsync($"/signout-callback-oidc?state={Uri.EscapeDataString(state!)}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/");
     }
@@ -189,6 +222,7 @@ public class LogoutEndpointTests
     [Test]
     public async Task without_a_spa_dev_server_the_signed_out_callback_redirects_to_the_local_return_url()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["services:webfrontend:http:0"] = "",
@@ -198,8 +232,10 @@ public class LogoutEndpointTests
         var logout = await browser.GetAsync("/bff/logout?returnUrl=%2Fbye%3Fx%3D1");
         var state = BffApp.Query(logout.Headers.Location!)["state"];
 
+        // Act
         var callback = await browser.GetAsync($"/signout-callback-oidc?state={Uri.EscapeDataString(state!)}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe("/bye?x=1");
     }

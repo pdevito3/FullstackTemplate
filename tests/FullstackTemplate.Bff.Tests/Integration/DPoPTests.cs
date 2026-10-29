@@ -50,21 +50,27 @@ public class DPoPTests
     [Test]
     public async Task the_authorize_request_has_the_thumbprint_of_the_key()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
 
+        // Act
         var login = await browser.GetAsync("/bff/login");
 
+        // Assert
         BffApp.Query(login.Headers.Location!)["dpop_jkt"].ShouldBe(_key.Jkt);
     }
 
     [Test]
     public async Task a_pushed_authorize_request_has_the_thumbprint_of_the_key()
     {
+        // Arrange
         using var browser = _parBff.CreateBrowser();
         var subject = NewSubject();
 
+        // Act
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
 
+        // Assert
         // The authorize URL has only client_id and request_uri, so the thumbprint went in the pushed request
         _parProvider.AuthorizeRequests.Any(r => r["client_id"] == FakeIdentityProvider.ClientId && r.GetValueOrDefault("dpop_jkt") == _key.Jkt
             && r.ContainsKey("request_uri")).ShouldBeTrue();
@@ -73,11 +79,14 @@ public class DPoPTests
     [Test]
     public async Task the_code_exchange_has_a_proof_of_the_key()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         var subject = NewSubject();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
 
+        // Assert
         // The provider answers invalid_dpop_proof to a bound login with a missing or wrong proof
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var exchange = _provider.TokenRequests.Single(t => t.GrantType == "authorization_code" && t.Subject == subject);
@@ -90,11 +99,14 @@ public class DPoPTests
     [Test]
     public async Task the_userinfo_call_has_the_dpop_scheme_and_a_proof_for_the_token()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         var subject = NewSubject();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
 
+        // Assert
         // The provider rejects a bound token with the Bearer scheme, or a proof without the right ath, htm, and htu
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var userInfo = _provider.UserInfoRequests.Single(r => r.Subject == subject);
@@ -107,14 +119,17 @@ public class DPoPTests
     [Test]
     public async Task the_userinfo_call_is_sent_again_with_the_nonce_when_the_provider_asks_for_one()
     {
+        // Arrange
         const string nonce = "userinfo-nonce";
         await using var provider = await FakeIdentityProvider.StartAsync(new FakeProviderOptions { DPoP = true, UserInfoNonce = nonce });
         await using var app = StartBff(FeatureMode.Require, provider);
         using var browser = app.CreateBrowser();
         var subject = NewSubject();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var requests = provider.UserInfoRequests.Where(r => r.Subject == subject).ToList();
         requests.Count.ShouldBe(2);
@@ -126,13 +141,16 @@ public class DPoPTests
     [Test]
     public async Task the_userinfo_call_falls_back_to_bearer_when_the_provider_offers_only_bearer_there()
     {
+        // Arrange
         await using var provider = await FakeIdentityProvider.StartAsync(new FakeProviderOptions { DPoP = true, UserInfoBearerOnly = true });
         await using var app = StartBff(FeatureMode.Require, provider);
         using var browser = app.CreateBrowser();
         var subject = NewSubject();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         provider.UserInfoRequests.Where(r => r.Subject == subject).Select(r => r.Scheme).ShouldBe(["DPoP", "Bearer"]);
     }
@@ -140,13 +158,16 @@ public class DPoPTests
     [Test]
     public async Task a_refresh_has_a_proof_of_the_key()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         var subject = NewSubject();
         // 60 seconds is less than the 120 seconds of RefreshBeforeExpiration, so the API call refreshes
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
 
+        // Act
         var response = await browser.GetApiAsync($"/api/v1/{PathName()}");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         _provider.RefreshCount(subject).ShouldBe(1);
         var refresh = _provider.TokenRequests.Single(t => t.GrantType == "refresh_token" && t.Subject == subject);
@@ -158,14 +179,17 @@ public class DPoPTests
     [Test]
     public async Task an_api_call_has_the_dpop_scheme_and_a_proof_for_this_request_and_token()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         var subject = NewSubject();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
         var token = _provider.IssuedAccessTokens(subject).Single();
         var path = $"/api/v1/{PathName()}";
 
+        // Act
         var echo = await (await browser.GetApiAsync($"{path}?city=oslo")).ReadEchoAsync();
 
+        // Assert
         echo.Headers["Authorization"].ShouldBe($"DPoP {token}");
         // htu has no query (RFC 9449 section 4.2), htm is the method of the request to the API, ath is the hash of the token
         var proof = DPoPProofVerifier.Verify(echo.Headers["DPoP"], "GET", $"{BffApp.Instance.Api.Url}{path}", token);
@@ -176,39 +200,48 @@ public class DPoPTests
     [Test]
     public async Task each_api_call_has_its_own_proof()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         var path = $"/api/v1/{PathName()}";
 
+        // Act - two calls
         var first = await (await browser.GetApiAsync(path)).ReadEchoAsync();
         var second = await (await browser.GetApiAsync(path)).ReadEchoAsync();
 
+        // Assert
         first.Headers["DPoP"].ShouldNotBe(second.Headers["DPoP"]);
     }
 
     [Test]
     public async Task a_post_to_the_api_has_a_proof_for_post()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         var path = $"/api/v1/{PathName()}";
 
+        // Act
         var echo = await (await browser.SendApiAsync(HttpMethod.Post, path)).ReadEchoAsync();
 
+        // Assert
         DPoPProofVerifier.Verify(echo.Headers["DPoP"], "POST", $"{BffApp.Instance.Api.Url}{path}").Error.ShouldBeNull();
     }
 
     [Test]
     public async Task a_browser_dpop_header_does_not_reach_the_api_and_the_bff_proof_does()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/{PathName()}");
         request.Headers.Add("X-CSRF", "1");
         request.Headers.Add("DPoP", "proof-from-the-browser");
 
+        // Act
         var echo = await (await browser.SendAsync(request)).ReadEchoAsync();
 
+        // Assert
         echo.Headers["DPoP"].ShouldNotContain("proof-from-the-browser");
         echo.Headers["Authorization"].ShouldStartWith("DPoP at-");
     }
@@ -216,13 +249,16 @@ public class DPoPTests
     [Test]
     public async Task the_bff_sends_the_proof_again_with_the_nonce_when_the_api_asks_for_one()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         var path = $"/api/v1/{PathName()}";
         var nonce = $"nonce-{Guid.NewGuid():N}";
 
+        // Act
         var response = await browser.GetApiAsync($"{path}?{EchoApi.RequireNonceParameter}={nonce}");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var requests = ApiRequests(path);
         requests.Count.ShouldBe(2);
@@ -240,12 +276,15 @@ public class DPoPTests
     [Test]
     public async Task the_bff_retries_one_time_only()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         var path = $"/api/v1/{PathName()}";
 
+        // Act
         var response = await browser.GetApiAsync($"{path}?{EchoApi.RequireNonceParameter}=n1&{EchoApi.RejectNonceParameter}=1");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         ApiRequests(path).Count.ShouldBe(2);
     }
@@ -253,6 +292,7 @@ public class DPoPTests
     [Test]
     public async Task a_post_body_is_sent_again_with_the_retry()
     {
+        // Arrange
         using var browser = _bff.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
         var path = $"/api/v1/{PathName()}";
@@ -262,8 +302,10 @@ public class DPoPTests
         };
         request.Headers.Add("X-CSRF", "1");
 
+        // Act
         var response = await browser.SendAsync(request);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var requests = ApiRequests(path);
         requests.Count.ShouldBe(2);
@@ -274,18 +316,22 @@ public class DPoPTests
     [Test]
     public async Task a_body_over_the_retry_limit_gets_no_retry_but_the_next_request_has_the_nonce()
     {
+        // Arrange
         var body = new ByteArrayContent(new byte[DPoPProxy.MaxRetryBodyBytes + 1]);
         body.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
 
+        // Act & Assert
         await TheNonceIsStoredWithoutARetryAsync(body);
     }
 
     [Test]
     public async Task a_body_without_a_content_length_gets_no_retry_but_the_next_request_has_the_nonce()
     {
+        // Arrange
         var body = new UnknownLengthContent("""{"a":1}"""u8.ToArray());
         body.Headers.ContentLength.ShouldBeNull();
 
+        // Act & Assert
         await TheNonceIsStoredWithoutARetryAsync(body);
     }
 
@@ -329,11 +375,15 @@ public class DPoPTests
     [Test]
     public async Task auto_with_a_provider_that_lacks_dpop_uses_bearer_tokens()
     {
+        // Arrange
         await using var app = StartBff(FeatureMode.Auto, _plainProvider);
         using var browser = app.CreateBrowser();
         var subject = NewSubject();
 
+        // Act
         var login = await browser.GetAsync("/bff/login");
+
+        // Assert
         BffApp.Query(login.Headers.Location!)["dpop_jkt"].ShouldBeNull();
         var callback = await browser.GetAsync((await BffApp.AuthorizeAsync(login.Headers.Location!, $"test_sub={subject}")).PathAndQuery);
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
@@ -349,8 +399,10 @@ public class DPoPTests
     [Test]
     public async Task auto_with_a_provider_that_lists_dpop_binds_the_tokens()
     {
+        // Act
         await using var app = StartBff(FeatureMode.Auto, _provider);
 
+        // Assert
         app.Services.GetRequiredService<ProviderFeatures>().Active.DPoP.ShouldBeTrue();
         using var browser = app.CreateBrowser();
         var login = await browser.GetAsync("/bff/login");
@@ -360,11 +412,14 @@ public class DPoPTests
     [Test]
     public async Task disable_ignores_the_key_and_uses_bearer_tokens()
     {
+        // Arrange
         await using var app = StartBff(FeatureMode.Disable, _provider);
         using var browser = app.CreateBrowser();
 
+        // Act
         var login = await browser.GetAsync("/bff/login");
 
+        // Assert
         BffApp.Query(login.Headers.Location!)["dpop_jkt"].ShouldBeNull();
         app.Services.GetRequiredService<ProviderFeatures>().Active.DPoP.ShouldBeFalse();
     }
@@ -372,6 +427,7 @@ public class DPoPTests
     [Test]
     public void require_with_a_provider_that_lacks_dpop_stops_the_bff_at_startup()
     {
+        // Act & Assert
         var exception = Should.Throw<Exception>(() => StartBff(FeatureMode.Require, _plainProvider));
 
         exception.ShouldBeOfType<ProviderFeatureException>();
@@ -381,6 +437,7 @@ public class DPoPTests
     [Test]
     public void require_without_a_key_stops_the_bff_at_startup()
     {
+        // Act & Assert
         var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Auth:Features:DPoP"] = nameof(FeatureMode.Require),
@@ -392,6 +449,7 @@ public class DPoPTests
     [Test]
     public void a_key_without_a_private_part_stops_the_bff_at_startup()
     {
+        // Arrange
         var publicKey = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
         {
             ["kty"] = "EC",
@@ -401,6 +459,7 @@ public class DPoPTests
             ["y"] = "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
         });
 
+        // Act & Assert
         var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Auth:Features:DPoP"] = nameof(FeatureMode.Require),

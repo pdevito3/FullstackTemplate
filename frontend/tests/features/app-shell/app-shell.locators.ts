@@ -8,7 +8,8 @@ export const appShell = (page: Page) => ({
   // The About page has no separator of its own, so the one separator in main is the one of the layout header.
   headerSeparator: page.getByRole('main').getByRole('separator'),
   routerDevtoolsButton: page.getByRole('button', { name: 'Open TanStack Router Devtools' }),
-  mainNavigation: page.getByRole('navigation', { name: 'Main' }),
+  homeNavigationLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }),
+  aboutNavigationLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About' }),
   sidebarTrigger: page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' }),
   mainLandmarks: page.getByRole('main'),
   wideContent: page.getByRole('region', { name: 'Wide content' }),

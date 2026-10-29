@@ -91,11 +91,11 @@ public class ZonedDateTests
     [Test]
     public void a_date_that_the_zone_skipped_is_empty()
     {
-        // Samoa moved from UTC-10 to UTC+14 at the end of December 29, 2011, so December 30 did not happen there.
         // Arrange
+        // Samoa moved from UTC-10 to UTC+14 at the end of December 29, 2011, so December 30 did not happen there.
         var day = new ZonedDate(new DateOnly(2011, 12, 30), TimeZoneId.Of("Pacific/Apia"));
 
-        // Assert
+        // Act & Assert
         day.Start.ShouldBe(new DateTimeOffset(2011, 12, 31, 0, 0, 0, TimeSpan.FromHours(14)));
         day.End.ShouldBe(day.Start);
     }
@@ -106,7 +106,7 @@ public class ZonedDateTests
         // Arrange
         var day = new ZonedDate(new DateOnly(2026, 10, 27), Chicago);
 
-        // Assert
+        // Act & Assert
         day.Contains(day.Start).ShouldBeTrue();
         day.Contains(day.End.AddTicks(-1)).ShouldBeTrue();
         day.Contains(day.End).ShouldBeFalse();

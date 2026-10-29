@@ -20,6 +20,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_unary_call_maps_the_domain_error()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw NotFound));
 
@@ -29,6 +30,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_server_streaming_call_maps_the_domain_error()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.ServerStreamingServerHandler<string, string>(
             "request", _responses, _context, (_, _, _) => throw NotFound));
 
@@ -38,6 +40,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_client_streaming_call_maps_the_domain_error()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.ClientStreamingServerHandler<string, string>(
             _requests, _context, (_, _) => throw NotFound));
 
@@ -47,6 +50,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_duplex_streaming_call_maps_the_domain_error()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.DuplexStreamingServerHandler<string, string>(
             _requests, _responses, _context, (_, _, _) => throw NotFound));
 
@@ -56,12 +60,14 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_field_error_gives_a_bad_request_detail_with_each_message()
     {
+        // Arrange
         var invalid = new RequestValidationException(new Dictionary<string, string[]>
         {
             ["name"] = ["The name field is required."],
             ["pageSize"] = ["The pageSize must be 1 or more.", "The pageSize is too large."],
         });
 
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw invalid));
 
@@ -77,6 +83,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task an_error_with_no_fields_gives_no_bad_request_detail()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw NotFound));
 
@@ -86,6 +93,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_stale_version_is_aborted_with_a_bad_request_detail_on_the_version()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw new StaleVersionException()));
 
@@ -98,6 +106,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_concurrent_change_is_aborted_with_no_field_violation()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw new ConcurrentChangeException()));
 
@@ -110,6 +119,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_conflict_with_a_record_that_exists_is_already_exists()
     {
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw new ConflictException("name", "A tenant with this name already exists.")));
 
@@ -120,10 +130,12 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_save_that_a_unique_index_stops_has_the_message_of_the_check()
     {
+        // Arrange
         var conflict = DatabaseConflict.From(new PostgresException(
             "duplicate key", "ERROR", "ERROR", PostgresErrorCodes.UniqueViolation, constraintName: "ix_tenants_name"),
             new AppDbContextFactory().CreateDbContext([]).Model)!;
 
+        // Act & Assert
         var exception = await Should.ThrowAsync<RpcException>(() => _interceptor.UnaryServerHandler<string, string>(
             "request", _context, (_, _) => throw conflict));
 
@@ -134,6 +146,7 @@ public class DomainErrorInterceptorTests
     [Test]
     public async Task a_server_fault_is_not_mapped()
     {
+        // Act & Assert
         await Should.ThrowAsync<InvalidOperationException>(() => _interceptor.ServerStreamingServerHandler<string, string>(
             "request", _responses, _context, (_, _, _) => throw new InvalidOperationException("secret")));
     }

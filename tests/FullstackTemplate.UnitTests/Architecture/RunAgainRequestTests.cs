@@ -17,6 +17,7 @@ public class RunAgainRequestTests
     [Test]
     public void no_request_that_runs_again_when_raced_has_a_version()
     {
+        // Act & Assert
         VersionsInRunAgainRequests(typeof(PagedList).Assembly).ShouldBeEmpty(
             "A command that sends a version gets a stale version when it loses a race. Remove IRunsAgainWhenRaced from " +
             "it, or remove the version. See docs/backend/concurrency.md.");
@@ -25,6 +26,7 @@ public class RunAgainRequestTests
     [Test]
     public void rule_finds_a_version_on_the_request_in_a_dto_in_a_list_of_dtos_and_on_a_struct()
     {
+        // Act & Assert
         VersionsInRunAgainRequests(typeof(FixtureMarker).Assembly).ShouldBe(
         [
             "FullstackTemplate.ArchitectureFixtures.Core.RunAgainCommandWithVersion.Version",

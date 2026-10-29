@@ -5,7 +5,7 @@ description: Launches the FullstackTemplate stack (Aspire, server, BFF, React SP
 
 # Verify FullstackTemplate
 
-The primary surface is the React SPA in a browser. All browser traffic goes through the Vite dev server to the BFF (`/bff/*`, `/api/*`, `/signin-oidc`). The BFF holds the tokens and calls the server with a JWT. Login uses ZeroFactor by default. ZeroFactor is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider that runs in the stack. Its login page lists the users (`admin@example.com` and `user@example.com`), and one click signs in. To test an interaction with a real IdP, start the stack with `--auth-provider <Name>`. `login()` supports `ZeroFactor` and `DuendeDemo`. For another provider, drive its login form from `frontend/e2e/idps/<name>.json`.
+The primary surface is the React SPA in a browser. All browser traffic goes through the Vite dev server to the BFF (`/bff/*`, `/api/*`, `/signin-oidc`). With `--preview`, the browser talks to the BFF directly, because the BFF serves the build. See [Production build](#production-build). The BFF holds the tokens and calls the server with a JWT. Login uses ZeroFactor by default. ZeroFactor is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider that runs in the stack. Its login page lists the users (`admin@example.com` and `user@example.com`), and one click signs in. To test an interaction with a real IdP, start the stack with `--auth-provider <Name>`. `login()` supports `ZeroFactor` and `DuendeDemo`. For another provider, drive its login form from `frontend/e2e/idps/<name>.json`.
 
 Other surfaces, not in the feature map yet:
 
@@ -28,7 +28,7 @@ S=.agents/skills/verify-fullstack-template
 
 ## Launch
 
-1. Start the stack. The command blocks until `server`, `bff`, and `webfrontend` are healthy and `/api/v1/weather` answers 200 through Vite. A cold start takes about 1 to 3 minutes.
+1. Start the stack. The command blocks until `server`, `bff`, and `webfrontend` are healthy and `/api/v1/weather` answers 200 at the `web` URL: through Vite, or through the BFF with `--preview`. A cold start takes about 1 to 3 minutes.
 
    ```bash
    $S/scripts/launch.sh            # or: $S/scripts/launch.sh <RUN_ID>
@@ -143,7 +143,7 @@ For interactive exploration, the Playwright MCP server in `.mcp.json` also works
 
 1. Before the recipe, it copies each table of each database (`appdb`, `bffdb`) to `artifacts/verify/<RUN_ID>/db-snapshot.json`.
 2. After the recipe, also after a failed step or a page error, it deletes and inserts only the rows that differ from the copy. Then it reads the tables again. If one still differs, the run fails with `the restore left these tables different`.
-3. `result.json` gives the rows that the restore put back in `data.changes`, for example `"appdb.public.tenants": { "added": 1, "changed": 0, "deleted": 0 }`.
+3. `result.json` gives the rows that the run wrote in `data.changes`, for example `"appdb.public.tenants": { "added": 1, "changed": 0, "deleted": 0 }`. If the restore failed, `data.restored` is `false`, and `data.changes` gives the rows that the run wrote. Some of them can still be in the database. If the restore failed before it read the rows, `data.changes` is `null` and `run-twice.sh` prints `unknown`.
 
 Each row that the restore did not touch keeps its `xmin`, which is the `version` of an entity. A row that the restore put back gets a new `xmin`. The next recipe reads its rows from the page, so it gets the new version.
 
@@ -181,6 +181,7 @@ Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the
 | `trace.zip` | The Playwright trace. Open it with `pnpm --dir frontend exec playwright show-trace <path>`. |
 | `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. `data` gives the rows that the restore put back. |
 | `NN-failure.png` | A capture of the page at the time of the failure. A failed step makes the capture before the cleanup of the recipe runs. A failure outside a step gets its capture after the recipe ends. |
+| `sweep.md`, `sweep.json`, `sweep-NN.png` | With `--sweep` only. Each layout and focus fault, the captures and configs where it showed, and a screenshot with a red outline on the element. See [Sweep](#sweep). |
 
 `artifacts/` is in `.gitignore`. The evidence stays after cleanup.
 
@@ -191,9 +192,40 @@ Proof standards:
 - Prove side effects next to the visible result. Examples: the HTTP status and the JSON of the API response, the `__Host-bff` cookie, the `ui-theme` value in `localStorage`.
 - Compare the screen with the data. For example, each weather card must show the `summary` and the temperature of the API row, not only "5 cards".
 - Read `console.log` and `network.log` after each run. These lines are normal: the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
-- Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
+- Run the sweep on each recipe that your change touches. Then look at the screenshots with [ui-review.md](ui-review.md). Report each fault, even if it is not part of your change.
 - Read each message on the screen: each alert, toast, field error, and dialog text. Report a message that breaks a rule of [docs/messages.md](../../../docs/messages.md), for example one that shows a code such as `manage_users`, an ID, or a 24-hour time next to a 12-hour field.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
+
+## Sweep
+
+The sweep finds the layout and focus faults that a 1280x800 screenshot does not show. Run it on each recipe that your change touches, or on all recipes:
+
+```bash
+$S/scripts/sweep.sh                          # each recipe in recipes/
+$S/scripts/sweep.sh $S/recipes/<recipe>.mjs  # one recipe
+```
+
+`sweep.sh` runs each recipe two times: with `--sweep`, and with `--sweep --no-web-font`. The second run blocks the font files, so the page shows the fallback font, as before the web font loads. It prints `sweep: PASSED` or `sweep: FAILED`. A fault fails the run. To run the sweep on one run of a recipe, give `--sweep` to `browse.mjs`.
+
+With `--sweep`, `browse.mjs` does these things:
+
+- It gives long values to the text that the server sends. The fields are in `nameKeys` and `emailKeys` of `sweep.mjs`: `name`, `title`, `summary`, `description`, `label`, `firstName`, `lastName`, `fullName`, `tenantName`, `requestedBy`, `given_name`, `family_name`, and `email`, in an `/api/` answer and in the `/bff/user` claims. Each value becomes a 100-character name with no spaces, or a long email address with a hyphen. Each different value gets a different long value, and a value that came once gets the same long value each time, so that a recipe that compares the screen with the API still passes. An empty value stays empty. The long values are shorter than the maximum lengths of the server, so a form that saves them is valid. Add a key when a new field shows a name or a text that the user writes. This also changes each `/api/` answer that the recipe reads, with `page.waitForResponse` or with a `fetch`. A recipe that compares an API answer with a literal value that it sent, such as the name of a tenant that it made, fails under the sweep. In a recipe for the sweep, find a row by its ID and compare the screen with the API answer, not with the literal.
+- At each full-page `capture()`, it measures the page at 320, 390, and 1280 px wide, in the light and the dark theme, and with a 24 px default font at 390 and 1280 px. Then it puts back the viewport size of the recipe, the light theme, the scroll position, and the focus. If a resize removed the focused element, the next focus check does not report it.
+- At each `capture()` with `{ fullPage: false }`, which holds an open dialog, sheet, drawer, popover, or menu, it measures the page at the window size of the recipe, in the light and the dark theme. A resize or a new font size can close an overlay, such as a submenu, so these captures get no other width and no 24 px font. Give the overlay capture the width that you want to check, for example 1280 px for a dialog, because at 320 px a dialog shows as a bottom sheet.
+- At the end of each `step()`, it checks the focus.
+
+The checks:
+
+| Fault | What the sweep finds |
+|---|---|
+| Page scrolls sideways | The page is wider than the window. The report names the outermost elements, or the text, that go past the right edge. If it finds none, it names the page. |
+| Text is cut | Text that is wider or taller than its box, which hides the overflow, with no ellipsis. Text that runs out of a parent that hides the overflow. Text that ends with an ellipsis, with no element that shows the full value. That element is the text or its ancestor. It can get the focus (a tab index of 0 or more, or -1 in a tab list, menu, list box, grid, toolbar, or tree), it is not disabled or `aria-disabled`, and its `title` or its accessible name (`aria-label`, `aria-labelledby`, or its text) holds the full text. The sweep cannot tell whether a press or a focus shows that text. When it passes an ellipsis, press the element and look. Text in a scroll container is not cut. Text that is all outside its clip is hidden on purpose, for example the label of a collapsed sidebar item. |
+| Overlay goes past the window | A dialog, alert dialog, menu, list box, tooltip, or popover that goes past the left or the right edge of the window. |
+| List grows past its max height | An element whose inline `max-height` lets it grow taller than the `max-height` in pixels of its class. React Aria sets an inline `max-height` on a popover from the space on the page, and an inline style wins over a class. Give the React Aria `Popover` a `maxHeight` instead. |
+| Fixed-height bar wraps | A `header` or a `[role=toolbar]` whose height does not come from its content, with its text on more than one line, or with text that runs out of its height. A bar whose height comes from its content can wrap. |
+| Focus goes to the body | The focus is on the body, and the element that had it last was removed, disabled, hidden, or made inert. |
+
+The sweep checks the focus only at the end of each step. Make a step for each action that can move the focus.
 
 ## Cleanup
 

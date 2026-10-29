@@ -189,7 +189,7 @@ The router moves the `component` of each route to a chunk that loads when the pa
   })
   ```
 
-  zod has its own vendor chunk (`vendorChunks` in `frontend/vite.config.ts`), so it is not in the entry chunk. The zod chunk loads on the first page when a route checks its search with zod. It is 67 kB, 18 kB with gzip.
+  zod has its own vendor chunk (`vendorChunks` in `frontend/vite.config.ts`), so it is not in the entry chunk. When a route checks its search with zod, the zod chunk loads on each first page. It is 67 kB, 18 kB with gzip.
 - Import a type with a top-level `import type`. Do not write `import { Thing, type Option }`. The router keeps the import of a type that the component uses as `import { type Option }`, and TypeScript keeps that line as an import of the module. So the module and each module that it imports load with the entry chunk. `pnpm lint` fails on an inline type import in `routes/`.
 - Do not import a component or a large library in `validateSearch`, `loader`, or `beforeLoad`.
 <!-- example:start -->
@@ -210,8 +210,8 @@ When the build fails:
    pnpm dlx vite-bundle-visualizer -t list -o dist-stats.yml --open false
    ```
 
-   The list is written also when the budget fails the build.
-2. In `dist-stats.yml`, read the modules under `assets/index-*.js`. Find the module that should not be there.
+   The command fails with the budget error, but it writes the list first. The list can contain NUL bytes, so search it with `grep -a` or open it in an editor.
+2. In `dist-stats.yml`, read the modules under the chunk that the budget error names. Find the module that should not be there.
 3. Find the import that brings it in. Usually it is a route option or an inline type import in a route file. See the rules in [Routes](#routes).
 4. If a vendor library must load on the first page, add it to `vendorChunks` in `frontend/vite.config.ts`. It then gets its own chunk.
 5. Increase the budget only when the first page must have the new code. Write the reason in the commit message.

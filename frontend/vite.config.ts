@@ -11,6 +11,9 @@ import { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePoi
 // Vendor libraries that can load on the first page. Each group gets its own
 // chunk, so the entry chunk stays small and the browser can cache the
 // libraries apart from the app code. A chunk loads only on a page that uses it.
+// Rollup also puts the dependencies of a library in its chunk. If the entry
+// imports one of them, the full chunk loads on the first page. After you add a
+// group, look at the modulepreload links in dist/index.html.
 const vendorChunks: Record<string, string[]> = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],

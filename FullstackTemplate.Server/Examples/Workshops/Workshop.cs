@@ -50,6 +50,9 @@ public class Workshop : BaseEntity, ITenantable
         GuardVersion(workshopForUpdate.Version);
         ValidationException.Must(Status.CanBeEdited, "status",
             $"A {Status.Words} workshop cannot be changed.");
+        if (workshopForUpdate.Title == Title && workshopForUpdate.StartsAt == StartsAt
+            && workshopForUpdate.Capacity == Capacity)
+            return this;
 
         Title = workshopForUpdate.Title;
         StartsAt = workshopForUpdate.StartsAt.ToUniversalTime();

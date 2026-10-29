@@ -5,12 +5,13 @@ A user with the `manage_workshops` permission adds a venue and a workshop in it,
 ## Sub-features
 
 - `workshops-onboard` starts a tenant on the Start a tenant page, so the signed-in user is its `Admin` and has `manage_workshops`.
+- `workshops-no-tenant` shows `Start a tenant to add workshops.` on `/workshops` to a signed-in user with no tenant, with no `New workshop` or `New venue` link in the page.
 - `workshops-empty` shows `No workshops yet. Add one with New workshop.` on a new tenant.
 - `venue-create` adds a venue at `/venues/new` and opens `/workshops/new?venueId=<id>` with the venue picked.
 - `workshop-create` adds a workshop and opens its detail page with the status `Draft`.
 - `workshop-detail` shows the start in the time zone of the venue, with the zone, the capacity, and the venue name of `GET /api/v1/workshops/{id}`.
 - `workshop-edit` saves a new title with the loaded version. The detail page shows the title.
-- `workshop-stale` refuses a save after another tab saved: the alert `Someone else saved this workshop after you opened it.` shows, and `Load the latest` loads the saved workshop into the form on the same URL.
+- `workshop-stale` refuses a save after another tab saved: the alert `This workshop changed after you opened it.` shows, and `Load the latest` loads the saved workshop into the form on the same URL.
 - `workshop-actions` shows one button for each entry of `allowedActions`. `Schedule` moves the workshop to `Scheduled`. `Cancel workshop` opens the dialog `Cancel this workshop?` first.
 - `workshop-search` puts the search in the URL (`?search=`) and lists the workshops whose title contains it.
 
@@ -28,16 +29,17 @@ Preconditions:
 - The database is empty, so the signed-in user has no Server user, and the home page shows the notice `No tenant`. The recipe follows its link `Start a tenant` and starts a tenant (see [Start a tenant](../start-tenant.md)). The user is the `Admin` of the tenant. The role `Admin` has each permission. The role `User` has none, so a `User` sees no action buttons.
 - On ZeroFactor, `admin@example.com` (`Admin User`), the user that `login()` signs in by default, gets `manage_workshops` this way. So does `user@example.com`, when it starts its own tenant.
 
-- **Onboard.** Run `await login()`. In the region `No tenant`, click `Start a tenant`. Fill `Tenant name` in the form `Start a tenant` and click `Start tenant`. `POST /api/v1/users/initiate` gives 201 with `user.role` = `Admin`.
+- **No tenant.** Run `await login()`. Open `/workshops`. The text `Start a tenant to add workshops.` shows, and the page has no `New workshop` or `New venue` link.
+- **Onboard.** In the region `No tenant`, click `Start a tenant`. Fill `Tenant name` in the form `Start a tenant` and click `Start tenant`. `POST /api/v1/users/initiate` gives 201 with `user.role` = `Admin`.
 - **Empty list.** Click `Examples`, then `Workshops`. The heading `Workshops` and the empty text show.
-- **Add a venue.** Click `New venue`. Fill `Name`. Fill `Time zone` with `Pacific/Pago_Pago`, a zone that is not the zone of the browser. Click `Add venue`. `POST /api/v1/venues` gives 201. The URL is `/workshops/new?venueId=<id>`, and the combobox `Venue` has the name of the venue.
+- **Add a venue.** Click `New venue`. Fill `Name`. Fill `Time zone` with `Pacific/Pago_Pago`, a zone that is not the zone of the browser. Click `Add venue`. `POST /api/v1/venues` gives 201. The URL is `/workshops/new?venueId=<id>`, and the combobox `Venue` has the name of the venue. The hint of `Starts at` is `The time in Pago Pago.`, the place of the zone and not its ID.
 - **Add a workshop.** Fill `Title`. Click the month segment of the group `Starts at` and type a date 30 days after today at the venue, at 09:30 AM. The `POST` sends `startsAt` as 20:30 UTC of that day. Fill `Capacity`. Click `Add workshop`. `POST /api/v1/workshops` gives 201. The page is the detail page: the heading is the title, and the status is `Draft`.
 - **Detail.** The region `Details` shows the start as `toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Pago_Pago', timeZoneName: 'short' })` of `startsAt`, for example `Aug 15, 2026, 9:30 AM GMT-11`, the capacity, and the venue name of the same run.
 - **Edit.** Click `Edit` in the group `Actions for <title>`. Fill `Title`, click `Save`. `PUT /api/v1/workshops/{id}` gives 200 with a `version` that is larger than the loaded one. The detail page shows the new title.
 - **Stale save.** Open the edit page in this tab and in a second tab. Save a title in the second tab. Save another title in the first tab. `PUT` gives 409 with the type `urn:fullstacktemplate:problem:stale-version`. The alert shows, and `Title` keeps the text of the first tab. Click `Load the latest`. The URL stays `/workshops/<id>/edit`, and `Title` has the title of the second tab.
 - **Actions.** On the detail page, the buttons equal `allowedActions` of the last `GET` (`Update` is the `Edit` link). Click `Schedule`. `POST /api/v1/workshops/{id}/schedule` sends the loaded `version` and gives 200 with the status `Scheduled`. The page shows `Scheduled`, `Cancel workshop`, and `Mark completed`. `Schedule` and `Edit` are gone. Click `Cancel workshop`. The dialog `Cancel this workshop?` shows. Click `Keep workshop`. The dialog closes, no `POST .../cancel` goes out, and `Cancel workshop` has the focus.
 - **Search.** Open `/workshops`, type a word of the title into the searchbox `Search workshops`. The URL gets `?search=<word>`, and `GET /api/v1/workshops` has the same `search`. The row of the workshop shows, with the start in the zone of the venue.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/workshops.mjs`. The captures `empty-list`, `venue-picked`, `detail-draft`, `stale-alert`, `latest-loaded`, `scheduled`, `cancel-dialog`, and `search` show the states.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/workshops.mjs`. The captures `no-tenant-list`, `empty-list`, `venue-picked`, `detail-draft`, `stale-alert`, `latest-loaded`, `scheduled`, `cancel-dialog`, and `search` show the states.
 
 ## Gotchas
 

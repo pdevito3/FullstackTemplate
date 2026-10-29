@@ -9,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 import { Pager } from '@/components/ui/pager'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useMembership } from '@/domain/membership/apis/get-membership'
 import { useWorkshopList } from '@/examples/workshops/apis/get-workshop-list'
 import { formatStart } from '@/examples/workshops/components/format-start'
 import { QueryError } from '@/examples/components/query-error'
@@ -34,6 +35,7 @@ function WorkshopsPage() {
   const { search = '', page = 1 } = Route.useSearch()
   const navigate = Route.useNavigate()
   const list = useWorkshopList({ search, page })
+  const hasNoTenant = useMembership().status === 'no-tenant'
 
   const handleSearch = (text: string, base: string) =>
     navigate({
@@ -48,19 +50,31 @@ function WorkshopsPage() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Workshops</h1>
-        <div className="flex gap-2">
-          <Link to="/venues/new" className={buttonVariants({ variant: 'outline' })}>
-            New venue
-          </Link>
-          <Link to="/workshops/new" className={buttonVariants()}>
-            New workshop
-          </Link>
-        </div>
+        {!hasNoTenant && (
+          <div className="flex gap-2">
+            <Link to="/venues/new" className={buttonVariants({ variant: 'outline' })}>
+              New venue
+            </Link>
+            <Link to="/workshops/new" className={buttonVariants()}>
+              New workshop
+            </Link>
+          </div>
+        )}
       </div>
 
-      <WorkshopSearch search={search} maxLength={searchMaxLength} onSearch={handleSearch} />
-
-      <WorkshopRows list={list} search={search} page={page} onPageChange={handlePageChange} />
+      {hasNoTenant ? (
+        <p className="text-muted-foreground">
+          <Link to="/start-tenant" className="underline underline-offset-4 hover:text-primary">
+            Start a tenant
+          </Link>{' '}
+          to add workshops.
+        </p>
+      ) : (
+        <>
+          <WorkshopSearch search={search} maxLength={searchMaxLength} onSearch={handleSearch} />
+          <WorkshopRows list={list} search={search} page={page} onPageChange={handlePageChange} />
+        </>
+      )}
     </div>
   )
 }

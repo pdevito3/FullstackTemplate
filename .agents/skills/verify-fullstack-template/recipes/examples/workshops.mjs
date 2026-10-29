@@ -25,9 +25,17 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       [startsAt, zone],
     )
 
-  const tenant = await step('log in and start a tenant on the Start a tenant page, as its admin', async () => {
+  await step('with no tenant, the list shows the way to start one and no New workshop or New venue', async () => {
     await page.goto('/')
     await login()
+    await page.goto('/workshops')
+    await expect(page.getByText('Start a tenant to add workshops.', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('link', { name: 'New workshop', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('link', { name: 'New venue', exact: true })).toHaveCount(0)
+  })
+  await capture('no-tenant-list')
+
+  const tenant = await step('start a tenant on the Start a tenant page, as its admin', async () => {
     await page.getByRole('region', { name: 'No tenant' }).getByRole('link', { name: 'Start a tenant' }).click()
     const form = page.getByRole('form', { name: 'Start a tenant' })
     await form.getByLabel('Tenant name', { exact: true }).fill(`Verify ${stamp}`)
@@ -62,6 +70,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       expect(body.timeZone).toBe(zone)
       await expect(page).toHaveURL(new RegExp(`/workshops/new\\?venueId=${body.id}$`))
       await expect(page.getByRole('combobox', { name: 'Venue' })).toHaveValue(body.name)
+      await expect(page.getByText('The time in Pago Pago.', { exact: true })).toBeVisible()
       return body
     })
     await capture('venue-picked')
@@ -128,7 +137,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       const res = await refused
       expect(res.status()).toBe(409)
       expect((await res.json()).type).toBe('urn:fullstacktemplate:problem:stale-version')
-      await expect(page.getByRole('alert').filter({ hasText: 'Someone else saved this workshop after you opened it.' })).toBeVisible()
+      await expect(page.getByRole('alert').filter({ hasText: 'This workshop changed after you opened it.' })).toBeVisible()
       await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(`${title} from this tab`)
       return savedBody
     })
@@ -140,7 +149,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       expect((await loaded).status()).toBe(200)
       await expect(page).toHaveURL(new RegExp(`/workshops/${workshop.id}/edit$`))
       await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(otherTab.title)
-      await expect(page.getByRole('alert').filter({ hasText: 'Someone else saved' })).toHaveCount(0)
+      await expect(page.getByRole('alert').filter({ hasText: 'This workshop changed after you opened it.' })).toHaveCount(0)
     })
     await capture('latest-loaded')
 

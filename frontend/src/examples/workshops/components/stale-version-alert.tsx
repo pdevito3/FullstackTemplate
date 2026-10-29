@@ -14,7 +14,7 @@ export function StaleVersionAlert({ problem, isLoadingLatest, onLoadLatest }: St
 
   return (
     <div role="alert" className="flex flex-col gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm">
-      <p className="font-medium text-destructive">Someone else saved this workshop after you opened it.</p>
+      <p className="font-medium text-destructive">This workshop changed after you opened it.</p>
       <p className="text-foreground">
         Your edits are still in the form, and they are not saved. Load the latest to see the saved workshop, then make
         your edits again.

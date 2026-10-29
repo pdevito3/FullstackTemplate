@@ -4,6 +4,7 @@ import * as z from 'zod'
 import type { WorkshopForCreationDto } from '@/api/generated/models/types/workshop-for-creation-dto'
 import { Notification } from '@/components/notification'
 import { Link } from '@/components/ui/link'
+import { useVenue } from '@/examples/venues/apis/get-venue'
 import { useAddWorkshop } from '@/examples/workshops/apis/add-workshop'
 import { WorkshopCreateForm } from '@/examples/workshops/components/workshop-create-form'
 
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/(examples)/workshops/new')({
 
 function NewWorkshopPage() {
   const { venueId } = Route.useSearch()
+  const linkedVenue = useVenue(venueId, { suppressErrorToast: true })
   const add = useAddWorkshop()
   const navigate = useNavigate()
 
@@ -30,7 +32,13 @@ function NewWorkshopPage() {
         All workshops
       </Link>
       <h1 className="text-3xl font-bold tracking-tight">New workshop</h1>
-      <WorkshopCreateForm venueId={venueId} onSave={handleSave} />
+      {venueId && linkedVenue.isPending ? (
+        <p role="status" className="text-muted-foreground">
+          Loading venue
+        </p>
+      ) : (
+        <WorkshopCreateForm venueId={linkedVenue.isSuccess ? venueId : undefined} onSave={handleSave} />
+      )}
       <p className="text-sm text-muted-foreground">
         No venue for it yet?{' '}
         <Link to="/venues/new" className="underline underline-offset-4 hover:text-primary">

@@ -48,6 +48,12 @@ try
         3. dotnet build {repo.App}.slnx
         4. dotnet test --solution {repo.App}.slnx
         """);
+    if (spec.Parent is { } parent)
+        Console.WriteLine($"""
+            5. Decide what the delete of {parent.Entity} does with its {spec.Names.WordsPlural}: refuse, delete them too, or clear
+               the reference. Load and save in RootLock.Tenant.RunExclusiveAsync, so that an add cannot link to it in the
+               middle. See docs/backend/domain-events.md and docs/backend/concurrency.md.
+            """);
     return 0;
 }
 catch (FeatureException exception)
@@ -207,8 +213,29 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
             throw new FeatureException($"The type {n.Entity} is in use in {typeOwner}. Give another entity name.");
         if (repo.IdPrefixOwner(n.Prefix, n.EntityFile) is { } owner)
             throw new FeatureException($"The ID prefix '{n.Prefix}' is in use in {owner}. Give another with --prefix.");
-        return Ref is { } reference ? this with { Parent = repo.FindParent(reference.Name[..^"Id".Length]) } : this;
+        if (Ref is not { } reference)
+            return this;
+
+        var parent = repo.FindParent(reference.Name[..^"Id".Length]);
+        if (parent.Entity == "User")
+            throw new FeatureException("A ref to User is not possible: the delete of a user must handle each record that "
+                + "links to it (docs/backend/domain-events.md). Add the UserId property by hand after the run.");
+        if (parent.Namespace.Contains(".Examples.", StringComparison.Ordinal))
+            throw new FeatureException($"{parent.Entity} is an example, and scripts/remove-examples.cs deletes it. "
+                + "Give a ref to an entity of the app.");
+        if (LocalNames.Contains(parent.Var))
+            throw new FeatureException($"The code that the script writes has a variable '{parent.Var}', so a ref to "
+                + $"{parent.Entity} would not build. Add the {reference.Name} property by hand after the run.");
+        return this with { Parent = parent };
     }
+
+    // The variables of the code that the script writes, in the scopes where the variable of the parent goes
+    private static readonly HashSet<string> LocalNames = new(StringComparer.Ordinal)
+    {
+        "act", "add", "added", "admin", "ct", "delete", "dto", "graph", "loaded", "member", "parentId", "pause",
+        "refusal", "request", "rival", "seed", "services", "tenant", "tenantExists", "tenantId", "testingServiceScope",
+        "underTest", "update", "user",
+    };
 
     private static List<Field> ParseFields(string text)
     {
@@ -239,6 +266,8 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
             if (fields.Any(f => f.Name == name))
                 throw new FeatureException($"The property {name} is in the list two times.");
 
+            if (optional && kind == Kind.ParentId)
+                throw new FeatureException($"A ref cannot be optional. Remove the '?' from {given}.");
             if (optional && kind != Kind.Text)
                 throw new FeatureException($"Only text can be optional. Make {name} text?, or remove the '?'.");
 
@@ -434,7 +463,7 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
         var permissionFile = $"{n.Server}/Domain/Users/Permission.cs";
         var value = repo.NextPermissionValue(permissionFile, n.Permission);
         var step = spec.ParentGraphStep;
-        var sweepParent = spec.Parent is { } p ? $"{n.Var}{p.Entity}" : null;
+        var sweepParent = spec.Parent is not null ? $"parentOf{n.Entity}" : null;
         var columnsTest = $"tests/{n.App}.UnitTests/Databases/StringColumnLengthTests.cs";
 
         var list = new List<Insertion>
@@ -538,21 +567,24 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
             .Select(file => File.ReadAllText(Path.Combine(root, file)))
             .FirstOrDefault(declaration.IsMatch)
             ?? throw new FeatureException(
-                $"{entity}:ref names no entity that a tenant owns in {app}.Server. Give the name of an entity that derives from BaseEntity and is ITenantable.");
+                $"{entity}:ref names no entity that a tenant owns in {app}.Server. Give the name of an entity that derives from BaseEntity and is ITenantable"
+                + (entity.EndsWith("Id", StringComparison.Ordinal) ? $", with no Id: {entity[..^"Id".Length]}:ref." : "."));
 
         var contextFile = $"{app}.Server/Databases/AppDbContext.cs";
         var plural = Regex.Match(File.ReadAllText(Path.Combine(root, contextFile)), $@"\bDbSet<{entity}>\s+(\w+)") is { Success: true } set
             ? set.Groups[1].Value
             : throw new FeatureException($"{contextFile} has no DbSet of {entity}, so the add cannot load it.");
 
-        var blueprint = new Regex($@"ChildInputBlueprint<TestSeed,\s*Tenant,\s*{entity}Input,\s*{entity}>");
+        var blueprint = new Regex($@"ChildInputBlueprint<TestSeed,\s*(\w+),\s*{entity}Input,\s*{entity}>");
         var helpers = Path.Combine(root, "tests", $"{app}.SharedTestHelpers");
         var blueprintText = Directory.EnumerateFiles(helpers, "*.cs", SearchOption.AllDirectories)
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .Select(File.ReadAllText)
             .FirstOrDefault(blueprint.IsMatch)
             ?? throw new FeatureException(
-                $"The entity graph has no blueprint of {entity} under the tenant, so the tests cannot add one. Add {entity} with the script first.");
+                $"The entity graph has no blueprint of {entity}, so the tests cannot add one. Add {entity} with the script first.");
+        if (blueprint.Match(blueprintText).Groups[1].Value is var owner and not "Tenant")
+            throw new FeatureException($"A ref can name only an entity that is right under the tenant. {entity} is under {owner}.");
 
         return new Parent(entity, NamespaceOf(entityText), plural, NamespaceOf(blueprintText));
     }
@@ -669,11 +701,13 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
 
     public void RequireNoPendingModelChangesAfterWrite(Spec spec, ApplyResult result)
     {
-        var failure = "The script wrote the files above, but the model of the Server has changes that no migration has. "
-            + $"The migration {spec.Names.Migration} was in the app already. Delete the files that the script wrote, or "
-            + "add a migration of the changes.\n  " + string.Join("\n  ", result.Written);
-        BuildServer(failure);
-        RunEf(failure, "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
+        var written = "\n  " + string.Join("\n  ", result.Written);
+        BuildServer("The script wrote the files below, and the Server does not build. Correct the errors above. To undo the run, "
+            + "restore the shared files and delete the new files with git restore and git clean." + written);
+        RunEf($"The script wrote the files below, and the migration {spec.Names.Migration} was in the app already. The model of "
+            + "the Server has changes that no migration has, from this run or from other work. Add a migration of the changes, "
+            + "or undo the run with git restore and git clean." + written,
+            "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
     }
 
     private string Server => $"{app}.Server";
@@ -683,7 +717,8 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         "check it. See the output above. Add the migration of those changes, then run the script again.";
 
     private const string MigrationFailure =
-        "The script wrote the feature files but no migration. Correct the build, then run the script again.";
+        "The script wrote the feature files but no migration, because the Server does not build. A run again refuses a "
+        + "changed file, so undo the run with git restore and git clean, and file the build error as an issue of the template.";
 
     private List<string> MigrationFiles(Spec spec)
         => Directory.EnumerateFiles(Path.Combine(root, Server, "Databases", "Migrations"),

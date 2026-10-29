@@ -57,9 +57,10 @@ The script writes generic rules. Make them the rules of the domain:
 3. Make each value that a person names into a value object, such as `EmailAddress` (`docs/backend/domain-entities.md`).
 4. Add the guards and the business methods. For a rule that two callers share, or a rule that reads more than one aggregate, use the decision shape (`docs/backend/features-and-cqrs.md#one-rule-set-for-two-callers`).
 5. Make the rules in `SharedTestHelpers/Fakes/<Plural>/<Entity>Rules.cs` give realistic values.
-6. If a unique value, a second foreign key, or a child entity is necessary, change the configuration and add a migration (`docs/backend/entity-configurations.md`).
-7. Regenerate and commit the API contract with the `api-contract` skill.
-8. Run `dotnet build FullstackTemplate.slnx` and `dotnet test --solution FullstackTemplate.slnx`.
+6. For a `ref`, decide what the delete of the parent does with the entities that refer to it: refuse, delete them too, or clear the reference. Run its load and save in `RootLock.Tenant.RunExclusiveAsync` (`docs/backend/domain-events.md`, `docs/backend/concurrency.md`).
+7. If a unique value, a second foreign key, or a child entity is necessary, change the configuration and add a migration (`docs/backend/entity-configurations.md`).
+8. Regenerate and commit the API contract with the `api-contract` skill.
+9. Run `dotnet build FullstackTemplate.slnx` and `dotnet test --solution FullstackTemplate.slnx`.
 
 The script writes only a root that a tenant owns. For a child entity, an entity of all tenants, or a read model of a view, write the files by hand. Use the files of a generated feature as the pattern, and the checklist of `docs/backend/audit-log.md`.
 

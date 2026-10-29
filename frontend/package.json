@@ -69,6 +69,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "patchedDependencies": {
+      "@vitest/browser-playwright@5.0.5": "patches/@vitest__browser-playwright@5.0.5.patch"
+    }
   }
 }

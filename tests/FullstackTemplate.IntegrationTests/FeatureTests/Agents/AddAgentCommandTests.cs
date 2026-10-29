@@ -95,8 +95,7 @@ public class AddAgentCommandTests : TestBase
         // Assert
         try
         {
-            (await Should.ThrowAsync<ForbiddenAccessException>(pause.WaitUntilBlockedAsync(add),
-                    "The add waited on the lock of the tenant delete, so it checks the machine mode after the tenant lock.")).Message
+            (await Should.ThrowAsync<ForbiddenAccessException>(pause.WaitUntilBlockedAsync(add))).Message
                 .ShouldBe("Only a client that can manage all tenants can do this.");
         }
         finally

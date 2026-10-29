@@ -62,6 +62,8 @@ for (var i = 0; i < args.Length; i++)
 
 try
 {
+    if (displayName is not null && !App.IsDisplayName(displayName))
+        throw new MergeException($"'{displayName}' is not a display name. Use words of letters and digits, with one space, dot, hyphen, or apostrophe between them.");
     var app = new App(App.RootOf(Directory.GetCurrentDirectory()));
     if (findBase)
         app.PrintBase(templateRef, displayName ?? app.DisplayName);
@@ -94,9 +96,11 @@ internal sealed partial class App(string root)
     public string DisplayName
         => File.Exists(Path.Combine(root, "frontend", "index.html"))
             && TitlePattern().Match(File.ReadAllText(Path.Combine(root, "frontend", "index.html"))) is { Success: true } title
-            && DisplayNamePattern().IsMatch(title.Groups["title"].Value.Trim())
+            && IsDisplayName(title.Groups["title"].Value.Trim())
                 ? title.Groups["title"].Value.Trim()
                 : Name;
+
+    public static bool IsDisplayName(string text) => DisplayNamePattern().IsMatch(text);
 
     public void Merge(string templateRef, string? baseRef, string displayName)
     {
@@ -289,9 +293,9 @@ internal sealed partial class App(string root)
         {
             return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
-        catch (IOException)
+        catch (IOException exception)
         {
-            throw new MergeException("Another run of the script merges into this repo now. Wait until it ends, then run the script again.");
+            throw new MergeException($"{exception.Message} If another run of the script merges into this repo now, wait until it ends, then run the script again.");
         }
     }
 

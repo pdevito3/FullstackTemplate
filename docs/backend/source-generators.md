@@ -32,12 +32,12 @@ Reflection is allowed in these kinds of code only:
 
 | Kind | Why it is fine | The sites of today |
 |------|----------------|--------------------|
-| A test or an architecture check | It does not run in the app | `tests/FullstackTemplate.UnitTests/Architecture/BoundaryScanner.cs` reads the IL with Mono.Cecil |
+| A test or an architecture check | It does not run in the app | `tests/FullstackTemplate.UnitTests/Architecture/BoundaryScanner.cs` reads the IL with Mono.Cecil. `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Access/EndpointAccessSweepTests.cs` finds each MCP tool method and gRPC service of the Server, and the handler type of each HTTP endpoint |
 | A startup scan | It runs one time | Scrutor in `Resources/Extensions/ServiceRegistrationExtension.cs` and `Databases/DomainEventRegistration.cs`. `RegisterServicesFromAssembly` of MediatR in `Resources/Extensions/WebAppServiceConfiguration.cs`. `WithToolsFromAssembly` of MCP in `Resources/Entrypoints/EntrypointRegistration.cs`. `ApplyConfigurationsFromAssembly` in `Databases/AppDbContext.cs`. `Resources/Entrypoints/Http/EndpointDiscovery.cs`. `Databases/Auditing/AuditModel.cs`, `AuditVocabulary.cs`, and `AuditSensitivity.cs`, which run one time for the EF model |
 | An OpenAPI transformer | It runs when the document is made, not for each API request | `Resources/Entrypoints/Http/OpenApi/FixedNamesTransformer.cs` reads `[NamesOf]` |
 | A per-type cache | It reads each type one time, then keeps the result | `RequestRules` in `Resources/RequestValidationBehavior.cs`. The runner of each event type in `Databases/DomainEventDispatcher.cs`. Its `HasHandlers` has no cache, and only the bulk insert calls it. `IdPrefix<TEntity>` in `Databases/QueryableExtensions.cs` |
 
-The paths in the table are in `FullstackTemplate.Server/`, except the test.
+The paths in the table are in `FullstackTemplate.Server/`, except the tests.
 
 Two sites of today fit no kind. They read a type each time that they run, with no cache:
 

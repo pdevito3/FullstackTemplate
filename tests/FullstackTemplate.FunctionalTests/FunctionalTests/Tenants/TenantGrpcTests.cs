@@ -127,6 +127,27 @@ public class TenantGrpcTests : TestBase
     }
 
     [Test]
+    public async Task sort_on_a_field_that_the_list_does_not_have_names_it_to_the_caller_and_not_to_the_logs()
+    {
+        // Arrange
+        var (_, user) = await AddTenantWithUserAsync();
+        SignInAs(user);
+        using var channel = CreateGrpcChannel();
+        var client = new TenantsService.TenantsServiceClient(channel);
+        var email = $"jane{Guid.NewGuid():N}@example.com";
+
+        // Act
+        var exception = await Should.ThrowAsync<RpcException>(async () =>
+            await client.ListTenantsAsync(new ListTenantsRequest { SortOrder = email }));
+
+        // Assert
+        exception.StatusCode.ShouldBe(StatusCode.InvalidArgument);
+        exception.Status.Detail.ShouldBe(
+            $"The sort order names the field {email}, which this list does not have. Use one of these fields: id, name.");
+        TestingWebApplicationFactory.Instance.CapturedLogs.Holding(email).ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task user_cannot_add_a_tenant()
     {
         // Arrange

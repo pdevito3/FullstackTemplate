@@ -248,13 +248,14 @@ test.describe('the workshops', () => {
 test.describe('the workshops of a signed-in user with no tenant', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
-  test('shows the way to start a tenant in place of the empty list, and no New workshop or New venue', async ({ page, api }) => {
+  test('shows the way to start a tenant in place of the list, asks for no list, and shows no New workshop or New venue', async ({ page, api }) => {
     api.mock(workshopsApi.listReturns([]))
     const workshops = workshopsPage(page)
 
-    await workshops.openList()
+    await page.goto('/workshops')
 
     await expect(workshops.at.startTenantFirst).toBeVisible()
+    expect(api.last('get', workshopPaths.list)).toBeUndefined()
     await expect(workshops.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
     await expect(workshops.at.emptyList).toHaveCount(0)
     await expect(workshops.at.newWorkshopLink).toHaveCount(0)

@@ -12,8 +12,9 @@ export interface WorkshopListParams {
   page: number
 }
 
-export function useWorkshopList(params: WorkshopListParams) {
+export function useWorkshopList(params: WorkshopListParams, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled,
     queryKey: WorkshopKeys.list(params),
     queryFn: async ({ signal }) => {
       const result = await getWorkshopList({

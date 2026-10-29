@@ -7,7 +7,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { todayAt, type TimeZone } from '@/lib/zoned-time'
 
-import { placeOf, type WorkshopFieldLimits, type WorkshopFieldValues } from './workshop-fields-schema'
+import { whereIs, type WorkshopFieldLimits, type WorkshopFieldValues } from './workshop-fields-schema'
 
 interface WorkshopFieldsProps {
   limits: WorkshopFieldLimits
@@ -40,7 +40,7 @@ export function WorkshopFields({ limits, zone }: WorkshopFieldsProps) {
           <JollyDatePicker
             ref={field.ref}
             label="Starts at"
-            description={zone ? `The time in ${placeOf(zone)}.` : 'The time at the venue that you pick.'}
+            description={zone ? `The time ${whereIs(zone)}.` : 'The time at the venue that you pick.'}
             granularity="minute"
             timeZone={zone}
             placeholderValue={zone && toCalendarDateTime(todayAt(zone, new Date()))}

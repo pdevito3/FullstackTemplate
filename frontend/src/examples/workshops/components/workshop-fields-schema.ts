@@ -5,7 +5,7 @@ import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/worksho
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop-for-update-dto'
 import { maximumOf, maxLengthOf, minimumOf, stringWithMaxLengthOf } from '@/lib/api-contract'
-import { instantAt, offsetAt, type TimeZone } from '@/lib/zoned-time'
+import { instantAt, type TimeZone } from '@/lib/zoned-time'
 
 export type WorkshopFieldsContract =
   | typeof workshopForCreationDtoSchema.shape
@@ -51,14 +51,15 @@ export function toWorkshopBody(
 }
 
 /**
- * The place that a person knows a time zone by: "Chicago" for America/Chicago. A zone with no place, such as UTC,
- * gives its offset. docs/messages.md rule 1 keeps the ID off the screen.
+ * Where the time of a zone is, in words that a person knows: "in Chicago" for America/Chicago. A zone with no place
+ * in its ID, such as UTC or an old alias such as Singapore, gives "at the venue". docs/messages.md rule 1 keeps the
+ * ID off the screen.
  */
-export function placeOf(zone: TimeZone): string {
+export function whereIs(zone: TimeZone): string {
   const [area, ...rest] = zone.split('/')
-  return rest.length > 0 && area !== 'Etc' ? rest[rest.length - 1].replaceAll('_', ' ') : `UTC${offsetAt(new Date(0), zone)}`
+  return rest.length > 0 && area !== 'Etc' ? `in ${rest[rest.length - 1].replaceAll('_', ' ')}` : 'at the venue'
 }
 
 export function startInGapMessage(zone: TimeZone): string {
-  return `This time does not exist in ${placeOf(zone)} on that day, because the clocks go forward. Choose another time.`
+  return `This time does not exist ${whereIs(zone)} on that day, because the clocks go forward. Choose another time.`
 }

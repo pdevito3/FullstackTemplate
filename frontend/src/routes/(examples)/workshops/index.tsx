@@ -34,8 +34,10 @@ export const Route = createFileRoute('/(examples)/workshops/')({
 function WorkshopsPage() {
   const { search = '', page = 1 } = Route.useSearch()
   const navigate = Route.useNavigate()
-  const list = useWorkshopList({ search, page })
-  const hasNoTenant = useMembership().status === 'no-tenant'
+  const membership = useMembership().status
+  const hasNoTenant = membership === 'no-tenant'
+  const canAdd = membership !== 'loading' && !hasNoTenant
+  const list = useWorkshopList({ search, page }, { enabled: canAdd })
 
   const handleSearch = (text: string, base: string) =>
     navigate({
@@ -50,7 +52,7 @@ function WorkshopsPage() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Workshops</h1>
-        {!hasNoTenant && (
+        {canAdd && (
           <div className="flex gap-2">
             <Link to="/venues/new" className={buttonVariants({ variant: 'outline' })}>
               New venue

@@ -45,4 +45,6 @@ Put example code where the script finds it:
 
 <!-- example:start -->
 The `without-examples` job of CI runs the script, runs it again to prove that the second run changes nothing, and fails if an example name stays in a tracked file. Then it builds the app and runs all of the tests. The other CI jobs test the app with the examples.
+
+The name check skips the `.Designer.cs` file of each migration. EF Core writes the full model into that file when it adds the migration, so each migration that you add while the examples are in the app names the example entities. This is harmless. The file names each entity in a string, so the app builds with no example code. EF Core reads the file only for the model at its own migration, and a new migration compares the model with the snapshot, which the script writes again.
 <!-- example:end -->

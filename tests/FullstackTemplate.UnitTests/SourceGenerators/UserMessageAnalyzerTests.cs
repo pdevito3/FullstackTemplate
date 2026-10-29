@@ -699,6 +699,80 @@ public class UserMessageAnalyzerTests
     }
 
     [Test]
+    public async Task a_value_that_a_parse_accepted_is_traced()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                public class Visit
+                {
+                    public static void Start() => MoveTo(StatusEnum.CheckedIn.Name);
+
+                    private static void MoveTo(string status)
+                    {
+                        if (StatusEnum.TryFromName(status, true, out var parsed) && parsed == StatusEnum.CheckedIn)
+                            throw new ValidationException("status", $"The visit is already {status}.");
+                    }
+
+                    private sealed class StatusEnum(string name, int value) : Ardalis.SmartEnum.SmartEnum<StatusEnum>(name, value)
+                    {
+                        public static readonly StatusEnum CheckedIn = new("CheckedIn", 0);
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the stored name 'StatusEnum.CheckedIn.Name'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task problem_details_validation_failures_and_grpc_status_details_are_user_messages()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using FluentValidation;
+                using FluentValidation.Results;
+
+                public record Rename(string Name);
+
+                public class RenameValidator : AbstractValidator<Rename>
+                {
+                    public RenameValidator()
+                    {
+                        RuleFor(x => x.Name).Custom((name, context) => context.AddFailure("name", "Use the OrderName field."));
+                    }
+                }
+
+                public static class Problems
+                {
+                    public static Microsoft.AspNetCore.Mvc.ProblemDetails Locked() => new() { Detail = "The order is locked_out." };
+
+                    public static ValidationFailure Failure() => new("status", "Use CheckedIn.");
+
+                    public static Grpc.Core.Status Missing(string orderId) => new(Grpc.Core.StatusCode.NotFound, $"Order {orderId} was not found.");
+
+                    public static string Placeholder() => throw new ValidationException("status", "Status CheckedIn} is closed.");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the code name 'OrderName'. " + Fix,
+            "A user message shows the code name 'locked_out'. " + Fix,
+            "A user message shows the code name 'CheckedIn'. " + Fix,
+            "A user message shows the ID 'orderId'. Name the record as the screen names it, or leave it out. See docs/messages.md.",
+            "A user message shows the code name 'CheckedIn'. " + Fix,
+        ]);
+    }
+
+    [Test]
     public async Task words_for_the_screen_and_developer_messages_have_no_diagnostics()
     {
         // Act

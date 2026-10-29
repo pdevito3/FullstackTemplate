@@ -5,6 +5,7 @@ import { ResponsiveDialogFooter } from '@/components/ui/responsive-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Filter, FilterControlProps, OperatorType } from '../types'
+import { textValueFault, textValueMessage } from '../utils/querykit-text'
 import {
   getDefaultOperator,
   getOperatorsForControlType,
@@ -48,9 +49,18 @@ export function TextFilter({
   )
   const supportsCaseSensitivity = operatorSupportsCaseSensitivity(operator)
   const valueId = useId()
+  const errorId = useId()
+
+  const text = value.trim()
+  const fault = textValueFault(text)
+  // A quote or a bracket at the end can start one inside the text, so the message waits until the user asks to add the
+  // filter. On a blur it would move the buttons under a press, and the click would miss them.
+  const [checked, setChecked] = useState(fault !== undefined)
+  const showFault = fault !== undefined && (checked || text.startsWith('"'))
 
   const handleSubmit = () => {
-    if (!value.trim()) {
+    setChecked(true)
+    if (text === '' || fault) {
       return
     }
 
@@ -65,7 +75,7 @@ export function TextFilter({
       propertyLabel,
       controlType: 'text',
       operator: finalOperator,
-      value: value.trim(),
+      value: text,
       caseSensitive,
     } as Omit<Filter, 'id'>)
   }
@@ -84,8 +94,13 @@ export function TextFilter({
           <Input
             autoFocus={autoFocus}
             id={valueId}
+            aria-invalid={showFault || undefined}
+            aria-describedby={showFault ? errorId : undefined}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setChecked(false)
+            }}
             placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -93,6 +108,11 @@ export function TextFilter({
               }
             }}
           />
+          {showFault && (
+            <p id={errorId} role="alert" className="text-destructive text-sm">
+              {textValueMessage(fault)}
+            </p>
+          )}
         </div>
 
         {supportsCaseSensitivity && (
@@ -109,7 +129,7 @@ export function TextFilter({
         <Button variant="outline" onPress={onCancel}>
           Cancel
         </Button>
-        <Button onPress={handleSubmit} isDisabled={!value.trim()}>
+        <Button onPress={handleSubmit} isDisabled={text === ''}>
           {initialFilter ? 'Update' : 'Add'} Filter
         </Button>
       </ResponsiveDialogFooter>

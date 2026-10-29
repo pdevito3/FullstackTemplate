@@ -17,10 +17,12 @@ export const addVenueStatus401Schema = z.unknown()
 
 export const addVenueStatus403Schema = problemDetailsSchema
 
+export const addVenueStatus404Schema = problemDetailsSchema
+
 export const addVenueStatus422Schema = validationProblemDetailsSchema
 
 export const addVenueResponseSchema = addVenueStatus201Schema
 
-export const addVenueErrorSchema = z.union([addVenueStatus400Schema, addVenueStatus401Schema, addVenueStatus403Schema, addVenueStatus422Schema])
+export const addVenueErrorSchema = z.union([addVenueStatus400Schema, addVenueStatus401Schema, addVenueStatus403Schema, addVenueStatus404Schema, addVenueStatus422Schema])
 
 export const addVenueBodySchema = venueForCreationDtoSchema

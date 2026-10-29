@@ -17,9 +17,9 @@ describe('refusalOf', () => {
   })
 
   it('shows a message of a field that the form does not have above the buttons', () => {
-    const refusal = refusalOf(validation({ status: ['A cancelled workshop cannot be edited.'] }), FIELDS)
+    const refusal = refusalOf(validation({ status: ['A closed record cannot be edited.'] }), FIELDS)
 
-    expect(refusal.problem).toEqual({ kind: 'refused', messages: ['A cancelled workshop cannot be edited.'] })
+    expect(refusal.problem).toEqual({ kind: 'refused', messages: ['A closed record cannot be edited.'] })
   })
 
   it('makes a stale version its own problem, with no message on a field', () => {

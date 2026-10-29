@@ -15,6 +15,7 @@ public sealed class AddVenueEndpoint : IEndpoint
         .RequireAuthorization()
         .ProducesValidationProblem()
         .ProducesProblem(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
     /// <summary>

@@ -9,6 +9,8 @@ The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack
 
 The text of each toast, alert, label, and message follows [messages.md](messages.md).
 
+To add the pages of a feature (a list, a detail page, a create or edit form, or a search picker), follow the [frontend-feature skill](../.agents/skills/frontend-feature/SKILL.md).
+
 ## Commands
 
 ```bash
@@ -262,12 +264,12 @@ const filterConfig = [
   filterOptions={filterConfig}
   onChange={(state) => {
     const queryString = toQueryKitString(state)
-    // "firstName == John && status ^^ [active]"
+    // 'firstName == "John" && status ^^ ["active"]'
   }}
 />
 ```
 
-The control types are text, number, date, boolean, and multiselect. Groups can use AND or OR. For a date of a place, give the config the `timeZone` of the place. See "Dates and times" in [code-style.md](frontend/code-style.md).
+The control types are text, number, date, boolean, and multiselect. Groups can use AND or OR. QueryKit cannot hold a text value that starts or ends with a quote, or that starts with `[` and ends with `]`, so the text control refuses it. The multiselect control refuses an option with a quote at an end. An option in brackets works, because QueryKit splits the list before it reads an item. If a preset or an initial state has such a value, `toQueryKitString` leaves out its filter, and the badge tells the user that the filter is not used. For a date of a place, give the config the `timeZone` of the place. See "Dates and times" in [code-style.md](frontend/code-style.md).
 
 <!-- example:start -->
 "Starts At in Pago Pago" in `routes/(examples)/filter-demo.tsx` gives the `timeZone` of a place.

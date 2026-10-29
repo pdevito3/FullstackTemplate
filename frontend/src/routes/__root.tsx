@@ -76,7 +76,7 @@ function RootComponent() {
 function usePageFocusAfterNavigation(pathname: string | undefined, pageName: string | undefined) {
   const content = useRef<HTMLDivElement>(null)
   const announcement = useRef<HTMLParagraphElement>(null)
-  const pendingAnnouncement = useRef(0)
+  const pendingAnnouncement = useRef<ReturnType<typeof setTimeout>>(undefined)
   const lastPathname = useRef(pathname)
 
   useEffect(() => {
@@ -84,17 +84,18 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
     lastPathname.current = pathname
     // The first load leaves the focus where the browser puts it.
     if (previous === undefined || previous === pathname || !content.current || !announcement.current) return
-    cancelAnimationFrame(pendingAnnouncement.current)
+    clearTimeout(pendingAnnouncement.current)
     announcement.current.textContent = ''
     const focused = document.activeElement
     if (!focused || focused === document.body) {
       focusWithoutTabStop(content.current.querySelector('h1') ?? content.current.closest('main'))
     } else {
       const region = announcement.current
-      // A screen reader speaks a live region when its text changes, so the same text again needs an empty frame first.
-      pendingAnnouncement.current = requestAnimationFrame(() => {
+      // A screen reader speaks a live region when its text changes. The empty text must reach the accessibility tree
+      // first, so the same page name again is a change. One frame is too short for that.
+      pendingAnnouncement.current = setTimeout(() => {
         region.textContent = pageName ?? ''
-      })
+      }, 150)
     }
   }, [pathname, pageName])
 

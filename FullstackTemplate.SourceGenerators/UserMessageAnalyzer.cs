@@ -43,6 +43,9 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		@"\b(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b",
 		RegexOptions.CultureInvariant);
 
+	// A name of one plain word, such as Monday
+	private static readonly Regex PlainWord = new(@"^[A-Z][a-z]+$", RegexOptions.CultureInvariant);
+
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(CodeName, Id);
 
 	public override void Initialize(AnalysisContext context)
@@ -311,8 +314,8 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					foreach (var argument in invocation.Arguments)
 						Visit(argument.Value, call);
 					break;
-				case IInvocationOperation { Arguments: { Length: > 0 } arguments } linq when IsStringLinq(linq):
-					Visit(arguments[0].Value, call);
+				case IInvocationOperation copy when SourceOfStrings(copy) is { } source:
+					Visit(source, call);
 					break;
 				case IInvocationOperation invocation when (call?.Depth ?? 0) < MaxCallDepth:
 					Follow(invocation.TargetMethod, new Call(invocation, call));
@@ -466,11 +469,11 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			{
 				case INameOfOperation:
 					return "the code name";
-				case { Type.TypeKind: TypeKind.Enum }:
+				case { Type: { } type } when IsCodeEnum(type):
 					return "the enum value";
 				case { Type: { } type } when IsFixedName(type):
 					return "the stored name";
-				case IInvocationOperation { TargetMethod.Name: "ToString", Instance.Type: { } type } when type.TypeKind == TypeKind.Enum || IsFixedName(type):
+				case IInvocationOperation { TargetMethod.Name: "ToString", Instance.Type: { } type } when IsCodeEnum(type) || IsFixedName(type):
 					return "the stored name";
 				case IPropertyReferenceOperation { Property.Name: "Value" or "Name" } property when IsFixedName(property.Instance?.Type ?? property.Property.ContainingType):
 					return "the stored name";
@@ -478,14 +481,14 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					return "the type name";
 				case IInvocationOperation { TargetMethod: { Name: "GetName" or "GetNames", ContainingType.SpecialType: SpecialType.System_Enum } }:
 					return "the enum value";
-				case { Type: { } type } when ElementOf(type) is { } element && (element.TypeKind == TypeKind.Enum || IsFixedName(element)):
+				case { Type: { } type } when ElementOf(type) is { } element && (IsCodeEnum(element) || IsFixedName(element)):
 					return element.TypeKind == TypeKind.Enum ? "the enum value" : "the stored name";
 				case IInvocationOperation { TargetMethod: { Name: "ListNames", ContainingType: { } type } } when IsFixedName(type):
 					return "the stored name";
 				case IInvocationOperation { TargetMethod: { Name: "Select" } method } select when IsIn(method.ContainingType, "System.Linq") && depth < 3:
 					return CodeOfSelected(select, depth);
-				case IInvocationOperation { Arguments: { Length: > 0 } arguments } linq when IsStringLinq(linq) && depth < 3:
-					return CodeOf(Unwrap(arguments[0].Value), depth + 1);
+				case IInvocationOperation copy when depth < 3 && SourceOfStrings(copy) is { } source:
+					return CodeOf(Unwrap(source), depth + 1);
 				case IPropertyReferenceOperation { Property.GetMethod: { } getter } when depth < 3:
 					return CodeOfReturns(getter, depth);
 				case IInvocationOperation invocation when depth < 3:
@@ -495,7 +498,8 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			}
 		}
 
-		// Select(x => x.Name) over the items of a SmartEnum or an IFixedNames list gives the stored names
+		// Select(x => x.Name) or Select(x => $"'{x.Name}'") over the items of a SmartEnum or an IFixedNames list gives the
+		// stored names
 		private string? CodeOfSelected(IInvocationOperation select, int depth)
 		{
 			foreach (var argument in select.Arguments)
@@ -504,7 +508,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				{
 					case IDelegateCreationOperation { Target: IAnonymousFunctionOperation lambda }:
 						var code = lambda.Body.Descendants().OfType<IReturnOperation>()
-							.Select(r => CodeOf(Unwrap(r.ReturnedValue), depth + 1))
+							.Select(r => CodeInText(Unwrap(r.ReturnedValue), depth + 1))
 							.FirstOrDefault(static c => c is not null);
 						if (code is not null)
 							return code;
@@ -518,13 +522,29 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			return IsStrings(Unwrap(select.Arguments[0].Value)?.Type) ? CodeOf(Unwrap(select.Arguments[0].Value), depth + 1) : null;
 		}
 
-		// A LINQ call such as ToList() or Order() over a list of strings, which gives the same strings
-		private static bool IsStringLinq(IInvocationOperation invocation)
-			=> invocation.TargetMethod.IsExtensionMethod
-				&& IsIn(invocation.TargetMethod.ContainingType, "System.Linq")
-				&& IsStrings(invocation.Type)
-				&& invocation.Arguments.Length > 0
-				&& IsStrings(Unwrap(invocation.Arguments[0].Value)?.Type);
+		private string? CodeInText(IOperation? value, int depth) => value switch
+		{
+			IInterpolatedStringOperation interpolated => interpolated.Parts.OfType<IInterpolationOperation>()
+				.Select(hole => CodeInText(Unwrap(hole.Expression), depth))
+				.FirstOrDefault(static c => c is not null),
+			IBinaryOperation binary => CodeInText(Unwrap(binary.LeftOperand), depth) ?? CodeInText(Unwrap(binary.RightOperand), depth),
+			_ => CodeOf(value, depth),
+		};
+
+		// The list of strings that a call copies: the source of a LINQ call such as ToList() or Order(), or the instance of
+		// a collection method such as List<string>.ToArray()
+		private static IOperation? SourceOfStrings(IInvocationOperation invocation)
+		{
+			if (!IsStrings(invocation.Type))
+				return null;
+
+			var method = invocation.TargetMethod;
+			var source = method.IsExtensionMethod && IsIn(method.ContainingType, "System.Linq") && invocation.Arguments.Length > 0
+				? invocation.Arguments[0].Value
+				: !method.IsStatic && IsIn(method.ContainingType, "System.Collections") ? invocation.Instance : null;
+
+			return IsStrings(Unwrap(source)?.Type) ? source : null;
+		}
 
 		private string? CodeOfReturns(IMethodSymbol method, int depth)
 			=> values.TryGetValue(method.OriginalDefinition, out var returned)
@@ -565,6 +585,13 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 			return false;
 		}
+
+		// An enum of .NET whose names are each one plain word, such as DayOfWeek, reads as the screen names it
+		private static bool IsCodeEnum(ITypeSymbol type)
+			=> type.TypeKind == TypeKind.Enum
+				&& !(IsIn(type, "System")
+					&& !type.Locations.Any(static l => l.IsInSource)
+					&& type.GetMembers().OfType<IFieldSymbol>().Where(static f => f.HasConstantValue).All(static f => PlainWord.IsMatch(f.Name)));
 
 		private static bool IsReflectionType(ITypeSymbol? type)
 			=> type?.ToDisplayString() is "System.Type" or "System.Reflection.MemberInfo" or "System.Reflection.TypeInfo";

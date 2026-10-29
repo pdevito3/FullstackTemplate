@@ -7,10 +7,8 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using Shouldly;
 
-/// <summary>The tests of the decision shape for <see cref="WorkshopScheduling"/>. See docs/backend/features-and-cqrs.md.</summary>
 public class WorkshopSchedulingTests
 {
-    // 15:00 UTC is 09:00 in Chicago and 04:00 the next day in Tongatapu, so the day at the venue is not the UTC day
     private static readonly DateTimeOffset Now = Clock.Now;
     private const string Chicago = "America/Chicago";
     private const string Tongatapu = "Pacific/Tongatapu";
@@ -167,7 +165,6 @@ public class WorkshopSchedulingTests
         return new ScheduleCase(workshop, venue, Now);
     }
 
-    // A workshop moves through the real methods, so a case holds only a state that the app can reach
     private static void MoveTo(Workshop workshop, string status, Venue venue)
     {
         switch (status)
@@ -189,7 +186,6 @@ public class WorkshopSchedulingTests
 
     private static void Schedule(Workshop workshop, Venue venue)
     {
-        // Decide at a time well before the start, so that only the opening hours can refuse it
         var decision = WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, workshop.StartsAt.AddDays(-30)));
         workshop.Schedule(decision.ShouldBeOfType<ScheduleDecision.Offered>().Start);
     }

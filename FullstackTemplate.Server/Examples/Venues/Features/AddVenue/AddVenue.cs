@@ -23,7 +23,6 @@ public static class AddVenue
         {
             await permissionGuard.RequireAsync(Permission.ManageWorkshops(), cancellationToken);
 
-            // A venue belongs to the tenant of the caller. A caller that sees all tenants has no tenant of its own.
             var tenantId = dbContext.CurrentTenantScope.TenantId
                 ?? throw new ForbiddenAccessException("You can add a venue only to your own tenant.");
 

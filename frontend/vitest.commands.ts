@@ -46,10 +46,8 @@ export const releaseRequests: BrowserCommand<[path: string]> = async ({ page }, 
   await page.unroute(hold.matcher, hold.handler)
 }
 
-// The paths that the app sends to the BFF. The test server serves the source files under /src, so they do not match.
 const isBffRequest = (url: URL) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/bff/')
 
-// Test files run at the same time, each on its own page, so each page has its own answers.
 const answering = new WeakMap<Page, { answers: Answer[]; handler: RouteHandler }>()
 
 const isAnswerFor = (request: { method: () => string; url: () => string }) => (answer: Answer) => {
@@ -61,10 +59,6 @@ const isAnswerFor = (request: { method: () => string; url: () => string }) => (a
   )
 }
 
-/**
- * Answers each request that matches an answer. A later answer wins over an earlier one, so a test can change the
- * answer of the Server. A request with no answer goes on. `answerRequests([])` removes all answers.
- */
 export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page }, answers) => {
   const current = answering.get(page)
   if (answers.length === 0) {

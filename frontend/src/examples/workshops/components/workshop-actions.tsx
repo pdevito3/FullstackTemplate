@@ -3,10 +3,8 @@ import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 
-/** An action that the page sends at once. `Update` opens the edit form instead. */
 export type WorkshopCommand = Exclude<WorkshopDtoAllowedActionsEnumKey, 'Update'>
 
-// A Record of the generated union, so a new or renamed action on the Server fails the build until it has a label.
 const LABELS: Record<WorkshopCommand, string> = {
   Schedule: 'Schedule',
   Cancel: 'Cancel workshop',
@@ -17,12 +15,10 @@ const isCommand = (action: WorkshopDtoAllowedActionsEnumKey): action is Workshop
 
 interface WorkshopActionsProps {
   workshop: WorkshopDto
-  /** The action that waits for the Server, if any. The buttons wait with it. */
   pendingAction?: WorkshopCommand
   onAction: (action: WorkshopCommand) => void
 }
 
-/** The edit link and a button for each action that the Server allows the caller to send for the workshop now. */
 export function WorkshopActions({ workshop, pendingAction, onAction }: WorkshopActionsProps) {
   if (workshop.allowedActions.length === 0) {
     return null

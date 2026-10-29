@@ -11,7 +11,6 @@ import type { WorkshopFieldLimits, WorkshopFieldValues } from './workshop-fields
 
 interface WorkshopFieldsProps {
   limits: WorkshopFieldLimits
-  /** The time zone of the venue, in which the user types the start. Undefined before the user picks a venue. */
   zone: TimeZone | undefined
 }
 

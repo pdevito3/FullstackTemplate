@@ -21,7 +21,6 @@ const limits = limitsOf(contract)
 const FIELD_NAMES = ['venueId', ...WORKSHOP_FIELD_NAMES] as const
 
 interface WorkshopCreateFormProps {
-  /** The venue that the form starts with, for example the venue that the user just added. */
   venueId?: string
   onSave: (body: WorkshopForCreationDto) => Promise<unknown>
 }

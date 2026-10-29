@@ -30,14 +30,11 @@ function PagerButton({ isAvailable, onPress, children }: PagerButtonProps) {
 }
 
 interface PagerProps {
-  /** The accessible name of the pager, for example `Pages of users`. */
   label: string
-  /** The page data of the last answer of a list endpoint, from `parsePagination`. */
   pagination: Pick<PaginationMetadata, "pageNumber" | "totalPages" | "hasPrevious" | "hasNext">
   onPageChange: (pageNumber: number) => void
 }
 
-/** Previous and Next for a list that the Server pages. The Server decides if there is a page before or after. */
 function Pager({ label, pagination, onPageChange }: PagerProps) {
   const { pageNumber, totalPages, hasPrevious, hasNext } = pagination
 

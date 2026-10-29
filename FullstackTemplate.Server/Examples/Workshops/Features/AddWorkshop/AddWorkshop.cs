@@ -27,7 +27,6 @@ public static class AddWorkshop
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageWorkshops());
 
-            // The tenant filter applies, so the venue of another tenant does not exist here
             var venue = await dbContext.Venues
                 .TagWithOperationCallSite("workshops.add.load_venue")
                 .FirstOrDefaultAsync(v => v.Id == request.Dto.VenueId, cancellationToken)

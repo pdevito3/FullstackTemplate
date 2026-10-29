@@ -16,7 +16,6 @@ import { WorkshopSearch } from '@/examples/workshops/components/workshop-search'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 import { maxLengthOf } from '@/lib/api-contract'
 
-// The URL takes the limits of the contract. A value that the contract refuses, such as page 0, falls back to the default.
 const listSearchSchema = z.object({
   search: getWorkshopListQuerySearchSchema.catch(undefined),
   page: getWorkshopListQueryPageNumberSchema.catch(undefined),
@@ -35,7 +34,6 @@ function WorkshopsPage() {
   const navigate = Route.useNavigate()
   const list = useWorkshopList({ search, page })
 
-  // Only a search that the URL still has goes in, so a late search does not undo a link or Back.
   const handleSearch = (text: string, base: string) =>
     navigate({
       search: (prev) => ((prev.search ?? '') === base ? { search: text || undefined } : prev),

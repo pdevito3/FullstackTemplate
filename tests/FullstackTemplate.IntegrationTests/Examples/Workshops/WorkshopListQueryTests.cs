@@ -79,7 +79,6 @@ public class WorkshopListQueryTests : TestBase
         (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("search");
     }
 
-    // One venue per test, so a test sees only its own rows. The starts follow the order of the titles.
     private static async Task<string> AddWorkshopsAsync(TestingServiceScope testingServiceScope)
     {
         await testingServiceScope.StartGraph(out _)

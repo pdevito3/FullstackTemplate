@@ -61,8 +61,6 @@ function WorkshopPage() {
       <WorkshopActions
         workshop={workshop.data}
         pendingAction={action.isPending ? action.variables : undefined}
-        // An action moves the workshop to a status in which the Server can take its button away. The focus goes to the
-        // heading, next to the new status, and not to the next button, so that a second Enter sends no other action.
         onAction={(command) => action.mutate(command, { onSuccess: () => headingRef.current?.focus() })}
       />
     </div>

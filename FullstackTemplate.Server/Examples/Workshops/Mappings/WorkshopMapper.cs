@@ -21,10 +21,6 @@ public static partial class WorkshopMapper
         };
     }
 
-    /// <summary>
-    /// Gives each row of a list the actions that <paramref name="caller"/> can send for it. The list query projects
-    /// to the DTO, so the rule reads the status of the DTO.
-    /// </summary>
     public static void AddAllowedActions(this List<WorkshopDto> workshops, Caller caller)
     {
         for (var i = 0; i < workshops.Count; i++)
@@ -34,7 +30,6 @@ public static partial class WorkshopMapper
         }
     }
 
-    /// <summary>The DTO of each workshop with the time zone of its venue. The list handler adds the actions after the page loads.</summary>
     public static IQueryable<WorkshopDto> ToWorkshopDtoQueryable(this IQueryable<Workshop> workshops, IQueryable<Venue> venues)
         => workshops
             .Join(venues, w => w.VenueId, v => v.Id,

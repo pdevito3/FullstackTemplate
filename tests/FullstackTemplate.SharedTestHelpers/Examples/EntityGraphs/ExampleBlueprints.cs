@@ -10,16 +10,11 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using Fakes;
 
-/// <summary>
-/// The blueprints of the example entities. <see cref="GraphGraftAttribute"/> generates <c>AddVenue</c>,
-/// <c>AddVenues</c>, <c>AddWorkshop</c>, and <c>AddWorkshops</c> in <c>ExampleBlueprintsGrafts</c>.
-/// </summary>
 [GraphGraft]
 public static class ExampleBlueprints
 {
     private static readonly Faker Faker = new();
 
-    /// <summary>A venue is a child of a tenant. The tenant id comes from the parent, never from the test.</summary>
     public static readonly ChildInputBlueprint<TestSeed, Tenant, VenueInput, Venue> Venue = Blueprint
         .ChildFromInput<TestSeed, Tenant, VenueInput, Venue>(
             () => new(),
@@ -33,7 +28,6 @@ public static class ExampleBlueprints
         .Derive(i => i.Name, (_, _) => VenueRules.Name(Faker))
         .Derive(i => i.TimeZone, (_, _) => VenueRules.TimeZone(Faker));
 
-    /// <summary>A workshop is a draft at its venue, in the tenant of the venue.</summary>
     public static readonly ChildInputBlueprint<TestSeed, Venue, WorkshopInput, Workshop> Workshop = Blueprint
         .ChildFromInput<TestSeed, Venue, WorkshopInput, Workshop>(
             () => new(),

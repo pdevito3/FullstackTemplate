@@ -2,10 +2,6 @@ namespace FullstackTemplate.Server.Examples.Workshops;
 
 using Venues;
 
-// The decision shape of docs/backend/features-and-cqrs.md: the rules of a schedule read the workshop, its venue, and
-// the time of the request.
-
-/// <summary>The facts that the rules of a schedule read. ScheduleWorkshop loads them.</summary>
 public sealed record ScheduleCase
 {
     public ScheduleCase(Workshop workshop, Venue venue, DateTimeOffset now)
@@ -31,7 +27,6 @@ public abstract record ScheduleRefusal
     public sealed record NotOffered(string Field, string Message) : ScheduleRefusal(Field, Message);
 }
 
-/// <summary>The proof that the start of a workshop passed the rules. Only <see cref="WorkshopScheduling.Decide"/> makes it.</summary>
 public sealed class SchedulableStart
 {
     internal SchedulableStart(string workshopId, DateTimeOffset startsAt) => (WorkshopId, StartsAt) = (workshopId, startsAt);
@@ -57,8 +52,6 @@ public static class WorkshopScheduling
 
     public static ScheduleDecision Decide(ScheduleCase schedule)
     {
-        // The rules apply only to a move, so a command that runs again after its own commit changes nothing, also on
-        // the start day
         if (schedule.Workshop.Status == WorkshopStatus.Scheduled())
             return Offer(schedule);
 

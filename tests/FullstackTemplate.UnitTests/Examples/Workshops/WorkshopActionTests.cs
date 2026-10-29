@@ -10,10 +10,6 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using Shouldly;
 
-/// <summary>
-/// <see cref="Workshop.AllowedActions"/> lists an action only when its command goes through, so a button that the SPA
-/// shows from the list does not get a 403 or a 422.
-/// </summary>
 public class WorkshopActionTests
 {
     private static readonly string[] Statuses = ["Draft", "Scheduled", "Cancelled", "Completed"];
@@ -73,7 +69,6 @@ public class WorkshopActionTests
         act.ShouldThrow<ForbiddenAccessException>().Message.ShouldBe("You cannot manage workshops. Ask a tenant admin for access.");
     }
 
-    // A command that changes nothing does not count: a second cancel goes through, but the SPA shows no button for it
     private static bool GoesThrough(string action, string status, Caller caller)
     {
         var (workshop, venue) = ArrangeAtVenue(status);

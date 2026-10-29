@@ -7,7 +7,6 @@ import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop
 import { maximumOf, maxLengthOf, stringWithMaxLengthOf } from '@/lib/api-contract'
 import { instantAt, timeZoneLabel, type TimeZone } from '@/lib/zoned-time'
 
-/** The contract of the fields that the create and the edit form share. Each form passes the schema of its own DTO. */
 export type WorkshopFieldsContract =
   | typeof workshopForCreationDtoSchema.shape
   | typeof workshopForUpdateDtoSchema.shape
@@ -21,7 +20,6 @@ export function limitsOf(contract: WorkshopFieldsContract): WorkshopFieldLimits 
   return { titleMaxLength: maxLengthOf(contract.title), capacityMaximum: maximumOf(contract.capacity) }
 }
 
-/** The form schema of the shared fields. The limits come from the contract, and the Server decides the other rules. */
 export function workshopFieldsSchema(contract: WorkshopFieldsContract) {
   const { capacityMaximum } = limitsOf(contract)
   return z.object({
@@ -38,10 +36,6 @@ export type WorkshopFieldValues = z.infer<ReturnType<typeof workshopFieldsSchema
 
 export const WORKSHOP_FIELD_NAMES = ['title', 'startsAt', 'capacity'] as const
 
-/**
- * The body fields of the shared values. The start is a wall clock time at the venue, and it goes to the Server as an
- * instant. Null when the start is in the spring gap at the venue, because that time does not exist there.
- */
 export function toWorkshopBody(
   { title, startsAt, capacity }: WorkshopFieldValues,
   zone: TimeZone,

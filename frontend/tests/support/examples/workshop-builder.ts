@@ -5,7 +5,6 @@ import { aVenue } from './venue-builder'
 let seed = 0
 const next = () => ++seed
 
-// What the Server allows a caller with manage_workshops to send in each status. A caller without it gets none.
 const MANAGER_ACTIONS: Record<WorkshopDtoStatusEnumKey, WorkshopDtoAllowedActionsEnumKey[]> = {
   Draft: ['Update', 'Schedule', 'Cancel'],
   Scheduled: ['Cancel', 'Complete'],
@@ -43,27 +42,22 @@ class WorkshopBuilder {
   titled(title: string) {
     return this.with({ title })
   }
-  /** An ISO date and time with an offset, as the Server sends it. */
   startingAt(startsAt: string) {
     return this.with({ startsAt })
   }
   withCapacity(capacity: number) {
     return this.with({ capacity })
   }
-  /** The venue, and its time zone, in which the SPA shows the start. */
   at(venue: { build(): { id: string; timeZone: string } }) {
     const { id, timeZone } = venue.build()
     return this.with({ venueId: id, venueTimeZone: timeZone })
   }
-  /** The status, with the actions that a caller with manage_workshops gets for it. */
   inStatus(status: WorkshopDtoStatusEnumKey) {
     return this.with({ status, allowedActions: MANAGER_ACTIONS[status] })
   }
-  /** As a caller without manage_workshops reads it: no actions. */
   seenByReader() {
     return this.with({ allowedActions: [] })
   }
-  /** The workshop after another save: the next version. */
   savedAgain(patch: Pick<Partial<WorkshopDto>, 'title' | 'startsAt' | 'capacity'> = {}) {
     return this.with({ ...patch, version: this.workshop.version + 1 })
   }

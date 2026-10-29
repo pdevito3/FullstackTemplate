@@ -24,7 +24,6 @@ interface VenueCreateFormProps {
   onSave: (body: VenueForCreationDto) => Promise<unknown>
 }
 
-/** The time zone starts as the zone of the browser. The Server checks that the zone is a real IANA zone. */
 export function VenueCreateForm({ onSave }: VenueCreateFormProps) {
   const form = useForm({
     resolver: zodResolver(schema),

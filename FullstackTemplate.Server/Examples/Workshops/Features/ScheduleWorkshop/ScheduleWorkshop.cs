@@ -26,8 +26,6 @@ public static class ScheduleWorkshop
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             WorkshopAction.Schedule().GuardCaller(caller);
 
-            // One load. No command changes the time zone of a venue, so the case needs no lock on the venue.
-            // A feature that changes the zone needs a RootLock, see docs/backend/concurrency.md.
             var schedule = await LoadCaseAsync(request.Id, cancellationToken);
             var workshop = schedule.Workshop;
             var wasScheduled = workshop.Status == WorkshopStatus.Scheduled();

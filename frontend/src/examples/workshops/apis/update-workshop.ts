@@ -9,7 +9,6 @@ export function useUpdateWorkshop(id: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    // The form shows each refusal next to its fields, so a toast would say it twice.
     mutationFn: (body: WorkshopForUpdateDto) =>
       updateWorkshop({ path: { id }, body, options: { suppressErrorToast: true } }),
     onSuccess: (workshop) => {

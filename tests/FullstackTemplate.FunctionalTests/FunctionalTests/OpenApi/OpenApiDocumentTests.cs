@@ -245,8 +245,6 @@ public class OpenApiDocumentTests
             .ShouldBe(expectations.Select(e => $"{e.Name}: {e.MaxLength}"));
     }
 
-    // A new string field of a request needs [SchemaMaxLength] or [NamesOf<T>], so that a form gets its limit from the contract.
-    // A date-time string has a length that its format sets
     [Test]
     public async Task each_request_string_has_a_max_length_or_a_list_of_names()
     {

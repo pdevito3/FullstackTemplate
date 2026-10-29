@@ -14,7 +14,7 @@ Server state is the data that the API returns. TanStack Query owns it. It caches
 8. Show what the Server allows. Do not copy a state machine, a permission check, or a business limit. To show a button for an action, read `allowedActions` or a flag of the DTO. If the DTO does not have the answer, add it on the Server (rule 11 of [dtos-and-mappings.md](../backend/dtos-and-mappings.md)). `domain/users/components/user-actions.tsx` shows a button for each allowed action of a user.
 
 <!-- example:start -->
-In the workshop example, the detail page shows a button only for each entry of `allowedActions`: [workshop-actions.tsx:38](<../../frontend/src/examples/workshops/components/workshop-actions.tsx#L38>). A `Record` of the generated union gives each action its label, so a new action on the Server fails the build until it has one: [workshop-actions.tsx:10](<../../frontend/src/examples/workshops/components/workshop-actions.tsx#L10>).
+In the workshop example, the detail page shows a button only for each entry of `allowedActions`: [workshop-actions.tsx:34](<../../frontend/src/examples/workshops/components/workshop-actions.tsx#L34>). A `Record` of the generated union gives each action its label, so a new action on the Server fails the build until it has one: [workshop-actions.tsx:8](<../../frontend/src/examples/workshops/components/workshop-actions.tsx#L8>).
 <!-- example:end -->
 
 ## Key factory
@@ -80,7 +80,7 @@ export function useUpdateUser() {
 For an optimistic update, change only the query cache. In `onMutate`, cancel the queries, keep the old data, and set the new data. In `onError`, put back the old data. In `onSettled`, invalidate the queries.
 
 <!-- example:start -->
-In the workshop example, a save puts the answer of the Server in the detail cache and invalidates the lists: [update-workshop.ts:15](<../../frontend/src/examples/workshops/apis/update-workshop.ts#L15>). A refused action reads the workshop again, because another user can have changed it: [send-workshop-action.ts:27](<../../frontend/src/examples/workshops/apis/send-workshop-action.ts#L27>).
+In the workshop example, a save puts the answer of the Server in the detail cache and invalidates the lists: [update-workshop.ts:14](<../../frontend/src/examples/workshops/apis/update-workshop.ts#L14>). A refused action reads the workshop again, because another user can have changed it: [send-workshop-action.ts:26](<../../frontend/src/examples/workshops/apis/send-workshop-action.ts#L26>).
 <!-- example:end -->
 
 ## Errors
@@ -100,7 +100,7 @@ retry: (failureCount, error) => {
 ```
 
 <!-- example:start -->
-A form that shows each refusal itself sends `suppressErrorToast`, so the error does not show twice: [update-workshop.ts:14](<../../frontend/src/examples/workshops/apis/update-workshop.ts#L14>). `refusalOf` puts each validation message on its field, and every other message above the buttons: [use-server-errors.ts:18](<../../frontend/src/examples/components/use-server-errors.ts#L18>).
+A form that shows each refusal itself sends `suppressErrorToast`, so the error does not show twice: [update-workshop.ts:13](<../../frontend/src/examples/workshops/apis/update-workshop.ts#L13>). `refusalOf` puts each validation message on its field, and every other message above the buttons: [use-server-errors.ts:13](<../../frontend/src/examples/components/use-server-errors.ts#L13>).
 <!-- example:end -->
 
 ## Cache times
@@ -124,7 +124,7 @@ Use `defaultValues` in an edit form, not `values`. With `values`, a refetch can 
 When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`, and the toast shows the `detail`. A create can also get this type, when a unique index of the Server tells that another user changed the record. For a create, keep the input of the user and refetch the list or the parent record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new data. Do not send the PUT again with the new version, because that overwrites the other change.
 
 <!-- example:start -->
-In the workshop example, the edit form keeps the loaded version in `defaultValues`: [workshop-edit-form.tsx:42](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L42>). `isStaleVersionError` reads the type: [problem-details.ts:89](<../../frontend/src/lib/problem-details.ts#L89>). `Load the latest` refetches the detail and resets the form, on the same page: [workshop-edit-form.tsx:61](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L61>) and [edit.tsx:40](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx#L40>). The form shows the problem itself, so this save sends no toast.
+In the workshop example, the edit form keeps the loaded version in `defaultValues`: [workshop-edit-form.tsx:38](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L38>). `isStaleVersionError` reads the type: [problem-details.ts:84](<../../frontend/src/lib/problem-details.ts#L84>). `Load the latest` refetches the detail and resets the form, on the same page: [workshop-edit-form.tsx:57](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L57>) and [edit.tsx:40](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx#L40>). The form shows the problem itself, so this save sends no toast.
 <!-- example:end -->
 
 ## Do not

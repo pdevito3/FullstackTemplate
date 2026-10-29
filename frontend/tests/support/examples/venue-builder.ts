@@ -23,7 +23,6 @@ class VenueBuilder {
   named(name: string) {
     return new VenueBuilder({ ...this.venue, name })
   }
-  /** An IANA time zone, for example `Pacific/Pago_Pago`. */
   inZone(timeZone: string) {
     return new VenueBuilder({ ...this.venue, timeZone })
   }

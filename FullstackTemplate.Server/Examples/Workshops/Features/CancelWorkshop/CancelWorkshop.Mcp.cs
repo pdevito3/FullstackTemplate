@@ -14,7 +14,6 @@ using Resources.Entrypoints.Mcp;
 [McpServerToolType]
 public static class CancelWorkshopTool
 {
-    // A cancel is final, so the MCP spec says destructive. A second cancel changes nothing, so it is idempotent.
     [McpServerTool(Name = "cancel_workshop", Destructive = true, Idempotent = true, UseStructuredContent = true)]
     [ToolAccess(Permission.Names.ManageWorkshops)]
     [Description("Cancels a draft or scheduled workshop. The caller needs the manage_workshops permission in the tenant.")]

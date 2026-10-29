@@ -4,10 +4,6 @@ using Ardalis.SmartEnum;
 using Domain;
 using Exceptions;
 
-/// <summary>
-/// The stage of a workshop. A workshop starts as a draft. Each status names the statuses that it can move to, so
-/// <see cref="Workshop"/> and <see cref="WorkshopAction"/> read one table.
-/// </summary>
 public partial class WorkshopStatus : ValueObject, IFixedNames
 {
     private const string RequestField = "status";
@@ -32,15 +28,12 @@ public partial class WorkshopStatus : ValueObject, IFixedNames
         Value = value;
     }
 
-    /// <summary>The status as the screen names it, for a message.</summary>
     public string Words => _status.Words;
 
-    /// <summary>Only a draft takes changes to its title, start, and capacity.</summary>
     public bool CanBeEdited => _status.CanBeEdited;
 
     public bool CanMoveTo(WorkshopStatus target) => _status.Next.Contains(target._status);
 
-    /// <exception cref="ValidationException">This status cannot move to <paramref name="target"/>.</exception>
     public WorkshopStatus MoveTo(WorkshopStatus target)
     {
         ValidationException.Must(CanMoveTo(target), RequestField, MoveRefusal(target));

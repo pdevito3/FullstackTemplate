@@ -79,18 +79,12 @@ export function isProblemDetails(obj: unknown): obj is ProblemDetails {
   )
 }
 
-/** The problem type of a save that sent the version of a record that another caller changed. */
 export const STALE_VERSION_PROBLEM_TYPE = 'urn:fullstacktemplate:problem:stale-version'
 
-/**
- * True when the Server refused a save because another caller saved the record first. Read the type, not the status,
- * because a 409 can also be a duplicate value.
- */
 export function isStaleVersionError(error: unknown): boolean {
   return isProblemDetailsError(error) && error.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
 }
 
-/** The messages of a validation problem by field name, for example `{ title: ['Please provide a title.'] }`. */
 export function validationErrorsOf(error: unknown): Record<string, string[]> {
   if (!isProblemDetailsError(error)) {
     return {}

@@ -3,7 +3,6 @@ namespace FullstackTemplate.SharedTestHelpers.Examples.Fakes;
 using AutoBogus;
 using FullstackTemplate.Server.Examples.Workshops.Dtos;
 
-/// <summary>Set <see cref="WorkshopForCreationDto.VenueId"/> to a venue that the test arranged.</summary>
 public sealed class FakeWorkshopForCreationDto : AutoFaker<WorkshopForCreationDto>
 {
     public FakeWorkshopForCreationDto(string venueId)

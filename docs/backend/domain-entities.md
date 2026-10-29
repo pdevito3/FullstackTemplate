@@ -118,7 +118,7 @@ private void GuardIfInFinalState(string field, string subject)
 When the rule needs facts from other aggregates, or a second caller needs the same answer, use the decision shape in [features-and-cqrs.md](features-and-cqrs.md#one-rule-set-for-two-callers).
 
 <!-- example:start -->
-In the workshop example, `Workshop.Update` checks the version first, then refuses a status that cannot change: [Workshop.cs:47](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L47).
+In the workshop example, `Workshop.Update` checks the version first, then refuses a status that cannot change: [Workshop.cs:45](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L45).
 <!-- example:end -->
 
 ### Allowed actions
@@ -159,7 +159,7 @@ user.GuardAllows(UserAction.Delete(), caller);
 `UserActionTests` has the tests of the table. One test gives each action the refusal text of each case. Another checks, for each caller in a small table, that an action is in `AllowedActions` only when `GuardAllows` does not throw.
 
 <!-- example:start -->
-In the workshop example, each action needs only a permission. The command calls `WorkshopAction.GuardCaller` before the load ([WorkshopAction.cs:34](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs#L34)), and the entity refuses a status that does not permit the action. `Workshop.AllowedActions` ([Workshop.cs:75](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L75)) and `WorkshopMapper.AddAllowedActions` ([WorkshopMapper.cs:28](../../FullstackTemplate.Server/Examples/Workshops/Mappings/WorkshopMapper.cs#L28)) call the same `WorkshopAction.AllowedFor` ([WorkshopAction.cs:37](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs#L37)).
+In the workshop example, each action needs only a permission. The command calls `WorkshopAction.GuardCaller` before the load ([WorkshopAction.cs:25](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs#L25)), and the entity refuses a status that does not permit the action. `Workshop.AllowedActions` ([Workshop.cs:71](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs#L71)) and `WorkshopMapper.AddAllowedActions` ([WorkshopMapper.cs:24](../../FullstackTemplate.Server/Examples/Workshops/Mappings/WorkshopMapper.cs#L24)) call the same `WorkshopAction.AllowedFor` ([WorkshopAction.cs:27](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs#L27)).
 <!-- example:end -->
 
 ## Value objects
@@ -210,7 +210,7 @@ public partial class UserRole : ValueObject, IFixedNames
 A date that belongs to a place is a `ZonedDate`, for example a clinic day or the due date of a service at a yard. It holds the `DateOnly` and the `TimeZoneId` of the place. `TimeZoneId` accepts only an IANA ID that the server knows, such as `America/Chicago`. Linux refuses a wrong case of an ID. macOS refuses a wrong case only of a zone that it lists, not of an alias such as `Asia/Calcutta`. It refuses a Windows ID such as `Central Standard Time`. Do not store a `ZonedDate`. The entity stores the `DateOnly` and the `TimeZoneId` of its place, and makes the `ZonedDate` when it needs one. Map the `TimeZoneId` with `ComplexProperty`, and give its column `TimeZoneId.MaxLength`. List the column in `FixedOptionColumns` of `StringColumnLengthTests` with the IANA IDs of the server, because a caller can send only an ID that the server knows. Take today with `ZonedDate.TodayAt(zone, timeProvider.GetUtcNow())`, never from the UTC date. A rule that compares a date to today compares it to today at the place. `Start` is the first instant of the day. It is local midnight, or the end of a gap at midnight. `End` is the `Start` of the next day, and the day does not contain it. `TimeZoneId.ToInstant(date, time)` gives null for a time in a spring gap, and the first instant for a time in the repeated fall hour. The SPA shows and reads the times of a place in its zone with `frontend/src/lib/zoned-time.ts`. See "Dates and times" in [code-style.md](../frontend/code-style.md).
 
 <!-- example:start -->
-`WorkshopStatus` is a state machine. Each option of its SmartEnum lists the statuses that can come next, and `MoveTo` refuses each other move with a 422: [WorkshopStatus.cs:38](../../FullstackTemplate.Server/Examples/Workshops/WorkshopStatus.cs#L38). `Venue` stores a `TimeZoneId`: [Venue.cs:18](../../FullstackTemplate.Server/Examples/Venues/Venue.cs#L18).
+`WorkshopStatus` is a state machine. Each option of its SmartEnum lists the statuses that can come next, and `MoveTo` refuses each other move with a 422: [WorkshopStatus.cs:37](../../FullstackTemplate.Server/Examples/Workshops/WorkshopStatus.cs#L37). `Venue` stores a `TimeZoneId`: [Venue.cs:17](../../FullstackTemplate.Server/Examples/Venues/Venue.cs#L17).
 <!-- example:end -->
 
 To map a value object to a column, see [entity-configurations.md](entity-configurations.md#value-objects).

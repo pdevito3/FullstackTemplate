@@ -38,7 +38,6 @@ public sealed class VenueConfiguration : IEntityTypeConfiguration<Venue>
                 .IsRequired();
         });
 
-        // The default sort of the venue list. TenantId comes first, so this index also serves each query on the tenant alone.
         builder.HasIndex(e => new { e.TenantId, e.Name, e.Id });
     }
 }

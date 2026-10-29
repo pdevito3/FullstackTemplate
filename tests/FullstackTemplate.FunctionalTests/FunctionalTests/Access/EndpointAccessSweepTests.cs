@@ -358,7 +358,6 @@ public class EndpointAccessSweepTests : TestBase
             member.RemovePermission(permission);
         admin.AddPermissions(Permission.GetAll());
         // example:start
-        // A scheduled workshop, so that the control call of each workshop action, Complete too, is a move that the status allows
         var offered = (ScheduleDecision.Offered)WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, DateTimeOffset.UtcNow));
         workshop.Schedule(offered.Start);
         // example:end

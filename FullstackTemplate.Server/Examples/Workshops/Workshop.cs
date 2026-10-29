@@ -7,7 +7,6 @@ using Exceptions;
 using Models;
 using Venues;
 
-/// <summary>A workshop at a venue. It moves from draft to scheduled, and then to cancelled or completed.</summary>
 public class Workshop : BaseEntity, ITenantable
 {
     public const string IdPrefix = "wks";
@@ -21,7 +20,6 @@ public class Workshop : BaseEntity, ITenantable
     [NotSensitive] public int Capacity { get; private set; }
     [NotSensitive] public WorkshopStatus Status { get; private set; } = default!;
 
-    /// <summary>A new workshop is a draft in the tenant of its venue.</summary>
     public static Workshop Create(Venue venue, WorkshopForCreation workshopForCreation)
     {
         var workshop = new Workshop
@@ -58,7 +56,6 @@ public class Workshop : BaseEntity, ITenantable
         return this;
     }
 
-    /// <summary>Takes the proof of <see cref="WorkshopScheduling.Decide"/>, so a workshop cannot skip the rules of its venue.</summary>
     public Workshop Schedule(SchedulableStart start)
     {
         if (start.WorkshopId != Id || start.StartsAt != StartsAt)
@@ -71,12 +68,10 @@ public class Workshop : BaseEntity, ITenantable
 
     public Workshop Complete() => MoveTo(WorkshopStatus.Completed());
 
-    /// <summary>The actions that the caller can send for this workshop now.</summary>
     public IReadOnlyList<WorkshopAction> AllowedActions(Caller caller) => WorkshopAction.AllowedFor(caller, Status);
 
     private Workshop MoveTo(WorkshopStatus target)
     {
-        // A command that runs again after its own commit finds the target status, so it changes nothing
         if (Status == target)
             return this;
 

@@ -35,7 +35,7 @@ function isUserDto(value: unknown): value is UserDto {
 5. Use an early return for a loading, empty, or error state. Do not nest ternaries.
 
 <!-- example:start -->
-The workshop list returns early for its loading, error, and empty states: [index.tsx:77](<../../frontend/src/routes/(examples)/workshops/index.tsx#L77>).
+The workshop list returns early for its loading, error, and empty states: [index.tsx:75](<../../frontend/src/routes/(examples)/workshops/index.tsx#L75>).
 <!-- example:end -->
 6. Load a heavy component or library with `lazy` or a dynamic `import()`.
 
@@ -87,7 +87,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 5. Outside a table, each text that comes from data wraps or shows its full value on demand. A name or an email address can have no spaces, so give it `wrap-anywhere`, and give `min-w-0` to its flex item. A text that truncates is in a button or a link that shows the full value. The sweep of the verify skill finds the text that does not obey this rule.
 
 <!-- example:start -->
-The workshop list wraps only the title: [index.tsx:119](<../../frontend/src/routes/(examples)/workshops/index.tsx#L119>). The start, the capacity, and the status have `whitespace-nowrap`: [index.tsx:124](<../../frontend/src/routes/(examples)/workshops/index.tsx#L124>).
+The workshop list wraps only the title: [index.tsx:117](<../../frontend/src/routes/(examples)/workshops/index.tsx#L117>). The start, the capacity, and the status have `whitespace-nowrap`: [index.tsx:122](<../../frontend/src/routes/(examples)/workshops/index.tsx#L122>).
 <!-- example:end -->
 
 ## Dates and times

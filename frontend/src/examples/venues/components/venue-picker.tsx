@@ -35,14 +35,12 @@ function optionsWithPick(venues: VenueDto[], pick: VenueDto | undefined): VenueD
 }
 
 interface VenuePickerProps {
-  /** The ID of the picked venue, or an empty string. */
   value: string
   onChange: (venueId: string) => void
   onBlur?: () => void
   errorMessage?: string
 }
 
-/** Finds a venue by a search on the Server, one page at a time. */
 export function VenuePicker({ value, onChange, onBlur, errorMessage }: VenuePickerProps) {
   const queryClient = useQueryClient()
   const [text, setText] = useState('')
@@ -53,7 +51,6 @@ export function VenuePicker({ value, onChange, onBlur, errorMessage }: VenuePick
   const venues = results.data?.pages.flatMap((page) => page.venues) ?? []
   const options = optionsWithPick(venues, pick.data)
 
-  // The picked venue goes into the cache of its detail, so the pick keeps its name while a new search loads.
   const handleSelectionChange = (key: Key | null) => {
     const venue = options.find((option) => option.id === key)
     if (venue) queryClient.setQueryData(VenueKeys.detail(venue.id), venue)
@@ -73,7 +70,6 @@ export function VenuePicker({ value, onChange, onBlur, errorMessage }: VenuePick
       className="flex flex-col gap-2"
     >
       <Label>Venue</Label>
-      {/* The Server counts the search in UTF-16 units, as the maxLength attribute does. */}
       <ComboboxInput placeholder="Search venues" maxLength={searchMaxLength} className="w-full" />
       {errorMessage && (
         <Text slot="errorMessage" className="text-sm text-destructive">

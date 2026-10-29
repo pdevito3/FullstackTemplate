@@ -34,10 +34,6 @@ interface WorkshopEditFormProps {
   onLoadLatest: () => Promise<WorkshopDto | undefined>
 }
 
-/**
- * The edit form keeps the version that it loaded and sends it with the save. It does not take a newer version from a
- * refetch, because the save would then overwrite a change that the user did not see.
- */
 export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEditFormProps) {
   const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop) })
   const serverErrors = useServerErrors(form, WORKSHOP_FIELD_NAMES)
@@ -63,7 +59,6 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
     try {
       const latest = await onLoadLatest()
       if (latest) {
-        // The alert and its button go away. The user makes the edits again, so the focus goes to the first field.
         // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
         form.setFocus('title')
         form.reset(valuesOf(latest))

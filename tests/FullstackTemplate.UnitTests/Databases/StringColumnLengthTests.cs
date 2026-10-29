@@ -51,7 +51,6 @@ public class StringColumnLengthTests
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         // example:start
-        // A time zone is an IANA ID that the server knows, so no caller value can be longer than these
         ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),
         ["workshops.status"] = WorkshopStatus.ListNames(),
         // example:end

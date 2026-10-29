@@ -10,13 +10,8 @@ public sealed class VenueParametersDto : BasePaginationParameters
 
     public string? SortOrder { get; set; }
 
-    /// <summary>A text that the name contains, with no regard to case. Null means no search.</summary>
     public string? Search { get; set; }
 
-    /// <summary>
-    /// Makes the parameters from the values of a caller. A null value keeps the default. An empty filter or sort
-    /// order means none. A search that is empty after the trim means none.
-    /// </summary>
     public static VenueParametersDto From(
         int? pageNumber, int? pageSize, string? filters, string? sortOrder, string? search)
     {

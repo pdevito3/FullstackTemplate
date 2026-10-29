@@ -5,10 +5,6 @@ using Domain;
 using Domain.Users;
 using Exceptions;
 
-/// <summary>
-/// A command that a caller can send for a workshop. Each action names its permission and the statuses that it applies
-/// to, so <see cref="Workshop.AllowedActions"/> and the commands read one table.
-/// </summary>
 public partial class WorkshopAction : ValueObject, IFixedNames
 {
     private readonly WorkshopActionEnum _action;
@@ -26,14 +22,8 @@ public partial class WorkshopAction : ValueObject, IFixedNames
     public static WorkshopAction Cancel() => new(WorkshopActionEnum.Cancel);
     public static WorkshopAction Complete() => new(WorkshopActionEnum.Complete);
 
-    /// <summary>
-    /// Checks the permission of the action. It needs no workshop, so call it before the load, and a caller without it
-    /// gets a 403 for any ID. The workshop method of the action checks the status.
-    /// </summary>
-    /// <exception cref="ForbiddenAccessException">The caller lacks the permission.</exception>
     public void GuardCaller(Caller caller) => caller.Require(_action.Permission);
 
-    /// <summary>The actions that the caller can send for a workshop in <paramref name="status"/>, in the order of the table.</summary>
     internal static IReadOnlyList<WorkshopAction> AllowedFor(Caller caller, WorkshopStatus status)
         => WorkshopActionEnum.List
             .OrderBy(action => action.Value)

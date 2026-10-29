@@ -23,7 +23,6 @@ export function useSendWorkshopAction(id: string) {
       queryClient.setQueryData(WorkshopKeys.detail(id), workshop)
       return queryClient.invalidateQueries({ queryKey: WorkshopKeys.lists() })
     },
-    // A refused action can mean that another user changed the workshop, so the page reads it again.
     onError: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: WorkshopKeys.detail(id) }),

@@ -21,7 +21,6 @@ class ProblemDetailsBuilder {
     return new ProblemDetailsBuilder({ ...this.problem, detail })
   }
 
-  /** The 409 of a save that sent an old version, as the Server sends it. */
   staleVersion() {
     const detail = 'This record changed after you loaded it. Reload it, then make your change again.'
     return new ProblemDetailsBuilder({
@@ -34,7 +33,6 @@ class ProblemDetailsBuilder {
     })
   }
 
-  /** The 404 of a record that does not exist, as the Server sends it. */
   notFound(detail: string) {
     return new ProblemDetailsBuilder({
       ...this.problem,
@@ -45,7 +43,6 @@ class ProblemDetailsBuilder {
     })
   }
 
-  /** The 422 of a request that the Server refused, with the messages of each request field. */
   invalid(errors: Record<string, string[]>) {
     return new ProblemDetailsBuilder({
       ...this.problem,

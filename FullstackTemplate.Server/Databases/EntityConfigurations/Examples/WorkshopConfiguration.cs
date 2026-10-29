@@ -31,7 +31,6 @@ public sealed class WorkshopConfiguration : IEntityTypeConfiguration<Workshop>
             .HasMaxLength(EntityId.MaxLength)
             .UseCollation(EntityId.Collation);
 
-        // The venue is its own aggregate, so a save of a workshop never writes it
         builder.HasOne<Venue>()
             .WithMany()
             .HasForeignKey(e => e.VenueId)
@@ -49,7 +48,6 @@ public sealed class WorkshopConfiguration : IEntityTypeConfiguration<Workshop>
                 .IsRequired();
         });
 
-        // The default sort of the workshop list. TenantId comes first, so this index also serves each query on the tenant alone.
         builder.HasIndex(e => new { e.TenantId, e.StartsAt, e.Id });
     }
 }

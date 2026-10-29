@@ -1,4 +1,3 @@
-// Feature: workshops. Venues, workshops, the stale-version reload, and the actions. See features/examples/workshops.md.
 export default async ({ page, context, step, capture, settle, expect, login }) => {
   const stamp = Date.now().toString(36)
   const venueName = `Hall ${stamp}`
@@ -6,7 +5,6 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
   const answered = (method, pattern) =>
     page.waitForResponse((r) => r.request().method() === method && pattern.test(new URL(r.url()).pathname))
   const actions = (name) => page.getByRole('group', { name: `Actions for ${name}` })
-  // Pago Pago is UTC-11 with no daylight saving time, and it is not the zone of the browser
   const zone = 'Pacific/Pago_Pago'
   const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: zone })
     .format(Date.now() + 30 * 24 * 60 * 60 * 1000)

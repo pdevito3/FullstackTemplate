@@ -15,7 +15,6 @@ function NewVenuePage() {
   const add = useAddVenue()
   const navigate = useNavigate()
 
-  // The next step of a new venue is a workshop in it, so the create form opens with the venue picked.
   const handleSave = async (body: VenueForCreationDto) => {
     const venue = await add.mutateAsync(body)
     Notification.success('Venue added')

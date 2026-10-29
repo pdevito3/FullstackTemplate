@@ -18,7 +18,6 @@ public static class GetWorkshop
         {
             Activity.Current?.SetTag("app.workshop_id", request.Id);
 
-            // Each member of the tenant reads the workshops. The caller decides only the allowed actions.
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
 
             var workshop = await dbContext.Workshops

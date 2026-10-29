@@ -34,7 +34,6 @@ public static class CancelWorkshop
             workshop.Cancel();
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // After the save, so a run again after a lost race logs and counts the change one time
             if (!wasCancelled)
             {
                 _logger.Here().Information("Cancelled workshop {WorkshopId}", workshop.Id);

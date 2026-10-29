@@ -95,7 +95,7 @@ Set only the values that the scenario is about. If a scenario needs a value that
 `aProblem().staleVersion()` and `aProblem().invalid(errors)` make the 409 of a stale save and the 422 of a validation problem, as the Server sends them.
 <!-- example:start -->
 
-The workshop builder gives each status the actions that a caller with `manage_workshops` gets, and `seenByReader()` takes them away: [workshop-builder.ts:9](<../../frontend/tests/support/examples/workshop-builder.ts#L9>). The spec of the workshops walks from the list to the detail and the edit form, and reloads after a stale save: [workshops.spec.ts:15](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L15>). It reads and shows each start in the zone of the venue, at a fixed clock on which the day at the venue is not the UTC day: [workshops.spec.ts:52](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L52>).
+The workshop builder gives each status the actions that a caller with `manage_workshops` gets, and `seenByReader()` takes them away: [workshop-builder.ts:8](<../../frontend/tests/support/examples/workshop-builder.ts#L8>). The spec of the workshops walks from the list to the detail and the edit form, and reloads after a stale save: [workshops.spec.ts:15](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L15>). It reads and shows each start in the zone of the venue, at a fixed clock on which the day at the venue is not the UTC day: [workshops.spec.ts:51](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L51>).
 <!-- example:end -->
 
 ### Locators, tasks, and specs

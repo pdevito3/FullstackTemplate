@@ -6,7 +6,6 @@ interface QueryErrorProps {
   onRetry: () => void
 }
 
-/** The state of a page whose query failed. The toast already showed the error, so the page does not stay empty. */
 export function QueryError({ title, error, onRetry }: QueryErrorProps) {
   return (
     <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">

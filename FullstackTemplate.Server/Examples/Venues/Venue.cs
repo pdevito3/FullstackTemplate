@@ -7,7 +7,6 @@ using DomainEvents;
 using Exceptions;
 using Models;
 
-/// <summary>A place that holds workshops. Its time zone decides the local day and time of each workshop there.</summary>
 public class Venue : BaseEntity, ITenantable
 {
     public const string IdPrefix = "ven";

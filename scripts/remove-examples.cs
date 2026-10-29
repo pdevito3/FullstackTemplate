@@ -122,7 +122,6 @@ internal sealed partial class AppRepo(string root)
             WriteText(Path.Combine(root, file), text);
     }
 
-    // WriteModelSnapshot deletes the migration that it adds, so a model change with no migration would be lost with it
     public void FailIfModelHasNoMigration()
     {
         var server = $"{Name}.Server";
@@ -142,8 +141,6 @@ internal sealed partial class AppRepo(string root)
         }
     }
 
-    // The snapshot is generated, so EF writes it again for the model with no example entities. The script deletes the
-    // migration that EF adds with it, so a new database never has the example tables. See docs/examples.md.
     public void WriteModelSnapshot()
     {
         var server = $"{Name}.Server";

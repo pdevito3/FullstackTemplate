@@ -9,7 +9,6 @@ export function useAddVenue() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    // The form shows each refusal next to its fields, so a toast would say it twice.
     mutationFn: (body: VenueForCreationDto) => addVenue({ body, options: { suppressErrorToast: true } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: VenueKeys.lists() }),
   })

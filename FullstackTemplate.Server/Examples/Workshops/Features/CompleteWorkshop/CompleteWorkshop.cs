@@ -34,7 +34,6 @@ public static class CompleteWorkshop
             workshop.Complete();
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // After the save, so a run again after a lost race logs and counts the change one time
             if (!wasCompleted)
             {
                 _logger.Here().Information("Completed workshop {WorkshopId}", workshop.Id);

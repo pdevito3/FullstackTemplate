@@ -17,6 +17,7 @@ import {
   type TimeZone,
 } from '@/lib/zoned-time'
 import type { DateValue, Filter, FilterControlProps } from '../types'
+import { wallClockZone } from '../utils/date-zone'
 import { Operators } from '../utils/operators'
 import { FilterControlFooter } from './filter-control-footer'
 
@@ -45,7 +46,8 @@ export function DateFilter({
   const { propertyKey, propertyLabel, dateType = 'date', timeZone } = config
   const initialDateValue = initialFilter?.value as DateValue | undefined
   const placeZone = initialDateValue?.timeZone ?? timeZone
-  const zone = placeZone ?? browserTimeZone()
+  const zone = wallClockZone(dateType, placeZone)
+  const todayZone = placeZone ?? browserTimeZone()
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
   const isMobile = useIsMobile()
@@ -108,7 +110,7 @@ export function DateFilter({
             endDate: endDateValue ?? undefined,
             exclude: exclude || undefined,
             dateType: dateType,
-            timeZone: zone,
+            timeZone: placeZone,
           }
         : {
             mode: (exclude ? 'excluding' : mode) as
@@ -118,7 +120,7 @@ export function DateFilter({
               | 'excluding',
             startDate: startDateValue,
             dateType: dateType,
-            timeZone: zone,
+            timeZone: placeZone,
           }
 
     onSubmit({
@@ -185,7 +187,7 @@ export function DateFilter({
             fixedHeight={!isMobile}
             showDateInput
             autoFocus={autoFocus}
-            timeZone={zone}
+            timeZone={todayZone}
           />
         ) : (
           <JollyCalendar
@@ -197,7 +199,7 @@ export function DateFilter({
             fixedHeight={!isMobile}
             showDateInput
             autoFocus={autoFocus}
-            timeZone={zone}
+            timeZone={todayZone}
           />
         )}
 
@@ -241,7 +243,7 @@ export function DateFilter({
             </div>
             {isTimeInGap && (
               <p role="alert" className="text-destructive text-sm">
-                {`This time does not exist in ${timeZoneLabel(zone)} on that day, because the clocks go forward. Choose another time.`}
+                {`This time does not exist${placeZone ? ` in ${timeZoneLabel(placeZone)}` : ''} on that day, because the clocks go forward. Choose another time.`}
               </p>
             )}
           </div>

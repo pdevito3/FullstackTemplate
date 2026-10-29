@@ -100,7 +100,7 @@ internal sealed partial class App(string root)
 
     public void Merge(string templateRef, string? baseRef, string displayName)
     {
-        using var runLock = RunLock();
+        using var mergeLock = LockTheMergeRefsAndWorktrees();
         if (Git(root, "status", "--porcelain", "--untracked-files=all").Length > 0)
             throw new MergeException("The git tree has changes. Commit or stash the changes, then run the script again.");
         if (OpenOperations.Any(name => Path.Exists(GitPath(name))))
@@ -281,9 +281,8 @@ internal sealed partial class App(string root)
 
     private string Describe(string commit) => Git(root, "log", "-1", "--format=%h %s", commit).Trim();
 
-    // Two runs in one repo share the temporary worktrees and the refs/template-merge refs, so a run holds this lock to
-    // its end. The system releases the lock of a killed run.
-    private FileStream RunLock()
+    // The system releases the lock of a killed run.
+    private FileStream LockTheMergeRefsAndWorktrees()
     {
         var path = Path.GetFullPath(Path.Combine(root, Git(root, "rev-parse", "--git-common-dir").Trim(), "template-merge.lock"));
         try

@@ -1,0 +1,172 @@
+namespace FullstackTemplate.FunctionalTests.Examples.Workshops;
+
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Examples.Venues;
+using FullstackTemplate.Server.Examples.Workshops;
+using FullstackTemplate.Server.Examples.Workshops.Dtos;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Examples.Fakes;
+using Microsoft.AspNetCore.Mvc;
+using Shouldly;
+using TestUtilities;
+
+// Each test sends one request that breaks two steps of "The order of the checks" in docs/backend/features-and-cqrs.md,
+// and asserts the response of the first step.
+public class WorkshopCheckOrderTests : TestBase
+{
+    private const string RowRefusal = "Only the organizer of this workshop or a tenant admin can change it.";
+
+    [Test]
+    public async Task an_unknown_workshop_is_not_found_for_a_member_who_cannot_change_the_workshops_of_others()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        FactoryClient.SignInAsAppUser(members.Other.Identifier);
+
+        // Act
+        var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Workshops.Update(EntityId.New(Workshop.IdPrefix)),
+            new { title = "Renamed", startsAt = DateTimeOffset.UtcNow.AddDays(7), capacity = 3, version = 1 });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    [Arguments("Update")]
+    [Arguments("Schedule")]
+    [Arguments("Cancel")]
+    [Arguments("Complete")]
+    public async Task a_member_with_manage_workshops_who_is_not_the_organizer_is_forbidden(string action)
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        FactoryClient.SignInAsAppUser(members.Other.Identifier);
+
+        // Act
+        var result = await SendAsync(action, workshop);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail.ShouldBe(RowRefusal);
+    }
+
+    [Test]
+    public async Task the_organizer_changes_their_own_workshop()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+
+        // Act
+        var result = await SendAsync("Update", workshop);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await result.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull().Title.ShouldBe("Renamed");
+    }
+
+    [Test]
+    public async Task a_tenant_admin_changes_the_workshop_of_another_organizer()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        FactoryClient.SignInAsAppUser(members.Admin.Identifier);
+
+        // Act
+        var result = await SendAsync("Update", workshop);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task the_actions_of_a_workshop_follow_the_organizer_on_the_detail_and_in_the_list()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+
+        // Act
+        var byOrganizer = await ActionsAsync(members.Organizer, workshop.Id);
+        var byOther = await ActionsAsync(members.Other, workshop.Id);
+        var byAdmin = await ActionsAsync(members.Admin, workshop.Id);
+
+        // Assert
+        byOrganizer.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
+        byOther.ShouldBe(["detail: ", "row: "]);
+        byAdmin.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
+    }
+
+    [Test]
+    public async Task an_mcp_cancel_by_a_member_who_is_not_the_organizer_is_a_permission_error()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        FactoryClient.SignInAsAppUser(members.Other.Identifier);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var result = await client.CallToolAsync("cancel_workshop",
+            new Dictionary<string, object?> { ["id"] = workshop.Id });
+
+        // Assert
+        result.ShouldBeToolError("permission_denied");
+    }
+
+    private sealed record Members(User Organizer, User Other, User Admin, Venue Venue);
+
+    // The organizer and the other member hold only manage_workshops. The admin also holds manage_tenant.
+    private static async Task<Members> AddMembersAsync()
+    {
+        TestGraph.Start(out _)
+            .AddTenant(out var tenant)
+            .AddUsers(out var users, u => u.Role = "User", u => u.Role = "User", u => u.Role = "Admin")
+            .Under(tenant).AddVenue(out var venue);
+        users[0].AddPermission(Permission.ManageWorkshops());
+        users[1].AddPermission(Permission.ManageWorkshops());
+        await InsertAsync(tenant);
+        await InsertAsync(users);
+        await InsertAsync(venue);
+        return new Members(users[0], users[1], users[2], venue);
+    }
+
+    private async Task<WorkshopDto> AddWorkshopAsAsync(User organizer, Venue venue)
+    {
+        FactoryClient.SignInAsAppUser(organizer.Identifier);
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Create,
+            new FakeWorkshopForCreationDto(venue.Id).Generate());
+        result.StatusCode.ShouldBe(HttpStatusCode.Created);
+        return (await result.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
+    }
+
+    private Task<HttpResponseMessage> SendAsync(string action, WorkshopDto workshop) => action switch
+    {
+        "Update" => FactoryClient.PutJsonRequestAsync(ApiRoutes.Workshops.Update(workshop.Id),
+            new { title = "Renamed", startsAt = workshop.StartsAt, capacity = workshop.Capacity, version = workshop.Version }),
+        "Schedule" => FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = workshop.Version }),
+        "Cancel" => FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Cancel(workshop.Id), new { }),
+        "Complete" => FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Complete(workshop.Id), new { }),
+        _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
+    };
+
+    private async Task<List<string>> ActionsAsync(User reader, string workshopId)
+    {
+        FactoryClient.SignInAsAppUser(reader.Identifier);
+        var detail = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.Get(workshopId));
+        var list = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.GetList);
+        var row = (await list.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray()
+            .Single(r => r.GetProperty("id").GetString() == workshopId);
+        var onDetail = (await detail.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull().AllowedActions;
+        var onRow = row.GetProperty("allowedActions").EnumerateArray().Select(a => a.GetString());
+        return [$"detail: {string.Join(", ", onDetail)}", $"row: {string.Join(", ", onRow)}"];
+    }
+}

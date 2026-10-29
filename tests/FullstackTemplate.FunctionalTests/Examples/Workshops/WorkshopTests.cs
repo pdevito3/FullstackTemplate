@@ -5,8 +5,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.TimeZones;
+using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Examples.Venues;
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.Server.Examples.Workshops.Dtos;
+using FullstackTemplate.Server.Examples.Workshops.Features;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
@@ -37,6 +40,37 @@ public class WorkshopTests : TestBase
         result.Headers.Location.ShouldNotBeNull().ToString().ShouldEndWith($"/workshops/{workshop.Id}");
         workshop.Status.ShouldBe("Draft");
         workshop.AllowedActions.ShouldBe(["Update", "Schedule", "Cancel"]);
+    }
+
+    [Test]
+    public async Task the_organizer_of_an_added_workshop_is_the_member_who_added_it()
+    {
+        // Arrange
+        var (_, user, venue) = await AddVenueAndSignInAsync("Admin");
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Create,
+            new FakeWorkshopForCreationDto(venue.Id).Generate());
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await result.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("organizerId").GetString().ShouldBe(user.Id);
+    }
+
+    [Test]
+    public async Task a_workshop_that_system_work_added_has_no_organizer()
+    {
+        // Arrange
+        var (_, _, venue) = await AddVenueAndSignInAsync("Admin");
+        var added = await SendAsync(new AddWorkshop.Command(new FakeWorkshopForCreationDto(venue.Id).Generate()));
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.Get(added.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await result.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("organizerId").ValueKind
+            .ShouldBe(JsonValueKind.Null);
     }
 
     [Test]
@@ -201,6 +235,17 @@ public class WorkshopTests : TestBase
             .BuildAsync();
         FactoryClient.SignInAsAppUser(user.Identifier);
         return tenant;
+    }
+
+    private async Task<(Tenant Tenant, User User, Venue Venue)> AddVenueAndSignInAsync(string role)
+    {
+        await StartGraph()
+            .AddTenant(out var tenant)
+            .AddUser(out var user, u => u.Role = role)
+            .Under(tenant).AddVenue(out var venue)
+            .BuildAsync();
+        FactoryClient.SignInAsAppUser(user.Identifier);
+        return (tenant, user, venue);
     }
 
     private async Task<(Tenant Tenant, Workshop Workshop)> AddWorkshopAndSignInAsync(

@@ -24,17 +24,17 @@ Each rule has an ID in the first cell of its row. Use one prefix for each spec, 
 
 Mark a rule `(later)` after its ID until a slice builds it. A rule without `(later)` must have a test that names its ID:
 
-- A .NET test: `[Property("Rule", "R-1")]` on the test method.
-- A Playwright test: the tag `@R-1`, as in `test('...', { tag: '@R-1' }, ...)`.
+- A .NET test: `[Property("Rule", "R-1")]` on the `[Test]` method.
+- A Playwright test: the tag `@R-1`, as in `test('...', { tag: '@R-1' }, ...)`, or `@R-1` in the title or the annotation of the test.
 - A Vitest test: `@R-1` in the name of the test.
 
-`SpecRuleTests` fails when a rule has no test, when a test names an ID that no spec defines, when a `(later)` rule has a test, when two rows have the same ID, or when a row of a rule table gives no ID. It reads each table whose first column is `ID` as a rule table, so give a table of other items, such as open decisions, another first column. It reads each spec in `docs/specs/` and its subfolders, but not a table in a code block. To list the faults, run this command from the repository root:
+`SpecRuleTests` fails when a rule has no test, when a test names an ID that no spec defines, when a `(later)` rule has a test, when two rows have the same ID, or when a row of a rule table gives no ID. It reads each table whose first column is `ID` as a rule table, so give a table of other items, such as open decisions, another first column. It also fails when it cannot read the Rules section: when the section has no rule table, when a table in the section has another first column (such as `Rule ID`), or when a list item in the section starts with a rule ID. Write "None" in a Rules section that has no rules. It reads each spec in `docs/specs/` and its subfolders, but not a table in a code block. To list the faults, run this command from the repository root:
 
 ```bash
 dotnet test --project tests/FullstackTemplate.UnitTests -- --treenode-filter "/*/*/SpecRuleTests/*"
 ```
 
-The check reads the text of the test files, so a rule ID in a comment also counts as a test. Do not write an ID in a comment.
+Only a test that runs counts. In .NET, that is a `[Test]` method with no `[Skip]` on it or on its class. In the frontend, that is a `test(...)` or `it(...)` call, and the check reads only its title, its `tag`, and its `annotation`. A rule ID in a comment, in another string, on a helper method, on `test.skip` or `test.fixme`, or in the tag of `test.describe` does not count.
 
 To run the .NET tests of one rule, give the filter to each test project that has them:
 
@@ -56,7 +56,7 @@ To run the frontend tests of one rule, run `pnpm test:e2e --grep "@R-1\b"`, `pnp
 
 | Permission | Words in a message | What it allows | Default roles |
 |---|---|---|---|
-| `manage_work_orders` | manage work orders | Create, edit, and close a work order | Tenant admin |
+| `manage_work_orders` | manage work orders | Create, edit, and close a work order | Admin |
 
 The words are the text of a denial (see [messages.md](../messages.md)).
 

@@ -1,13 +1,17 @@
 namespace FullstackTemplate.UnitTests.Docs;
 
 using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 /// <summary>
 /// Reads the rule IDs of the specs in <c>docs/specs/</c> and the rule IDs that the tests name, and lists each fault
 /// between them (see <c>docs/specs/TEMPLATE.md</c>, section "Rules"). A spec defines a rule in a row of a table whose
 /// first column is <c>ID</c>. The first cell of the row is the ID, such as <c>| R-12 |</c>, or <c>| R-12 (later) |</c> for
-/// a rule that no slice built yet. A .NET test names a rule with <c>[Property("Rule", "R-12")]</c>, and a frontend test
-/// with the tag <c>@R-12</c>.
+/// a rule that no slice built yet. A .NET <c>[Test]</c> method with no <c>[Skip]</c> names a rule with
+/// <c>[Property("Rule", "R-12")]</c>. A frontend <c>test</c> or <c>it</c> names it with <c>@R-12</c> in its title, its
+/// tag, or its annotation.
 /// </summary>
 public static partial class SpecRules
 {
@@ -27,6 +31,7 @@ public static partial class SpecRules
         string? fence = null;
         var inTable = false;
         var inRuleTable = false;
+        var section = (RulesSection?)null;
         var lines = markdown.Split('\n');
         for (var number = 1; number <= lines.Length; number++)
         {
@@ -36,6 +41,29 @@ public static partial class SpecRules
                 fence = fence is null ? marker.Value : null;
                 inTable = false;
                 continue;
+            }
+
+            if (fence is null && Heading().Match(line) is { Success: true } heading)
+            {
+                var level = heading.Groups["level"].Length;
+                if (section is not null && level <= section.Level)
+                {
+                    faults.AddRange(section.Faults(spec));
+                    section = null;
+                }
+
+                if (RulesHeading().IsMatch(heading.Groups["text"].Value))
+                    section = new RulesSection(level);
+                inTable = false;
+                continue;
+            }
+
+            if (fence is null && section is not null && line.Length > 0)
+            {
+                section.HasText = true;
+                section.IsNone = line is "None" or "None.";
+                if (RuleInList().Match(line) is { Success: true } listed)
+                    faults.Add($"Line {number} of {spec} has the rule {listed.Groups["id"].Value} in a list. Write each rule as a row of the table whose first column is ID.");
             }
 
             // A row of a GitHub table holds a '|', and the '|' at its start is optional
@@ -50,6 +78,10 @@ public static partial class SpecRules
             {
                 inTable = true;
                 inRuleTable = firstCell.Trim('*', '`').Equals("ID", StringComparison.OrdinalIgnoreCase);
+                if (section is not null && inRuleTable)
+                    section.HasRuleTable = true;
+                else if (section is not null)
+                    faults.Add($"Line {number} of {spec} starts a table in the Rules section whose first column is '{firstCell}'. Name the first column ID.");
                 continue;
             }
 
@@ -62,13 +94,15 @@ public static partial class SpecRules
                 faults.Add($"Line {number} of {spec} has '{firstCell}' in the ID column. Write the ID as R-1, or as R-1 (later).");
         }
 
+        if (section is not null)
+            faults.AddRange(section.Faults(spec));
+
         return new Spec(rules, faults);
     }
 
     public static IEnumerable<Reference> NamedIn(string file, string source)
-        => (file.EndsWith(".cs", StringComparison.Ordinal) ? DotnetReference() : FrontendReference())
-            .Matches(source)
-            .Select(m => new Reference(m.Groups["id"].Value, file));
+        => (file.EndsWith(".cs", StringComparison.Ordinal) ? DotnetRuleIds(source) : FrontendRuleIds(source))
+            .Select(id => new Reference(id, file));
 
     public static IEnumerable<string> FaultsOf(IReadOnlyCollection<Rule> rules, IReadOnlyCollection<Reference> references)
     {
@@ -89,6 +123,143 @@ public static partial class SpecRules
             yield return $"{reference.File} names the rule {reference.Id}, but no spec in docs/specs defines it. Fix the ID, or add the rule to the spec.";
     }
 
+    // The section under a heading named Rules, down to the next heading of the same or a higher level
+    private sealed class RulesSection(int level)
+    {
+        public int Level { get; } = level;
+
+        public bool HasRuleTable { get; set; }
+
+        public bool HasText { get; set; }
+
+        public bool IsNone { get; set; }
+
+        public IEnumerable<string> Faults(string spec)
+        {
+            if (!HasRuleTable && !(HasText && IsNone))
+                yield return $"The Rules section of {spec} has no table whose first column is ID, so the check reads no rules from it. Write each rule as a row of that table, or write None.";
+        }
+    }
+
+    private static IEnumerable<string> DotnetRuleIds(string source)
+    {
+        var root = CSharpSyntaxTree.ParseText(source).GetRoot();
+        foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
+        {
+            var attributes = method.AttributeLists.SelectMany(list => list.Attributes).ToList();
+            var skipped = attributes.Any(a => IsAttribute(a, "Skip"))
+                || method.Ancestors().OfType<TypeDeclarationSyntax>().SelectMany(t => t.AttributeLists).SelectMany(list => list.Attributes).Any(a => IsAttribute(a, "Skip"));
+            if (!attributes.Any(a => IsAttribute(a, "Test")) || skipped)
+                continue;
+
+            foreach (var property in attributes.Where(a => IsAttribute(a, "Property")))
+            {
+                if (property.ArgumentList?.Arguments is [{ Expression: LiteralExpressionSyntax { Token.ValueText: "Rule" } }, { Expression: LiteralExpressionSyntax id }]
+                    && id.IsKind(SyntaxKind.StringLiteralExpression))
+                    yield return id.Token.ValueText;
+            }
+        }
+    }
+
+    private static bool IsAttribute(AttributeSyntax attribute, string name)
+        => attribute.Name.ToString().Replace("global::", "", StringComparison.Ordinal) is var written
+            && (written == name || written == name + "Attribute" || written == "TUnit.Core." + name || written == "TUnit.Core." + name + "Attribute");
+
+    // The title and the options of each test(...) and it(...) call. test.skip and test.fixme do not run, so they do not count.
+    private static IEnumerable<string> FrontendRuleIds(string source)
+    {
+        var code = WithoutComments(source);
+        foreach (Match call in FrontendTestCall().Matches(code))
+        {
+            var start = SkipSpace(code, call.Index + call.Length);
+            if (start >= code.Length || code[start] is not ('\'' or '"' or '`'))
+                continue;
+
+            var end = EndOfString(code, start);
+            var named = code[start..end];
+            var next = SkipSpace(code, end);
+            if (next < code.Length && code[next] == ',' && SkipSpace(code, next + 1) is var options && options < code.Length && code[options] == '{')
+                named += code[options..EndOfObject(code, options)];
+
+            foreach (Match id in FrontendReference().Matches(named))
+                yield return id.Groups["id"].Value;
+        }
+    }
+
+    // Each comment becomes spaces. A // or a /* in a string stays.
+    private static string WithoutComments(string source)
+    {
+        var code = source.ToCharArray();
+        for (var i = 0; i < code.Length; i++)
+        {
+            if (code[i] is '\'' or '"' or '`')
+            {
+                i = EndOfString(source, i) - 1;
+            }
+            else if (code[i] == '/' && i + 1 < code.Length && code[i + 1] is '/' or '*')
+            {
+                var end = code[i + 1] == '/' ? source.IndexOf('\n', i) : source.IndexOf("*/", i + 2, StringComparison.Ordinal) + 2;
+                end = end <= 1 ? code.Length : end;
+                Array.Fill(code, ' ', i, end - i);
+                i = end - 1;
+            }
+        }
+
+        return new string(code);
+    }
+
+    // The index after the quote that closes the string that starts at start
+    private static int EndOfString(string code, int start)
+    {
+        for (var i = start + 1; i < code.Length; i++)
+        {
+            if (code[i] == '\\')
+                i++;
+            else if (code[i] == code[start])
+                return i + 1;
+        }
+
+        return code.Length;
+    }
+
+    private static int EndOfObject(string code, int start)
+    {
+        var depth = 0;
+        for (var i = start; i < code.Length; i++)
+        {
+            if (code[i] is '\'' or '"' or '`')
+                i = EndOfString(code, i) - 1;
+            else if (code[i] == '{')
+                depth++;
+            else if (code[i] == '}' && --depth == 0)
+                return i + 1;
+        }
+
+        return code.Length;
+    }
+
+    private static int SkipSpace(string code, int index)
+    {
+        while (index < code.Length && char.IsWhiteSpace(code[index]))
+            index++;
+
+        return index;
+    }
+
+    [GeneratedRegex(@"^(?<level>#{1,6})\s+(?<text>.*?)\s*#*$")]
+    private static partial Regex Heading();
+
+    // "Rules" or "3. Rules"
+    [GeneratedRegex(@"^(?:[0-9]+(?:\.[0-9]+)*\.?\s+)?Rules$", RegexOptions.IgnoreCase)]
+    private static partial Regex RulesHeading();
+
+    // "- R-7: ...", "1. **R-7** ..."
+    [GeneratedRegex(@"^(?:[-*+]|[0-9]+[.)])\s+[*_`]*(?<id>[A-Z][A-Z0-9]*-[0-9]+)\b")]
+    private static partial Regex RuleInList();
+
+    [GeneratedRegex(@"(?<![\w.$])(?:test|it)(?:\.only)?\s*\(")]
+    private static partial Regex FrontendTestCall();
+
     [GeneratedRegex(@"^(?<id>[A-Z][A-Z0-9]*-[0-9]+)(?<later>\s+\(later\))?$")]
     private static partial Regex RuleId();
 
@@ -98,9 +269,6 @@ public static partial class SpecRules
     // A code block opens with three or more backticks or tildes, and closes with at least as many of the same
     [GeneratedRegex(@"^(`{3,}|~{3,})")]
     private static partial Regex Fence();
-
-    [GeneratedRegex(@"(?<![\w.])(?:TUnit\.Core\.)?Property(?:Attribute)?\(\s*""Rule""\s*,\s*""(?<id>[^""]+)""\s*\)")]
-    private static partial Regex DotnetReference();
 
     [GeneratedRegex(@"(?<![\w.])@(?<id>[A-Z][A-Z0-9]*-[0-9]+)\b")]
     private static partial Regex FrontendReference();

@@ -52,7 +52,8 @@ public class WorkshopTenantDeleteRaceTests : TestBase
     public async Task tenant_delete_during_a_workshop_add_waits_and_then_deletes_the_new_workshop()
     {
         // Arrange
-        var pause = PauseAtQuery.After("workshops.add.load_venue");
+        // The hold is at the insert. A save after the work of the lock holds no lock there, so the delete does not wait.
+        var pause = PauseAtQuery.Before("INSERT INTO workshops");
         await using var services = pause.BuildServices();
         await new TestingServiceScope().StartGraph(out _)
             .AddTenant(out var tenant)

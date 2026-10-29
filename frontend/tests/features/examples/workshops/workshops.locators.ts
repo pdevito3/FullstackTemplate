@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 export const workshops = (page: Page) => {
   const editForm = page.getByRole('form', { name: 'Edit workshop' })
   const newForm = page.getByRole('form', { name: 'New workshop' })
+  const venueForm = page.getByRole('form', { name: 'New venue' })
   const newStart = newForm.getByRole('group', { name: 'Starts at' })
   const editStart = editForm.getByRole('group', { name: 'Starts at' })
   const staleAlert = editForm.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
@@ -25,6 +26,7 @@ export const workshops = (page: Page) => {
     actionButton: (title: string, name: string) =>
       page.getByRole('group', { name: `Actions for ${title}` }).getByRole('button', { name, exact: true }),
     editLink: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }).getByRole('link', { name: 'Edit' }),
+    newHeading: page.getByRole('heading', { name: 'New workshop', exact: true }),
     newForm,
     newTitle: newForm.getByRole('textbox', { name: 'Title' }),
     newStart,
@@ -37,6 +39,9 @@ export const workshops = (page: Page) => {
     newFormMessage: (text: string) => newForm.getByText(text, { exact: true }),
     newCapacity: newForm.getByRole('spinbutton', { name: 'Capacity' }),
     add: newForm.getByRole('button', { name: 'Add workshop' }),
+    venueForm,
+    venueName: venueForm.getByRole('textbox', { name: 'Name' }),
+    addVenue: venueForm.getByRole('button', { name: 'Add venue' }),
     editForm,
     title: editForm.getByRole('textbox', { name: 'Title' }),
     editStart,

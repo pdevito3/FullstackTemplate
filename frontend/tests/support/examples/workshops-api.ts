@@ -69,6 +69,10 @@ export const workshopsApi = {
     return { method: 'post', path: workshopPaths.action(body.id, action), status: 200, body }
   },
 
+  venueCreateSaves(venue: Buildable<VenueDto>): MockRoute {
+    return { method: 'post', path: workshopPaths.venues, status: 201, body: venue.build() }
+  },
+
   venueListReturns(venues: Buildable<VenueDto>[]): MockRoute {
     return {
       method: 'get',

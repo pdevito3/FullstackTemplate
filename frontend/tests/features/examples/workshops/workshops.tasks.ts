@@ -80,6 +80,23 @@ export function workshopsPage(page: Page) {
       await at.newCapacity.fill(capacity)
     },
 
+    async openNewVenueForm() {
+      await page.goto('/venues/new')
+      await expect(at.venueForm).toBeVisible()
+    },
+
+    async addVenueAndOpenNewForm(name: string, venueId: string) {
+      await at.venueName.fill(name)
+      const settled = Promise.all([
+        answered('POST', workshopPaths.venues),
+        answered('GET', workshopPaths.venue(venueId)),
+        answered('GET', workshopPaths.venues),
+      ])
+      await at.addVenue.click()
+      await settled
+      await expect(at.newForm).toBeVisible()
+    },
+
     async pickVenue(name: string) {
       await at.newVenue.fill(name)
       await at.venueOption(name).click()

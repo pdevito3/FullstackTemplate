@@ -202,6 +202,55 @@ test.describe('the workshops', () => {
   })
 })
 
+test.describe('the focus after an action that removes the focused button', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  const venue = aVenue().named('Main Hall')
+
+  test('Add venue opens the new workshop form with the focus on its heading', async ({ page, api }) => {
+    api.mock(workshopsApi.venueCreateSaves(venue), workshopsApi.venueIs(venue), workshopsApi.venueListReturns([venue]))
+    const workshops = workshopsPage(page)
+    await workshops.openNewVenueForm()
+
+    await workshops.addVenueAndOpenNewForm('Main Hall', venue.build().id)
+
+    await expect(workshops.at.newVenue).toHaveValue('Main Hall')
+    await expect(workshops.at.newHeading).toBeFocused()
+  })
+
+  test('Add workshop opens the detail with the focus on its heading', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    api.mock(
+      workshopsApi.venueListReturns([venue]),
+      workshopsApi.venueIs(venue),
+      workshopsApi.createSaves(workshop),
+      workshopsApi.oneIs(workshop),
+    )
+    const workshops = workshopsPage(page)
+    await workshops.openNewForm(venue.build().id)
+    await workshops.fillNew({ title: 'Intro to Kubb', start: '081620260930A', capacity: '12' })
+
+    await workshops.addAndOpenDetail(workshop.build().id, venue.build().id)
+
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
+  })
+
+  test('Save opens the detail with the focus on its heading', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const saved = workshop.savedAgain({ title: 'Kubb in depth' })
+    const { id, venueId } = workshop.build()
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openEditForm(id)
+    await workshops.renameTo('Kubb in depth')
+    api.mock(workshopsApi.updateSaves(saved), workshopsApi.oneIs(saved))
+
+    await workshops.saveAndOpenDetail(id, venueId)
+
+    await expect(workshops.at.detailHeading('Kubb in depth')).toBeFocused()
+  })
+})
+
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'
 
 test.describe('a workshop with a long title at a venue with a long name, on a 320 px phone', () => {

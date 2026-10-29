@@ -23,12 +23,13 @@ A 400 for a request that does not bind names the JSON field, for example "The fi
 - The text of a `CallToolResult` with `IsError = true`, when the initializer of the result sets the text.
 - The `detail` and `title` of `TypedResults.Problem` and `TypedResults.ValidationProblem`, the string of `TypedResults.BadRequest`, `Conflict`, `NotFound`, `UnprocessableEntity`, and `InternalServerError`, and the same methods of `Results`. Also the `Detail` and `Title` of a `ProblemDetails`.
 - A parameter named `message` or `*Message` of a method of the Server, for example `ForRequestField`.
-- A FluentValidation `WithMessage`, with a string or with a function.
+- A FluentValidation `WithMessage`, with a string or with a lambda, and the `errorMessage` of a `ValidationFailure` or of `AddFailure`.
+- The `detail` of a gRPC `Status`.
 - A string field or property whose name ends in `Message`, for example `Tenant.NameInUseMessage`.
 
-It follows the string back through the methods, properties (also an auto-property with an initializer), fields, locals, and parameters of the Server. So it also checks a message that a helper builds, such as the denials of `Caller`. A value that the message shows (as the whole message, in an interpolation, in a concatenation, or through a string method such as `string.Format`) is checked where it comes from too. A helper that the message calls, such as a quote helper, is checked with the arguments of that call only. A number, such as `(int)mode`, is not a code. A word in braces, such as `{PropertyName}`, is a placeholder that FluentValidation replaces with words, so it is not a code.
+It follows the string back through the methods, properties (also an auto-property with an initializer), fields, locals, and parameters of the Server. So it also checks a message that a helper builds, such as the denials of `Caller`. A value that the message shows (as the whole message, in an interpolation, in a concatenation, or through a string method such as `string.Format`) is checked where it comes from too. A helper that the message calls, such as a quote helper, is checked with the arguments of that call only. A number, such as `(int)mode`, is not a code. A word in braces, such as `{PropertyName}`, is a placeholder that FluentValidation replaces, so it is not a code. Do not use `{PropertyValue}` for an enum or a SmartEnum: it shows the code.
 
-A message after a parse that fails can show the value that the parse did not accept, as `Invalid permission: {value}` after `PermissionEnum.TryFromName(value, ...)` does. A parse is a method of a SmartEnum, of an `IFixedNames` value object, or of `Enum`, such as `Enum.TryParse`. The value is the text that the user sent, so the analyzer does not follow it to the callers. A caller that gives a name that the parse accepts, such as `Permission.ManageUsers()`, never gets to the message. The text of the message and the other values that it shows are checked.
+A message after a parse that fails can show the value that the parse did not accept, as `Invalid permission: {value}` after `PermissionEnum.TryFromName(value, ...)` does. A parse is a `Try*` or `IsDefined` method of a SmartEnum, of an `IFixedNames` value object, or of `Enum`, such as `Enum.TryParse`. The parse must be the whole condition, and the throw must be on the branch where it fails: `Try(value) ? x : throw ...` or `if (!Try(value)) throw ...`. The value is the text that the user sent, so the analyzer does not follow it to the callers. A caller that gives a name that the parse accepts, such as `Permission.ManageUsers()`, never gets to the message. The text of the message and the other values that it shows are checked.
 
 Then it fails the build:
 
@@ -46,7 +47,9 @@ These paths are not checked:
 - A text that a lambda or a delegate builds, other than a `WithMessage` function. For example, a list of names from `Select(x => x.Name)`.
 - A value that comes from a positional record property, such as `DomainError.Detail`. The analyzer does not follow it to the place that makes the record.
 - The text of a tool result that is set outside the initializer of the `CallToolResult`, or a result whose `IsError` is not the constant `true`.
-- The message of an exception of a package other than `McpException`. Only an exception of the Server maps to a problem.
+- The message of an exception of a package that the Server creates with `new`, other than `McpException`. `DomainError` maps some of them, such as the `ValidationException` of FluentValidation, but their text comes from a `ValidationFailure`, which is checked.
+- The text in an errors dictionary, such as the errors of a `RequestValidationException` or of `TypedResults.ValidationProblem`.
+- A `WithMessage` that takes a method group, such as `.WithMessage(Describe)`.
 
 The text of an MCP tool error starts with a code such as `permission_denied`, so that a model can match on it. `McpDomainErrors.CodeFor` suppresses `FSTMSG001` for these codes.
 

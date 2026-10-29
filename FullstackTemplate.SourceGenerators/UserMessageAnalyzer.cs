@@ -38,10 +38,9 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		isEnabledByDefault: true,
 		customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-	// A snake_case word, such as manage_users, or a PascalCase word with two or more parts, such as CheckedIn. A word in
-	// braces, such as {PropertyName}, is a placeholder that FluentValidation fills with words.
+	// A snake_case word, such as manage_users, or a PascalCase word with two or more parts, such as CheckedIn
 	private static readonly Regex CodeWord = new(
-		@"\b(?<!\{)(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b(?!\})",
+		@"\b(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b",
 		RegexOptions.CultureInvariant);
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(CodeName, Id);
@@ -151,8 +150,10 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		{
 			if (parameter.ContainingSymbol is not IMethodSymbol method)
 				return false;
-			if (method.Name == "WithMessage" && IsIn(method.ContainingType, "FluentValidation"))
-				return true;
+			if (IsIn(method.ContainingType, "FluentValidation"))
+				return method.Name == "WithMessage" || parameter.Name == "errorMessage";
+			if (method.MethodKind == MethodKind.Constructor && method.ContainingType is { Name: "Status" } status && IsIn(status, "Grpc.Core"))
+				return parameter.Name == "detail";
 			if (method.ContainingType is { Name: "TypedResults" or "Results" } results && IsIn(results, "Microsoft.AspNetCore.Http"))
 			{
 				return method.Name is "Problem" or "ValidationProblem"
@@ -164,7 +165,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			if (method.MethodKind == MethodKind.Constructor && parameter.Name == "message" && !inSource)
 			{
 				// The SDK sends the text of an McpException to the client. Another exception of a package is a user message
-				// only as the base of an exception of the project, because only the exceptions of the project map to a problem.
+				// as the base of an exception of the project, which DomainError maps to a problem.
 				return DerivesFrom(method.ContainingType, "ModelContextProtocol", "McpException")
 					|| (argument.Parent is IInvocationOperation && DerivesFrom(method.ContainingType, "System", "Exception"));
 			}
@@ -319,22 +320,32 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		// In "Invalid permission: {value}" after Permission.TryFromName(value, ...) fails, the value is not a name that the
 		// parse accepts, so it is the text that the user sent. A caller that passes a name, such as Permission.ManageUsers(),
 		// never gets to the message.
+		// The throw is the branch of the nearest condition where the parse fails: "Try(value) ? x : throw" or
+		// "if (!Try(value)) throw". A condition with more than the parse, such as "Try(value) && ...", does not count.
 		private static bool IsRejectedByParse(IParameterReferenceOperation reference)
 		{
-			var thrown = false;
-			for (var parent = reference.Parent; parent is not null; parent = parent.Parent)
+			var thrown = reference.Parent;
+			while (thrown is not null and not IThrowOperation)
+				thrown = thrown.Parent;
+
+			IOperation? branch = thrown;
+			for (var parent = thrown?.Parent; parent is not null; branch = parent, parent = parent.Parent)
 			{
-				if (parent is IThrowOperation)
-					thrown = true;
-				else if (thrown && parent is IConditionalOperation conditional && conditional.Condition.DescendantsAndSelf().Any(o => IsParseOf(o, reference.Parameter)))
-					return true;
+				if (parent is not IConditionalOperation conditional)
+					continue;
+
+				var condition = Unwrap(conditional.Condition);
+				return ReferenceEquals(branch, conditional.WhenFalse)
+					? IsParseOf(condition, reference.Parameter)
+					: condition is IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } not && IsParseOf(Unwrap(not.Operand), reference.Parameter);
 			}
 
 			return false;
 		}
 
-		private static bool IsParseOf(IOperation operation, IParameterSymbol parameter)
-			=> operation is IInvocationOperation { TargetMethod.ContainingType: { } type } invocation
+		private static bool IsParseOf(IOperation? operation, IParameterSymbol parameter)
+			=> operation is IInvocationOperation { TargetMethod: { ContainingType: { } type } method } invocation
+				&& (method.Name.StartsWith("Try", StringComparison.Ordinal) || method.Name == "IsDefined")
 				&& (type.SpecialType == SpecialType.System_Enum || IsFixedName(type))
 				&& invocation.Arguments.Any(a => Unwrap(a.Value) is IParameterReferenceOperation p && SymbolEqualityComparer.Default.Equals(p.Parameter, parameter));
 
@@ -355,7 +366,12 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		private void CheckText(string text, Location location)
 		{
 			foreach (Match match in CodeWord.Matches(text))
+			{
+				var end = match.Index + match.Length;
+				if (match.Index > 0 && text[match.Index - 1] == '{' && end < text.Length && text[end] == '}')
+					continue;
 				Report(CodeName, location, $"the code name '{match.Value}'");
+			}
 		}
 
 		// A getter or a method of the project that returns a code shows that code too, as Value => _status.Name does

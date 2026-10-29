@@ -314,7 +314,7 @@ jobs:
         run: buf lint
 
       - name: Build the solution
-        run: dotnet build FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
+        run: dotnet build FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false
 
       - name: Run the .NET tests
         run: dotnet test --solution FullstackTemplate.slnx --no-build -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true

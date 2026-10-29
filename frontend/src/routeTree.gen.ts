@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StartTenantRouteImport } from './routes/start-tenant'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as examplesWeatherRouteImport } from './routes/(examples)/weather'
@@ -20,6 +21,11 @@ import { Route as examplesVenuesNewRouteImport } from './routes/(examples)/venue
 import { Route as examplesWorkshopsIdIndexRouteImport } from './routes/(examples)/workshops/$id/index'
 import { Route as examplesWorkshopsIdEditRouteImport } from './routes/(examples)/workshops/$id/edit'
 
+const StartTenantRoute = StartTenantRouteImport.update({
+  id: '/start-tenant',
+  path: '/start-tenant',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -75,6 +81,7 @@ const examplesWorkshopsIdEditRoute = examplesWorkshopsIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/start-tenant': typeof StartTenantRoute
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
   '/weather': typeof examplesWeatherRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/start-tenant': typeof StartTenantRoute
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
   '/weather': typeof examplesWeatherRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/start-tenant': typeof StartTenantRoute
   '/(examples)/components': typeof examplesComponentsRoute
   '/(examples)/filter-demo': typeof examplesFilterDemoRoute
   '/(examples)/weather': typeof examplesWeatherRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/start-tenant'
     | '/components'
     | '/filter-demo'
     | '/weather'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/start-tenant'
     | '/components'
     | '/filter-demo'
     | '/weather'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/start-tenant'
     | '/(examples)/components'
     | '/(examples)/filter-demo'
     | '/(examples)/weather'
@@ -151,6 +163,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  StartTenantRoute: typeof StartTenantRoute
   examplesComponentsRoute: typeof examplesComponentsRoute
   examplesFilterDemoRoute: typeof examplesFilterDemoRoute
   examplesWeatherRoute: typeof examplesWeatherRoute
@@ -163,6 +176,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/start-tenant': {
+      id: '/start-tenant'
+      path: '/start-tenant'
+      fullPath: '/start-tenant'
+      preLoaderRoute: typeof StartTenantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -239,6 +259,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  StartTenantRoute: StartTenantRoute,
   examplesComponentsRoute: examplesComponentsRoute,
   examplesFilterDemoRoute: examplesFilterDemoRoute,
   examplesWeatherRoute: examplesWeatherRoute,

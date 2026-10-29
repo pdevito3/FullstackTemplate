@@ -6,7 +6,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 
 - `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
 - The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
-- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. No feature in this map reads or writes app data. A login writes a BFF session row, and the restore deletes it.
+- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) writes app data. A login writes a BFF session row, and the restore deletes it.
 <!-- example:start -->
 - The weather endpoints of the example page make random data at each request.
 - Only the workshops example writes app data. Its recipe first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
@@ -46,6 +46,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 - [Login and logout](./login-logout.md) covers the BFF login through the IdP of the stack, the session, the name that the Server reads from the token, and logout.
 - [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the breadcrumb, sidebar collapse, and the light/dark/system theme.
+- [Start a tenant](./start-tenant.md) covers the notice for a signed-in user with no user record, the form at `/start-tenant`, and the start of a tenant with the user as its admin.
 
 <!-- example:start -->
 The example pages have their feature files in `examples/`. `scripts/remove-examples.cs` deletes them with the pages.
@@ -63,4 +64,4 @@ The example pages have their feature files in `examples/`. `scripts/remove-examp
 - The boolean filter dialog and the add path of the date filter dialog on the filter builder. The filter builder map covers only the date edit dialog.
 <!-- example:end -->
 - Swagger UI on the server (`/swagger`). The Playwright spec `frontend/e2e/auth-flows.spec.ts` covers it.
-- The Users and Tenants JSON API. It has no UI.
+- The Users and Tenants JSON API, other than the start of a tenant. It has no UI.

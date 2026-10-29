@@ -283,6 +283,10 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
   test('should show the signed-in user on a deep link from another site', async ({ page }) => {
     await signInThroughSpa(page)
     const deepLink = new URL('/about', page.url()).toString()
+    // The root layout of the SPA that the cross-site link loads calls /bff/user same-site, with the cookie
+    const user = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/bff/user' && page.url() === deepLink,
+    )
 
     const navigation = await followLinkFromAnotherSite(page, deepLink)
 
@@ -290,11 +294,10 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
     // The navigation is cross-site, so the browser does not send the Strict cookie with the HTML request
     expect(await sentSessionCookie(navigation)).toBe(false)
     await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toHaveText('About')
-
-    // Only the home page shows the user. The SPA that the cross-site link loaded calls /bff/user same-site
-    const user = page.waitForResponse((response) => new URL(response.url()).pathname === '/bff/user')
-    await page.getByRole('link', { name: 'Home' }).click()
     expect((await user).status()).toBe(200)
+
+    // Only the home page shows the user
+    await page.getByRole('link', { name: 'Home' }).click()
     await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
   })
 

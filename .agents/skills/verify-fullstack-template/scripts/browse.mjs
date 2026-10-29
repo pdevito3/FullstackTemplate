@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // Runs one recipe against the verification stack of this checkout, in a fresh Chromium context.
 //
-// Usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>]
+// Usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>] [--keep-data]
+//
+// Each run takes a copy of the databases before the recipe and puts the rows back after it (see db.mjs), also after
+// a failed run. A run that was killed leaves its copy in the run directory, and the next run restores it first.
+// --keep-data skips the copy and the restore, so the rows of the recipe stay for a look at them.
 //
 // A recipe is an ES module with a default export:
 //   export default async ({ page, context, stack, expect, step, capture, settle, login, logout }) => { ... }
@@ -15,20 +19,22 @@
 //                  (an uncaught page error fails the run, even if all steps pass)
 //   network.log    each response with status >= 400
 //   trace.zip      the Playwright trace (open with: pnpm --dir frontend exec playwright show-trace <path>)
-//   result.json    passed or failed, with the error and the page errors
+//   result.json    passed or failed, with the error, the page errors, and the rows that the restore put back
 import { execSync } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { postgresContainer, restore, snapshot } from './db.mjs'
 
 const args = process.argv.slice(2)
 const recipeArg = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--label')
 if (!recipeArg) {
-  console.error('usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>]')
+  console.error('usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>] [--keep-data]')
   process.exit(2)
 }
 const headed = args.includes('--headed')
+const keepData = args.includes('--keep-data')
 const labelIdx = args.indexOf('--label')
 const label = labelIdx >= 0 ? args[labelIdx + 1] : path.basename(recipeArg, '.mjs')
 
@@ -40,6 +46,35 @@ if (!existsSync(currentFile)) {
 }
 const runDir = path.join(root, 'artifacts/verify', readFileSync(currentFile, 'utf8').trim())
 const stack = JSON.parse(readFileSync(path.join(runDir, 'stack.json'), 'utf8'))
+
+const lockFile = path.join(runDir, 'recipe.lock')
+const isAlive = (pid) => {
+  try {
+    return process.kill(pid, 0)
+  } catch (e) {
+    return e.code === 'EPERM'
+  }
+}
+// The link makes the lock with its pid in one step, so that another run never reads an empty lock.
+const lockTemp = `${lockFile}.${process.pid}`
+writeFileSync(lockTemp, String(process.pid))
+try {
+  linkSync(lockTemp, lockFile)
+} catch (e) {
+  if (e.code !== 'EEXIST') throw e
+  const owner = Number(readFileSync(lockFile, 'utf8'))
+  if (owner > 0 && isAlive(owner)) {
+    console.error(`browse: the recipe run with pid ${owner} drives this stack. Run one recipe at a time, because a restore deletes the rows of a run that writes at the same time.`)
+    rmSync(lockTemp)
+    process.exit(2)
+  }
+  writeFileSync(lockFile, String(process.pid))
+} finally {
+  rmSync(lockTemp)
+}
+process.on('exit', () => {
+  if (existsSync(lockFile) && readFileSync(lockFile, 'utf8') === String(process.pid)) rmSync(lockFile)
+})
 // A second run of the same label gets its own directory, so that the evidence of each attempt stays apart.
 let outDir = path.join(runDir, label)
 for (let n = 2; existsSync(outDir); n++) outDir = path.join(runDir, `${label}-${n}`)
@@ -51,6 +86,29 @@ const { chromium, expect } = requireFromFrontend('@playwright/test')
 
 const log = (file, line) => appendFileSync(path.join(outDir, file), line + '\n')
 let captureCount = 0
+
+const snapshotFile = path.join(runDir, 'db-snapshot.json')
+const postgres = postgresContainer(stack)
+if (existsSync(snapshotFile)) {
+  let changes
+  try {
+    changes = restore(postgres, JSON.parse(readFileSync(snapshotFile, 'utf8')))
+  } catch (e) {
+    console.error(`browse: the restore of the snapshot of an earlier run failed: ${e.message}`)
+    console.error(`browse: delete ${snapshotFile} to keep the rows as they are, or run cleanup.sh and launch.sh for new rows.`)
+    process.exit(2)
+  }
+  rmSync(snapshotFile)
+  const line = `data: an earlier run did not restore the database. Restored it now: ${JSON.stringify(changes)}`
+  log('steps.log', line)
+  console.log(line)
+}
+let before = null
+if (!keepData) {
+  before = snapshot(postgres)
+  writeFileSync(`${snapshotFile}.tmp`, JSON.stringify(before))
+  renameSync(`${snapshotFile}.tmp`, snapshotFile)
+}
 
 // A step can fail while a promise of the recipe still waits, such as a page.waitForResponse that started before
 // the failed click. That promise rejects when the browser closes. Without a handler, Node exits before result.json.
@@ -199,6 +257,7 @@ async function logout() {
 
 let status = 'passed'
 let error = null
+let data = { restored: false, changes: {} }
 try {
   const recipe = await import(pathToFileURL(path.resolve(recipeArg)).href)
   await recipe.default({ page, context, stack, expect, step, capture, settle, login, logout })
@@ -219,10 +278,24 @@ try {
     status = 'failed'
     error = `unhandled rejection: ${unhandledRejections[0]}`
   }
+  if (before) {
+    try {
+      data = { restored: true, changes: restore(postgres, before) }
+      rmSync(snapshotFile)
+    } catch (e) {
+      data = { restored: false, changes: {}, error: e.message }
+      if (status === 'passed') {
+        status = 'failed'
+        error = e.message
+      }
+    }
+    const tables = Object.keys(data.changes)
+    log('steps.log', `data: ${data.error ?? (tables.length ? `restored ${tables.join(', ')}` : 'no rows changed')}`)
+  }
   writeFileSync(
     path.join(outDir, 'result.json'),
     JSON.stringify(
-      { recipe: recipeArg, label, status, error, pageErrors, web: stack.urls.web, finishedAt: new Date().toISOString() },
+      { recipe: recipeArg, label, status, error, pageErrors, data, web: stack.urls.web, finishedAt: new Date().toISOString() },
       null,
       2,
     ),

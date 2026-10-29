@@ -93,7 +93,7 @@ Use the first of these that works:
 
 Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, the forecast grid is a `list`, and each day is a `listitem` with the date as its name.
 
-Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. No check finds a CSS class or a tag chain.
+Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads each action of a page or a frame, each `$`, `$$`, `$eval`, and `$$eval`, and a string in the first argument of a Locator action. No check finds a CSS class or a tag chain in `locator()`.
 
 ### Facts about this app
 

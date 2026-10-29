@@ -99,12 +99,14 @@ jobs:
         working-directory: frontend
         run: pnpm test:e2e
 
-      - name: Upload the functional test report
+      # .vitest/attachments/ has the failure screenshot and the Playwright trace of each failed component test
+      - name: Upload the test reports
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: functional-tests
+          name: frontend-tests
           path: |
+            frontend/.vitest/attachments/
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
@@ -180,6 +182,19 @@ jobs:
 
       - name: Run the .NET tests
         run: dotnet test --solution FullstackTemplate.slnx --no-build
+
+      # .vitest/attachments/ has the failure screenshot and the Playwright trace of each failed component test
+      - name: Upload the test reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: without-examples-tests
+          path: |
+            frontend/.vitest/attachments/
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
   # example:end
 
   line-endings:

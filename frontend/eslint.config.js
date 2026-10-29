@@ -148,6 +148,13 @@ export default tseslint.config(
     },
   },
   {
+    // docs/frontend.md, section "Bundle size": the route code splitter keeps each import that the route options do not use
+    // as an inline type import, such as `import { type Option } from '...'`. TypeScript keeps that line as an import with
+    // side effects, so the module and each module that it imports load with the entry chunk.
+    files: ['src/routes/**/*.{ts,tsx}'],
+    rules: { 'import-x/consistent-type-specifier-style': ['error', 'prefer-top-level'] },
+  },
+  {
     // The router link builds on the React Aria Link.
     files: ['src/components/ui/link.tsx'],
     rules: { 'no-restricted-imports': 'off' },

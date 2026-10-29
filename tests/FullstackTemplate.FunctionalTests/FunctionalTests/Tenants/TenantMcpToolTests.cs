@@ -22,6 +22,28 @@ using TestUtilities;
 public class TenantMcpToolTests : TestBase
 {
     [Test]
+    public async Task tools_list_shows_add_tenant_only_to_a_client_that_can_manage_all_tenants()
+    {
+        // Arrange
+        var (_, user) = await AddTenantWithUserAsync();
+        SignInAs(user);
+        await using var userClient = await CreateMcpClientAsync();
+        var userTools = await userClient.ListToolsAsync();
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+        await using var trustedClient = await CreateMcpClientAsync();
+
+        // Act
+        var trustedTools = await trustedClient.ListToolsAsync();
+
+        // Assert
+        userTools.Select(t => t.Name).ShouldNotContain("add_tenant");
+        trustedTools.Select(t => t.Name).ShouldContain("add_tenant");
+    }
+
+    [Test]
     public async Task empty_tenant_name_is_an_invalid_argument_with_the_field()
     {
         // Arrange

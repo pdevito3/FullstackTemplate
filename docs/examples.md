@@ -16,7 +16,7 @@ The script does these steps:
 3. It writes the EF Core model snapshot again, so that the snapshot has no example tables.
 4. It writes the generated files again: the OpenAPI document of the Server, the generated API client of the SPA, and `routeTree.gen.ts`.
 
-A marker with no partner stops the script before it changes a file. Do not put a marker at the start of a line in a code block of a doc, because the script reads it as a marker.
+A marker with no partner stops the script before it changes a file. A change to the model of the Server with no migration also stops it, because the script deletes the migration that it adds to write the snapshot. Do not put a marker at the start of a line in a code block of a doc, because the script reads it as a marker.
 
 <!-- example:start -->
 ## The examples
@@ -32,7 +32,7 @@ A marker with no partner stops the script before it changes a file. Do not put a
 | The tests of the examples | the `Examples/` and `examples/` folders of the test projects, of `frontend/tests/`, and of `frontend/src/` |
 | The recipes of the example pages in the verify skill | `.agents/skills/verify-fullstack-template/features/examples/` and `recipes/examples/` |
 
-The script deletes the migration of the example tables. A database that ran it still has the `venues` and `workshops` tables and the `manage_workshops` permission. If the database of your app ran that migration, add a migration that drops the two tables and calls `migrationBuilder.DeletePermission("manage_workshops")`. A row of a permission that `Permission` does not know stops each load of its user.
+The script deletes the migration of the example tables. A database that ran it still has the `venues` and `workshops` tables and the `manage_workshops` permission. If the database of your app ran that migration, add a migration that drops the two tables and calls `migrationBuilder.DeletePermission("manage_workshops")`. A row of a permission that `Permission` does not know stops each load of its user. The script prints this paragraph when it deletes the examples.
 <!-- example:end -->
 
 ## Add example code

@@ -23,6 +23,7 @@ try
 
     app.FailIfTreeHasChanges();
     var removal = app.FindExamples();
+    app.FailIfModelHasNoMigration();
 
     changing = true;
     app.Remove(removal);
@@ -32,6 +33,8 @@ try
     Console.WriteLine(removal.IsDue
         ? $"Deleted {removal.Folders.Count} example folders and the example sections of {removal.Sections.Count} files."
         : "The app has no example code.");
+    if (removal.IsDue)
+        Console.WriteLine(AppRepo.DatabaseNote);
     Console.WriteLine($"Next: dotnet build {app.Name}.slnx");
     return 0;
 }
@@ -59,6 +62,12 @@ internal sealed partial class AppRepo(string root)
 {
     private const string ThisScript = "scripts/remove-examples.cs";
     private const string SnapshotMigration = "RemoveExamplesSnapshot";
+
+    public const string DatabaseNote =
+        "The script deleted the migration of the example tables. A database that ran it still has the venues and " +
+        "workshops tables and the manage_workshops permission. If the database of your app ran that migration, add a " +
+        "migration that drops the two tables and calls migrationBuilder.DeletePermission(\"manage_workshops\"). A row " +
+        "of a permission that Permission does not know stops each load of its user.";
 
     private static readonly HashSet<string> ExampleFolderNames = new(StringComparer.Ordinal) { "Examples", "examples", "(examples)" };
 
@@ -113,14 +122,31 @@ internal sealed partial class AppRepo(string root)
             WriteText(Path.Combine(root, file), text);
     }
 
-    // The snapshot is generated, so EF writes it again for the model with no example entities. The script deletes the
-    // migration that EF adds with it, so a new database never has the example tables. See docs/examples.md.
-    public void WriteModelSnapshot()
+    // WriteModelSnapshot deletes the migration that it adds, so a model change with no migration would be lost with it
+    public void FailIfModelHasNoMigration()
     {
         var server = $"{Name}.Server";
         Run(root, "dotnet", "tool", "restore");
         // dotnet-ef reads the project metadata before it builds, and that read needs the restored assets
         Run(root, "dotnet", "restore", Path.Combine(server, $"{server}.csproj"));
+        try
+        {
+            Run(root, "dotnet", "tool", "run", "dotnet-ef", "migrations", "has-pending-model-changes",
+                "--project", server, "--startup-project", server);
+        }
+        catch (RemovalException)
+        {
+            throw new RemovalException(
+                "The model of the Server has changes that no migration has, or dotnet-ef could not check it. See the output " +
+                "above. Add and commit the migration, then run the script again.");
+        }
+    }
+
+    // The snapshot is generated, so EF writes it again for the model with no example entities. The script deletes the
+    // migration that EF adds with it, so a new database never has the example tables. See docs/examples.md.
+    public void WriteModelSnapshot()
+    {
+        var server = $"{Name}.Server";
         Run(root, "dotnet", "tool", "run", "dotnet-ef", "migrations", "add", SnapshotMigration,
             "--project", server, "--startup-project", server, "--output-dir", "Databases/Migrations");
 

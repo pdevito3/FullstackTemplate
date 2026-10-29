@@ -65,7 +65,7 @@ function RootComponent() {
             <Outlet />
           </div>
         </SidebarInset>
-        <p ref={announcement} role="status" data-slot="page-announcement" className="sr-only" />
+        <p ref={announcement} role="status" data-testid="page-announcement" className="sr-only" />
         {/* The default container is a footer, which is a contentinfo landmark. */}
         <TanStackRouterDevtools position="top-right" containerElement="div" />
       </SidebarProvider>
@@ -76,6 +76,7 @@ function RootComponent() {
 function usePageFocusAfterNavigation(pathname: string | undefined, pageName: string | undefined) {
   const content = useRef<HTMLDivElement>(null)
   const announcement = useRef<HTMLParagraphElement>(null)
+  const pendingAnnouncement = useRef(0)
   const lastPathname = useRef(pathname)
 
   useEffect(() => {
@@ -83,11 +84,17 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
     lastPathname.current = pathname
     // The first load leaves the focus where the browser puts it.
     if (previous === undefined || previous === pathname || !content.current || !announcement.current) return
+    cancelAnimationFrame(pendingAnnouncement.current)
+    announcement.current.textContent = ''
     const focused = document.activeElement
     if (!focused || focused === document.body) {
       focusWithoutTabStop(content.current.querySelector('h1') ?? content.current.closest('main'))
-    } else if (!content.current.contains(focused)) {
-      announce(announcement.current, pageName ?? '')
+    } else {
+      const region = announcement.current
+      // A screen reader speaks a live region when its text changes, so the same text again needs an empty frame first.
+      pendingAnnouncement.current = requestAnimationFrame(() => {
+        region.textContent = pageName ?? ''
+      })
     }
   }, [pathname, pageName])
 
@@ -99,22 +106,19 @@ function focusWithoutTabStop(target: HTMLElement | null) {
   if (!target.hasAttribute('tabindex')) {
     target.setAttribute('tabindex', '-1')
     target.setAttribute('data-page-focus', '')
-    target.addEventListener(
-      'blur',
-      () => {
-        target.removeAttribute('tabindex')
-        target.removeAttribute('data-page-focus')
-      },
-      { once: true },
-    )
+    const removeTabStop = () => {
+      target.removeAttribute('tabindex')
+      target.removeAttribute('data-page-focus')
+      target.removeEventListener('blur', handleBlur)
+      target.removeEventListener('pointerdown', removeTabStop)
+    }
+    // A switch to another tab blurs the target, but the target keeps the focus for the return.
+    const handleBlur = () => {
+      if (document.activeElement !== target) removeTabStop()
+    }
+    target.addEventListener('blur', handleBlur)
+    // A press inside the target must not give it the focus again.
+    target.addEventListener('pointerdown', removeTabStop)
   }
   target.focus({ preventScroll: true })
-}
-
-// A screen reader speaks a live region when its text changes, so the same text again needs an empty frame first.
-function announce(region: HTMLElement, text: string) {
-  region.textContent = ''
-  requestAnimationFrame(() => {
-    region.textContent = text
-  })
 }

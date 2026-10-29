@@ -69,6 +69,12 @@ const selectorStringRule = (message) => ({
   message,
 })
 
+// docs/messages.md, rule 1: words made from a code, such as "Pago Pago" from Pacific/Pago_Pago, are not the words of the screen.
+export const codeToWordsRule = {
+  selector: "CallExpression[callee.property.name=/^replace(All)?$/]:matches([arguments.0.value='_'], [arguments.0.regex.pattern='_'])[arguments.1.value=' ']",
+  message: 'Do not make words from a code (docs/messages.md, rule 1). Name a time zone with timeZoneLabel(zone) from @/lib/zoned-time. Give another code a property or a map with its words.',
+}
+
 const testOnlyRule = {
   selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
   message: 'Remove test.only. CI runs each test.',
@@ -239,6 +245,7 @@ export default tseslint.config(
           selector: 'ImportDeclaration[source.value=/^date-fns/]',
           message: 'date-fns formats in the zone of the browser. Use @/lib/zoned-time.',
         },
+        codeToWordsRule,
       ],
     },
   },

@@ -5,9 +5,11 @@ import { commands, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
+import type { Answer } from '@/test/answer'
 import { getVenueListQuerySearchSchema } from '@/api/generated/venues/zod/get-venue-list'
 import { maxLengthOf } from '@/lib/api-contract'
 
+import { VenueKeys } from '../apis/venue.keys'
 import { VenuePicker } from './venue-picker'
 
 const venue = (n: number, name = `Venue ${n}`): VenueDto => ({ id: `v_${n}`, name, timeZone: 'UTC', version: 1 })
@@ -33,12 +35,16 @@ function Picker({ initial }: { initial: string }) {
   return <VenuePicker value={value} onChange={setValue} />
 }
 
-async function renderPicker(initial = '') {
+const searchFails = { method: 'GET', path: '/api/v1/venues', status: 500, body: { title: 'Server error', status: 500 } } as const
+
+async function renderPicker(initial = '', ...more: Answer[]) {
   await commands.answerRequests([
     { method: 'GET', path: '/api/v1/venues', headers: pagination(1, 2), body: firstPage },
+    { method: 'GET', path: `/api/v1/venues/${firstPage[0].id}`, body: firstPage[0] },
     { method: 'GET', path: '/api/v1/venues', query: { pageNumber: '2' }, headers: pagination(2, 2), body: [venue(11)] },
     { method: 'GET', path: `/api/v1/venues/${offPage.id}`, body: offPage },
     { method: 'GET', path: '/api/v1/venues', query: { search: 'Zeta' }, headers: pagination(1, 1), body: [offPage] },
+    ...more,
   ])
   onTestFinished(() => commands.answerRequests([]))
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -50,7 +56,7 @@ async function renderPicker(initial = '') {
       </QueryClientProvider>
     </div>,
   )
-  return { screen, input: screen.getByRole('combobox', { name: 'Venue' }) }
+  return { screen, client, input: screen.getByRole('combobox', { name: 'Venue' }) }
 }
 
 test('shows a picked venue that is not on the first page of the search, by its name', async () => {
@@ -83,4 +89,36 @@ test('takes no more search text than the contract allows', async () => {
   const { input } = await renderPicker()
 
   await expect.element(input).toHaveAttribute('maxlength', String(maxLengthOf(getVenueListQuerySearchSchema.unwrap())))
+})
+
+test('says that the venues did not load when the search fails, and searches again when the list opens again', async () => {
+  const { screen } = await renderPicker('', searchFails)
+  const toggle = screen.getByRole('button', { name: /show suggestions/i })
+
+  await userEvent.click(toggle)
+
+  await expect.element(screen.getByText('The venues did not load. Close the list, then open it to try again.')).toBeVisible()
+  await expect.element(screen.getByText('No venue found.')).not.toBeInTheDocument()
+
+  await commands.answerRequests([{ method: 'GET', path: '/api/v1/venues', headers: pagination(1, 1), body: firstPage }])
+  await userEvent.keyboard('{Escape}')
+  await userEvent.click(toggle)
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 1', exact: true })).toBeVisible()
+})
+
+test.each([
+  ['a pick from a link', offPage.id, offPage],
+  ['a pick from the first page', firstPage[0].id, firstPage[0]],
+])('shows the new name of %s after the detail query reads the record again', async (_, initial, picked) => {
+  const { client, input } = await renderPicker(initial)
+  await expect.element(input).toHaveValue(picked.name)
+  await commands.answerRequests([
+    { method: 'GET', path: '/api/v1/venues', headers: pagination(1, 1), body: firstPage },
+    { method: 'GET', path: `/api/v1/venues/${picked.id}`, body: { ...picked, name: 'Renamed Hall', version: 2 } },
+  ])
+
+  await client.invalidateQueries({ queryKey: VenueKeys.detail(picked.id) })
+
+  await expect.element(input).toHaveValue('Renamed Hall')
 })

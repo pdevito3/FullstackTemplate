@@ -2,6 +2,7 @@ import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { ProblemDetails } from '@/lib/problem-details'
 import type { MockRoute } from '@tests/support/api/mock-route'
+import { paginationHeaders } from '@tests/support/api/pagination'
 
 interface Buildable<T> {
   build(): T
@@ -15,30 +16,13 @@ export const workshopPaths = {
   venue: (id: string) => `/api/v1/venues/${id}`,
 }
 
-export function paginationOf(total: number, pageNumber = 1, pageSize = 10) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return {
-    'X-Pagination': JSON.stringify({
-      totalCount: total,
-      pageSize,
-      currentPageSize: Math.max(0, Math.min(pageSize, total - (pageNumber - 1) * pageSize)),
-      currentStartIndex: (pageNumber - 1) * pageSize + 1,
-      currentEndIndex: Math.min(total, pageNumber * pageSize),
-      pageNumber,
-      totalPages,
-      hasPrevious: pageNumber > 1,
-      hasNext: pageNumber < totalPages,
-    }),
-  }
-}
-
 export const workshopsApi = {
   listReturns(workshops: Buildable<WorkshopDto>[], { total = workshops.length, pageNumber = 1 } = {}): MockRoute {
     return {
       method: 'get',
       path: workshopPaths.list,
       status: 200,
-      headers: paginationOf(total, pageNumber),
+      headers: paginationHeaders(total, pageNumber),
       body: workshops.map((w) => w.build()),
     }
   },
@@ -81,7 +65,7 @@ export const workshopsApi = {
       method: 'get',
       path: workshopPaths.venues,
       status: 200,
-      headers: paginationOf(venues.length),
+      headers: paginationHeaders(venues.length),
       body: venues.map((v) => v.build()),
     }
   },

@@ -31,7 +31,7 @@ public class TenantLockTests
     private static readonly string UntypedEntity = typeof(object).FullName!;
 
     [Test]
-    public void each_add_of_a_tenant_owned_root_saves_in_the_shared_lock_of_its_tenant()
+    public void each_type_that_adds_a_tenant_owned_root_adds_and_saves_in_the_shared_lock_of_its_tenant()
     {
         // Arrange
         using var context = new AppDbContextFactory().CreateDbContext([]);
@@ -46,7 +46,7 @@ public class TenantLockTests
     }
 
     [Test]
-    public void rule_finds_an_add_with_no_lock_through_a_set_the_context_a_range_or_a_bulk_insert_and_an_add_after_or_in_another_lock()
+    public void rule_finds_an_add_with_no_lock_through_a_set_the_context_a_range_or_a_bulk_insert_an_add_after_or_in_another_lock_and_a_save_after_the_lock()
     {
         // Arrange
         using var context = new AppDbContextFactory().CreateDbContext([]);
@@ -58,12 +58,20 @@ public class TenantLockTests
         unlocked.ShouldBe(
         [
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddAfterTheSharedWork adds Agent",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddAfterTheSharedWork saves outside the shared lock",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddInExclusiveWork adds Agent",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddInExclusiveWork saves outside the shared lock",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddRangeThroughTheContextWithNoLock adds Object",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddRangeThroughTheContextWithNoLock saves outside the shared lock",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddRangeWithNoLock adds User",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddRangeWithNoLock saves outside the shared lock",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddThroughTheContextWithNoLock adds User",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddThroughTheContextWithNoLock saves outside the shared lock",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddWithNoLock adds Agent",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddWithNoLock saves outside the shared lock",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.BulkInsertWithNoLock adds Agent",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.SaveAfterTheSharedWork saves outside the shared lock",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.SaveSynchronouslyAfterTheSharedWork saves outside the shared lock",
         ]);
     }
 

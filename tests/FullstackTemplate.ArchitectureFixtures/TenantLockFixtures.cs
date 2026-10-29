@@ -1,5 +1,5 @@
-// Each type in this file is a fixture for TenantLockTests. A type named "...With..." adds a tenant-owned root with no
-// shared lock of its tenant. A type named "Clean..." breaks no rule. Do not fix the violations.
+// Each type in this file is a fixture for TenantLockTests. A type named "Clean..." breaks no rule. Each other type adds
+// a tenant-owned root with no shared lock of its tenant, or saves such an add outside the lock. Do not fix the violations.
 
 namespace FullstackTemplate.ArchitectureFixtures.Core.TenantLock;
 
@@ -99,4 +99,30 @@ public static class AddInExclusiveWork
             await dbContext.SaveChangesAsync(ct);
             return agent;
         }, cancellationToken);
+}
+
+public static class SaveAfterTheSharedWork
+{
+    public static async Task Add(AppDbContext dbContext, Agent agent, CancellationToken cancellationToken)
+    {
+        await RootLock.Tenant.RunSharedAsync(dbContext, agent.TenantId, async ct =>
+        {
+            await dbContext.Agents.AddAsync(agent, ct);
+            return agent;
+        }, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+
+public static class SaveSynchronouslyAfterTheSharedWork
+{
+    public static async Task Add(AppDbContext dbContext, Agent agent, CancellationToken cancellationToken)
+    {
+        await RootLock.Tenant.RunSharedAsync(dbContext, agent.TenantId, ct =>
+        {
+            dbContext.Agents.Add(agent);
+            return Task.FromResult(agent);
+        }, cancellationToken);
+        dbContext.SaveChanges();
+    }
 }

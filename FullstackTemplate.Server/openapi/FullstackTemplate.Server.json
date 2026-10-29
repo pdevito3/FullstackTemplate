@@ -1341,6 +1341,40 @@
         }
       }
     },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Gets the signed-in caller from the access token. The caller does not need a user record.",
+        "operationId": "GetCurrentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
     "/api/v1/users/by-identifier/{identifier}": {
       "get": {
         "tags": [
@@ -1986,6 +2020,26 @@
             "description": "True when the caller has no `read_audit_log_sensitive` and the value is sensitive, or is a value that the\ncode no longer knows."
           }
         }
+      },
+      "CurrentUserDto": {
+        "required": [
+          "identifier"
+        ],
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "The `sub` claim of the token."
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The display name from the token, or null when the identity provider sends no name."
+          }
+        },
+        "description": "The signed-in caller as the Server sees it in the access token."
       },
       "InitiateUserAndTenantDto": {
         "required": [

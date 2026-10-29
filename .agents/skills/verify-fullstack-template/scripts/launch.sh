@@ -78,13 +78,14 @@ while :; do
 done
 
 web="$(web_url "$BUILD")"
-# The SPA can serve HTML before the proxy to the server answers. Wait for an API answer through it.
+# The SPA can serve HTML before the Vite proxy reaches the BFF. Wait until the Server answers through it, so that the
+# SPA, the BFF, and the Server are all up.
+server_answered=false
 for _ in $(seq 1 60); do
-  code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/weather" || true)"
-  [[ "$code" == "200" ]] && break
+  server_rejects_anonymous "$web" && { server_answered=true; break; }
   sleep 2
 done
-[[ "$code" == "200" ]] || { echo "launch: $web/api/v1/weather answered $code, not 200." >&2; exit 1; }
+$server_answered || { echo "launch: $web/api/v1/users/me did not get the 401 of the Server." >&2; exit 1; }
 
 jq -n \
   --arg runId "$RUN_ID" \

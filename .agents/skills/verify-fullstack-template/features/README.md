@@ -6,7 +6,10 @@ This directory is the maintained source for the proof of user-facing behavior in
 
 - `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
 - The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
-- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) writes app data. A login writes a BFF session row, and the restore deletes it. The weather endpoints make random data at each request.
+- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) writes app data. A login writes a BFF session row, and the restore deletes it.
+<!-- example:start -->
+- The weather endpoints of the example page make random data at each request.
+<!-- example:end -->
 - The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.
 
@@ -16,7 +19,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 - Each recipe starts from the baseline state. A recipe that needs a login calls `login()` itself and uses the `name` that it returns. Do not write a fixed user name in a recipe, because each IdP has other users.
 - Use ARIA roles and accessible names. Use CSS only where a feature file names it.
 - Copy the quoted names and commands exactly.
-- The weather data is random. Assert that the screen matches the API response of the same run, never a fixed value.
+- Assert that the screen matches the API response of the same run, never a fixed value.
 
 ## Proof and skip reporting
 
@@ -40,16 +43,23 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 ## Features
 
-- [Weather forecast](./weather-forecast.md) covers the public forecast cards, the °F/°C toggle, and Refresh.
-- [Login and logout](./login-logout.md) covers the BFF login through the IdP of the stack, the session, and logout.
-- [Secure weather](./secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
-- [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the Demos submenu, the breadcrumb, sidebar collapse, and the light/dark/system theme.
-- [Filter builder](./filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
+- [Login and logout](./login-logout.md) covers the BFF login through the IdP of the stack, the session, the name that the Server reads from the token, and logout.
+- [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the breadcrumb, sidebar collapse, and the light/dark/system theme.
 - [Start a tenant](./start-tenant.md) covers the notice for a signed-in user with no user record, the form at `/start-tenant`, and the start of a tenant with the user as its admin.
-- [Components showcase](./components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
+
+<!-- example:start -->
+The example pages have their feature files in `examples/`. `scripts/remove-examples.cs` deletes them with the pages.
+
+- [Weather forecast](./examples/weather-forecast.md) covers the public forecast cards at `/weather`, the °F/°C toggle, and Refresh.
+- [Secure weather](./examples/secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
+- [Filter builder](./examples/filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
+- [Components showcase](./examples/components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
+<!-- example:end -->
 
 ## Not mapped yet
 
+<!-- example:start -->
 - The boolean filter dialog and the add path of the date filter dialog on the filter builder. The filter builder map covers only the date edit dialog.
+<!-- example:end -->
 - Swagger UI on the server (`/swagger`). The Playwright spec `frontend/e2e/auth-flows.spec.ts` covers it.
 - The Users and Tenants JSON API, other than the start of a tenant. It has no UI.

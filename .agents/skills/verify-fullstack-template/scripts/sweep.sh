@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Usage: sweep.sh [recipe.mjs ...]    (default: each recipe in recipes/)
+# Usage: sweep.sh [recipe.mjs ...]    (default: each recipe in recipes/ and its folders)
 set -uo pipefail
 
 S="$(cd "$(dirname "$0")/.." && pwd)"
 recipes=("$@")
-(( ${#recipes[@]} )) || recipes=("$S"/recipes/*.mjs)
+if (( ! ${#recipes[@]} )); then
+  while IFS= read -r recipe; do recipes+=("$recipe"); done < <(find "$S/recipes" -name "*.mjs" | sort)
+fi
 
 failed=0
 for recipe in "${recipes[@]}"; do

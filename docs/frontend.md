@@ -145,11 +145,11 @@ Fix the cause on the Server: the DTO, an attribute such as `[NamesOf<T>]`, or a 
 Each area keeps its hook and its query key factory in `domain/[area]/apis/`. The hook calls the generated client. Write the hooks and the keys by hand.
 
 ```typescript
-import { useWeatherForecast } from '@/domain/weather/apis/get-weather'
+import { useCurrentUser } from '@/domain/users/apis/get-current-user'
 import { useAuth } from '@/domain/auth/apis/get-user'
 import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 
-const { data, isLoading, error } = useWeatherForecast()
+const { data, isLoading, error } = useCurrentUser()
 const { isLoggedIn, username, logoutUrl } = useAuth()
 const { login, logout } = useAuthActions()
 ```
@@ -222,7 +222,11 @@ const filterConfig = [
 />
 ```
 
-The control types are text, number, date, boolean, and multiselect. Groups can use AND or OR. For a date of a place, give the config the `timeZone` of the place, as "Starts At in Pago Pago" in `routes/filter-demo.tsx` does. See "Dates and times" in [code-style.md](frontend/code-style.md).
+The control types are text, number, date, boolean, and multiselect. Groups can use AND or OR. For a date of a place, give the config the `timeZone` of the place. See "Dates and times" in [code-style.md](frontend/code-style.md).
+
+<!-- example:start -->
+"Starts At in Pago Pago" in `routes/(examples)/filter-demo.tsx` gives the `timeZone` of a place.
+<!-- example:end -->
 
 ## Forms
 

@@ -10,24 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StartTenantRouteImport } from './routes/start-tenant'
-import { Route as FilterDemoRouteImport } from './routes/filter-demo'
-import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as examplesWeatherRouteImport } from './routes/(examples)/weather'
+import { Route as examplesFilterDemoRouteImport } from './routes/(examples)/filter-demo'
+import { Route as examplesComponentsRouteImport } from './routes/(examples)/components'
 
 const StartTenantRoute = StartTenantRouteImport.update({
   id: '/start-tenant',
   path: '/start-tenant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FilterDemoRoute = FilterDemoRouteImport.update({
-  id: '/filter-demo',
-  path: '/filter-demo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComponentsRoute = ComponentsRouteImport.update({
-  id: '/components',
-  path: '/components',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -40,49 +31,81 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const examplesWeatherRoute = examplesWeatherRouteImport.update({
+  id: '/(examples)/weather',
+  path: '/weather',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesFilterDemoRoute = examplesFilterDemoRouteImport.update({
+  id: '/(examples)/filter-demo',
+  path: '/filter-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesComponentsRoute = examplesComponentsRouteImport.update({
+  id: '/(examples)/components',
+  path: '/components',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/components': typeof ComponentsRoute
-  '/filter-demo': typeof FilterDemoRoute
   '/start-tenant': typeof StartTenantRoute
+  '/components': typeof examplesComponentsRoute
+  '/filter-demo': typeof examplesFilterDemoRoute
+  '/weather': typeof examplesWeatherRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/components': typeof ComponentsRoute
-  '/filter-demo': typeof FilterDemoRoute
   '/start-tenant': typeof StartTenantRoute
+  '/components': typeof examplesComponentsRoute
+  '/filter-demo': typeof examplesFilterDemoRoute
+  '/weather': typeof examplesWeatherRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/components': typeof ComponentsRoute
-  '/filter-demo': typeof FilterDemoRoute
   '/start-tenant': typeof StartTenantRoute
+  '/(examples)/components': typeof examplesComponentsRoute
+  '/(examples)/filter-demo': typeof examplesFilterDemoRoute
+  '/(examples)/weather': typeof examplesWeatherRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/components' | '/filter-demo' | '/start-tenant'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/start-tenant'
+    | '/components'
+    | '/filter-demo'
+    | '/weather'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/components' | '/filter-demo' | '/start-tenant'
+  to:
+    | '/'
+    | '/about'
+    | '/start-tenant'
+    | '/components'
+    | '/filter-demo'
+    | '/weather'
   id:
     | '__root__'
     | '/'
     | '/about'
-    | '/components'
-    | '/filter-demo'
     | '/start-tenant'
+    | '/(examples)/components'
+    | '/(examples)/filter-demo'
+    | '/(examples)/weather'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  ComponentsRoute: typeof ComponentsRoute
-  FilterDemoRoute: typeof FilterDemoRoute
   StartTenantRoute: typeof StartTenantRoute
+  examplesComponentsRoute: typeof examplesComponentsRoute
+  examplesFilterDemoRoute: typeof examplesFilterDemoRoute
+  examplesWeatherRoute: typeof examplesWeatherRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,20 +115,6 @@ declare module '@tanstack/react-router' {
       path: '/start-tenant'
       fullPath: '/start-tenant'
       preLoaderRoute: typeof StartTenantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/filter-demo': {
-      id: '/filter-demo'
-      path: '/filter-demo'
-      fullPath: '/filter-demo'
-      preLoaderRoute: typeof FilterDemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/components': {
-      id: '/components'
-      path: '/components'
-      fullPath: '/components'
-      preLoaderRoute: typeof ComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -122,15 +131,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(examples)/weather': {
+      id: '/(examples)/weather'
+      path: '/weather'
+      fullPath: '/weather'
+      preLoaderRoute: typeof examplesWeatherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/filter-demo': {
+      id: '/(examples)/filter-demo'
+      path: '/filter-demo'
+      fullPath: '/filter-demo'
+      preLoaderRoute: typeof examplesFilterDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/components': {
+      id: '/(examples)/components'
+      path: '/components'
+      fullPath: '/components'
+      preLoaderRoute: typeof examplesComponentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  ComponentsRoute: ComponentsRoute,
-  FilterDemoRoute: FilterDemoRoute,
   StartTenantRoute: StartTenantRoute,
+  examplesComponentsRoute: examplesComponentsRoute,
+  examplesFilterDemoRoute: examplesFilterDemoRoute,
+  examplesWeatherRoute: examplesWeatherRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

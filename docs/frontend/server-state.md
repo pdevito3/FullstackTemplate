@@ -13,6 +13,12 @@ Server state is the data that the API returns. TanStack Query owns it. It caches
 7. Show the loading state and the error state of each query.
 8. Show what the Server allows. Do not copy a state machine, a permission check, or a business limit. To show a button for an action, read `allowedActions` or a flag of the DTO. If the DTO does not have the answer, add it on the Server (rule 11 of [dtos-and-mappings.md](../backend/dtos-and-mappings.md)). `domain/users/components/user-actions.tsx` shows a button for each allowed action of a user.
 
+Check: `pnpm lint` fails on these forms. The rules are in `frontend/eslint.config.js`.
+
+- Rule 2 (`server-state/no-copied-state`): a `useState` whose first value is a prop or the result of a hook such as `useQuery`, also through a field, `?.`, `??`, `? :`, or a local `const`. A prop whose name starts with `initial` or `default` is a first value that the user owns from then on, so it passes. A value that a call computes, such as `useState(() => parse(value))`, passes too. No check finds server data that a call copies, or a copy into a context.
+- Rule 3 (`server-state/query-key-has-inputs`): a local value that the `queryFn` reads and the `queryKey` does not, in `useQuery`, `queryOptions`, `useInfiniteQuery`, and the other query calls. It compares variables, not fields, so a key with `params` covers `params.page`. A value in the `options` of the client, such as `suppressErrorToast`, does not change the data, so it passes.
+- Rule 3 in a key factory (`server-state/key-has-each-param`): in a `*.keys.ts` file, a parameter that the key does not use whole, such as `(params) => [..., params.search]`.
+
 <!-- example:start -->
 In the workshop example, the detail page shows a button only for each entry of `allowedActions`: [`WorkshopActions`](<../../frontend/src/examples/workshops/components/workshop-actions.tsx>). A `Record` of the generated union gives each action its label, so a new action on the Server fails the build until it has one: [`LABELS`](<../../frontend/src/examples/workshops/components/workshop-actions.tsx>).
 <!-- example:end -->

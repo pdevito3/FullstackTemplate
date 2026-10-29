@@ -1,7 +1,7 @@
-import { ESLint } from 'eslint'
+import { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
-import { noPageActionRule, stringSelectorMessage } from './eslint.config.js'
+import { noPageActionRule, serverStatePlugin, stringSelectorMessage } from './eslint.config.js'
 
 const pageAction = "import type { Page } from '@playwright/test'\nexport const save = (page: Page) => page.click('#save')\n"
 
@@ -37,5 +37,92 @@ describe('playwright/no-page-action', { timeout: 60_000 }, () => {
 
   it('reports a selector string with the locator message when the rule has no option', async () => {
     expect(await messagesOf('error')).toEqual([stringSelectorMessage])
+  })
+})
+
+function serverStateMessages(code, file = 'src/domain/records/record.tsx') {
+  const linter = new Linter({ configType: 'flat' })
+  const rules = Object.keys(serverStatePlugin.rules).map((name) => [`server-state/${name}`, 'error'])
+  return linter
+    .verify(code, [{
+      files: ['**/*.ts', '**/*.tsx'],
+      languageOptions: { parser: tseslint.parser },
+      plugins: { 'server-state': serverStatePlugin },
+      rules: Object.fromEntries(file.endsWith('.keys.ts') ? rules : rules.filter(([name]) => !name.endsWith('key-has-each-param'))),
+    }], file)
+    .map((message) => `${message.ruleId?.replace('server-state/', '')}: ${message.message.split(',')[0]}`)
+}
+
+describe('server-state/no-copied-state', () => {
+  it('reports state that copies a prop', () => {
+    expect(serverStateMessages('function Name(props) { const [name] = useState(props.record.name) }'))
+      .toEqual(['no-copied-state: This state copies the prop `props`'])
+    expect(serverStateMessages("function Name({ record }) { const [name] = useState(record?.name ?? '') }"))
+      .toEqual(['no-copied-state: This state copies the prop `record`'])
+  })
+
+  it('reports state that copies a query result, also through a local const', () => {
+    const code = 'function Name({ id }) { const { data } = useRecord(id); const record = data!; const [name] = useState(record.name) }'
+
+    expect(serverStateMessages(code)).toEqual(['no-copied-state: This state copies the result of `useRecord`'])
+  })
+
+  it('takes a prop that names a first value, a calculated first value, and the value of other state', () => {
+    const code = `function Name({ defaultOpen, initialText, props, value }) {
+      const [open] = useState(defaultOpen)
+      const [text] = useState(props.initialText ?? initialText)
+      const [date] = useState(() => parseDate(value))
+      const [count] = useState(0)
+      const [shown] = useState(count)
+    }`
+
+    expect(serverStateMessages(code)).toEqual([])
+  })
+})
+
+describe('server-state/query-key-has-inputs', () => {
+  it('reports a value that the query function reads and the key does not have', () => {
+    const code = `function useRecords(search, page) {
+      return useQuery({ queryKey: RecordKeys.list({ search }), queryFn: ({ signal }) => getRecordList({ query: { search, pageNumber: page }, signal }) })
+    }`
+
+    expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `page`'])
+  })
+
+  it('takes a key with each value, a key from a local const, client options, and module constants', () => {
+    const code = `const PAGE_SIZE = 10
+    function useRecord(id, params, suppressErrorToast) {
+      const key = RecordKeys.list(params)
+      const detail = queryOptions({ queryKey: RecordKeys.detail(id ?? ''), queryFn: ({ signal }) => getRecord({ path: { id: id! }, signal, options: { suppressErrorToast } }) })
+      const list = useQuery({ queryKey: key, queryFn: async ({ signal }) => getRecordList({ query: { search: params.search, pageSize: PAGE_SIZE }, signal }) })
+      return { detail, list }
+    }`
+
+    expect(serverStateMessages(code)).toEqual([])
+  })
+})
+
+describe('server-state/key-has-each-param', () => {
+  it('reports a parameter that the key reads only through a field, or does not read', () => {
+    const code = `export const RecordKeys = {
+      all: ['records'] as const,
+      list: (params: RecordListParams) => [...RecordKeys.all, 'list', params.search] as const,
+      detail: (id: string, tab: string) => [...RecordKeys.all, 'detail', id] as const,
+    }`
+
+    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([
+      'key-has-each-param: The key uses only a part of `params`',
+      'key-has-each-param: The key uses only a part of `tab`',
+    ])
+  })
+
+  it('takes a key with each whole parameter', () => {
+    const code = `export const RecordKeys = {
+      all: ['records'] as const,
+      list: (params: RecordListParams) => [...RecordKeys.all, 'list', params] as const,
+      search: (search: string) => [...RecordKeys.all, 'search', { search }] as const,
+    }`
+
+    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])
   })
 })

@@ -49,12 +49,12 @@ interface CalendarZoomProviderProps {
 
 function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderProps) {
   const state = useCalendarState()
-  const currentYear = state?.focusedDate?.year ?? todayAt(browserTimeZone(), new Date()).year
+  const initialYear = state?.focusedDate?.year ?? todayAt(browserTimeZone(), new Date()).year
 
   const [view, setView] = useState<CalendarView>("days")
-  const [viewYear, setViewYear] = useState(currentYear)
+  const [viewYear, setViewYear] = useState(initialYear)
   const [viewDecadeStart, setViewDecadeStart] = useState(
-    Math.floor(currentYear / 12) * 12
+    Math.floor(initialYear / 12) * 12
   )
 
   // Sync viewYear when calendar's focused date changes

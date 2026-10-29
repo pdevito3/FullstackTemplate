@@ -13,7 +13,10 @@ interface WorkshopSearchProps {
 
 export function WorkshopSearch({ search, maxLength, onSearch }: WorkshopSearchProps) {
   const id = useId()
+  // The text follows a search that the URL gets from outside, during render below (docs/frontend/client-state.md, "Effects").
+  // eslint-disable-next-line server-state/no-copied-state
   const [text, setText] = useState(search)
+  // eslint-disable-next-line server-state/no-copied-state
   const [shownSearch, setShownSearch] = useState(search)
   const [sentSearch, setSentSearch] = useState<string | null>(null)
   const sendSearch = useDebouncedCallback((next: string, base: string) => {

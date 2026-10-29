@@ -64,6 +64,202 @@ export const noPageActionRule = {
   },
 }
 
+const within = (inner, outer) => inner.range[0] >= outer.range[0] && inner.range[1] <= outer.range[1]
+
+const referencesIn = (sourceCode, node) => {
+  const found = []
+  const visit = (scope) => {
+    found.push(...scope.references.filter((ref) => !ref.isTypeReference && within(ref.identifier, node)))
+    scope.childScopes.forEach(visit)
+  }
+  visit(sourceCode.getScope(node))
+  return found
+}
+
+const resolve = (scope, name) => {
+  for (let at = scope; at; at = at.upper) {
+    const variable = at.set.get(name)
+    if (variable)
+      return variable
+  }
+  return null
+}
+
+const isLocal = (variable) => variable && !['module', 'global'].includes(variable.scope.type)
+
+const initOf = (variable) => {
+  const def = variable.defs[0]
+  return def?.type === 'Variable' ? def.node.init : null
+}
+
+const hookCalledBy = (init) => {
+  let node = init
+  while (node && ['MemberExpression', 'ChainExpression', 'TSNonNullExpression', 'AwaitExpression'].includes(node.type))
+    node = node.object ?? node.expression ?? node.argument
+  return node?.type === 'CallExpression' && node.callee.type === 'Identifier' && /^use[A-Z]/.test(node.callee.name)
+    ? node.callee.name
+    : null
+}
+
+// The first value of state that the user owns from then on comes from a prop named so, as in `useState(defaultOpen)`.
+const isFirstValueName = (name) => /^(initial|default)([A-Z]|$)/.test(name)
+const ownStateHooks = new Set(['useState', 'useReducer', 'useRef', 'useId'])
+
+// The value that an expression copies as it is: through a field, `?.`, `!`, `as`, `??`, `||`, `? :`, and a local const.
+// A value that a call computes from a prop, as in `useState(() => parse(value))`, is not a copy.
+const copiedRoots = (node) => {
+  switch (node?.type) {
+    case 'Identifier':
+      return [node]
+    case 'MemberExpression':
+      return copiedRoots(node.object)
+    case 'ChainExpression':
+    case 'TSNonNullExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+      return copiedRoots(node.expression)
+    case 'LogicalExpression':
+      return [...copiedRoots(node.left), ...copiedRoots(node.right)]
+    case 'ConditionalExpression':
+      return [...copiedRoots(node.consequent), ...copiedRoots(node.alternate)]
+    case 'ArrowFunctionExpression':
+      return node.body.type === 'BlockStatement' ? [] : copiedRoots(node.body)
+    default:
+      return []
+  }
+}
+
+// docs/frontend/server-state.md, rule 2, and docs/frontend/client-state.md, "Calculate, do not store".
+export const noCopiedStateRule = {
+  meta: {
+    type: 'problem',
+    schema: [],
+    messages: {
+      copied: 'This state copies {{source}}, so it keeps the old value after {{source}} changes. Read the value where you use it (docs/frontend/server-state.md, rule 2). Give server data to a form in defaultValues. If the prop is only the first value and the user owns the state from then on, name the prop initialX or defaultX.',
+    },
+  },
+  create(context) {
+    const { sourceCode } = context
+    const sourceOf = (identifier, seen) => {
+      const variable = resolve(sourceCode.getScope(identifier), identifier.name)
+      if (!isLocal(variable) || seen.has(variable))
+        return null
+      seen.add(variable)
+      const { parent } = identifier
+      const property = parent.type === 'MemberExpression' && parent.object === identifier && !parent.computed ? parent.property.name : null
+      if (isFirstValueName(variable.name) || (property && isFirstValueName(property)))
+        return null
+      if (variable.defs[0]?.type === 'Parameter')
+        return `the prop \`${variable.name}\``
+      const init = initOf(variable)
+      const hook = init && hookCalledBy(init)
+      if (hook)
+        return ownStateHooks.has(hook) ? null : `the result of \`${hook}\``
+      return copiedRoots(init).map((root) => sourceOf(root, seen)).find(Boolean) ?? null
+    }
+
+    return {
+      "CallExpression:matches([callee.name='useState'], [callee.property.name='useState'])"(node) {
+        const source = copiedRoots(node.arguments[0]).map((root) => sourceOf(root, new Set())).find(Boolean)
+        if (source)
+          context.report({ node, messageId: 'copied', data: { source } })
+      },
+    }
+  },
+}
+
+const keyedQueryCalls = 'useQuery|useSuspenseQuery|useInfiniteQuery|useSuspenseInfiniteQuery|queryOptions|infiniteQueryOptions|fetchQuery|prefetchQuery|ensureQueryData|fetchInfiniteQuery|prefetchInfiniteQuery'
+
+const isInClientOptions = (identifier, queryFn) => {
+  for (let node = identifier.parent; node && node !== queryFn; node = node.parent)
+    if (node.type === 'Property' && !node.computed && node.key.name === 'options')
+      return true
+  return false
+}
+
+const isValue = (variable) => {
+  const def = variable.defs[0]
+  if (!def || ['FunctionName', 'ImportBinding', 'ClassName'].includes(def.type))
+    return false
+  const init = initOf(variable)
+  return !(init && (['ArrowFunctionExpression', 'FunctionExpression'].includes(init.type) || hookCalledBy(init) === 'useQueryClient'))
+}
+
+// docs/frontend/server-state.md, rule 3. It compares variables, not their fields: a key with `params` covers `params.page`.
+export const queryKeyHasInputsRule = {
+  meta: {
+    type: 'problem',
+    schema: [],
+    messages: {
+      missing: 'The query function reads `{{name}}`, but the query key does not have it, so two calls with another `{{name}}` share one cache entry. Put `{{name}}` in the key (docs/frontend/server-state.md, rule 3).',
+    },
+  },
+  create(context) {
+    const { sourceCode } = context
+    const keyVariables = (node) => {
+      const found = new Set()
+      const add = (ref) => {
+        const variable = ref.resolved
+        if (!isLocal(variable) || found.has(variable))
+          return
+        found.add(variable)
+        const init = initOf(variable)
+        if (init)
+          referencesIn(sourceCode, init).forEach(add)
+      }
+      referencesIn(sourceCode, node).forEach(add)
+      return found
+    }
+
+    return {
+      [`CallExpression:matches([callee.name=/^(${keyedQueryCalls})$/], [callee.property.name=/^(${keyedQueryCalls})$/]) > ObjectExpression.arguments:first-child`](options) {
+        const property = (name) => options.properties.find((p) => p.type === 'Property' && !p.computed && p.key.name === name)?.value
+        const queryKey = property('queryKey')
+        const queryFn = property('queryFn')
+        if (!queryKey || !queryFn || !['ArrowFunctionExpression', 'FunctionExpression'].includes(queryFn.type))
+          return
+        const inKey = keyVariables(queryKey)
+        const reported = new Set()
+        for (const ref of referencesIn(sourceCode, queryFn)) {
+          const variable = ref.resolved
+          if (!isLocal(variable) || within(variable.scope.block, queryFn) || !isValue(variable) || inKey.has(variable)
+            || reported.has(variable) || isInClientOptions(ref.identifier, queryFn))
+            continue
+          reported.add(variable)
+          context.report({ node: ref.identifier, messageId: 'missing', data: { name: variable.name } })
+        }
+      },
+    }
+  },
+}
+
+// docs/frontend/server-state.md, rule 3, in a key factory: a hook gives its request values to the factory, so the key
+// must keep each of them. A parameter that the key reads only through a field, as in `params.search`, drops the others.
+export const keyHasEachParamRule = {
+  meta: {
+    type: 'problem',
+    schema: [],
+    messages: {
+      partial: 'The key uses only a part of `{{name}}`, or none of it, so two requests that differ in another value share one cache entry. Put all of `{{name}}` in the key (docs/frontend/server-state.md, rule 3).',
+    },
+  },
+  create(context) {
+    const check = (fn) => {
+      for (const variable of context.sourceCode.getDeclaredVariables(fn)) {
+        const whole = variable.references.some(({ identifier }) =>
+          !(identifier.parent.type === 'MemberExpression' && identifier.parent.object === identifier))
+        if (!whole)
+          context.report({ node: variable.identifiers[0], messageId: 'partial', data: { name: variable.name } })
+      }
+    }
+    return { ArrowFunctionExpression: check, FunctionExpression: check }
+  },
+}
+
+export const serverStatePlugin = {
+  rules: { 'no-copied-state': noCopiedStateRule, 'query-key-has-inputs': queryKeyHasInputsRule, 'key-has-each-param': keyHasEachParamRule },
+}
+
 const selectorStringRule = (message) => ({
   selector: 'CallExpression[callee.property.name=/^\\$\\$?(eval)?$/]',
   message,
@@ -146,6 +342,18 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { 'server-state': serverStatePlugin },
+    rules: {
+      'server-state/no-copied-state': 'error',
+      'server-state/query-key-has-inputs': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.keys.ts'],
+    rules: { 'server-state/key-has-each-param': 'error' },
   },
   {
     // The router link builds on the React Aria Link.

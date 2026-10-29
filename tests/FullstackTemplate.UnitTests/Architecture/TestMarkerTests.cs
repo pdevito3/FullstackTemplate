@@ -4,13 +4,10 @@ using Shouldly;
 
 /// <summary>
 /// Each <c>[Test]</c> of the .NET suites marks its parts with <c>// Arrange</c>, <c>// Act</c>, and <c>// Assert</c>
-/// (see <c>docs/backend.md</c>, Tests). The tests that broke the rule before this check are in
-/// <c>TestMarkers.baseline.txt</c>. A new test that breaks the rule fails, and a fixed test must leave the list.
+/// (see <c>docs/backend.md</c>, Tests).
 /// </summary>
 public class TestMarkerTests
 {
-    private const string BaselineFile = "tests/FullstackTemplate.UnitTests/Architecture/TestMarkers.baseline.txt";
-
     [Test]
     public void markers_in_order_pass()
     {
@@ -193,27 +190,22 @@ public class TestMarkerTests
     }
 
     [Test]
-    public void each_test_outside_the_baseline_marks_its_parts()
+    public void each_test_marks_its_parts()
     {
         // Arrange
         var root = FindRepositoryRoot();
-        var baseline = File.ReadAllLines(Path.Combine(root, BaselineFile))
-            .Where(line => line.Length > 0)
-            .ToHashSet(StringComparer.Ordinal);
 
         // Act
         var violations = Directory.EnumerateFiles(Path.Combine(root, "tests"), "*.cs", SearchOption.AllDirectories)
             .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/'))
             .Where(file => !file.Split('/').Intersect(["bin", "obj"]).Any())
             .SelectMany(file => TestMarkers.Of(File.ReadAllText(Path.Combine(root, file)))
-                .Select(v => (Key: $"{file} {v.Test}", v.Reason)))
+                .Select(v => $"{file} {v.Test} {v.Reason}"))
+            .Order()
             .ToList();
 
         // Assert
-        var added = violations.Where(v => !baseline.Contains(v.Key)).Select(v => $"{v.Key} {v.Reason}").Order().ToList();
-        var fixedTests = baseline.Except(violations.Select(v => v.Key)).Order().ToList();
-        added.ShouldBeEmpty("Mark the parts of these tests with // Arrange, // Act, and // Assert (see docs/backend.md, Tests).");
-        fixedTests.ShouldBeEmpty($"These tests follow the rule now. Remove their lines from {BaselineFile}.");
+        violations.ShouldBeEmpty("Mark the parts of these tests with // Arrange, // Act, and // Assert (see docs/backend.md, Tests).");
     }
 
     private static string FindRepositoryRoot()

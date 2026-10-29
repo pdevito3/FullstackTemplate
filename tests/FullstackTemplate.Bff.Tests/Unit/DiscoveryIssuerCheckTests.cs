@@ -12,6 +12,7 @@ public class DiscoveryIssuerCheckTests
     [Arguments("https://idp.example/realms/a", "https://idp.example/realms/a/")]
     public void the_same_issuer_passes(string issuer, string authority)
     {
+        // Act & Assert
         DiscoveryIssuerCheck.Matches(issuer, authority).ShouldBeTrue();
     }
 
@@ -24,6 +25,7 @@ public class DiscoveryIssuerCheckTests
     [Arguments(null, "https://idp.example")]
     public void another_issuer_fails(string? issuer, string authority)
     {
+        // Act & Assert
         DiscoveryIssuerCheck.Matches(issuer, authority).ShouldBeFalse();
     }
 }

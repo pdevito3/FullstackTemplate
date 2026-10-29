@@ -148,7 +148,7 @@ public class PermissionsInResponseTests : TestBase
             .Where(t => ResponseTypesOf(t).Any(r => HasPermissions(r, [])))
             .Select(Name);
 
-        // Assert
+        // Act & Assert
         Cases.Keys.ShouldBe(requests, ignoreOrder: true,
             "Each request whose response has a Server type with a Permissions property needs a case in Cases.");
     }

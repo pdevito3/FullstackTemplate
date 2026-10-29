@@ -24,10 +24,13 @@ public sealed class RefreshFailureMetricsTests : IDisposable
     [Arguments("Service Unavailable", "temporary")]
     public async Task a_failed_refresh_counts_with_its_kind(string error, string kind)
     {
+        // Arrange
         var endpoint = new RefreshFailureMetrics(new StubTokenEndpoint(() => TokenResult.Failure(error)));
 
+        // Act
         var result = await endpoint.RefreshAccessTokenAsync(RefreshToken, new UserTokenRequestParameters());
 
+        // Assert
         result.WasSuccessful(out _, out _).ShouldBeFalse();
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
         _metrics.Sum("bff.refresh.failures", ("kind", kind)).ShouldBe(1);
@@ -36,8 +39,10 @@ public sealed class RefreshFailureMetricsTests : IDisposable
     [Test]
     public async Task an_exception_counts_as_temporary_and_still_throws()
     {
+        // Arrange
         var endpoint = new RefreshFailureMetrics(new StubTokenEndpoint(() => throw new HttpRequestException("down")));
 
+        // Act & Assert
         await Should.ThrowAsync<HttpRequestException>(() => endpoint.RefreshAccessTokenAsync(RefreshToken, new UserTokenRequestParameters()));
 
         _metrics.Sum("bff.refresh.failures", ("kind", "temporary")).ShouldBe(1);
@@ -46,10 +51,12 @@ public sealed class RefreshFailureMetricsTests : IDisposable
     [Test]
     public async Task a_cancelled_request_is_no_failure()
     {
+        // Arrange
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         var endpoint = new RefreshFailureMetrics(new StubTokenEndpoint(() => throw new OperationCanceledException()));
 
+        // Act & Assert
         await Should.ThrowAsync<OperationCanceledException>(() =>
             endpoint.RefreshAccessTokenAsync(RefreshToken, new UserTokenRequestParameters(), cancellation.Token));
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs one recipe against the verification stack of this checkout, in a fresh Chromium context.
 //
-// Usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>] [--keep-data]
+// Usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>] [--keep-data] [--sweep [--no-web-font]]
 //
 // Each run takes a copy of the databases before the recipe and puts the rows back after it (see db.mjs), also after
 // a failed run. A run that was killed leaves its copy in the run directory, and the next run restores it first.
@@ -20,23 +20,27 @@
 //   network.log    each response with status >= 400
 //   trace.zip      the Playwright trace (open with: pnpm --dir frontend exec playwright show-trace <path>)
 //   result.json    passed or failed, with the error, the page errors, and the rows that the restore put back
+//   sweep.md, sweep.json, sweep-NN.png   with --sweep, the layout and focus faults (see "Sweep" in SKILL.md)
 import { execSync } from 'node:child_process'
 import { appendFileSync, existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { postgresContainer, restore, snapshot } from './db.mjs'
+import { blockWebFonts, report, routeLongValues, sweepCapture, sweepFocus, trackLastFocused } from './sweep.mjs'
 
 const args = process.argv.slice(2)
 const recipeArg = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--label')
 if (!recipeArg) {
-  console.error('usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>] [--keep-data]')
+  console.error('usage: node browse.mjs <recipe.mjs> [--headed] [--label <name>] [--keep-data] [--sweep [--no-web-font]]')
   process.exit(2)
 }
 const headed = args.includes('--headed')
 const keepData = args.includes('--keep-data')
 const labelIdx = args.indexOf('--label')
 const label = labelIdx >= 0 ? args[labelIdx + 1] : path.basename(recipeArg, '.mjs')
+const sweep = args.includes('--sweep')
+const noWebFont = args.includes('--no-web-font')
 
 const root = execSync('git rev-parse --show-toplevel').toString().trim()
 const currentFile = path.join(root, 'artifacts/verify/.current')
@@ -126,7 +130,14 @@ const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
 })
 await context.tracing.start({ screenshots: true, snapshots: true })
+if (sweep) {
+  await routeLongValues(context, stack.urls.web)
+  await context.addInitScript(trackLastFocused)
+}
+if (noWebFont) await blockWebFonts(context)
 const page = await context.newPage()
+const cdp = sweep ? await context.newCDPSession(page) : null
+const sweepFaults = []
 // An uncaught error in the page is a bug, even if the UI looks right. Collect each one to fail the run at the end.
 // A console error is a bug too: an error boundary catches a render crash and only logs it. The browser also
 // logs each failed response as a console error. network.log has those, so they do not fail the run.
@@ -158,6 +169,7 @@ async function step(name, fn) {
   const t0 = Date.now()
   try {
     const value = await fn()
+    if (sweep) await sweepFocus({ page, settle, outDir, step: name, faults: sweepFaults })
     log('steps.log', `ok    ${name} (${Date.now() - t0} ms)`)
     console.log(`ok    ${name}`)
     return value
@@ -198,6 +210,7 @@ async function capture(name, { fullPage = true } = {}) {
   const aria = await page.locator('body').ariaSnapshot()
   writeFileSync(path.join(outDir, `${base}.aria.txt`), `# ${page.url()}\n${aria}\n`)
   log('steps.log', `cap   ${base} ${page.url()}`)
+  if (sweep && name !== 'failure') await sweepCapture({ page, cdp, settle, outDir, capture: base, faults: sweepFaults, holdsOverlay: !fullPage })
 }
 
 // Logs in through the real BFF and the IdP of the stack, then returns the user's `name` claim from the BFF.
@@ -278,18 +291,27 @@ try {
     status = 'failed'
     error = `unhandled rejection: ${unhandledRejections[0]}`
   }
+  if (sweep) {
+    const faults = sweepFaults.map(({ key, ...fault }) => fault)
+    writeFileSync(path.join(outDir, 'sweep.json'), JSON.stringify(faults, null, 2))
+    writeFileSync(path.join(outDir, 'sweep.md'), report(faults))
+    if (faults.length > 0 && status === 'passed') {
+      status = 'failed'
+      error = `the sweep found ${faults.length} fault(s). See sweep.md`
+    }
+  }
   if (before) {
     try {
       data = { restored: true, changes: restore(postgres, before) }
       rmSync(snapshotFile)
     } catch (e) {
-      data = { restored: false, changes: {}, error: e.message }
+      data = { restored: false, changes: e.changes ?? null, error: e.message }
       if (status === 'passed') {
         status = 'failed'
         error = e.message
       }
     }
-    const tables = Object.keys(data.changes)
+    const tables = Object.keys(data.changes ?? {})
     log('steps.log', `data: ${data.error ?? (tables.length ? `restored ${tables.join(', ')}` : 'no rows changed')}`)
   }
   writeFileSync(

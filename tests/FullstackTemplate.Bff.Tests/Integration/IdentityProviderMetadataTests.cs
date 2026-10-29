@@ -13,8 +13,10 @@ public class IdentityProviderMetadataTests
     [Test]
     public async Task a_discovery_issuer_that_is_not_the_authority_stops_the_bff_at_startup()
     {
+        // Arrange
         await using var provider = await FakeIdentityProvider.StartAsync(new FakeProviderOptions { MismatchedDiscoveryIssuer = true });
 
+        // Act & Assert
         var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(identityProvider: provider));
 
         // IdentityModel hides the message of the check as PII
@@ -24,6 +26,7 @@ public class IdentityProviderMetadataTests
     [Test]
     public async Task the_first_login_after_a_signing_key_rollover_signs_in()
     {
+        // Arrange
         await using var provider = await FakeIdentityProvider.StartAsync();
         await using var bff = BffApp.StartAnotherInstance(
             new Dictionary<string, string?> { [IdentityProviderBackchannel.MetadataRefreshIntervalKey] = "00:00:01" },
@@ -36,8 +39,11 @@ public class IdentityProviderMetadataTests
         await Task.Delay(TimeSpan.FromSeconds(1.5));
 
         using var browser = bff.CreateBrowser();
+
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub=user-{Guid.NewGuid():N}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }

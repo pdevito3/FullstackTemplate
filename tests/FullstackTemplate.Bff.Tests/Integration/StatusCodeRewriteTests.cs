@@ -16,10 +16,13 @@ public class StatusCodeRewriteTests
     [Arguments("/api/v1/items")]
     public async Task a_challenge_on_a_bff_api_endpoint_gets_401_with_no_location_and_no_cookies(string path)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var response = await browser.SendAsync(ApiRequest(path, "user"));
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         response.Headers.Location.ShouldBeNull();
         response.Headers.Contains("Set-Cookie").ShouldBeFalse();
@@ -30,11 +33,14 @@ public class StatusCodeRewriteTests
     [Arguments("/api/v1/items")]
     public async Task a_forbid_on_a_bff_api_endpoint_gets_403_with_no_location_and_no_cookies(string path)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-forbid");
 
+        // Act
         var response = await browser.SendAsync(ApiRequest(path, "admin"));
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         response.Headers.Location.ShouldBeNull();
         response.Headers.Contains("Set-Cookie").ShouldBeFalse();
@@ -43,12 +49,15 @@ public class StatusCodeRewriteTests
     [Test]
     public async Task a_challenge_on_another_endpoint_keeps_the_302_to_the_provider()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         var request = new HttpRequestMessage(HttpMethod.Get, "/");
         request.Headers.Add(TestAuthorization.HeaderName, "user");
 
+        // Act
         var response = await browser.SendAsync(request);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.ToString().ShouldStartWith(BffApp.Instance.IdentityProvider.Issuer);
         response.Headers.Contains("Set-Cookie").ShouldBeTrue();
@@ -57,13 +66,16 @@ public class StatusCodeRewriteTests
     [Test]
     public async Task a_forbid_on_another_endpoint_keeps_the_302()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: "test_sub=user-forbid-page");
         var request = new HttpRequestMessage(HttpMethod.Get, "/");
         request.Headers.Add(TestAuthorization.HeaderName, "admin");
 
+        // Act
         var response = await browser.SendAsync(request);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.AbsolutePath.ShouldBe("/Account/AccessDenied");
     }

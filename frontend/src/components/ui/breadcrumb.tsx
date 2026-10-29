@@ -4,7 +4,9 @@ import * as React from "react"
 import {
   Breadcrumb as BreadcrumbPrimitive,
   Breadcrumbs as BreadcrumbsPrimitive,
+  Button as ButtonPrimitive,
   composeRenderProps,
+  Dialog,
   type BreadcrumbProps,
   type BreadcrumbsProps,
 } from "react-aria-components"
@@ -13,6 +15,7 @@ import { ArrowRight01Icon, MoreHorizontalCircle01Icon } from "@hugeicons/core-fr
 import { cn } from "@/lib/utils"
 import { createRouterLink } from "@/components/ui/create-router-link"
 import { RouterLinkPrimitive, type RouterLinkHostProps } from "@/components/ui/link"
+import { Popover, PopoverTrigger } from "@/components/ui/popover"
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -90,16 +93,60 @@ const BreadcrumbLink = createRouterLink(function BreadcrumbLinkHost({
   )
 })
 
-function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
+/**
+ * When the name truncates, the current page becomes a button that opens the
+ * full name in a popover, because a Tooltip does not open on touch. It stays a
+ * button until the name changes, so a resize does not unmount a focused button.
+ */
+function BreadcrumbPage(props: { className?: string; children?: string }) {
+  return <CurrentPage key={props.children} {...props} />
+}
+
+function CurrentPage({ className, children }: { className?: string; children?: string }) {
+  const [isTruncated, setIsTruncated] = React.useState(false)
+  const measure = React.useCallback((element: HTMLElement | null) => {
+    if (!element) return
+    const observer = new ResizeObserver(() => {
+      if (element.scrollWidth > element.clientWidth) setIsTruncated(true)
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+  const pageClassName = cn("truncate font-normal text-foreground", className)
+
+  if (!isTruncated) {
+    return (
+      <span
+        ref={measure}
+        data-slot="breadcrumb-page"
+        role="link"
+        aria-disabled="true"
+        aria-current="page"
+        className={pageClassName}
+      >
+        {children}
+      </span>
+    )
+  }
   return (
-    <span
-      data-slot="breadcrumb-page"
-      role="link"
-      aria-disabled="true"
-      aria-current="page"
-      className={cn("truncate font-normal text-foreground", className)}
-      {...props}
-    />
+    <PopoverTrigger>
+      <ButtonPrimitive
+        ref={measure}
+        data-slot="breadcrumb-page"
+        aria-current="page"
+        className={cn(
+          "cursor-default rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+          pageClassName
+        )}
+      >
+        {children}
+      </ButtonPrimitive>
+      <Popover placement="bottom start" className="w-auto max-w-[calc(100vw-2rem)]">
+        <Dialog aria-label="Current page" className="wrap-anywhere outline-none">
+          {children}
+        </Dialog>
+      </Popover>
+    </PopoverTrigger>
   )
 }
 

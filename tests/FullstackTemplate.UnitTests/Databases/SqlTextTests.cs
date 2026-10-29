@@ -16,7 +16,10 @@ public class SqlTextTests
     [Arguments("WITH changed AS (UPDATE users SET first_name = 'x' RETURNING tenant_id) SELECT * FROM tenants", "users")]
     [Arguments("-- users.update\nUPDATE audit_entries SET kind = kind", "audit_entries")]
     public void names_the_first_table_of_the_set_that_a_word_names(string sql, string table)
-        => SqlText.FirstNamed(sql, Tables).ShouldBe(table);
+    {
+        // Act & Assert
+        SqlText.FirstNamed(sql, Tables).ShouldBe(table);
+    }
 
     [Test]
     [Arguments("DELETE FROM used_dpop_proofs WHERE expires <= now()")]
@@ -28,11 +31,17 @@ public class SqlTextTests
     [Arguments("SELECT E'it\\'s users'")]
     [Arguments("SELECT $$users$$, $body$ users $body$")]
     public void finds_no_table_in_a_comment_a_value_or_another_name(string sql)
-        => SqlText.FirstNamed(sql, Tables).ShouldBeNull();
+    {
+        // Act & Assert
+        SqlText.FirstNamed(sql, Tables).ShouldBeNull();
+    }
 
     [Test]
     public void parameter_with_a_dollar_is_not_the_start_of_dollar_quoted_text()
-        => SqlText.FirstNamed("SELECT $1 FROM users WHERE id = $2", Tables).ShouldBe("users");
+    {
+        // Act & Assert
+        SqlText.FirstNamed("SELECT $1 FROM users WHERE id = $2", Tables).ShouldBe("users");
+    }
 
     [Test]
     [Arguments("INSERT INTO t VALUES (1)", true)]
@@ -46,7 +55,10 @@ public class SqlTextTests
     [Arguments("SELECT \"update\" FROM t", false)]
     [Arguments("SELECT updated_on FROM t", false)]
     public void a_write_has_a_bare_write_keyword(string sql, bool isWrite)
-        => SqlText.IsWrite(sql).ShouldBe(isWrite);
+    {
+        // Act & Assert
+        SqlText.IsWrite(sql).ShouldBe(isWrite);
+    }
 
     [Test]
     [Arguments("DO $$ BEGIN UPDATE users SET first_name = 'x'; END $$", true)]
@@ -59,5 +71,8 @@ public class SqlTextTests
     [Arguments("SELECT \"do\", 'CALL x', $1 FROM t -- DO", false)]
     [Arguments("SELECT rename_users()", false)]
     public void hidden_code_is_a_do_block_a_call_or_dollar_quoted_text(string sql, bool runsHiddenCode)
-        => SqlText.RunsHiddenCode(sql).ShouldBe(runsHiddenCode);
+    {
+        // Act & Assert
+        SqlText.RunsHiddenCode(sql).ShouldBe(runsHiddenCode);
+    }
 }

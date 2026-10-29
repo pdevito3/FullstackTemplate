@@ -80,6 +80,8 @@ Set only the values that the scenario is about. If a scenario needs a value that
 - Import `test` and `expect` from `@tests/support/fixtures`, not from `@playwright/test`.
 - Do not use `page.waitForTimeout`, retries, or `test.only`.
 
+Check: `pnpm lint` fails when a `*.spec.ts` file calls a selector (`locator`, `getByRole`, and the other `getBy` calls), a `page.waitFor` call, `setTimeout`, or `test.only` (also `test.describe.only`), or imports `test` or `expect` from `@playwright/test`. It fails on `waitForTimeout` in each file of `tests/`. The rules are in `frontend/eslint.config.js`. No check finds a wait in a locators file, and no check reads the three parts of a spec.
+
 ### Selectors
 
 Use the first of these that works:
@@ -89,6 +91,8 @@ Use the first of these that works:
 3. A `data-testid`, only if 1 and 2 do not work.
 
 Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, a grid of cards is a `list`, and each card is a `listitem` with its title as its name.
+
+Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads each action of an object named `page` or `frame`, each `$`, `$$`, `$eval`, and `$$eval`, a string in the first argument of an action that takes no text, such as `click`, and two strings in a row, such as `fill('#a', 'x')`. It does not read the type of the object, so it misses a selector in a variable or before an options object on another page, such as `popup.click(sel)`. No check finds a CSS class or a tag chain in `locator()`.
 
 ### Facts about this app
 

@@ -28,16 +28,20 @@ const linkImports = [
 const selectorActions = 'click|dblclick|fill|type|press|pressSequentially|check|uncheck|setChecked|hover|tap|focus|selectOption|setInputFiles|dispatchEvent|textContent|innerText|innerHTML|getAttribute|inputValue|isChecked|isDisabled|isEditable|isEnabled|isHidden|isVisible|waitForSelector|dragAndDrop'
 const stringSelectorMessage = 'Do not give a selector string to an action. Find the element with getByRole or getByLabel in the *.locators.ts file of the feature, and call the action on that Locator.'
 
-// The type of the object decides, so a popup, a second page, and page.mainFrame() count, also with the selector in a variable.
+const isPageOrFrame = (type) => {
+  const symbol = type.getSymbol()
+  return (symbol?.getName() === 'Page' || symbol?.getName() === 'Frame')
+    && symbol.declarations?.some((declaration) => declaration.getSourceFile().fileName.includes('/playwright-core/'))
+}
+
 const noPageActionRule = {
   meta: { type: 'problem', schema: [], messages: { selector: stringSelectorMessage } },
   create(context) {
     const services = context.sourceCode.parserServices
     return {
       [`CallExpression > MemberExpression.callee[property.name=/^(${selectorActions})$/]`](callee) {
-        const symbol = services.getTypeAtLocation(callee.object).getSymbol()
-        const isPlaywright = symbol?.declarations?.some((declaration) => declaration.getSourceFile().fileName.includes('/playwright-core/'))
-        if (isPlaywright && (symbol.getName() === 'Page' || symbol.getName() === 'Frame'))
+        const type = services.getTypeAtLocation(callee.object)
+        if ((type.isUnion() ? type.types : [type]).some(isPageOrFrame))
           context.report({ node: callee.parent, messageId: 'selector' })
       },
     }

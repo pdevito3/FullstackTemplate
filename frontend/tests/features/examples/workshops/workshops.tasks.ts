@@ -10,7 +10,6 @@ export function workshopsPage(page: Page) {
   return {
     at,
 
-    // Measures the text, because a box that does not wrap grows with its text and has no scroll overflow.
     async textOverflowPast(text: Locator) {
       const right = await page.evaluate(() => document.documentElement.clientWidth)
       return text.evaluate((node, right) => {
@@ -24,7 +23,6 @@ export function workshopsPage(page: Page) {
       return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     },
 
-    /** The text of each segment that does not show whole inside the box of its date field. */
     async segmentsCutIn(field: Locator, segments: Locator) {
       const box = await field.evaluate((node) => node.getBoundingClientRect().toJSON() as DOMRect)
       return segments.evaluateAll(
@@ -72,7 +70,6 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
-    /** Types the start as the segments of the date field: month, day, year, hour, minute, then A or P. */
     async fillNew({ title, start, capacity }: { title: string; start: string; capacity: string }) {
       await at.newTitle.fill(title)
       await at.newStartMonth.click()
@@ -107,6 +104,13 @@ export function workshopsPage(page: Page) {
       const settled = answered('GET', workshopPaths.one(id))
       await page.goto(`/workshops/${id}/edit`)
       await expect(at.editForm).toBeVisible()
+      await settled
+    },
+
+    async openEditPage(id: string) {
+      const settled = answered('GET', workshopPaths.one(id))
+      await page.goto(`/workshops/${id}/edit`)
+      await expect(at.editHeading).toBeVisible()
       await settled
     },
 
@@ -175,14 +179,12 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
-    /** Presses the button of an action. `path` is the endpoint that the button sends to. */
     async send(title: string, action: string, path: string) {
       const settled = answered('POST', path)
       await at.actionButton(title, action).click()
       await settled
     },
 
-    /** Presses the button of an action with the keyboard, as a keyboard user does. */
     async sendWithEnter(title: string, action: string, path: string) {
       const settled = answered('POST', path)
       await at.actionButton(title, action).press('Enter')

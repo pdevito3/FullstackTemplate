@@ -15,7 +15,6 @@ export const workshopPaths = {
   venue: (id: string) => `/api/v1/venues/${id}`,
 }
 
-/** The X-Pagination header of one page of a list, as the Server sends it. */
 export function paginationOf(total: number, pageNumber = 1, pageSize = 10) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return {
@@ -34,7 +33,6 @@ export function paginationOf(total: number, pageNumber = 1, pageSize = 10) {
 }
 
 export const workshopsApi = {
-  /** One page of the list. `total` is the count of all matches, so the pager has more pages when it is larger. */
   listReturns(workshops: Buildable<WorkshopDto>[], { total = workshops.length, pageNumber = 1 } = {}): MockRoute {
     return {
       method: 'get',
@@ -67,6 +65,11 @@ export const workshopsApi = {
   actionMoves(action: 'schedule' | 'cancel' | 'complete', workshop: Buildable<WorkshopDto>): MockRoute {
     const body = workshop.build()
     return { method: 'post', path: workshopPaths.action(body.id, action), status: 200, body }
+  },
+
+  actionFails(id: string, action: 'schedule' | 'cancel' | 'complete', problem: Buildable<ProblemDetails>): MockRoute {
+    const body = problem.build()
+    return { method: 'post', path: workshopPaths.action(id, action), status: body.status ?? 500, body }
   },
 
   venueCreateSaves(venue: Buildable<VenueDto>): MockRoute {

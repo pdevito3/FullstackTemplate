@@ -15,6 +15,8 @@ export const workshops = (page: Page) => {
     titleLink: (title: string) => page.getByRole('link', { name: title, exact: true }),
     pager: page.getByRole('navigation', { name: 'Pages of workshops' }),
     nextPage: page.getByRole('navigation', { name: 'Pages of workshops' }).getByRole('button', { name: 'Next' }),
+    editHeading: page.getByRole('heading', { name: 'Edit workshop', exact: true }),
+    editRefusal: (text: string) => page.getByText(text, { exact: true }),
     detailHeading: (title: string) => page.getByRole('heading', { name: title, exact: true }),
     details: page.getByRole('region', { name: 'Details' }),
     status: (status: string) => page.getByText(status, { exact: true }),

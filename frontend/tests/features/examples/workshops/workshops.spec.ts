@@ -45,7 +45,6 @@ test.describe('the workshops', () => {
     expect(api.last('put', workshopPaths.one(id))?.body).toMatchObject({ version: 2 })
   })
 
-  // At 07:00 UTC on August 16, it is August 15 in Pacific/Pago_Pago and August 16 in UTC and in Pacific/Kiritimati
   const now = new Date('2026-08-16T07:00:00Z')
   const harbor = aVenue().named('Harbor Hall').inZone('Pacific/Pago_Pago')
 
@@ -200,6 +199,28 @@ test.describe('the workshops', () => {
     await expect(workshops.at.newFormMessage('Pick a venue.')).toBeVisible()
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
+
+  test('tells a caller who cannot manage workshops why a draft has no edit form', async ({ page, api }) => {
+    const draft = aWorkshop().titled('Intro to Kubb').at(venue).seenByReader()
+    api.mock(workshopsApi.oneIs(draft))
+    const workshops = workshopsPage(page)
+
+    await workshops.openEditPage(draft.build().id)
+
+    await expect(workshops.at.editRefusal('You cannot manage workshops. Ask a tenant admin for access.')).toBeVisible()
+    await expect(workshops.at.editForm).toHaveCount(0)
+  })
+
+  test('tells the caller that a scheduled workshop cannot be changed', async ({ page, api }) => {
+    const scheduled = aWorkshop().titled('Intro to Kubb').at(venue).inStatus('Scheduled')
+    api.mock(workshopsApi.oneIs(scheduled))
+    const workshops = workshopsPage(page)
+
+    await workshops.openEditPage(scheduled.build().id)
+
+    await expect(workshops.at.editRefusal('A scheduled workshop cannot be changed.')).toBeVisible()
+    await expect(workshops.at.editForm).toHaveCount(0)
+  })
 })
 
 test.describe('the focus after an action that removes the focused button', () => {
@@ -265,6 +286,24 @@ test.describe('the focus after an action that removes the focused button', () =>
     await expect(workshops.at.staleAlert).toBeHidden()
     await expect(workshops.at.title).toHaveValue('Kubb for teams')
     await expect(workshops.at.title).toBeFocused()
+  })
+
+  test('a refused action puts the focus on the heading when the reload takes its button away', async ({ page, api }) => {
+    const draft = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = draft.build()
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openDetail(id, venueId)
+    api.mock(
+      workshopsApi.actionFails(id, 'schedule', aProblem().invalid({ status: ['A cancelled workshop cannot be scheduled.'] })),
+      workshopsApi.oneIs(draft.inStatus('Cancelled')),
+    )
+
+    await workshops.sendWithEnter('Intro to Kubb', 'Schedule', workshopPaths.action(id, 'schedule'))
+
+    await expect(workshops.at.status('Cancelled')).toBeVisible()
+    await expect(workshops.at.actionButton('Intro to Kubb', 'Schedule')).toHaveCount(0)
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
   })
 
   test('Schedule puts the focus on the heading, so a second Enter sends no other action', async ({ page, api }) => {

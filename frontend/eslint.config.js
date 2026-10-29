@@ -231,7 +231,6 @@ const isValue = (variable) => {
   return !(init && (['ArrowFunctionExpression', 'FunctionExpression'].includes(init.type) || hookCalledBy(init) === 'useQueryClient'))
 }
 
-// The fields that a read takes from its variable: `params.page.toFixed()` reads `page` of `params`.
 const fieldsRead = (identifier) => {
   const fields = []
   for (let node = identifier; ;) {
@@ -313,7 +312,6 @@ export const queryKeyHasInputsRule = {
   },
 }
 
-// The fields of an inline type such as `{ search: string; page: number }`, or null when the type does not list them.
 const fieldsOfType = (pattern) => {
   const type = pattern.typeAnnotation?.typeAnnotation
   if (type?.type !== 'TSTypeLiteral')

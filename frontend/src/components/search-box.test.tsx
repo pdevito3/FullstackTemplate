@@ -5,7 +5,6 @@ import { render } from 'vitest-browser-react'
 
 import { SearchBox } from './search-box'
 
-// The URL takes a search after the debounce, and a navigation can land after the user typed more.
 function ListPage({ onSearch }: { onSearch: (text: string, base: string) => void }) {
   const [search, setSearch] = useState('')
   const [navigating, setNavigating] = useState<string | null>(null)

@@ -9,7 +9,6 @@ interface StaleVersionAlertProps {
   onLoadLatest: () => void
 }
 
-/** The alert of a save that sent an old version (a 409 with the stale-version type, from `useServerErrors`). */
 export function StaleVersionAlert({ noun, problem, isLoadingLatest, onLoadLatest }: StaleVersionAlertProps) {
   if (problem?.kind !== 'stale') {
     return null
@@ -38,7 +37,6 @@ interface LatestLoadedNoteProps<F extends string> {
 
 const listFormat = new Intl.ListFormat('en', { type: 'conjunction' })
 
-/** After Load the latest, the note that names the fields that the latest save changed. */
 export function LatestLoadedNote<F extends string>({ noun, changed, labels }: LatestLoadedNoteProps<F>) {
   if (changed === null) {
     return null

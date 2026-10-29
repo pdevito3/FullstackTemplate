@@ -43,6 +43,7 @@ Preconditions:
 
 - Without the onboard step, each workshop request gives 403, because the Server has no user for the token.
 - The start needs a user with no user record. `browse.mjs` puts back the rows after each run, so each run starts with no user record. A stack with the user from an earlier run shows no `No tenant` region, and the onboard step fails.
+- The Server caches the tenant of each user, and the restore deletes the rows behind that cache. So the recipe deletes its tenant through `DELETE /api/v1/tenants/{id}` in a `finally` block, also after a failed step. Without it, the next run shows `You are not a member of a tenant` and no `Start a tenant` link. If a run stops before the delete, run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost`.
 - The page shows the start in the time zone of the venue, not in the zone of the browser. A check that formats `startsAt` with no `timeZone` fails when the two zones differ.
 - A `version` is a database value. Check that it changed, not that it went up by one.
 - A click on an option of the `Venue` combobox can scroll the page, and a scroll closes the list. Call `settle()` before the click, or pick with ArrowDown and Enter.

@@ -9,7 +9,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 - The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. No feature in this map reads or writes app data. A login writes a BFF session row, and the restore deletes it.
 <!-- example:start -->
 - The weather endpoints of the example page make random data at each request.
-- The workshops example writes app data. Its recipe first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
+- Only the workshops example writes app data. Its recipe first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
 <!-- example:end -->
 - The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.

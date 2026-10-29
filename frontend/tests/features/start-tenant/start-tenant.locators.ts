@@ -7,6 +7,7 @@ export const startTenant = (page: Page) => {
   return {
     notice,
     noticeLink: notice.getByRole('link', { name: 'Start a tenant' }),
+    checkFailure: page.getByRole('region', { name: 'Membership check' }),
     heading: page.getByRole('heading', { name: 'Start a tenant', level: 1 }),
     form,
     field: (label: string) => form.getByLabel(label, { exact: true }),

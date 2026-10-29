@@ -56,6 +56,18 @@ test.describe('a signed-in user with no tenant', () => {
     expect(await start.at.toasts.count()).toBe(0)
   })
 
+  test('who got a user record in another tab sees that they are a member after the refusal', async ({ page, api }) => {
+    api.mock(membershipApi.startRefuses('identifier', 'A user with this identifier already exists.'))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+    api.mock(...membershipApi.userIs(as.user()))
+
+    await start.start('Acme')
+
+    await expect(start.at.alreadyMember).toBeVisible()
+    await expect(start.at.form).toHaveCount(0)
+  })
+
   test('must give a tenant name', async ({ page, api }) => {
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
@@ -80,25 +92,35 @@ test.describe('a signed-in user whose lookup the Server refuses', () => {
     expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
     expect(await start.at.toasts.count()).toBe(0)
   })
+
+  test('sees the reason of the Server on the home page too', async ({ page, api }) => {
+    api.mock(
+      weatherApi.listReturns(aForecast()),
+      membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'),
+    )
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+
+    await expect(start.at.checkFailure).toHaveText('You are not a member of a tenant. Ask a tenant admin to add you.')
+    await expect(start.at.notice).toHaveCount(0)
+  })
 })
 
 test.describe('a member of a tenant', () => {
   test.use({ actor: as.user('Bob Smith') })
 
-  test('sees no notice on the home page', async ({ page, api }) => {
+  test('is told on the start page that they have a tenant, and sees no notice on the home page', async ({ page, api }) => {
     api.mock(weatherApi.listReturns(aForecast()))
     const start = startTenantPage(page)
-    await start.openAsSignedIn('/')
-
-    await expect(start.at.notice).toHaveCount(0)
-  })
-
-  test('is told on the start page that they have a tenant', async ({ page }) => {
-    const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
-
     await expect(start.at.alreadyMember).toBeVisible()
     await expect(start.at.form).toHaveCount(0)
+
+    // The layout stays mounted, so the notice reads the membership that the page showed.
+    await start.goHome()
+
+    await expect(start.at.notice).toHaveCount(0)
+    await expect(start.at.checkFailure).toHaveCount(0)
   })
 })
 

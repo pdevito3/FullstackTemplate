@@ -1,9 +1,6 @@
-// The page of the functional tests of the shared components: the date picker, the overlays, and the toasts. It is not
-// an example, so these tests stay when scripts/remove-examples.cs deletes the components page. It shows the components
-// in the layout of the app, with the router devtools. Only the Vite dev server serves it, not the production build.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { Notification } from '@/components/notification'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -22,6 +19,7 @@ import {
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog'
 import { SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { createQueryClient } from '@/lib/query-client'
 import { Route as AppRoot } from '@/routes/__root'
 import '@/lib/api-client'
 import '@/index.css'
@@ -91,7 +89,7 @@ const router = createRouter({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-      <QueryClientProvider client={new QueryClient()}>
+      <QueryClientProvider client={createQueryClient()}>
         <RouterProvider router={router} />
         <Toaster />
       </QueryClientProvider>

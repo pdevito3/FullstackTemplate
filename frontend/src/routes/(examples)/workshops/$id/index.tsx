@@ -5,6 +5,7 @@ import { useVenue } from '@/examples/venues/apis/get-venue'
 import { useWorkshop } from '@/examples/workshops/apis/get-workshop'
 import { useSendWorkshopAction } from '@/examples/workshops/apis/send-workshop-action'
 import { formatStart } from '@/examples/workshops/components/format-start'
+import { PageHeading } from '@/examples/components/page-heading'
 import { QueryError } from '@/examples/components/query-error'
 import { WorkshopActions } from '@/examples/workshops/components/workshop-actions'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
@@ -40,7 +41,7 @@ function WorkshopPage() {
         All workshops
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="min-w-0 text-3xl font-bold tracking-tight wrap-anywhere">{title}</h1>
+        <PageHeading className="min-w-0 wrap-anywhere">{title}</PageHeading>
         <WorkshopStatusBadge status={status} />
       </div>
       <section aria-label="Details">

@@ -4,6 +4,7 @@ import * as z from 'zod'
 import type { WorkshopForCreationDto } from '@/api/generated/models/types/workshop-for-creation-dto'
 import { Notification } from '@/components/notification'
 import { Link } from '@/components/ui/link'
+import { PageHeading } from '@/examples/components/page-heading'
 import { useVenue } from '@/examples/venues/apis/get-venue'
 import { useAddWorkshop } from '@/examples/workshops/apis/add-workshop'
 import { WorkshopCreateForm } from '@/examples/workshops/components/workshop-create-form'
@@ -31,7 +32,7 @@ function NewWorkshopPage() {
       <Link to="/workshops" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         All workshops
       </Link>
-      <h1 className="text-3xl font-bold tracking-tight">New workshop</h1>
+      <PageHeading>New workshop</PageHeading>
       {venueId && linkedVenue.isPending ? (
         <p role="status" className="text-muted-foreground">
           Loading venue

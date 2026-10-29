@@ -25,7 +25,7 @@ export function appShellPage(page: Page) {
     },
 
     async openMobileSidebar() {
-      await at.sidebarTrigger.first().click()
+      await at.sidebarTrigger.click()
       await expect(at.mobileSidebar).toBeVisible()
       await expect.poll(() => at.mobileSidebar.evaluate((sheet) => sheet.getAnimations().length)).toBe(0)
     },

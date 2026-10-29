@@ -723,3 +723,22 @@ test.describe('a filter group on a 390 px phone', () => {
     }
   })
 })
+
+test.describe('a nested filter group on a 320 px phone with a 24 px font', () => {
+  test.use({ viewport: { width: 320, height: 640 } })
+
+  test('fits the group header and the filters inside each group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.useDefaultFontSize(24)
+    await demo.openNestedGroups()
+
+    await demo.at.toolbarButton('Group Filters').click()
+
+    for (const depth of [1, 2]) {
+      for (const action of ['Ungroup', 'Delete group'] as const) {
+        expect(await demo.overlapOf(demo.at.groupBadge(depth), demo.at.groupAction(depth, action)), `depth ${depth} ${action}`).toBeNull()
+      }
+      expect(await demo.overflowOf(demo.at.group(depth)), `depth ${depth}`).toBeLessThanOrEqual(0)
+    }
+  })
+})

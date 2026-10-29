@@ -211,6 +211,7 @@ public sealed class EntityTreeTests : IAsyncDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             var node = modelBuilder.Entity<Node>();
             node.HasKey(n => n.Id);
             node.HasOne(n => n.Parent).WithMany().HasForeignKey(n => n.ParentId).OnDelete(DeleteBehavior.Cascade);

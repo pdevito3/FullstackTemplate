@@ -42,7 +42,7 @@ public class AgentCallerTests : TestBase
         // Assert
         renamed.Id.ShouldBe(tenant.Id);
         (await addUser.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(
-            $"The agent {agent.ClientId} is not granted the manage_users permission. A tenant admin can grant it.");
+            "This agent has no grant to manage users. A tenant admin can grant it.");
     }
 
     [Test]
@@ -64,7 +64,7 @@ public class AgentCallerTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
-            .ShouldBe("You need the manage_tenant permission to do this.");
+            .ShouldBe("You cannot manage the tenant. Ask a tenant admin for access.");
     }
 
     [Test]
@@ -112,7 +112,7 @@ public class AgentCallerTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(
-            $"The agent {agent.ClientId} is not granted the manage_tenant permission. A tenant admin can grant it.");
+            "This agent has no grant to manage the tenant. A tenant admin can grant it.");
     }
 
     [Test]
@@ -187,7 +187,7 @@ public class AgentCallerTests : TestBase
         // Assert
         renamed.Name.ShouldBe(name.Name);
         (await addUser.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(
-            $"The agent {machineAgent.ClientId} is not granted the manage_users permission. A tenant admin can grant it.");
+            "This agent has no grant to manage users. A tenant admin can grant it.");
     }
 
     [Test]

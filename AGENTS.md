@@ -40,11 +40,13 @@ Read the doc for an area before you change code in that area.
 | [docs/backend/](docs/backend/) | Rules for entities, features, DTOs and mappers, endpoints (HTTP, gRPC, MCP), concurrency (a version, a run again, or a lock), domain events, EF configurations, feature telemetry, and the audit log |
 | [docs/backend/source-generators.md](docs/backend/source-generators.md) | When to use a source generator and when reflection is allowed |
 | [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
+| [docs/messages.md](docs/messages.md) | The text of error messages, alerts, toasts, and labels |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
 | [docs/frontend/](docs/frontend/) | Rules for server state, client state, code style, and tests |
 | [docs/examples.md](docs/examples.md) | The example code, its markers, and the script that deletes it |
+| [docs/specs/](docs/specs/) | The specs of a domain or an effort. Start a new spec from [TEMPLATE.md](docs/specs/TEMPLATE.md): each rule has an ID, and a test names the ID |
 | [docs/csharp-repl.md](docs/csharp-repl.md) | CSharpRepl in the running server: the hook wiring and the Development-only guards |
 | [docs/template-updates.md](docs/template-updates.md) | Merge new template commits into the app with `scripts/template-merge.cs` of the template |
 

@@ -43,7 +43,7 @@ public class TenantIsolationTests : TestBase
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?pageSize=500");
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need a user record in a tenant to do this.");
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
     [Test]

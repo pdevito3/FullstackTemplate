@@ -121,7 +121,7 @@ public class DomainEventSaveTests : TestBase
             .AddTestHandler<TenantUpdated>(async (e, db, ct) =>
             {
                 runs.Add($"{nameof(TenantUpdated)}:{e.Id}");
-                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).UpdateRole(UserRole.Admin());
+                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).UpdateRole(UserRole.User());
             }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
@@ -132,9 +132,9 @@ public class DomainEventSaveTests : TestBase
         var secondUser = await db.Users.SingleAsync(u => u.Id == scenario.SecondUser.Id);
 
         // Act
-        secondUser.UpdateRole(UserRole.User());
+        secondUser.UpdateRole(UserRole.Admin());
         tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
-        firstUser.UpdateRole(UserRole.User());
+        firstUser.UpdateRole(UserRole.Admin());
         await db.SaveChangesAsync();
 
         // Assert

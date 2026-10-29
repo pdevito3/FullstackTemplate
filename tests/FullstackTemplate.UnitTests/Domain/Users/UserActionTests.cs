@@ -38,11 +38,11 @@ public class UserActionTests
     public static IEnumerable<Func<(string Case, string TargetRole, UserAction Action, Func<User, Caller> Caller, string? Denial)>>
         Cases()
     {
-        const string manageUsersDenial = "You need the manage_users permission to do this.";
-        const string manageUserAccessDenial = "You need the manage_user_access permission to do this.";
-        const string readUsersDenial = "You need the read_users permission to do this.";
+        const string manageUsersDenial = "You cannot manage users. Ask a tenant admin for access.";
+        const string manageUserAccessDenial = "You cannot manage the access of users. Ask a tenant admin for access.";
+        const string readUsersDenial = "You cannot see the users of the tenant. Ask a tenant admin for access.";
         // An admin holds each permission. The caller must hold them all to take them away, and manage_agents is first.
-        const string adminPermissionDenial = "You need the manage_agents permission to do this.";
+        const string adminPermissionDenial = "You cannot manage agents. Ask a tenant admin for access.";
 
         yield return () => ("user on their own record", "User", UserAction.Update(), OwnRecord, null);
         yield return () => ("user on another user", "User", UserAction.Update(), _ => MemberWith(), manageUsersDenial);
@@ -80,7 +80,7 @@ public class UserActionTests
             _ => new Caller.Outsider(OutsiderKind.Anonymous), "Sign in to do this.");
         yield return () => ("delegated agent whose grant lacks a permission of the user", "Admin", UserAction.Delete(),
             _ => new Caller.DelegatedAgent("clinic-assistant", Permission.GetAll(), [Permission.ManageUsers()]),
-            "The agent clinic-assistant is not granted the manage_agents permission. A tenant admin can grant it.");
+            "This agent has no grant to manage agents. A tenant admin can grant it.");
     }
 
     [Test]

@@ -26,9 +26,13 @@ public static class ScheduleWorkshop
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             WorkshopAction.Schedule().GuardCaller(caller);
 
-            var schedule = await LoadCaseAsync(request.Id, request.Dto.Version, cancellationToken);
-            var workshop = schedule.Workshop;
+            var workshop = await dbContext.Workshops
+                .TagWithOperationCallSite("workshops.schedule.load")
+                .GetById(request.Id, cancellationToken);
+            Activity.Current?.SetTag("app.venue_id", workshop.VenueId);
             workshop.GuardChangeBy(caller);
+
+            var schedule = await LoadCaseAsync(workshop, request.Dto.Version, cancellationToken);
             var wasScheduled = workshop.Status == WorkshopStatus.Scheduled();
 
             switch (WorkshopScheduling.Decide(schedule))
@@ -58,13 +62,8 @@ public static class ScheduleWorkshop
             return workshop.ToWorkshopDto(schedule.Venue, caller);
         }
 
-        private async Task<ScheduleCase> LoadCaseAsync(string workshopId, uint version, CancellationToken cancellationToken)
+        private async Task<ScheduleCase> LoadCaseAsync(Workshop workshop, uint version, CancellationToken cancellationToken)
         {
-            var workshop = await dbContext.Workshops
-                .TagWithOperationCallSite("workshops.schedule.load")
-                .GetById(workshopId, cancellationToken);
-            Activity.Current?.SetTag("app.venue_id", workshop.VenueId);
-
             var venue = await dbContext.Venues
                 .TagWithOperationCallSite("workshops.schedule.load_venue")
                 .GetById(workshop.VenueId, cancellationToken);

@@ -68,6 +68,7 @@ Do these steps before the first update. Commit each step alone, so that the merg
    The script does these steps:
 
    - It stops if the tree has changes, if a merge or a rebase is open, if a path of the app still has the template name, or if the merge base is older than the template changes that the app has.
+   - It removes each temporary worktree that an earlier run of the script left, for example after a kill.
    - It makes a renamed copy of the base commit and of the new commit. It runs the `init.cs` of the new commit on both, so that a change of `init.cs` does not show as a change of the template.
    - It keeps the `UserSecretsId` of the AppHost and the default `AuthProvider` of the app in both copies.
    - It merges the renamed copies into the app, and leaves the merge open as `git merge` does. The second parent of the merge is the real template commit, so the next update starts from it.

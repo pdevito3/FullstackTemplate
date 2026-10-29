@@ -104,6 +104,7 @@ internal sealed partial class App(string root)
             throw new MergeException("The git tree has changes. Commit or stash the changes, then run the script again.");
         if (OpenOperations.Any(name => Path.Exists(GitPath(name))))
             throw new MergeException("A merge, a cherry-pick, a revert, or a rebase is open. Finish it or abort it, then run the script again.");
+        RemoveStaleCopies();
 
         var tip = Tip(templateRef);
         var baseCommit = baseRef is not null
@@ -265,6 +266,15 @@ internal sealed partial class App(string root)
 
     private string Describe(string commit) => Git(root, "log", "-1", "--format=%h %s", commit).Trim();
 
+    // A run that was killed during the rename keeps its temporary worktree registered, and its folder can stay
+    private void RemoveStaleCopies()
+    {
+        foreach (var line in Lines(Git(root, "worktree", "list", "--porcelain")))
+            if (line.StartsWith("worktree ", StringComparison.Ordinal) && CopyFolderName().IsMatch(Path.GetFileName(line["worktree ".Length..])))
+                Git(root, out _, "worktree", "remove", "--force", line["worktree ".Length..]);
+        Git(root, out _, "worktree", "prune");
+    }
+
     // Checks out the commit in a temporary worktree, renames it with the init.cs of the new template commit, and
     // commits the result. The same init.cs on both sides keeps a change of init.cs out of the merge.
     private string Renamed(string commit, string tip, string displayName)
@@ -366,6 +376,10 @@ internal sealed partial class App(string root)
     // The forms of the template name that init.cs renames. A link to the template repo keeps the name.
     [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate|fullstack-template|Fullstack Template")]
     private static partial Regex TemplateName();
+
+    // The folder of a temporary worktree of Renamed
+    [GeneratedRegex("^template-merge-[0-9a-f]{32}$")]
+    private static partial Regex CopyFolderName();
 
     // The number that a squash merge of GitHub puts at the end of the subject, as "fix: a fault (#94)"
     [GeneratedRegex(@"\(#(?<number>\d+)\)$")]

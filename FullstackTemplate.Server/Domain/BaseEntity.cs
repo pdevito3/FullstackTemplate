@@ -77,7 +77,7 @@ public abstract class BaseEntity
     protected void SetId(string id)
     {
         Exceptions.ValidationException.Must(EntityId.IsValid(id, _idPrefix), "id",
-            $"The id '{id}' must start with '{_idPrefix}_', then have only lower-case letters and digits, and have no more than {EntityId.MaxLength} characters.");
+            $"The ID must start with '{_idPrefix}_', then have only lower-case letters and digits, and have no more than {EntityId.MaxLength} characters.");
         _id = id;
     }
 }

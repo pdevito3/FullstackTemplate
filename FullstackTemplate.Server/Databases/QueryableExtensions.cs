@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Text;
 using Domain;
 using Exceptions;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,22 @@ public static class QueryableExtensions
     public static TEntity MustBeFoundOrThrow<TEntity>(this TEntity? entity)
         where TEntity : BaseEntity
     {
-        return entity ?? throw new NotFoundException($"{typeof(TEntity).Name} was not found.");
+        return entity ?? throw new NotFoundException($"{InWords(typeof(TEntity).Name)} was not found.");
+    }
+
+    // A message names the entity in words, so WorkOrder is "Work order" (docs/messages.md)
+    private static string InWords(string typeName)
+    {
+        var words = new StringBuilder(typeName.Length + 4);
+        for (var i = 0; i < typeName.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(typeName[i]) && char.IsLower(typeName[i - 1]))
+                words.Append(' ').Append(char.ToLowerInvariant(typeName[i]));
+            else
+                words.Append(typeName[i]);
+        }
+
+        return words.ToString();
     }
 
     // EntityIdPrefixAnalyzer makes sure that each entity has the IdPrefix constant

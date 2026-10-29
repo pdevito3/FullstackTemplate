@@ -162,16 +162,16 @@ public abstract record Caller
     {
         Member => UserLacks(permission),
         DelegatedAgent agent when !agent.UserPermissions.Contains(permission) => UserLacks(permission),
-        DelegatedAgent agent => GrantLacks(agent.ClientId, permission),
-        MachineAgent agent => GrantLacks(agent.ClientId, permission),
+        DelegatedAgent => GrantLacks(permission),
+        MachineAgent => GrantLacks(permission),
         Outsider outsider => outsider.Denial,
         _ => throw new UnreachableException(),
     };
 
-    private static string UserLacks(Permission permission) => $"You need the {permission.Value} permission to do this.";
+    private static string UserLacks(Permission permission) => $"You cannot {permission.Words}. Ask a tenant admin for access.";
 
-    private static string GrantLacks(string clientId, Permission permission)
-        => $"The agent {clientId} is not granted the {permission.Value} permission. A tenant admin can grant it.";
+    private static string GrantLacks(Permission permission)
+        => $"This agent has no grant to {permission.Words}. A tenant admin can grant it.";
 }
 
 /// <summary>Why a caller holds no permission.</summary>

@@ -122,6 +122,22 @@ public class QueryKitInputExtensionsTests : IDisposable
         exception.Message.ShouldNotContain("jane@example.com");
     }
 
+    // A value can end the first line of the QueryKit message as a whole message. The end anchor refuses the lines after it.
+    [Test]
+    [Arguments("\n")]
+    [Arguments("\r\n")]
+    public void value_that_ends_the_first_line_of_the_querykit_message_does_not_get_into_the_message(string lineBreak)
+    {
+        // Arrange
+        var filters = $"Seats == \"a' is not a valid Int32 for the filter property 'jane@example.com'.{lineBreak}z\"";
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldNotContain("jane@example.com");
+    }
+
     [Test]
     [Arguments("Name ~~ \"paul\"")]
     [Arguments("Name !~ \"paul\"")]

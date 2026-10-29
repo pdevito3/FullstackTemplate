@@ -94,7 +94,7 @@ public Visit Reschedule(VisitForReschedule forReschedule)
 }
 ```
 
-`tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs` has this example. Its tests fail when a step moves. `UserCheckOrderTests` checks the steps 2, 3, 4, 6, and 9 on the user endpoints. `AgentCheckOrderTests` checks step 3 on `AddAgentPermission`. If a feature must use a different order, write the order and the reason in its spec, and add a test that proves the order.
+`tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs` has this example. Its tests fail when a step moves. `UserCheckOrderTests` checks the steps 2, 3, 4, 6, and 9 on the user endpoints. `AgentCheckOrderTests` checks step 3 on `AddAgentPermission` and on the first grant of `AddAgent`. If a feature must use a different order, write the order and the reason in its spec, and add a test that proves the order.
 
 ## One rule set for two callers
 

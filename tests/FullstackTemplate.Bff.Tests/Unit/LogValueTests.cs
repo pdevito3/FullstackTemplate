@@ -15,6 +15,7 @@ public class LogValueTests
     [Arguments("\r\n", "")]
     public void control_characters_are_removed(string value, string expected)
     {
+        // Act & Assert
         LogValue.Clean(value).ShouldBe(expected);
     }
 
@@ -23,12 +24,14 @@ public class LogValueTests
     [Arguments("/caf\u00e9 \u4e2d")]
     public void a_clean_value_is_the_same_string(string value)
     {
+        // Act & Assert
         LogValue.Clean(value).ShouldBeSameAs(value);
     }
 
     [Test]
     public void null_and_empty_stay_as_they_are()
     {
+        // Act & Assert
         LogValue.Clean(null).ShouldBeNull();
         LogValue.Clean("").ShouldBe("");
     }

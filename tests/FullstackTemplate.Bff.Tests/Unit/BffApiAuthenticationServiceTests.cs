@@ -11,11 +11,14 @@ public class BffApiAuthenticationServiceTests
     [Test]
     public async Task a_challenge_redirect_on_a_bff_api_endpoint_becomes_401_with_no_location_and_no_cookies()
     {
+        // Arrange
         var context = ContextFor(new EndpointMetadataCollection(BffApiEndpointMetadata.Instance));
         var service = new BffApiAuthenticationService(new RedirectingAuthenticationService());
 
+        // Act
         await service.ChallengeAsync(context, null, null);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
         context.Response.Headers.Location.ShouldBeEmpty();
         context.Response.Headers.SetCookie.ShouldBeEmpty();
@@ -24,11 +27,14 @@ public class BffApiAuthenticationServiceTests
     [Test]
     public async Task a_forbid_redirect_on_a_bff_api_endpoint_becomes_403_with_no_location_and_no_cookies()
     {
+        // Arrange
         var context = ContextFor(new EndpointMetadataCollection(BffApiEndpointMetadata.Instance));
         var service = new BffApiAuthenticationService(new RedirectingAuthenticationService());
 
+        // Act
         await service.ForbidAsync(context, null, null);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
         context.Response.Headers.Location.ShouldBeEmpty();
         context.Response.Headers.SetCookie.ShouldBeEmpty();
@@ -37,11 +43,14 @@ public class BffApiAuthenticationServiceTests
     [Test]
     public async Task a_challenge_redirect_on_another_endpoint_stays_a_redirect()
     {
+        // Arrange
         var context = ContextFor(EndpointMetadataCollection.Empty);
         var service = new BffApiAuthenticationService(new RedirectingAuthenticationService());
 
+        // Act
         await service.ChallengeAsync(context, null, null);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status302Found);
         context.Response.Headers.Location.ToString().ShouldBe(RedirectingAuthenticationService.Location);
         context.Response.Headers.SetCookie.Count.ShouldBe(2);
@@ -50,22 +59,28 @@ public class BffApiAuthenticationServiceTests
     [Test]
     public async Task a_challenge_with_no_endpoint_stays_a_redirect()
     {
+        // Arrange
         var context = new DefaultHttpContext();
         var service = new BffApiAuthenticationService(new RedirectingAuthenticationService());
 
+        // Act
         await service.ForbidAsync(context, null, null);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status302Found);
     }
 
     [Test]
     public async Task a_forbid_that_is_already_403_on_a_bff_api_endpoint_loses_its_location_and_cookies()
     {
+        // Arrange
         var context = ContextFor(new EndpointMetadataCollection(BffApiEndpointMetadata.Instance));
         var service = new BffApiAuthenticationService(new RedirectingAuthenticationService(StatusCodes.Status403Forbidden));
 
+        // Act
         await service.ForbidAsync(context, null, null);
 
+        // Assert
         context.Response.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
         context.Response.Headers.Location.ShouldBeEmpty();
         context.Response.Headers.SetCookie.ShouldBeEmpty();

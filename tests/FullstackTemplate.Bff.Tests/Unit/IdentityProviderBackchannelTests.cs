@@ -16,12 +16,14 @@ public class IdentityProviderBackchannelTests
     [Test]
     public void a_certificate_that_passes_the_normal_checks_is_trusted()
     {
+        // Act & Assert
         IdentityProviderBackchannel.IsTrusted(Other, SslPolicyErrors.None, Pinned).ShouldBeTrue();
     }
 
     [Test]
     public void the_pinned_certificate_is_trusted_with_chain_and_name_errors()
     {
+        // Act & Assert
         IdentityProviderBackchannel.IsTrusted(
             Pinned, SslPolicyErrors.RemoteCertificateChainErrors | SslPolicyErrors.RemoteCertificateNameMismatch, Pinned).ShouldBeTrue();
     }
@@ -29,6 +31,7 @@ public class IdentityProviderBackchannelTests
     [Test]
     public void another_certificate_with_errors_is_not_trusted()
     {
+        // Act & Assert
         IdentityProviderBackchannel.IsTrusted(Other, SslPolicyErrors.RemoteCertificateChainErrors, Pinned).ShouldBeFalse();
         IdentityProviderBackchannel.IsTrusted(null, SslPolicyErrors.RemoteCertificateNotAvailable, Pinned).ShouldBeFalse();
     }
@@ -36,11 +39,14 @@ public class IdentityProviderBackchannelTests
     [Test]
     public void the_refresh_interval_setting_sets_only_the_refresh_interval()
     {
+        // Arrange
         var options = new OpenIdConnectOptions();
         var automatic = options.AutomaticRefreshInterval;
 
+        // Act
         IdentityProviderBackchannel.Configure(options, Configuration(new() { [IdentityProviderBackchannel.MetadataRefreshIntervalKey] = "00:00:01" }));
 
+        // Assert
         options.RefreshInterval.ShouldBe(TimeSpan.FromSeconds(1));
         options.AutomaticRefreshInterval.ShouldBe(automatic);
         options.BackchannelHttpHandler.ShouldBeNull();
@@ -49,11 +55,14 @@ public class IdentityProviderBackchannelTests
     [Test]
     public void no_settings_keep_the_handler_defaults()
     {
+        // Arrange
         var options = new OpenIdConnectOptions();
         var refresh = options.RefreshInterval;
 
+        // Act
         IdentityProviderBackchannel.Configure(options, Configuration(new()));
 
+        // Assert
         options.RefreshInterval.ShouldBe(refresh);
         options.BackchannelHttpHandler.ShouldBeNull();
     }
@@ -61,14 +70,17 @@ public class IdentityProviderBackchannelTests
     [Test]
     public void a_pinned_certificate_path_sets_a_backchannel_handler()
     {
+        // Arrange
         var path = Path.GetTempFileName();
         try
         {
             File.WriteAllText(path, Pinned.ExportCertificatePem());
             var options = new OpenIdConnectOptions();
 
+            // Act
             IdentityProviderBackchannel.Configure(options, Configuration(new() { [IdentityProviderBackchannel.PinnedCertificatePathKey] = path }));
 
+            // Assert
             options.BackchannelHttpHandler.ShouldBeOfType<SocketsHttpHandler>()
                 .SslOptions.RemoteCertificateValidationCallback.ShouldNotBeNull();
         }

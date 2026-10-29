@@ -142,11 +142,11 @@ These rules stop a caller from joining a tenant that is not theirs:
 
 ## Delete a tenant
 
-`DELETE /api/v1/tenants/{id}` deletes the tenant, its agents, and its users, with the permissions of each agent and user, in one save. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete.
+`DELETE /api/v1/tenants/{id}` deletes the tenant and each row that it owns, in one save. A row that the tenant owns is a row of an entity type that the tenant filter covers: an agent, a user, the permissions of each, and each tenant-owned entity of your app. `TenantOwnedRows` in `Databases/` finds these types in the EF model, so a new tenant-owned entity needs no change in `DeleteTenant`. The audit log keeps its entries. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete.
 
 For a user of a deleted tenant, the server finds no user record on the next request. A deleted user frees its identifier, so the same person can send `POST /api/v1/users/initiate` to start a new tenant and a new user. The new user has a new ID. The old user and its history stay in the deleted tenant. The unique index on the tenant name also covers the deleted tenants, so the new tenant needs a new name.
 
-An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)).
+An agent add and a user add take the shared lock of the tenant, and a tenant delete takes the exclusive lock. Thus an add that runs during the delete cannot leave a live agent or a live user in the deleted tenant (see [concurrency.md](backend/concurrency.md#lock)). The add of a new tenant-owned entity must take the shared lock too. If it does not, a row that it saves during the delete stays live in the deleted tenant.
 
 ## Tenant endpoints
 

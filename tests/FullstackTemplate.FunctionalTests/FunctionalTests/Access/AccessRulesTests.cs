@@ -16,6 +16,7 @@ public class AccessRulesTests
     [Arguments(false, "200", true)]
     [Arguments(false, "404", true)]
     [Arguments(true, "200", false)]
+    [Arguments(true, "404", false)]
     [Arguments(true, "401", true)]
     public void a_call_with_no_user_is_a_gap_unless_it_gets_the_code_of_its_entry(bool? anonymous, string code, bool isGap)
     {

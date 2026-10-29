@@ -46,16 +46,20 @@ The key is `(occurred_at, record_id, ordinal)`. One index serves the history of 
 
 An action is a fact that is not a data change, for example "users exported". Declare a `sealed record` that derives from `AuditAction` in `Domain/[EntityName]s/`. Its subject is the aggregate root that the action is about. Mark each property of the action that is not plain, as for an entity.
 
+<!-- code: tests/FullstackTemplate.UnitTests/Databases/Auditing/TestAuditActions.cs -->
 ```csharp
 [AuditActionName("users_exported")]
-public sealed record UsersExported(AuditSubject Subject, ExportFormat Format, int Count) : AuditAction(Subject);
+public sealed record UsersExported(AuditSubject Subject, ExportFormat Format, int Count,
+    [property: Sensitive] string? Reason = null) : AuditAction(Subject);
 ```
 
 In the handler, make the subject from the loaded root, record the action, and save:
 
+<!-- code: tests/FullstackTemplate.IntegrationTests/AuditLog/AuditActionTests.cs -->
 ```csharp
 var tenant = await dbContext.Tenants.SingleAsync(t => t.Id == request.TenantId, cancellationToken);
-dbContext.RecordAction(new UsersExported(AuditSubject.Of(tenant), request.Format, users.Count));
+dbContext.RecordAction(new UsersExported(AuditSubject.Of(tenant), "csv", 3));
+// ...
 await dbContext.SaveChangesAsync(cancellationToken);
 ```
 

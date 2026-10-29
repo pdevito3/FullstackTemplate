@@ -118,6 +118,7 @@ public sealed class LateConfiguredEntityTests : IAsyncDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Memo>().HasKey(m => m.Id);
         }
     }

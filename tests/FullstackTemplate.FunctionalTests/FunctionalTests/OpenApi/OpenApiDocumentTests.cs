@@ -313,7 +313,7 @@ public class OpenApiDocumentTests
             Descendants(node).OfType<JsonObject>().Select(child => child["$ref"]?.GetValue<string>()).OfType<string>();
         static bool IsFreeText(JsonNode schema) =>
             TypesOf(schema).Contains("string") && schema["maxLength"] is null && schema["enum"] is null
-            && schema["format"]?.GetValue<string>() != "date-time";
+            && schema["format"]?.GetValue<string>() is not ("date-time" or "date");
 
         var requestSchemas = new HashSet<string>();
         var pending = new Queue<string>(Operations(root)

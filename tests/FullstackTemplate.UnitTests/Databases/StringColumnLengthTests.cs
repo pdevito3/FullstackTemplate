@@ -41,6 +41,7 @@ public class StringColumnLengthTests
         ["venues.name"] = new("name", Text, v => TestGraph.Start(out _).AddVenue(out _, x => x.Name = v)),
         ["workshops.title"] = new("title", Text, v => TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out _, x => x.Title = v)),
         // example:end
+        // new-feature:caller-columns
     };
 
     private static readonly Dictionary<string, IReadOnlyList<string>> FixedOptionColumns = new()
@@ -54,6 +55,7 @@ public class StringColumnLengthTests
         ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),
         ["workshops.status"] = WorkshopStatus.ListNames(),
         // example:end
+        // new-feature:fixed-option-columns
     };
 
     private static readonly HashSet<string> ServerWrittenColumns =

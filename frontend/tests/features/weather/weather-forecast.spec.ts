@@ -218,8 +218,9 @@ test.describe('a signed-in user with a long name on a 320 px phone', () => {
 
     await expect(weather.at.day('Sat, Mar 14')).toContainText(longName)
     expect(await weather.pageOverflow()).toBe(0)
-    expect(await weather.overflowOf(weather.at.welcome(longName))).toBeLessThanOrEqual(0)
-    expect(await weather.overflowOf(weather.at.day('Sat, Mar 14').getByText(longName).first())).toBeLessThanOrEqual(0)
-    expect(await weather.overflowOf(weather.at.day('Sat, Mar 14').getByText(longName).last())).toBeLessThanOrEqual(0)
+    const card = weather.at.day('Sat, Mar 14')
+    expect(await weather.textOverflowPast(weather.at.welcome(longName))).toBeLessThanOrEqual(0)
+    expect(await weather.textOverflowPast(card.getByText(longName).first(), card)).toBeLessThanOrEqual(0)
+    expect(await weather.textOverflowPast(card.getByText(longName).last(), card)).toBeLessThanOrEqual(0)
   })
 })

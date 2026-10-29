@@ -29,8 +29,17 @@ export function weatherForecastPage(page: Page) {
       await expect(at.loading).toBeVisible()
     },
 
-    async overflowOf(element: Locator) {
-      return element.evaluate((node) => node.scrollWidth - node.clientWidth)
+    // The text, not the element: a box that does not wrap grows with its text, so its own scroll width does not
+    // show the overflow.
+    async textOverflowPast(text: Locator, container?: Locator) {
+      const right = container
+        ? await container.evaluate((node) => node.getBoundingClientRect().right)
+        : await page.evaluate(() => document.documentElement.clientWidth)
+      return text.evaluate((node, right) => {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        return range.getBoundingClientRect().right - right
+      }, right)
     },
 
     async pageOverflow() {

@@ -50,7 +50,7 @@ public class NulInReadInputTests : TestBase
     }
 
     [Test]
-    public async Task a_nul_in_the_id_of_get_tenant_over_grpc_is_not_found()
+    public async Task a_nul_in_the_tenant_id_of_a_grpc_get_is_not_found()
     {
         // Arrange
         await SignInAsAdminAsync();
@@ -87,6 +87,7 @@ public class NulInReadInputTests : TestBase
             .FieldViolations.ShouldHaveSingleItem().Field.ShouldBe(field);
     }
 
+    // example:start
     [Test]
     [Arguments("get_tenant")]
     [Arguments("update_tenant")]
@@ -127,6 +128,7 @@ public class NulInReadInputTests : TestBase
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").EnumerateObject()
             .ShouldHaveSingleItem().Name.ShouldBe(field);
     }
+    // example:end
 
     private async Task SignInAsAdminAsync()
     {

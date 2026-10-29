@@ -2,16 +2,9 @@ import { useRouterState } from "@tanstack/react-router"
 import {
   Home01Icon,
   InformationCircleIcon,
-  DashboardSquare01Icon,
-  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
@@ -23,14 +16,13 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuLink,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubLink,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-variants"
 import { useSidebar } from "@/components/ui/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
+// example:start
+import { ExampleNav } from "@/examples/example-nav"
+// example:end
 
 const appName = "Fullstack Template"
 const appInitials = appName
@@ -53,16 +45,6 @@ const navItems = [
   },
 ] as const
 
-const demoItems = [
-  {
-    title: "Components",
-    url: "/components",
-  },
-  {
-    title: "Filter Builder",
-    url: "/filter-demo",
-  },
-] as const
 
 export function AppSidebar() {
   const routerState = useRouterState()
@@ -72,9 +54,6 @@ export function AppSidebar() {
   // On mobile the sidebar is a sheet over the page. Close it when a link is
   // pressed, so the user sees the new page. On desktop the sheet is not used.
   const closeMobile = () => setOpenMobile(false)
-
-  // Check if any demo item is active
-  const isDemoActive = demoItems.some((item) => currentPath === item.url || currentPath.startsWith(item.url + "/"))
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -110,33 +89,9 @@ export function AppSidebar() {
                   )
                 })}
 
-                {/* Demos submenu */}
-                <Collapsible defaultExpanded={isDemoActive} className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger className={sidebarMenuButtonVariants()} data-active={isDemoActive || undefined}>
-                      <HugeiconsIcon icon={DashboardSquare01Icon} />
-                      <span>Demos</span>
-                      <HugeiconsIcon
-                        icon={ArrowRight01Icon}
-                        className="ml-auto transition-transform duration-200 group-data-[expanded]/collapsible:rotate-90"
-                      />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {demoItems.map((item) => {
-                          const isActive = currentPath === item.url
-                          return (
-                            <SidebarMenuSubItem key={item.title} isActive={isActive}>
-                              <SidebarMenuSubLink to={item.url} isActive={isActive} onPress={closeMobile}>
-                                <span>{item.title}</span>
-                              </SidebarMenuSubLink>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
+                {/* example:start */}
+                <ExampleNav currentPath={currentPath} onNavigate={closeMobile} />
+                {/* example:end */}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

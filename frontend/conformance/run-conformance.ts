@@ -237,7 +237,7 @@ async function drive(browser: Browser, bff: string, flow: Flow, screenshot: stri
   }
   if (flow === 'login-refresh') {
     // Token management refreshes the access token before it expires, on a call to the API
-    await step('api', async () => `${(await context.request.get(`${bff}/api/v1/weather/secure`, { headers: { 'X-CSRF': '1' } })).status()}`)
+    await step('api', async () => `${(await context.request.get(`${bff}/api/v1/users/me`, { headers: { 'X-CSRF': '1' } })).status()}`)
   }
   if (flow === 'login-logout') {
     await step('logout', async () => {

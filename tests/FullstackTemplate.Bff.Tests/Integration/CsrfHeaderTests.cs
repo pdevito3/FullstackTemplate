@@ -8,15 +8,15 @@ public class CsrfHeaderTests
     [Test]
     [Arguments("GET", "/bff/user")]
     [Arguments("GET", "/local-api/hello")]
-    [Arguments("GET", "/api/v1/weather")]
-    [Arguments("POST", "/api/v1/weather")]
-    [Arguments("PUT", "/api/v1/weather/1")]
-    [Arguments("PATCH", "/api/v1/weather/1")]
-    [Arguments("DELETE", "/api/v1/weather/1")]
-    [Arguments("HEAD", "/api/v1/weather")]
-    [Arguments("OPTIONS", "/api/v1/weather")]
+    [Arguments("GET", "/api/v1/items")]
+    [Arguments("POST", "/api/v1/items")]
+    [Arguments("PUT", "/api/v1/items/1")]
+    [Arguments("PATCH", "/api/v1/items/1")]
+    [Arguments("DELETE", "/api/v1/items/1")]
+    [Arguments("HEAD", "/api/v1/items")]
+    [Arguments("OPTIONS", "/api/v1/items")]
     [Arguments("GET", "/api")]
-    [Arguments("GET", "/API/v1/weather")]
+    [Arguments("GET", "/API/v1/items")]
     public async Task a_bff_api_request_without_the_header_gets_401_with_an_empty_body(string method, string path)
     {
         // Arrange
@@ -79,9 +79,9 @@ public class CsrfHeaderTests
 
     [Test]
     [Arguments("GET", "/local-api/hello")]
-    [Arguments("GET", "/api/v1/weather")]
-    [Arguments("POST", "/api/v1/weather")]
-    [Arguments("DELETE", "/api/v1/weather/1")]
+    [Arguments("GET", "/api/v1/items")]
+    [Arguments("POST", "/api/v1/items")]
+    [Arguments("DELETE", "/api/v1/items/1")]
     public async Task a_request_with_the_header_passes(string method, string path)
     {
         // Arrange

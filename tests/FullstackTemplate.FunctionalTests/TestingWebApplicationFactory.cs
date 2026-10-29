@@ -40,6 +40,12 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     public const string ReadOnlyMachineClientId = "read-only-machine";
 
     /// <summary>
+    /// A second machine client that can manage all tenants. Only the MCP telemetry tests use it, so that they can
+    /// find the span of their own call.
+    /// </summary>
+    public const string TelemetryMachineClientId = "telemetry-machine";
+
+    /// <summary>
     /// The client ID of the app (the BFF). A user token from this client acts as its user.
     /// </summary>
     public const string FirstPartyClientId = "test-app";
@@ -122,6 +128,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         Environment.SetEnvironmentVariable("Auth__ClientId", FirstPartyClientId);
         Environment.SetEnvironmentVariable("Mcp__PublicOrigin", McpPublicOrigin);
         Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__0", TrustedMachineClientId);
+        Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__1", TelemetryMachineClientId);
         Environment.SetEnvironmentVariable("Tenancy__ReadAllTenantsClientIds__0", ReadOnlyMachineClientId);
 
         // Aspire sets this on each project in development, so the request spans keep the query as the browser sent it

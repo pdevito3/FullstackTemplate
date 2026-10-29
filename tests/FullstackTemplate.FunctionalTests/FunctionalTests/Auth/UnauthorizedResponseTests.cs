@@ -28,7 +28,7 @@ public partial class UnauthorizedResponseTests : TestBase
         // The operations come from the OpenAPI document, so a new endpoint is in this test automatically
         var root = await OpenApiDocumentTests.LoadDocumentAsync();
         var secured = OpenApiDocumentTests.Operations(root)
-            .Where(o => o.Name != OpenApiDocumentTests.AnonymousOperation)
+            .Where(o => !OpenApiDocumentTests.AnonymousOperations.Contains(o.Name))
             .ToList();
         secured.ShouldNotBeEmpty();
         var failures = new List<string>();

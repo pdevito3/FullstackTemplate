@@ -205,7 +205,7 @@ public class LoginHardeningTests
         // Act
         // A token that expires within the refresh window, so that the next API call refreshes it
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
         // Assert
@@ -230,7 +230,7 @@ public class LoginHardeningTests
 
         // Act
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
         // Assert

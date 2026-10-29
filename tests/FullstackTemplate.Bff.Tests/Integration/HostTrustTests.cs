@@ -31,7 +31,7 @@ public class HostTrustTests
     {
         // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/weather");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/items");
         request.Headers.Add("X-CSRF", "1");
         request.Headers.Add("X-Forwarded-Host", "evil.example");
 
@@ -45,7 +45,7 @@ public class HostTrustTests
     [Test]
     [Arguments("/bff/login")]
     [Arguments("/bff/user")]
-    [Arguments("/api/v1/weather")]
+    [Arguments("/api/v1/items")]
     [Arguments("/signin-oidc")]
     [Arguments("/health")]
     public async Task a_host_that_is_not_on_the_list_gets_400(string path)

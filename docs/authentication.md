@@ -20,7 +20,7 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 ## Login flow
 
 1. The user clicks Login in the React app.
-2. The frontend goes to `/bff/login`. A `returnUrl` must be a local URL, for example `/weather`. The BFF rejects an absolute URL and a URL that starts with `//`. The BFF percent-encodes each non-ASCII character as UTF-8, so `/café` becomes `/caf%C3%A9`. The return URL travels in the `state` of the authorize URL. Thus, if the encoded `returnUrl` has more than 2048 characters, the BFF uses the default return URL (`PathBase`, or `/`), and the provider does not refuse the long URL with a 414.
+2. The frontend goes to `/bff/login`. A `returnUrl` must be a local URL, for example `/about`. The BFF rejects an absolute URL and a URL that starts with `//`. The BFF percent-encodes each non-ASCII character as UTF-8, so `/café` becomes `/caf%C3%A9`. The return URL travels in the `state` of the authorize URL. Thus, if the encoded `returnUrl` has more than 2048 characters, the BFF uses the default return URL (`PathBase`, or `/`), and the provider does not refuse the long URL with a 414.
 3. The BFF sends the browser to the provider with the authorization code flow, PKCE (`S256`), and `response_mode=query`. If the provider has PAR, the BFF first pushes the request, and the authorize URL has only `client_id` and `request_uri`.
 4. The provider sends the browser back to `/signin-oidc`. The BFF accepts only a GET there.
 5. The BFF checks the callback. The `iss` parameter must equal the issuer of the provider (RFC 9207). The ID token `aud` must hold only the client id. A failed check gives a 400, and the BFF creates no BFF session.
@@ -29,7 +29,7 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 8. The React app calls `/bff/user` with the `X-CSRF: 1` header to get the claims. The claims include `bff:logout_url`.
 9. API calls go through the BFF at `/api/v1/*` with the `X-CSRF: 1` header. The BFF adds the access token of the BFF session.
 
-In a local run, the Vite dev server serves the SPA on its own origin, and the provider sends the browser back to the BFF origin. Thus, at the end of a login or a logout, the BFF sends the browser to `returnUrl` on the Vite origin, for example `http://localhost:24710/weather`. A published BFF serves the SPA itself, and it sends the browser to the local `returnUrl`.
+In a local run, the Vite dev server serves the SPA on its own origin, and the provider sends the browser back to the BFF origin. Thus, at the end of a login or a logout, the BFF sends the browser to `returnUrl` on the Vite origin, for example `http://localhost:24710/about`. A published BFF serves the SPA itself, and it sends the browser to the local `returnUrl`.
 
 The AppHost gives `services:webfrontend` to the BFF only in a local run. The BFF uses this value to find the Vite origin. A published BFF does not get the value, so it serves the SPA from `wwwroot`.
 
@@ -183,7 +183,7 @@ To run the local stack with DPoP, set `DPoP=true`. The AppHost then sets `Auth:F
 AuthProvider=Keycloak DPoP=true dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
 ```
 
-When the stack runs with DPoP, `run-against-stack.ts` sets `DPOP=true`, and the e2e test "should call the secure weather API with a DPoP-bound token" reads the server span of the secure weather call with `dotnet aspire otel spans`. Without DPoP, that test is skipped.
+When the stack runs with DPoP, `run-against-stack.ts` sets `DPOP=true`, and the e2e test "should call the Server with a DPoP-bound token" reads the server span of the `GET /api/v1/users/me` call with `dotnet aspire otel spans`. Without DPoP, that test is skipped.
 
 ## Auth provider
 

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { sharedComponentsPage } from '@tests/support/shared-components'
 import { datePickerDemo } from './date-picker.locators'
 
 export function datePickerDemoPage(page: Page) {
@@ -8,7 +9,7 @@ export function datePickerDemoPage(page: Page) {
     at,
 
     async open() {
-      await page.goto('/components')
+      await page.goto(sharedComponentsPage)
       await expect(at.heading).toBeVisible()
     },
 

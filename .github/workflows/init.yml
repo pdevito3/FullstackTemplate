@@ -78,6 +78,50 @@ jobs:
           cd ../older-Acme.Shop
           if git grep -inP '(?<!pdevito3/)fullstack|full[ ._-]stack[ ._-]?template' -- ':!scripts/init.cs'; then exit 1; fi
 
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Merge this commit into an app that deleted the examples
+        run: |
+          base=HEAD~1
+          if ! git cat-file -e HEAD~1:scripts/remove-examples.cs 2>/dev/null; then base=HEAD; fi
+          git worktree add --detach ../template-change HEAD
+          (
+            cd ../template-change
+            echo "// A template change to an example." >> FullstackTemplate.Server/Examples/Tenants/Features/GetTenant/GetTenant.Mcp.cs
+            perl -0pi -e 's/(<!-- example:(start) -->\n)/$1A template change in an example section.\n/' docs/frontend.md
+            echo "A template change to the core." >> docs/frontend.md
+            printf 'export {}\n' > 'frontend/src/routes/(examples)/template-change.tsx'
+            git add --all
+            git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "test: a template change"
+          )
+          tip=$(git -C ../template-change rev-parse HEAD)
+          git worktree add --detach ../no-examples "$base"
+          cd ../no-examples
+          dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop'
+          git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "chore: make Acme.Shop"
+          dotnet run scripts/remove-examples.cs
+          git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "chore: delete the examples"
+          dotnet run "$GITHUB_WORKSPACE/scripts/template-merge.cs" -- --ref "$tip"
+          git diff --exit-code --name-only --diff-filter=U
+          test -f scripts/examples-removed.txt
+          grep -q "A template change to the core." docs/frontend.md
+          example_files() { git ls-files | grep -E '(^|/)(Examples|examples|\(examples\))/'; }
+          markers() { git grep -n -I -E 'example:(start|end)|A template change in an example section' -- ':!scripts/remove-examples.cs' ':!docs/examples.md'; }
+          example_files && status=0 || status=$?
+          [ "$status" -eq 1 ]
+          markers && status=0 || status=$?
+          [ "$status" -eq 1 ]
+
       # The rename uses a dotted name, because Aspire turns the dots of a project name into underscores
       - name: Run the init script
         run: dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop' --auth-provider Keycloak

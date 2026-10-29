@@ -140,7 +140,7 @@ public class BffSessionTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60"))!;
         var gate = provider.HoldRefreshes(subject);
 
-        var apiCall = browser.GetApiAsync("/api/v1/weather");
+        var apiCall = browser.GetApiAsync("/api/v1/items");
         await gate.Arrived.Task.WaitAsync(Timeout);
 
         // Act & Assert
@@ -171,7 +171,7 @@ public class BffSessionTests
         var refreshes = provider.HoldRefreshes(subject);
 
         // The API call reads the row, and then its refresh waits at the identity provider
-        var apiCall = browser.GetApiAsync("/api/v1/weather");
+        var apiCall = browser.GetApiAsync("/api/v1/items");
         await refreshes.Arrived.Task.WaitAsync(Timeout);
         // The logout reads the row with the first refresh token, and then its delete waits
         var logout = browser.GetAsync("/bff/logout");
@@ -214,7 +214,7 @@ public class BffSessionTests
         var gate = provider.HoldRefreshes(subject);
 
         // The API call reads the row, and then its refresh waits at the identity provider
-        var apiCall = refreshingBrowser.GetApiAsync("/api/v1/weather");
+        var apiCall = refreshingBrowser.GetApiAsync("/api/v1/items");
         await gate.Arrived.Task.WaitAsync(Timeout);
 
         // Act & Assert
@@ -272,7 +272,7 @@ public class BffSessionTests
         var subject = NewSubject();
         using var browser = app.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         provider.RefreshCount(subject).ShouldBe(1);
 
         // Act

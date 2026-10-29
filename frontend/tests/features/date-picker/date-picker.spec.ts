@@ -3,7 +3,7 @@ import { datePickerDemoPage } from './date-picker.tasks'
 
 const shortYear = 'Enter a 4-digit year.'
 
-test.describe('the Start date picker of the components page', () => {
+test.describe('the date picker', () => {
   test('marks a short year with a red message and border after the focus leaves it, until the year has four digits', async ({ page }) => {
     const demo = datePickerDemoPage(page)
     await demo.open()

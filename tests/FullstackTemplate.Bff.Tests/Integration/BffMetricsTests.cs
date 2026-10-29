@@ -84,7 +84,7 @@ public sealed class BffMetricsTests : IDisposable
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60&test_refresh=fail");
 
         // Act & Assert
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
         _metrics.Sum("bff.refresh.failures", ("kind", "permanent")).ShouldBe(1);
@@ -100,7 +100,7 @@ public sealed class BffMetricsTests : IDisposable
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60&test_refresh=unavailable");
 
         // Act & Assert
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(1);
         _metrics.Sum("bff.refresh.failures", ("kind", "temporary")).ShouldBe(1);
@@ -136,7 +136,7 @@ public sealed class BffMetricsTests : IDisposable
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_expires_in=60");
 
         // Act & Assert
-        (await browser.GetApiAsync("/api/v1/weather")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         _metrics.Sum("bff.refresh.failures").ShouldBe(0);
     }

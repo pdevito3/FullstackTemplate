@@ -1,6 +1,6 @@
 # Server state
 
-Server state is the data that the API returns. TanStack Query owns it. It caches the data and fetches the data again when it becomes stale. The examples come from `frontend/src/domain/weather/apis/`.
+Server state is the data that the API returns. TanStack Query owns it. It caches the data and fetches the data again when it becomes stale. The examples come from `frontend/src/domain/users/apis/`.
 
 ## Rules
 

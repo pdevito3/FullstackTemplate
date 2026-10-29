@@ -9,7 +9,7 @@ public class UnsupportedApiVersionTests : TestBase
     [Test]
     [Arguments("api/v2/tenants")]
     [Arguments("api/v1.5/tenants")]
-    [Arguments("api/v2/weather")]
+    [Arguments("api/v2/users/me")]
     public async Task request_for_a_version_that_the_endpoint_does_not_declare_returns_not_found(string route)
     {
         // Arrange

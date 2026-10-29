@@ -84,6 +84,9 @@ try
 
     Console.WriteLine($"The app is {app.Name}. The default AuthProvider is {app.AuthProvider}.");
     Console.WriteLine($"Next: dotnet build {app.Name}.slnx");
+    // example:start
+    Console.WriteLine("To delete the example code, commit the result, then run: dotnet run scripts/remove-examples.cs");
+    // example:end
     return 0;
 }
 catch (InitException exception)

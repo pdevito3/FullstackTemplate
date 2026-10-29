@@ -160,7 +160,7 @@ public class McpDomainErrorsTests
         var request = new RequestContext<CallToolRequestParams>(
             Substitute.For<McpServer>(),
             new JsonRpcRequest { Method = RequestMethods.ToolsCall },
-            new CallToolRequestParams { Name = "update_tenant" });
+            new CallToolRequestParams { Name = "add_tenant" });
         return await handler(request, CancellationToken.None);
     }
 }

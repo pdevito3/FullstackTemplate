@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { sharedComponentsPage } from '@tests/support/shared-components'
 import { overlayDemo, type Overlay } from './overlays.locators'
 
 export function overlayDemoPage(page: Page) {
@@ -8,7 +9,7 @@ export function overlayDemoPage(page: Page) {
     at,
 
     async open() {
-      await page.goto('/components')
+      await page.goto(sharedComponentsPage)
       await expect(at.heading).toBeVisible()
       await expect(at.devtoolsBadge).toBeVisible()
     },

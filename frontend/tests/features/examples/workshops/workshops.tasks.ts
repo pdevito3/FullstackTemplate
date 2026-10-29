@@ -191,6 +191,22 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    async askToCancel(title: string) {
+      await at.actionButton(title, 'Cancel workshop').click()
+      await expect(at.cancelDialog).toBeVisible()
+    },
+
+    async keepWorkshop() {
+      await at.keepWorkshop.click()
+      await expect(at.cancelDialog).toBeHidden()
+    },
+
+    async confirmCancel(path: string) {
+      const settled = answered('POST', path)
+      await at.confirmCancel.click()
+      await settled
+    },
+
     async pressEnter() {
       await page.keyboard.press('Enter')
     },

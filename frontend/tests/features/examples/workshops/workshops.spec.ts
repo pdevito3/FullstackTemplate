@@ -137,6 +137,28 @@ test.describe('the workshops', () => {
     await expect(workshops.at.editLink('Intro to Kubb')).toHaveCount(0)
   })
 
+  test('asks before it cancels a workshop, and Keep workshop sends nothing', async ({ page, api }) => {
+    const draft = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = draft.build()
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openDetail(id, venueId)
+
+    await workshops.askToCancel('Intro to Kubb')
+    await workshops.keepWorkshop()
+
+    expect(api.all('post', workshopPaths.action(id, 'cancel'))).toHaveLength(0)
+    await expect(workshops.at.actionButton('Intro to Kubb', 'Cancel workshop')).toBeFocused()
+
+    api.mock(workshopsApi.actionMoves('cancel', draft.inStatus('Cancelled')))
+    await workshops.askToCancel('Intro to Kubb')
+    await workshops.confirmCancel(workshopPaths.action(id, 'cancel'))
+
+    await expect(workshops.at.status('Cancelled')).toBeVisible()
+    await expect(workshops.at.cancelDialog).toBeHidden()
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
+  })
+
   test('shows no actions to a caller that the API allows none', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue).seenByReader()
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))

@@ -6,6 +6,7 @@ export const workshops = (page: Page) => {
   const venueForm = page.getByRole('form', { name: 'New venue' })
   const newStart = newForm.getByRole('group', { name: 'Starts at' })
   const editStart = editForm.getByRole('group', { name: 'Starts at' })
+  const cancelDialog = page.getByRole('dialog', { name: 'Cancel this workshop?' })
   const staleAlert = editForm.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
 
   return {
@@ -27,6 +28,9 @@ export const workshops = (page: Page) => {
     actions: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }),
     actionButton: (title: string, name: string) =>
       page.getByRole('group', { name: `Actions for ${title}` }).getByRole('button', { name, exact: true }),
+    cancelDialog,
+    confirmCancel: cancelDialog.getByRole('button', { name: 'Cancel workshop', exact: true }),
+    keepWorkshop: cancelDialog.getByRole('button', { name: 'Keep workshop', exact: true }),
     editLink: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }).getByRole('link', { name: 'Edit' }),
     newHeading: page.getByRole('heading', { name: 'New workshop', exact: true }),
     newForm,

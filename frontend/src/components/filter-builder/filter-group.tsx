@@ -65,23 +65,30 @@ export function FilterGroup({
     >
       <div className="p-2">
         {/* Group Header */}
-        {/* In a narrow group, the actions wrap below the details, and each AND wraps below its filter. */}
-        <div data-slot="filter-group-header" className="flex flex-wrap items-start gap-1.5 mb-1.5">
+        {/* In a narrow group, the actions wrap below the details, and each AND wraps below its filter. The checkbox
+            and the badge stay on one line. A header narrower than the two (8rem) wraps the text of the badge, and a
+            header narrower than both actions (7.25rem) shows only the icon of Ungroup. */}
+        <div data-slot="filter-group-header" className="@container/group-header flex flex-wrap items-start gap-1.5 mb-1.5">
           <div className="flex flex-1 flex-wrap items-center gap-1.5">
-            {/* Selection Checkbox */}
-            {showCheckbox && (
-              <Checkbox
-                aria-label="Select group"
-                isSelected={isSelected}
-                onChange={() => onToggleSelection(group.id)}
-                className="shrink-0"
-              />
-            )}
+            <div className="flex min-w-0 items-center gap-1.5">
+              {/* Selection Checkbox */}
+              {showCheckbox && (
+                <Checkbox
+                  aria-label="Select group"
+                  isSelected={isSelected}
+                  onChange={() => onToggleSelection(group.id)}
+                  className="shrink-0"
+                />
+              )}
 
-            {/* Group Label */}
-            <Badge variant="outline" className="text-xs font-medium shrink-0">
-              Group (Depth {depth})
-            </Badge>
+              {/* Group Label */}
+              <Badge
+                variant="outline"
+                className="text-xs font-medium shrink-0 @max-[8rem]/group-header:h-auto @max-[8rem]/group-header:shrink @max-[8rem]/group-header:whitespace-normal @max-[8rem]/group-header:text-center"
+              >
+                Group (Depth{'\u00a0'}{depth})
+              </Badge>
+            </div>
 
             {/* Logical Operator Toggle */}
             <Button
@@ -100,7 +107,7 @@ export function FilterGroup({
             </span>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5">
             {/* Ungroup Button */}
             <TooltipTrigger>
               <Button
@@ -110,7 +117,7 @@ export function FilterGroup({
                 className="h-6 px-2 text-xs shrink-0"
               >
                 <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3" />
-                Ungroup
+                <span className="@max-[7.25rem]/group-header:sr-only">Ungroup</span>
               </Button>
               <Tooltip>Move the filters to the parent group</Tooltip>
             </TooltipTrigger>

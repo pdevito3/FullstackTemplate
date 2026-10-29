@@ -12,7 +12,7 @@ import { MembershipKeys } from './membership.keys'
 /** The fields of a new tenant and its first user that the identity provider can fill in. */
 export type StartTenantProfile = Pick<InitiateUserAndTenantDto, 'identifier' | 'firstName' | 'lastName' | 'email' | 'username'>
 
-/** Whether the signed-in person has a user record, and so a tenant, on the Server. */
+/** The state of the signed-in person's user record on the Server. A user record means a tenant. */
 export type Membership =
   | { status: 'loading' }
   | { status: 'signed-out' }
@@ -33,7 +33,6 @@ function profileOf(identifier: string, claims: BffClaim[]): StartTenantProfile {
   }
 }
 
-/** The user record of the identifier, or null when the Server has none. A user with no record gets a 404. */
 async function findUser(identifier: string, signal: AbortSignal): Promise<UserDto | null> {
   // The pages show the failure, so a toast would say it twice.
   const result = await getUserByIdentifier({

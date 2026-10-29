@@ -5,7 +5,7 @@ import { Link } from '@/components/ui/link'
 
 import { useMembership } from '../apis/get-membership'
 
-/** Each page tells a signed-in user with no tenant how to get one. A new database has no user records. */
+/** Tells a signed-in user with no user record, such as each user of a new database, how to start a tenant. */
 export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })

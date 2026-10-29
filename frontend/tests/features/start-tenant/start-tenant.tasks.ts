@@ -36,7 +36,6 @@ export function startTenantPage(page: Page) {
       await expect(page).toHaveURL('/')
     },
 
-    /** The form refuses the empty field and sends no request. */
     async submitEmpty() {
       await at.submit.click()
       await expect(at.formErrors).toHaveCount(1)

@@ -30,14 +30,14 @@ function StartTenantContent() {
   const startTenant = useStartTenant()
   const { login } = useAuthActions()
 
-  // Before the loading state: the start makes the membership load again.
+  // Check this before 'loading': a start invalidates the membership, and the load must not replace the success message.
   if (startTenant.data) {
     return (
       <div className="flex flex-col items-start gap-4">
         <p className="min-w-0 wrap-anywhere">
           You started {startTenant.data.tenant.name}. You are its admin, and you can now add the other users.
         </p>
-        {/* The form that had the focus is gone. */}
+        {/* The submitted form unmounts, so the focus moves here and not to the body. */}
         <Link to="/" autoFocus className={buttonVariants()}>Go to the home page</Link>
       </div>
     )

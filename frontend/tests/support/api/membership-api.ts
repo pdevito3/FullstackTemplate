@@ -11,7 +11,7 @@ export const membershipPaths = {
 }
 
 export const membershipApi = {
-  /** The user record of a signed-in actor, or the 404 of the Server for an actor with no record. */
+  /** No route for an anonymous actor, because the SPA does not look up a user record without a session. */
   userIs(identity: Identity): MockRoute[] {
     if (!identity.signedIn) return []
     const path = membershipPaths.userOf(actorSubject)

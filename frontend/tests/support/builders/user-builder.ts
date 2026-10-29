@@ -37,7 +37,6 @@ class UserBuilder {
 
 export const aUser = () => UserBuilder.create()
 
-/** The answer of a start of a tenant: the new tenant, and its first user as its admin. */
 export const aStartedTenant = (name: string, user = aUser()): InitiateUserAndTenantResponseDto => {
   const admin = { ...user.build(), role: 'Admin' as const }
   return { tenant: { id: admin.tenantId, name, version: 1 }, user: admin }

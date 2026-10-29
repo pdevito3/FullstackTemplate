@@ -30,7 +30,6 @@ interface StartTenantFormProps {
   onStart: (body: InitiateUserAndTenantDto) => Promise<unknown>
 }
 
-/** The person who starts a tenant becomes its admin, so that someone can add the other users. */
 export function StartTenantForm({ profile: { identifier, ...names }, onStart }: StartTenantFormProps) {
   const form = useForm({
     resolver: zodResolver(schema),
@@ -58,19 +57,20 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
+      // The first user is the admin, so that someone can add the other users.
       await onStart({ ...values, identifier, role: 'Admin' })
     } catch (error) {
       showRefusal(error)
     }
   })
 
-  // The notice that leads here goes away, so the first field takes the focus.
   const field = (name: keyof StartTenantValues, label: string, type = 'text') => (
     <Field data-invalid={!!errors[name] || undefined}>
       <FieldLabel htmlFor={`${id}-${name}`}>{label}</FieldLabel>
       <Input
         id={`${id}-${name}`}
         type={type}
+        // The notice link that was clicked unmounts here, so the focus goes to the first field.
         autoFocus={name === 'tenantName'}
         aria-invalid={!!errors[name] || undefined}
         aria-describedby={`${id}-${name}-error`}

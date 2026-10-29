@@ -68,11 +68,10 @@ function parseAuthClaims(claims: BffClaim[]): Omit<AuthState, 'isLoading'> {
   }
 }
 
-/** The claims of the BFF session, for each hook that reads them. */
 export const authClaimsQuery = queryOptions({
   queryKey: AuthKeys.user(),
   queryFn: getUser,
-  staleTime: 5 * 60 * 1000, // Consider auth data fresh for 5 minutes
+  staleTime: 5 * 60 * 1000,
 })
 
 /**

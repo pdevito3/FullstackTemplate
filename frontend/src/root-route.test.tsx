@@ -26,7 +26,7 @@ async function renderLayoutAt(path: string) {
     routeTree: rootRoute.addChildren([userRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
-  // The layout reads the session. An anonymous visitor has none, so the layout sends no request.
+  // Seed an anonymous session, so that the session and membership queries of the layout send no request.
   const queryClient = new QueryClient()
   queryClient.setQueryData(AuthKeys.user(), null)
   const screen = await render(

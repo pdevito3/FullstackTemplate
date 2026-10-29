@@ -4,7 +4,6 @@ import type { BffClaim } from '@/domain/auth/types'
 // so a test never drives a login form. It also answers the lookup of the user record of the actor on the Server.
 export type Identity = { signedIn: false } | { signedIn: true; claims: BffClaim[]; hasTenant: boolean }
 
-/** The `sub` claim of each signed-in actor. */
 export const actorSubject = '1'
 
 const claimsOf = (name: string): BffClaim[] => [

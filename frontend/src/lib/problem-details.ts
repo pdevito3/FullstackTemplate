@@ -5,8 +5,6 @@
  * This is the standard error response format from .NET APIs with Problem Details enabled.
  */
 
-import * as z from 'zod'
-
 import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
 
 /**
@@ -92,13 +90,18 @@ export function isStaleVersionError(error: unknown): boolean {
   return isProblemDetailsError(error) && error.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
 }
 
-const validationErrorsSchema = z.record(z.string(), z.array(z.string()))
-
 /** The messages of a validation problem by field name, for example `{ title: ['Please provide a title.'] }`. */
 export function validationErrorsOf(error: unknown): Record<string, string[]> {
   if (!isProblemDetailsError(error)) {
     return {}
   }
-  const parsed = validationErrorsSchema.safeParse(error.problemDetails.errors)
-  return parsed.success ? parsed.data : {}
+  const { errors } = error.problemDetails
+  if (typeof errors !== 'object' || errors === null) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(errors).filter(
+      (entry): entry is [string, string[]] => Array.isArray(entry[1]) && entry[1].every((m) => typeof m === 'string'),
+    ),
+  )
 }

@@ -87,6 +87,12 @@ describe('validationErrorsOf', () => {
     expect(validationErrorsOf(error)).toEqual({ title: ['Please provide a title.'] })
   })
 
+  it('drops a field whose messages are not a list of text', () => {
+    const error = new ProblemDetailsError({ ...problem, status: 422, errors: { title: ['Please provide a title.'], capacity: 3 } })
+
+    expect(validationErrorsOf(error)).toEqual({ title: ['Please provide a title.'] })
+  })
+
   it('gives no messages for a problem without errors or for another error', () => {
     expect(validationErrorsOf(new ProblemDetailsError(problem))).toEqual({})
     expect(validationErrorsOf(new ProblemDetailsError({ ...problem, errors: 'not a map' }))).toEqual({})

@@ -27,6 +27,8 @@ function vendorChunk(id: string): string | undefined {
   )
 }
 
+// Aspire sets it. The Vitest server has no BFF, so it proxies nothing.
+const bffTarget = process.env.BFF_HTTPS || process.env.BFF_HTTP
 const bffTimeoutMs = 30_000
 
 class BffTimeoutError extends Error {}
@@ -126,34 +128,34 @@ export default defineConfig({
     ],
   },
   server: {
-    proxy: {
+    proxy: bffTarget ? {
       // BFF management endpoints (login, logout, user)
       '/bff': {
-        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        target: bffTarget,
         changeOrigin: true,
         secure: false,
         configure: failStalledBffRequests
       },
       // OIDC callback endpoints
       '/signin-oidc': {
-        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        target: bffTarget,
         changeOrigin: true,
         secure: false,
         configure: failStalledBffRequests
       },
       '/signout-callback-oidc': {
-        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        target: bffTarget,
         changeOrigin: true,
         secure: false,
         configure: failStalledBffRequests
       },
       // API calls proxied through BFF
       '/api': {
-        target: process.env.BFF_HTTPS || process.env.BFF_HTTP,
+        target: bffTarget,
         changeOrigin: true,
         secure: false,
         configure: failStalledBffRequests
       }
-    }
+    } : undefined
   }
 })

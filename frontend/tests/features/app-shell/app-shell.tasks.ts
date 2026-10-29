@@ -18,6 +18,18 @@ export function appShellPage(page: Page) {
       await expect(at.aboutText).toBeVisible()
     },
 
+    // Chromium only: the default font size of the browser, as a user sets it.
+    async useDefaultFontSize(px: number) {
+      const cdp = await page.context().newCDPSession(page)
+      await cdp.send('Page.setFontSizes', { fontSizes: { standard: px, fixed: Math.round((px * 13) / 16) } })
+    },
+
+    async openMobileSidebar() {
+      await at.sidebarTrigger.first().click()
+      await expect(at.mobileSidebar).toBeVisible()
+      await expect.poll(() => at.mobileSidebar.evaluate((sheet) => sheet.getAnimations().length)).toBe(0)
+    },
+
     async openMissingPage() {
       await page.goto('/no-such-page')
       await expect(at.currentPage).toBeVisible()

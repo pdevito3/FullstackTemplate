@@ -120,3 +120,18 @@ test.describe('an unknown address', () => {
     await expect(shell.at.currentPage).toHaveText('Home')
   })
 })
+
+test.describe('the mobile sidebar with a 24 px default font', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('fits in a 390 px window', async ({ page }) => {
+    const shell = appShellPage(page)
+    await shell.useDefaultFontSize(24)
+    await shell.openAbout()
+
+    await shell.openMobileSidebar()
+
+    const sheet = await shell.at.mobileSidebar.boundingBox()
+    expect(sheet!.x + sheet!.width).toBeLessThanOrEqual(390)
+  })
+})

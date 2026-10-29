@@ -50,6 +50,10 @@ export const workshopsApi = {
     return { method: 'get', path: workshopPaths.one(body.id), status: 200, body }
   },
 
+  createSaves(workshop: Buildable<WorkshopDto>): MockRoute {
+    return { method: 'post', path: workshopPaths.list, status: 201, body: workshop.build() }
+  },
+
   updateSaves(workshop: Buildable<WorkshopDto>): MockRoute {
     const body = workshop.build()
     return { method: 'put', path: workshopPaths.one(body.id), status: 200, body }
@@ -63,6 +67,16 @@ export const workshopsApi = {
   actionMoves(action: 'schedule' | 'cancel' | 'complete', workshop: Buildable<WorkshopDto>): MockRoute {
     const body = workshop.build()
     return { method: 'post', path: workshopPaths.action(body.id, action), status: 200, body }
+  },
+
+  venueListReturns(venues: Buildable<VenueDto>[]): MockRoute {
+    return {
+      method: 'get',
+      path: workshopPaths.venues,
+      status: 200,
+      headers: paginationOf(venues.length),
+      body: venues.map((v) => v.build()),
+    }
   },
 
   venueIs(venue: Buildable<VenueDto>): MockRoute {

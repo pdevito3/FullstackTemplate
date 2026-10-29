@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 
 export const workshops = (page: Page) => {
   const editForm = page.getByRole('form', { name: 'Edit workshop' })
+  const newForm = page.getByRole('form', { name: 'New workshop' })
   const staleAlert = editForm.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
 
   return {
@@ -19,6 +20,11 @@ export const workshops = (page: Page) => {
     actionButton: (title: string, name: string) =>
       page.getByRole('group', { name: `Actions for ${title}` }).getByRole('button', { name, exact: true }),
     editLink: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }).getByRole('link', { name: 'Edit' }),
+    newForm,
+    newTitle: newForm.getByRole('textbox', { name: 'Title' }),
+    newStart: newForm.getByRole('group', { name: 'Starts at' }),
+    newCapacity: newForm.getByRole('spinbutton', { name: 'Capacity' }),
+    add: newForm.getByRole('button', { name: 'Add workshop' }),
     editForm,
     title: editForm.getByRole('textbox', { name: 'Title' }),
     save: editForm.getByRole('button', { name: 'Save', exact: true }),

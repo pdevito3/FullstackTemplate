@@ -44,6 +44,22 @@ test.describe('the workshops', () => {
     expect(api.last('put', workshopPaths.one(id))?.body).toMatchObject({ version: 2 })
   })
 
+  test('adds a workshop with the start that the user types', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = workshop.build()
+    api.mock(workshopsApi.venueListReturns([venue]), workshopsApi.venueIs(venue), workshopsApi.createSaves(workshop), workshopsApi.oneIs(workshop))
+    const workshops = workshopsPage(page)
+    await workshops.openNewForm(venueId)
+    await workshops.fillNew({ title: 'Intro to Kubb', start: '060120270930A', capacity: '12' })
+
+    await workshops.addAndOpenDetail(id, venueId)
+
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeVisible()
+    const body = api.last('post', workshopPaths.list)?.body as { startsAt: string }
+    expect(body).toMatchObject({ venueId, title: 'Intro to Kubb', capacity: 12 })
+    expect(new Date(body.startsAt).getTime()).toBe(Date.UTC(2027, 5, 1, 9, 30))
+  })
+
   test('shows the details that the API gives, in the time zone of the browser', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue).startingAt('2026-06-01T15:00:00+00:00').withCapacity(12)
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))

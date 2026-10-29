@@ -23,6 +23,31 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    async openNewForm(venueId: string) {
+      const settled = answered('GET', workshopPaths.venue(venueId))
+      await page.goto(`/workshops/new?venueId=${venueId}`)
+      await expect(at.newForm).toBeVisible()
+      await settled
+    },
+
+    /** Types the start as the segments of the date field: month, day, year, hour, minute, then A or P. */
+    async fillNew({ title, start, capacity }: { title: string; start: string; capacity: string }) {
+      await at.newTitle.fill(title)
+      await at.newStart.getByRole('spinbutton').first().click()
+      await page.keyboard.type(start)
+      await at.newCapacity.fill(capacity)
+    },
+
+    async addAndOpenDetail(id: string, venueId: string) {
+      const settled = Promise.all([
+        answered('POST', workshopPaths.list),
+        answered('GET', workshopPaths.one(id)),
+        answered('GET', workshopPaths.venue(venueId)),
+      ])
+      await at.add.click()
+      await settled
+    },
+
     async searchFor(text: string) {
       const settled = answered('GET', workshopPaths.list)
       await at.search.fill(text)

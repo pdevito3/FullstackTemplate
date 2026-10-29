@@ -71,7 +71,6 @@ public static partial class QueryKitInputExtensions
         {
             return apply();
         }
-        // Each QueryKit error comes from the filter or the sort of the caller, so it is a 400 that tells the caller what to change
         catch (QueryKitException exception)
         {
             AddToSpan(exception);
@@ -104,8 +103,7 @@ public static partial class QueryKitInputExtensions
         });
     }
 
-    // The QueryKit messages name the field but its exceptions do not, so the name comes from the message.
-    // A message that does not match gets the fixed message.
+    // QueryKit 1.16 exceptions carry the field name only in their message text.
     private static string MessageFor<T>(string parameter, QueryKitException exception) => exception switch
     {
         QueryKitInputLengthExceededException => FilterTooLongMessage,
@@ -133,7 +131,7 @@ public static partial class QueryKitInputExtensions
     [GeneratedRegex(@"^Parsing failed during sorting\. '(.+)' was not recognized\.$")]
     private static partial Regex UnknownSortField();
 
-    [GeneratedRegex(@" for the filter property '(.+)'\.$")]
+    [GeneratedRegex(@"^The value '.*' is not a valid \S+ for the filter property '([^']+)'\.$")]
     private static partial Regex ValueDoesNotFit();
 
     private static string NotReadMessage(string parameter) =>

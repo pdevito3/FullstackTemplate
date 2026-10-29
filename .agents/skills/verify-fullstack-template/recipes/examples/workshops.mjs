@@ -51,7 +51,9 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
   try {
     await step('Examples, Workshops: the list opens', async () => {
       const list = answered('GET', /^\/api\/v1\/workshops$/)
-      await page.getByRole('button', { name: 'Examples' }).click()
+      // The no-tenant step opened /workshops, so the sidebar can show the Examples group open already.
+      const examples = page.getByRole('button', { name: 'Examples' })
+      if ((await examples.getAttribute('aria-expanded')) !== 'true') await examples.click()
       await page.getByRole('link', { name: 'Workshops', exact: true }).click()
       expect((await list).status()).toBe(200)
       await expect(page.getByRole('heading', { name: 'Workshops', exact: true })).toBeVisible()

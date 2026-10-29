@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Domain.Tenants.Features;
 using System.Diagnostics;
 using Databases;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
 using Users;
@@ -22,44 +21,25 @@ public static class DeleteTenant
 
             await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
-            // The exclusive lock waits for each agent add, user add, or link add to a user of the tenant, so no
-            // agent, user, or link comes after the load. A deleted user frees its identifier, so the same person can
-            // sign up again.
-            var (agentCount, userCount) = await RootLock.Tenant.RunExclusiveAsync(dbContext, request.Id, async ct =>
+            // The exclusive lock waits for each add that takes the shared lock of the tenant (an agent, a user, or a link
+            // to a user), so no such row comes after the load. A deleted user frees its identifier, so the same person
+            // can sign up again.
+            var deletedCounts = await RootLock.Tenant.RunExclusiveAsync(dbContext, request.Id, async ct =>
             {
                 var tenant = await dbContext.Tenants
                     .TagWithOperationCallSite("tenants.delete.load")
                     .GetById(request.Id, ct);
 
-                var agents = await dbContext.Agents
-                    .TagWithOperationCallSite("tenants.delete.load_agents")
-                    .Include(a => a.Permissions)
-                    .Where(a => a.TenantId == tenant.Id)
-                    .ToListAsync(ct);
-                foreach (var agent in agents)
-                {
-                    dbContext.AgentPermissions.RemoveRange(agent.Permissions);
-                    dbContext.Agents.Remove(agent);
-                }
-
-                var users = await dbContext.Users
-                    .TagWithOperationCallSite("tenants.delete.load_users")
-                    .Include(u => u.UserPermissions)
-                    .Where(u => u.TenantId == tenant.Id)
-                    .ToListAsync(ct);
-                foreach (var user in users)
-                {
-                    dbContext.UserPermissions.RemoveRange(user.UserPermissions);
-                    dbContext.Users.Remove(user.Delete());
-                }
+                var rows = await TenantOwnedRows.LoadAsync(dbContext, tenant.Id, ct);
+                foreach (var row in rows)
+                    dbContext.Remove(row is User user ? user.Delete() : row);
 
                 dbContext.Tenants.Remove(tenant);
                 await dbContext.SaveChangesAsync(ct);
-                return (agents.Count, users.Count);
+                return rows.CountBy(row => row.GetType().Name).ToDictionary();
             }, cancellationToken);
 
-            _logger.Here().Information("Deleted tenant {TenantId}, {AgentCount} agents, and {UserCount} users",
-                request.Id, agentCount, userCount);
+            _logger.Here().Information("Deleted tenant {TenantId} and its rows {@DeletedCounts}", request.Id, deletedCounts);
         }
     }
 }

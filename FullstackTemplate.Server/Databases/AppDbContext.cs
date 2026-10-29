@@ -38,7 +38,7 @@ public class AppDbContext(
     #endregion
 
     private TenantScope? _tenantScope;
-    private TenantScope? _domainEventTenantScope;
+    private TenantScope? _narrowedTenantScope;
     private SaveStage _saveStage = SaveStage.Idle;
     private string? _requestName;
     private readonly List<AuditAction> _recordedActions = [];
@@ -46,13 +46,14 @@ public class AppDbContext(
     /// <summary>
     /// The tenants whose rows the current caller can see. The tenant query filter reads it for each query.
     /// The context gets the scope once and keeps it, because the caller of a DI scope does not change.
-    /// While the handlers of a domain event run, it is the tenant of the event.
+    /// While the handlers of a domain event run, it is the tenant of the event. In <see cref="InTenantScopeAsync{T}"/>,
+    /// it is the tenant of that call.
     /// </summary>
     /// <remarks>
     /// The context is not pooled. If you add DbContext pooling, clear this value when the pool resets the context.
     /// </remarks>
     public TenantScope CurrentTenantScope =>
-        _domainEventTenantScope ?? (_tenantScope ??= tenantScopeProvider.GetCurrentScope());
+        _narrowedTenantScope ?? (_tenantScope ??= tenantScopeProvider.GetCurrentScope());
 
     internal bool IsRunningDomainEventHandlers => _saveStage == SaveStage.Dispatching;
 
@@ -61,6 +62,28 @@ public class AppDbContext(
     /// DI scope, for example a test that changes the current user after a query.
     /// </summary>
     public void RefreshTenantScope() => _tenantScope = null;
+
+    /// <summary>
+    /// Runs <paramref name="work"/> with the scope of one tenant, so that each tenant filter gives only the rows of
+    /// that tenant. The scope can only get narrower: the caller must see the tenant.
+    /// </summary>
+    internal async Task<T> InTenantScopeAsync<T>(string tenantId, Func<Task<T>> work)
+    {
+        var scope = CurrentTenantScope;
+        if (!scope.IncludesAllTenants && scope.TenantId != tenantId)
+            throw new InvalidOperationException($"The caller cannot see tenant {tenantId}, so its scope cannot become the scope of that tenant.");
+
+        var outer = _narrowedTenantScope;
+        _narrowedTenantScope = TenantScope.ForTenant(tenantId);
+        try
+        {
+            return await work();
+        }
+        finally
+        {
+            _narrowedTenantScope = outer;
+        }
+    }
 
     /// <summary>
     /// Names the MediatR request whose saves this context writes, until the result is disposed. The outermost request
@@ -400,7 +423,7 @@ public class AppDbContext(
 
             foreach (var (entry, queuedEvent) in queued)
             {
-                _domainEventTenantScope = TenantQueryFilterExtension.TenantIdOfDomainEvent(entry) is { } tenantId
+                _narrowedTenantScope = TenantQueryFilterExtension.TenantIdOfDomainEvent(entry) is { } tenantId
                     ? TenantScope.ForTenant(tenantId)
                     : null;
                 try
@@ -409,7 +432,7 @@ public class AppDbContext(
                 }
                 finally
                 {
-                    _domainEventTenantScope = null;
+                    _narrowedTenantScope = null;
                 }
             }
         }

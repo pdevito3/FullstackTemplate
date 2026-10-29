@@ -8,6 +8,9 @@ using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+// example:start
+using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+// example:end
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -29,6 +32,9 @@ public class TenantDeleteOwnedRowsTests : TestBase
             .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
             .Under(tenant)
             .AddAgent(out _, a => a.Permissions = [Permission.Names.ReadAgents])
+            // example:start
+            .Under(tenant).AddVenue(out _).AddWorkshop(out _)
+            // example:end
             .BuildAsync();
         scope.SetUserWithDefaults(identifier: admin.Identifier);
         var owned = await scope.ExecuteDbContextAsync(db => EachOwnedTypeAsync(db, type => Run(IdsOfTenant, type, db)));

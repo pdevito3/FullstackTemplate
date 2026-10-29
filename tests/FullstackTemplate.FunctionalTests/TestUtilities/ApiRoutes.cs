@@ -50,5 +50,22 @@ public static class ApiRoutes
         public static string Get => $"{Base}/weather";
         public static string GetSecure => $"{Base}/weather/secure";
     }
+
+    public static class Venues
+    {
+        public static string GetList => $"{Base}/venues";
+        public static string Create => $"{Base}/venues";
+    }
+
+    public static class Workshops
+    {
+        public static string GetList => $"{Base}/workshops";
+        public static string Create => $"{Base}/workshops";
+        public static string Get(string id) => $"{Base}/workshops/{id}";
+        public static string Update(string id) => $"{Base}/workshops/{id}";
+        public static string Schedule(string id) => $"{Base}/workshops/{id}/schedule";
+        public static string Cancel(string id) => $"{Base}/workshops/{id}/cancel";
+        public static string Complete(string id) => $"{Base}/workshops/{id}/complete";
+    }
     // example:end
 }

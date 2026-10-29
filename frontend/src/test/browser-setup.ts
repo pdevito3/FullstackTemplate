@@ -2,9 +2,13 @@
 // The app styles load, so that a test sees the real layout and the real visibility of each element.
 import '@/index.css'
 
+import type { Answer } from './answer'
+
 // The commands are in vitest.commands.ts. They run in Node and drive the Playwright page.
 declare module 'vitest/browser' {
   interface BrowserCommands {
+    /** Answers each request that matches an answer. A later answer wins. `[]` removes all answers. */
+    answerRequests: (answers: Answer[]) => Promise<void>
     /** Holds each request for `path` (pathname and query) until `releaseRequests(path)`. */
     holdRequests: (path: string) => Promise<void>
     /** Lets the held requests for `path` go on. */

@@ -15,6 +15,10 @@ Use the first item in this list that fits:
 
 The app has no global store library. Before you add one, make sure that items 1 to 6 do not fit.
 
+<!-- example:start -->
+The workshop list keeps its search and its page in the search params. The contract schemas validate them, and a value that the contract refuses falls back to the default: [`listSearchSchema`](<../../frontend/src/routes/(examples)/workshops/index.tsx>). A search that arrives after a link or Back changed the URL does not overwrite the URL: [`handleSearch`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
+<!-- example:end -->
+
 ## Calculate, do not store
 
 ```typescript
@@ -80,6 +84,10 @@ Do not use an effect for these jobs:
 | Reset state when a prop changes | A `key` on the component |
 | Fetch data | TanStack Query |
 | Update state after another state update | Do both updates in one event handler |
+
+<!-- example:start -->
+The search box of the workshop list changes its text during render when the URL changes from outside, not with a `key`. A `key` would remount the box on each URL change, and the remount would drop the text that the user typed after the last search: [`WorkshopSearch`](<../../frontend/src/examples/workshops/components/workshop-search.tsx>). The debounce timer is an effect with a cleanup: [`useDebouncedCallback`](<../../frontend/src/examples/use-debounced-callback.ts>).
+<!-- example:end -->
 
 ## Memoization
 

@@ -1,22 +1,26 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig, type ProxyOptions } from 'vite'
+import { defineConfig, type Plugin, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
 import { playwright } from '@vitest/browser-playwright'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests } from './vitest.commands'
+import { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests } from './vitest.commands'
 
-// Vendor libraries that the root layout loads on every page. Each group gets
-// its own chunk, so the entry chunk stays small and the browser can cache the
-// libraries apart from the app code. Do not add libraries that only lazy
-// routes use: a manual chunk loads with the entry.
+// Vendor libraries that can load on the first page. Each group gets its own
+// chunk, so the entry chunk stays small and the browser can cache the
+// libraries apart from the app code. A chunk loads only on a page that uses it.
+// Rollup also puts the dependencies of a library in its chunk. If the entry
+// imports one of them, the full chunk loads on the first page. After you add a
+// group, look at the modulepreload links in dist/index.html.
 const vendorChunks: Record<string, string[]> = {
   react: ['react', 'react-dom', 'scheduler'],
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
   query: ['@tanstack/react-query', '@tanstack/query-core'],
   motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
+  // The router does not split validateSearch, so a route that checks its search with zod loads zod on the first page
+  zod: ['zod'],
 }
 
 function vendorChunk(id: string): string | undefined {
@@ -25,6 +29,26 @@ function vendorChunk(id: string): string | undefined {
   return Object.keys(vendorChunks).find((chunk) =>
     vendorChunks[chunk].includes(match[1]),
   )
+}
+
+// The largest entry chunk that `pnpm build` takes, in kB of minified code. See docs/frontend.md, section "Bundle size".
+const entryChunkBudgetKb = 400
+
+const failOverEntryChunkBudget: Plugin = {
+  name: 'entry-chunk-budget',
+  apply: 'build',
+  writeBundle(_, bundle) {
+    for (const chunk of Object.values(bundle)) {
+      if (chunk.type !== 'chunk' || !chunk.isEntry) continue
+      const sizeKb = Buffer.byteLength(chunk.code) / 1000
+      if (sizeKb > entryChunkBudgetKb) {
+        this.error(
+          `The entry chunk ${chunk.fileName} is ${sizeKb.toFixed(2)} kB, over the budget of ${entryChunkBudgetKb} kB. ` +
+            'Find the module that grew it, and see docs/frontend.md, section "Bundle size".',
+        )
+      }
+    }
+  },
 }
 
 // Aspire sets it. The Vitest server has no BFF, so it proxies nothing.
@@ -66,6 +90,7 @@ export default defineConfig({
         exportType: 'default',
       },
     }),
+    failOverEntryChunkBudget,
   ],
   build: {
     rollupOptions: {
@@ -87,7 +112,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
+          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js'],
           // A zone far from UTC, so that a test that takes a date from UTC or from the machine fails on every machine.
           // See docs/frontend/testing.md, section "Time zones".
           env: { TZ: 'Pacific/Pago_Pago' },
@@ -121,7 +146,10 @@ export default defineConfig({
             provider: playwright({ contextOptions: { timezoneId: 'Pacific/Kiritimati' } }),
             headless: true,
             instances: [{ browser: 'chromium' }],
-            commands: { holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests },
+            // CI keeps a Playwright trace of each failed test, so that a test that hangs shows the step it waited on.
+            // The trace costs about 40% more run time, so a local run does not record it.
+            trace: process.env.CI ? 'retain-on-failure' : 'off',
+            commands: { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests },
           },
         },
       },

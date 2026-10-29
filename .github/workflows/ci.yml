@@ -98,12 +98,14 @@ jobs:
         working-directory: frontend
         run: pnpm test:e2e
 
-      - name: Upload the functional test report
+      # .vitest/attachments/ has the failure screenshot and the Playwright trace of each failed component test
+      - name: Upload the test reports
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: functional-tests
+          name: frontend-tests
           path: |
+            frontend/.vitest/attachments/
             frontend/playwright-report/
             frontend/test-results/
           retention-days: 7
@@ -155,8 +157,8 @@ jobs:
           if git ls-files | grep -E '(^|/)(Examples|examples|\(examples\))/'; then exit 1; fi
           # git grep exits with 1 when it finds nothing, 0 on a match, and a higher code on an error
           status=0
-          git grep -n -I -i -E 'weather|forecast|filter-demo|components-showcase|get_tenant|list_tenants|update_tenant|example:(start|end)' \
-            -- ':!scripts/remove-examples.cs' ':!docs/examples.md' || status=$?
+          git grep -n -I -i -E 'weather|forecast|filter-demo|components-showcase|get_tenant|list_tenants|update_tenant|workshop|(^|[^e])venue|example:(start|end)' \
+            -- ':!scripts/remove-examples.cs' ':!docs/examples.md' ':!**/Migrations/*.Designer.cs' || status=$?
           [ "$status" -eq 1 ]
 
       # The frontend tests run first, because after the .NET tests on the same runner the Vitest browser can hang at its start
@@ -179,6 +181,19 @@ jobs:
 
       - name: Run the .NET tests
         run: dotnet test --solution FullstackTemplate.slnx --no-build
+
+      # .vitest/attachments/ has the failure screenshot and the Playwright trace of each failed component test
+      - name: Upload the test reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: without-examples-tests
+          path: |
+            frontend/.vitest/attachments/
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
   # example:end
 
   line-endings:

@@ -12,5 +12,5 @@ export const agentDtoSchema = z.object({
   name: z.string(),
   clientId: z.string(),
   mode: z.enum(['delegated', 'machine']).describe('"delegated" or "machine".'),
-  permissions: z.array(z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users'])).describe('The grant: the most that the agent can hold.'),
+  permissions: z.array(z.enum(['manage_agents', 'manage_tenant', 'manage_user_access', 'manage_users', 'manage_workshops', 'read_agents', 'read_audit_log', 'read_audit_log_sensitive', 'read_users'])).describe('The grant: the most that the agent can hold.'),
 })

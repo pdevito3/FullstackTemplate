@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 if (args.Length > 0)
 {
@@ -23,15 +24,19 @@ try
 
     app.FailIfTreeHasChanges();
     var removal = app.FindExamples();
+    app.FailIfModelHasNoMigration();
 
     changing = true;
     app.Remove(removal);
+    app.WriteModelSnapshot();
     app.WriteGeneratedFiles();
     app.RecordRemoval();
 
     Console.WriteLine(removal.IsDue
         ? $"Deleted {removal.Folders.Count} example folders and the example sections of {removal.Sections.Count} files."
         : "The app has no example code.");
+    if (removal.IsDue)
+        Console.WriteLine(AppRepo.DatabaseNote);
     Console.WriteLine($"Next: dotnet build {app.Name}.slnx");
     return 0;
 }
@@ -58,6 +63,13 @@ internal sealed record Removal(IReadOnlyList<string> Folders, IReadOnlyDictionar
 internal sealed partial class AppRepo(string root)
 {
     private const string ThisScript = "scripts/remove-examples.cs";
+    private const string SnapshotMigration = "RemoveExamplesSnapshot";
+
+    public const string DatabaseNote =
+        "The script deleted the migration of the example tables. A database that ran it still has the venues and " +
+        "workshops tables and the manage_workshops permission. If the database of your app ran that migration, add a " +
+        "migration that drops the two tables and calls migrationBuilder.DeletePermission(\"manage_workshops\"). A row " +
+        "of a permission that Permission does not know stops each load of its user.";
 
     private const string RecordFile = "scripts/examples-removed.txt";
 
@@ -114,6 +126,35 @@ internal sealed partial class AppRepo(string root)
             Directory.Delete(Path.Combine(root, folder), recursive: true);
         foreach (var (file, text) in removal.Sections)
             WriteText(Path.Combine(root, file), text);
+    }
+
+    public void FailIfModelHasNoMigration()
+    {
+        var server = $"{Name}.Server";
+        // dotnet-ef reads the project metadata before it builds, and that read needs the restored assets
+        Run(root, "dotnet", "restore", Path.Combine(server, $"{server}.csproj"));
+        try
+        {
+            RunEf("migrations", "has-pending-model-changes", "--project", server, "--startup-project", server);
+        }
+        catch (RemovalException)
+        {
+            throw new RemovalException(
+                "The model of the Server has changes that no migration has, or dotnet-ef could not check it. See the output " +
+                "above. Add and commit the migration, then run the script again.");
+        }
+    }
+
+    public void WriteModelSnapshot()
+    {
+        var server = $"{Name}.Server";
+        RunEf("migrations", "add", SnapshotMigration,
+            "--project", server, "--startup-project", server, "--output-dir", "Databases/Migrations");
+
+        var migrations = Path.Combine(root, server, "Databases", "Migrations");
+        foreach (var file in Directory.GetFiles(migrations, $"*_{SnapshotMigration}.cs")
+                     .Concat(Directory.GetFiles(migrations, $"*_{SnapshotMigration}.Designer.cs")))
+            File.Delete(file);
     }
 
     public void WriteGeneratedFiles()
@@ -181,6 +222,16 @@ internal sealed partial class AppRepo(string root)
             throw new RemovalException($"git {arguments[0]} failed in {root}. Run the script in a git clone of the app.");
 
         return output;
+    }
+
+    // Not a local tool: on Linux, a manifest with dotnet-ef and another tool fails dotnet tool restore (SDK 10.0.403)
+    private void RunEf(params string[] arguments)
+    {
+        var efVersion = XDocument.Load(Path.Combine(root, "Directory.Packages.props"))
+            .Descendants("PackageVersion")
+            .Single(p => (string?)p.Attribute("Include") == "Microsoft.EntityFrameworkCore.Design")
+            .Attribute("Version")!.Value;
+        Run(root, "dotnet", ["tool", "exec", $"dotnet-ef@{efVersion}", "--yes", "--", .. arguments]);
     }
 
     private static void Run(string folder, string command, params string[] arguments)

@@ -1101,6 +1101,104 @@ public class UserMessageAnalyzerTests
         ]);
     }
 
+    [Test]
+    public async Task a_list_of_stored_names_copied_with_to_array_gets_fstmsg001()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System.Collections.Generic;
+
+                public class Grade : IFixedNames
+                {
+                    private static readonly string[] Allowed = ListNames().ToArray();
+
+                    public static List<string> ListNames() => ["FirstGrade"];
+
+                    public static void Inline() => throw new ValidationException("grade", $"Use {string.Join(", ", Grade.ListNames().ToArray())}.");
+
+                    public static void Field() => throw new ValidationException("grade", $"Use {string.Join(", ", Allowed)}.");
+
+                    public static void Local()
+                    {
+                        var names = Grade.ListNames().ToArray();
+                        throw new ValidationException("grade", $"Use {string.Join(", ", names)}.");
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the stored name 'ListNames().ToArray()'. " + Fix,
+            "A user message shows the stored name 'Grade.ListNames().ToArray()'. " + Fix,
+            "A user message shows the stored name 'Grade.ListNames().ToArray()'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_stored_name_in_the_text_that_a_select_lambda_returns_gets_fstmsg001()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System.Collections.Generic;
+                using System.Linq;
+
+                // The shape of the RequireAny denial of Caller in CarePoint
+                public static class Denials
+                {
+                    public static void Quoted(IReadOnlyList<Permission> permissions)
+                        => throw new ForbiddenAccessException($"You need {string.Join(", ", permissions.Select(p => $"'{p.Value}'"))}.");
+
+                    public static void Cases(IReadOnlyList<(Permission Permission, string Case)> options)
+                        => throw new ForbiddenAccessException($"You need {string.Join(", or ", options.Select(o => $"the {o.Permission.Value} permission {o.Case}"))}.");
+
+                    public static void Words(IReadOnlyList<(Permission Permission, string Case)> options)
+                        => throw new ForbiddenAccessException($"You need {string.Join(", or ", options.Select(o => $"the {o.Permission.Words} permission {o.Case}"))}.");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the stored name 'permissions.Select(p => $\"'{p.Value}'\")'. " + Fix,
+            "A user message shows the stored name 'options.Select(o => $\"the {o.Permission.Value} permission {o.Case}\")'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_dot_net_enum_whose_names_are_plain_words_is_not_a_code()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System;
+
+                // The shape of the overlap message of WorkingHours in CarePoint
+                public static class Blocks
+                {
+                    public static void Overlaps(DayOfWeek day) => throw new ValidationException("blocks", $"This block overlaps the {day} block.");
+
+                    public static void OverlapsText(DayOfWeek day) => throw new ValidationException("blocks", $"This block overlaps the {day.ToString()} block.");
+
+                    public static void Compare(StringComparison comparison) => throw new ValidationException("compare", $"Use {comparison}.");
+
+                    public static void Level(Mode mode) => throw new ValidationException("mode", $"Use {mode}.");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the enum value 'comparison'. " + Fix,
+            "A user message shows the enum value 'mode'. " + Fix,
+        ]);
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> Run(string source)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)

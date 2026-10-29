@@ -143,15 +143,16 @@ export function FilterGroup({
         {/* Group Contents - Horizontal Layout */}
         <div className="flex flex-wrap items-start gap-2 pl-3 sm:pl-6">
           {group.filters.map((item, index) => (
-            <div key={item.id} className={cn('flex max-w-full min-w-0 flex-wrap items-center gap-2', !isFilter(item) && 'max-sm:basis-full')}>
+            // A filter that is not used has its message under the badge, so the operator aligns with the badge, not the message.
+            <div key={item.id} className={cn('flex max-w-full min-w-0 flex-wrap gap-2', isFilter(item) ? 'items-start' : 'items-center max-sm:basis-full')}>
               {isFilter(item) ? (
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 items-start gap-2">
                   {showCheckbox && (
                     <Checkbox
                       aria-label={`Select filter: ${getFilterName(item)}`}
                       isSelected={selectedIds.has(item.id)}
                       onChange={() => onToggleSelection(item.id)}
-                      className="shrink-0"
+                      className="h-5.5 shrink-0"
                     />
                   )}
                   <FilterBadge
@@ -180,7 +181,7 @@ export function FilterGroup({
 
               {/* Show logical operator between items */}
               {index < group.filters.length - 1 && (
-                <span className="shrink-0 text-xs text-muted-foreground font-medium px-1">
+                <span className="shrink-0 text-xs leading-5.5 text-muted-foreground font-medium px-1">
                   {group.logicalOperator}
                 </span>
               )}

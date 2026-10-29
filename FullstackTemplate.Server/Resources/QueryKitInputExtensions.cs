@@ -17,6 +17,10 @@ public static class QueryKitInputExtensions
 {
     public const string FiltersParameter = "filters";
     public const string SortOrderParameter = "sortOrder";
+    public const string FilterNotReadMessage = "The filter could not be read. Change the filter, then try again.";
+    public const string SortOrderNotReadMessage = "The sort order could not be read. Change the sort, then try again.";
+    public const string FilterTooLongMessage = "The filter is too long. Remove some conditions, then try again.";
+    public const string FilterTooDeepMessage = "The filter has too many nested groups. Remove a group, then try again.";
     // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
     private const string AllowedActionsMember = "AllowedActions";
 
@@ -26,7 +30,7 @@ public static class QueryKitInputExtensions
         {
             // Filter values go to Postgres as parameters, and Postgres refuses a parameter that it cannot store
             if (!PostgresText.CanStore(filters))
-                throw new QueryInputException(FiltersParameter, $"The {FiltersParameter} value has a character that is not allowed.");
+                throw new QueryInputException(FiltersParameter, "The filter has a character that is not allowed.");
             var predicate = FilterParser.ParseFilter<T>(filters, config);
             RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
             return query.Where(predicate);
@@ -48,11 +52,13 @@ public static class QueryKitInputExtensions
         if (expression is null)
             return;
         if (MemberReader.Reads(expression, nameof(BaseEntity.Version)))
-            throw new QueryInputException(parameter, $"The {parameter} value cannot use version. A version is opaque.");
+            throw new QueryInputException(parameter, $"The {Words(parameter)} cannot use the version. Choose another field.");
         if (MemberReader.Reads(expression, AllowedActionsMember))
             throw new QueryInputException(parameter,
-                $"The {parameter} value cannot use allowedActions. The actions depend on the caller.");
+                $"The {Words(parameter)} cannot use the allowed actions, because they depend on the user. Choose another field.");
     }
+
+    private static string Words(string parameter) => parameter == SortOrderParameter ? "sort order" : "filter";
 
     private static TResult Apply<TResult>(string parameter, Func<TResult> apply)
     {
@@ -60,19 +66,31 @@ public static class QueryKitInputExtensions
         {
             return apply();
         }
-        // The messages of these types name only the input of the caller, so the response can show them
+        // The message of QueryKit names the place of the fault and the property names of the code, so the response gets
+        // a fixed message and the trace gets the exception.
         catch (QueryKitException exception) when (IsInputError(exception))
         {
-            throw new QueryInputException(parameter, exception.Message, exception);
+            Activity.Current?.AddException(exception);
+            throw new QueryInputException(parameter, MessageFor(parameter, exception), exception);
         }
         // An operator that does not fit the type of the property fails in .NET, for example ^^ on a string.
         // The message names .NET types, so the response gets a fixed message and the trace gets the exception.
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or NotSupportedException)
         {
             Activity.Current?.AddException(exception);
-            throw new QueryInputException(parameter, $"The {parameter} value is not valid.", exception);
+            throw new QueryInputException(parameter, NotReadMessage(parameter), exception);
         }
     }
+
+    private static string MessageFor(string parameter, QueryKitException exception) => exception switch
+    {
+        QueryKitInputLengthExceededException => FilterTooLongMessage,
+        QueryKitNestingDepthExceededException => FilterTooDeepMessage,
+        _ => NotReadMessage(parameter),
+    };
+
+    private static string NotReadMessage(string parameter) =>
+        parameter == SortOrderParameter ? SortOrderNotReadMessage : FilterNotReadMessage;
 
     private sealed class MemberReader(string memberName) : ExpressionVisitor
     {

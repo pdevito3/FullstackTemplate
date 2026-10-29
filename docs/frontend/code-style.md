@@ -90,7 +90,7 @@ The workshop list wraps only the title: [index.tsx:112](<../../frontend/src/rout
 
 ## Dates and times
 
-A time that belongs to a place, such as a clinic visit or the start of an event at a venue, shows and reads in the zone of the place. The user can be in another zone. The Server gives the zone as an IANA ID, as `TimeZoneId` holds it. See `ZonedDate` in [domain-entities.md](../backend/domain-entities.md). `src/lib/zoned-time.ts` is the SPA side of `TimeZoneId` and `ZonedDate`. Only that file reads the zone of the browser. `pnpm lint` refuses the common browser-zone APIs in all other files of `src/`, except the tests.
+A time that belongs to a place, such as a clinic visit or the start of an event at a hall, shows and reads in the zone of the place. The user can be in another zone. The Server gives the zone as an IANA ID, as `TimeZoneId` holds it. See `ZonedDate` in [domain-entities.md](../backend/domain-entities.md). `src/lib/zoned-time.ts` is the SPA side of `TimeZoneId` and `ZonedDate`. Only that file reads the zone of the browser. `pnpm lint` refuses the common browser-zone APIs in all other files of `src/`, except the tests.
 
 1. Read the zone of the place from its API field with `parseTimeZone`. Use `browserTimeZone()` only for a time that belongs to the user, not to a place, or on a page with no place.
 2. Take today at the place with `todayAt(zone, new Date())`, never from the UTC date or the browser date.

@@ -107,6 +107,8 @@ describe('server-state/no-copied-state', () => {
     ['function A5({ name }) { const [n, setN] = useState(name); useEffect(() => setN(name), [name]) }', 'the prop `name`'],
     ['function useCopy(value) { const [copy] = useState(value); return copy }', 'the argument `value`'],
     ['function A6({ id }) { const query = useWorkshopQ(id); const [n] = useState(query.data?.name) }', 'the result of `useWorkshopQ`'],
+    ['function A7({ id }) { const { data: initialRecord } = useWorkshopQ(id); const [r] = useState(initialRecord) }', 'the result of `useWorkshopQ`'],
+    ['function A8({ id }) { const initialRecord = useWorkshopQ(id).data; const [r] = useState(initialRecord) }', 'the result of `useWorkshopQ`'],
   ])('reports the probe %s', (code, source) => {
     expect(serverStateMessages(code)).toEqual([`no-copied-state: This state copies ${source}`])
   })

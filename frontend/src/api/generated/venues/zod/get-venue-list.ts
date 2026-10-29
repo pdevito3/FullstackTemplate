@@ -7,7 +7,7 @@ import * as z from 'zod'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 import { venueDtoSchema } from '../../models/zod/venue-dto'
 
-export const getVenueListQueryFiltersSchema = z.string().optional()
+export const getVenueListQueryFiltersSchema = z.string().max(2000).optional()
 
 export const getVenueListQuerySortOrderSchema = z.string().optional()
 

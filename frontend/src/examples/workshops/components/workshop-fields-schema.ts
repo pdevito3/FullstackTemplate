@@ -5,7 +5,7 @@ import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/worksho
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop-for-update-dto'
 import { maximumOf, maxLengthOf, minimumOf, stringWithMaxLengthOf } from '@/lib/api-contract'
-import { instantAt, timeZoneLabel, type TimeZone } from '@/lib/zoned-time'
+import { instantAt, offsetAt, type TimeZone } from '@/lib/zoned-time'
 
 export type WorkshopFieldsContract =
   | typeof workshopForCreationDtoSchema.shape
@@ -50,6 +50,15 @@ export function toWorkshopBody(
   return instant && { title, startsAt: instant.toISOString(), capacity }
 }
 
+/**
+ * The place that a person knows a time zone by: "Chicago" for America/Chicago. A zone with no place, such as UTC,
+ * gives its offset. docs/messages.md rule 1 keeps the ID off the screen.
+ */
+export function placeOf(zone: TimeZone): string {
+  const [area, ...rest] = zone.split('/')
+  return rest.length > 0 && area !== 'Etc' ? rest[rest.length - 1].replaceAll('_', ' ') : `UTC${offsetAt(new Date(0), zone)}`
+}
+
 export function startInGapMessage(zone: TimeZone): string {
-  return `This time does not exist in ${timeZoneLabel(zone)} on that day, because the clocks go forward. Choose another time.`
+  return `This time does not exist in ${placeOf(zone)} on that day, because the clocks go forward. Choose another time.`
 }

@@ -5,9 +5,9 @@ import { Controller, useFormContext } from 'react-hook-form'
 import { JollyDatePicker } from '@/components/ui/date-picker'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { timeZoneLabel, todayAt, type TimeZone } from '@/lib/zoned-time'
+import { todayAt, type TimeZone } from '@/lib/zoned-time'
 
-import type { WorkshopFieldLimits, WorkshopFieldValues } from './workshop-fields-schema'
+import { placeOf, type WorkshopFieldLimits, type WorkshopFieldValues } from './workshop-fields-schema'
 
 interface WorkshopFieldsProps {
   limits: WorkshopFieldLimits
@@ -40,7 +40,7 @@ export function WorkshopFields({ limits, zone }: WorkshopFieldsProps) {
           <JollyDatePicker
             ref={field.ref}
             label="Starts at"
-            description={zone ? `The time in ${timeZoneLabel(zone)}.` : 'The time at the venue that you pick.'}
+            description={zone ? `The time in ${placeOf(zone)}.` : 'The time at the venue that you pick.'}
             granularity="minute"
             timeZone={zone}
             placeholderValue={zone && toCalendarDateTime(todayAt(zone, new Date()))}

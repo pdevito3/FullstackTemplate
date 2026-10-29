@@ -61,11 +61,11 @@ test.describe('the workshops', () => {
     )
     const workshops = workshopsPage(page)
     await workshops.openNewForm(venue.build().id)
-    await expect(workshops.at.newStartZone('America/Chicago')).toBeVisible()
+    await expect(workshops.at.newStartZone('Chicago')).toBeVisible()
     await workshops.fillNew({ title: 'Intro to Kubb', start: '081620260930A', capacity: '12' })
     await workshops.pickVenue('Harbor Hall')
 
-    await expect(workshops.at.newStartZone('Pacific/Pago Pago')).toBeVisible()
+    await expect(workshops.at.newStartZone('Pago Pago')).toBeVisible()
     await workshops.addAndOpenDetail(id, harbor.build().id)
 
     await expect(workshops.at.detailHeading('Intro to Kubb')).toBeVisible()
@@ -83,7 +83,7 @@ test.describe('the workshops', () => {
     await workshops.at.add.click()
 
     await expect(workshops.at.newFormMessage(
-      'This time does not exist in America/Chicago on that day, because the clocks go forward. Choose another time.',
+      'This time does not exist in Chicago on that day, because the clocks go forward. Choose another time.',
     )).toBeVisible()
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
@@ -111,7 +111,7 @@ test.describe('the workshops', () => {
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(harbor), workshopsApi.updateSaves(workshop.savedAgain()))
     const workshops = workshopsPage(page)
     await workshops.openEditForm(id)
-    await expect(workshops.at.editStartZone('Pacific/Pago Pago')).toBeVisible()
+    await expect(workshops.at.editStartZone('Pago Pago')).toBeVisible()
 
     await workshops.setEditHour('9')
     await workshops.saveAndOpenDetail(id, harbor.build().id)
@@ -245,6 +245,23 @@ test.describe('the workshops', () => {
   })
 })
 
+test.describe('the workshops of a signed-in user with no tenant', () => {
+  test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
+
+  test('shows the way to start a tenant in place of the empty list, and no New workshop or New venue', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]))
+    const workshops = workshopsPage(page)
+
+    await workshops.openList()
+
+    await expect(workshops.at.startTenantFirst).toBeVisible()
+    await expect(workshops.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
+    await expect(workshops.at.emptyList).toHaveCount(0)
+    await expect(workshops.at.newWorkshopLink).toHaveCount(0)
+    await expect(workshops.at.newVenueLink).toHaveCount(0)
+  })
+})
+
 test.describe('the focus after an action that removes the focused button', () => {
   test.use({ actor: as.user('Ana Admin') })
 
@@ -291,6 +308,31 @@ test.describe('the focus after an action that removes the focused button', () =>
     await workshops.saveAndOpenDetail(id, venueId)
 
     await expect(workshops.at.detailHeading('Kubb in depth')).toBeFocused()
+  })
+
+  test('a submit with two errors puts the focus on the first of them in the form order', async ({ page, api }) => {
+    api.mock(workshopsApi.venueListReturns([venue]), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await page.goto('/workshops/new')
+    await expect(workshops.at.newForm).toBeVisible()
+    await workshops.at.newCapacity.fill('12')
+
+    await workshops.at.add.click()
+
+    await expect(workshops.at.newFormMessage('Pick a venue.')).toBeVisible()
+    await expect(workshops.at.newFormMessage('Enter a title.')).toBeVisible()
+    await expect(workshops.at.newVenue).toBeFocused()
+
+    await workshops.pickVenue('Main Hall')
+    await workshops.at.newTitle.fill('Intro to Kubb')
+    await workshops.at.newCapacity.fill('0')
+
+    await workshops.at.add.click()
+
+    await expect(workshops.at.newFormMessage('Enter a start.')).toBeVisible()
+    await expect(workshops.at.newFormMessage('Use 1 or more.')).toBeVisible()
+    await expect(workshops.at.newStartMonth).toBeFocused()
+    expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
 
   test('Load the latest puts the focus on the title, the first field of the form', async ({ page, api }) => {
@@ -386,7 +428,7 @@ test.describe('the workshop list on a 320 px phone', () => {
 
     expect(await workshops.sidewaysOverflowOfTable()).toBe(0)
     expect(await workshops.pageOverflow()).toBe(0)
-    await expect(workshops.at.row('Intro to Kubb for product teams')).toContainText('120')
+    await expect(workshops.at.row('Intro to Kubb for product teams')).toContainText('Jun 1, 2026, 10:00 AM CDT, capacity 120')
     expect(await workshops.textOverflowPast(workshops.at.rowStatus('Intro to Kubb for product teams', 'Draft'))).toBeLessThanOrEqual(0)
     expect(await workshops.textOverflowPast(workshops.at.rowStatus(longName, 'Scheduled'))).toBeLessThanOrEqual(0)
     expect(await workshops.lineCount(workshops.at.titleLink('Intro to Kubb for product teams'))).toBeLessThanOrEqual(2)

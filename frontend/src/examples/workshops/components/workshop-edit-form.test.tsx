@@ -81,7 +81,7 @@ test('sends the version that it loaded', async () => {
 test('after a stale save, loads the latest into the form and saves with its version', async () => {
   const latest = { ...workshop, title: 'Kubb for teams', version: 4 }
   const form = await renderForm(vi.fn().mockRejectedValueOnce(stale).mockResolvedValue(undefined), vi.fn().mockResolvedValue(latest))
-  const alert = form.screen.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
+  const alert = form.screen.getByRole('alert').filter({ hasText: 'This workshop changed after you opened it.' })
 
   await userEvent.fill(form.title, 'Kubb in depth')
   await userEvent.click(form.save)

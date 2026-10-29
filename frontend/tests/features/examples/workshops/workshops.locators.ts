@@ -7,7 +7,7 @@ export const workshops = (page: Page) => {
   const newStart = newForm.getByRole('group', { name: 'Starts at' })
   const editStart = editForm.getByRole('group', { name: 'Starts at' })
   const cancelDialog = page.getByRole('dialog', { name: 'Cancel this workshop?' })
-  const staleAlert = editForm.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
+  const staleAlert = editForm.getByRole('alert').filter({ hasText: 'This workshop changed after you opened it.' })
 
   return {
     listHeading: page.getByRole('heading', { name: 'Workshops', exact: true }),
@@ -60,5 +60,10 @@ export const workshops = (page: Page) => {
     save: editForm.getByRole('button', { name: 'Save', exact: true }),
     staleAlert,
     loadLatest: staleAlert.getByRole('button', { name: 'Load the latest' }),
+    newWorkshopLink: page.getByRole('link', { name: 'New workshop', exact: true }),
+    newVenueLink: page.getByRole('link', { name: 'New venue', exact: true }),
+    emptyList: page.getByText('No workshops yet. Add one with New workshop.', { exact: true }),
+    startTenantFirst: page.getByText('Start a tenant to add workshops.', { exact: true }),
+    startTenantLink: page.getByText('Start a tenant to add workshops.', { exact: true }).getByRole('link', { name: 'Start a tenant' }),
   }
 }

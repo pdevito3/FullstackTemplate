@@ -60,8 +60,10 @@ function WorkshopPage() {
       </section>
       <WorkshopActions
         workshop={workshop.data}
-        pendingAction={action.isPending ? action.variables : undefined}
-        onAction={(command) => action.mutate(command, { onSettled: () => headingRef.current?.focus() })}
+        pendingAction={action.isPending ? action.variables.command : undefined}
+        onAction={(command) =>
+          action.mutate({ command, version: workshop.data.version }, { onSettled: () => headingRef.current?.focus() })
+        }
       />
     </div>
   )

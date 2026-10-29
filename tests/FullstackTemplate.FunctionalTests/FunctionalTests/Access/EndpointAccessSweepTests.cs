@@ -358,7 +358,7 @@ public class EndpointAccessSweepTests : TestBase
             member.RemovePermission(permission);
         admin.AddPermissions(Permission.GetAll());
         // example:start
-        var offered = (ScheduleDecision.Offered)WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, DateTimeOffset.UtcNow));
+        var offered = (ScheduleDecision.Offered)WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, DateTimeOffset.UtcNow, workshop.Version));
         workshop.Schedule(offered.Start);
         // example:end
 

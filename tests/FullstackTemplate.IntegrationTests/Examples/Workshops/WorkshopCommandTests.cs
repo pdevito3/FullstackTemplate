@@ -134,7 +134,7 @@ public class WorkshopCommandTests : TestBase
     }
 
     [Test]
-    public async Task a_schedule_that_a_rival_update_beat_after_the_load_runs_again_and_both_save()
+    public async Task a_schedule_that_a_rival_update_beat_after_the_load_is_a_stale_version_and_keeps_the_update()
     {
         // Arrange
         var pause = PauseAtQuery.After("workshops.schedule.load_venue");
@@ -144,15 +144,15 @@ public class WorkshopCommandTests : TestBase
         var loaded = await testingServiceScope.SendAsync(new GetWorkshop.Query(workshop.Id));
 
         // Act
-        var schedule = new TestingServiceScope(services).SendAsync(new ScheduleWorkshop.Command(workshop.Id));
+        var schedule = new TestingServiceScope(services).SendAsync(new ScheduleWorkshop.Command(workshop.Id, ForScheduling(loaded.Version)));
         await pause.ReachedAsync();
         await new TestingServiceScope().SendAsync(new UpdateWorkshop.Command(workshop.Id, ForUpdate(loaded) with { Capacity = 7 }));
         pause.Release();
 
         // Assert
-        (await schedule).Status.ShouldBe("Scheduled");
+        await Should.ThrowAsync<StaleVersionException>(schedule);
         var saved = await new TestingServiceScope().SendAsync(new GetWorkshop.Query(workshop.Id));
-        saved.Status.ShouldBe("Scheduled");
+        saved.Status.ShouldBe("Draft");
         saved.Capacity.ShouldBe(7);
     }
 
@@ -164,7 +164,7 @@ public class WorkshopCommandTests : TestBase
         await using var services = pause.BuildServices();
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _).AddVenue(out _).AddWorkshop(out var workshop).BuildAsync();
-        await testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id));
+        await testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id, ForScheduling(workshop.Version)));
 
         // Act
         var complete = new TestingServiceScope(services).SendAsync(new CompleteWorkshop.Command(workshop.Id));
@@ -191,7 +191,7 @@ public class WorkshopCommandTests : TestBase
             .BuildAsync();
 
         // Act
-        var act = () => testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id));
+        var act = () => testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id, ForScheduling(workshop.Version)));
 
         // Assert
         var refusal = await act.ShouldThrowAsync<ValidationException>();
@@ -208,7 +208,7 @@ public class WorkshopCommandTests : TestBase
         await testingServiceScope.StartGraph(out _).AddVenue(out _).AddWorkshop(out var workshop).BuildAsync();
 
         // Act
-        await testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id));
+        await testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id, ForScheduling(workshop.Version)));
         await testingServiceScope.SendAsync(new CancelWorkshop.Command(workshop.Id));
 
         // Assert
@@ -250,4 +250,6 @@ public class WorkshopCommandTests : TestBase
         Capacity = workshop.Capacity,
         Version = workshop.Version,
     };
+
+    private static WorkshopForSchedulingDto ForScheduling(uint version) => new() { Version = version };
 }

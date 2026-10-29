@@ -7,6 +7,7 @@ import * as z from 'zod'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 import { workshopDtoSchema } from '../../models/zod/workshop-dto'
+import { workshopForSchedulingDtoSchema } from '../../models/zod/workshop-for-scheduling-dto'
 
 export const scheduleWorkshopPathIdSchema = z.string()
 
@@ -27,3 +28,5 @@ export const scheduleWorkshopStatus422Schema = validationProblemDetailsSchema
 export const scheduleWorkshopResponseSchema = scheduleWorkshopStatus200Schema
 
 export const scheduleWorkshopErrorSchema = z.union([scheduleWorkshopStatus400Schema, scheduleWorkshopStatus401Schema, scheduleWorkshopStatus403Schema, scheduleWorkshopStatus404Schema, scheduleWorkshopStatus409Schema, scheduleWorkshopStatus422Schema])
+
+export const scheduleWorkshopBodySchema = workshopForSchedulingDtoSchema

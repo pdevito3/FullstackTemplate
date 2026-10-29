@@ -207,7 +207,7 @@ public class WorkshopCheckOrderTests : TestBase
             Capacity = 12,
             OrganizerId = members.Organizer.Id,
         });
-        var plan = new ScheduleCase(workshop, members.Venue, workshop.StartsAt.AddDays(-30));
+        var plan = new ScheduleCase(workshop, members.Venue, workshop.StartsAt.AddDays(-30), workshop.Version);
         workshop.Schedule(((ScheduleDecision.Offered)WorkshopScheduling.Decide(plan)).Start);
         await InsertAsync(workshop);
         return workshop;

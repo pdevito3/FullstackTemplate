@@ -6,6 +6,7 @@
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 import type { WorkshopDto } from '../../models/types/workshop-dto'
+import type { WorkshopForSchedulingDto } from '../../models/types/workshop-for-scheduling-dto'
 
 export type ScheduleWorkshopPath = {
     id: string;
@@ -25,8 +26,10 @@ export type ScheduleWorkshopStatus409 = ValidationProblemDetails;
 
 export type ScheduleWorkshopStatus422 = ValidationProblemDetails;
 
+export type ScheduleWorkshopBody = WorkshopForSchedulingDto;
+
 export type ScheduleWorkshopOptions = {
-    body?: never;
+    body: ScheduleWorkshopBody;
     path: ScheduleWorkshopPath;
     query?: never;
     headers?: never;

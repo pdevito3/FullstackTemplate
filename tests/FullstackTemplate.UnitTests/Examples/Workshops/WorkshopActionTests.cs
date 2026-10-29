@@ -122,7 +122,7 @@ public class WorkshopActionTests
                     });
                     return true;
                 case "Schedule":
-                    if (WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, Clock.Now)) is not ScheduleDecision.Offered offered)
+                    if (WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, Clock.Now, workshop.Version)) is not ScheduleDecision.Offered offered)
                         return false;
                     workshop.Schedule(offered.Start);
                     break;
@@ -157,7 +157,7 @@ public class WorkshopActionTests
         TestGraph.Start(out _, Clock.Fixed).AddVenue(out var venue).AddWorkshop(out var workshop, w => w.OrganizerId = OrganizerId);
         if (status is "Scheduled" or "Completed")
         {
-            var decision = WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, Clock.Now));
+            var decision = WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, Clock.Now, workshop.Version));
             workshop.Schedule(decision.ShouldBeOfType<ScheduleDecision.Offered>().Start);
         }
         if (status == "Cancelled")

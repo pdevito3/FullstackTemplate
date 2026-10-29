@@ -2407,6 +2407,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkshopForSchedulingDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -3440,6 +3450,20 @@
             "maximum": 500,
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "WorkshopForSchedulingDto": {
+        "required": [
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer",
+            "description": "The version of the workshop that the caller loaded. A stale version gives 409."
           }
         }
       },

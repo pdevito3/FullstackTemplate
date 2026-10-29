@@ -23,9 +23,13 @@ public sealed class ScheduleWorkshopEndpoint : IEndpoint
     /// Schedules a draft Workshop. Its start must be on a later day than today and in the opening hours, both in the
     /// time zone of its venue.
     /// </summary>
-    public static async Task<Ok<WorkshopDto>> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
+    public static async Task<Ok<WorkshopDto>> Handle(
+        string id,
+        WorkshopForSchedulingDto dto,
+        IMediator mediator,
+        CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new ScheduleWorkshop.Command(id), cancellationToken);
+        var result = await mediator.Send(new ScheduleWorkshop.Command(id, dto), cancellationToken);
         return TypedResults.Ok(result);
     }
 }

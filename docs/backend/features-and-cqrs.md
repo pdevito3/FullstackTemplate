@@ -104,7 +104,7 @@ The shape has five parts:
 
 1. **A case record.** It holds each fact that the rules read. One loader fills it, and both callers use that loader. Its constructor checks only that the facts belong together, for example that each booking is for the room.
 2. **An ordered list of rules** in one static class. Each rule takes the case and returns a refusal, or null when the rule passes. `Decide` returns the first refusal. The order is part of the contract, because the SPA and the tests read the first error.
-3. **A closed refusal type.** Each kind of refusal is a sealed record with the field and the message. The private constructor of the base record stops a plain derived record. C# keeps the copy constructor of a record protected, so a test checks that each kind is nested in the base record. The handler maps each kind to an exception. `Taken` gives a `ConflictException` (409), and `NotOffered` gives a `ValidationException` (422). The rules do not reference `Exceptions`.
+3. **A closed refusal type.** Each kind of refusal is a sealed record with the field and the message. The private constructor of the base record stops a plain derived record. C# keeps the copy constructor of a record protected, so a test checks that each kind is nested in the base record. The handler maps each kind to an exception. `Taken` gives a `ConflictException` (409), and `NotOffered` gives a `ValidationException` (422). The rules throw no exception. A kind can take its field and its message from the constants of the exception that the handler maps it to, as `StaleVersion` of `WorkshopScheduling` does with `StaleVersionException`.
 4. **A proof type** that only `Decide` makes. Its constructor is `internal`, and in the Server only `Decide` calls it. For a private constructor, put `Decide` in the proof type. The write method takes the proof, so the write cannot run without the check.
 5. **Two callers, one decision.** The list calls `Decide` for each candidate and keeps the offered ones. The command calls `Decide` one time and throws the refusal.
 
@@ -212,7 +212,7 @@ Each use of the shape has four tests. `tests/FullstackTemplate.UnitTests/Docs/De
 - A test that each kind of the refusal type and of the decision type is nested in its base record. C# cannot close a record hierarchy, so this test does it.
 
 <!-- example:start -->
-The workshop example uses the shape for a rule that reads two aggregates, the workshop and the time zone of its venue. It has one caller, the command that schedules a workshop. The rules are in [WorkshopScheduling.cs:51](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L51), the proof type is in [WorkshopScheduling.cs:30](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L30), and the handler switches on the decision in [ScheduleWorkshop.cs:33](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L33).
+The workshop example uses the shape for a rule that reads two aggregates, the workshop and the time zone of its venue. It has one caller, the command that schedules a workshop. The rules and the proof type are in [WorkshopScheduling.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs), and the handler switches on the decision in [ScheduleWorkshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs).
 <!-- example:end -->
 
 ## List query

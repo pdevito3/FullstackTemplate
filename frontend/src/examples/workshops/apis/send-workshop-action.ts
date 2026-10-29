@@ -8,8 +8,8 @@ import { scheduleWorkshop } from '@/api/generated/workshops/clients/schedule-wor
 import type { WorkshopCommand } from '../components/workshop-actions'
 import { WorkshopKeys } from './workshop.keys'
 
-const SEND: Record<WorkshopCommand, (id: string) => Promise<WorkshopDto>> = {
-  Schedule: (id) => scheduleWorkshop({ path: { id } }),
+const SEND: Record<WorkshopCommand, (id: string, version: number) => Promise<WorkshopDto>> = {
+  Schedule: (id, version) => scheduleWorkshop({ path: { id }, body: { version } }),
   Cancel: (id) => cancelWorkshop({ path: { id } }),
   Complete: (id) => completeWorkshop({ path: { id } }),
 }
@@ -18,7 +18,7 @@ export function useSendWorkshopAction(id: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (action: WorkshopCommand) => SEND[action](id),
+    mutationFn: ({ command, version }: { command: WorkshopCommand; version: number }) => SEND[command](id, version),
     onMutate: () => queryClient.cancelQueries({ queryKey: WorkshopKeys.detail(id) }),
     onSuccess: (workshop) => {
       queryClient.setQueryData(WorkshopKeys.detail(id), workshop)

@@ -69,7 +69,7 @@ public class WorkshopSchedulingTests
     }
 
     [Test]
-    public void a_scheduled_workshop_is_offered_again_so_a_command_that_runs_again_changes_nothing()
+    public void a_scheduled_workshop_is_offered_again_so_a_second_schedule_changes_nothing()
     {
         // Arrange
         var schedule = Case(Chicago, 7, 10, "Scheduled");
@@ -95,16 +95,36 @@ public class WorkshopSchedulingTests
     }
 
     [Test]
+    [Arguments("Draft")]
+    [Arguments("Scheduled")]
+    [Arguments("Cancelled")]
+    public void a_stale_version_is_refused_before_the_status_and_the_start(string status)
+    {
+        // Arrange
+        var schedule = Case(Chicago, 0, 10, status, stale: true);
+
+        // Act
+        var decision = WorkshopScheduling.Decide(schedule);
+
+        // Assert
+        var refusal = decision.ShouldBeOfType<ScheduleDecision.Refused>().Refusal;
+        refusal.ShouldBeOfType<ScheduleRefusal.StaleVersion>();
+        refusal.Field.ShouldBe("version");
+    }
+
+    [Test]
     public void a_case_that_breaks_each_rule_gets_the_refusal_of_the_first_rule_that_it_breaks()
     {
         // Act
-        var breaksEach = WorkshopScheduling.Decide(Case(Chicago, 0, 21, "Cancelled"));
+        var breaksEach = WorkshopScheduling.Decide(Case(Chicago, 0, 21, "Cancelled", stale: true));
+        var breaksTheLastThree = WorkshopScheduling.Decide(Case(Chicago, 0, 21, "Cancelled"));
         var breaksTheLastTwo = WorkshopScheduling.Decide(Case(Chicago, 0, 21, "Draft"));
         var breaksTheLast = WorkshopScheduling.Decide(Case(Chicago, 7, 21, "Draft"));
         var breaksNone = WorkshopScheduling.Decide(Case(Chicago, 7, 10, "Draft"));
 
         // Assert
-        breaksEach.ShouldBeOfType<ScheduleDecision.Refused>().Refusal.ShouldBeOfType<ScheduleRefusal.WrongStatus>();
+        breaksEach.ShouldBeOfType<ScheduleDecision.Refused>().Refusal.ShouldBeOfType<ScheduleRefusal.StaleVersion>();
+        breaksTheLastThree.ShouldBeOfType<ScheduleDecision.Refused>().Refusal.ShouldBeOfType<ScheduleRefusal.WrongStatus>();
         breaksTheLastTwo.ShouldBeOfType<ScheduleDecision.Refused>().Refusal.Message.ShouldBe(NotAfterToday);
         breaksTheLast.ShouldBeOfType<ScheduleDecision.Refused>().Refusal.Message.ShouldBe(NotInOpeningHours);
         breaksNone.ShouldBeOfType<ScheduleDecision.Offered>();
@@ -146,13 +166,13 @@ public class WorkshopSchedulingTests
             .Under(venues[0]).AddWorkshop(out var workshop);
 
         // Act
-        var act = () => new ScheduleCase(workshop, venues[1], Now);
+        var act = () => new ScheduleCase(workshop, venues[1], Now, workshop.Version);
 
         // Assert
         act.ShouldThrow<ArgumentException>().ParamName.ShouldBe("venue");
     }
 
-    private static ScheduleCase Case(string zone, int daysAhead, int hour, string status)
+    private static ScheduleCase Case(string zone, int daysAhead, int hour, string status, bool stale = false)
     {
         var timeZone = TimeZoneId.Of(zone);
         var day = ZonedDate.TodayAt(timeZone, Now).Date.AddDays(daysAhead);
@@ -162,7 +182,7 @@ public class WorkshopSchedulingTests
             .AddVenue(out var venue, v => v.TimeZone = zone)
             .AddWorkshop(out var workshop, w => w.StartsAt = startsAt);
         MoveTo(workshop, status, venue);
-        return new ScheduleCase(workshop, venue, Now);
+        return new ScheduleCase(workshop, venue, Now, stale ? workshop.Version + 1 : workshop.Version);
     }
 
     private static void MoveTo(Workshop workshop, string status, Venue venue)
@@ -186,7 +206,7 @@ public class WorkshopSchedulingTests
 
     private static void Schedule(Workshop workshop, Venue venue)
     {
-        var decision = WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, workshop.StartsAt.AddDays(-30)));
+        var decision = WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, workshop.StartsAt.AddDays(-30), workshop.Version));
         workshop.Schedule(decision.ShouldBeOfType<ScheduleDecision.Offered>().Start);
     }
 }

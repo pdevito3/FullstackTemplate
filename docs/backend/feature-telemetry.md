@@ -196,7 +196,7 @@ The example obeys these rules:
 - A request for the role that the user already has changes no role. Thus it writes no log and counts nothing.
 
 <!-- example:start -->
-`ScheduleWorkshop` tags the kind of a refusal ([ScheduleWorkshop.cs:73](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L73)). It logs and counts a status change only after the save, and only when the status changed ([ScheduleWorkshop.cs:48](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L48)). The counter is in [WorkshopMetrics.cs:13](../../FullstackTemplate.Server/Examples/Workshops/WorkshopMetrics.cs#L13).
+`ScheduleWorkshop` tags the kind of a refusal. It logs and counts a status change only after the save, and only when the status changed. Both are in [ScheduleWorkshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs). The counter is in [WorkshopMetrics.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopMetrics.cs).
 <!-- example:end -->
 
 ## Test the telemetry

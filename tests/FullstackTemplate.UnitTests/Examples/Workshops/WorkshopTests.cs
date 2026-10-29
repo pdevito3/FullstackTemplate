@@ -121,7 +121,7 @@ public class WorkshopTests
     {
         // Arrange
         TestGraph.Start(out _, Clock.Fixed).AddVenue(out var venue).AddWorkshops(out var workshops, 2);
-        var proof = WorkshopScheduling.Decide(new ScheduleCase(workshops[0], venue, Clock.Now))
+        var proof = WorkshopScheduling.Decide(new ScheduleCase(workshops[0], venue, Clock.Now, workshops[0].Version))
             .ShouldBeOfType<ScheduleDecision.Offered>().Start;
 
         // Act

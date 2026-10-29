@@ -12,7 +12,7 @@ using Serilog;
 
 public static class ScheduleWorkshop
 {
-    public sealed record Command(string Id) : IRequest<WorkshopDto>, IRunsAgainWhenRaced;
+    public sealed record Command(string Id, WorkshopForSchedulingDto Dto) : IRequest<WorkshopDto>;
 
     public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, TimeProvider timeProvider)
         : IRequestHandler<Command, WorkshopDto>
@@ -26,7 +26,7 @@ public static class ScheduleWorkshop
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             WorkshopAction.Schedule().GuardCaller(caller);
 
-            var schedule = await LoadCaseAsync(request.Id, cancellationToken);
+            var schedule = await LoadCaseAsync(request.Id, request.Dto.Version, cancellationToken);
             var workshop = schedule.Workshop;
             workshop.GuardChangeBy(caller);
             var wasScheduled = workshop.Status == WorkshopStatus.Scheduled();
@@ -36,6 +36,9 @@ public static class ScheduleWorkshop
                 case ScheduleDecision.Offered offered:
                     workshop.Schedule(offered.Start);
                     break;
+                case ScheduleDecision.Refused { Refusal: ScheduleRefusal.StaleVersion }:
+                    Activity.Current?.SetTag("app.workshop.schedule_refusal", "stale_version");
+                    throw new StaleVersionException();
                 case ScheduleDecision.Refused { Refusal: ScheduleRefusal.WrongStatus wrongStatus }:
                     throw Refuse("wrong_status", wrongStatus);
                 case ScheduleDecision.Refused { Refusal: ScheduleRefusal.NotOffered notOffered }:
@@ -55,7 +58,7 @@ public static class ScheduleWorkshop
             return workshop.ToWorkshopDto(schedule.Venue, caller);
         }
 
-        private async Task<ScheduleCase> LoadCaseAsync(string workshopId, CancellationToken cancellationToken)
+        private async Task<ScheduleCase> LoadCaseAsync(string workshopId, uint version, CancellationToken cancellationToken)
         {
             var workshop = await dbContext.Workshops
                 .TagWithOperationCallSite("workshops.schedule.load")
@@ -66,7 +69,7 @@ public static class ScheduleWorkshop
                 .TagWithOperationCallSite("workshops.schedule.load_venue")
                 .GetById(workshop.VenueId, cancellationToken);
 
-            return new ScheduleCase(workshop, venue, timeProvider.GetUtcNow());
+            return new ScheduleCase(workshop, venue, timeProvider.GetUtcNow(), version);
         }
 
         private static ValidationException Refuse(string kind, ScheduleRefusal refusal)

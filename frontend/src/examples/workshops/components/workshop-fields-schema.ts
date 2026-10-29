@@ -4,7 +4,7 @@ import * as z from 'zod'
 import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/workshop-for-creation-dto'
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop-for-update-dto'
-import { maximumOf, maxLengthOf, stringWithMaxLengthOf } from '@/lib/api-contract'
+import { maximumOf, maxLengthOf, minimumOf, stringWithMaxLengthOf } from '@/lib/api-contract'
 import { instantAt, timeZoneLabel, type TimeZone } from '@/lib/zoned-time'
 
 export type WorkshopFieldsContract =
@@ -13,21 +13,27 @@ export type WorkshopFieldsContract =
 
 export interface WorkshopFieldLimits {
   titleMaxLength: number
+  capacityMinimum: number
   capacityMaximum: number
 }
 
 export function limitsOf(contract: WorkshopFieldsContract): WorkshopFieldLimits {
-  return { titleMaxLength: maxLengthOf(contract.title), capacityMaximum: maximumOf(contract.capacity) }
+  return {
+    titleMaxLength: maxLengthOf(contract.title),
+    capacityMinimum: minimumOf(contract.capacity),
+    capacityMaximum: maximumOf(contract.capacity),
+  }
 }
 
 export function workshopFieldsSchema(contract: WorkshopFieldsContract) {
-  const { capacityMaximum } = limitsOf(contract)
+  const { capacityMinimum, capacityMaximum } = limitsOf(contract)
   return z.object({
     title: stringWithMaxLengthOf(contract.title).min(1, 'Enter a title.'),
     startsAt: z.custom<CalendarDateTime>((value) => value instanceof CalendarDateTime, 'Enter a start.'),
     capacity: z
       .number({ error: 'Enter a number.' })
       .int('Enter a whole number.')
+      .min(capacityMinimum, `Use ${capacityMinimum} or more.`)
       .max(capacityMaximum, `Use ${capacityMaximum} or fewer.`),
   })
 }

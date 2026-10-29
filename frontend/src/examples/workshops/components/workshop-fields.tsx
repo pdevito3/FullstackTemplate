@@ -64,12 +64,13 @@ export function WorkshopFields({ limits, zone }: WorkshopFieldsProps) {
           id={`${id}-capacity`}
           type="number"
           inputMode="numeric"
+          min={limits.capacityMinimum}
           max={limits.capacityMaximum}
           aria-invalid={!!errors.capacity || undefined}
           aria-describedby={`${id}-capacity-hint ${id}-capacity-error`}
           {...register('capacity', { valueAsNumber: true })}
         />
-        <FieldDescription id={`${id}-capacity-hint`}>Up to {limits.capacityMaximum} seats.</FieldDescription>
+        <FieldDescription id={`${id}-capacity-hint`}>A workshop has room for {limits.capacityMinimum} to {limits.capacityMaximum} people.</FieldDescription>
         <FieldError id={`${id}-capacity-error`} errors={[errors.capacity]} />
       </Field>
     </>

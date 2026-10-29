@@ -210,6 +210,36 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    public async Task limits_transformer_writes_the_minimum_of_the_named_static_field()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((LimitedDto dto) => dto);
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(LimitedDto)].Properties.ShouldNotBeNull();
+        properties["quantity"].Minimum.ShouldBe("0.5");
+        properties["quantity"].Maximum.ShouldBe("99.5");
+    }
+
+    [Test]
+    public async Task limits_transformer_gives_a_uint_the_domain_minimum_in_place_of_zero()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((LimitedDto dto) => dto);
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(LimitedDto)].Properties.ShouldNotBeNull();
+        properties["seats"].Minimum.ShouldBe("1");
+        properties["seats"].Maximum.ShouldBe("4294967295");
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_max_length_on_a_number()
     {
         // Arrange
@@ -235,6 +265,20 @@ public class OpenApiTransformerTests
         // Assert
         var exception = await act.ShouldThrowAsync<InvalidOperationException>();
         exception.Message.ShouldContain($"{nameof(MaximumOnStringDto)}.name has [SchemaMaximum]");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_minimum_on_a_string()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((MinimumOnStringDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(MinimumOnStringDto)}.name has [SchemaMinimum]");
     }
 
     [Test]
@@ -275,7 +319,9 @@ public class OpenApiTransformerTests
     private static class Limits
     {
         public const int NameMaxLength = 40;
+        public static readonly decimal QuantityMin = 0.5m;
         public static readonly decimal QuantityMax = 99.5m;
+        public const int SeatsMin = 1;
         public const int VersionMax = 1000;
         public const string Unit = "kg";
     }
@@ -284,10 +330,13 @@ public class OpenApiTransformerTests
     {
         [SchemaMaxLength(typeof(Limits), nameof(Limits.NameMaxLength))]
         public string Name { get; init; } = default!;
+        [SchemaMinimum(typeof(Limits), nameof(Limits.QuantityMin))]
         [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMax))]
         public decimal Quantity { get; init; }
         [SchemaMaximum(typeof(Limits), nameof(Limits.VersionMax))]
         public uint Version { get; init; }
+        [SchemaMinimum(typeof(Limits), nameof(Limits.SeatsMin))]
+        public uint Seats { get; init; }
     }
 
     private sealed record MaxLengthOnNumberDto
@@ -299,6 +348,12 @@ public class OpenApiTransformerTests
     private sealed record MaximumOnStringDto
     {
         [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMax))]
+        public string Name { get; init; } = default!;
+    }
+
+    private sealed record MinimumOnStringDto
+    {
+        [SchemaMinimum(typeof(Limits), nameof(Limits.SeatsMin))]
         public string Name { get; init; } = default!;
     }
 

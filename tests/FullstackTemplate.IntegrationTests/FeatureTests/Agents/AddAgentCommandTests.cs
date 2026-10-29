@@ -1,11 +1,14 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Agents;
 
+using FullstackTemplate.IntegrationTests.Databases;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Agents.Features;
+using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Agent;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
@@ -66,6 +69,34 @@ public class AddAgentCommandTests : TestBase
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
             .ShouldBe("Only a client that can manage all tenants can do this.");
         (await AgentCountAsync(dto.ClientId)).ShouldBe(0);
+    }
+
+    [Test]
+    public async Task machine_agent_is_forbidden_before_the_tenant_check_while_the_tenant_is_deleted()
+    {
+        // Arrange
+        var pause = PauseAtQuery.After("tenants.delete.load_agents");
+        await using var services = pause.BuildServices();
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = "Admin")
+            .BuildAsync();
+        var deleter = new TestingServiceScope(services);
+        var underTest = new TestingServiceScope();
+        deleter.SetUserWithDefaults(identifier: admin.Identifier);
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        var delete = deleter.SendAsync(new DeleteTenant.Command(tenant.Id));
+        await pause.ReachedAsync();
+        var dto = new FakeAgentForCreationDto().Generate() with { Mode = "machine" };
+
+        // Act
+        var add = underTest.SendAsync(new AddAgent.Command(dto));
+
+        // Assert
+        (await Should.ThrowAsync<ForbiddenAccessException>(add.WaitAsync(TimeSpan.FromSeconds(10)))).Message
+            .ShouldBe("Only a client that can manage all tenants can do this.");
+        pause.Release();
+        await delete;
     }
 
     [Test]

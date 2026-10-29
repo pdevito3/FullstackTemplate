@@ -8,7 +8,7 @@ using Shouldly;
 
 public class QueryKitInputExtensionsTests : IDisposable
 {
-    private sealed record Row(string Name, uint Version = 0);
+    private sealed record Row(string Name, int Seats = 0, uint Version = 0);
 
     private static readonly IQueryable<Row> Rows = new[] { new Row("a") }.AsQueryable();
 
@@ -45,18 +45,84 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
-    [Arguments("Name == a\"b")]
-    [Arguments("Name @= ")]
-    [Arguments("Unknown == \"x\"")]
-    public void filter_that_querykit_cannot_read_gets_the_filter_message(string filters)
+    [Arguments("Name == a\"b", "The filter could not be read at character 10. Check the operator and the quotes there, then try again.")]
+    [Arguments("Name @= ", "The filter could not be read at character 9. Check the operator and the quotes there, then try again.")]
+    public void parse_fault_gets_a_message_with_its_place(string filters, string message)
     {
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Parameter.ShouldBe("filters");
-        exception.Message.ShouldBe("The filter could not be read. Change the filter, then try again.");
-        exception.InnerException.ShouldBeAssignableTo<QueryKitException>();
+        exception.Message.ShouldBe(message);
+        exception.InnerException.ShouldBeOfType<ParsingException>();
+    }
+
+    [Test]
+    public void unknown_filter_field_gets_a_message_with_the_field_and_the_fields_of_the_list()
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Title == \"x\"", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldBe(
+            "The filter names the field Title, which this list does not have. Use one of these fields: name, seats.");
+        exception.InnerException.ShouldBeOfType<UnknownFilterPropertyException>();
+    }
+
+    [Test]
+    public void unknown_sort_field_gets_a_message_with_the_field_and_the_fields_of_the_list()
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplySortOrder("Title desc", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("sortOrder");
+        exception.Message.ShouldBe("The sort order names the field Title, which this list does not have. Use one of these fields: name, seats.");
+        exception.InnerException.ShouldBeOfType<SortParsingException>();
+    }
+
+    [Test]
+    public void value_that_does_not_fit_its_field_gets_a_message_with_the_field_and_not_the_value()
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Seats == \"jane@example.com\"", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldBe("A value in the filter does not fit the field Seats. Change the value, then try again.");
+        exception.InnerException.ShouldBeOfType<ParsingException>();
+    }
+
+    // The Server sets no DbContext type in its QueryKit configuration, so QueryKit cannot run the sounds-like operators
+    [Test]
+    [Arguments("Name ~~ \"paul\"")]
+    [Arguments("Name !~ \"paul\"")]
+    public void sounds_like_operator_gets_a_message_that_names_the_operators(string filters)
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("filters");
+        exception.Message.ShouldBe(
+            "This list cannot filter with the sounds-like operators ~~ and !~. Choose another operator, then try again.");
+        exception.InnerException.ShouldBeOfType<QueryKitDbContextTypeException>();
+    }
+
+    [Test]
+    public void the_span_does_not_get_a_field_name_that_can_be_text_of_the_filter()
+    {
+        // Arrange
+        using var activity = _source.StartActivity("list").ShouldNotBeNull();
+
+        // Act
+        Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Paul == \"x\"", new CustomQueryKitConfiguration()));
+        Should.Throw<QueryInputException>(() => Rows.ApplySortOrder("jane@example.com", new CustomQueryKitConfiguration()));
+
+        // Assert
+        activity.Events.Count().ShouldBe(2);
+        activity.Events.SelectMany(e => e.Tags).ShouldAllBe(tag =>
+            !(tag.Value ?? "").ToString()!.Contains("Paul") && !(tag.Value ?? "").ToString()!.Contains("jane@example.com"));
     }
 
     [Test]

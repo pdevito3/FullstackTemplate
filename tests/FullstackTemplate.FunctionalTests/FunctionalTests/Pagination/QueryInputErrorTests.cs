@@ -22,6 +22,9 @@ public class QueryInputErrorTests : TestBase
         ("filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\""),
         ("filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}"),
         ("filters", "Name ^^ \"x\""),
+        // The Server sets no DbContext type for QueryKit, so it cannot run the sounds-like operators
+        ("filters", "Name ~~ \"paul\""),
+        ("filters", "Name !~ \"paul\""),
         ("sortOrder", "Unknown desc,,"),
         ("sortOrder", "Name foo"),
         // A version is opaque, so a list cannot filter or sort on it
@@ -64,7 +67,14 @@ public class QueryInputErrorTests : TestBase
     }
 
     [Test]
-    public async Task filter_that_querykit_cannot_read_gets_a_message_with_no_parser_text()
+    [Arguments("filters", "Name == a\"b",
+        "The filter could not be read at character 10. Check the operator and the quotes there, then try again.")]
+    [Arguments("filters", "Title == \"x\"",
+        "The filter names the field Title, which this list does not have. Use one of these fields: id, name.")]
+    [Arguments("sortOrder", "Title desc",
+        "The sort order names the field Title, which this list does not have. Use one of these fields: id, name.")]
+    public async Task query_value_that_querykit_cannot_read_gets_a_message_that_points_to_the_fault(
+        string parameter, string value, string message)
     {
         // Arrange
         FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
@@ -73,13 +83,13 @@ public class QueryInputErrorTests : TestBase
         });
 
         // Act
-        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?filters={Uri.EscapeDataString("Name == a\"b")}");
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?{parameter}={Uri.EscapeDataString(value)}");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
-        problem.Detail.ShouldBe("The filter could not be read. Change the filter, then try again.");
-        problem.Errors["filters"].ShouldBe(["The filter could not be read. Change the filter, then try again."]);
+        problem.Detail.ShouldBe(message);
+        problem.Errors[parameter].ShouldBe([message]);
     }
 
     [Test]

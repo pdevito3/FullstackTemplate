@@ -166,6 +166,29 @@ public class TenantExampleMcpToolTests : TestBase
         content.GetProperty("pagination").GetProperty("totalCount").GetInt32().ShouldBe(1);
     }
 
+    [Test]
+    public async Task agent_can_correct_a_filter_on_a_field_that_the_list_does_not_have()
+    {
+        // Arrange
+        var (tenant, user) = await AddTenantWithUserAsync();
+        SignInAs(user);
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var wrong = await client.CallToolAsync("list_tenants",
+            new Dictionary<string, object?> { ["filters"] = $"title == \"{tenant.Name}\"" });
+        var corrected = await client.CallToolAsync("list_tenants",
+            new Dictionary<string, object?> { ["filters"] = $"name == \"{tenant.Name}\"" });
+
+        // Assert
+        wrong.ShouldBeToolError("invalid_argument");
+        wrong.StructuredContent.ShouldNotBeNull().GetProperty("errors").GetProperty("filters")[0].GetString()
+            .ShouldBe("The filter names the field title, which this list does not have. Use one of these fields: id, name.");
+        corrected.IsError.ShouldNotBe(true);
+        corrected.StructuredContent.ShouldNotBeNull().GetProperty("items").EnumerateArray().ShouldHaveSingleItem()
+            .GetProperty("id").GetString().ShouldBe(tenant.Id);
+    }
+
     public static IEnumerable<Func<(string Tool, string Argument, object Value, string Shown)>> ArgumentsOfTheWrongType()
     {
         yield return () => ("list_tenants", "pageSize", "ten", "ten");

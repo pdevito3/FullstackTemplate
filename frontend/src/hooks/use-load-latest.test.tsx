@@ -59,3 +59,13 @@ test('names no field and focuses the first field when the latest save changed no
   await expect.element(name).toHaveFocus()
   await expect.element(screen.getByRole('status', { name: 'Changed' })).toHaveTextContent('')
 })
+
+test('takes only fields whose values compare by their text', () => {
+  function PlaceForm() {
+    const form = useForm<{ place: { id: string; name: string } }>()
+    // @ts-expect-error An object field compares as "[object Object]", so the merge would drop the edit of the user.
+    return useLoadLatest(form, ['place'])
+  }
+
+  expect(PlaceForm).toBeTypeOf('function')
+})

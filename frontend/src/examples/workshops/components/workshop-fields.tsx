@@ -1,3 +1,4 @@
+import { getLocalTimeZone, now } from '@internationalized/date'
 import { useId } from 'react'
 import { Controller, useFormContext } from 'react-hook-form'
 
@@ -38,6 +39,7 @@ export function WorkshopFields({ limits }: WorkshopFieldsProps) {
           <JollyDatePicker
             label="Starts at"
             granularity="minute"
+            placeholderValue={now(getLocalTimeZone()).set({ second: 0, millisecond: 0 })}
             value={field.value ?? null}
             onChange={field.onChange}
             onBlur={field.onBlur}

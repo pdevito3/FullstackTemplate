@@ -59,8 +59,12 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
         JsonNumber.Parse(low).CompareTo(JsonNumber.Parse(high)) > 0;
 
     /// <summary>The exact value of a JSON number: <c>Sign × Digits × 10^Exponent</c>, with <c>Digits</c> not negative.</summary>
-    private readonly record struct JsonNumber(int Sign, BigInteger Digits, BigInteger Exponent) : IComparable<JsonNumber>
+    private readonly struct JsonNumber(int sign, BigInteger digits, BigInteger exponent) : IComparable<JsonNumber>
     {
+        public int Sign { get; } = sign;
+        public BigInteger Digits { get; } = digits;
+        public BigInteger Exponent { get; } = exponent;
+
         public static JsonNumber Parse(string number)
         {
             var e = number.IndexOfAny(['e', 'E']);

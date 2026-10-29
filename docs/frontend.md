@@ -7,6 +7,8 @@ The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack
 - [code-style.md](frontend/code-style.md): TypeScript, components, styles, files, and imports
 - [testing.md](frontend/testing.md): the test suites, mocks, builders, and selectors
 
+The text of each toast, alert, label, and message follows [messages.md](messages.md).
+
 ## Commands
 
 ```bash

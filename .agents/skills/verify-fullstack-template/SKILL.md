@@ -150,6 +150,7 @@ Proof standards:
 - Compare the screen with the data. For example, each weather card must show the `summary` and the temperature of the API row, not only "5 cards".
 - Read `console.log` and `network.log` after each run. These lines are normal: the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
 - Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
+- Read each message on the screen: each alert, toast, field error, and dialog text. Report a message that breaks a rule of [docs/messages.md](../../../docs/messages.md), for example one that shows a code such as `manage_users`, an ID, or a 24-hour time next to a 12-hour field.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
 
 ## Cleanup

@@ -3,14 +3,13 @@ namespace FullstackTemplate.UnitTests.Docs;
 using System.Text.RegularExpressions;
 using Shouldly;
 
-/// <summary>
-/// A link in a doc names a file that exists and no line number. A line number goes stale when the code above it moves,
-/// and no check can tell that the line still holds what the sentence means, so a link names the file and the text
-/// names the member.
-/// </summary>
 public partial class DocLinkTests
 {
-    private static readonly string[] SkippedFolders = ["bin", "obj", "node_modules", ".git", "dist", "test-results", "playwright-report"];
+    private static readonly HashSet<string> SkippedFolders =
+    [
+        "bin", "obj", "node_modules", ".git", "dist", "test-results", "playwright-report", "TestResults",
+        ".claude", "artifacts", ".audit",
+    ];
 
     [Test]
     public void a_line_number_link_and_a_link_to_a_missing_file_are_listed()
@@ -41,9 +40,7 @@ public partial class DocLinkTests
     {
         // Arrange
         var root = FindRepositoryRoot();
-        var docs = Directory.EnumerateFiles(root, "*.md", SearchOption.AllDirectories)
-            .Select(file => Relative(root, file))
-            .Where(file => !file.Split('/').Intersect(SkippedFolders).Any());
+        var docs = DocsUnder(root).Select(file => Relative(root, file));
 
         // Act
         var faults = docs.SelectMany(doc => FaultsOf(doc, File.ReadAllText(Path.Combine(root, doc)), path => Exists(root, path)));
@@ -85,6 +82,11 @@ public partial class DocLinkTests
 
         return string.Join('/', parts);
     }
+
+    private static IEnumerable<string> DocsUnder(string folder) =>
+        Directory.EnumerateFiles(folder, "*.md").Concat(Directory.EnumerateDirectories(folder)
+            .Where(child => !SkippedFolders.Contains(Path.GetFileName(child)))
+            .SelectMany(DocsUnder));
 
     private static bool Exists(string root, string path) =>
         File.Exists(Path.Combine(root, path)) || Directory.Exists(Path.Combine(root, path));

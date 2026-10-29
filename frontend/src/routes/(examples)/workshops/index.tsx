@@ -5,6 +5,7 @@ import {
   getWorkshopListQueryPageNumberSchema,
   getWorkshopListQuerySearchSchema,
 } from '@/api/generated/workshops/zod/get-workshop-list'
+import { QueryError } from '@/components/query-error'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 import { Pager } from '@/components/ui/pager'
@@ -12,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useMembership } from '@/domain/membership/apis/get-membership'
 import { useWorkshopList } from '@/examples/workshops/apis/get-workshop-list'
 import { formatStart } from '@/examples/workshops/components/format-start'
-import { QueryError } from '@/components/query-error'
 import { WorkshopSearch } from '@/examples/workshops/components/workshop-search'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 import { useIsMobile } from '@/hooks/use-mobile'

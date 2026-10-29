@@ -95,7 +95,7 @@ test('a current page that truncates is a button that shows its full name in a po
   await expect.element(screen.getByRole('dialog', { name: 'Current page' })).toHaveTextContent(workOrder)
 })
 
-test('a current page that truncates is a 44 px touch target, and its focus ring keeps space around the text', async () => {
+test('a current page that truncates is a 44 px touch target, and its focus ring keeps space on each side of the text', async () => {
   const screen = await renderWorkOrderTrail(320)
   const current = screen.getByRole('button', { name: workOrder })
   await expect.element(current).toBeVisible()
@@ -110,7 +110,11 @@ test('a current page that truncates is a 44 px touch target, and its focus ring 
   const ring = parts.find((el, i) => getComputedStyle(el).boxShadow !== shadows[i])!
   const text = document.createRange()
   text.selectNodeContents(document.createTreeWalker(current.element(), NodeFilter.SHOW_TEXT).nextNode()!)
-  expect(text.getBoundingClientRect().left - ring.getBoundingClientRect().left).toBeGreaterThanOrEqual(2)
+  const textBox = text.getBoundingClientRect()
+  const ringBox = ring.getBoundingClientRect()
+  expect(textBox.left - ringBox.left).toBeGreaterThanOrEqual(2)
+  expect(textBox.top - ringBox.top).toBeGreaterThanOrEqual(2)
+  expect(ringBox.bottom - textBox.bottom).toBeGreaterThanOrEqual(2)
 })
 
 test('a current page that fits is a disabled link, not a button', async () => {

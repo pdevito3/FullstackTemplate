@@ -98,6 +98,52 @@ describe('server-state/no-copied-state', () => {
 
     expect(serverStateMessages(code)).toEqual(['no-copied-state: This state copies the result of `useRecord`'])
   })
+
+  it.each([
+    ['function A1(props) { const [name] = useState(props.record.name) }', 'the prop `props`'],
+    ['function A2({ name }) { const [n] = useState(name) }', 'the prop `name`'],
+    ["function A3({ id }) { const { data } = useWorkshopQ(id); const [n] = useState(data?.name ?? '') }", 'the result of `useWorkshopQ`'],
+    ['function A4({ name }) { const copy = name; const [n] = useState(() => copy) }', 'the prop `name`'],
+    ['function A5({ name }) { const [n, setN] = useState(name); useEffect(() => setN(name), [name]) }', 'the prop `name`'],
+    ['function useCopy(value) { const [copy] = useState(value); return copy }', 'the argument `value`'],
+    ['function A6({ id }) { const query = useWorkshopQ(id); const [n] = useState(query.data?.name) }', 'the result of `useWorkshopQ`'],
+  ])('reports the probe %s', (code, source) => {
+    expect(serverStateMessages(code)).toEqual([`no-copied-state: This state copies ${source}`])
+  })
+
+  it.each([
+    'function B1({ first, last }) { const full = `${first} ${last}`; return full }',
+    'function B3({ items }) { const [prevItems, setPrevItems] = useState(items); const [selection, setSelection] = useState(null); if (items !== prevItems) { setPrevItems(items); setSelection(null) } }',
+    'function B4({ value }) { const [text, setText] = useState(value); const [prev, setPrev] = useState(value); if (value !== prev) { setPrev(value); setText(value) } }',
+    'function B5({ initialCount }) { const [c] = useState(initialCount) }',
+    'function B6(props) { const [o] = useState(props.defaultOpen ?? false) }',
+    `function useDebouncedValue(value, delay = 300) {
+      const [debounced, setDebounced] = useState(value)
+      useEffect(() => {
+        const timer = setTimeout(() => setDebounced(value), delay)
+        return () => clearTimeout(timer)
+      }, [value, delay])
+      return debounced
+    }`,
+    'function B7() { const isMobile = useIsMobile(); const [open] = useState(isMobile) }',
+    "function B8({ id }) { const q = useQuery({ queryKey: ['x', id], queryFn: () => id }); const [ready] = useState(q.isSuccess) }",
+    'function B9({ value }) { const [text, setText] = useState(value); const [prev, setPrev] = useState(value); if (value !== prev) { setPrev(value); setText(value.trim()) } }',
+  ])('takes the probe %s', (code) => {
+    expect(serverStateMessages(code)).toEqual([])
+  })
+
+  it('names the prop only for a prop, and gives the rename advice only for a prop', () => {
+    const linter = new Linter({ configType: 'flat' })
+    const messages = (code) => linter.verify(code, [{
+      languageOptions: { parser: tseslint.parser },
+      plugins: { 'server-state': serverStatePlugin },
+      rules: { 'server-state/no-copied-state': 'error' },
+    }]).map((message) => message.message)
+
+    expect(messages("function Name({ id }) { const { data } = useRecord(id); const [name] = useState(data?.name ?? '') }")[0]).not.toMatch(/prop|initialX/)
+    expect(messages('function useCopy(value) { const [copy] = useState(value) }')[0]).not.toMatch(/prop/)
+    expect(messages('function Name({ name }) { const [n] = useState(name) }')[0]).toMatch(/name the prop initialX or defaultX/)
+  })
 })
 
 describe('server-state/query-key-has-inputs', () => {

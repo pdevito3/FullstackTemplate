@@ -534,6 +534,34 @@ public class UserMessageAnalyzerTests
     }
 
     [Test]
+    public async Task a_with_message_function_is_checked_and_a_placeholder_is_not_a_code_name()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using FluentValidation;
+
+                public record Rename(string OrderId, string Name);
+
+                public class RenameValidator : AbstractValidator<Rename>
+                {
+                    public RenameValidator()
+                    {
+                        RuleFor(x => x.Name).NotEmpty().WithMessage("{PropertyName} is required.");
+                        RuleFor(x => x.Name).MaximumLength(3).WithMessage(x => $"Order {x.OrderId} has a name that is too long.");
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => (d.Id, d.GetMessage(CultureInfo.InvariantCulture))).ShouldBe([
+            ("FSTMSG002", "A user message shows the ID 'x.OrderId'. Name the record as the screen names it, or leave it out. See docs/messages.md."),
+        ]);
+    }
+
+    [Test]
     public async Task the_value_that_a_parse_rejects_is_not_traced_to_the_values_that_it_accepts()
     {
         // Act

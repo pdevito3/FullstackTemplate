@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 if (args.Length > 0)
 {
@@ -125,13 +126,11 @@ internal sealed partial class AppRepo(string root)
     public void FailIfModelHasNoMigration()
     {
         var server = $"{Name}.Server";
-        Run(root, "dotnet", "tool", "restore");
         // dotnet-ef reads the project metadata before it builds, and that read needs the restored assets
         Run(root, "dotnet", "restore", Path.Combine(server, $"{server}.csproj"));
         try
         {
-            Run(root, "dotnet", "tool", "run", "dotnet-ef", "migrations", "has-pending-model-changes",
-                "--project", server, "--startup-project", server);
+            RunEf("migrations", "has-pending-model-changes", "--project", server, "--startup-project", server);
         }
         catch (RemovalException)
         {
@@ -144,7 +143,7 @@ internal sealed partial class AppRepo(string root)
     public void WriteModelSnapshot()
     {
         var server = $"{Name}.Server";
-        Run(root, "dotnet", "tool", "run", "dotnet-ef", "migrations", "add", SnapshotMigration,
+        RunEf("migrations", "add", SnapshotMigration,
             "--project", server, "--startup-project", server, "--output-dir", "Databases/Migrations");
 
         var migrations = Path.Combine(root, server, "Databases", "Migrations");
@@ -216,6 +215,16 @@ internal sealed partial class AppRepo(string root)
             throw new RemovalException($"git {arguments[0]} failed in {root}. Run the script in a git clone of the app.");
 
         return output;
+    }
+
+    // Not a local tool: on Linux, a manifest with dotnet-ef and another tool fails dotnet tool restore (SDK 10.0.403)
+    private void RunEf(params string[] arguments)
+    {
+        var efVersion = XDocument.Load(Path.Combine(root, "Directory.Packages.props"))
+            .Descendants("PackageVersion")
+            .Single(p => (string?)p.Attribute("Include") == "Microsoft.EntityFrameworkCore.Design")
+            .Attribute("Version")!.Value;
+        Run(root, "dotnet", ["tool", "exec", $"dotnet-ef@{efVersion}", "--yes", "--", .. arguments]);
     }
 
     private static void Run(string folder, string command, params string[] arguments)

@@ -22,13 +22,6 @@
         "aspire"
       ],
       "rollForward": false
-    },
-    "dotnet-ef": {
-      "version": "10.0.13",
-      "commands": [
-        "dotnet-ef"
-      ],
-      "rollForward": false
     }
   }
 }

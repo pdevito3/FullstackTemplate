@@ -41,6 +41,7 @@ export function workshopFieldsSchema(contract: WorkshopFieldsContract) {
 export type WorkshopFieldValues = z.infer<ReturnType<typeof workshopFieldsSchema>>
 
 export const WORKSHOP_FIELD_NAMES = ['title', 'startsAt', 'capacity'] as const
+export type WorkshopFieldName = (typeof WORKSHOP_FIELD_NAMES)[number]
 
 export function toWorkshopBody(
   { title, startsAt, capacity }: WorkshopFieldValues,

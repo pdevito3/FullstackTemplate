@@ -10,15 +10,25 @@ import { Form } from '@/components/ui/form'
 import { focusFirstError } from '@/lib/focus-first-error'
 import { RefusedSaveAlert } from '@/components/refused-save-alert'
 import { useServerErrors } from '@/hooks/use-server-errors'
+import { latestOverEdits } from '@/lib/latest-over-edits'
 import { parseTimeZone, wallClockAt } from '@/lib/zoned-time'
 
-import { StaleVersionAlert } from './stale-version-alert'
+import { LatestLoadedNote, StaleVersionAlert } from './stale-version-alert'
 import { WorkshopFields } from './workshop-fields'
-import { WORKSHOP_FIELD_NAMES, limitsOf, startInGapMessage, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
+import {
+  WORKSHOP_FIELD_NAMES,
+  limitsOf,
+  startInGapMessage,
+  toWorkshopBody,
+  workshopFieldsSchema,
+  type WorkshopFieldName,
+} from './workshop-fields-schema'
 
 const contract = workshopForUpdateDtoSchema.shape
 const schema = workshopFieldsSchema(contract).extend({ version: contract.version })
 const limits = limitsOf(contract)
+
+const FIELD_LABELS: Record<WorkshopFieldName, string> = { title: 'Title', startsAt: 'Starts at', capacity: 'Capacity' }
 
 function valuesOf(workshop: WorkshopDto) {
   return {
@@ -39,10 +49,12 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
   const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop), shouldFocusError: false })
   const serverErrors = useServerErrors(form, WORKSHOP_FIELD_NAMES)
   const [isLoadingLatest, setIsLoadingLatest] = useState(false)
+  const [changedByLatest, setChangedByLatest] = useState<WorkshopFieldName[] | null>(null)
   const zone = parseTimeZone(workshop.venueTimeZone)
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
+    setChangedByLatest(null)
     const body = toWorkshopBody(values, zone)
     if (!body) {
       form.setError('startsAt', { message: startInGapMessage(zone) }, { shouldFocus: true })
@@ -60,9 +72,14 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
     try {
       const latest = await onLoadLatest()
       if (latest) {
+        const edited = form.getValues()
+        const latestValues = valuesOf(latest)
+        const { changed, kept } = latestOverEdits(form.formState.defaultValues ?? {}, edited, latestValues, WORKSHOP_FIELD_NAMES)
         // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
-        form.setFocus('title')
-        form.reset(valuesOf(latest))
+        form.setFocus(changed[0] ?? WORKSHOP_FIELD_NAMES[0])
+        form.reset(latestValues)
+        for (const field of kept) form.setValue(field, edited[field], { shouldDirty: true })
+        setChangedByLatest(changed)
         serverErrors.clear()
       }
     } finally {
@@ -80,6 +97,7 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
           isLoadingLatest={isLoadingLatest}
           onLoadLatest={handleLoadLatest}
         />
+        <LatestLoadedNote changed={changedByLatest} labels={FIELD_LABELS} />
         <Button type="submit" className="self-start" isPending={form.formState.isSubmitting}>
           Save
         </Button>

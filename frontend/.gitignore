@@ -35,3 +35,6 @@ dist-ssr
 /conformance/.suite/
 /conformance/results/
 # init:end
+
+# The module list of the "Bundle size" steps in docs/frontend.md
+/dist-stats.yml

@@ -33,3 +33,8 @@ url_of() {
     | jq -r --arg d "$1" --arg n "$2" '.resources[] | select(.displayName == $d) | .urls[] | select(.name == $n) | .url' \
     | head -1
 }
+
+# web_url <dev|production>
+web_url() {
+  if [[ "$1" == "production" ]]; then url_of bff https; else url_of webfrontend http; fi
+}

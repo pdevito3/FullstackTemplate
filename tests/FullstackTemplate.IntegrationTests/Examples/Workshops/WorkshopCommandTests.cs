@@ -72,6 +72,22 @@ public class WorkshopCommandTests : TestBase
     }
 
     [Test]
+    public async Task a_venue_id_with_a_nul_is_a_venue_that_does_not_exist()
+    {
+        // Arrange
+        var testingServiceScope = new TestingServiceScope();
+
+        // Act
+        var act = () => testingServiceScope.SendAsync(
+            new AddWorkshop.Command(new FakeWorkshopForCreationDto("ven_a\0b").Generate()));
+
+        // Assert
+        var refusal = await act.ShouldThrowAsync<ValidationException>();
+        refusal.Property.ShouldBe("venueId");
+        refusal.Message.ShouldBe("The venue does not exist.");
+    }
+
+    [Test]
     public async Task a_member_without_manage_workshops_cannot_cancel()
     {
         // Arrange

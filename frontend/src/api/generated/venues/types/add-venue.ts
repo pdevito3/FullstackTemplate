@@ -16,6 +16,8 @@ export type AddVenueStatus401 = unknown;
 
 export type AddVenueStatus403 = ProblemDetails;
 
+export type AddVenueStatus404 = ProblemDetails;
+
 export type AddVenueStatus422 = ValidationProblemDetails;
 
 export type AddVenueBody = VenueForCreationDto;
@@ -32,6 +34,7 @@ export type AddVenueResponses = {
     "400": AddVenueStatus400;
     "401": AddVenueStatus401;
     "403": AddVenueStatus403;
+    "404": AddVenueStatus404;
     "422": AddVenueStatus422;
 };
 

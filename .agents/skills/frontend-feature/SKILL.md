@@ -1,0 +1,68 @@
+---
+name: frontend-feature
+description: Builds the SPA pages of a feature on a Server API. Use when you add a list page with search and a pager, a detail page with actions, a create or edit form, or a search picker over a server list, or when a page shows stale data after a save.
+---
+
+# Frontend feature
+
+Build each page in the order of the steps. Each step ends on a check. The rules are in `docs/frontend/`, and this skill links to them.
+
+Before you start, read [frontend.md](../../../docs/frontend.md), [server-state.md](../../../docs/frontend/server-state.md), [client-state.md](../../../docs/frontend/client-state.md), [code-style.md](../../../docs/frontend/code-style.md), [testing.md](../../../docs/frontend/testing.md), and [messages.md](../../../docs/messages.md).
+
+## The reference feature
+
+Copy the shape of the reference feature, not its names.
+
+<!-- example:start -->
+The reference is the workshops and venues example. Open each file of a part before you write that part.
+
+| Part | Page and code | Tests |
+|---|---|---|
+| List | [`workshops/index.tsx`](<../../../frontend/src/routes/(examples)/workshops/index.tsx>), [`get-workshop-list.ts`](../../../frontend/src/examples/workshops/apis/get-workshop-list.ts), [`workshop.keys.ts`](../../../frontend/src/examples/workshops/apis/workshop.keys.ts), [`workshop-search.tsx`](../../../frontend/src/examples/workshops/components/workshop-search.tsx) | [`workshop-list.test.tsx`](../../../frontend/src/examples/workshops/workshop-list.test.tsx) |
+| Detail | [`$id/index.tsx`](<../../../frontend/src/routes/(examples)/workshops/$id/index.tsx>), [`workshop-actions.tsx`](../../../frontend/src/examples/workshops/components/workshop-actions.tsx), [`send-workshop-action.ts`](../../../frontend/src/examples/workshops/apis/send-workshop-action.ts) | |
+| Edit form | [`$id/edit.tsx`](<../../../frontend/src/routes/(examples)/workshops/$id/edit.tsx>), [`workshop-edit-form.tsx`](../../../frontend/src/examples/workshops/components/workshop-edit-form.tsx), [`stale-version-alert.tsx`](../../../frontend/src/examples/workshops/components/stale-version-alert.tsx), [`update-workshop.ts`](../../../frontend/src/examples/workshops/apis/update-workshop.ts), [`workshop-fields-schema.ts`](../../../frontend/src/examples/workshops/components/workshop-fields-schema.ts) | [`workshop-edit-form.test.tsx`](../../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx), [`workshop-fields-schema.test.ts`](../../../frontend/src/examples/workshops/components/workshop-fields-schema.test.ts) |
+| Create form | [`workshops/new.tsx`](<../../../frontend/src/routes/(examples)/workshops/new.tsx>), [`workshop-create-form.tsx`](../../../frontend/src/examples/workshops/components/workshop-create-form.tsx), [`add-workshop.ts`](../../../frontend/src/examples/workshops/apis/add-workshop.ts) | |
+| Search picker | [`venue-picker.tsx`](../../../frontend/src/examples/venues/components/venue-picker.tsx), [`get-venue-list.ts`](../../../frontend/src/examples/venues/apis/get-venue-list.ts), [`get-venue.ts`](../../../frontend/src/examples/venues/apis/get-venue.ts) | [`venue-picker.test.tsx`](../../../frontend/src/examples/venues/components/venue-picker.test.tsx) |
+| Functional suite | | [`workshops.spec.ts`](../../../frontend/tests/features/examples/workshops/workshops.spec.ts), [`workshops.tasks.ts`](../../../frontend/tests/features/examples/workshops/workshops.tasks.ts), [`workshops.locators.ts`](../../../frontend/tests/features/examples/workshops/workshops.locators.ts), [`workshops-api.ts`](../../../frontend/tests/support/examples/workshops-api.ts), [`workshop-builder.ts`](../../../frontend/tests/support/examples/workshop-builder.ts) |
+<!-- example:end -->
+
+If `frontend/src/examples/` does not exist, `scripts/remove-examples.cs` deleted the reference feature from this app. Read it in the template repository, in [`frontend/src/examples/`](https://github.com/pdevito3/FullstackTemplate/tree/main/frontend/src/examples), [`frontend/src/routes/(examples)/`](<https://github.com/pdevito3/FullstackTemplate/tree/main/frontend/src/routes/(examples)>), and the `examples` folders of [`frontend/tests/`](https://github.com/pdevito3/FullstackTemplate/tree/main/frontend/tests). Copy no file from it into a folder named `examples`.
+
+The shared parts of a page are in the app, also after the removal. Use them. Do not write a second copy:
+
+| Part | Use |
+|---|---|
+| A query that failed, with a retry | `QueryError` in [`components/query-error.tsx`](../../../frontend/src/components/query-error.tsx) |
+| The page heading that takes the focus on load | `PageHeading` in [`components/page-heading.tsx`](../../../frontend/src/components/page-heading.tsx) |
+| The refusals of a save, on the fields and above the buttons | `useServerErrors` in [`hooks/use-server-errors.ts`](../../../frontend/src/hooks/use-server-errors.ts) and `RefusedSaveAlert` in [`components/refused-save-alert.tsx`](../../../frontend/src/components/refused-save-alert.tsx) |
+| The focus on the first invalid field, in the order of the form | `focusFirstError` in [`lib/focus-first-error.ts`](../../../frontend/src/lib/focus-first-error.ts) |
+| The debounce of a search box | `useDebouncedCallback` in [`hooks/use-debounced-callback.ts`](../../../frontend/src/hooks/use-debounced-callback.ts) |
+| The pager of a list, and the load of the next page of a picker | `Pager` in `components/ui/pager.tsx`, and `ComboboxLoadMore` in `components/ui/combobox.tsx` |
+| The limits of a field | `stringWithMaxLengthOf`, `maxLengthOf`, `minimumOf`, and `maximumOf` in [`lib/api-contract.ts`](../../../frontend/src/lib/api-contract.ts) |
+| A stale save | `isStaleVersionError` in [`lib/problem-details.ts`](../../../frontend/src/lib/problem-details.ts) |
+| The header of a list answer in a mock | `paginationOf` in [`tests/support/api/pagination.ts`](../../../frontend/tests/support/api/pagination.ts) |
+
+## Steps
+
+Put the code of an area in `frontend/src/domain/<area>/`: the hooks and the keys in `apis/`, and the components in `components/`. Put the pages in `frontend/src/routes/<area>/`.
+
+1. **The contract.** The Server endpoints exist, and the generated client is current. Use the `backend-feature` skill for the Server and the `api-contract` skill for the client. The list endpoint takes a page number, a page size, and a search or a filter. The DTO has `allowedActions` and `version`. Each text field and number field of a request DTO has a limit in the contract. Done when `src/api/generated/<tag>/clients/` has a client for each call, and `maxLengthOf` and `maximumOf` do not throw for the fields of the form.
+2. **The keys and the hooks.** Write `<area>.keys.ts` (server-state.md, "Key factory"). Give the whole params object of the list to the list key. Write one hook for each call: the list with `keepPreviousData` and `parsePagination`, the detail as `queryOptions`, the picker search with `useInfiniteQuery`, and one mutation for each write. Make each mutation update the cache as the table below says. Done when `pnpm lint` passes: it fails on a value that the query function reads and the key does not have.
+3. **The list page.** Read `search` and `page` from the URL with `validateSearch`. Build the schema from the generated query schemas with `.catch(undefined)`, so that a bad URL falls back to the default (client-state.md). Show each state with an early return: loading (`role="status"`), error (`QueryError`), empty on a page after page 1 (a link to page 1), empty for a search (the search in quotes), and empty (how to add one). Take the `maxLength` of the search box from the contract. Send the search after the debounce with `replace: true`, and only when the URL still has the search that the box started from. Give the table `aria-label`, and give `whitespace-nowrap` to each cell that is not prose (code-style.md, "Styles"). A list of tenant data waits for `useMembership`, and shows a link to `/start-tenant` when the user has no tenant. Done when the page in the URL survives a reload, and Back puts the old search in the box.
+4. **The detail page.** Return early for loading and error. Show the title in `PageHeading`. Show a button only for each entry of `allowedActions` (server-state.md, rule 8). Give each action its label in a `Record` of the generated union, so that a new action on the Server fails the build until it has a label. Ask for a confirm in a `ResponsiveDialog` before an action that cannot be undone. After an action, move the focus to the heading. Done when a user with no permission sees no button.
+5. **The edit form.** The page renders the form only after the detail query has data, and only when `allowedActions` has `Update`. Otherwise it says why. The form schema takes each limit from the generated Zod schema of the request DTO (frontend.md, "Forms"). Put the `version` in `defaultValues` and in the PUT body (server-state.md, "Forms with server data"). Use `shouldFocusError: false` with `focusFirstError`. Before a save, clear the refusals. After a refusal, show it with `useServerErrors`. For a stale save (a 409 with the stale-version type), keep the edits in the form and show an alert in the words of messages.md: what happened, that the edits are not saved, and what to do next. Its button refetches the detail query, moves the focus to the first field, and resets the form with the new record. Do not send the PUT again with the new version. After a save, show a toast with `Notification.success` and go to the detail page. Done when the component test of the stale save passes.
+6. **The create form.** Do step 5 with no `version`. A create that gets a 409 keeps the input of the user. After a save, go to the detail page of the new record.
+7. **The search picker.** Build it on `Combobox` with the `items` prop, so that React Aria does not filter again what the Server filtered. Load the picked record by its ID with the detail hook. Put the pick first in the options when no loaded page has it. The text of the input after a pick is the name of the pick, so it is not a search. On a pick, put the record in the detail cache. Load the next page with `ComboboxLoadMore`. In a form, wrap the picker in a `Controller`, and give `field.ref` to the input. Done when a pick from page 2 and a pick from a link show their names, and a rename shows after the detail query reads the record again.
+8. **The tests.** Use the `writing-tests` skill. Write a unit test for each schema with a limit. Write component tests for the stale save of the edit form, the off-page pick of the picker, and the search and the page of the list in the URL. Write a builder and an API file for the area, then a functional spec that goes from the list to the detail and the edit form. Read back the list query and the PUT body with `api.last`. Done when `pnpm lint`, `pnpm test`, `pnpm build`, and `pnpm test:e2e --repeat-each=10` pass.
+9. **The proof.** Add a link to the list in `components/app-sidebar.tsx`. Add a feature file and a recipe to the feature map of the `verify-fullstack-template` skill. Run the recipe on a stack, then run `sweep.sh` on it. Done when the sweep prints `sweep: PASSED` and you read each screenshot.
+
+## The cache after a write
+
+| Write | In `onMutate` | In `onSuccess` | In `onError` |
+|---|---|---|---|
+| Create | | Invalidate `lists()` | |
+| Update | Cancel `detail(id)` | Put the answer in `detail(id)`. Invalidate `lists()` | |
+| An action, such as cancel | Cancel `detail(id)` | Put the answer in `detail(id)`. Invalidate `lists()` | Invalidate `detail(id)` and `lists()`, because another user can have changed the record |
+| Delete | | Remove `detail(id)`. Invalidate `lists()` | |
+
+A write that changes the records of another area also invalidates the lists and the details of that area.

@@ -131,15 +131,18 @@ function CurrentPage({ className, children }: { className?: string; children?: s
   return (
     <PopoverTrigger>
       <ButtonPrimitive
-        ref={measure}
         data-slot="breadcrumb-page"
         aria-current="page"
-        className={cn(
-          "cursor-default rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-          pageClassName
-        )}
+        className="group/page flex h-11 min-w-0 cursor-default items-center text-left outline-none"
       >
-        {children}
+        <span
+          className={cn(
+            "-mx-1 rounded-sm px-1 group-focus-visible/page:ring-2 group-focus-visible/page:ring-ring/50",
+            pageClassName
+          )}
+        >
+          {children}
+        </span>
       </ButtonPrimitive>
       <Popover placement="bottom start" className="w-auto max-w-[calc(100vw-2rem)]">
         <Dialog aria-label="Current page" className="wrap-anywhere outline-none">

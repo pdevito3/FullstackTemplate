@@ -739,6 +739,47 @@ test.describe('a nested filter group on a 320 px phone with a 24 px font', () =>
         expect(await demo.overlapOf(demo.at.groupBadge(depth), demo.at.groupAction(depth, action)), `depth ${depth} ${action}`).toBeNull()
       }
       expect(await demo.overflowOf(demo.at.group(depth)), `depth ${depth}`).toBeLessThanOrEqual(0)
+      const header = await demo.edgesOf(demo.at.groupHeader(depth))
+      expect((await demo.edgesOf(demo.at.groupBadge(depth))).right, `depth ${depth} badge`).toBeLessThanOrEqual(header.right)
+      expect(await demo.onOneLine(demo.at.groupAction(depth, 'Ungroup'), demo.at.groupAction(depth, 'Delete group')), `depth ${depth} actions`).toBe(true)
+      expect(await demo.onOneLine(demo.at.groupCheckboxLabel(depth), demo.at.groupBadge(depth)), `depth ${depth} checkbox`).toBe(true)
+    }
+  })
+})
+
+test.describe('a filter group with one short filter on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+
+  test('keeps its header on one line', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+    await demo.at.toolbarButton('Group Filters').click()
+    for (const value of ['Bug', 'Urgent']) {
+      await demo.select(demo.at.selectFilter(`Labels | Has | ${value}`))
+    }
+    await demo.at.groupSelected.click()
+
+    await demo.at.removeFilterNamed('Labels | Has | Urgent').click()
+
+    await expect(demo.at.group(1)).toBeVisible()
+    expect(await demo.onOneLine(demo.at.groupBadge(1), demo.at.groupAction(1, 'Delete group'))).toBe(true)
+    expect(await demo.onOneLine(demo.at.groupBadge(1), demo.at.groupAction(1, 'Ungroup'))).toBe(true)
+  })
+})
+
+test.describe('a nested filter group on a 320 px phone', () => {
+  test.use({ viewport: { width: 320, height: 640 } })
+
+  test('keeps the checkbox of each group on the line of its badge', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.toolbarButton('Group Filters').click()
+
+    for (const depth of [1, 2]) {
+      expect(await demo.onOneLine(demo.at.groupCheckboxLabel(depth), demo.at.groupBadge(depth)), `depth ${depth}`).toBe(true)
+      expect(await demo.onOneLine(demo.at.groupAction(depth, 'Ungroup'), demo.at.groupAction(depth, 'Delete group')), `depth ${depth} actions`).toBe(true)
     }
   })
 })

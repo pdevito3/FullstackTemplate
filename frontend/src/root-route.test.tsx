@@ -16,42 +16,46 @@ import { AuthKeys } from '@/domain/auth/apis/auth.keys'
 import { Route as RootRoute } from '@/routes/__root'
 import { routeTree } from '@/routeTree.gen'
 
-// The routes of this test are not in the route tree that the app registers, so a link to them needs this cast.
-const testPath = (path: string) => path as '/'
-
 async function renderLayoutAt(path: string) {
   const rootRoute = createRootRoute({ component: RootRoute.options.component })
   const userRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/users/$id',
     staticData: { breadcrumb: 'User' },
-    component: () => (
-      <>
-        <h1>User</h1>
-        <p>The details of the user</p>
-      </>
-    ),
+    component: () => <h1>User</h1>,
   })
+  // The paths are paths of the app, so that the links type-check. The pages are those of the test.
   const linksRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/links',
+    path: '/',
     staticData: { breadcrumb: 'Links' },
     component: () => (
       <>
         <h1>Links</h1>
-        <Link to={testPath('/users/u_2')}>Open the user</Link>
-        <Link to={testPath('/plain')}>Open the plain page</Link>
+        <Link to="/about">Open the page with a heading</Link>
+        <Link to="/components">Open the page with no heading</Link>
       </>
     ),
   })
-  const plainRoute = createRoute({
+  const headingRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/plain',
-    staticData: { breadcrumb: 'Plain' },
+    path: '/about',
+    staticData: { breadcrumb: 'Heading' },
+    component: () => (
+      <>
+        <h1>Heading</h1>
+        <p>The text of the page</p>
+      </>
+    ),
+  })
+  const noHeadingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/components',
+    staticData: { breadcrumb: 'No heading' },
     component: () => <p>A page with no heading</p>,
   })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([userRoute, linksRoute, plainRoute]),
+    routeTree: rootRoute.addChildren([userRoute, linksRoute, headingRoute, noHeadingRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
   // Seed an anonymous session, so that the session and membership queries of the layout send no request.
@@ -63,38 +67,53 @@ async function renderLayoutAt(path: string) {
     </QueryClientProvider>,
   )
   await expect.element(screen.getByRole('main')).toBeVisible()
-  return screen
+  return { screen, router }
 }
 
 test('the breadcrumb of a route with params shows the name that the route declares', async () => {
-  const screen = await renderLayoutAt('/users/u_1')
+  const { screen } = await renderLayoutAt('/users/u_1')
 
   await expect.element(screen.getByRole('navigation', { name: 'breadcrumb' }).getByRole('link')).toHaveTextContent('User')
 })
 
 test('a link in the page moves the focus to the level 1 heading of the new page', async () => {
-  const screen = await renderLayoutAt('/links')
-  await userEvent.click(screen.getByRole('link', { name: 'Open the user' }))
+  const { screen } = await renderLayoutAt('/')
+  await userEvent.click(screen.getByRole('link', { name: 'Open the page with a heading' }))
 
-  await expect.element(screen.getByRole('heading', { name: 'User', level: 1 })).toHaveFocus()
+  await expect.element(screen.getByRole('heading', { name: 'Heading', level: 1 })).toHaveFocus()
 })
 
 test('a link in the page moves the focus to the main landmark when the new page has no level 1 heading', async () => {
-  const screen = await renderLayoutAt('/links')
-  await userEvent.click(screen.getByRole('link', { name: 'Open the plain page' }))
+  const { screen } = await renderLayoutAt('/')
+  await userEvent.click(screen.getByRole('link', { name: 'Open the page with no heading' }))
 
   await expect.element(screen.getByText('A page with no heading')).toBeVisible()
   await expect.element(screen.getByRole('main')).toHaveFocus()
 })
 
 test('a click on the content after the focus move does not give the focus to the heading or the content', async () => {
-  const screen = await renderLayoutAt('/links')
-  await userEvent.click(screen.getByRole('link', { name: 'Open the user' }))
-  await expect.element(screen.getByRole('heading', { name: 'User', level: 1 })).toHaveFocus()
+  const { screen } = await renderLayoutAt('/')
+  await userEvent.click(screen.getByRole('link', { name: 'Open the page with a heading' }))
+  await expect.element(screen.getByRole('heading', { name: 'Heading', level: 1 })).toHaveFocus()
 
-  await userEvent.click(screen.getByText('The details of the user'))
+  await userEvent.click(screen.getByText('The text of the page'))
 
   expect(document.activeElement).toBe(document.body)
+})
+
+test('two navigations in a row to pages with the same name each change the text of the status region', async () => {
+  const { screen, router } = await renderLayoutAt('/users/u_1')
+  const region = document.querySelector('[data-slot="page-announcement"]')!
+  const texts: string[] = []
+  new MutationObserver(() => texts.push(region.textContent ?? '')).observe(region, { childList: true, characterData: true, subtree: true })
+  const trigger = screen.getByRole('button', { name: 'Toggle Sidebar' }).first()
+  ;(trigger.element() as HTMLElement).focus()
+
+  router.history.push('/users/u_2')
+  await expect.poll(() => region.textContent).toBe('User')
+  router.history.push('/users/u_3')
+
+  await expect.poll(() => texts.slice(-3)).toEqual(['User', '', 'User'])
 })
 
 test('each page of the app declares the name that its breadcrumb shows', () => {

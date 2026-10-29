@@ -32,6 +32,7 @@ export type DateType = 'date' | 'datetime' | 'datetimeUtc' | 'datetimeOffset'
 
 export interface DateValue {
   mode: 'before' | 'after' | 'between' | 'on' | 'excluding'
+  /** For a `datetime` with no `timeZone`, the UTC fields of the date hold the wall clock time. See `wallClockZone`. */
   startDate: Date
   endDate?: Date // Only for 'between' mode
   exclude?: boolean // When true with 'between' mode, becomes OR logic (outside range)

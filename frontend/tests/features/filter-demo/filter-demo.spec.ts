@@ -579,6 +579,7 @@ test.describe('a date filter of a place in another zone', () => {
 
 test.describe('a date filter with no zone, in a browser in New York', () => {
   test.use({ timezoneId: 'America/New_York' })
+  test.skip(() => test.info().project.name !== 'utc', 'The describe sets its own zone.')
 
   test('takes a local time that the clocks of the browser skip, because the field has no zone', async ({ page }) => {
     const demo = filterDemoPage(page)

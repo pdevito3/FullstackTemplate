@@ -138,6 +138,7 @@ These rules stop a caller from joining a tenant that is not theirs:
 - A caller with `TenantScope.AllTenants` has no tenant of its own, so it must send `tenantId` in the body. If the tenant does not exist, the request gets 422.
 - If a user sends `tenantId`, it must be their own tenant. Other requests get 403.
 - `POST /api/v1/users/initiate` creates a tenant and its first user. A user of a first-party client can do this only for their own `sub`. Any other caller, an agent included, must be able to manage all tenants. Other requests get 403.
+- The SPA page `Start a tenant` (`/start-tenant`) sends `initiate` for the signed-in user, with the role `Admin`. Each page of the SPA shows a notice that links to it when `GET /api/v1/users/by-identifier/{sub}` gives 404 for the signed-in user. A new database has no user records, so this is the way in for the first user.
 - If a user that is not deleted already has the identifier, in any tenant, `POST /api/v1/users` and `initiate` return 409. A user belongs to one tenant only. A deleted user frees its identifier, so the same person can sign up again.
 
 ## Delete a tenant

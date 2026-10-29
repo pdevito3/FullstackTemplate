@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig, type ProxyOptions } from 'vite'
+import { defineConfig, type Plugin, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
@@ -29,6 +29,26 @@ function vendorChunk(id: string): string | undefined {
   return Object.keys(vendorChunks).find((chunk) =>
     vendorChunks[chunk].includes(match[1]),
   )
+}
+
+// The largest entry chunk that `pnpm build` takes, in kB of minified code. See docs/frontend.md, section "Bundle size".
+const entryChunkBudgetKb = 400
+
+const failOverEntryChunkBudget: Plugin = {
+  name: 'entry-chunk-budget',
+  apply: 'build',
+  writeBundle(_, bundle) {
+    for (const chunk of Object.values(bundle)) {
+      if (chunk.type !== 'chunk' || !chunk.isEntry) continue
+      const sizeKb = Buffer.byteLength(chunk.code) / 1000
+      if (sizeKb > entryChunkBudgetKb) {
+        this.error(
+          `The entry chunk ${chunk.fileName} is ${sizeKb.toFixed(2)} kB, over the budget of ${entryChunkBudgetKb} kB. ` +
+            'Find the module that grew it, and see docs/frontend.md, section "Bundle size".',
+        )
+      }
+    }
+  },
 }
 
 // Aspire sets it. The Vitest server has no BFF, so it proxies nothing.
@@ -70,6 +90,7 @@ export default defineConfig({
         exportType: 'default',
       },
     }),
+    failOverEntryChunkBudget,
   ],
   build: {
     rollupOptions: {

@@ -59,8 +59,8 @@ function StartTenantContent() {
   if (membership.status === 'error') {
     return (
       <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
-        <p>We could not check whether you are a member of a tenant. Try again.</p>
-        <Button variant="outline" onPress={membership.retry}>Try Again</Button>
+        <p>{membership.message}</p>
+        {membership.retry && <Button variant="outline" onPress={membership.retry}>Try Again</Button>}
       </div>
     )
   }

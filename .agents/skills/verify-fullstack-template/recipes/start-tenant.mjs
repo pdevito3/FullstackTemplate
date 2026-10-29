@@ -45,7 +45,7 @@ export default async ({ page, step, capture, expect, login }) => {
     const r = await res
     expect(r.status()).toBe(201)
     const body = await r.json()
-        expect(body.user.identifier).toBe(claims.sub)
+    expect(body.user.identifier).toBe(claims.sub)
     expect(body.user.role).toBe('Admin')
     return body
   })

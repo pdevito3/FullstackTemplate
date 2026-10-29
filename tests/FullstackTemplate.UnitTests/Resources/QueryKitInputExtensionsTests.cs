@@ -104,6 +104,24 @@ public class QueryKitInputExtensionsTests : IDisposable
         exception.Message.ShouldBe("A value in the filter does not fit the field Seats. Change the value, then try again.");
     }
 
+    // A value can hold a line of its own that reads as a whole QueryKit message. The regex reads only the whole message.
+    [Test]
+    [Arguments("\n")]
+    [Arguments("\r\n")]
+    public void value_that_holds_a_querykit_message_on_a_line_of_its_own_does_not_get_into_the_message(string lineBreak)
+    {
+        // Arrange
+        var line = "The value 'b' is not a valid Int32 for the filter property 'jane@example.com'.";
+        var filters = $"Seats == \"a{lineBreak}{line}{lineBreak}\"";
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.InnerException.ShouldNotBeNull().Message.ShouldContain(line);
+        exception.Message.ShouldNotContain("jane@example.com");
+    }
+
     [Test]
     [Arguments("Name ~~ \"paul\"")]
     [Arguments("Name !~ \"paul\"")]
@@ -211,17 +229,36 @@ public class QueryKitInputExtensionsTests : IDisposable
         exception.InnerException.ShouldBeOfType<QueryKitNestingDepthExceededException>();
     }
 
-    // The message of the .NET exception names .NET types, so the caller gets a fixed message
     [Test]
-    public void operator_that_does_not_fit_the_property_type_gets_the_filter_message()
+    [Arguments("Name ^^ \"x\"")]
+    [Arguments("Name ^^* \"x\"")]
+    [Arguments("Name !^^* \"x\"")]
+    [Arguments("Seats %^^ 5")]
+    public void in_operator_with_one_value_gets_a_message_that_asks_for_a_list(string filters)
     {
         // Act
-        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Name ^^ \"x\"", new CustomQueryKitConfiguration()));
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Parameter.ShouldBe("filters");
-        exception.Message.ShouldBe("The filter could not be read. Change the filter, then try again.");
-        exception.InnerException.ShouldBeAssignableTo<ArgumentException>();
+        exception.Message.ShouldBe(
+            "The operators ^^ and !^^ need a list of values, for example [\"a\", \"b\"]. Put the values in brackets, then try again.");
+    }
+
+    // QueryKit builds a case-insensitive comparison with null as a call on null, so the query throws when it runs
+    [Test]
+    [Arguments("Name ==* null")]
+    [Arguments("Name !=* null")]
+    [Arguments("Name @=* null")]
+    [Arguments("Name _= null")]
+    public void comparison_with_null_that_is_not_equals_gets_a_message_that_names_the_operators(string filters)
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("filters");
+        exception.Message.ShouldBe("Only the operators == and != can compare with null. Change the operator, then try again.");
     }
 
     [Test]

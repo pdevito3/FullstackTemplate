@@ -17,7 +17,8 @@ public sealed class CapturedLogs : ILogEventSink
 
     public IReadOnlyList<LogEvent> Holding(string text) =>
         _events.Where(e => e.RenderMessage(CultureInfo.InvariantCulture).Contains(text, StringComparison.Ordinal)
-            || e.Properties.Values.Any(value => value.ToString().Contains(text, StringComparison.Ordinal))).ToList();
+            || e.Properties.Values.Any(value => value.ToString().Contains(text, StringComparison.Ordinal))
+            || e.Exception?.ToString().Contains(text, StringComparison.Ordinal) == true).ToList();
 
     public IReadOnlyList<LogEvent> WithUserAgent(string userAgent) =>
         _events.Where(e => e.Properties.TryGetValue("UserAgent", out var value)

@@ -1051,7 +1051,7 @@ public class UserMessageAnalyzerTests
         // Assert
         diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
             "A user message shows the stored name 'T.ListNames()'. " + Fix,
-            "A user message shows the stored name 'KindEnum.List.Select(x => x.Name)'. " + Fix,
+            "A user message shows the stored name 'KindEnum.List.Select(x => x.Name).ToArray()'. " + Fix,
             "A user message shows the stored name 'KindEnum.List.Select(x => x.Name).Select(n => n.Trim())'. " + Fix,
             "A user message shows the stored name 'permission.Value'. " + Fix,
         ]);

@@ -27,16 +27,16 @@ A 400 for a request that does not bind names the JSON field, for example "The fi
 - The `detail` of a gRPC `Status`.
 - A string field or property whose name ends in `Message`, for example `Tenant.NameInUseMessage`.
 
-It follows the string back through the methods, properties (also an auto-property with an initializer), fields, locals, and parameters of the Server. A value that the code assigns to a parameter, such as `reason = $"...";`, is followed too. So it also checks a message that a helper builds, such as the denials of `Caller`. A value that the message shows (as the whole message, in an interpolation, in a concatenation, or through a string method such as `string.Format`) is checked where it comes from too. A helper that the message calls, such as a quote helper, is checked with the arguments of that call only. A number, such as `(int)mode`, is not a code. A word in braces, such as `{PropertyName}`, is a placeholder that FluentValidation replaces, so it is not a code. Do not use `{PropertyValue}` for an enum or a SmartEnum: it shows the code.
+It follows the string back through the methods, properties (also an auto-property with an initializer), fields, locals, and parameters of the Server. A value that the code assigns to a parameter with `=` or `??=`, such as `reason = $"...";`, is followed too. So it also checks a message that a helper builds, such as the denials of `Caller`. A value that the message shows (as the whole message, in an interpolation, in a concatenation, or through a string method such as `string.Format`) is checked where it comes from too. A helper that the message calls, such as a quote helper, is checked with the arguments of that call only. A number, such as `(int)mode`, is not a code. A word in braces, such as `{PropertyName}`, is a placeholder that FluentValidation replaces, so it is not a code. Do not use `{PropertyValue}` for an enum or a SmartEnum: it shows the code.
 
 A message after a parse that fails can show the value that the parse did not accept, as `Invalid permission: {value}` after `PermissionEnum.TryFromName(value, ...)` does. A parse is `TryFromName`, `TryFromValue`, `TryParse`, or `IsDefined` of a SmartEnum, of an `IFixedNames` value object, or of `Enum`, such as `Enum.TryParse`. Another `Try*` method, such as `TryMoveTo`, is not a parse. The parse must be the whole condition, and the throw must be on the branch where it fails. These forms are accepted:
 
 - `Try(value) ? x : throw ...`
 - `if (!Try(value)) throw ...`
 - `if (Try(value, out var parsed) is false) throw ...`
-- `if (Try(value)) return ...;` as the statement just before the throw
+- `if (Try(value)) return ...;` as the statement just before the throw, in the same block. In a `case` of a `switch`, put the two statements in braces.
 
- The value is the text that the user sent, so the analyzer does not follow it to the callers. A caller that gives a name that the parse accepts, such as `Permission.ManageUsers()`, never gets to the message. The text of the message and the other values that it shows are checked.
+The value is the text that the user sent, so the analyzer does not follow it to the callers. A caller that gives a name that the parse accepts, such as `Permission.ManageUsers()`, never gets to the message. The analyzer does not check that the parse is of the type whose name the caller gives. So a stored name of another type, or a name given to `TryFromValue`, is not caught. The text of the message and the other values that it shows are checked.
 
 Then it fails the build:
 

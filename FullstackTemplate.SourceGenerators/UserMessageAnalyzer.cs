@@ -55,7 +55,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			var flow = new StringFlow();
 			start.RegisterOperationAction(flow.Record, OperationKind.Return, OperationKind.FieldInitializer,
 				OperationKind.PropertyInitializer, OperationKind.VariableDeclarator, OperationKind.SimpleAssignment,
-				OperationKind.Argument);
+				OperationKind.CoalesceAssignment, OperationKind.Argument);
 			start.RegisterCompilationEndAction(flow.Report);
 		});
 	}
@@ -96,10 +96,10 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				case IVariableDeclaratorOperation { Initializer: { } initializer } declarator:
 					Add(declarator.Symbol, initializer.Value);
 					break;
-				case ISimpleAssignmentOperation { Target: ILocalReferenceOperation local } assignment:
+				case IAssignmentOperation { Target: ILocalReferenceOperation local } assignment:
 					Add(local.Local, assignment.Value);
 					break;
-				case ISimpleAssignmentOperation { Target: IParameterReferenceOperation parameter } assignment:
+				case IAssignmentOperation { Target: IParameterReferenceOperation parameter } assignment:
 					Add(parameter.Parameter, assignment.Value);
 					break;
 				case ISimpleAssignmentOperation { Target: IPropertyReferenceOperation { Property: var property } } assignment
@@ -311,6 +311,9 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					foreach (var argument in invocation.Arguments)
 						Visit(argument.Value, call);
 					break;
+				case IInvocationOperation { Arguments: { Length: > 0 } arguments } linq when IsStringLinq(linq):
+					Visit(arguments[0].Value, call);
+					break;
 				case IInvocationOperation invocation when (call?.Depth ?? 0) < MaxCallDepth:
 					Follow(invocation.TargetMethod, new Call(invocation, call));
 					break;
@@ -352,7 +355,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				Visit(argument?.Value, frame.Caller);
 				if (_followed.Add((parameter.OriginalDefinition, frame)) && values.TryGetValue(parameter.OriginalDefinition, out var assigned))
 				{
-					foreach (var value in assigned.Where(static v => v.Parent is ISimpleAssignmentOperation))
+					foreach (var value in assigned.Where(static v => v.Parent is IAssignmentOperation))
 						Visit(value, frame);
 				}
 				return;
@@ -377,6 +380,8 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			IOperation? branch = thrown;
 			for (var parent = thrown?.Parent; parent is not null; branch = parent, parent = parent.Parent)
 			{
+				if (parent is IAnonymousFunctionOperation or ILocalFunctionOperation)
+					return false;
 				if (parent is IBlockOperation block && FollowsAcceptingGuard(block, branch!, reference.Parameter))
 					return true;
 				if (parent is not IConditionalOperation conditional)
@@ -401,7 +406,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 		private static bool Exits(IOperation operation) => operation switch
 		{
-			IReturnOperation or IThrowOperation or IExpressionStatementOperation { Operation: IThrowOperation } => true,
+			IReturnOperation { Kind: OperationKind.Return } or IThrowOperation or IExpressionStatementOperation { Operation: IThrowOperation } => true,
 			IBlockOperation { Operations: { Length: > 0 } operations } => Exits(operations[operations.Length - 1]),
 			_ => false,
 		};
@@ -479,8 +484,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					return "the stored name";
 				case IInvocationOperation { TargetMethod: { Name: "Select" } method } select when IsIn(method.ContainingType, "System.Linq") && depth < 3:
 					return CodeOfSelected(select, depth);
-				case IInvocationOperation { TargetMethod.IsExtensionMethod: true, Arguments: { Length: > 0 } arguments } linq
-					when IsIn(linq.TargetMethod.ContainingType, "System.Linq") && IsStrings(linq.Type) && depth < 3:
+				case IInvocationOperation { Arguments: { Length: > 0 } arguments } linq when IsStringLinq(linq) && depth < 3:
 					return CodeOf(Unwrap(arguments[0].Value), depth + 1);
 				case IPropertyReferenceOperation { Property.GetMethod: { } getter } when depth < 3:
 					return CodeOfReturns(getter, depth);
@@ -511,8 +515,16 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				}
 			}
 
-			return null;
+			return IsStrings(Unwrap(select.Arguments[0].Value)?.Type) ? CodeOf(Unwrap(select.Arguments[0].Value), depth + 1) : null;
 		}
+
+		// A LINQ call such as ToList() or Order() over a list of strings, which gives the same strings
+		private static bool IsStringLinq(IInvocationOperation invocation)
+			=> invocation.TargetMethod.IsExtensionMethod
+				&& IsIn(invocation.TargetMethod.ContainingType, "System.Linq")
+				&& IsStrings(invocation.Type)
+				&& invocation.Arguments.Length > 0
+				&& IsStrings(Unwrap(invocation.Arguments[0].Value)?.Type);
 
 		private string? CodeOfReturns(IMethodSymbol method, int depth)
 			=> values.TryGetValue(method.OriginalDefinition, out var returned)
@@ -542,7 +554,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		{
 			if (type is null)
 				return false;
-			if (type.AllInterfaces.Any(static i => i.Name == "IFixedNames"))
+			if (type.Name == "IFixedNames" || type.AllInterfaces.Any(static i => i.Name == "IFixedNames"))
 				return true;
 
 			for (var current = type; current is not null; current = current.BaseType)

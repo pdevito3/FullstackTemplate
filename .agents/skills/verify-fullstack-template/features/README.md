@@ -6,7 +6,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 
 - `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
 - The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
-- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. No feature in this map reads or writes app data. A login writes a BFF session row, and the restore deletes it. The weather endpoints make random data at each request.
+- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) writes app data. A login writes a BFF session row, and the restore deletes it. The weather endpoints make random data at each request.
 - The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.
 
@@ -45,10 +45,11 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Secure weather](./secure-weather.md) covers the Public API/Secure API toggle and the authenticated forecast.
 - [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the Demos submenu, the breadcrumb, sidebar collapse, and the light/dark/system theme.
 - [Filter builder](./filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
+- [Start a tenant](./start-tenant.md) covers the notice for a signed-in user with no user record, the form at `/start-tenant`, and the start of a tenant with the user as its admin.
 - [Components showcase](./components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
 
 ## Not mapped yet
 
 - The boolean filter dialog and the add path of the date filter dialog on the filter builder. The filter builder map covers only the date edit dialog.
 - Swagger UI on the server (`/swagger`). The Playwright spec `frontend/e2e/auth-flows.spec.ts` covers it.
-- The Users and Tenants JSON API. It has no UI.
+- The Users and Tenants JSON API, other than the start of a tenant. It has no UI.

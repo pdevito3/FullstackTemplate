@@ -13,15 +13,16 @@ CI runs the unit, component, and functional suites on each pull request. CI runs
 
 ## The component suite
 
-A component test renders one component, or one route with `createMemoryHistory`, in Chromium. A component that loads data gets its answers from `commands.answerRequests`. It answers each request to `/api/*` and `/bff/*` that matches the method, the path, and the query parameters of an answer. A later answer wins, so put the most specific answer last. A request with no answer goes on to the dev server and fails. Remove the answers at the end of the test:
+A component test renders one component, or one route with `createMemoryHistory`, in Chromium. A component that loads data gets its answers from `commands.answerRequests`. It answers each request to `/api/*` and `/bff/*` that matches the method, the path, and the query parameters of an answer. A later answer wins, so put the most specific answer last. The body is sent as JSON. To send another type, set `contentType` and give the body as a string. The setup file removes the answers before each test. For example:
 
 ```ts
 await commands.answerRequests([
   { method: 'GET', path: '/api/v1/users', headers: { 'x-pagination': pagination }, body: [user] },
   { method: 'GET', path: '/api/v1/users', query: { pageNumber: '2' }, headers: { 'x-pagination': page2 }, body: [other] },
 ])
-onTestFinished(() => commands.answerRequests([]))
 ```
+
+A request to `/api/*` or `/bff/*` with no answer fails the test, and the error names the request. The dev server has no BFF, so it answers such a request with status 502. This is also true for `pnpm dev` when Aspire does not set `BFF_HTTPS` or `BFF_HTTP`.
 
 A component that takes a save function as a prop does not need answers. Give it a `vi.fn()` that resolves, or that rejects with a `ProblemDetailsError`.
 

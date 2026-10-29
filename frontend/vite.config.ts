@@ -6,7 +6,15 @@ import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
 import { playwright } from '@vitest/browser-playwright'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests } from './vitest.commands'
+import {
+  answerRequests,
+  holdRequests,
+  movePointerOnto,
+  pressPointer,
+  releasePointer,
+  releaseRequests,
+  takeUnansweredRequests,
+} from './vitest.commands'
 
 // Vendor libraries that can load on the first page. Each group gets its own
 // chunk, so the entry chunk stays small and the browser can cache the
@@ -78,6 +86,24 @@ const failStalledBffRequests: ProxyOptions['configure'] = (proxy) => {
   })
 }
 
+// With no BFF, Vite answers each path with its index.html, so a request of the app got HTML and no error.
+// These are the paths that the proxy below sends to the BFF.
+const bffPaths = ['/bff/', '/api/', '/signin-oidc', '/signout-callback-oidc']
+
+const failBffRequestsWithNoBff: Plugin = {
+  name: 'fail-bff-requests-with-no-bff',
+  apply: (_, { command }) => command === 'serve' && !bffTarget,
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (!bffPaths.some((path) => req.url?.startsWith(path))) return next()
+      res.writeHead(502, { 'Content-Type': 'text/plain' }).end(
+        `The dev server has no BFF, so nothing answers ${req.method} ${req.url}. ` +
+          'Start the app with Aspire, or set BFF_HTTPS or BFF_HTTP. In a test, answer the request.',
+      )
+    })
+  },
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -91,6 +117,7 @@ export default defineConfig({
       },
     }),
     failOverEntryChunkBudget,
+    failBffRequestsWithNoBff,
   ],
   build: {
     rollupOptions: {
@@ -149,7 +176,15 @@ export default defineConfig({
             // CI keeps a Playwright trace of each failed test, so that a test that hangs shows the step it waited on.
             // The trace costs about 40% more run time, so a local run does not record it.
             trace: process.env.CI ? 'retain-on-failure' : 'off',
-            commands: { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests },
+            commands: {
+              answerRequests,
+              holdRequests,
+              movePointerOnto,
+              pressPointer,
+              releasePointer,
+              releaseRequests,
+              takeUnansweredRequests,
+            },
           },
         },
       },

@@ -48,7 +48,13 @@ export const releaseRequests: BrowserCommand<[path: string]> = async ({ page }, 
 
 const isBffRequest = (url: URL) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/bff/')
 
-const answering = new WeakMap<Page, { answers: Answer[]; handler: RouteHandler }>()
+interface Answering {
+  answers: Answer[]
+  /** Each request that no answer matched since the last `takeUnansweredRequests`, as `GET /path?query`. */
+  unanswered: Set<string>
+}
+
+const answering = new WeakMap<Page, Answering>()
 
 const isAnswerFor = (request: { method: () => string; url: () => string }) => (answer: Answer) => {
   const url = new URL(request.url())
@@ -59,35 +65,46 @@ const isAnswerFor = (request: { method: () => string; url: () => string }) => (a
   )
 }
 
+const body = (answer: Answer) => {
+  if (answer.contentType !== undefined) return answer.body
+  return answer.body === undefined ? '' : JSON.stringify(answer.body)
+}
+
+/** Replaces the answers. The setup file calls it with `[]` before each test. */
 export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page }, answers) => {
   const current = answering.get(page)
-  if (answers.length === 0) {
-    if (current) await page.unroute(isBffRequest, current.handler)
-    answering.delete(page)
-    return
-  }
   if (current) {
     current.answers = answers
     return
   }
-  const state = {
-    answers,
-    handler: async (route: Parameters<RouteHandler>[0]) => {
-      const answer = state.answers.findLast(isAnswerFor(route.request()))
-      if (!answer) {
-        await route.fallback()
-        return
-      }
-      await route.fulfill({
-        status: answer.status ?? 200,
-        headers: answer.headers,
-        contentType: 'application/json',
-        body: answer.body === undefined ? '' : JSON.stringify(answer.body),
-      })
-    },
-  }
+  const state: Answering = { answers, unanswered: new Set() }
   answering.set(page, state)
-  await page.route(isBffRequest, state.handler)
+  await page.route(isBffRequest, async (route) => {
+    const request = route.request()
+    const answer = state.answers.findLast(isAnswerFor(request))
+    if (!answer) {
+      const url = new URL(request.url())
+      state.unanswered.add(`${request.method()} ${url.pathname}${url.search}`)
+      // The dev server answers it with an error that names the request.
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: answer.status ?? 200,
+      headers: answer.headers,
+      contentType: answer.contentType ?? 'application/json',
+      body: body(answer),
+    })
+  })
+}
+
+/** Returns the requests that no answer matched since the last call, and forgets them. */
+export const takeUnansweredRequests: BrowserCommand<[]> = async ({ page }) => {
+  const state = answering.get(page)
+  if (!state) return []
+  const unanswered = [...state.unanswered]
+  state.unanswered.clear()
+  return unanswered
 }
 
 type Role = Parameters<Page['getByRole']>[0]

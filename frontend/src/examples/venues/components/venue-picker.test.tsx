@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { commands, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -46,7 +46,6 @@ async function renderPicker(initial = '', ...more: Answer[]) {
     { method: 'GET', path: '/api/v1/venues', query: { search: 'Zeta' }, headers: pagination(1, 1), body: [offPage] },
     ...more,
   ])
-  onTestFinished(() => commands.answerRequests([]))
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const screen = await render(
     // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.

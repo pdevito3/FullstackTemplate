@@ -529,12 +529,7 @@ async function optionsWithFill() {
 }
 
 test('the option under the pointer has no fill while the arrow keys make another option active', async () => {
-  // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.
-  const screen = await render(
-    <div style={{ padding: 12 }}>
-      <FrameworkCombobox />
-    </div>,
-  )
+  const screen = await render(<FrameworkCombobox />)
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await input.fill('Vu')

@@ -45,6 +45,7 @@ Read the doc for an area before you change code in that area.
 | [docs/authentication.md](docs/authentication.md) | BFF login flow, auth providers, test users |
 | [docs/frontend.md](docs/frontend.md) | Frontend structure, API client, query hooks, routes, forms |
 | [docs/frontend/](docs/frontend/) | Rules for server state, client state, code style, and tests |
+| [docs/specs/](docs/specs/) | The specs of a domain or an effort. Start a new spec from [TEMPLATE.md](docs/specs/TEMPLATE.md): each rule has an ID, and a test names the ID |
 | [docs/csharp-repl.md](docs/csharp-repl.md) | CSharpRepl in the running server: the hook wiring and the Development-only guards |
 | [docs/template-updates.md](docs/template-updates.md) | Merge new template commits into the app with `scripts/template-merge.cs` of the template |
 

@@ -47,30 +47,37 @@ Endpoint gets UserForCreationDto
 In the workshop example, `WorkshopDto` lists the names of the status and of the actions ([`WorkshopDto.Status`](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopDto.cs)), and `WorkshopForCreationDto` names the limits of the domain ([`WorkshopForCreationDto.Title`](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopForCreationDto.cs)).
 <!-- example:end -->
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Dtos/UserDto.cs -->
 ```csharp
 public sealed record UserDto
 {
     public string Id { get; init; } = default!;
-    public uint Version { get; init; }
+    // ...
     public string FirstName { get; init; } = default!;
+    // ...
     public string Email { get; init; } = default!;
+    // ...
     [NamesOf<UserRole>]
     public string Role { get; init; } = default!;
     [NamesOf<Permission>]
     public IReadOnlyList<string> Permissions { get; init; } = [];
+    // ...
     [NamesOf<UserAction>]
     public IReadOnlyList<string> AllowedActions { get; init; } = [];
+    public uint Version { get; init; }
 }
 ```
 
 The parameters DTO is a class that derives from `BasePaginationParameters`. It has no transport attributes. The HTTP endpoint binds each query value to a handler parameter with the camelCase name, and copies it to the DTO (see [endpoints.md](endpoints.md#http)). The gRPC and MCP adapters fill the DTO from their own inputs.
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Dtos/UserParametersDto.cs -->
 ```csharp
 public sealed class UserParametersDto : BasePaginationParameters
 {
     public string? Filters { get; set; }
 
     public string? SortOrder { get; set; }
+    // ...
 }
 ```
 
@@ -80,13 +87,17 @@ A model is a `sealed record` with the same style as a DTO.
 
 The creation model has a nullable `Id`. The test entity graph uses it to give an entity a fixed ID. A `ForCreationDto` never has an `Id`, and the mapper ignores the `Id` target.
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Models/UserForCreation.cs -->
 ```csharp
 public sealed record UserForCreation
 {
     /// <summary>A fixed ID with the prefix of the entity. When it is null, the entity makes a new ID.</summary>
     public string? Id { get; init; }
+    // ...
     public string FirstName { get; init; } = default!;
+    // ...
     public string Email { get; init; } = default!;
+    // ...
 }
 ```
 
@@ -101,29 +112,37 @@ Mapperly makes the map at build time. Do not write a reflection mapper. See [sou
 5. Ignore `LastModifiedOn`, `IsDeleted`, and `DomainEvents` on the source of the DTO mapping.
 6. When the DTO has the allowed actions of the caller, write the public map by hand. It calls a private generated map that ignores `AllowedActions`, and adds the actions. The `IQueryable` projection takes the configuration of the private map.
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Mappings/UserMapper.cs -->
 ```csharp
 [Mapper]
 public static partial class UserMapper
 {
+    /// <summary>The DTO with the actions that <paramref name="caller"/> can send for the user.</summary>
     public static UserDto ToUserDto(this User user, Caller caller)
         => user.ToUserDtoWithoutActions() with { AllowedActions = NamesOf(user.AllowedActions(caller)) };
+
+    // ...
+    // It takes the configuration of ToUserDtoWithoutActions. The list handler adds the actions after the page loads.
+    public static partial IQueryable<UserDto> ToUserDtoQueryable(this IQueryable<User> queryable);
+    // ...
+    [MapperIgnoreTarget(nameof(UserForCreation.Id))]
+    public static partial UserForCreation ToUserForCreation(this UserForCreationDto dto, string tenantId);
+
+    public static partial UserForUpdate ToUserForUpdate(this UserForUpdateDto dto);
 
     [MapperIgnoreSource(nameof(User.LastModifiedOn))]
     [MapperIgnoreSource(nameof(User.IsDeleted))]
     [MapperIgnoreSource(nameof(User.DomainEvents))]
     [MapperIgnoreTarget(nameof(UserDto.AllowedActions))]
     [MapProperty(nameof(User.UserPermissions), nameof(UserDto.Permissions))]
+    [MapPropertyFromSource(nameof(UserDto.FullName), Use = nameof(MapFullName))]
     private static partial UserDto ToUserDtoWithoutActions(this User user);
 
-    public static partial IQueryable<UserDto> ToUserDtoQueryable(this IQueryable<User> queryable);
-
-    [MapperIgnoreTarget(nameof(UserForCreation.Id))]
-    public static partial UserForCreation ToUserForCreation(this UserForCreationDto dto, string tenantId);
-
-    public static partial UserForUpdate ToUserForUpdate(this UserForUpdateDto dto);
-
+    // ...
     private static string MapEmail(EmailAddress email) => email.Value;
+    // ...
     private static string MapRole(UserRole role) => role.Value;
+    // ...
 }
 ```
 

@@ -141,6 +141,7 @@ Production keeps `Information` and higher (`appsettings.json`). Thus a `Debug` l
 
 `Domain/Users/UserMetrics.cs`:
 
+<!-- code: FullstackTemplate.Server/Domain/Users/UserMetrics.cs -->
 ```csharp
 namespace FullstackTemplate.Server.Domain.Users;
 
@@ -158,6 +159,7 @@ public static class UserMetrics
 
 `Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs`, the telemetry lines and the lines around them:
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs -->
 ```csharp
 private readonly ILogger _logger = Log.ForContext<Handler>();
 
@@ -166,17 +168,14 @@ public async Task<UserDto> Handle(Command request, CancellationToken cancellatio
     Activity.Current?.SetTag("app.user_id", request.Id);
 
     var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-    caller.Require(Permission.ManageUserAccess());
-    caller.RequireSelfOr(request.Id, Permission.ReadUsers());
+    UserAction.UpdateRole().GuardBeforeLoad(caller, request.Id);
     var newRole = UserRole.Of(request.Role);
     Activity.Current?.SetTag("app.user.role", newRole.Value);
-
-    // ... the permission checks and the load, as before
-
+    // ...
     var oldRole = user.Role;
     user.UpdateRole(newRole);
-
-    // ... the permission rows and the save, as before
+    // ...
+    await dbContext.SaveChangesAsync(cancellationToken);
 
     if (newRole != oldRole)
     {

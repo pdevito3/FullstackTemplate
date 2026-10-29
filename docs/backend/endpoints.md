@@ -64,6 +64,7 @@ An HTTP endpoint is a minimal API. The example is `Domain/Users/Features/AddUser
 
 ### Example
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/GetUser/GetUser.Http.cs -->
 ```csharp
 public sealed class GetUserEndpoint : IEndpoint
 {
@@ -73,6 +74,7 @@ public sealed class GetUserEndpoint : IEndpoint
         .WithTags("Users")
         .MapToApiVersion(ApiVersions.V1)
         .RequireAuthorization()
+        // ...
         .ProducesProblem(StatusCodes.Status404NotFound);
 
     /// <summary>

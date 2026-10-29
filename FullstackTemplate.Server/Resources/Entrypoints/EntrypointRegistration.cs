@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints;
 
 using Domain.Tenants.Grpc.V1;
+// new-feature:grpc-usings
 using Exceptions;
 using Grpc;
 using Http;
@@ -85,6 +86,7 @@ public static class EntrypointRegistration
     {
         app.MapVersionedEndpoints();
         app.MapGrpcService<TenantsGrpcService>();
+        // new-feature:grpc-services
         McpToolAccess.Validate(app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection ?? []);
         app.MapMcp(McpPath).RequireAuthorization();
         app.MapMcpResourceMetadata();

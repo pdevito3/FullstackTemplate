@@ -99,6 +99,24 @@ test('after a stale save, loads the latest into the form and saves with its vers
   await expect.poll(() => form.onSave).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Kubb for teams', version: 4 }))
 })
 
+test('after a stale save, keeps each edit that the latest save did not change, and names the fields that it changed', async () => {
+  const latest = { ...workshop, capacity: 30, version: 4 }
+  const form = await renderForm(vi.fn().mockRejectedValueOnce(stale).mockResolvedValue(undefined), vi.fn().mockResolvedValue(latest))
+
+  await userEvent.fill(form.title, 'Kubb in depth')
+  await userEvent.click(form.save)
+  await userEvent.click(form.screen.getByRole('button', { name: 'Load the latest' }))
+
+  await expect.element(form.title).toHaveValue('Kubb in depth')
+  await expect.element(form.capacity).toHaveValue(30)
+  await expect.element(form.capacity).toHaveFocus()
+  await expect.element(form.screen.getByRole('status').filter({ hasText: 'A save after you opened this workshop changed Capacity.' })).toBeVisible()
+
+  await userEvent.click(form.save)
+
+  await expect.poll(() => form.onSave).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Kubb in depth', capacity: 30, version: 4 }))
+})
+
 test('shows each validation message of the Server on its field', async () => {
   const refused = new ProblemDetailsError({
     type: 'validation',

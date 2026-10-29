@@ -40,8 +40,13 @@ export const filterDemo = (page: Page) => {
     queryKit: page.getByRole('status', { name: 'QueryKit string' }),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
-    toolbarButton: (name: 'Cancel' | 'Clear' | 'Group Filters' | 'Ungroup' | 'Urgent Bugs') => page.getByRole('button', { name, exact: true }),
+    toolbarButton: (name: 'Cancel' | 'Clear' | 'Complex Nested Query' | 'Group Filters' | 'Ungroup' | 'Urgent Bugs') =>
+      page.getByRole('button', { name, exact: true }),
     selectFilter: (name: string) => page.getByRole('checkbox', { name: `Select filter: ${name}`, exact: true }),
     groupSelected: page.getByRole('button', { name: /^Group Selected/ }),
+    groupBadge: (depth: number) => page.locator('[data-slot="badge"]').filter({ hasText: `Group (Depth ${depth})` }),
+    /** The group of a depth, from its header to its filters. */
+    group: (depth: number) =>
+      page.locator('[data-slot="card"]').filter({ has: page.locator('[data-slot="badge"]').getByText(`Group (Depth ${depth})`, { exact: true }) }).last(),
   }
 }

@@ -38,6 +38,17 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    /** The Complex Nested Query preset with its group put in a new group with the John filter: depth 1 holds depth 2. */
+    async openNestedGroups() {
+      await this.open()
+      await at.toolbarButton('Complex Nested Query').click()
+      await at.toolbarButton('Group Filters').click()
+      await at.group(1).getByRole('checkbox', { name: 'Select group' }).locator('xpath=ancestor::label').click()
+      await page.getByRole('checkbox', { name: /^Select filter: First Name \| Equals \| John/ }).locator('xpath=ancestor::label').click()
+      await at.groupSelected.click()
+      await expect(at.groupBadge(2)).toBeVisible()
+    },
+
     async chooseProperty(propertyLabel: string) {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()

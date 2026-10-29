@@ -635,3 +635,92 @@ test.describe('the filter builder after the focused button goes away', () => {
     await expect(demo.at.addFilterMenu).toBeFocused()
   })
 })
+
+test.describe('the filter builder after a click removes the clicked button', () => {
+  test('moves the focus to Add Filter after a click on Remove filter', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.removeFilter('Labels').first().click()
+
+    await expect(demo.at.removeFilter('Labels')).toHaveCount(1)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after a click on Clear', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.toolbarButton('Clear').click()
+
+    await expect(demo.at.toolbarButton('Clear')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after a click on Delete group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Complex Nested Query').click()
+
+    await demo.at.group(1).getByRole('button', { name: 'Delete group' }).click()
+
+    await expect(demo.at.groupBadge(1)).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+})
+
+test.describe('the filter builder after a key removes a button in a nested group', () => {
+  test('moves the focus to Add Filter after Remove filter in the inner group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.group(2).getByRole('button', { name: /^Remove filter: First Name/ }).focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.group(2).getByRole('button', { name: /^Remove filter: First Name/ })).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Delete group of the inner group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.group(2).getByRole('button', { name: 'Delete group' }).focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.groupBadge(2)).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Ungroup of the inner group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.group(2).getByRole('button', { name: 'Ungroup' }).focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.groupBadge(2)).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+})
+
+test.describe('a filter group on a 390 px phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('keeps Ungroup and Delete group on the line of its Group badge', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.at.toolbarButton('Complex Nested Query').click()
+
+    const group = demo.at.group(1)
+    for (const action of ['Ungroup', 'Delete group']) {
+      const badge = await demo.edgesOf(demo.at.groupBadge(1))
+      const button = await demo.edgesOf(group.getByRole('button', { name: action }).first())
+      expect(button.top, action).toBeLessThan(badge.bottom)
+      expect(button.bottom, action).toBeGreaterThan(badge.top)
+    }
+  })
+})

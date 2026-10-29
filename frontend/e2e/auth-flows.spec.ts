@@ -56,24 +56,24 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
 
   // Fill username/email
   const usernameValue = idp.email || idp.username
-  await page.fill(idp.usernameSelector, usernameValue!)
+  await page.locator(idp.usernameSelector).fill(usernameValue!)
 
   if (idp.twoStepLogin) {
     // Two-step login: submit username first, then password
-    await page.click(idp.submitSelector)
+    await page.locator(idp.submitSelector).click()
 
     // Fill password on the second page. fill waits for the field
-    await page.fill(idp.passwordSelector!, idp.password!)
+    await page.locator(idp.passwordSelector!).fill(idp.password!)
 
     // Use secondStepSubmitSelector if defined, otherwise use submitSelector
     const secondSubmit = idp.secondStepSubmitSelector || idp.submitSelector
-    await page.click(secondSubmit)
+    await page.locator(secondSubmit).click()
   } else {
     // Single-page login: fill password, if the IdP has one, and submit
     if (idp.passwordSelector) {
-      await page.fill(idp.passwordSelector, idp.password!)
+      await page.locator(idp.passwordSelector).fill(idp.password!)
     }
-    await page.click(idp.submitSelector)
+    await page.locator(idp.submitSelector).click()
   }
 }
 
@@ -372,7 +372,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     await authorizeButton.click()
 
     // Step 3: Wait for modal and click authorize in the OAuth section
-    await page.waitForSelector('.modal-ux', { timeout: 5000 })
+    await page.locator('.modal-ux').waitFor({ timeout: 5000 })
 
     // The authorize button in the modal
     const modalAuthorizeButton = page.locator('.modal-ux .auth-btn-wrapper button.authorize')

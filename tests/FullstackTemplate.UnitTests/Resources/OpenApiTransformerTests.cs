@@ -282,6 +282,20 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((MinimumAboveMaximumDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(MinimumAboveMaximumDto)}.quantity has the minimum 99.5 and the maximum 0.5");
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_member_that_is_not_a_public_static_number_field()
     {
         // Arrange
@@ -355,6 +369,13 @@ public class OpenApiTransformerTests
     {
         [SchemaMinimum(typeof(Limits), nameof(Limits.SeatsMin))]
         public string Name { get; init; } = default!;
+    }
+
+    private sealed record MinimumAboveMaximumDto
+    {
+        [SchemaMinimum(typeof(Limits), nameof(Limits.QuantityMax))]
+        [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMin))]
+        public decimal Quantity { get; init; }
     }
 
     private sealed record NonNumericLimitDto

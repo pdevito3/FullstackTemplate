@@ -39,9 +39,12 @@ export function stringWithMaxLengthOf(contract: z.ZodString, message?: string): 
 export function maximumOf(contract: z.ZodNumber): number {
   // maxValue is never null for a number: it is Infinity for z.number() and the largest safe integer for z.int().
   // Only a max check comes from the contract.
-  const hasMaximum = contract._zod.def.checks?.some((check) => check._zod.def.check === 'less_than') ?? false
-  if (!hasMaximum || contract.maxValue === null) {
+  const maximums = (contract._zod.def.checks ?? []).filter((check) => check._zod.def.check === 'less_than')
+  if (maximums.length === 0 || contract.maxValue === null) {
     throw new Error('The API contract gives this field no maximum. Give the DTO property [SchemaMaximum].')
+  }
+  if (maximums.some((check) => !(check as z.core.$ZodCheckLessThan)._zod.def.inclusive)) {
+    throw new Error('The API contract gives this field an exclusive maximum. Write an inclusive maximum on the Server.')
   }
   return contract.maxValue
 }
@@ -54,9 +57,12 @@ export function maximumOf(contract: z.ZodNumber): number {
 export function minimumOf(contract: z.ZodNumber): number {
   // minValue is never null for a number: it is -Infinity for z.number() and the smallest safe integer for z.int().
   // Only a min check comes from the contract.
-  const hasMinimum = contract._zod.def.checks?.some((check) => check._zod.def.check === 'greater_than') ?? false
-  if (!hasMinimum || contract.minValue === null) {
+  const minimums = (contract._zod.def.checks ?? []).filter((check) => check._zod.def.check === 'greater_than')
+  if (minimums.length === 0 || contract.minValue === null) {
     throw new Error('The API contract gives this field no minimum. Give the DTO property [SchemaMinimum].')
+  }
+  if (minimums.some((check) => !(check as z.core.$ZodCheckGreaterThan)._zod.def.inclusive)) {
+    throw new Error('The API contract gives this field an exclusive minimum. Write an inclusive minimum on the Server.')
   }
   return contract.minValue
 }

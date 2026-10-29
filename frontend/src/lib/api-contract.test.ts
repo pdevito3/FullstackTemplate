@@ -74,6 +74,13 @@ describe('maximumOf', () => {
   ])('throws when the contract gives %s no maximum', (_, contract) => {
     expect(() => maximumOf(contract)).toThrow('The API contract gives this field no maximum.')
   })
+
+  it.each([
+    ['an exclusive maximum', z.number().lt(10)],
+    ['an exclusive maximum after an inclusive one', z.number().max(20).lt(10)],
+  ])('throws when the contract gives %s', (_, contract) => {
+    expect(() => maximumOf(contract)).toThrow('The API contract gives this field an exclusive maximum.')
+  })
 })
 
 describe('minimumOf', () => {
@@ -90,5 +97,12 @@ describe('minimumOf', () => {
     ['an integer', z.int()],
   ])('throws when the contract gives %s no minimum', (_, contract) => {
     expect(() => minimumOf(contract)).toThrow('The API contract gives this field no minimum.')
+  })
+
+  it.each([
+    ['an exclusive minimum', z.number().gt(1)],
+    ['an exclusive minimum after an inclusive one', z.number().min(1).gt(5)],
+  ])('throws when the contract gives %s', (_, contract) => {
+    expect(() => minimumOf(contract)).toThrow('The API contract gives this field an exclusive minimum.')
   })
 })

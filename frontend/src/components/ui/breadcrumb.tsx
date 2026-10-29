@@ -98,21 +98,20 @@ const BreadcrumbLink = createRouterLink(function BreadcrumbLinkHost({
  * full name in a popover, because a Tooltip does not open on touch. It stays a
  * button until the name changes, so a resize does not unmount a focused button.
  */
-function BreadcrumbPage({ className, children }: { className?: string; children?: string }) {
-  const [truncatedName, setTruncatedName] = React.useState<string>()
-  const isTruncated = children !== undefined && truncatedName === children
-  const measure = React.useCallback(
-    (element: HTMLElement | null) => {
-      if (!element) return
-      const observer = new ResizeObserver(() => {
-        if (element.scrollWidth > element.clientWidth) setTruncatedName(children)
-        else setTruncatedName((name) => (name === children ? name : undefined))
-      })
-      observer.observe(element)
-      return () => observer.disconnect()
-    },
-    [children]
-  )
+function BreadcrumbPage(props: { className?: string; children?: string }) {
+  return <CurrentPage key={props.children} {...props} />
+}
+
+function CurrentPage({ className, children }: { className?: string; children?: string }) {
+  const [isTruncated, setIsTruncated] = React.useState(false)
+  const measure = React.useCallback((element: HTMLElement | null) => {
+    if (!element) return
+    const observer = new ResizeObserver(() => {
+      if (element.scrollWidth > element.clientWidth) setIsTruncated(true)
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
   const pageClassName = cn("truncate font-normal text-foreground", className)
 
   if (!isTruncated) {

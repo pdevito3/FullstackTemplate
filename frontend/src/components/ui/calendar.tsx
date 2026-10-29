@@ -12,6 +12,7 @@ import {
   CalendarGridBody as AriaCalendarGridBody,
   CalendarGridHeader as AriaCalendarGridHeader,
   CalendarHeaderCell as AriaCalendarHeaderCell,
+  CalendarStateContext as AriaCalendarStateContext,
   Heading as AriaHeading,
   RangeCalendar as AriaRangeCalendar,
   RangeCalendarStateContext as AriaRangeCalendarStateContext,
@@ -121,8 +122,22 @@ function keepFocusOnRangeStart(state: RangeCalendarState | null) {
   }
 }
 
-const CalendarGrid = ({ className, ...props }: AriaCalendarGridProps) => {
+// React Aria finds today in state.timeZone, the zone of the browser, for the "Today" name and the data-today attribute
+// of a cell. It also formats whole days in that zone, which gives the same day in each zone. The grid sets the zone of
+// the place in the state, in place, as keepFocusOnRangeStart does.
+function setZoneOfToday(state: { readonly timeZone: string } | null, timeZone: TimeZone | undefined) {
+  if (state && timeZone) Object.assign(state, { timeZone })
+}
+
+interface CalendarGridProps extends AriaCalendarGridProps {
+  /** The zone of the place that the dates belong to. The cells mark today at that place. The default is the browser zone. */
+  timeZone?: TimeZone
+}
+
+const CalendarGrid = ({ className, timeZone, ...props }: CalendarGridProps) => {
+  const calendarState = useContext(AriaCalendarStateContext)
   const rangeState = useContext(AriaRangeCalendarStateContext)
+  setZoneOfToday(calendarState ?? rangeState, timeZone)
   keepFocusOnRangeStart(rangeState)
   return (
     <>
@@ -167,14 +182,8 @@ const CalendarGridBody = ({
   <AriaCalendarGridBody className={cn("[&>tr>td]:p-0", className)} {...props} />
 )
 
-interface CalendarCellProps extends AriaCalendarCellProps {
-  /** The zone of the place that the date belongs to. The cell marks today at that place, not in the browser zone. */
-  timeZone?: TimeZone
-}
-
-const CalendarCell = ({ className, timeZone = browserTimeZone(), ...props }: CalendarCellProps) => {
+const CalendarCell = ({ className, ...props }: AriaCalendarCellProps) => {
   const isRange = Boolean(useContext(AriaRangeCalendarStateContext))
-  const today = todayAt(timeZone, new Date())
   return (
     <AriaCalendarCell
       className={composeRenderProps(className, (className, renderProps) =>
@@ -204,7 +213,7 @@ const CalendarCell = ({ className, timeZone = browserTimeZone(), ...props }: Cal
           renderProps.isOutsideMonth &&
             "text-muted-foreground opacity-50 data-[selected]:bg-accent/50 data-[selected]:text-muted-foreground data-[selected]:opacity-30",
           /* Current Date */
-          renderProps.date.compare(today) === 0 &&
+          renderProps.isToday &&
             !renderProps.isSelected &&
             "bg-accent text-accent-foreground",
           /* Unavailable Date */
@@ -361,12 +370,12 @@ function JollyCalendar<T extends AriaDateValue>({
           <CalendarZoomProvider fixedHeight={fixedHeight}>
             <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
-              <CalendarGrid>
+              <CalendarGrid timeZone={timeZone}>
                 <CalendarGridHeader>
                   {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
                 </CalendarGridHeader>
                 <CalendarGridBody>
-                  {(date) => <CalendarCell date={date} timeZone={timeZone} />}
+                  {(date) => <CalendarCell date={date} />}
                 </CalendarGridBody>
               </CalendarGrid>
             </CalendarContent>
@@ -519,12 +528,12 @@ function JollyRangeCalendar<T extends AriaDateValue>({
           <CalendarZoomProvider fixedHeight={fixedHeight}>
             <CalendarHeadingZoomable layout={layout} />
             <CalendarContent>
-              <CalendarGrid>
+              <CalendarGrid timeZone={timeZone}>
                 <CalendarGridHeader>
                   {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
                 </CalendarGridHeader>
                 <CalendarGridBody>
-                  {(date) => <CalendarCell date={date} timeZone={timeZone} />}
+                  {(date) => <CalendarCell date={date} />}
                 </CalendarGridBody>
               </CalendarGrid>
             </CalendarContent>

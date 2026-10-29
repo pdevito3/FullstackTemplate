@@ -35,9 +35,9 @@ export function useServerErrors<T extends FieldValues>(form: UseFormReturn<T>, f
 
   const show = (error: unknown) => {
     const refusal = refusalOf(error, fields)
-    for (const field of fields) {
-      const message = refusal.byField[field]
-      if (message) form.setError(field, { type: 'server', message })
+    const refused = fields.filter((field) => refusal.byField[field])
+    for (const field of refused) {
+      form.setError(field, { type: 'server', message: refusal.byField[field] }, { shouldFocus: field === refused[0] })
     }
     setProblem(refusal.problem)
   }

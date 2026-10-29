@@ -254,74 +254,52 @@ describe('server-state/query-key-has-inputs', () => {
 })
 
 describe('server-state/key-has-each-param', () => {
-  it('reports a parameter that the key takes apart when the pattern cannot show each field', () => {
-    const code = `export const RecordKeys = {
-      all: ['records'] as const,
-      list: ({ search }: RecordListParams) => [...RecordKeys.all, 'list', { search }] as const,
-      untyped: ({ search }) => [...RecordKeys.all, 'list', { search }] as const,
-    }`
+  const keysFile = 'src/domain/records/apis/record.keys.ts'
+  const keysOf = (property) => `export const RecordKeys = {\n  all: ['records'] as const,\n  lists: () => [...RecordKeys.all, 'list'] as const,\n  ${property}\n}`
+  const whole = (name) => `key-has-each-param: Put the parameter \`${name}\` in the key whole`
+  const pattern = 'key-has-each-param: Take this parameter whole'
 
-    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([
-      'key-has-each-param: The key takes apart a parameter of type `RecordListParams`',
-      'key-has-each-param: The key takes apart a parameter of type `unknown`',
-    ])
+  it.each([
+    ['a pattern in the signature that drops a field', 'list: ({ search }: RecordListParams) => [...RecordKeys.lists(), { search }] as const,', [pattern]],
+    ['a pattern in the signature that keeps each field', 'list: ({ page, search }: RecordListParams) => [...RecordKeys.lists(), { page, search }] as const,', [pattern]],
+    ['a pattern with an inline type', 'list: ({ search, page }: { search: string; page: number }) => [...RecordKeys.lists(), { search, page }] as const,', [pattern]],
+    ['a pattern with a rest element', 'list: ({ search, ...rest }: RecordListParams) => [...RecordKeys.lists(), search, rest] as const,', [pattern]],
+    ['a default value', 'list: (page = 1) => [...RecordKeys.lists(), page] as const,', [pattern]],
+    ['a destructure in the body', 'list: (params: RecordListParams) => { const { search } = params; return [...RecordKeys.lists(), { search }] as const },', [whole('params')]],
+    ['an alias in the body', 'list: (params: RecordListParams) => { const p = params; return [...RecordKeys.lists(), p.search] as const },', [whole('params')]],
+    ['a field read', 'list: (params: RecordListParams) => [...RecordKeys.lists(), { search: params.search }] as const,', [whole('params')]],
+    ['each field read', 'list: (params: RecordListParams) => [...RecordKeys.lists(), { page: params.page, search: params.search }] as const,', [whole('params')]],
+    ['one field read twice', 'list: (params: RecordListParams) => [...RecordKeys.lists(), { search: params.search, page: params.search }] as const,', [whole('params')]],
+    ['a method that reads a field', 'list(params: RecordListParams) { return [...RecordKeys.lists(), { search: params.search }] as const },', [whole('params')]],
+    ['a spread into an object', 'list: (params: RecordListParams) => [...RecordKeys.lists(), { ...params }] as const,', [whole('params')]],
+    ['a spread into the key', 'byIds: (ids: string[]) => [...RecordKeys.all, ...ids] as const,', [whole('ids')]],
+    ['a parameter in an object', 'search: (search: string) => [...RecordKeys.lists(), { search }] as const,', [whole('search')]],
+    ['a call on the parameter', 'day: (date: Date) => [...RecordKeys.all, date.toISOString()] as const,', [whole('date')]],
+    ['the parameter given to a call', 'list: (params: RecordListParams) => listKey(params),', [whole('params')]],
+    ['the whole parameter and a field of it', 'list: (params: RecordListParams) => [...RecordKeys.lists(), params, params.search] as const,', [whole('params')]],
+    ['a parameter that the key does not use', 'detail: (id: string, tab: string) => [...RecordKeys.all, id] as const,', [whole('tab')]],
+  ])('reports %s', (_, property, expected) => {
+    expect(serverStateMessages(keysOf(property), keysFile)).toEqual(expected)
   })
 
-  it('reports a field of an inline type that the pattern leaves out', () => {
-    const code = `export const RecordKeys = {
-      all: ['records'] as const,
-      list: ({ search }: { search: string; page?: number }, page: number) => [...RecordKeys.all, search] as const,
-    }`
+  it('reports a function outside the object of the keys', () => {
+    const code = `${keysOf('list: (params: RecordListParams) => listKey(params),')}
+export function listKey(params: RecordListParams) {
+  return [...RecordKeys.lists(), { search: params.search }] as const
+}`
 
-    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([
-      'key-has-each-param: The key leaves out `page` of this parameter',
-      'key-has-each-param: The key uses only a part of `page`',
-    ])
+    expect(serverStateMessages(code, keysFile)).toEqual([whole('params'), whole('params')])
   })
 
-  it('takes a pattern with each field of its inline type, and a rest element that the key uses whole', () => {
-    const code = `export const RecordKeys = {
-      all: ['records'] as const,
-      list: ({ search, page }: { search: string; page: number }) => [...RecordKeys.all, { search, page }] as const,
-      rest: ({ search, ...rest }: RecordListParams) => [...RecordKeys.all, search, rest] as const,
-      fields: (params: { search: string; page: number }) => [...RecordKeys.all, { search: params.search, page: params.page }] as const,
-    }`
+  it('takes each parameter whole as an item of the returned key', () => {
+    const code = keysOf(`list: (params: RecordListParams) => [...RecordKeys.lists(), params] as const,
+  search: (search: string) => [...RecordKeys.lists(), 'search', search],
+  page: (params: RecordListParams, page: number) => [...RecordKeys.lists(), params, page] satisfies readonly unknown[],
+  details: () => [...RecordKeys.all, 'detail'] as const,
+  detail(id: string) { return [...RecordKeys.all, 'detail', id] as const },
+  named: function named(id: string) { return [...RecordKeys.all, id] as const },`)
 
-    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])
-  })
-
-  it('reports a parameter that the key reads only through a field, or does not read', () => {
-    const code = `export const RecordKeys = {
-      all: ['records'] as const,
-      list: (params: RecordListParams) => [...RecordKeys.all, 'list', params.search] as const,
-      detail: (id: string, tab: string) => [...RecordKeys.all, 'detail', id] as const,
-    }`
-
-    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([
-      'key-has-each-param: The key uses only a part of `params`',
-      'key-has-each-param: The key uses only a part of `tab`',
-    ])
-  })
-
-  it('takes a key with each whole parameter', () => {
-    const code = `export const RecordKeys = {
-      all: ['records'] as const,
-      list: (params: RecordListParams) => [...RecordKeys.all, 'list', params] as const,
-      search: (search: string) => [...RecordKeys.all, 'search', { search }] as const,
-    }`
-
-    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])
-  })
-
-  it('takes a method call on a whole parameter, a callback in a key, and a named function', () => {
-    const code = `export const RecordKeys = {
-      all: ['records'] as const,
-      byIds: (ids: string[]) => [...RecordKeys.all, 'ids', [...ids].sort((a, b) => a.localeCompare(b)).join(',')] as const,
-      day: (date: Date) => [...RecordKeys.all, 'day', date.toISOString()] as const,
-      named: function named(id: string) { return [...RecordKeys.all, id] as const },
-    }`
-
-    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])
+    expect(serverStateMessages(code, keysFile)).toEqual([])
   })
 })
 

@@ -32,12 +32,10 @@ public sealed class VenueConfiguration : IEntityTypeConfiguration<Venue>
 
         builder.ComplexProperty(e => e.TimeZone, timeZone =>
         {
-            // Through the setter, which also finds the zone. The backing field alone leaves the zone empty.
             timeZone.Property(t => t.Value)
                 .HasColumnName("time_zone")
                 .HasMaxLength(TimeZoneId.MaxLength)
-                .IsRequired()
-                .UsePropertyAccessMode(PropertyAccessMode.Property);
+                .IsRequired();
         });
 
         // The default sort of the venue list. TenantId comes first, so this index also serves each query on the tenant alone.

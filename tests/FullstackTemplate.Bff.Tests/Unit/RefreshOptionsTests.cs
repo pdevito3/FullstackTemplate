@@ -7,20 +7,25 @@ using Shouldly;
 public class RefreshOptionsTests
 {
     [Test]
-    public void the_defaults_are_valid() =>
+    public void the_defaults_are_valid()
+    {
+        // Act & Assert
         Errors(new RefreshOptions()).ShouldBeEmpty();
+    }
 
     [Test]
     [Arguments(5, 5)]
     [Arguments(6, 5)]
     public void a_token_request_timeout_that_is_not_less_than_the_lock_timeout_is_invalid(int tokenSeconds, int lockSeconds)
     {
+        // Arrange
         var options = new RefreshOptions
         {
             TokenRequestTimeout = TimeSpan.FromSeconds(tokenSeconds),
             LockTimeout = TimeSpan.FromSeconds(lockSeconds),
         };
 
+        // Act & Assert
         Errors(options).ShouldHaveSingleItem()
             .ShouldBe("Bff:Refresh:TokenRequestTimeout must be less than Bff:Refresh:LockTimeout.");
     }

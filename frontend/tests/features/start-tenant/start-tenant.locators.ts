@@ -17,6 +17,8 @@ export const startTenant = (page: Page) => {
     login: page.getByRole('button', { name: 'Login', exact: true }),
     started: (tenantName: string) => page.getByText(`You started ${tenantName}. You are its admin`, { exact: false }),
     homeLink: page.getByRole('main').getByRole('link', { name: 'Go to the home page' }),
+    lookupFailure: page.getByRole('main').getByRole('alert'),
+    tryAgain: page.getByRole('button', { name: 'Try Again' }),
     toasts: page.getByRole('alertdialog'),
   }
 }

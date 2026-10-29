@@ -20,6 +20,12 @@ export const membershipApi = {
       : [{ method: 'get', path, status: 404, body: { ...aProblem().saying('User was not found.').build(), status: 404 } }]
   },
 
+  /** The Server refuses the lookup, as it does for a deleted user whose tenant it still has in its cache. */
+  lookupRefuses(detail: string): MockRoute {
+    const body = { ...aProblem().saying(detail).build(), status: 403 }
+    return { method: 'get', path: membershipPaths.userOf(actorSubject), status: 403, body }
+  },
+
   startReturns(response: InitiateUserAndTenantResponseDto): MockRoute {
     return { method: 'post', path: membershipPaths.start, status: 201, body: response }
   },

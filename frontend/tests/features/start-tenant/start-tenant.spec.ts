@@ -1,6 +1,6 @@
 import { membershipApi, membershipPaths } from '@tests/support/api/membership-api'
 import { weatherApi } from '@tests/support/api/weather-api'
-import { as } from '@tests/support/auth/actors'
+import { actorSubject, as } from '@tests/support/auth/actors'
 import { aForecast } from '@tests/support/builders/forecast-builder'
 import { aStartedTenant } from '@tests/support/builders/user-builder'
 import { expect, test } from '@tests/support/fixtures'
@@ -67,16 +67,38 @@ test.describe('a signed-in user with no tenant', () => {
   })
 })
 
+test.describe('a signed-in user whose lookup the Server refuses', () => {
+  test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
+
+  test('sees the reason of the Server, and no Try Again that cannot help', async ({ page, api }) => {
+    api.mock(membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+
+    await expect(start.at.lookupFailure).toHaveText('You are not a member of a tenant. Ask a tenant admin to add you.')
+    await expect(start.at.tryAgain).toHaveCount(0)
+    expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
+    expect(await start.at.toasts.count()).toBe(0)
+  })
+})
+
 test.describe('a member of a tenant', () => {
   test.use({ actor: as.user('Bob Smith') })
 
-  test('sees no notice, and the page says that they have a tenant', async ({ page }) => {
+  test('sees no notice on the home page', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+
+    await expect(start.at.notice).toHaveCount(0)
+  })
+
+  test('is told on the start page that they have a tenant', async ({ page }) => {
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
 
     await expect(start.at.alreadyMember).toBeVisible()
     await expect(start.at.form).toHaveCount(0)
-    await expect(start.at.notice).toHaveCount(0)
   })
 })
 

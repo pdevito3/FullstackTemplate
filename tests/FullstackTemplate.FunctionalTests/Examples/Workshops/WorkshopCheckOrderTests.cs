@@ -15,6 +15,7 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.Fakes;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using TestUtilities;
 
@@ -55,6 +56,26 @@ public class WorkshopCheckOrderTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail.ShouldBe(RowRefusal);
+    }
+
+    [Test]
+    public async Task a_schedule_by_a_member_who_is_not_the_organizer_is_forbidden_before_the_venue_loads()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        await ExecuteDbContextAsync(async db =>
+        {
+            db.Venues.Remove(await db.Venues.SingleAsync(v => v.Id == members.Venue.Id));
+            await db.SaveChangesAsync();
+        });
+        FactoryClient.SignInAsAppUser(members.OtherWorkshopManager.Identifier);
+
+        // Act
+        var result = await SendAsync("Schedule", workshop);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Test]

@@ -6,7 +6,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 
 - `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
 - The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
-- The database is empty. No feature in this map reads or writes app data. The weather endpoints make random data at each request.
+- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. No feature in this map reads or writes app data. A login writes a BFF session row, and the restore deletes it. The weather endpoints make random data at each request.
 - The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.
 

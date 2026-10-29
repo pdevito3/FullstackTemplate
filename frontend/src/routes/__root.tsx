@@ -88,7 +88,7 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
     announcement.current.textContent = ''
     const focused = document.activeElement
     if (!focused || focused === document.body) {
-      focusWithoutTabStop(content.current.querySelector('h1') ?? content.current.closest('main'))
+      return focusStartOfPage(content.current)
     } else {
       const region = announcement.current
       // A screen reader speaks a live region when its text changes. The empty text must reach the accessibility tree
@@ -100,6 +100,26 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
   }, [pathname, pageName])
 
   return { content, announcement }
+}
+
+// A page that loads its data shows its heading after the navigation. The main landmark holds the focus until then.
+function focusStartOfPage(content: HTMLElement) {
+  const heading = content.querySelector('h1')
+  if (heading) {
+    focusWithoutTabStop(heading)
+    return
+  }
+  const main = content.closest('main')
+  focusWithoutTabStop(main)
+  const observer = new MutationObserver(() => {
+    if (document.activeElement !== main) return observer.disconnect()
+    const lateHeading = content.querySelector('h1')
+    if (!lateHeading) return
+    observer.disconnect()
+    focusWithoutTabStop(lateHeading)
+  })
+  observer.observe(content, { childList: true, subtree: true })
+  return () => observer.disconnect()
 }
 
 function focusWithoutTabStop(target: HTMLElement | null) {

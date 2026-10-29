@@ -3,7 +3,6 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 using System.Reflection;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
-using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
@@ -49,13 +48,13 @@ public class TenantDeleteOwnedRowsTests : TestBase
         stillLive.Where(type => type.Value.Count > 0).ShouldBeEmpty();
     }
 
-    /// <summary>Each root type with the tenant filter, except the tenant and the audit log, which keeps its entries.</summary>
+    /// <summary>Each root entity type with the tenant filter, except the tenant.</summary>
     private static async Task<Dictionary<string, List<string>>> EachOwnedTypeAsync(
         AppDbContext db, Func<Type, Task<List<string>>> idsOf)
     {
         var ownedTypes = db.Model.GetEntityTypes().Where(e => e.BaseType is null
             && e.ClrType != typeof(Tenant)
-            && e.ClrType != typeof(AuditEntry)
+            && e.ClrType.IsAssignableTo(typeof(BaseEntity))
             && e.FindDeclaredQueryFilter(QueryFilterNames.Tenant) is not null);
 
         var result = new Dictionary<string, List<string>>();

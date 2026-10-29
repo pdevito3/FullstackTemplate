@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 export type ToastButton = 'Success' | 'Error' | 'Info' | 'Warning'
 
 export const toastDemo = (page: Page) => ({
-  heading: page.getByRole('heading', { name: 'Component Library' }),
+  heading: page.getByRole('heading', { name: 'Shared components' }),
   showToast: (name: ToastButton) => page.getByRole('button', { name, exact: true }),
   openDialog: page.getByRole('button', { name: 'Open Dialog', exact: true }),
   dialog: page.getByRole('dialog', { name: 'Dialog Title' }),

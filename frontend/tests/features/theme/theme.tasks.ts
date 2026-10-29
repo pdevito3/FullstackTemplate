@@ -8,7 +8,7 @@ export function themePage(page: Page) {
     at,
 
     async open() {
-      await page.goto('/components')
+      await page.goto('/about')
       await expect(at.heading).toBeVisible()
     },
 

@@ -9,7 +9,7 @@ import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
  *
  * These tests verify:
  * 1. Swagger OAuth authorization and secure API access
- * 2. React UI login, secure weather API access, and logout
+ * 2. React UI login, a signed-in API call through the BFF, and logout
  *
  * Test users (from docs/authentication.md):
  * - Keycloak/FusionAuth/Authentik/Cognito: admin@example.com / password123!
@@ -78,10 +78,10 @@ async function loginAtIdp(page: Page, idp: IdpConfig) {
 }
 
 /**
- * The number of server spans of the secure weather call with a DPoP proof since `startedAt`. The server tags the span
+ * The number of server spans of the current user call with a DPoP proof since `startedAt`. The server tags the span
  * of a request with `app.auth.scheme=DPoP` after it checked the proof and the binding of the token.
  */
-function dpopSpansOfSecureWeatherSince(startedAt: number): number {
+function dpopSpansOfCurrentUserSince(startedAt: number): number {
   const output = execFileSync(
     'dotnet',
     ['aspire', 'otel', 'spans', '--search', 'app.auth.scheme', '--format', 'Json', '--apphost', '../FullstackTemplate.AppHost'],
@@ -92,14 +92,14 @@ function dpopSpansOfSecureWeatherSince(startedAt: number): number {
   return spans.filter(
     (span) =>
       Date.parse(span.timestamp) >= startedAt &&
-      span.attributes['url.path'] === '/api/v1/weather/secure' &&
+      span.attributes['url.path'] === '/api/v1/users/me' &&
       span.attributes['app.auth.scheme'] === 'DPoP',
   ).length
 }
 
 test.describe(`Auth Flows - ${currentIdp.name}`, () => {
   test.describe('React UI Authentication', () => {
-    test('should login, access secure weather, and logout', async ({ page }) => {
+    test('should login, call the Server as the signed-in user, and logout', async ({ page }) => {
       // Step 1: Navigate to the home page
       await page.goto('/')
       await expect(page).toHaveURL('/')
@@ -122,23 +122,14 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const logoutButton = page.getByRole('button', { name: /logout/i })
       await expect(logoutButton).toBeVisible({ timeout: 10000 })
 
-      // Step 6: Click "Public API" button to toggle to Secure API
-      // The button starts as "Public API" and toggles to "Secure API"
-      const secureApiButton = page.getByRole('button', { name: /public api|secure api/i })
-      await expect(secureApiButton).toBeVisible()
-      await secureApiButton.click()
+      // Step 6: The home page shows the name that the Server read from the access token, which the BFF sent
+      await expect(page.getByText(/^Signed in as /)).toBeVisible({ timeout: 10000 })
 
-      // Step 7: Verify secure weather data loads
-      // The secure endpoint returns data with a "requestedBy" field
-      // Look for temperature cards or data indicating weather loaded
-      // The page shows "Authenticated" indicator when showing secure data
-      await expect(page.getByText(/authenticated/i).first()).toBeVisible({ timeout: 10000 })
-
-      // Step 8: Click Logout
+      // Step 7: Click Logout
       const appOrigin = new URL(page.url()).origin
       await logoutButton.click()
 
-      // Step 9: Wait for logout to complete
+      // Step 8: Wait for logout to complete
       // Some IDPs (like Authentik) show a logout confirmation page instead of auto-redirecting
       // Check if we're on an IDP logout confirmation page
       // Authentik shows "Log back into [app]"
@@ -171,7 +162,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
 
     // The stack runs with DPoP when the BFF has Auth:Features:DPoP=Require (DPoP=true when the stack starts). The
     // server tags the span of a request that came with a valid DPoP proof, so the test reads the span of the call.
-    test('should call the secure weather API with a DPoP-bound token', async ({ page }) => {
+    test('should call the Server with a DPoP-bound token', async ({ page }) => {
       test.skip(process.env.DPOP !== 'true', 'The stack does not use DPoP. Start it with DPoP=true.')
       const startedAt = Date.now()
 
@@ -182,11 +173,10 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       await page.waitForURL('/', { timeout: 30000 })
       await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
 
-      await page.getByRole('button', { name: /public api|secure api/i }).click()
-      await expect(page.getByText(/authenticated/i).first()).toBeVisible({ timeout: 10000 })
+      await expect(page.getByText(/^Signed in as /)).toBeVisible({ timeout: 10000 })
 
       await expect
-        .poll(() => dpopSpansOfSecureWeatherSince(startedAt), { timeout: 30000, message: 'no server span with app.auth.scheme=DPoP' })
+        .poll(() => dpopSpansOfCurrentUserSince(startedAt), { timeout: 30000, message: 'no server span with app.auth.scheme=DPoP' })
         .toBeGreaterThan(0)
     })
 
@@ -313,7 +303,7 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
 
   test('should send no session cookie on a cross-site top-level GET to /api, which gets a 401', async ({ page }) => {
     await signInThroughSpa(page)
-    const apiUrl = new URL('/api/v1/weather/secure', page.url()).toString()
+    const apiUrl = new URL('/api/v1/users/me', page.url()).toString()
 
     const navigation = await followLinkFromAnotherSite(page, apiUrl)
 
@@ -335,7 +325,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
   // Get server URL from environment or use default
   const serverUrl = process.env.SERVER_URL || 'https://localhost:24713'
 
-  test('should load Swagger UI with OAuth configured and display Weather endpoints', async ({
+  test('should load Swagger UI with OAuth configured and display the Users endpoints', async ({
     page,
   }) => {
     // Step 1: Navigate to Swagger UI
@@ -352,15 +342,15 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     const authorizeButton = page.getByRole('button', { name: /authorize/i })
     await expect(authorizeButton).toBeVisible({ timeout: 5000 })
 
-    // Step 4: Expand the Weather section to see the Weather endpoints
-    await expandSwaggerTag(page, 'Weather')
+    // Step 4: Expand the Users section to see the Users endpoints
+    await expandSwaggerTag(page, 'Users')
 
-    // Step 5: Verify Weather endpoints are visible after expansion
-    await expect(page.getByText('/api/v1/weather').first()).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('/api/v1/weather/secure')).toBeVisible({ timeout: 5000 })
+    // Step 5: Verify the Users endpoints are visible after expansion
+    await expect(page.getByText('/api/v1/users').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('/api/v1/users/me')).toBeVisible({ timeout: 5000 })
   })
 
-  test('should authorize and access secure weather endpoint', async ({ page }) => {
+  test('should authorize and call the current user endpoint', async ({ page }) => {
     // Step 1: Navigate to Swagger UI
     await page.goto(`${serverUrl}/swagger`, {
       waitUntil: 'networkidle',
@@ -420,11 +410,11 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
       await closeButton.click()
     }
 
-    // Step 8: Expand the Weather section
-    await expandSwaggerTag(page, 'Weather')
+    // Step 8: Expand the Users section
+    await expandSwaggerTag(page, 'Users')
 
-    // Step 9: Find and click on the secure weather endpoint row to expand it
-    const secureEndpoint = page.locator('.opblock').filter({ hasText: '/api/v1/weather/secure' })
+    // Step 9: Find and click on the current user endpoint row to expand it
+    const secureEndpoint = page.locator('.opblock').filter({ hasText: '/api/v1/users/me' })
     await expect(secureEndpoint).toBeVisible({ timeout: 5000 })
 
     // Click on the summary to expand if not already expanded. A click toggles it
@@ -434,7 +424,7 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     await expect(secureEndpoint).toHaveClass(/\bis-open\b/)
     // Swagger UI resolves an operation after it opens. An Execute before that fails with
     // OperationNotFoundError and sends no request. The response example shows the resolved schema.
-    await expect(secureEndpoint.locator('.responses-wrapper')).toContainText('requestedBy', { timeout: 30000 })
+    await expect(secureEndpoint.locator('.responses-wrapper')).toContainText('identifier', { timeout: 30000 })
 
     // Step 10: Click "Try it out" button if visible (might be auto-enabled)
     const tryItOutButton = secureEndpoint.getByRole('button', { name: 'Try it out' })
@@ -456,9 +446,9 @@ test.describe(`Swagger - ${currentIdp.name}`, () => {
     const responseStatus = liveResponse.locator('tr.response .response-col_status')
     await expect(responseStatus).toContainText('200', { timeout: 10000 })
 
-    // requestedBy in the body proves that the token reached the API
+    // identifier in the body proves that the token reached the API
     const responseBody = secureEndpoint.locator('.live-responses-table pre.microlight').first()
-    await expect(responseBody).toContainText('requestedBy', { timeout: 5000 })
+    await expect(responseBody).toContainText('identifier', { timeout: 5000 })
   })
 })
 
@@ -695,11 +685,11 @@ test.describe(`BFF refresh - ${currentIdp.name}`, () => {
     const discovery = await readDiscovery()
     await signInThroughSpa(page)
 
-    expect(await bffApiStatus(page, '/api/v1/weather/secure'), 'the first API call').toBe(200)
+    expect(await bffApiStatus(page, '/api/v1/users/me'), 'the first API call').toBe(200)
     // iat has a resolution of one second, so the second call starts in a later second than each earlier token
     await page.waitForTimeout(2500)
     const secondCallStart = Math.floor(Date.now() / 1000)
-    expect(await bffApiStatus(page, '/api/v1/weather/secure'), 'the second API call, with the rotated refresh token').toBe(200)
+    expect(await bffApiStatus(page, '/api/v1/users/me'), 'the second API call, with the rotated refresh token').toBe(200)
     expect(await bffUserStatus(page), 'the BFF session after the refreshes').toBe(200)
 
     const claims = await page.evaluate(
@@ -737,11 +727,11 @@ test.describe(`Refresh lock - ${currentIdp.name}`, () => {
     const statuses = await page.evaluate(async () => {
       // no-store, because Chrome holds a second GET of the same URL until the first one ends, for its cache
       const call = async () =>
-        (await fetch('/api/v1/weather/secure', { headers: { 'X-CSRF': '1' }, cache: 'no-store' })).status
+        (await fetch('/api/v1/users/me', { headers: { 'X-CSRF': '1' }, cache: 'no-store' })).status
       return Promise.all([call(), call()])
     })
     expect(statuses, 'the two API calls at the same time').toEqual([200, 200])
     expect(await bffUserStatus(page), 'the BFF session after the two calls').toBe(200)
-    expect(await bffApiStatus(page, '/api/v1/weather/secure'), 'an API call after the two calls').toBe(200)
+    expect(await bffApiStatus(page, '/api/v1/users/me'), 'an API call after the two calls').toBe(200)
   })
 })

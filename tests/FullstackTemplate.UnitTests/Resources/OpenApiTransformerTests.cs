@@ -120,7 +120,7 @@ public class OpenApiTransformerTests
     public async Task unauthorized_transformer_skips_an_operation_that_allows_anonymous_callers(bool hasAuthorize)
     {
         // Arrange
-        var operation = Operation("GetWeatherForecast", paged: false);
+        var operation = Operation("GetHealth", paged: false);
         object[] metadata = hasAuthorize ? [new AuthorizeAttribute(), new AllowAnonymousAttribute()] : [];
 
         // Act
@@ -296,6 +296,159 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    public async Task limits_transformer_accepts_a_bound_with_an_exponent_from_a_transformer_before_it()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync(
+            (BoundsDto dto) => dto, new BoundsTransformer("0", "1.7976931348623157E+308"));
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(BoundsDto)].Properties.ShouldNotBeNull();
+        properties["weight"].Maximum.ShouldBe("1.7976931348623157E+308");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_minimum_with_an_exponent_more_than_the_maximum()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer("1E+300", "1E+299"));
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum 1E+300 and the maximum 1E+299");
+    }
+
+    [Test]
+    [Arguments("2E-30", "1E-30")]
+    [Arguments("1.6E-28", "1.5E-28")]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_below_the_decimal_range(
+        string minimum, string maximum)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum {minimum} and the maximum {maximum}");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_by_less_than_a_double_can_hold()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((CloseBoundsDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(CloseBoundsDto)}.count has the minimum {long.MaxValue} and the maximum {long.MaxValue - 1}");
+    }
+
+    [Test]
+    [Arguments("-1", "-2")]
+    [Arguments("1", "-1")]
+    [Arguments("-1.4", "-1.5")]
+    [Arguments("1E+5", "-1E+6")]
+    [Arguments("1E-1", "1E-2")]
+    [Arguments("-1E-2", "-1E-1")]
+    [Arguments("10", "9.99")]
+    [Arguments("0.0001", "1E-5")]
+    [Arguments("0E+5", "-1")]
+    [Arguments("1E-9", "-0.0E+3")]
+    [Arguments("11111111111111111111111111111111111111111111111112", "11111111111111111111111111111111111111111111111111")]
+    [Arguments("2e3", "1e3")]
+    [Arguments("1001", "1e3")]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_in_any_number_form(
+        string minimum, string maximum)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum {minimum} and the maximum {maximum}");
+    }
+
+    [Test]
+    [Arguments("-2", "-1")]
+    [Arguments("-1", "1")]
+    [Arguments("-1.5", "-1.4")]
+    [Arguments("-2E+3", "-1E+3")]
+    [Arguments("1.5", "10")]
+    [Arguments("9.99", "10")]
+    [Arguments("5", "5")]
+    [Arguments("1.0", "1E0")]
+    [Arguments("1E0", "1.0")]
+    [Arguments("-1.0", "-1E0")]
+    [Arguments("1E-5", "0.0001")]
+    [Arguments("0.1", "1E-1")]
+    [Arguments("1E-1", "0.1")]
+    [Arguments("0E+5", "-0")]
+    [Arguments("-0", "0")]
+    [Arguments("-0.0E+3", "0")]
+    [Arguments("0", "-0.0E+3")]
+    [Arguments("11111111111111111111111111111111111111111111111111", "11111111111111111111111111111111111111111111111112")]
+    [Arguments("11111111111111111111111111111111111111111111111111", "11111111111111111111111111111111111111111111111111")]
+    [Arguments("1e3", "1000")]
+    [Arguments("1000", "1e3")]
+    public async Task limits_transformer_accepts_a_minimum_not_more_than_the_maximum_in_any_number_form(
+        string minimum, string maximum)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var weight = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(BoundsDto)].Properties.ShouldNotBeNull()["weight"];
+        (weight.Minimum, weight.Maximum).ShouldBe((minimum, maximum));
+    }
+
+    [Test]
+    [Timeout(30_000)]
+    [Arguments("1E+100000000", "1", true)]
+    [Arguments("1", "1E+100000000", false)]
+    [Arguments("1E-2147483648", "1", false)]
+    [Arguments("1.5E-2147483648", "1", false)]
+    [Arguments("1E+2147483648", "1E+2147483647", true)]
+    [Arguments("1E+99999999999999999999", "1E+99999999999999999998", true)]
+    [Arguments("15E+2147483647", "1.5E+2147483648", false)]
+    [Arguments("1.6E+2147483648", "15E+2147483647", true)]
+    public async Task limits_transformer_compares_bounds_with_a_huge_exponent_quickly(
+        string minimum, string maximum, bool rejected, CancellationToken cancellationToken)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        // The transformers run on the calling thread, so a compare that never ends blocks it before the timeout can fail the test
+        var act = () => Task.Run(
+            () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync(cancellationToken),
+            cancellationToken);
+
+        // Assert
+        if (rejected)
+            (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum {minimum} and the maximum {maximum}");
+        else
+            await act.ShouldNotThrowAsync();
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_member_that_is_not_a_public_static_number_field()
     {
         // Arrange
@@ -309,7 +462,8 @@ public class OpenApiTransformerTests
         exception.Message.ShouldContain($"{nameof(Limits)}.{nameof(Limits.Unit)}");
     }
 
-    private static async Task<WebApplication> AppWithLimitsTransformerAsync(Delegate handler)
+    private static async Task<WebApplication> AppWithLimitsTransformerAsync(
+        Delegate handler, IOpenApiSchemaTransformer? transformerBefore = null)
     {
         var builder = WebApplication.CreateSlimBuilder();
         // The Server appsettings.json in the test output sets Kestrel endpoints on 8080 and 8081, and they win over UseUrls
@@ -321,6 +475,8 @@ public class OpenApiTransformerTests
         {
             options.AddSchemaTransformer<RemoveStringFromNumbersTransformer>();
             options.AddSchemaTransformer<UnsignedIntegerRangeTransformer>();
+            if (transformerBefore is not null)
+                options.AddSchemaTransformer(transformerBefore);
             options.AddSchemaTransformer<SchemaLimitsTransformer>();
         });
         var app = builder.Build();
@@ -338,6 +494,8 @@ public class OpenApiTransformerTests
         public const int SeatsMin = 1;
         public const int VersionMax = 1000;
         public const string Unit = "kg";
+        public const long CountMin = long.MaxValue;
+        public const long CountMax = long.MaxValue - 1;
     }
 
     private sealed record LimitedDto
@@ -376,6 +534,28 @@ public class OpenApiTransformerTests
         [SchemaMinimum(typeof(Limits), nameof(Limits.QuantityMax))]
         [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMin))]
         public decimal Quantity { get; init; }
+    }
+
+    private sealed record CloseBoundsDto
+    {
+        [SchemaMinimum(typeof(Limits), nameof(Limits.CountMin))]
+        [SchemaMaximum(typeof(Limits), nameof(Limits.CountMax))]
+        public long Count { get; init; }
+    }
+
+    private sealed record BoundsDto
+    {
+        public double Weight { get; init; }
+    }
+
+    private sealed class BoundsTransformer(string minimum, string maximum) : IOpenApiSchemaTransformer
+    {
+        public Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
+        {
+            if (context.JsonPropertyInfo?.DeclaringType == typeof(BoundsDto))
+                (schema.Minimum, schema.Maximum) = (minimum, maximum);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed record NonNumericLimitDto

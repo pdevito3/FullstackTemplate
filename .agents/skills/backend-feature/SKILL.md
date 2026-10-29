@@ -517,7 +517,7 @@ public LineItem AddLineItem(Product product, int quantity)
 - [ ] The transports of the feature are known (HTTP, gRPC, MCP, or none)
 - [ ] One adapter file added for each of these transports, and no other
 - [ ] If HTTP: `[Feature].Http.cs` endpoint added with its name, tag, version, and error statuses
-- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler. Add the tool name to the expected lists of `ToolsOfEachCaller` in `TenantMcpToolTests` for each caller that can use it
+- [ ] If MCP: `[Feature].Mcp.cs` tool added with exactly one `[ToolAccess]` that matches the check of the handler. Add the tool name to the expected lists of `ToolsOfEachCaller` in `TenantExampleMcpToolTests` for each caller that can use it
 - [ ] Additional DTOs created if needed
 - [ ] Telemetry added with the `feature-telemetry` skill: query tags, id tags on the feature span, a log for each state change, and metrics if support needs a rate
 - [ ] A command that runs again or takes a lock has a race test (see the `writing-tests` skill)

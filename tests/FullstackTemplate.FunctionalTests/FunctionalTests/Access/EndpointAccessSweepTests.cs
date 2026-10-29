@@ -11,6 +11,10 @@ using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+// example:start
+using FullstackTemplate.Server.Examples.Workshops;
+using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+// example:end
 using global::Grpc.AspNetCore.Server;
 using global::Grpc.Core;
 using global::Google.Protobuf;
@@ -33,12 +37,20 @@ public class EndpointAccessSweepTests : TestBase
     {
         ["GetTenant"] = new("Each member reads the own tenant. The tenant filter hides each other tenant."),
         ["GetTenantList"] = new("Each member lists the own tenant. The tenant filter hides each other tenant."),
-        ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
-        ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
         ["/fullstacktemplate.tenants.v1.TenantsService/GetTenant"] = new("The gRPC method of GetTenant."),
         ["/fullstacktemplate.tenants.v1.TenantsService/ListTenants"] = new("The gRPC method of GetTenantList."),
+        ["GetCurrentUser"] = new("Each signed-in caller reads the own identity. It takes no ID and reads no tenant rows."),
+        // example:start
+        ["GetVenue"] = new("Each member reads the venues of the own tenant. The tenant filter hides each other tenant."),
+        ["GetVenueList"] = new("Each member lists the venues of the own tenant. The tenant filter hides each other tenant."),
+        ["GetWorkshop"] = new("Each member reads the workshops of the own tenant. The allowed actions show what the caller can do."),
+        ["GetWorkshopList"] = new("Each member lists the workshops of the own tenant. The tenant filter hides each other tenant."),
+        ["list_workshops"] = new("ToolAccessKind.Read. Each member lists the workshops of the own tenant, and the tenant filter hides the others."),
+        ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
+        ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
         ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
         ["GetWeatherForecast"] = new("Demo of a public endpoint. It has no tenant rows.", Anonymous: true),
+        // example:end
     };
 
     private static readonly Dictionary<string, string> InfrastructureRoutes = new()
@@ -335,34 +347,51 @@ public class EndpointAccessSweepTests : TestBase
             .AddTenant(out var tenant)
             .AddUsers(out var users, u => u.Role = "User", u => u.Role = "Admin", u => u.Role = "User")
             .Under(tenant)
+            // example:start
+            .AddVenue(out var venue)
+            .AddWorkshop(out var workshop)
+            .Under(tenant)
+            // example:end
             .AddAgent(out var agent);
         var (member, admin, otherUser) = (users[0], users[1], users[2]);
         foreach (var permission in member.UserPermissions.ToList())
             member.RemovePermission(permission);
         admin.AddPermissions(Permission.GetAll());
+        // example:start
+        var offered = (ScheduleDecision.Offered)WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, DateTimeOffset.UtcNow, workshop.Version));
+        workshop.Schedule(offered.Start);
+        // example:end
 
         await InsertAsync(tenant);
         await InsertAsync(users);
         await InsertAsync(agent);
+        // example:start
+        await InsertAsync(venue);
+        await InsertAsync(workshop);
+        // example:end
 
         var idsByKind = new Dictionary<string, string>
         {
             ["users"] = otherUser.Id,
             ["agents"] = agent.Id,
             ["tenants"] = tenant.Id,
+            // example:start
+            ["venues"] = venue.Id,
+            ["workshops"] = workshop.Id,
+            // example:end
         };
         return new TenantRecords(member, admin, new RecordIds(idsByKind, otherUser.Identifier));
     }
 
-    // ...Domain.AuditEntries.Features gives audit-entries
+    // ...Domain.AuditEntries.Features gives audit-entries, and ...Examples.Tenants.Features gives tenants
     private static string KindOfNamespace(string? ns)
     {
         var segments = (ns ?? "").Split('.');
-        var domain = Array.IndexOf(segments, "Domain");
-        if (domain < 0 || domain + 1 >= segments.Length)
-            return $"{ns} (no Domain folder)";
+        var root = Array.FindIndex(segments, s => s is "Domain" or "Examples");
+        if (root < 0 || root + 1 >= segments.Length)
+            return $"{ns} (no Domain or Examples folder)";
         var kind = new StringBuilder();
-        foreach (var c in segments[domain + 1])
+        foreach (var c in segments[root + 1])
         {
             if (char.IsUpper(c) && kind.Length > 0)
                 kind.Append('-');

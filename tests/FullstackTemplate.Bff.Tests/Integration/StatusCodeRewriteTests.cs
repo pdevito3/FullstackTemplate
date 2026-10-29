@@ -13,7 +13,7 @@ public class StatusCodeRewriteTests
 {
     [Test]
     [Arguments("/local-api/hello")]
-    [Arguments("/api/v1/weather")]
+    [Arguments("/api/v1/items")]
     public async Task a_challenge_on_a_bff_api_endpoint_gets_401_with_no_location_and_no_cookies(string path)
     {
         // Arrange
@@ -30,7 +30,7 @@ public class StatusCodeRewriteTests
 
     [Test]
     [Arguments("/local-api/hello")]
-    [Arguments("/api/v1/weather")]
+    [Arguments("/api/v1/items")]
     public async Task a_forbid_on_a_bff_api_endpoint_gets_403_with_no_location_and_no_cookies(string path)
     {
         // Arrange

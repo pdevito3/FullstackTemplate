@@ -147,7 +147,18 @@ These rules stop a caller from joining a tenant that is not theirs:
 
 `TenantOwnedRowsTests` finds each entity type with a `TenantId` property or the tenant filter. The test fails if a type with a `TenantId` has no tenant filter, or if a type has a table that the delete skips. A type with a `TenantId` always needs the tenant filter. The delete deletes only `BaseEntity` rows, so make a type whose rows go with their tenant a `BaseEntity`. The audit log is on the list of the test that keeps its rows after the delete. To keep the rows of another type, add the type to that list with the reason.
 
-The delete loads all the rows into memory and saves them in one transaction, while it holds the exclusive lock of the tenant. The cost grows with the number of rows. The test users had a random role, so some had permission rows too, and each deleted row writes an audit entry. In a Debug build on a busy machine, the delete of a tenant with 20,000 users took 17 s and 39 s in two runs, and about 1.8 GB of heap. The delete of 50,000 users took 43 s and about 4 GB of heap in one run. That is 1 ms to 2 ms and about 80 KB of heap for each user. During the delete, each add that takes the shared lock of the tenant waits. If a tenant of your app can own more than about 10,000 users or other aggregate roots, change the delete to save in batches.
+The delete loads all the rows into memory and saves them in one transaction, while it holds the exclusive lock of the tenant. The cost grows with the number of rows. The test users had a random role, so some had permission rows too, and each deleted row writes an audit entry. In a Debug build on a busy machine, the delete of a tenant with 20,000 users took 17 s and 39 s in two runs, and the heap grew by about 1.8 GB. The delete of 50,000 users took 43 s, and the heap grew by about 4 GB in one run. That is 1 ms to 2 ms and about 80 KB of heap for each user. The heap growth is the peak managed heap of the test process during the delete, less the heap before the delete. The peak is a sample every 20 ms, so it can miss a short peak. The test process also runs the server, so the heap is that of the test and the server together. A Release build and another machine give other numbers.
+
+`TenantDeleteCostBenchmark` in `tests/FullstackTemplate.IntegrationTests` makes these numbers. It has `[Explicit]`, so it runs only when a filter names it, and CI does not run it. `TENANT_DELETE_BENCHMARK_USERS` sets the number of users, and the default is 1,000. To run it, use this command from the root of the repository. Docker must run, because the test starts a PostgreSQL container. Remove `-c Release` for a Debug build.
+
+```bash
+TENANT_DELETE_BENCHMARK_USERS=20000 dotnet run --project tests/FullstackTemplate.IntegrationTests -c Release -- \
+  --treenode-filter '/*/*/TenantDeleteCostBenchmark/*' --output detailed | grep '^users='
+```
+
+The line gives the users of the tenant (with the admin), the time of the delete, the heap before the delete, the peak heap, the heap growth, and the bytes that the process allocated during the delete. The test fails if a user of the tenant is not deleted.
+
+During the delete, each add that takes the shared lock of the tenant waits. If a tenant of your app can own more than about 10,000 users or other aggregate roots, change the delete to save in batches.
 
 For a user of a deleted tenant, the server finds no user record on the next request. A deleted user frees its identifier, so the same person can send `POST /api/v1/users/initiate` to start a new tenant and a new user. The new user has a new ID. The old user and its history stay in the deleted tenant. The unique index on the tenant name also covers the deleted tenants, so the new tenant needs a new name.
 

@@ -20,7 +20,7 @@ public class LogValueTests
     }
 
     [Test]
-    [Arguments("/api/v1/weather?city=x")]
+    [Arguments("/api/v1/items?city=x")]
     [Arguments("/caf\u00e9 \u4e2d")]
     public void a_clean_value_is_the_same_string(string value)
     {

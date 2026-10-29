@@ -10,24 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StartTenantRouteImport } from './routes/start-tenant'
-import { Route as FilterDemoRouteImport } from './routes/filter-demo'
-import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as examplesWeatherRouteImport } from './routes/(examples)/weather'
+import { Route as examplesFilterDemoRouteImport } from './routes/(examples)/filter-demo'
+import { Route as examplesComponentsRouteImport } from './routes/(examples)/components'
+import { Route as examplesWorkshopsIndexRouteImport } from './routes/(examples)/workshops/index'
+import { Route as examplesWorkshopsNewRouteImport } from './routes/(examples)/workshops/new'
+import { Route as examplesVenuesNewRouteImport } from './routes/(examples)/venues/new'
+import { Route as examplesWorkshopsIdIndexRouteImport } from './routes/(examples)/workshops/$id/index'
+import { Route as examplesWorkshopsIdEditRouteImport } from './routes/(examples)/workshops/$id/edit'
 
 const StartTenantRoute = StartTenantRouteImport.update({
   id: '/start-tenant',
   path: '/start-tenant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FilterDemoRoute = FilterDemoRouteImport.update({
-  id: '/filter-demo',
-  path: '/filter-demo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComponentsRoute = ComponentsRouteImport.update({
-  id: '/components',
-  path: '/components',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -40,49 +36,142 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const examplesWeatherRoute = examplesWeatherRouteImport.update({
+  id: '/(examples)/weather',
+  path: '/weather',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesFilterDemoRoute = examplesFilterDemoRouteImport.update({
+  id: '/(examples)/filter-demo',
+  path: '/filter-demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesComponentsRoute = examplesComponentsRouteImport.update({
+  id: '/(examples)/components',
+  path: '/components',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesWorkshopsIndexRoute = examplesWorkshopsIndexRouteImport.update({
+  id: '/(examples)/workshops/',
+  path: '/workshops/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesWorkshopsNewRoute = examplesWorkshopsNewRouteImport.update({
+  id: '/(examples)/workshops/new',
+  path: '/workshops/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesVenuesNewRoute = examplesVenuesNewRouteImport.update({
+  id: '/(examples)/venues/new',
+  path: '/venues/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesWorkshopsIdIndexRoute =
+  examplesWorkshopsIdIndexRouteImport.update({
+    id: '/(examples)/workshops/$id/',
+    path: '/workshops/$id/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const examplesWorkshopsIdEditRoute = examplesWorkshopsIdEditRouteImport.update({
+  id: '/(examples)/workshops/$id/edit',
+  path: '/workshops/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/components': typeof ComponentsRoute
-  '/filter-demo': typeof FilterDemoRoute
   '/start-tenant': typeof StartTenantRoute
+  '/components': typeof examplesComponentsRoute
+  '/filter-demo': typeof examplesFilterDemoRoute
+  '/weather': typeof examplesWeatherRoute
+  '/venues/new': typeof examplesVenuesNewRoute
+  '/workshops/new': typeof examplesWorkshopsNewRoute
+  '/workshops': typeof examplesWorkshopsIndexRoute
+  '/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
+  '/workshops/$id': typeof examplesWorkshopsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/components': typeof ComponentsRoute
-  '/filter-demo': typeof FilterDemoRoute
   '/start-tenant': typeof StartTenantRoute
+  '/components': typeof examplesComponentsRoute
+  '/filter-demo': typeof examplesFilterDemoRoute
+  '/weather': typeof examplesWeatherRoute
+  '/venues/new': typeof examplesVenuesNewRoute
+  '/workshops/new': typeof examplesWorkshopsNewRoute
+  '/workshops': typeof examplesWorkshopsIndexRoute
+  '/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
+  '/workshops/$id': typeof examplesWorkshopsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/components': typeof ComponentsRoute
-  '/filter-demo': typeof FilterDemoRoute
   '/start-tenant': typeof StartTenantRoute
+  '/(examples)/components': typeof examplesComponentsRoute
+  '/(examples)/filter-demo': typeof examplesFilterDemoRoute
+  '/(examples)/weather': typeof examplesWeatherRoute
+  '/(examples)/venues/new': typeof examplesVenuesNewRoute
+  '/(examples)/workshops/new': typeof examplesWorkshopsNewRoute
+  '/(examples)/workshops/': typeof examplesWorkshopsIndexRoute
+  '/(examples)/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
+  '/(examples)/workshops/$id/': typeof examplesWorkshopsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/components' | '/filter-demo' | '/start-tenant'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/start-tenant'
+    | '/components'
+    | '/filter-demo'
+    | '/weather'
+    | '/venues/new'
+    | '/workshops/new'
+    | '/workshops'
+    | '/workshops/$id/edit'
+    | '/workshops/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/components' | '/filter-demo' | '/start-tenant'
+  to:
+    | '/'
+    | '/about'
+    | '/start-tenant'
+    | '/components'
+    | '/filter-demo'
+    | '/weather'
+    | '/venues/new'
+    | '/workshops/new'
+    | '/workshops'
+    | '/workshops/$id/edit'
+    | '/workshops/$id'
   id:
     | '__root__'
     | '/'
     | '/about'
-    | '/components'
-    | '/filter-demo'
     | '/start-tenant'
+    | '/(examples)/components'
+    | '/(examples)/filter-demo'
+    | '/(examples)/weather'
+    | '/(examples)/venues/new'
+    | '/(examples)/workshops/new'
+    | '/(examples)/workshops/'
+    | '/(examples)/workshops/$id/edit'
+    | '/(examples)/workshops/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  ComponentsRoute: typeof ComponentsRoute
-  FilterDemoRoute: typeof FilterDemoRoute
   StartTenantRoute: typeof StartTenantRoute
+  examplesComponentsRoute: typeof examplesComponentsRoute
+  examplesFilterDemoRoute: typeof examplesFilterDemoRoute
+  examplesWeatherRoute: typeof examplesWeatherRoute
+  examplesVenuesNewRoute: typeof examplesVenuesNewRoute
+  examplesWorkshopsNewRoute: typeof examplesWorkshopsNewRoute
+  examplesWorkshopsIndexRoute: typeof examplesWorkshopsIndexRoute
+  examplesWorkshopsIdEditRoute: typeof examplesWorkshopsIdEditRoute
+  examplesWorkshopsIdIndexRoute: typeof examplesWorkshopsIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,20 +181,6 @@ declare module '@tanstack/react-router' {
       path: '/start-tenant'
       fullPath: '/start-tenant'
       preLoaderRoute: typeof StartTenantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/filter-demo': {
-      id: '/filter-demo'
-      path: '/filter-demo'
-      fullPath: '/filter-demo'
-      preLoaderRoute: typeof FilterDemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/components': {
-      id: '/components'
-      path: '/components'
-      fullPath: '/components'
-      preLoaderRoute: typeof ComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -122,15 +197,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(examples)/weather': {
+      id: '/(examples)/weather'
+      path: '/weather'
+      fullPath: '/weather'
+      preLoaderRoute: typeof examplesWeatherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/filter-demo': {
+      id: '/(examples)/filter-demo'
+      path: '/filter-demo'
+      fullPath: '/filter-demo'
+      preLoaderRoute: typeof examplesFilterDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/components': {
+      id: '/(examples)/components'
+      path: '/components'
+      fullPath: '/components'
+      preLoaderRoute: typeof examplesComponentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/': {
+      id: '/(examples)/workshops/'
+      path: '/workshops'
+      fullPath: '/workshops'
+      preLoaderRoute: typeof examplesWorkshopsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/new': {
+      id: '/(examples)/workshops/new'
+      path: '/workshops/new'
+      fullPath: '/workshops/new'
+      preLoaderRoute: typeof examplesWorkshopsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/venues/new': {
+      id: '/(examples)/venues/new'
+      path: '/venues/new'
+      fullPath: '/venues/new'
+      preLoaderRoute: typeof examplesVenuesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/$id/': {
+      id: '/(examples)/workshops/$id/'
+      path: '/workshops/$id'
+      fullPath: '/workshops/$id'
+      preLoaderRoute: typeof examplesWorkshopsIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/$id/edit': {
+      id: '/(examples)/workshops/$id/edit'
+      path: '/workshops/$id/edit'
+      fullPath: '/workshops/$id/edit'
+      preLoaderRoute: typeof examplesWorkshopsIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  ComponentsRoute: ComponentsRoute,
-  FilterDemoRoute: FilterDemoRoute,
   StartTenantRoute: StartTenantRoute,
+  examplesComponentsRoute: examplesComponentsRoute,
+  examplesFilterDemoRoute: examplesFilterDemoRoute,
+  examplesWeatherRoute: examplesWeatherRoute,
+  examplesVenuesNewRoute: examplesVenuesNewRoute,
+  examplesWorkshopsNewRoute: examplesWorkshopsNewRoute,
+  examplesWorkshopsIndexRoute: examplesWorkshopsIndexRoute,
+  examplesWorkshopsIdEditRoute: examplesWorkshopsIdEditRoute,
+  examplesWorkshopsIdIndexRoute: examplesWorkshopsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

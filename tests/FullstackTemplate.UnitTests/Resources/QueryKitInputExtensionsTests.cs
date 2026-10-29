@@ -93,7 +93,17 @@ public class QueryKitInputExtensionsTests : IDisposable
         exception.InnerException.ShouldBeOfType<ParsingException>();
     }
 
-    // The Server sets no DbContext type in its QueryKit configuration, so QueryKit cannot run the sounds-like operators
+    [Test]
+    public void value_that_holds_the_words_of_the_querykit_message_does_not_get_into_the_message()
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() =>
+            Rows.ApplyFilters("Seats == \"x for the filter property 'jane@example.com\"", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldBe("A value in the filter does not fit the field Seats. Change the value, then try again.");
+    }
+
     [Test]
     [Arguments("Name ~~ \"paul\"")]
     [Arguments("Name !~ \"paul\"")]

@@ -22,7 +22,6 @@ public class QueryInputErrorTests : TestBase
         ("filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\""),
         ("filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}"),
         ("filters", "Name ^^ \"x\""),
-        // The Server sets no DbContext type for QueryKit, so it cannot run the sounds-like operators
         ("filters", "Name ~~ \"paul\""),
         ("filters", "Name !~ \"paul\""),
         ("sortOrder", "Unknown desc,,"),

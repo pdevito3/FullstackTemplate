@@ -4,6 +4,7 @@ import { aVenue } from '@tests/support/examples/venue-builder'
 import { aWorkshop } from '@tests/support/examples/workshop-builder'
 import { workshopPaths, workshopsApi } from '@tests/support/examples/workshops-api'
 import { expect, test } from '@tests/support/fixtures'
+import { appShellPage } from '@tests/features/app-shell/app-shell.tasks'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { workshopsPage } from './workshops.tasks'
 
@@ -61,11 +62,11 @@ test.describe('the workshops', () => {
     )
     const workshops = workshopsPage(page)
     await workshops.openNewForm(venue.build().id)
-    await expect(workshops.at.newStartZone('Chicago')).toBeVisible()
+    await expect(workshops.at.newStartZone('Central Time')).toBeVisible()
     await workshops.fillNew({ title: 'Intro to Kubb', start: '081620260930A', capacity: '12' })
     await workshops.pickVenue('Harbor Hall')
 
-    await expect(workshops.at.newStartZone('Pago Pago')).toBeVisible()
+    await expect(workshops.at.newStartZone('American Samoa Time')).toBeVisible()
     await workshops.addAndOpenDetail(id, harbor.build().id)
 
     await expect(workshops.at.detailHeading('Intro to Kubb')).toBeVisible()
@@ -83,7 +84,7 @@ test.describe('the workshops', () => {
     await workshops.at.add.click()
 
     await expect(workshops.at.newFormMessage(
-      'This time does not exist in Chicago on that day, because the clocks go forward. Choose another time.',
+      'This time does not exist in Central Time on that day, because the clocks go forward. Choose another time.',
     )).toBeVisible()
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
@@ -111,7 +112,7 @@ test.describe('the workshops', () => {
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(harbor), workshopsApi.updateSaves(workshop.savedAgain()))
     const workshops = workshopsPage(page)
     await workshops.openEditForm(id)
-    await expect(workshops.at.editStartZone('Pago Pago')).toBeVisible()
+    await expect(workshops.at.editStartZone('American Samoa Time')).toBeVisible()
 
     await workshops.setEditHour('9')
     await workshops.saveAndOpenDetail(id, harbor.build().id)
@@ -260,6 +261,40 @@ test.describe('the workshops of a signed-in user with no tenant', () => {
     await expect(workshops.at.emptyList).toHaveCount(0)
     await expect(workshops.at.newWorkshopLink).toHaveCount(0)
     await expect(workshops.at.newVenueLink).toHaveCount(0)
+  })
+})
+
+test.describe('the focus after a link in a workshop page', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  const venue = aVenue().named('Main Hall')
+
+  test('New workshop moves the focus to the heading of the form and says nothing in the status region', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]), workshopsApi.venueListReturns([venue]))
+    const workshops = workshopsPage(page)
+    await workshops.controlTheClock()
+    await workshops.openList()
+
+    await workshops.pressNewWorkshopLink()
+    await workshops.letPendingAnnouncementsPass()
+
+    await expect(workshops.at.newHeading).toBeFocused()
+    await expect(appShellPage(page).at.pageAnnouncement).toHaveText('')
+  })
+
+  test('a workshop title moves the focus to the heading that shows after the workshop loads, and says nothing', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = workshop.build()
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.controlTheClock()
+    await workshops.openList()
+
+    await workshops.pressWorkshopLink('Intro to Kubb', id, venueId)
+    await workshops.letPendingAnnouncementsPass()
+
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
+    await expect(appShellPage(page).at.pageAnnouncement).toHaveText('')
   })
 })
 

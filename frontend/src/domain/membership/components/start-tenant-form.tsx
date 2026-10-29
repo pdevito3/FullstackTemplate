@@ -90,7 +90,7 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
         {field('username', 'Username')}
         <FieldError errors={[errors.root?.server]} />
         <Button type="submit" className="self-start" isPending={form.formState.isSubmitting}>
-          Start tenant
+          Start a tenant
         </Button>
       </form>
     </Form>

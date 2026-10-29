@@ -7,7 +7,7 @@ import * as z from 'zod'
 import { tenantDtoSchema } from '../../models/zod/tenant-dto'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
 
-export const getTenantListQueryFiltersSchema = z.string().optional()
+export const getTenantListQueryFiltersSchema = z.string().max(2000).optional()
 
 export const getTenantListQuerySortOrderSchema = z.string().optional()
 

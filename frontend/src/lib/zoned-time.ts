@@ -29,8 +29,32 @@ export function browserTimeZone(): TimeZone {
   return getLocalTimeZone() as TimeZone
 }
 
+/**
+ * The name of the zone that a user knows, from the time zone names of the browser: the place, for example "Germany Time",
+ * or the name that people at the place use, for example "Eastern Time". It shows a bare offset only when the browser
+ * has no name for the zone. The name is in English, as the text of the SPA is.
+ */
 export function timeZoneLabel(zone: TimeZone): string {
-  return zone.replaceAll('_', ' ')
+  const names = (['shortGeneric', 'longGeneric', 'long'] as const).map(
+    (timeZoneName) =>
+      new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName })
+        .formatToParts()
+        .find((part) => part.type === 'timeZoneName')?.value ?? '',
+  )
+  return names.find(isWordName) ?? names[names.length - 1]
+}
+
+/**
+ * The message for a typed time that the clocks skip in a spring gap, as `instantAt` gives null for it. With no zone, the
+ * time is in the zone of the browser, so the message names no zone. docs/messages.md rule 4: one rule, one message.
+ */
+export function springGapMessage(zone?: TimeZone): string {
+  return `This time does not exist${zone ? ` in ${timeZoneLabel(zone)}` : ''} on that day, because the clocks go forward. Choose another time.`
+}
+
+/** Not an abbreviation, such as "ET", and not an offset, such as "GMT-5". */
+function isWordName(name: string): boolean {
+  return name.includes(' ') && !name.startsWith('GMT')
 }
 
 /** Today at the place, as `ZonedDate.TodayAt` on the Server. */

@@ -135,14 +135,7 @@ if (sweep) {
   await context.addInitScript(trackLastFocused)
 }
 if (noWebFont) await blockWebFonts(context)
-// The dev build shows the TanStack Router Devtools button over the page. The production build has no devtools.
-await context.addInitScript(() => {
-  document.addEventListener('DOMContentLoaded', () => {
-    const style = document.createElement('style')
-    style.textContent = '.TanStackRouterDevtools { display: none !important; }'
-    document.head.append(style)
-  })
-})
+await context.addInitScript(hideRouterDevtoolsOfDevBuild)
 const page = await context.newPage()
 const cdp = sweep ? await context.newCDPSession(page) : null
 const sweepFaults = []
@@ -172,6 +165,14 @@ page.on('response', (r) => {
 
 // The errors that already have a failure capture, so that an outer step or the runner does not capture again.
 const capturedErrors = new Set()
+
+function hideRouterDevtoolsOfDevBuild() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style')
+    style.textContent = '.TanStackRouterDevtools { display: none !important; }'
+    document.head.append(style)
+  })
+}
 
 async function step(name, fn) {
   const t0 = Date.now()

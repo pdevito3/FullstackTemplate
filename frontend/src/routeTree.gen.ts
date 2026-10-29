@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StartTenantRouteImport } from './routes/start-tenant'
 import { Route as FilterDemoRouteImport } from './routes/filter-demo'
 import { Route as ComponentsRouteImport } from './routes/components'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const StartTenantRoute = StartTenantRouteImport.update({
+  id: '/start-tenant',
+  path: '/start-tenant',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FilterDemoRoute = FilterDemoRouteImport.update({
   id: '/filter-demo',
   path: '/filter-demo',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/components': typeof ComponentsRoute
   '/filter-demo': typeof FilterDemoRoute
+  '/start-tenant': typeof StartTenantRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/components': typeof ComponentsRoute
   '/filter-demo': typeof FilterDemoRoute
+  '/start-tenant': typeof StartTenantRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,20 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/components': typeof ComponentsRoute
   '/filter-demo': typeof FilterDemoRoute
+  '/start-tenant': typeof StartTenantRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/components' | '/filter-demo'
+  fullPaths: '/' | '/about' | '/components' | '/filter-demo' | '/start-tenant'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/components' | '/filter-demo'
-  id: '__root__' | '/' | '/about' | '/components' | '/filter-demo'
+  to: '/' | '/about' | '/components' | '/filter-demo' | '/start-tenant'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/components'
+    | '/filter-demo'
+    | '/start-tenant'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +82,18 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ComponentsRoute: typeof ComponentsRoute
   FilterDemoRoute: typeof FilterDemoRoute
+  StartTenantRoute: typeof StartTenantRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/start-tenant': {
+      id: '/start-tenant'
+      path: '/start-tenant'
+      fullPath: '/start-tenant'
+      preLoaderRoute: typeof StartTenantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/filter-demo': {
       id: '/filter-demo'
       path: '/filter-demo'
@@ -107,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ComponentsRoute: ComponentsRoute,
   FilterDemoRoute: FilterDemoRoute,
+  StartTenantRoute: StartTenantRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

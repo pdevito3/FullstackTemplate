@@ -403,3 +403,5 @@ Use a separate deployment for the test run. The suite is the identity provider o
 ## Test users
 
 The seed files of each provider create its test users. The doc comment of each provider class in `FullstackTemplate.AppHost/AuthProviders/` lists them. The file in `frontend/e2e/idps/` gives the user that the e2e tests log in with.
+
+The seed files create users in the provider only. A new database has no user records, so a test user who signs in has no tenant and no permissions. Each page of the SPA then shows a notice that links to `Start a tenant` (`/start-tenant`). That page sends `POST /api/v1/users/initiate`, and the user becomes the admin of a new tenant. See [multi-tenancy.md](multi-tenancy.md#add-a-user-to-a-tenant).

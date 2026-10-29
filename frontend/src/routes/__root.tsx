@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   createRootRoute,
   Outlet,
@@ -10,6 +11,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { NoTenantNotice } from '@/domain/membership/components/no-tenant-notice'
 import { HrefRouterProvider } from '@/components/ui/link'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -35,6 +37,7 @@ function RootComponent() {
   const page = routerState.matches[routerState.matches.length - 1]
   const isNotFound = routerState.matches.some((match) => match.globalNotFound)
   const pageName = isNotFound ? 'Not Found' : page?.staticData.breadcrumb
+  const content = useFocusContentAfterNavigation(routerState.resolvedLocation?.pathname)
 
   return (
     <HrefRouterProvider>
@@ -57,7 +60,8 @@ function RootComponent() {
               </Breadcrumb>
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div ref={content} tabIndex={-1} className="flex flex-1 flex-col gap-4 p-4 pt-0 outline-none">
+            <NoTenantNotice />
             <Outlet />
           </div>
         </SidebarInset>
@@ -66,4 +70,23 @@ function RootComponent() {
       </SidebarProvider>
     </HrefRouterProvider>
   )
+}
+
+/**
+ * A link in the page unmounts with the page, so after a press on it the focus goes to the content of the new page,
+ * not to the body. The location resolves after the lazy route loads, when the new page is on the screen.
+ */
+function useFocusContentAfterNavigation(pathname: string | undefined) {
+  const content = useRef<HTMLDivElement>(null)
+  const lastPathname = useRef(pathname)
+
+  useEffect(() => {
+    const previous = lastPathname.current
+    lastPathname.current = pathname
+    // The first load leaves the focus where the browser puts it.
+    if (previous === undefined || previous === pathname) return
+    if (document.activeElement === document.body) content.current?.focus({ preventScroll: true })
+  }, [pathname])
+
+  return content
 }

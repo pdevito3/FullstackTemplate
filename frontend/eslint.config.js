@@ -126,12 +126,30 @@ const copiedRoots = (node) => {
   }
 }
 
+const firstValueAdvice = 'If {{source}} is only the first value and the user owns the state from then on, name it initialX or defaultX.'
+const timerCalls = new Set(['setTimeout', 'setInterval', 'requestAnimationFrame'])
+
+const functionNameOf = (fn) => fn.id?.name ?? (fn.parent.type === 'VariableDeclarator' ? fn.parent.id.name : null)
+
+// A hook result is server data only through its `data`, so `const { data } = useRecord(id)` is a copy source and
+// `useIsMobile()` or `query.isSuccess` is not.
+const takesQueryData = (variable, property) => {
+  const { id } = variable.defs[0].node
+  if (id.type === 'Identifier')
+    return property === 'data'
+  const field = id.type === 'ObjectPattern' && id.properties.find((p) => p.type === 'Property'
+    && (p.value.type === 'AssignmentPattern' ? p.value.left : p.value) === variable.identifiers[0])
+  return Boolean(field) && !field.computed && field.key.name === 'data'
+}
+
 export const noCopiedStateRule = {
   meta: {
     type: 'problem',
     schema: [],
     messages: {
-      copied: 'This state copies {{source}}, so it keeps the old value after {{source}} changes. Read the value where you use it (docs/frontend/server-state.md, rule 2). Give server data to a form in defaultValues. If the prop is only the first value and the user owns the state from then on, name the prop initialX or defaultX.',
+      prop: `This state copies {{source}}, so it keeps the old value after {{source}} changes. Read the value where you use it (docs/frontend/server-state.md, rule 2). Give server data to a form in defaultValues. ${firstValueAdvice.replace('name it', 'name the prop')}`,
+      argument: `This state copies {{source}}, so it keeps the old value after {{source}} changes. Read the value where you use it (docs/frontend/server-state.md, rule 2). ${firstValueAdvice.replace('name it', 'name the argument')}`,
+      query: 'This state copies {{source}}, so it keeps the old value after the query reads the record again. Read the value where you use it (docs/frontend/server-state.md, rule 2). Give server data to a form in defaultValues.',
     },
   },
   create(context) {
@@ -149,10 +167,12 @@ export const noCopiedStateRule = {
       if ((isFirstValueName(variable.name) && !isCopy) || (property && isFirstValueName(property)))
         return null
       if (isParameter)
-        return `the prop \`${variable.name}\``
+        return /^use[A-Z]/.test(functionNameOf(variable.scope.block) ?? '')
+          ? { kind: 'argument', label: `the argument \`${variable.name}\`` }
+          : { kind: 'prop', label: `the prop \`${variable.name}\`` }
       const hook = init && hookCalledBy(init)
       if (hook)
-        return ownStateHooks.has(hook) ? null : `the result of \`${hook}\``
+        return ownStateHooks.has(hook) || !takesQueryData(variable, property) ? null : { kind: 'query', label: `the result of \`${hook}\`` }
       return copiedRoots(init).map((root) => sourceOf(root, seen)).find(Boolean) ?? null
     }
 
@@ -162,22 +182,28 @@ export const noCopiedStateRule = {
         parent = parent.parent
       return parent
     }
+    const isTimerCallback = (fn) => fn?.parent.type === 'CallExpression' && fn.parent.arguments.includes(fn)
+      && timerCalls.has(fn.parent.callee.name ?? fn.parent.callee.property?.name)
     const sourceOfValue = (node) => copiedRoots(node).map((root) => sourceOf(root, new Set())).find(Boolean)
-    const renderSetsAgain = (node, source) => {
+    const readsSource = (node, source) => Boolean(node)
+      && referencesIn(sourceCode, node).some((ref) => sourceOf(ref.identifier, new Set())?.label === source.label)
+    // The render sets the state again from its source (client-state.md, "Effects"), or a timer sets it later, as a
+    // debounce does. An effect that sets it at once is the copy that this rule reports.
+    const setsAgain = (node, source) => {
       const setter = node.parent.type === 'VariableDeclarator' && node.parent.id.type === 'ArrayPattern' ? node.parent.id.elements[1] : null
       const variable = setter?.type === 'Identifier' && resolve(sourceCode.getScope(setter), setter.name)
       return Boolean(variable) && variable.references.some(({ identifier }) => {
         const call = identifier.parent
-        return call.type === 'CallExpression' && call.callee === identifier && functionOf(call) === functionOf(node)
-          && sourceOfValue(call.arguments[0]) === source
+        const fn = call.type === 'CallExpression' && call.callee === identifier && functionOf(call)
+        return Boolean(fn) && (fn === functionOf(node) || isTimerCallback(fn)) && readsSource(call.arguments[0], source)
       })
     }
 
     return {
       "CallExpression:matches([callee.name='useState'], [callee.property.name='useState'])"(node) {
         const source = sourceOfValue(node.arguments[0])
-        if (source && !renderSetsAgain(node, source))
-          context.report({ node, messageId: 'copied', data: { source } })
+        if (source && !setsAgain(node, source))
+          context.report({ node, messageId: source.kind, data: { source: source.label } })
       },
     }
   },

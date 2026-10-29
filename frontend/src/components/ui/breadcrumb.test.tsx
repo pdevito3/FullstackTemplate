@@ -1,5 +1,6 @@
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { expect, test } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage } from '@/components/ui/breadcrumb'
@@ -29,14 +30,15 @@ test.each([320, 375])('a long trail stays on one line in a %i px header and trun
   const crumb = screen.getByRole('link', { name: 'Work orders' }).element()
   const crumbItem = crumb.closest('li')!
   const current = screen.container.querySelector<HTMLElement>('[data-slot="breadcrumb-page"]')!
-  const lineHeight = parseFloat(getComputedStyle(current).lineHeight)
+  const name = [current, ...current.querySelectorAll('*')].find((el) => getComputedStyle(el).textOverflow === 'ellipsis')!
+  const lineHeight = parseFloat(getComputedStyle(name).lineHeight)
+  const middle = (el: Element) => (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2
 
-  expect(screen.getByRole('list').element().getBoundingClientRect().height).toBeLessThanOrEqual(lineHeight)
-  expect(current.getBoundingClientRect().height).toBeLessThanOrEqual(lineHeight)
+  expect(name.getBoundingClientRect().height).toBeLessThanOrEqual(lineHeight)
   expect(crumb.getBoundingClientRect().height).toBeLessThanOrEqual(lineHeight)
+  expect(Math.abs(middle(name) - middle(crumb))).toBeLessThanOrEqual(1)
   expect(crumbItem.scrollWidth).toBeLessThanOrEqual(crumbItem.clientWidth)
-  expect(current.scrollWidth).toBeGreaterThan(current.clientWidth)
-  expect(getComputedStyle(current).textOverflow).toBe('ellipsis')
+  expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
   expect(current.getBoundingClientRect().right).toBeLessThanOrEqual(header.getBoundingClientRect().right)
 })
 
@@ -91,6 +93,24 @@ test('a current page that truncates is a button that shows its full name in a po
   await current.click()
 
   await expect.element(screen.getByRole('dialog', { name: 'Current page' })).toHaveTextContent(workOrder)
+})
+
+test('a current page that truncates is a 44 px touch target, and its focus ring keeps space around the text', async () => {
+  const screen = await renderWorkOrderTrail(320)
+  const current = screen.getByRole('button', { name: workOrder })
+  await expect.element(current).toBeVisible()
+  expect(current.element().getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+
+  const parts = [current.element(), ...current.element().querySelectorAll('*')]
+  const shadows = parts.map((el) => getComputedStyle(el).boxShadow)
+
+  await userEvent.keyboard('{Tab}{Tab}')
+
+  await expect.element(current).toHaveFocus()
+  const ring = parts.find((el, i) => getComputedStyle(el).boxShadow !== shadows[i])!
+  const text = document.createRange()
+  text.selectNodeContents(document.createTreeWalker(current.element(), NodeFilter.SHOW_TEXT).nextNode()!)
+  expect(text.getBoundingClientRect().left - ring.getBoundingClientRect().left).toBeGreaterThanOrEqual(2)
 })
 
 test('a current page that fits is a disabled link, not a button', async () => {

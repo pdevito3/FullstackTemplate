@@ -199,7 +199,7 @@ export function FilterBuilder({
 
       <div className="flex flex-wrap items-start gap-3">
         {state.filters.map((item, index) => (
-          <div key={item.id} className="flex max-w-full min-w-0 items-center gap-1.5">
+          <div key={item.id} className={cn('flex max-w-full min-w-0 items-center gap-1.5', !isFilter(item) && 'max-sm:basis-full')}>
             {isFilter(item) ? (
               <div className="flex min-w-0 items-center gap-1.5">
                 {isGroupingMode && (

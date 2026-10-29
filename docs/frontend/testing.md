@@ -147,6 +147,7 @@ Each functional test runs once in each project. To run one project, add `--proje
 - `openOn` in `filter-demo.tasks.ts` sets the clock of a page with no place.
 <!-- example:end -->
 - A test of a time of a place gives the place a zone far from the browser, and sets the clock to an instant at which the date of the place is not the date of the browser or the UTC date. For example, at 07:00 UTC on August 16, it is August 15 in `Pacific/Pago_Pago` and August 16 in UTC and in `Pacific/Kiritimati`. Write the instant in UTC, such as `new Date('2026-08-16T07:00:00Z')`, so that it is the same instant in each project.
+- A test of a zone with a daylight saving time change, such as a time in a spring gap, sets the zone in its describe with `test.use({ timezoneId: 'America/New_York' })`, and runs only in the `utc` project, because the zone of each project is then the same. `browserZone()` gives the zone of the project, not the zone of `test.use`.
 - The tests that check this rule are `date-filter.test.tsx`, `date-picker.test.tsx`, `calendar: marks today and opens on today at the place of the date` in `calendar.test.tsx`, `querykit-converter.test.ts`, and `zoned-time.test.ts`.
 <!-- example:start -->
 - `a date filter of a place in another zone` in `filter-demo.spec.ts` also checks it. The forecast specs in `weather-forecast.spec.ts` fail in `pago-pago` when the page formats a `DateOnly` as midnight UTC.

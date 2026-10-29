@@ -1,9 +1,10 @@
 import { toCalendarDate } from '@internationalized/date'
 
-import { browserTimeZone, offsetAt, wallClockAt } from '@/lib/zoned-time'
+import { offsetAt, wallClockAt } from '@/lib/zoned-time'
 
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
+import { wallClockZone } from './date-zone'
 import { LogicalOperators } from './operators'
 
 /**
@@ -114,7 +115,8 @@ function convertMultiSelectFilter(
  * Convert a date filter to QueryKit string
  */
 function convertDateFilter(propertyKey: string, _operator: string, value: DateValue): string {
-  const { mode, startDate, endDate, exclude, dateType = 'date', timeZone = browserTimeZone() } = value
+  const { mode, startDate, endDate, exclude, dateType = 'date' } = value
+  const timeZone = wallClockZone(dateType, value.timeZone)
 
   // Format dates as ISO 8601 strings based on dateType. The date and the wall clock time are those of the zone that the
   // dates were picked in:

@@ -189,6 +189,12 @@
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
 }
 
+/* For an overlay as wide as its trigger. React Aria keeps an overlay 12 px from each edge of the page,
+   so an overlay as wide as a trigger that fills the page would go past the edge. */
+@utility max-w-overlay {
+  max-width: calc(100% - 24px);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

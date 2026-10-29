@@ -68,6 +68,28 @@ test('date range picker: with no value, opens on the month of today at the place
   }
 })
 
+test.each([
+  ['date picker', () => <JollyDatePicker label="Start date" timeZone={parseTimeZone('Pacific/Pago_Pago')} />],
+  ['date range picker', () => <JollyDateRangePicker label="Stay" timeZone={parseTimeZone('Pacific/Pago_Pago')} />],
+])('%s: a screen reader hears Today on today at the place, not on today in the zone of the browser', async (_, Component) => {
+  // Arrange
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+  try {
+    const screen = await render(<Component />)
+
+    // Act
+    await screen.getByRole('button', { name: /Calendar/ }).click()
+
+    // Assert
+    const dialog = page.getByRole('dialog')
+    await expect.element(dialog.getByRole('button', { name: 'Today, Monday, August 31, 2026', exact: true })).toHaveAttribute('data-today')
+    await expect.element(dialog.getByRole('button', { name: /September 1, 2026/ })).not.toHaveAttribute('data-today')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 test('date picker: with a time granularity and no value, renders its time segments for a place', async () => {
   // Act
   const screen = await render(

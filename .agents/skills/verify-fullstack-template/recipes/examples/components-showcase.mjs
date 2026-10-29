@@ -88,6 +88,16 @@ export default async ({ page, step, capture, settle, expect }) => {
     await input.press('Escape')
   })
 
+  await step('autocomplete: ArrowDown opens the list of all 20 countries', async () => {
+    await page.getByRole('combobox', { name: 'Autocomplete (Free-form with Suggestions)' }).press('ArrowDown')
+    await expect(page.getByRole('option')).toHaveCount(20)
+  })
+  await capture('combobox-long', { fullPage: false })
+  await step('autocomplete: Escape closes the list', async () => {
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+  })
+
   await step('multi-select: choose TypeScript and Rust as chips', async () => {
     const input = page.getByRole('combobox', { name: 'Select languages...' })
     await input.scrollIntoViewIfNeeded()

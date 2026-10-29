@@ -129,6 +129,24 @@ describe('server-state/query-key-has-inputs', () => {
 
     expect(serverStateMessages(code)).toEqual([])
   })
+
+  it('reports a local that a hook makes from a value in the key', () => {
+    const code = `function useRecords(search) {
+      const debounced = useDebouncedValue(search)
+      return useQuery({ queryKey: RecordKeys.list({ search }), queryFn: () => getRecordList({ query: { search: debounced } }) })
+    }`
+
+    expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `debounced`'])
+  })
+
+  it('reports a local that refers to itself, and does not overflow the stack', () => {
+    const code = `function useRecord(id) {
+      const node = { self: () => node.id, id }
+      return useQuery({ queryKey: RecordKeys.detail(id), queryFn: () => getRecord(node) })
+    }`
+
+    expect(serverStateMessages(code)).toEqual(['query-key-has-inputs: The query function reads `node`'])
+  })
 })
 
 describe('server-state/key-has-each-param', () => {

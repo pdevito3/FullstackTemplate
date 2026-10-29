@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useRef } from 'react'
 
 import { Link } from '@/components/ui/link'
 import { useVenue } from '@/examples/venues/apis/get-venue'
@@ -20,6 +21,7 @@ function WorkshopPage() {
   const workshop = useWorkshop(id)
   const venue = useVenue(workshop.data?.venueId)
   const action = useSendWorkshopAction(id)
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
   if (workshop.isPending) {
     return <p role="status" aria-label="Loading workshop" className="px-4 py-8 text-muted-foreground">Loading workshop</p>
@@ -41,7 +43,9 @@ function WorkshopPage() {
         All workshops
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <PageHeading className="min-w-0 wrap-anywhere">{title}</PageHeading>
+        <PageHeading ref={headingRef} className="min-w-0 wrap-anywhere">
+          {title}
+        </PageHeading>
         <WorkshopStatusBadge status={status} />
       </div>
       <section aria-label="Details">
@@ -57,7 +61,9 @@ function WorkshopPage() {
       <WorkshopActions
         workshop={workshop.data}
         pendingAction={action.isPending ? action.variables : undefined}
-        onAction={(command) => action.mutate(command)}
+        // An action moves the workshop to a status in which the Server can take its button away. The focus goes to the
+        // heading, next to the new status, and not to the next button, so that a second Enter sends no other action.
+        onAction={(command) => action.mutate(command, { onSuccess: () => headingRef.current?.focus() })}
       />
     </div>
   )

@@ -31,9 +31,13 @@ public class OpenApiDocumentTests
     [Test]
     public async Task tenant_list_documents_the_pagination_header()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var header = root["paths"]?["/api/v1/tenants"]?["get"]?["responses"]?["200"]?["headers"]?["X-Pagination"];
+
+        // Assert
         header.ShouldNotBeNull();
         header["content"]?["application/json"]?["schema"]?["$ref"]?.GetValue<string>()
             .ShouldBe("#/components/schemas/PaginationMetadata");
@@ -42,14 +46,17 @@ public class OpenApiDocumentTests
     [Test]
     public async Task error_responses_use_only_problem_json()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var errorResponses = Operations(root)
             .SelectMany(o => Responses(o.Operation)
                 .Where(r => r.Status[0] is '4' or '5' && r.Response["content"] is not null)
                 .Select(r => (Name: $"{o.Name} {r.Status}", Content: r.Response["content"]!.AsObject())))
             .ToList();
 
+        // Assert
         errorResponses.ShouldNotBeEmpty();
         foreach (var (name, content) in errorResponses)
             content.Select(c => c.Key).ShouldBe(["application/problem+json"], name);
@@ -58,8 +65,10 @@ public class OpenApiDocumentTests
     [Test]
     public async Task success_responses_and_request_bodies_use_only_json()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var successContents = Operations(root)
             .SelectMany(o => Responses(o.Operation)
                 .Where(r => r.Status[0] is '2' && r.Response["content"] is not null)
@@ -69,6 +78,7 @@ public class OpenApiDocumentTests
             .Select(o => (Name: $"{o.Name} request body", Content: o.Operation["requestBody"]!["content"]!.AsObject()));
         var contents = successContents.Concat(requestContents).ToList();
 
+        // Assert
         contents.ShouldNotBeEmpty();
         foreach (var (name, content) in contents)
             content.Select(c => c.Key).ShouldBe(["application/json"], name);
@@ -78,13 +88,16 @@ public class OpenApiDocumentTests
     [Test]
     public async Task parameter_names_are_camel_case()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var parameters = Operations(root)
             .SelectMany(o => (o.Operation["parameters"]?.AsArray() ?? [])
                 .Select(p => (Operation: o.Name, Name: p!["name"]!.GetValue<string>())))
             .ToList();
 
+        // Assert
         parameters.ShouldNotBeEmpty();
         foreach (var (operation, name) in parameters)
             char.IsLower(name[0]).ShouldBeTrue($"{operation} {name}");
@@ -93,13 +106,16 @@ public class OpenApiDocumentTests
     [Test]
     public async Task numbers_are_typed_only_as_numbers()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var numberSchemas = Descendants(root)
             .OfType<JsonObject>()
             .Where(node => TypesOf(node).Any(type => type is "integer" or "number"))
             .ToList();
 
+        // Assert
         numberSchemas.ShouldNotBeEmpty();
         foreach (var schema in numberSchemas)
         {
@@ -111,26 +127,32 @@ public class OpenApiDocumentTests
     [Test]
     public async Task number_formats_are_formats_that_openapi_defines()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var formats = Descendants(root)
             .OfType<JsonObject>()
             .Where(node => TypesOf(node).Any(type => type is "integer" or "number") && node.ContainsKey("format"))
             .Select(node => node["format"]!.GetValue<string>())
             .Distinct();
 
+        // Assert
         formats.ShouldBeSubsetOf(["int32", "int64", "float", "double"]);
     }
 
     [Test]
     public async Task non_nullable_dto_properties_are_required()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var dtoSchemas = root["components"]!["schemas"]!.AsObject()
             .Where(schema => schema.Key.EndsWith("Dto", StringComparison.Ordinal))
             .ToList();
 
+        // Assert
         dtoSchemas.Select(schema => schema.Key).ShouldContain("UserForCreationDto");
         foreach (var (name, schema) in dtoSchemas)
         {
@@ -150,6 +172,7 @@ public class OpenApiDocumentTests
     [Test]
     public async Task dto_strings_that_hold_a_value_object_name_list_the_names()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
         var schemas = root["components"]!["schemas"]!;
 
@@ -170,6 +193,7 @@ public class OpenApiDocumentTests
             ("UserPermissionDto.permission", Property("UserPermissionDto", "permission"), Permission.ListNames()),
         ];
 
+        // Act & Assert
         expectations.Select(e => $"{e.Name}: {string.Join(", ", EnumOf(e.Schema))}")
             .ShouldBe(expectations.Select(e => $"{e.Name}: {string.Join(", ", e.Names)}"));
     }
@@ -177,6 +201,7 @@ public class OpenApiDocumentTests
     [Test]
     public async Task request_strings_with_a_domain_text_limit_have_its_max_length()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
         var schemas = root["components"]!["schemas"]!;
 
@@ -215,6 +240,7 @@ public class OpenApiDocumentTests
             return schemas[parts[0]]?["properties"]?[parts[1]]?["maxLength"]?.GetValue<int>();
         }
 
+        // Act & Assert
         expectations.Select(e => $"{e.Name}: {MaxLengthOf(e.Name)}")
             .ShouldBe(expectations.Select(e => $"{e.Name}: {e.MaxLength}"));
     }
@@ -224,6 +250,7 @@ public class OpenApiDocumentTests
     [Test]
     public async Task each_request_string_has_a_max_length_or_a_list_of_names()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
         var schemas = root["components"]!["schemas"]!;
         // An entity ID is not text that a person types. The client sends an ID that it read from the API.
@@ -255,6 +282,8 @@ public class OpenApiDocumentTests
             foreach (var nested in RefsUnder(schemas[name]!))
                 pending.Enqueue(nested);
         }
+
+        // Act
         var unlimited = requestSchemas
             .SelectMany(name => (schemas[name]!["properties"]?.AsObject() ?? [])
                 .Where(property => IsFreeText(property.Value!)
@@ -265,6 +294,7 @@ public class OpenApiDocumentTests
             .Order()
             .ToList();
 
+        // Assert
         requestSchemas.ShouldContain("UserForCreationDto");
         entityIds.Where(id => schemas[id.Split('.')[0]]?["properties"]?[id.Split('.')[1]] is null)
             .ShouldBeEmpty("Remove each entity ID that the document no longer has from the exception list.");
@@ -275,10 +305,13 @@ public class OpenApiDocumentTests
     [Test]
     public async Task each_write_declares_a_validation_problem()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var writes = Operations(root).Where(o => o.Method != "get").ToList();
 
+        // Assert
         writes.ShouldNotBeEmpty();
         foreach (var (name, _, operation) in writes)
         {
@@ -291,10 +324,13 @@ public class OpenApiDocumentTests
     [Test]
     public async Task only_secured_operations_declare_unauthorized()
     {
+        // Arrange
         var root = await LoadDocumentAsync();
 
+        // Act
         var operations = Operations(root).ToList();
 
+        // Assert
         AnonymousOperations.ShouldBeSubsetOf(operations.Select(o => o.Name));
         foreach (var (name, _, operation) in operations)
         {

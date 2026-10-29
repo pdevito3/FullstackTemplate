@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type Ref } from 'react'
 import {
   Autocomplete,
   Dialog,
@@ -26,6 +26,7 @@ import { FILTER_CONTROLS } from './controls/filter-controls'
 interface FilterPropertyMenuProps {
   options: FilterConfig[]
   onAddFilter: (filter: Omit<Filter, 'id'>) => void
+  triggerRef?: Ref<HTMLButtonElement>
 }
 
 /**
@@ -33,7 +34,7 @@ interface FilterPropertyMenuProps {
  * opens its filter control in a submenu or in a dialog. `FILTER_CONTROLS`
  * gives the surface of each control type.
  */
-export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuProps) {
+export function FilterPropertyMenu({ options, onAddFilter, triggerRef }: FilterPropertyMenuProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [dialogProperty, setDialogProperty] = useState<FilterConfig | null>(null)
   const { contains } = useFilter({ sensitivity: 'base' })
@@ -61,7 +62,7 @@ export function FilterPropertyMenu({ options, onAddFilter }: FilterPropertyMenuP
     <>
       {/* A MenuTrigger root is necessary for the submenus to open. */}
       <DropdownMenuTrigger isOpen={popoverOpen} onOpenChange={setPopoverOpen}>
-        <Button variant="outline" size="sm">
+        <Button ref={triggerRef} variant="outline" size="sm">
           <HugeiconsIcon icon={Add01Icon} className="size-4" />
           Add Filter
         </Button>

@@ -16,14 +16,17 @@ public class RefreshIdTokenTests
     [Test]
     public async Task a_refresh_response_with_no_id_token_gives_the_new_token_and_keeps_the_login_id_token()
     {
+        // Arrange
         var app = BffApp.Instance;
         var provider = app.IdentityProvider;
         var subject = NewSubject();
         using var browser = app.CreateBrowser();
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60"))!;
 
+        // Act
         var response = await browser.GetApiAsync("/api/v1/items");
 
+        // Assert
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
         var tokens = await RefreshLockTests.StoredTokensAsync(app, key);
         tokens.RefreshToken.ShouldBe(provider.IssuedRefreshTokens(subject)[1]);
@@ -33,6 +36,7 @@ public class RefreshIdTokenTests
     [Test]
     public async Task a_valid_id_token_in_the_refresh_response_gives_the_new_tokens()
     {
+        // Arrange
         var app = BffApp.Instance;
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -40,8 +44,10 @@ public class RefreshIdTokenTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser,
             providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token=valid"))!;
 
+        // Act
         var response = await browser.GetApiAsync("/api/v1/items");
 
+        // Assert
         (await response.ReadEchoAsync()).Headers["Authorization"].ShouldBe($"Bearer {provider.IssuedAccessTokens(subject)[1]}");
         var tokens = await RefreshLockTests.StoredTokensAsync(app, key);
         tokens.RefreshToken.ShouldBe(provider.IssuedRefreshTokens(subject)[1]);
@@ -60,6 +66,7 @@ public class RefreshIdTokenTests
     [Arguments("bad_signature")]
     public async Task an_invalid_id_token_in_the_refresh_response_ends_the_session_and_drops_the_new_tokens(string fault)
     {
+        // Arrange
         var app = BffApp.Instance;
         var provider = app.IdentityProvider;
         var subject = NewSubject();
@@ -67,8 +74,10 @@ public class RefreshIdTokenTests
         var key = app.SessionKeyIn(await BffApp.SignInAsync(browser,
             providerQuery: $"test_sub={subject}&test_expires_in=60&test_refresh_id_token={fault}"))!;
 
+        // Act
         var response = await browser.GetApiAsync("/api/v1/items");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         provider.RefreshCount(subject).ShouldBe(1);
         (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
@@ -81,6 +90,7 @@ public class RefreshIdTokenTests
     [Test]
     public async Task a_slow_revocation_after_a_rejected_id_token_still_ends_the_session()
     {
+        // Arrange
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var provider = await FakeIdentityProvider.StartAsync();
         await using var app = RefreshLockTests.StartWithClock(clock, provider);
@@ -91,11 +101,13 @@ public class RefreshIdTokenTests
         var gate = provider.HoldRevocations();
         try
         {
+            // Act
             var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
             var response = await call.WaitAsync(Timeout);
 
+            // Assert
             (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
             BffApp.SessionCookieValue(response).ShouldBe("");
             (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
@@ -109,6 +121,7 @@ public class RefreshIdTokenTests
     [Test]
     public async Task a_refresh_id_token_with_a_new_key_ends_the_session_when_the_keys_do_not_load_in_time()
     {
+        // Arrange
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var provider = await FakeIdentityProvider.StartAsync();
         await using var app = RefreshLockTests.StartWithClock(clock, provider,
@@ -123,12 +136,14 @@ public class RefreshIdTokenTests
         var gate = provider.HoldJwks();
         try
         {
+            // Act
             var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
             gate.Released.SetResult();
             var response = await call.WaitAsync(Timeout);
 
+            // Assert
             response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
             (await response.ReadEchoAsync()).Headers.ShouldNotContainKey("Authorization");
             BffApp.SessionCookieValue(response).ShouldBe("");

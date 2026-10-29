@@ -67,7 +67,7 @@ function SignedInUser() {
     return <p className="text-sm text-destructive">The Server could not load your user.</p>
   }
   return (
-    <p className="text-sm">
+    <p className="min-w-0 text-sm wrap-anywhere">
       Signed in as <span className="font-medium">{user.name ?? user.identifier}</span>
     </p>
   )

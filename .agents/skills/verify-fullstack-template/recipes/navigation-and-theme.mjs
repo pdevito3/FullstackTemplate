@@ -21,7 +21,9 @@ export default async ({ page, step, capture, settle, expect }) => {
     await page.getByRole('link', { name: 'About' }).click()
     await expect(page).toHaveURL(/\/about$/)
     await expect(breadcrumb).toHaveText('About')
+    await expect(page.getByRole('heading', { name: 'About', level: 1 })).toBeVisible()
   })
+  await capture('about')
 
   // example:start
   await step('open Examples, choose Filter Builder', async () => {

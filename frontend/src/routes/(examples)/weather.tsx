@@ -66,7 +66,7 @@ function Index() {
     <div className="bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Weather Forecast</h1>
             <p className="text-muted-foreground mt-1">
@@ -75,12 +75,12 @@ function Index() {
           </div>
 
           {/* Auth Section */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {auth.isLoading ? (
               <span className="text-sm text-muted-foreground">Loading...</span>
             ) : auth.isLoggedIn ? (
               <>
-                <span className="text-sm">
+                <span className="min-w-0 text-sm wrap-anywhere">
                   Welcome, <span className="font-medium">{auth.username}</span>
                 </span>
                 <Button variant="outline" size="sm" onPress={handleLogout}>
@@ -102,7 +102,7 @@ function Index() {
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-4">
               {/* Left: Mode & Unit toggles */}
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 {auth.isLoggedIn && (
                   <Button
                     variant={showSecure ? 'default' : 'outline'}
@@ -267,20 +267,20 @@ function WeatherCard({ forecast, useCelsius, formatDate }: WeatherCardProps) {
   return (
     <Card role="listitem" aria-label={formatDate(forecast.date)} className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               {formatDate(forecast.date)}
             </p>
-            <CardTitle className="mt-1">{forecast.summary}</CardTitle>
+            <CardTitle className="mt-1 wrap-anywhere">{forecast.summary}</CardTitle>
           </div>
-          <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 text-muted-foreground" />
+          <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 shrink-0 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>
         {'requestedBy' in forecast && (
-          <Badge variant="secondary" className="mb-3 text-chart-2">
-            <HugeiconsIcon icon={SquareLock02Icon} className="w-3 h-3 mr-1" />
+          <Badge variant="secondary" className="mb-3 h-auto max-w-full whitespace-normal wrap-anywhere text-chart-2">
+            <HugeiconsIcon icon={SquareLock02Icon} className="w-3 h-3 mr-1 shrink-0" />
             {String(forecast.requestedBy)}
           </Badge>
         )}

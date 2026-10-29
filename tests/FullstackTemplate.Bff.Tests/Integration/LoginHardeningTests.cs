@@ -17,10 +17,13 @@ public class LoginHardeningTests
     [Test]
     public async Task a_callback_with_the_right_iss_signs_in()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -30,11 +33,14 @@ public class LoginHardeningTests
     [Arguments("test_iss=omit")]
     public async Task a_callback_with_a_wrong_or_missing_iss_gets_400_problem_and_no_session(string issQuery)
     {
+        // Arrange
         var subject = NewSubject();
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&{issQuery}");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, "iss");
         BffApp.SessionCookieValue(callback).ShouldBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -45,21 +51,27 @@ public class LoginHardeningTests
     [Test]
     public async Task an_error_response_with_a_wrong_iss_gets_400_and_not_the_prompt_redirect()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, "?prompt=none&returnUrl=%2Fback",
             "test_error=login_required&test_iss=https%3A%2F%2Fevil.example");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, "iss");
     }
 
     [Test]
     public async Task an_error_response_with_the_right_iss_still_redirects_a_prompt_login()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, "?prompt=none&returnUrl=%2Fback", "test_error=login_required");
 
+        // Assert
         callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/back");
     }
@@ -67,11 +79,14 @@ public class LoginHardeningTests
     [Test]
     public async Task a_callback_with_an_invalid_state_gets_400_problem_and_no_session()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         var issuer = Uri.EscapeDataString(BffApp.Instance.IdentityProvider.Issuer);
 
+        // Act
         var callback = await browser.GetAsync($"/signin-oidc?code=x&state=not-a-state&iss={issuer}");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
     }
@@ -79,10 +94,13 @@ public class LoginHardeningTests
     [Test]
     public async Task an_error_response_without_a_prompt_gets_400_problem()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: "test_error=access_denied");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
     }
@@ -90,10 +108,13 @@ public class LoginHardeningTests
     [Test]
     public async Task an_unsigned_id_token_gets_400_problem_and_no_session()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_id_token=unsigned");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, IdTokenChecks.AlgorithmHeader);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -102,10 +123,13 @@ public class LoginHardeningTests
     [Test]
     public async Task an_id_token_with_another_audience_gets_400_problem_and_no_session()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_aud=other-api");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, IdTokenChecks.AudienceClaim);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -121,10 +145,13 @@ public class LoginHardeningTests
     [Arguments("test_azp=other-client")]
     public async Task an_id_token_that_fails_a_token_response_check_gets_400_problem_and_no_session(string providerQuery)
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
 
+        // Act
         var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&{providerQuery}");
 
+        // Assert
         await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
         BffApp.SessionCookieValue(callback).ShouldBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -139,6 +166,7 @@ public class LoginHardeningTests
     [MethodDataSource(nameof(CallbackMethods))]
     public async Task a_callback_that_is_not_a_get_gets_400_and_the_code_is_not_redeemed(HttpMethod method, string path, bool withForm)
     {
+        // Arrange
         var subject = NewSubject();
         using var browser = BffApp.Instance.CreateBrowser();
         var login = await browser.GetAsync("/bff/login");
@@ -148,8 +176,10 @@ public class LoginHardeningTests
             ? new FormUrlEncodedContent(parameters.AllKeys.Select(k => new KeyValuePair<string, string>(k!, parameters[k]!)))
             : null;
 
+        // Act
         var response = await browser.SendAsync(new HttpRequestMessage(method, path + callback.Query) { Content = form });
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         BffApp.SessionCookieValue(response).ShouldBeNull();
         BffApp.Instance.IdentityProvider.TokenRequests.ShouldNotContain(r => r.Subject == subject);
@@ -167,15 +197,18 @@ public class LoginHardeningTests
     [Test]
     public async Task the_code_exchange_the_refresh_and_the_revocation_use_client_secret_basic()
     {
+        // Arrange
         var subject = NewSubject();
         var provider = BffApp.Instance.IdentityProvider;
         using var browser = BffApp.Instance.CreateBrowser();
+
+        // Act
         // A token that expires within the refresh window, so that the next API call refreshes it
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
-
         (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
+        // Assert
         provider.TokenRequests.Where(r => r.Subject == subject).Select(r => (r.GrantType, r.ClientAuthentication)).ShouldBe(
         [
             ("authorization_code", "client_secret_basic"),
@@ -187,6 +220,7 @@ public class LoginHardeningTests
     [Test]
     public async Task client_authentication_post_sends_the_secret_in_the_body()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Auth:ClientAuthentication"] = nameof(ClientAuthenticationMethod.Post),
@@ -194,10 +228,12 @@ public class LoginHardeningTests
         var subject = NewSubject();
         using var browser = app.CreateBrowser();
 
+        // Act
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_expires_in=60");
         (await browser.GetApiAsync("/api/v1/items")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await browser.GetAsync("/bff/logout")).StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
+        // Assert
         app.IdentityProvider.RevocationClientAuthentications(subject).ShouldBe(["client_secret_post"]);
         app.IdentityProvider.TokenRequests.Where(r => r.Subject == subject).Select(r => (r.GrantType, r.ClientAuthentication)).ShouldBe(
         [
@@ -209,12 +245,16 @@ public class LoginHardeningTests
     [Test]
     public async Task a_get_to_the_front_channel_logout_path_does_not_end_the_session()
     {
+        // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={NewSubject()}&test_sid=sid-front");
 
         var path = "/signout-oidc?sid=sid-front&iss=" + Uri.EscapeDataString(BffApp.Instance.IdentityProvider.Issuer);
+
+        // Act
         var response = await browser.GetAsync(path);
 
+        // Assert
         // No endpoint answers the path, so in a local run it goes to the SPA dev server like any unknown path
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.OriginalString.ShouldBe(BffApp.SpaDevServer + path);
@@ -225,6 +265,7 @@ public class LoginHardeningTests
     [Test]
     public async Task back_channel_logout_disable_rejects_each_logout_token_and_ends_no_session()
     {
+        // Arrange
         await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Auth:Features:BackChannelLogout"] = nameof(FeatureMode.Disable),
@@ -233,9 +274,11 @@ public class LoginHardeningTests
         using var browser = app.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
 
+        // Act
         var response = await browser.PostAsync("/bff/backchannel", new FormUrlEncodedContent(
             [new("logout_token", BackChannelLogoutTests.Token(c => { c["sub"] = subject; c.Remove("sid"); }))]));
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -243,6 +286,7 @@ public class LoginHardeningTests
     [Test]
     public async Task a_required_feature_that_discovery_does_not_list_stops_the_bff_at_startup()
     {
+        // Act & Assert
         var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(new Dictionary<string, string?>
         {
             ["Auth:Features:PushedAuthorization"] = nameof(FeatureMode.Require),
@@ -255,6 +299,7 @@ public class LoginHardeningTests
     [Test]
     public async Task a_failed_discovery_read_stops_the_bff_at_startup()
     {
+        // Act & Assert
         var exception = Should.Throw<Exception>(() => BffApp.StartAnotherInstance(services: services =>
             services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme,
                 options => options.Authority = UnreachableServer.Url)));

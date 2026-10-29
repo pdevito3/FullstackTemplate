@@ -101,7 +101,7 @@ public class PermissionTests
         var permission1 = Permission.ManageUsers();
         var permission2 = Permission.Of("manage_users");
 
-        // Assert
+        // Act & Assert
         permission1.Equals(permission2).ShouldBeTrue();
         permission1.Equals(Permission.ManageTenant()).ShouldBeFalse();
     }

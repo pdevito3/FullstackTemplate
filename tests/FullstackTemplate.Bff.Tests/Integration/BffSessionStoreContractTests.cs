@@ -25,13 +25,17 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task a_created_row_reads_back_with_a_version(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var session = NewSession(clock, sessionId: "sid-read");
 
         var created = await store.Store.CreateAsync(session, CancellationToken.None);
+
+        // Act
         var read = await store.Store.GetAsync(session.Key, CancellationToken.None);
 
+        // Assert
         read.ShouldNotBeNull();
         read.Version.ShouldBe(created.Version);
         read.SubjectId.ShouldBe(session.SubjectId);
@@ -49,12 +53,14 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres, 5, 1)]
     public async Task a_read_rejects_a_row_past_its_sliding_expiry_or_its_absolute_limit(string adapter, int slidingHours, int absoluteHours)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var session = NewSession(clock, TimeSpan.FromHours(slidingHours), TimeSpan.FromHours(absoluteHours));
         await store.Store.CreateAsync(session, CancellationToken.None);
-
         clock.Advance(TimeSpan.FromHours(Math.Min(slidingHours, absoluteHours)) - TimeSpan.FromSeconds(1));
+
+        // Act & Assert
         (await store.Store.GetAsync(session.Key, CancellationToken.None)).ShouldNotBeNull();
 
         clock.Advance(TimeSpan.FromSeconds(1));
@@ -67,13 +73,17 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task a_renewal_with_the_read_version_writes_and_moves_the_version(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
 
         var renewed = clock.Now.AddMinutes(1);
+
+        // Act
         var write = await store.Store.RenewAsync(created.Key, [9, 9], renewed, renewed.AddHours(2), created.Version, CancellationToken.None);
 
+        // Assert
         var written = write.ShouldBeOfType<BffSessionWrite.Written>();
         written.Version.ShouldNotBe(created.Version);
         var read = (await store.Store.GetAsync(created.Key, CancellationToken.None))!;
@@ -90,15 +100,18 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task a_write_with_an_old_version_changes_nothing_and_returns_the_current_row(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
         var first = (BffSessionWrite.Written)await store.Store.RenewAsync(
             created.Key, [1], clock.Now, clock.Now.AddHours(1), created.Version, CancellationToken.None);
 
+        // Act
         var late = await store.Store.RenewAsync(created.Key, [2], clock.Now, clock.Now.AddHours(3), created.Version, CancellationToken.None);
         var lateExpiry = await store.Store.RenewExpiryAsync(created.Key, clock.Now, clock.Now.AddHours(3), created.Version, CancellationToken.None);
 
+        // Assert
         late.ShouldBeOfType<BffSessionWrite.Conflict>().Current.Version.ShouldBe(first.Version);
         lateExpiry.ShouldBeOfType<BffSessionWrite.Conflict>().Current.Ticket.ShouldBe(new byte[] { 1 });
         var read = (await store.Store.GetAsync(created.Key, CancellationToken.None))!;
@@ -111,12 +124,15 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task an_expiry_renewal_keeps_the_ticket(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
 
+        // Act
         var write = await store.Store.RenewExpiryAsync(created.Key, clock.Now, clock.Now.AddHours(5), created.Version, CancellationToken.None);
 
+        // Assert
         write.ShouldBeOfType<BffSessionWrite.Written>();
         var read = (await store.Store.GetAsync(created.Key, CancellationToken.None))!;
         read.Ticket.ShouldBe(created.Ticket);
@@ -128,14 +144,17 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task a_write_to_a_deleted_row_is_missing_and_creates_no_row(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
-
         (await store.Store.DeleteAsync(created.Key, CancellationToken.None))!.Key.ShouldBe(created.Key);
+
+        // Act
         var write = await store.Store.RenewAsync(created.Key, [3], clock.Now, clock.Now.AddHours(1), created.Version, CancellationToken.None);
         var expiryWrite = await store.Store.RenewExpiryAsync(created.Key, clock.Now, clock.Now.AddHours(1), created.Version, CancellationToken.None);
 
+        // Assert
         write.ShouldBeOfType<BffSessionWrite.Missing>();
         expiryWrite.ShouldBeOfType<BffSessionWrite.Missing>();
         (await store.Store.GetAsync(created.Key, CancellationToken.None)).ShouldBeNull();
@@ -147,14 +166,17 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task the_delete_returns_the_row_with_the_last_write(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
         var written = (BffSessionWrite.Written)await store.Store.RenewAsync(created.Key, [9], clock.Now, clock.Now.AddHours(1),
             created.Version, CancellationToken.None);
 
+        // Act
         var deleted = await store.Store.DeleteAsync(created.Key, CancellationToken.None);
 
+        // Assert
         deleted.ShouldNotBeNull();
         deleted.Key.ShouldBe(created.Key);
         deleted.SubjectId.ShouldBe(created.SubjectId);
@@ -168,6 +190,7 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task the_rows_are_found_by_sub_and_by_sid(string adapter)
     {
+        // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var subject = $"sub-{Guid.NewGuid():N}";
@@ -176,6 +199,7 @@ public class BffSessionStoreContractTests
         var second = await store.Store.CreateAsync(NewSession(clock, subjectId: subject), CancellationToken.None);
         await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
 
+        // Act & Assert
         (await store.Store.FindBySubjectAsync(subject, CancellationToken.None)).Select(s => s.Key)
             .ShouldBe([first.Key, second.Key], ignoreOrder: true);
         (await store.Store.FindBySessionIdAsync(sessionId, CancellationToken.None)).Select(s => s.Key)
@@ -188,6 +212,7 @@ public class BffSessionStoreContractTests
     [Arguments(Postgres)]
     public async Task the_ended_rows_are_deleted_in_batches_and_the_live_rows_stay(string adapter)
     {
+        // Arrange
         // A clock in the past, so that no row of another test has ended at the time of the delete
         var clock = new TestClock(new DateTimeOffset(1990, 1, 1, 0, 0, 0, TimeSpan.Zero));
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
@@ -198,10 +223,13 @@ public class BffSessionStoreContractTests
         var live = await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromDays(1), TimeSpan.FromDays(1)), CancellationToken.None);
 
         var now = clock.Now.AddMinutes(2);
+
+        // Act
         var first = await store.Store.DeleteEndedAsync(now, 4, CancellationToken.None);
         var second = await store.Store.DeleteEndedAsync(now, 4, CancellationToken.None);
         var third = await store.Store.DeleteEndedAsync(now, 4, CancellationToken.None);
 
+        // Assert
         first.ShouldBe(4);
         second.ShouldBe(2);
         third.ShouldBe(0);

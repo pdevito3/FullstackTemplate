@@ -21,7 +21,7 @@ for recipe in "${recipes[@]}"; do
     dir="$(sed -n 's/.*  evidence: //p' <<<"$out" | tail -1)"
     if [[ -f "$dir/result.json" ]]; then
       line="$(jq -r --arg r "$name" --arg n "$run" \
-        '"\($r)\t\($n)\t\(.status)\t\(.data.changes | to_entries | map("\(.key) +\(.value.added) ~\(.value.changed) -\(.value.deleted)") | join(", ") | if . == "" then "no rows changed" else . end)\t\(if .data.restored then "restored" else "NOT RESTORED" end)"' \
+        '"\($r)\t\($n)\t\(.status)\t\(if .data.changes == null then "unknown: the restore failed before it read the rows" else (.data.changes | to_entries | map("\(.key) +\(.value.added) ~\(.value.changed) -\(.value.deleted)") | join(", ") | if . == "" then "no rows changed" else . end) end)\t\(if .data.restored then "restored" else "NOT RESTORED" end)"' \
         "$dir/result.json")"
     else
       line="$name"$'\t'"$run"$'\t'"failed"$'\t'"no result.json (exit $code)"$'\t'"-"

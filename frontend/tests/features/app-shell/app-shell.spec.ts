@@ -1,4 +1,5 @@
 import { expect, test } from '@tests/support/fixtures'
+import { useDefaultFontSize } from '@tests/support/screen'
 import { homePage } from '../home/home.tasks'
 import { appShellPage } from './app-shell.tasks'
 
@@ -69,8 +70,8 @@ test.describe('the landmarks of the layout', () => {
 
     await shell.openAbout()
 
-    await expect(shell.at.mainNavigation.getByRole('link', { name: 'Home' })).toBeVisible()
-    await expect(shell.at.mainNavigation.getByRole('link', { name: 'About' })).toBeVisible()
+    await expect(shell.at.homeNavigationLink).toBeVisible()
+    await expect(shell.at.aboutNavigationLink).toBeVisible()
   })
 })
 
@@ -107,5 +108,20 @@ test.describe('an unknown address', () => {
 
     await expect(homePage(page).at.heading).toBeVisible()
     await expect(shell.at.currentPage).toHaveText('Home')
+  })
+})
+
+test.describe('the mobile sidebar with a 24 px default font', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('fits in a 390 px window', async ({ page }) => {
+    const shell = appShellPage(page)
+    await useDefaultFontSize(page, 24)
+    await shell.openAbout()
+
+    await shell.openMobileSidebar()
+
+    const sheet = await shell.at.mobileSidebar.boundingBox()
+    expect(sheet!.x + sheet!.width).toBeLessThanOrEqual(390)
   })
 })

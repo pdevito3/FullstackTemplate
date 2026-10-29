@@ -33,7 +33,7 @@ Preconditions:
 - The browser context is new, so `localStorage` has no `ui-theme` value.
 
 - **Home.** Open `/`. Run `page.goto('/')`. `getByRole('navigation', { name: 'breadcrumb', exact: true })` has the text `Home`. Use `exact: true`, because a page can have a breadcrumb of its own. `page.locator('[data-slot="sidebar"] [data-active]')` has 1 element, `Home`. No element has `data-active="false"`.
-- **About.** Choose `About`. Run `page.getByRole('link', { name: 'About' }).click()`. The URL ends with `/about` and the breadcrumb is `About`.
+- **About.** Choose `About`. Run `page.getByRole('link', { name: 'About' }).click()`. The URL ends with `/about`, the breadcrumb is `About`, and the heading `About` (level 1) shows. The capture `about` shows it.
 <!-- example:start -->
 - **Examples.** Open the submenu and choose `Filter Builder`. Run `page.getByRole('button', { name: 'Examples' }).click()`, then `page.getByRole('link', { name: 'Filter Builder' }).click()`. The URL ends with `/filter-demo`, the breadcrumb is `Filter Builder`, and the heading `Filter Builder Demo` is visible.
 - **Components.** Choose `Components`. Run `page.getByRole('link', { name: 'Components' }).click()`. The URL ends with `/components` and the breadcrumb is `Components`. The sidebar has 2 active elements: the `Examples` parent and `Components`. The capture `components` shows it.
@@ -42,7 +42,7 @@ Preconditions:
 - **Dark mode.** Choose `Dark mode`. Run `page.getByRole('button', { name: 'Dark mode' }).click()`. `<html>` has the class `dark`, and `localStorage.getItem('ui-theme')` is `dark`. After `page.reload()`, `<html>` still has the class `dark`.
 - **Light and system.** Run `page.getByRole('button', { name: 'Light mode' }).click()`. `<html>` has the class `light`. Then run `page.getByRole('button', { name: 'System theme' }).click()`. `localStorage.getItem('ui-theme')` is `system`.
 - **Mobile sheet.** Set the viewport to 390x844. Choose the header button `Toggle Sidebar`. `[data-slot="sidebar"][data-mobile="true"]` shows. It is 288 px (18rem) wide (1 px tolerance) and has no `Close` button. In the sheet, choose `About`. The URL ends with `/about`, the breadcrumb is `About`, and the sheet closes.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/navigation-and-theme.mjs`. The captures `collapsed`, `dark`, `mobile-sidebar`, and `mobile-about` show each state.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/navigation-and-theme.mjs`. The captures `about`, `collapsed`, `dark`, `mobile-sidebar`, and `mobile-about` show each state.
 
 ## Gotchas
 

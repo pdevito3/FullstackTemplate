@@ -10,6 +10,8 @@ export const weatherForecast = (page: Page) => {
     day,
     temperature: (label: string) => day(label).getByText(/^-?\d+°$/),
     scale: (label: string) => day(label).getByText(/^(Celsius|Fahrenheit)$/),
+    summary: (label: string) => day(label).locator('[data-slot="card-title"]'),
+    caller: (label: string) => day(label).locator('[data-slot="badge"]'),
     celsius: page.getByRole('button', { name: '°C', exact: true }),
     refresh: page.getByRole('button', { name: 'Refresh', exact: true }),
     tryAgain: page.getByRole('button', { name: 'Try Again', exact: true }),

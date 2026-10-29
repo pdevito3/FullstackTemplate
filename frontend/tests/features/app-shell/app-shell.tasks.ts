@@ -17,6 +17,12 @@ export function appShellPage(page: Page) {
       await expect(at.aboutText).toBeVisible()
     },
 
+    async openMobileSidebar() {
+      await at.sidebarTrigger.click()
+      await expect(at.mobileSidebar).toBeVisible()
+      await expect.poll(() => at.mobileSidebar.evaluate((sheet) => sheet.getAnimations().length)).toBe(0)
+    },
+
     async openMissingPage() {
       await page.goto('/no-such-page')
       await expect(at.currentPage).toBeVisible()

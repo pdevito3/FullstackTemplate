@@ -21,6 +21,38 @@ class ProblemDetailsBuilder {
     return new ProblemDetailsBuilder({ ...this.problem, detail })
   }
 
+  staleVersion() {
+    const detail = 'This record changed after you loaded it. Reload it, then make your change again.'
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'urn:fullstacktemplate:problem:stale-version',
+      title: 'The record changed after you loaded it.',
+      status: 409,
+      detail,
+      errors: { version: [detail] },
+    })
+  }
+
+  notFound(detail: string) {
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'https://tools.ietf.org/html/rfc9110#section-15.5.5',
+      title: 'The specified resource was not found.',
+      status: 404,
+      detail,
+    })
+  }
+
+  invalid(errors: Record<string, string[]>) {
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'https://tools.ietf.org/html/rfc4918#section-11.2',
+      title: 'One or more validation errors occurred.',
+      status: 422,
+      errors,
+    })
+  }
+
   build(): ProblemDetails {
     return this.problem
   }

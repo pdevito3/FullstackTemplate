@@ -78,3 +78,24 @@ export function isProblemDetails(obj: unknown): obj is ProblemDetails {
     typeof pd.status === 'number'
   )
 }
+
+export const STALE_VERSION_PROBLEM_TYPE = 'urn:fullstacktemplate:problem:stale-version'
+
+export function isStaleVersionError(error: unknown): boolean {
+  return isProblemDetailsError(error) && error.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
+}
+
+export function validationErrorsOf(error: unknown): Record<string, string[]> {
+  if (!isProblemDetailsError(error)) {
+    return {}
+  }
+  const { errors } = error.problemDetails
+  if (typeof errors !== 'object' || errors === null) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(errors).filter(
+      (entry): entry is [string, string[]] => Array.isArray(entry[1]) && entry[1].every((m) => typeof m === 'string'),
+    ),
+  )
+}

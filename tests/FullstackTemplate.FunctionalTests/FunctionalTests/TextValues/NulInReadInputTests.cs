@@ -30,6 +30,14 @@ public class NulInReadInputTests : TestBase
         (ApiRoutes.Agents.GetList, "sortOrder"),
         ($"{ApiRoutes.Base}/audit-entries", "entityId"),
         ($"{ApiRoutes.Base}/audit-entries", "cursor"),
+        // example:start
+        (ApiRoutes.Workshops.GetList, "filters"),
+        (ApiRoutes.Workshops.GetList, "sortOrder"),
+        (ApiRoutes.Workshops.GetList, "search"),
+        (ApiRoutes.Venues.GetList, "filters"),
+        (ApiRoutes.Venues.GetList, "sortOrder"),
+        (ApiRoutes.Venues.GetList, "search"),
+        // example:end
     ];
 
     [Test]

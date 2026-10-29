@@ -32,11 +32,15 @@ export type DateType = 'date' | 'datetime' | 'datetimeUtc' | 'datetimeOffset'
 
 export interface DateValue {
   mode: 'before' | 'after' | 'between' | 'on' | 'excluding'
+  /** For a `datetime` with no `timeZone`, the UTC fields of the date hold the wall clock time. See `wallClockZone`. */
   startDate: Date
   endDate?: Date // Only for 'between' mode
   exclude?: boolean // When true with 'between' mode, becomes OR logic (outside range)
   dateType?: DateType // 'date' for date-only, 'datetime' for date+time (defaults to 'date')
-  /** The zone that the dates were picked in. Without it, the dates show in the zone of the browser. */
+  /**
+   * The zone of the place that the dates were picked in. Without it, a `datetime` is a wall clock time with no zone, and
+   * the other types are in the zone of the browser.
+   */
   timeZone?: TimeZone
 }
 
@@ -80,7 +84,8 @@ export interface FilterConfig {
   dateType?: DateType // For date control: 'date' for date-only, 'datetime' for date+time (defaults to 'date')
   /**
    * For a date control: the zone of the place that the dates belong to. The control reads the typed times in it, and
-   * its today is today at the place. Without it, the control uses the zone of the browser.
+   * its today is today at the place. Without it, the control reads a `datetime` as a wall clock time with no zone, and
+   * the other types in the zone of the browser.
    */
   timeZone?: TimeZone
 }

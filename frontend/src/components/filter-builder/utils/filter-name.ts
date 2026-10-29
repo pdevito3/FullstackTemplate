@@ -1,6 +1,7 @@
-import { browserTimeZone, formatInstant } from '@/lib/zoned-time'
+import { formatInstant } from '@/lib/zoned-time'
 
 import type { DateValue, Filter } from '../types'
+import { wallClockZone } from './date-zone'
 import { getOperatorLabel } from './operators'
 
 /**
@@ -47,7 +48,7 @@ function formatValue(
   // DateValue
   if (typeof value === 'object' && 'mode' in value) {
     const dateValue = value as DateValue
-    const zone = dateValue.timeZone ?? browserTimeZone()
+    const zone = wallClockZone(dateValue.dateType, dateValue.timeZone)
     const formatDate = (date: Date) => formatInstant(date, zone, { month: 'short', day: 'numeric', year: 'numeric' })
 
     switch (dateValue.mode) {

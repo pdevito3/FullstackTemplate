@@ -42,4 +42,8 @@ describe('a date filter with no zone', () => {
   it('writes the wall clock time of the browser', () => {
     expect(queryFor('datetimeOffset')).toBe('startsAt == "2026-08-15T09:00:00-11:00"')
   })
+
+  it('writes a datetime as the wall clock time that it keeps in UTC, because a datetime with no zone has no zone', () => {
+    expect(queryFor('datetime')).toBe('startsAt == "2026-08-15T20:00:00"')
+  })
 })

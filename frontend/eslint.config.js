@@ -233,10 +233,12 @@ export const queryKeyHasInputsRule = {
         if (!queryKey || !queryFn || !['ArrowFunctionExpression', 'FunctionExpression'].includes(queryFn.type))
           return
         const inKey = keyVariables(queryKey)
-        const comesFromKey = (variable) => {
+        const comesFromKey = (variable, path = []) => {
           const init = initOf(variable)
-          const values = init ? referencesIn(sourceCode, init).map((ref) => ref.resolved).filter((v) => isLocal(v) && isValue(v)) : []
-          return values.length > 0 && values.every((v) => inKey.has(v) || comesFromKey(v))
+          if (!init || hookCalledBy(init) || path.includes(variable))
+            return false
+          const values = referencesIn(sourceCode, init).map((ref) => ref.resolved).filter((v) => isLocal(v) && isValue(v))
+          return values.length > 0 && values.every((v) => inKey.has(v) || comesFromKey(v, [...path, variable]))
         }
         const reported = new Set()
         for (const ref of referencesIn(sourceCode, queryFn)) {

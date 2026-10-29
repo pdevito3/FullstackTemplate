@@ -2,6 +2,7 @@ import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { ProblemDetails } from '@/lib/problem-details'
 import type { MockRoute } from '@tests/support/api/mock-route'
+import { paginationOf } from '@tests/support/api/pagination'
 
 interface Buildable<T> {
   build(): T
@@ -13,23 +14,6 @@ export const workshopPaths = {
   action: (id: string, action: 'schedule' | 'cancel' | 'complete') => `/api/v1/workshops/${id}/${action}`,
   venues: '/api/v1/venues',
   venue: (id: string) => `/api/v1/venues/${id}`,
-}
-
-export function paginationOf(total: number, pageNumber = 1, pageSize = 10) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return {
-    'X-Pagination': JSON.stringify({
-      totalCount: total,
-      pageSize,
-      currentPageSize: Math.max(0, Math.min(pageSize, total - (pageNumber - 1) * pageSize)),
-      currentStartIndex: (pageNumber - 1) * pageSize + 1,
-      currentEndIndex: Math.min(total, pageNumber * pageSize),
-      pageNumber,
-      totalPages,
-      hasPrevious: pageNumber > 1,
-      hasNext: pageNumber < totalPages,
-    }),
-  }
 }
 
 export const workshopsApi = {

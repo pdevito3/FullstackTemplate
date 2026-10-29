@@ -71,6 +71,8 @@ The `api` fixture applies to each test automatically:
 
 A mock matches on the method and the path only. Thus, for each value that the page puts on the wire, write one test that reads the request back. Examples are a query parameter, a header, and a body field.
 
+A list answer has the `X-Pagination` header. Make it with `paginationOf` from [`pagination.ts`](../../frontend/tests/support/api/pagination.ts).
+
 An error body must have the shape that ASP.NET sends. Make it with `aProblem()`. `isProblemDetails` accepts a body only if it has `type`, `title`, and `status`.
 
 ### Identity

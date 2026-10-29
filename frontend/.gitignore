@@ -27,11 +27,15 @@ dist-ssr
 /test-results/
 /playwright-report/
 
-# Vitest browser mode output (failure screenshots)
+# Vitest browser mode output (failure screenshots, and the Playwright traces that CI keeps)
 /.vitest/
+__traces__/
 
 # init:start - scripts/init.cs deletes these lines and frontend/conformance/ when it renames the app
 # Conformance suite: the exported certificate and the results of run-conformance.ts
 /conformance/.suite/
 /conformance/results/
 # init:end
+
+# The module list of the "Bundle size" steps in docs/frontend.md
+/dist-stats.yml

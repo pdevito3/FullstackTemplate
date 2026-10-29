@@ -30,27 +30,25 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
       <ButtonPrimitive
         data-slot="filter-badge-edit"
         onPress={onEdit}
-        className="flex min-w-0 cursor-pointer flex-wrap items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="min-w-0 cursor-pointer rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="font-medium">{filter.propertyLabel}</span>
-        <span className="text-foreground/60 font-semibold px-1 text-xs">
-          |
-        </span>
+        <SeparatorAfterWord />
         <span className="text-xs">{getOperatorLabel(filter.operator)}</span>
-        <span className="text-foreground/60 font-semibold px-1 text-xs">
-          |
+        <SeparatorAfterWord />
+        <span className="inline-flex max-w-full items-center gap-1.5 align-bottom">
+          <span className="min-w-0 max-w-[200px] truncate text-xs">{formattedValue}</span>
+
+          {filter.controlType === 'text' && isCaseSensitive && (
+            <HugeiconsIcon icon={TextFontIcon} className="ml-1 size-3 shrink-0 text-muted-foreground" />
+          )}
+
+          {filter.controlType === 'multiselect' && filter.matchAll && (
+            <span className="ml-1 shrink-0 text-[10px] font-medium text-muted-foreground bg-muted px-1 rounded">
+              ALL
+            </span>
+          )}
         </span>
-        <span className="max-w-[200px] truncate text-xs">{formattedValue}</span>
-
-        {filter.controlType === 'text' && isCaseSensitive && (
-          <HugeiconsIcon icon={TextFontIcon} className="size-3 text-muted-foreground ml-1" />
-        )}
-
-        {filter.controlType === 'multiselect' && filter.matchAll && (
-          <span className="text-[10px] font-medium text-muted-foreground ml-1 bg-muted px-1 rounded">
-            ALL
-          </span>
-        )}
       </ButtonPrimitive>
 
       <Button
@@ -63,5 +61,16 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
         <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
       </Button>
     </Badge>
+  )
+}
+
+function SeparatorAfterWord() {
+  return (
+    <>
+      <span className="whitespace-nowrap text-xs font-semibold text-foreground/60">
+        {' '}
+        <span className="px-1.5">|</span>
+      </span>{' '}
+    </>
   )
 }

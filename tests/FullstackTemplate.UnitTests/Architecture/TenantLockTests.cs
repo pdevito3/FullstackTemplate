@@ -16,15 +16,21 @@ using Shouldly;
 /// of a tenant-owned aggregate root adds and saves in the work of the shared lock of its tenant, or a row that is saved
 /// during the delete stays live in the deleted tenant. The rule reads the IL with Mono.Cecil. It finds each call that
 /// adds a root of the EF model to a <c>DbSet</c> or to the context, and checks that the call is in a lambda that the
-/// same method gives to <see cref="RootLock.RunSharedAsync{T}"/>. A type that also adds a <see cref="Tenant"/> adds to
-/// a new tenant, which no delete can see yet. A child has a required owner, so its add changes the version of the owner
-/// instead. See <c>docs/backend/concurrency.md</c>, section "Lock".
+/// same method gives to <see cref="RootLock.RunSharedAsync{T}"/>. In a type with such an add, each save of the context
+/// must also be in such a lambda, or the insert runs after the lock is free. A type that also adds a
+/// <see cref="Tenant"/> adds to a new tenant, which no delete can see yet. A child has a required owner, so its add
+/// changes the version of the owner instead. See <c>docs/backend/concurrency.md</c>, section "Lock".
 /// </summary>
 public class TenantLockTests
 {
     private static readonly HashSet<string> AddMethods = new(StringComparer.Ordinal)
     {
         "Add", "AddAsync", "AddRange", "AddRangeAsync", nameof(AppDbContext.BulkInsertAsync),
+    };
+
+    private static readonly HashSet<string> SaveMethods = new(StringComparer.Ordinal)
+    {
+        nameof(AppDbContext.SaveChanges), nameof(AppDbContext.SaveChangesAsync),
     };
 
     // An add of an object, such as the AddRange of the context, has no entity type in the IL, so it can add a root.
@@ -37,7 +43,7 @@ public class TenantLockTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
 
         // Act
-        var unlocked = AddsWithNoSharedLock(typeof(AppDbContext).Assembly, TenantOwnedRoots(context.Model));
+        var unlocked = WritesWithNoSharedLock(typeof(AppDbContext).Assembly, TenantOwnedRoots(context.Model));
 
         // Assert
         unlocked.ShouldBeEmpty(
@@ -52,7 +58,7 @@ public class TenantLockTests
         using var context = new AppDbContextFactory().CreateDbContext([]);
 
         // Act
-        var unlocked = AddsWithNoSharedLock(typeof(FixtureMarker).Assembly, TenantOwnedRoots(context.Model));
+        var unlocked = WritesWithNoSharedLock(typeof(FixtureMarker).Assembly, TenantOwnedRoots(context.Model));
 
         // Assert
         unlocked.ShouldBe(
@@ -85,7 +91,7 @@ public class TenantLockTests
             .ToHashSet(StringComparer.Ordinal);
     }
 
-    private static string[] AddsWithNoSharedLock(Assembly assembly, HashSet<string> roots)
+    private static string[] WritesWithNoSharedLock(Assembly assembly, HashSet<string> roots)
     {
         var module = ModuleDefinition.ReadModule(new MemoryStream(File.ReadAllBytes(assembly.Location)));
         var methods = module.GetTypes().SelectMany(t => t.Methods).Where(m => m.HasBody).ToList();
@@ -98,14 +104,30 @@ public class TenantLockTests
                 .Select(entity => (Owner: Outermost(method.DeclaringType).FullName, Entity: entity, Method: method)))
             .ToList();
         var addsATenant = adds.Where(a => a.Entity == typeof(Tenant).FullName).Select(a => a.Owner).ToHashSet(StringComparer.Ordinal);
+        var rootAdds = adds
+            .Where(a => (roots.Contains(a.Entity) || a.Entity == UntypedEntity) && !addsATenant.Contains(a.Owner))
+            .ToList();
+        var addsARoot = rootAdds.Select(a => a.Owner).ToHashSet(StringComparer.Ordinal);
 
-        return adds
-            .Where(a => (roots.Contains(a.Entity) || a.Entity == UntypedEntity) && !addsATenant.Contains(a.Owner) && !sharedWork.Contains(BodyOwner(a.Method)))
-            .Select(a => $"{a.Owner} adds {a.Entity[(a.Entity.LastIndexOf('.') + 1)..]}")
+        var unlockedAdds = rootAdds
+            .Where(a => !sharedWork.Contains(BodyOwner(a.Method)))
+            .Select(a => $"{a.Owner} adds {a.Entity[(a.Entity.LastIndexOf('.') + 1)..]}");
+        var unlockedSaves = methods
+            .Where(method => addsARoot.Contains(Outermost(method.DeclaringType).FullName)
+                             && method.Body.Instructions.Any(IsSave)
+                             && !sharedWork.Contains(BodyOwner(method)))
+            .Select(method => $"{Outermost(method.DeclaringType).FullName} saves outside the shared lock");
+
+        return unlockedAdds.Concat(unlockedSaves)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
     }
+
+    private static bool IsSave(Instruction instruction)
+        => instruction is { OpCode.Code: Code.Call or Code.Callvirt, Operand: MethodReference method }
+           && SaveMethods.Contains(method.Name)
+           && IsContext(method.DeclaringType);
 
     // The lambda of a RunSharedAsync call is the last method that the caller loads with ldftn before the call.
     private static IEnumerable<MethodDefinition> SharedWorkOf(MethodDefinition method)

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
-import { PagerButton } from "@/components/ui/pager"
+import { PagerButtons } from "@/components/ui/pager"
 
 interface DataTableProps<TData, TValue> {
   /** The accessible name of the table */
@@ -127,12 +127,12 @@ function DataTable<TData, TValue>({
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
         <div className="space-x-2">
-          <PagerButton isAvailable={table.getCanPreviousPage()} onPress={() => table.previousPage()}>
-            Previous
-          </PagerButton>
-          <PagerButton isAvailable={table.getCanNextPage()} onPress={() => table.nextPage()}>
-            Next
-          </PagerButton>
+          <PagerButtons
+            hasPrevious={table.getCanPreviousPage()}
+            hasNext={table.getCanNextPage()}
+            onPrevious={() => table.previousPage()}
+            onNext={() => table.nextPage()}
+          />
         </div>
       </div>
     </div>

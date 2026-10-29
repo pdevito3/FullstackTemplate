@@ -5,6 +5,56 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
+// docs/frontend.md, section "Links": a link to a route takes typed `to` and `params`, and keeps the React Aria behavior.
+const linkImports = [
+  {
+    name: 'react-aria-components',
+    importNames: ['Link'],
+    message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. The href of a React Aria Link is a string that TypeScript does not check.',
+  },
+  {
+    name: '@animate-ui/react/primitives/react-aria',
+    importNames: ['Link'],
+    message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. The href of a React Aria Link is a string that TypeScript does not check.',
+  },
+  {
+    name: '@tanstack/react-router',
+    importNames: ['Link'],
+    message: 'Use Link from @/components/ui/link. It has the React Aria focus and press behavior.',
+  },
+]
+
+// docs/frontend/testing.md, section "Locators, tasks, and specs". Each message names the fix.
+const testFileRules = [
+  {
+    selector: "CallExpression[callee.property.name='nth'], CallExpression[arguments.length=0][callee.property.name=/^(first|last)$/]",
+    message: 'Do not find an element by its position. Give the element a role and a name in the app, and find it by them in the *.locators.ts file of the feature.',
+  },
+  {
+    selector: "CallExpression[callee.property.name='waitForTimeout']",
+    message: 'Do not wait for a time. In the *.tasks.ts file of the feature, wait for the response of the request, or let an expect retry until the state shows.',
+  },
+]
+
+const specFileRules = [
+  {
+    selector: 'CallExpression[callee.property.name=/^(locator|frameLocator|getBy(Role|Text|Label|Placeholder|AltText|Title|TestId))$/]',
+    message: 'A spec does not know a selector. Move the selector to the *.locators.ts file of the feature, and read it through the page object of the feature.',
+  },
+  {
+    selector: "CallExpression[callee.object.name='page'][callee.property.name=/^waitFor/]",
+    message: 'A spec does not know a wait. Move the wait to a task in the *.tasks.ts file of the feature, and arm it before the action.',
+  },
+  {
+    selector: "CallExpression[callee.name='setTimeout']",
+    message: 'A spec does not wait for a time. Wait for a response or a state in a task in the *.tasks.ts file of the feature.',
+  },
+  {
+    selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
+    message: 'Remove test.only. CI runs each test.',
+  },
+]
+
 export default tseslint.config(
   // Kubb writes src/api/generated (and one sibling folder for each other API version). Run `pnpm generate:api` to change it.
   { ignores: ['dist', 'src/api/generated*'] },
@@ -39,27 +89,10 @@ export default tseslint.config(
           'newlines-between': 'ignore',
         },
       ],
-      // docs/frontend.md, section "Links": a link to a route takes typed `to` and `params`, and keeps the React Aria behavior.
       'no-restricted-imports': [
         'error',
         {
-          paths: [
-            {
-              name: 'react-aria-components',
-              importNames: ['Link'],
-              message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. The href of a React Aria Link is a string that TypeScript does not check.',
-            },
-            {
-              name: '@animate-ui/react/primitives/react-aria',
-              importNames: ['Link'],
-              message: 'Use Link from @/components/ui/link. It takes typed `to` and `params`. The href of a React Aria Link is a string that TypeScript does not check.',
-            },
-            {
-              name: '@tanstack/react-router',
-              importNames: ['Link'],
-              message: 'Use Link from @/components/ui/link. It has the React Aria focus and press behavior.',
-            },
-          ],
+          paths: linkImports,
         },
       ],
     },
@@ -68,6 +101,29 @@ export default tseslint.config(
     // The router link builds on the React Aria Link.
     files: ['src/components/ui/link.tsx'],
     rules: { 'no-restricted-imports': 'off' },
+  },
+  {
+    files: ['tests/**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...testFileRules] },
+  },
+  {
+    files: ['tests/**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...testFileRules, ...specFileRules],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...linkImports,
+            {
+              name: '@playwright/test',
+              importNames: ['test', 'expect'],
+              message: 'Import test and expect from @tests/support/fixtures. Its test fails on a request that no test mocked.',
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     // docs/frontend/code-style.md, section "Dates and times": the SPA shows and reads a time in the zone of its place,

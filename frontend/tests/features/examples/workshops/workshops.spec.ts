@@ -82,7 +82,7 @@ test.describe('the workshops', () => {
 
     await workshops.at.add.click()
 
-    await expect(workshops.at.newForm.getByText(
+    await expect(workshops.at.newFormMessage(
       'This time does not exist in America/Chicago on that day, because the clocks go forward. Choose another time.',
     )).toBeVisible()
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
@@ -196,7 +196,7 @@ test.describe('the workshops', () => {
     await workshops.fillNew({ title: 'Intro to Kubb', start: '081620260930A', capacity: '12' })
     await workshops.at.add.click()
 
-    await expect(workshops.at.newForm.getByText('Pick a venue.', { exact: true })).toBeVisible()
+    await expect(workshops.at.newFormMessage('Pick a venue.')).toBeVisible()
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
 })

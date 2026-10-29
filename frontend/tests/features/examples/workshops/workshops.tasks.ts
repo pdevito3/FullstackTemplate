@@ -46,7 +46,7 @@ export function workshopsPage(page: Page) {
     /** Types the start as the segments of the date field: month, day, year, hour, minute, then A or P. */
     async fillNew({ title, start, capacity }: { title: string; start: string; capacity: string }) {
       await at.newTitle.fill(title)
-      await at.newStart.getByRole('spinbutton').first().click()
+      await at.newStartMonth.click()
       await page.keyboard.type(start)
       await at.newCapacity.fill(capacity)
     },

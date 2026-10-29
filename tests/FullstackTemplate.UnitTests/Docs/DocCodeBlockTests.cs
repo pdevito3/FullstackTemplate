@@ -56,7 +56,7 @@ public partial class DocCodeBlockTests
         faults.ShouldBe([
             "docs/backend/x.md line 3: the C# block has no source. Put <!-- code: path/to/File.cs --> on the line before it, and copy the lines from that file.",
             "docs/backend/x.md line 8: the C# block names Server/Gone.cs, but the file does not exist.",
-            "docs/backend/x.md line 20: the C# block differs from Server/Entity.cs at 'public int B { get; set; }'. Copy the lines from the file again.",
+            "docs/backend/x.md line 22: the C# block differs from Server/Entity.cs at 'public int B { get; set; }'. Copy the lines from the file again.",
             "docs/backend/x.md line 26: the C# block has no code.",
         ]);
     }

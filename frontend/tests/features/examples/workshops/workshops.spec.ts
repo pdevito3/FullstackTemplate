@@ -369,6 +369,30 @@ test.describe('a workshop with a long title at a venue with a long name, on a 32
   })
 })
 
+test.describe('the workshop list on a 320 px phone', () => {
+  test.use({ actor: as.user('Ana Admin'), viewport: { width: 320, height: 640 } })
+
+  test('shows the title, the start, the capacity, and the status of each row with no sideways scroll', async ({ page, api }) => {
+    const venue = aVenue().named('Main Hall')
+    api.mock(
+      workshopsApi.listReturns([
+        aWorkshop().titled('Intro to Kubb for product teams').at(venue).withCapacity(120),
+        aWorkshop().titled(longName).at(venue).inStatus('Scheduled'),
+      ]),
+    )
+    const workshops = workshopsPage(page)
+
+    await workshops.openList()
+
+    expect(await workshops.tableScroll()).toBe(0)
+    expect(await workshops.pageOverflow()).toBe(0)
+    await expect(workshops.at.row('Intro to Kubb for product teams')).toContainText('120')
+    expect(await workshops.textOverflowPast(workshops.at.rowStatus('Intro to Kubb for product teams', 'Draft'))).toBeLessThanOrEqual(0)
+    expect(await workshops.textOverflowPast(workshops.at.rowStatus(longName, 'Scheduled'))).toBeLessThanOrEqual(0)
+    expect(await workshops.lineCount(workshops.at.titleLink('Intro to Kubb for product teams'))).toBeLessThanOrEqual(2)
+  })
+})
+
 test.describe('the start field on a 390 px phone with a 24 px default font', () => {
   test.use({ actor: as.user('Ana Admin'), viewport: { width: 390, height: 844 } })
 

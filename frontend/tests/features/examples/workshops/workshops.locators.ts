@@ -12,7 +12,10 @@ export const workshops = (page: Page) => {
   return {
     listHeading: page.getByRole('heading', { name: 'Workshops', exact: true }),
     search: page.getByRole('searchbox', { name: 'Search workshops' }),
+    grid: page.getByRole('grid', { name: 'Workshops' }),
     row: (title: string) => page.getByRole('grid', { name: 'Workshops' }).getByRole('row', { name: new RegExp(`^${title}`) }),
+    rowStatus: (title: string, status: string) =>
+      page.getByRole('grid', { name: 'Workshops' }).getByRole('row', { name: new RegExp(`^${title}`) }).getByText(status, { exact: true }),
     titleLink: (title: string) => page.getByRole('link', { name: title, exact: true }),
     pager: page.getByRole('navigation', { name: 'Pages of workshops' }),
     nextPage: page.getByRole('navigation', { name: 'Pages of workshops' }).getByRole('button', { name: 'Next' }),

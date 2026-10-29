@@ -19,6 +19,15 @@ export function workshopsPage(page: Page) {
       }, right)
     },
 
+    /** How far the content of the box that holds the table goes past its right edge, so that a user must scroll it. */
+    async tableScroll() {
+      return at.grid.evaluate((grid) => grid.parentElement!.scrollWidth - grid.parentElement!.clientWidth)
+    },
+
+    async lineCount(text: Locator) {
+      return text.evaluate((node) => node.getClientRects().length)
+    },
+
     async pageOverflow() {
       return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     },

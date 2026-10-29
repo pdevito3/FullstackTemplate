@@ -64,6 +64,25 @@ public class QueryInputErrorTests : TestBase
     }
 
     [Test]
+    public async Task filter_that_querykit_cannot_read_gets_a_message_with_no_parser_text()
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
+        });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?filters={Uri.EscapeDataString("Name == a\"b")}");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Detail.ShouldBe("The filter could not be read. Change the filter, then try again.");
+        problem.Errors["filters"].ShouldBe(["The filter could not be read. Change the filter, then try again."]);
+    }
+
+    [Test]
     public async Task page_number_that_is_not_a_number_names_the_value_and_the_field()
     {
         // Arrange

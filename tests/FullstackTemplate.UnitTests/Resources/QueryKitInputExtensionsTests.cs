@@ -1,49 +1,119 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
+using System.Diagnostics;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources;
 using QueryKit.Exceptions;
 using Shouldly;
 
-public class QueryKitInputExtensionsTests
+public class QueryKitInputExtensionsTests : IDisposable
 {
     private sealed record Row(string Name, uint Version = 0);
 
     private static readonly IQueryable<Row> Rows = new[] { new Row("a") }.AsQueryable();
 
+    private readonly ActivitySource _source = new("FullstackTemplate.UnitTests.QueryKitInput");
+    private readonly ActivityListener _listener;
+
+    public QueryKitInputExtensionsTests()
+    {
+        _listener = new ActivityListener
+        {
+            ShouldListenTo = source => source == _source,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(_listener);
+    }
+
+    public void Dispose()
+    {
+        _listener.Dispose();
+        _source.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     [Test]
-    public void bad_sort_direction_is_keyed_by_sort_order()
+    public void bad_sort_direction_gets_the_sort_order_message()
     {
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplySortOrder("Name foo", new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Parameter.ShouldBe("sortOrder");
-        exception.Message.ShouldContain("Invalid direction: foo");
+        exception.Message.ShouldBe("The sort order could not be read. Change the sort, then try again.");
         exception.InnerException.ShouldBeOfType<QueryKitParsingException>();
     }
 
     [Test]
-    public void unknown_filter_property_keeps_the_message_of_querykit()
+    [Arguments("Name == a\"b")]
+    [Arguments("Name @= ")]
+    [Arguments("Unknown == \"x\"")]
+    public void filter_that_querykit_cannot_read_gets_the_filter_message(string filters)
     {
         // Act
-        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Unknown == \"x\"", new CustomQueryKitConfiguration()));
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Parameter.ShouldBe("filters");
-        exception.Message.ShouldBe(exception.InnerException.ShouldBeOfType<UnknownFilterPropertyException>().Message);
+        exception.Message.ShouldBe("The filter could not be read. Change the filter, then try again.");
+        exception.InnerException.ShouldBeAssignableTo<QueryKitException>();
+    }
+
+    [Test]
+    public void the_span_gets_the_message_of_querykit()
+    {
+        // Arrange
+        using var activity = _source.StartActivity("list").ShouldNotBeNull();
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Name == a\"b", new CustomQueryKitConfiguration()));
+
+        // Assert
+        var recorded = activity.Events.ShouldHaveSingleItem();
+        recorded.Name.ShouldBe("exception");
+        recorded.Tags.ShouldContain(new KeyValuePair<string, object?>("exception.message", exception.InnerException!.Message));
+        exception.InnerException.Message.ShouldContain("parsing failure");
+    }
+
+    [Test]
+    public void filter_longer_than_its_maximum_gets_the_too_long_message()
+    {
+        // Arrange
+        var filters = $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\"";
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldBe("The filter is too long. Remove some conditions, then try again.");
+        exception.InnerException.ShouldBeOfType<QueryKitInputLengthExceededException>();
+    }
+
+    [Test]
+    public void filter_nested_deeper_than_its_maximum_gets_the_too_deep_message()
+    {
+        // Arrange
+        var depth = CustomQueryKitConfiguration.FilterMaxNestingDepth + 1;
+        var filters = $"{new string('(', depth)}Name == \"x\"{new string(')', depth)}";
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldBe("The filter has too many nested groups. Remove a group, then try again.");
+        exception.InnerException.ShouldBeOfType<QueryKitNestingDepthExceededException>();
     }
 
     // The message of the .NET exception names .NET types, so the caller gets a fixed message
     [Test]
-    public void operator_that_does_not_fit_the_property_type_gets_a_fixed_message()
+    public void operator_that_does_not_fit_the_property_type_gets_the_filter_message()
     {
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Name ^^ \"x\"", new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Parameter.ShouldBe("filters");
-        exception.Message.ShouldBe("The filters value is not valid.");
+        exception.Message.ShouldBe("The filter could not be read. Change the filter, then try again.");
         exception.InnerException.ShouldBeAssignableTo<ArgumentException>();
     }
 
@@ -58,7 +128,7 @@ public class QueryKitInputExtensionsTests
 
         // Assert
         exception.Parameter.ShouldBe("filters");
-        exception.Message.ShouldBe("The filters value cannot use version. A version is opaque.");
+        exception.Message.ShouldBe("The filter cannot use the version. Choose another field.");
     }
 
     [Test]
@@ -71,6 +141,6 @@ public class QueryKitInputExtensionsTests
 
         // Assert
         exception.Parameter.ShouldBe("sortOrder");
-        exception.Message.ShouldBe("The sortOrder value cannot use version. A version is opaque.");
+        exception.Message.ShouldBe("The sort order cannot use the version. Choose another field.");
     }
 }

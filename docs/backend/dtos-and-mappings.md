@@ -44,7 +44,7 @@ Endpoint gets UserForCreationDto
 12. A field of a response DTO that holds data of another permission needs that permission. For example, if a `UserDto` that `read_users` shows gets the agents of the user, the field needs `read_agents`. Do one of these: require the permission in the handler, hide the value from a caller without the permission, or put the field on a separate DTO that a separate query returns. `GetAuditEntryPage` hides a value from a caller without `read_audit_log_sensitive`. Give each such field a test: a caller with the permission of the DTO, but without the permission of the field, does not get the data of the field. The example is `reader_without_the_sensitive_permission_gets_the_history_with_personal_values_hidden` in `GetAuditEntryPageTests`. `EndpointAccessSweepTests` checks the permission of each endpoint, not the permission of each field.
 
 <!-- example:start -->
-In the workshop example, `WorkshopDto` lists the names of the status and of the actions ([WorkshopDto.cs:14](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopDto.cs#L14)), and `WorkshopForCreationDto` names the limits of the domain ([WorkshopForCreationDto.cs:11](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopForCreationDto.cs#L11)).
+In the workshop example, `WorkshopDto` lists the names of the status and of the actions ([`WorkshopDto.Status`](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopDto.cs)), and `WorkshopForCreationDto` names the limits of the domain ([`WorkshopForCreationDto.Title`](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopForCreationDto.cs)).
 <!-- example:end -->
 
 ```csharp

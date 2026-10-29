@@ -277,7 +277,7 @@ A free-text search of a list uses `EF.Functions.ILike(column, LikePattern.Contai
 Trim the search, and give it a max length on the parameters DTO. If the search is empty after the trim, do not apply it. If the search fails `PostgresText.CanStore`, throw a `QueryInputException` with the name of the parameter. See [Validation](#validation). Apply the search before `ApplyFilters`, on the entity or on the DTO projection. The query keeps its fixed sort.
 
 <!-- example:start -->
-The workshop list searches the title: [GetWorkshopList.cs:31](../../FullstackTemplate.Server/Examples/Workshops/Features/GetWorkshopList/GetWorkshopList.cs#L31).
+The workshop list searches the title: [`GetWorkshopList.Handler.Handle`](../../FullstackTemplate.Server/Examples/Workshops/Features/GetWorkshopList/GetWorkshopList.cs).
 <!-- example:end -->
 
 A QueryKit filter needs no `LikePattern`. EF Core escapes the pattern of its contains, starts-with, and ends-with operators.
@@ -324,7 +324,7 @@ Obey these rules:
 5. Do not add a permission check to an adapter. The HTTP endpoint, the gRPC method, and the MCP tool send the same request, so the check in the handler applies to each of them.
 
 <!-- example:start -->
-`AddVenue` checks `manage_workshops` first: [AddVenue.cs:24](../../FullstackTemplate.Server/Examples/Venues/Features/AddVenue/AddVenue.cs#L24).
+`AddVenue` checks `manage_workshops` first: [`AddVenue.Handler.Handle`](../../FullstackTemplate.Server/Examples/Venues/Features/AddVenue/AddVenue.cs).
 <!-- example:end -->
 
 For the permissions, the callers that pass, and how to add a permission, see [backend.md](../backend.md#permissions).

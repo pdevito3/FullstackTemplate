@@ -16,7 +16,7 @@ Use the first item in this list that fits:
 The app has no global store library. Before you add one, make sure that items 1 to 6 do not fit.
 
 <!-- example:start -->
-The workshop list keeps its search and its page in the search params. The contract schemas validate them, and a value that the contract refuses falls back to the default: [index.tsx:19](<../../frontend/src/routes/(examples)/workshops/index.tsx#L19>). A search that arrives after a link or Back changed the URL does not overwrite the URL: [index.tsx:37](<../../frontend/src/routes/(examples)/workshops/index.tsx#L37>).
+The workshop list keeps its search and its page in the search params. The contract schemas validate them, and a value that the contract refuses falls back to the default: [`listSearchSchema`](<../../frontend/src/routes/(examples)/workshops/index.tsx>). A search that arrives after a link or Back changed the URL does not overwrite the URL: [`handleSearch`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
 <!-- example:end -->
 
 ## Calculate, do not store
@@ -86,7 +86,7 @@ Do not use an effect for these jobs:
 | Update state after another state update | Do both updates in one event handler |
 
 <!-- example:start -->
-The search box of the workshop list changes its text during render when the URL changes from outside, not with a `key`. A `key` would remount the box on each URL change, and the remount would drop the text that the user typed after the last search: [workshop-search.tsx:24](<../../frontend/src/examples/workshops/components/workshop-search.tsx#L24>). The debounce timer is an effect with a cleanup: [use-debounced-callback.ts:6](<../../frontend/src/examples/use-debounced-callback.ts#L6>).
+The search box of the workshop list changes its text during render when the URL changes from outside, not with a `key`. A `key` would remount the box on each URL change, and the remount would drop the text that the user typed after the last search: [`WorkshopSearch`](<../../frontend/src/examples/workshops/components/workshop-search.tsx>). The debounce timer is an effect with a cleanup: [`useDebouncedCallback`](<../../frontend/src/examples/use-debounced-callback.ts>).
 <!-- example:end -->
 
 ## Memoization

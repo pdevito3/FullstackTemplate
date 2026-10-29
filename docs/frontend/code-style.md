@@ -14,7 +14,7 @@ These rules apply to the TypeScript and React code in `frontend/src/`. `pnpm lin
 8. A file under `src/domain/` reads the answers of the Server and formats them. It does not decide a business rule. See rule 8 of [server-state.md](server-state.md#rules).
 
 <!-- example:start -->
-In the workshop example, a `Record` of a generated union maps each status to its badge variant: [workshop-status-badge.tsx:4](<../../frontend/src/examples/workshops/components/workshop-status-badge.tsx#L4>).
+In the workshop example, a `Record` of a generated union maps each status to its badge variant: [`VARIANTS`](<../../frontend/src/examples/workshops/components/workshop-status-badge.tsx>).
 <!-- example:end -->
 
 ```typescript
@@ -35,7 +35,7 @@ function isUserDto(value: unknown): value is UserDto {
 5. Use an early return for a loading, empty, or error state. Do not nest ternaries.
 
 <!-- example:start -->
-The workshop list returns early for its loading, error, and empty states: [index.tsx:75](<../../frontend/src/routes/(examples)/workshops/index.tsx#L75>).
+The workshop list returns early for its loading, error, and empty states: [`WorkshopRows`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
 <!-- example:end -->
 6. Load a heavy component or library with `lazy` or a dynamic `import()`.
 
@@ -87,7 +87,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 5. Outside a table, each text that comes from data wraps or shows its full value on demand. A name or an email address can have no spaces, so give it `wrap-anywhere`, and give `min-w-0` to its flex item. A text that truncates is in a button or a link that shows the full value. The sweep of the verify skill finds the text that does not obey this rule.
 
 <!-- example:start -->
-The workshop list wraps only the title: [index.tsx:117](<../../frontend/src/routes/(examples)/workshops/index.tsx#L117>). The start, the capacity, and the status have `whitespace-nowrap`: [index.tsx:122](<../../frontend/src/routes/(examples)/workshops/index.tsx#L122>).
+In `WorkshopRows` of the [workshop list](<../../frontend/src/routes/(examples)/workshops/index.tsx>), only the title wraps. The start, the capacity, and the status have `whitespace-nowrap`. A phone has no room for four columns, so there the title cell shows the start and the capacity under the title, and the table has only the title and the status.
 <!-- example:end -->
 
 ## Dates and times

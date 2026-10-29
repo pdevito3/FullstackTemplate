@@ -23,6 +23,12 @@ public class UserMessageAnalyzerTests
             {
                 public string Name { get; } = name;
                 public int Value { get; } = value;
+
+                public static bool TryFromName(string name, bool ignoreCase, out TEnum result)
+                {
+                    result = default!;
+                    return false;
+                }
             }
         }
 
@@ -373,6 +379,295 @@ public class UserMessageAnalyzerTests
 
         // Assert
         diagnostics.ShouldHaveSingleItem().Location.GetLineSpan().StartLinePosition.Line.ShouldBe(12);
+    }
+
+    [Test]
+    public async Task an_mcp_exception_and_the_text_of_an_error_tool_result_are_user_messages()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using ModelContextProtocol;
+                using ModelContextProtocol.Protocol;
+
+                public static class Tools
+                {
+                    public static string Close(string workOrderId)
+                        => throw new McpException($"Work order {workOrderId} needs manage_users.");
+
+                    public static CallToolResult Deny()
+                        => new() { IsError = true, Content = [new TextContentBlock { Text = "You need read_users." }] };
+
+                    public static CallToolResult Read()
+                        => new() { Content = [new TextContentBlock { Text = "read_users, manage_users" }] };
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => (d.Id, d.GetMessage(CultureInfo.InvariantCulture))).ShouldBe([
+            ("FSTMSG002", "A user message shows the ID 'workOrderId'. Name the record as the screen names it, or leave it out. See docs/messages.md."),
+            ("FSTMSG001", "A user message shows the code name 'manage_users'. " + Fix),
+            ("FSTMSG001", "A user message shows the code name 'read_users'. " + Fix),
+        ]);
+    }
+
+    [Test]
+    public async Task the_text_of_a_problem_or_an_error_result_is_a_user_message()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using Microsoft.AspNetCore.Http;
+
+                public static class Endpoints
+                {
+                    public static IResult Locked() => TypedResults.Problem(detail: "The order is locked_out.");
+
+                    public static IResult Titled() => Results.Problem(title: "OrderLocked");
+
+                    public static IResult Rejected() => TypedResults.BadRequest("Use read_users.");
+
+                    public static IResult Changed(string orderId) => TypedResults.Conflict($"Order {orderId} changed.");
+
+                    public static IResult Read() => TypedResults.Ok("read_users");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => (d.Id, d.GetMessage(CultureInfo.InvariantCulture))).ShouldBe([
+            ("FSTMSG001", "A user message shows the code name 'locked_out'. " + Fix),
+            ("FSTMSG001", "A user message shows the code name 'OrderLocked'. " + Fix),
+            ("FSTMSG001", "A user message shows the code name 'read_users'. " + Fix),
+            ("FSTMSG002", "A user message shows the ID 'orderId'. Name the record as the screen names it, or leave it out. See docs/messages.md."),
+        ]);
+    }
+
+    [Test]
+    public async Task a_message_in_an_auto_property_initializer_is_checked()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                public class Order
+                {
+                    public static string LockedMessage { get; } = "The order is locked_out.";
+
+                    public static string Closed { get; } = "The order is ClosedOut.";
+
+                    public void Close() => throw new ValidationException("status", Closed);
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the code name 'locked_out'. " + Fix,
+            "A user message shows the code name 'ClosedOut'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_list_of_enum_values_or_names_in_a_message_gets_fstmsg001()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System;
+                using System.Collections.Generic;
+
+                public static class Modes
+                {
+                    public static void Values() => throw new ValidationException("mode", $"Use {string.Join(", ", Enum.GetValues<Mode>())}.");
+
+                    public static void Names() => throw new ValidationException("mode", $"Use {string.Join(", ", Enum.GetNames<Mode>())}.");
+
+                    public static void Grants(IReadOnlyList<Permission> grants)
+                        => throw new ForbiddenAccessException($"You hold {string.Join(", ", grants)}.");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the enum value 'Enum.GetValues<Mode>()'. " + Fix,
+            "A user message shows the enum value 'Enum.GetNames<Mode>()'. " + Fix,
+            "A user message shows the stored name 'grants'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task an_exception_of_the_project_is_a_user_message_whatever_its_parameter_is_named()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                public class LockedException(string reason) : System.Exception(reason);
+
+                public class ClosedException : System.Exception
+                {
+                    public ClosedException(string why) : base(why) { }
+                }
+
+                public static class Orders
+                {
+                    public static void Lock(string orderId) => throw new LockedException($"Order {orderId} is locked.");
+
+                    public static void Close() => throw new ClosedException("The order is ClosedOut.");
+
+                    public static void Broken() => throw new System.InvalidOperationException("The OrderModel has no key.");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => (d.Id, d.GetMessage(CultureInfo.InvariantCulture))).ShouldBe([
+            ("FSTMSG002", "A user message shows the ID 'orderId'. Name the record as the screen names it, or leave it out. See docs/messages.md."),
+            ("FSTMSG001", "A user message shows the code name 'ClosedOut'. " + Fix),
+        ]);
+    }
+
+    [Test]
+    public async Task the_value_that_a_parse_rejects_is_not_traced_to_the_values_that_it_accepts()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System;
+
+                public class Grant : IFixedNames
+                {
+                    private const string RequestField = "grant";
+
+                    private GrantEnum _grant;
+
+                    public Grant(string value)
+                    {
+                        _grant = Parse(value, RequestField);
+                    }
+
+                    public string Value => _grant.Name;
+
+                    public static Grant ManageUsers() => new(GrantEnum.ManageUsers.Name);
+
+                    public static Grant ReadUsers() => new(Names.ReadUsers);
+
+                    private static GrantEnum Parse(string value, string requestField)
+                        => GrantEnum.TryFromName(value, true, out var parsed)
+                            ? parsed
+                            : throw new ValidationException(requestField, $"Invalid permission: {value}");
+
+                    public static class Names
+                    {
+                        public const string ReadUsers = "read_users";
+                    }
+
+                    private sealed class GrantEnum(string name, int value) : Ardalis.SmartEnum.SmartEnum<GrantEnum>(name, value)
+                    {
+                        public static readonly GrantEnum ManageUsers = new("manage_users", 0);
+                        public static readonly GrantEnum ReadUsers = new(Names.ReadUsers, 1);
+                    }
+                }
+
+                // The shape of DefectSeverity in Fleet
+                public sealed class DefectSeverity
+                {
+                    public const string DefaultRequestField = "severity";
+
+                    private SeverityEnum _severity;
+
+                    public DefectSeverity(string? value, string requestField = DefaultRequestField)
+                    {
+                        _severity = Parse(value!, requestField);
+                    }
+
+                    public static DefectSeverity Critical() => new(SeverityEnum.Critical.Name);
+
+                    public static DefectSeverity Minor() => new(SeverityEnum.Minor.Name);
+
+                    private static SeverityEnum Parse(string value, string requestField) =>
+                        SeverityEnum.TryFromName(value, true, out var parsed)
+                            ? parsed
+                            : throw new ValidationException(requestField, $"Invalid defect severity: {value}. Use Critical or Minor.");
+
+                    private sealed class SeverityEnum(string name, int value) : Ardalis.SmartEnum.SmartEnum<SeverityEnum>(name, value)
+                    {
+                        public static readonly SeverityEnum Critical = new("Critical", 0);
+                        public static readonly SeverityEnum Minor = new("Minor", 1);
+                    }
+                }
+
+                public static class Modes
+                {
+                    public static Mode Machine() => Parse(nameof(Mode.Machine));
+
+                    private static Mode Parse(string value)
+                    {
+                        if (!Enum.TryParse<Mode>(value, out var mode))
+                            throw new ValidationException("mode", $"Invalid mode: {value}");
+
+                        return mode;
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_parse_message_still_fails_on_its_own_text_and_a_check_that_is_not_a_parse_is_traced()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System.Collections.Generic;
+
+                public class Result
+                {
+                    public Result(string value, Mode mode)
+                    {
+                        _ = Parse(value, mode);
+                    }
+
+                    public static Result Pass() => new("Pass", Mode.Machine);
+
+                    private static Mode Parse(string value, Mode mode)
+                        => System.Enum.TryParse<Mode>(value, out var parsed)
+                            ? parsed
+                            : throw new ValidationException("result", $"Invalid result for {mode}: {value}. Use Pass or NotApplicable.");
+                }
+
+                public class Caller(HashSet<string> codes)
+                {
+                    public const string ManageUsers = "manage_users";
+
+                    public void Manage() => Require(ManageUsers);
+
+                    private void Require(string code)
+                    {
+                        if (!codes.Contains(code))
+                            throw new ForbiddenAccessException($"You need {code}.");
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the enum value 'mode'. " + Fix,
+            "A user message shows the code name 'NotApplicable'. " + Fix,
+            "A user message shows the code name 'manage_users'. " + Fix,
+        ]);
     }
 
     [Test]

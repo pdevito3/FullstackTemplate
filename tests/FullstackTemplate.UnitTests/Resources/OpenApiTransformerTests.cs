@@ -418,6 +418,33 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    [Timeout(5_000)]
+    [Arguments("1E+100000000", "1", true)]
+    [Arguments("1", "1E+100000000", false)]
+    [Arguments("1E-2147483648", "1", false)]
+    [Arguments("1.5E-2147483648", "1", false)]
+    [Arguments("1E+2147483648", "1E+2147483647", true)]
+    [Arguments("1E+99999999999999999999", "1E+99999999999999999998", true)]
+    public async Task limits_transformer_compares_bounds_with_a_huge_exponent_quickly(
+        string minimum, string maximum, bool rejected, CancellationToken cancellationToken)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        // The transformers run on the calling thread, so a compare that never ends blocks it before the timeout can fail the test
+        var act = () => Task.Run(
+            () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync(cancellationToken),
+            cancellationToken);
+
+        // Assert
+        if (rejected)
+            (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum {minimum} and the maximum {maximum}");
+        else
+            await act.ShouldNotThrowAsync();
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_member_that_is_not_a_public_static_number_field()
     {
         // Arrange

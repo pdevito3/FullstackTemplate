@@ -44,6 +44,7 @@ export const noPageActionRule = {
   meta: {
     type: 'problem',
     schema: [{ type: 'string' }],
+    defaultOptions: [stringSelectorMessage],
     messages: {
       selector: '{{message}}',
       any: 'This value has the type any, so the lint cannot check this call. Give the value its type, such as Page or Locator.',

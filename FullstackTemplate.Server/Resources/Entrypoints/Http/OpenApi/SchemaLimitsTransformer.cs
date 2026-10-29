@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
 
 using System.Globalization;
+using System.Numerics;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
@@ -54,14 +55,28 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
         return Task.CompletedTask;
     }
 
-    // A bound is a JSON number, so another transformer can write one past the decimal range, such as 1E+300. A decimal
-    // holds more digits than a double, so it is the first choice
-    private static bool IsMoreThan(string low, string high) =>
-        decimal.TryParse(low, NumberStyles.Float, CultureInfo.InvariantCulture, out var lowDecimal)
-        && decimal.TryParse(high, NumberStyles.Float, CultureInfo.InvariantCulture, out var highDecimal)
-            ? lowDecimal > highDecimal
-            : double.Parse(low, NumberStyles.Float, CultureInfo.InvariantCulture)
-              > double.Parse(high, NumberStyles.Float, CultureInfo.InvariantCulture);
+    private static bool IsMoreThan(string low, string high)
+    {
+        var (lowDigits, lowExponent) = DigitsAndExponent(low);
+        var (highDigits, highExponent) = DigitsAndExponent(high);
+        var exponent = Math.Min(lowExponent, highExponent);
+        return lowDigits * BigInteger.Pow(10, lowExponent - exponent)
+            > highDigits * BigInteger.Pow(10, highExponent - exponent);
+    }
+
+    private static (BigInteger Digits, int Exponent) DigitsAndExponent(string number)
+    {
+        var e = number.IndexOfAny(['e', 'E']);
+        var exponent = e < 0 ? 0 : int.Parse(number.AsSpan(e + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+        var mantissa = e < 0 ? number : number[..e];
+        var point = mantissa.IndexOf('.');
+        if (point >= 0)
+        {
+            exponent -= mantissa.Length - point - 1;
+            mantissa = mantissa.Remove(point, 1);
+        }
+        return (BigInteger.Parse(mantissa, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture), exponent);
+    }
 
     private static InvalidOperationException WrongSchemaType(
         JsonPropertyInfo property, string attribute, OpenApiSchema schema, string allowed) =>

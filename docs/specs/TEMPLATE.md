@@ -34,7 +34,13 @@ Mark a rule `(later)` after its ID until a slice builds it. A rule without `(lat
 dotnet test --project tests/FullstackTemplate.UnitTests -- --treenode-filter "/*/*/SpecRuleTests/*"
 ```
 
-Only a test that runs counts. In .NET, that is a `[Test]` method with no `[Skip]` on it or on its class. In the frontend, that is a `test(...)` or `it(...)` call, and the check reads only its title, its `tag`, and its `annotation`. A rule ID in a comment, in another string, on a helper method, on `test.skip` or `test.fixme`, or in the tag of `test.describe` does not count.
+Only a test that runs counts. In .NET, that is a `[Test]` method with no `[Skip]` on it or on its class, and the `[Property]` has the string literals `"Rule"` and the ID. In the frontend, that is a `test(...)` or `it(...)` call with a string title, and the check reads only its title and its options object (the `tag` and the `annotation`). These do not count:
+
+- A rule ID in a comment, in another string, or on a helper method.
+- `test.skip`, `test.fixme`, a test with `skip: true` or `todo: true` in its options, and a test in `describe.skip`, `describe.fixme`, or `describe.todo`.
+- The tag or title of `test.describe`, `test.each`, `it.each`, a title in a variable, and a `[Property]` on a class or with a `const`. Put the ID on the test itself.
+
+The check finds the Rules section by a heading with the word "rules", such as `## 3. Rules`.
 
 To run the .NET tests of one rule, give the filter to each test project that has them:
 

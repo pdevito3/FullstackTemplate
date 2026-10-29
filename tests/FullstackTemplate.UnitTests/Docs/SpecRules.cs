@@ -31,7 +31,7 @@ public static partial class SpecRules
         string? fence = null;
         var inTable = false;
         var inRuleTable = false;
-        var section = (RulesSection?)null;
+        RulesSection? section = null;
         var lines = markdown.Split('\n');
         for (var number = 1; number <= lines.Length; number++)
         {
@@ -52,7 +52,7 @@ public static partial class SpecRules
                     section = null;
                 }
 
-                if (RulesHeading().IsMatch(heading.Groups["text"].Value))
+                if (section is null && RulesHeading().IsMatch(heading.Groups["text"].Value))
                     section = new RulesSection(level);
                 inTable = false;
                 continue;
@@ -60,8 +60,7 @@ public static partial class SpecRules
 
             if (fence is null && section is not null && line.Length > 0)
             {
-                section.HasText = true;
-                section.IsNone = line is "None" or "None.";
+                section.IsNone |= line is "None" or "None.";
                 if (RuleInList().Match(line) is { Success: true } listed)
                     faults.Add($"Line {number} of {spec} has the rule {listed.Groups["id"].Value} in a list. Write each rule as a row of the table whose first column is ID.");
             }
@@ -130,13 +129,11 @@ public static partial class SpecRules
 
         public bool HasRuleTable { get; set; }
 
-        public bool HasText { get; set; }
-
         public bool IsNone { get; set; }
 
         public IEnumerable<string> Faults(string spec)
         {
-            if (!HasRuleTable && !(HasText && IsNone))
+            if (!HasRuleTable && !IsNone)
                 yield return $"The Rules section of {spec} has no table whose first column is ID, so the check reads no rules from it. Write each rule as a row of that table, or write None.";
         }
     }
@@ -165,36 +162,57 @@ public static partial class SpecRules
         => attribute.Name.ToString().Replace("global::", "", StringComparison.Ordinal) is var written
             && (written == name || written == name + "Attribute" || written == "TUnit.Core." + name || written == "TUnit.Core." + name + "Attribute");
 
-    // The title and the options of each test(...) and it(...) call. test.skip and test.fixme do not run, so they do not count.
+    // The title and the options of each test(...) and it(...) call. test.skip, test.fixme, a test with skip or todo in its
+    // options, and a test in a describe.skip or describe.fixme group do not run, so they do not count.
     private static IEnumerable<string> FrontendRuleIds(string source)
     {
-        var code = WithoutComments(source);
+        var (code, quoted) = Scan(source);
+        var skippedGroups = SkippedGroup().Matches(code)
+            .Where(group => !quoted[group.Index])
+            .Select(group => (Start: group.Index, End: EndOfParens(code, quoted, group.Index + group.Length - 1)))
+            .ToList();
         foreach (Match call in FrontendTestCall().Matches(code))
         {
+            if (quoted[call.Index] || skippedGroups.Any(group => call.Index > group.Start && call.Index < group.End))
+                continue;
+
             var start = SkipSpace(code, call.Index + call.Length);
             if (start >= code.Length || code[start] is not ('\'' or '"' or '`'))
                 continue;
 
-            var end = EndOfString(code, start);
+            var end = EndOfQuoted(quoted, start);
             var named = code[start..end];
             var next = SkipSpace(code, end);
             if (next < code.Length && code[next] == ',' && SkipSpace(code, next + 1) is var options && options < code.Length && code[options] == '{')
-                named += code[options..EndOfObject(code, options)];
+            {
+                var optionText = code[options..EndOfParens(code, quoted, options)];
+                if (SkipOption().IsMatch(optionText))
+                    continue;
+                named += optionText;
+            }
 
             foreach (Match id in FrontendReference().Matches(named))
                 yield return id.Groups["id"].Value;
         }
     }
 
-    // Each comment becomes spaces. A // or a /* in a string stays.
-    private static string WithoutComments(string source)
+    // The source with each comment made into spaces, and for each character whether it is in a string. A ' or a " string
+    // ends at the end of its line, so a quote in a regex literal or in JSX text spoils only one line.
+    private static (string Code, bool[] Quoted) Scan(string source)
     {
         var code = source.ToCharArray();
+        var quoted = new bool[code.Length];
         for (var i = 0; i < code.Length; i++)
         {
             if (code[i] is '\'' or '"' or '`')
             {
-                i = EndOfString(source, i) - 1;
+                var quote = code[i];
+                var end = i + 1;
+                while (end < code.Length && code[end] != quote && !(quote != '`' && code[end] == '\n'))
+                    end += code[end] == '\\' ? 2 : 1;
+                end = Math.Min(end + 1, code.Length);
+                Array.Fill(quoted, true, i, end - i);
+                i = end - 1;
             }
             else if (code[i] == '/' && i + 1 < code.Length && code[i + 1] is '/' or '*')
             {
@@ -205,33 +223,29 @@ public static partial class SpecRules
             }
         }
 
-        return new string(code);
+        return (new string(code), quoted);
     }
 
-    // The index after the quote that closes the string that starts at start
-    private static int EndOfString(string code, int start)
+    private static int EndOfQuoted(bool[] quoted, int start)
     {
-        for (var i = start + 1; i < code.Length; i++)
-        {
-            if (code[i] == '\\')
-                i++;
-            else if (code[i] == code[start])
-                return i + 1;
-        }
+        var end = start;
+        while (end < quoted.Length && quoted[end])
+            end++;
 
-        return code.Length;
+        return end;
     }
 
-    private static int EndOfObject(string code, int start)
+    // The index after the bracket that closes the bracket at start, for ( and {
+    private static int EndOfParens(string code, bool[] quoted, int start)
     {
         var depth = 0;
         for (var i = start; i < code.Length; i++)
         {
-            if (code[i] is '\'' or '"' or '`')
-                i = EndOfString(code, i) - 1;
-            else if (code[i] == '{')
+            if (quoted[i])
+                continue;
+            if (code[i] is '(' or '{')
                 depth++;
-            else if (code[i] == '}' && --depth == 0)
+            else if (code[i] is ')' or '}' && --depth == 0)
                 return i + 1;
         }
 
@@ -249,8 +263,8 @@ public static partial class SpecRules
     [GeneratedRegex(@"^(?<level>#{1,6})\s+(?<text>.*?)\s*#*$")]
     private static partial Regex Heading();
 
-    // "Rules" or "3. Rules"
-    [GeneratedRegex(@"^(?:[0-9]+(?:\.[0-9]+)*\.?\s+)?Rules$", RegexOptions.IgnoreCase)]
+    // A heading with the word rules, such as "3. Rules" or "Business rules"
+    [GeneratedRegex(@"\brules\b", RegexOptions.IgnoreCase)]
     private static partial Regex RulesHeading();
 
     // "- R-7: ...", "1. **R-7** ..."
@@ -259,6 +273,12 @@ public static partial class SpecRules
 
     [GeneratedRegex(@"(?<![\w.$])(?:test|it)(?:\.only)?\s*\(")]
     private static partial Regex FrontendTestCall();
+
+    [GeneratedRegex(@"(?<![\w$])(?:test\.)?describe\.(?:skip|fixme|todo)\s*\(")]
+    private static partial Regex SkippedGroup();
+
+    [GeneratedRegex(@"\b(?:skip|todo)\s*:\s*true\b")]
+    private static partial Regex SkipOption();
 
     [GeneratedRegex(@"^(?<id>[A-Z][A-Z0-9]*-[0-9]+)(?<later>\s+\(later\))?$")]
     private static partial Regex RuleId();

@@ -318,23 +318,23 @@ jobs:
           git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Remove the examples"
       # example:end
 
-      # The two samples have each property kind, each operation, and each entrypoint. Protobuf has no date, so the
-      # gRPC sample has none.
+      # The two samples have each property kind, each operation, and each entrypoint. A shipment refers to a carrier.
+      # Protobuf has no date, so the gRPC sample has none.
       - name: Generate the sample features
         run: |
           dotnet run scripts/new-feature.cs -- Carrier --entrypoints http,mcp \
-            --fields "Name:text, Notes:text?, Code:text:public, MaxLoad:int, IsActive:bool, ReceivedOn:date, CountedAt:instant"
+            --fields "Name:text, Notes:text?, Code:text:public, MaxLoad:int, IsActive:bool, ReceivedOn:date, CountedAt:instant, ServiceDay:zoned-date"
           dotnet run scripts/new-feature.cs -- Shipment --entrypoints http,grpc,mcp \
-            --fields "Label:text:public, Memo:text?, Count:int, Fragile:bool, SeenAt:instant"
+            --fields "Label:text:public, Carrier:ref, Memo:text?, Count:int, Fragile:bool, SeenAt:instant"
 
       - name: Fail if a second run changes a file
         run: |
           git add --all
           git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Add the sample features"
           dotnet run scripts/new-feature.cs -- Carrier --entrypoints http,mcp \
-            --fields "Name:text, Notes:text?, Code:text:public, MaxLoad:int, IsActive:bool, ReceivedOn:date, CountedAt:instant"
+            --fields "Name:text, Notes:text?, Code:text:public, MaxLoad:int, IsActive:bool, ReceivedOn:date, CountedAt:instant, ServiceDay:zoned-date"
           dotnet run scripts/new-feature.cs -- Shipment --entrypoints http,grpc,mcp \
-            --fields "Label:text:public, Memo:text?, Count:int, Fragile:bool, SeenAt:instant"
+            --fields "Label:text:public, Carrier:ref, Memo:text?, Count:int, Fragile:bool, SeenAt:instant"
           git add --intent-to-add --all
           git diff --exit-code --stat
 

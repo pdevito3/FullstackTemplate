@@ -367,6 +367,22 @@ public class OpenApiDocumentTests
         }
     }
 
+    // example:start
+    [Test]
+    public async Task venue_add_declares_not_found_for_a_tenant_that_a_delete_removed_during_the_add()
+    {
+        // Arrange
+        var root = await LoadDocumentAsync();
+
+        // Act
+        var notFound = root["paths"]?["/api/v1/venues"]?["post"]?["responses"]?["404"];
+
+        // Assert
+        notFound.ShouldNotBeNull();
+        notFound["content"]?["application/problem+json"].ShouldNotBeNull();
+    }
+    // example:end
+
     [Test]
     public async Task only_secured_operations_declare_unauthorized()
     {

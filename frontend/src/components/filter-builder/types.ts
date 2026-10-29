@@ -25,7 +25,8 @@ export type LogicalOperator = 'AND' | 'OR'
 
 // Date format types for QueryKit:
 // - 'date': Date only (2022-07-01)
-// - 'datetime': Local datetime without timezone (2022-07-01T00:00:03)
+// - 'datetime': Local datetime without timezone (2022-07-01T00:00:03). Only for a Server `DateTime`, not a
+//   `DateTimeOffset`. See "Dates and times" in docs/frontend/code-style.md.
 // - 'datetimeUtc': DateTime with UTC indicator (2022-07-01T00:00:03Z)
 // - 'datetimeOffset': DateTime with timezone offset (2022-07-01T00:00:03+01:00)
 export type DateType = 'date' | 'datetime' | 'datetimeUtc' | 'datetimeOffset'

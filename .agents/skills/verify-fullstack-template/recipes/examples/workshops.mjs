@@ -72,7 +72,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       expect(body.timeZone).toBe(zone)
       await expect(page).toHaveURL(new RegExp(`/workshops/new\\?venueId=${body.id}$`))
       await expect(page.getByRole('combobox', { name: 'Venue' })).toHaveValue(body.name)
-      await expect(page.getByText('The time in Pago Pago.', { exact: true })).toBeVisible()
+      await expect(page.getByText('The time in American Samoa Time.', { exact: true })).toBeVisible()
       return body
     })
     await capture('venue-picked')

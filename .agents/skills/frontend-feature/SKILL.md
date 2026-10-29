@@ -40,7 +40,7 @@ The shared parts of a page are in the app, also after the removal. Use them. Do 
 | The pager of a list, and the load of the next page of a picker | `Pager` in `components/ui/pager.tsx`, and `ComboboxLoadMore` in `components/ui/combobox.tsx` |
 | The limits of a field | `stringWithMaxLengthOf`, `maxLengthOf`, `minimumOf`, and `maximumOf` in [`lib/api-contract.ts`](../../../frontend/src/lib/api-contract.ts) |
 | A stale save, and the reload that keeps the edits | `isStaleVersionError` in [`lib/problem-details.ts`](../../../frontend/src/lib/problem-details.ts), and `latestOverEdits` in [`lib/latest-over-edits.ts`](../../../frontend/src/lib/latest-over-edits.ts) |
-| The header of a list answer in a mock | `paginationOf` in [`tests/support/api/pagination.ts`](../../../frontend/tests/support/api/pagination.ts) |
+| The header of a list answer in a mock | `paginationHeaders` in [`tests/support/api/pagination.ts`](../../../frontend/tests/support/api/pagination.ts) |
 
 ## Steps
 

@@ -1,7 +1,5 @@
 export interface LatestOverEdits<F extends string> {
-  /** The fields that a save after the load changed. The form shows their saved values. */
   changed: F[]
-  /** The fields that keep the edit of the user, because the save after the load did not change them. */
   kept: F[]
 }
 

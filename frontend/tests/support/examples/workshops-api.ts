@@ -2,7 +2,7 @@ import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { ProblemDetails } from '@/lib/problem-details'
 import type { MockRoute } from '@tests/support/api/mock-route'
-import { paginationOf } from '@tests/support/api/pagination'
+import { paginationHeaders } from '@tests/support/api/pagination'
 
 interface Buildable<T> {
   build(): T
@@ -22,7 +22,7 @@ export const workshopsApi = {
       method: 'get',
       path: workshopPaths.list,
       status: 200,
-      headers: paginationOf(total, pageNumber),
+      headers: paginationHeaders(total, pageNumber),
       body: workshops.map((w) => w.build()),
     }
   },
@@ -65,7 +65,7 @@ export const workshopsApi = {
       method: 'get',
       path: workshopPaths.venues,
       status: 200,
-      headers: paginationOf(venues.length),
+      headers: paginationHeaders(venues.length),
       body: venues.map((v) => v.build()),
     }
   },

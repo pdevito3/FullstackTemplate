@@ -101,12 +101,9 @@ const hookCalledBy = (init) => {
     : null
 }
 
-// The first value of state that the user owns from then on comes from a prop named so, as in `useState(defaultOpen)`.
 const isFirstValueName = (name) => /^(initial|default)([A-Z]|$)/.test(name)
 const ownStateHooks = new Set(['useState', 'useReducer', 'useRef', 'useId'])
 
-// The value that an expression copies as it is: through a field, `?.`, `!`, `as`, `??`, `||`, `? :`, and a local const.
-// A value that a call computes from a prop, as in `useState(() => parse(value))`, is not a copy.
 const copiedRoots = (node) => {
   switch (node?.type) {
     case 'Identifier':
@@ -158,10 +155,28 @@ export const noCopiedStateRule = {
       return copiedRoots(init).map((root) => sourceOf(root, seen)).find(Boolean) ?? null
     }
 
+    const functionOf = (node) => {
+      let parent = node.parent
+      while (parent && !['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'].includes(parent.type))
+        parent = parent.parent
+      return parent
+    }
+    const sourceOfValue = (node) => copiedRoots(node).map((root) => sourceOf(root, new Set())).find(Boolean)
+    // docs/frontend/client-state.md, "Effects": the render sets the state again when its source changes.
+    const renderSetsAgain = (node, source) => {
+      const setter = node.parent.type === 'VariableDeclarator' && node.parent.id.type === 'ArrayPattern' ? node.parent.id.elements[1] : null
+      const variable = setter?.type === 'Identifier' && resolve(sourceCode.getScope(setter), setter.name)
+      return Boolean(variable) && variable.references.some(({ identifier }) => {
+        const call = identifier.parent
+        return call.type === 'CallExpression' && call.callee === identifier && functionOf(call) === functionOf(node)
+          && sourceOfValue(call.arguments[0]) === source
+      })
+    }
+
     return {
       "CallExpression:matches([callee.name='useState'], [callee.property.name='useState'])"(node) {
-        const source = copiedRoots(node.arguments[0]).map((root) => sourceOf(root, new Set())).find(Boolean)
-        if (source)
+        const source = sourceOfValue(node.arguments[0])
+        if (source && !renderSetsAgain(node, source))
           context.report({ node, messageId: 'copied', data: { source } })
       },
     }
@@ -185,7 +200,7 @@ const isValue = (variable) => {
   return !(init && (['ArrowFunctionExpression', 'FunctionExpression'].includes(init.type) || hookCalledBy(init) === 'useQueryClient'))
 }
 
-// docs/frontend/server-state.md, rule 3. It compares variables, not their fields: a key with `params` covers `params.page`.
+// docs/frontend/server-state.md, rule 3.
 export const queryKeyHasInputsRule = {
   meta: {
     type: 'problem',
@@ -233,8 +248,7 @@ export const queryKeyHasInputsRule = {
   },
 }
 
-// docs/frontend/server-state.md, rule 3, in a key factory: a hook gives its request values to the factory, so the key
-// must keep each of them. A parameter that the key reads only through a field, as in `params.search`, drops the others.
+// docs/frontend/server-state.md, rule 3.
 export const keyHasEachParamRule = {
   meta: {
     type: 'problem',

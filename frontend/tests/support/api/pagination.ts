@@ -1,5 +1,4 @@
-/** The `X-Pagination` header of a list answer, as the Server sends it. `parsePagination` reads it. */
-export function paginationOf(total: number, pageNumber = 1, pageSize = 10) {
+export function paginationHeaders(total: number, pageNumber = 1, pageSize = 10) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return {
     'X-Pagination': JSON.stringify({

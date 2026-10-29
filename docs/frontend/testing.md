@@ -22,7 +22,7 @@ await commands.answerRequests([
 ])
 ```
 
-A request to `/api/*` or `/bff/*` with no answer fails the test, and the error names the request. The dev server has no BFF, so it answers such a request with status 502. This is also true for `pnpm dev` when Aspire does not set `BFF_HTTPS` or `BFF_HTTP`.
+A request to `/api/*` or `/bff/*` with no answer fails the test, and the error names the request. The check runs after the test. A request that starts as the test ends can count for the next test, or for no test. The dev server has no BFF, so it answers such a request with status 502. This is also true for `pnpm dev` when Aspire does not set `BFF_HTTPS` or `BFF_HTTP`.
 
 A component that takes a save function as a prop does not need answers. Give it a `vi.fn()` that resolves, or that rejects with a `ProblemDetailsError`.
 

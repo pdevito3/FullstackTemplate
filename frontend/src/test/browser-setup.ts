@@ -13,7 +13,7 @@ declare module 'vitest/browser' {
   interface BrowserCommands {
     /** Answers each request that matches an answer. A later answer wins. `[]` removes all answers. */
     answerRequests: (answers: Answer[]) => Promise<void>
-    /** Returns each request to `/api/*` or `/bff/*` that no answer matched since the last call. */
+    /** Returns each request to `/api/*` or `/bff/*` that no answer matched since the last call, and forgets them. */
     takeUnansweredRequests: () => Promise<string[]>
     /** Holds each request for `path` (pathname and query) until `releaseRequests(path)`. */
     holdRequests: (path: string) => Promise<void>

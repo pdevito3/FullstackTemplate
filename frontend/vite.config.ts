@@ -86,9 +86,10 @@ const failStalledBffRequests: ProxyOptions['configure'] = (proxy) => {
   })
 }
 
-// With no BFF, Vite answers each path with its index.html, so a request of the app got HTML and no error.
-// These are the paths that the proxy below sends to the BFF.
-const bffPaths = ['/bff/', '/api/', '/signin-oidc', '/signout-callback-oidc']
+// The paths that the dev server sends to the BFF: the BFF endpoints (login, logout, user), the API, and the OIDC callbacks.
+const bffPaths = ['/bff', '/api', '/signin-oidc', '/signout-callback-oidc']
+
+// With no BFF, Vite answers each path with its index.html, so a request of the app gets HTML and no error.
 
 const failBffRequestsWithNoBff: Plugin = {
   name: 'fail-bff-requests-with-no-bff',
@@ -191,34 +192,10 @@ export default defineConfig({
     ],
   },
   server: {
-    proxy: bffTarget ? {
-      // BFF management endpoints (login, logout, user)
-      '/bff': {
-        target: bffTarget,
-        changeOrigin: true,
-        secure: false,
-        configure: failStalledBffRequests
-      },
-      // OIDC callback endpoints
-      '/signin-oidc': {
-        target: bffTarget,
-        changeOrigin: true,
-        secure: false,
-        configure: failStalledBffRequests
-      },
-      '/signout-callback-oidc': {
-        target: bffTarget,
-        changeOrigin: true,
-        secure: false,
-        configure: failStalledBffRequests
-      },
-      // API calls proxied through BFF
-      '/api': {
-        target: bffTarget,
-        changeOrigin: true,
-        secure: false,
-        configure: failStalledBffRequests
-      }
-    } : undefined
-  }
+    proxy: bffTarget
+      ? Object.fromEntries(
+          bffPaths.map((path) => [path, { target: bffTarget, changeOrigin: true, secure: false, configure: failStalledBffRequests }]),
+        )
+      : undefined,
+  },
 })

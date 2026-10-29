@@ -50,7 +50,6 @@ const isBffRequest = (url: URL) => url.pathname.startsWith('/api/') || url.pathn
 
 interface Answering {
   answers: Answer[]
-  /** Each request that no answer matched since the last `takeUnansweredRequests`, as `GET /path?query`. */
   unanswered: Set<string>
 }
 
@@ -70,7 +69,6 @@ const body = (answer: Answer) => {
   return answer.body === undefined ? '' : JSON.stringify(answer.body)
 }
 
-/** Replaces the answers. The setup file calls it with `[]` before each test. */
 export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page }, answers) => {
   const current = answering.get(page)
   if (current) {
@@ -85,7 +83,6 @@ export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page
     if (!answer) {
       const url = new URL(request.url())
       state.unanswered.add(`${request.method()} ${url.pathname}${url.search}`)
-      // The dev server answers it with an error that names the request.
       await route.fallback()
       return
     }
@@ -98,7 +95,6 @@ export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page
   })
 }
 
-/** Returns the requests that no answer matched since the last call, and forgets them. */
 export const takeUnansweredRequests: BrowserCommand<[]> = async ({ page }) => {
   const state = answering.get(page)
   if (!state) return []

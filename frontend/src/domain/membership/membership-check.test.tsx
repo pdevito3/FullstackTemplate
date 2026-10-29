@@ -7,7 +7,6 @@ import { render } from 'vitest-browser-react'
 import { routeTree } from '@/routeTree.gen'
 
 test('a session answer that is not a list of claims shows that the membership check failed', async () => {
-  // A dev server with no BFF answered each path with its index.html.
   await commands.answerRequests([
     {
       method: 'GET',

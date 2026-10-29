@@ -229,6 +229,32 @@ public class QueryKitInputExtensionsTests : IDisposable
         exception.InnerException.ShouldBeOfType<QueryKitNestingDepthExceededException>();
     }
 
+    // QueryKit reads a member of a field, also a private one, and EF cannot translate most of them
+    [Test]
+    [Arguments("Name.Length > 3")]
+    [Arguments("Seats.m_value > 3")]
+    [Arguments("Name == \"a\" || Name.Length == 1")]
+    public void filter_on_a_part_of_a_field_gets_a_message_with_the_fields_of_the_list(string filters)
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("filters");
+        exception.Message.ShouldBe("The filter can use a field of the list, not a part of a field. Use one of these fields: name, seats.");
+    }
+
+    [Test]
+    public void sort_on_a_part_of_a_field_gets_a_message_with_the_fields_of_the_list()
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplySortOrder("Name.Length desc", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("sortOrder");
+        exception.Message.ShouldBe("The sort order can use a field of the list, not a part of a field. Use one of these fields: name, seats.");
+    }
+
     [Test]
     [Arguments("Name ^^ \"x\"")]
     [Arguments("Name ^^* \"x\"")]

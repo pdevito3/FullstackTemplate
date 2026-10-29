@@ -27,4 +27,11 @@ describe('latestOverEdits', () => {
 
     expect(latestOverEdits(loaded, edited, latest, FIELDS)).toEqual({ changed: [], kept: ['startsAt'] })
   })
+
+  it('takes only values that compare by their text', () => {
+    const picked = { venue: { id: 'a', name: 'Hall' } }
+
+    // @ts-expect-error An object field compares as "[object Object]", so the merge would drop the edit of the user.
+    latestOverEdits(picked, picked, picked, ['venue'])
+  })
 })

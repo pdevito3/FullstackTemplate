@@ -92,6 +92,12 @@ describe('server-state/no-copied-state', () => {
     expect(serverStateMessages(synced)).toEqual([])
     expect(serverStateMessages(inEffect)).toEqual(['no-copied-state: This state copies the prop `search`'])
   })
+
+  it('takes a first-value name only from a prop, not from a local copy of a query result', () => {
+    const code = "function Name({ id }) { const { data } = useRecord(id); const initialName = data?.name ?? ''; const [name] = useState(initialName) }"
+
+    expect(serverStateMessages(code)).toEqual(['no-copied-state: This state copies the result of `useRecord`'])
+  })
 })
 
 describe('server-state/query-key-has-inputs', () => {
@@ -110,6 +116,15 @@ describe('server-state/query-key-has-inputs', () => {
       const detail = queryOptions({ queryKey: RecordKeys.detail(id ?? ''), queryFn: ({ signal }) => getRecord({ path: { id: id! }, signal, options: { suppressErrorToast } }) })
       const list = useQuery({ queryKey: key, queryFn: async ({ signal }) => getRecordList({ query: { search: params.search, pageSize: PAGE_SIZE }, signal }) })
       return { detail, list }
+    }`
+
+    expect(serverStateMessages(code)).toEqual([])
+  })
+
+  it('takes a local that the query function reads when the key has each value it comes from', () => {
+    const code = `function useRecords(params) {
+      const search = params.search.trim()
+      return useQuery({ queryKey: RecordKeys.list(params), queryFn: () => getRecordList({ query: { search, pageNumber: params.page } }) })
     }`
 
     expect(serverStateMessages(code)).toEqual([])
@@ -135,6 +150,17 @@ describe('server-state/key-has-each-param', () => {
       all: ['records'] as const,
       list: (params: RecordListParams) => [...RecordKeys.all, 'list', params] as const,
       search: (search: string) => [...RecordKeys.all, 'search', { search }] as const,
+    }`
+
+    expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])
+  })
+
+  it('takes a method call on a whole parameter, a callback in a key, and a named function', () => {
+    const code = `export const RecordKeys = {
+      all: ['records'] as const,
+      byIds: (ids: string[]) => [...RecordKeys.all, 'ids', [...ids].sort((a, b) => a.localeCompare(b)).join(',')] as const,
+      day: (date: Date) => [...RecordKeys.all, 'day', date.toISOString()] as const,
+      named: function named(id: string) { return [...RecordKeys.all, id] as const },
     }`
 
     expect(serverStateMessages(code, 'src/domain/records/apis/record.keys.ts')).toEqual([])

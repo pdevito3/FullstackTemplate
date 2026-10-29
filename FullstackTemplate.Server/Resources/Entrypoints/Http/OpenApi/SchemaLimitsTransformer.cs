@@ -11,7 +11,6 @@ using Microsoft.OpenApi;
 /// <see cref="SchemaMaximumAttribute"/> its <c>maximum</c>. The generated Zod schema of the SPA then has the limit, so a
 /// form reads it from the contract and not from a copy that can go stale. A max length on a schema that is not a string,
 /// or a minimum or a maximum on a schema that is not a number, fails the Debug build, so that no mark is silently lost.
-/// So does a minimum that is more than the maximum.
 /// </summary>
 public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
 {
@@ -49,11 +48,9 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
             schema.Maximum = maximum.Maximum.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (schema.Minimum is { } low && schema.Maximum is { } high
+        if (schema is { Minimum: { } low, Maximum: { } high }
             && decimal.Parse(low, CultureInfo.InvariantCulture) > decimal.Parse(high, CultureInfo.InvariantCulture))
-            throw new InvalidOperationException(
-                $"{property.DeclaringType.Name}.{property.Name} has the minimum {low} and the maximum {high}, so no value passes. "
-                + "Give [SchemaMinimum] a value that is not more than the value of [SchemaMaximum].");
+            throw NoValuePasses(property, low, high);
 
         return Task.CompletedTask;
     }
@@ -62,4 +59,8 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
         JsonPropertyInfo property, string attribute, OpenApiSchema schema, string allowed) =>
         new($"{property.DeclaringType.Name}.{property.Name} has [{attribute}], but its schema type is {schema.Type}. "
             + $"Put [{attribute}] only on {allowed}.");
+
+    private static InvalidOperationException NoValuePasses(JsonPropertyInfo property, string minimum, string maximum) =>
+        new($"{property.DeclaringType.Name}.{property.Name} has the minimum {minimum} and the maximum {maximum}, so no value passes. "
+            + "Give [SchemaMinimum] a value that is not more than the value of [SchemaMaximum].");
 }

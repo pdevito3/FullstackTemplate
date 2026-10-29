@@ -19,6 +19,7 @@ try
     var repo = Repo.Load(root);
     var spec = Spec.Parse(args, repo);
     var plan = Plan.For(spec, repo);
+    repo.RequireNoPendingModelChanges(spec);
     var result = repo.Apply(plan);
     var migration = repo.AddMigration(spec);
 
@@ -100,7 +101,7 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
     public bool Has(Entrypoints entrypoint) => Entrypoints.HasFlag(entrypoint);
 
     private static readonly HashSet<string> Reserved = new(StringComparer.Ordinal)
-        { "Id", "TenantId", "Version", "LastModifiedOn", "IsDeleted", "DomainEvents" };
+        { "Id", "TenantId", "Version", "LastModifiedOn", "IsDeleted", "DomainEvents", "IdPrefix", "Create", "Update", "Delete" };
 
     private const string Usage = """
         Usage: dotnet run scripts/new-feature.cs -- <Entity> --fields "<Name:kind>, ..." [options]
@@ -142,6 +143,11 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         RequirePascalCase(plural, "The plural");
         if (plural == entity)
             throw new FeatureException("The plural must not be the same as the entity name. Give --plural.");
+        if (repo.HidesServerNamespace(plural))
+            throw new FeatureException(
+                $"The namespace Domain.{plural} would hide the namespace {repo.App}.Server.{plural} in the domain code. Give another --plural.");
+        if (repo.TypeOwner(entity, $"{repo.App}.Server/Domain/{plural}/{entity}.cs") is { } typeOwner)
+            throw new FeatureException($"The type {entity} is in use in {typeOwner}. Give another entity name.");
         prefix ??= new string(entity.ToLowerInvariant().Take(3).ToArray());
         if (!Regex.IsMatch(prefix, "^[a-z]{1,17}$"))
             throw new FeatureException($"The ID prefix '{prefix}' must have 1 to 17 lower-case letters. Give --prefix.");
@@ -149,6 +155,8 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
             throw new FeatureException($"The ID prefix '{prefix}' is in use in {owner}. Give another with --prefix.");
 
         var parsed = ParseFields(fields ?? throw new FeatureException($"Give the properties with --fields.\n\n{Usage}"));
+        if (parsed.Any(f => f.Name == entity))
+            throw new FeatureException($"A property must not have the name of the entity, {entity}.");
         var points = ParseEntrypoints(entrypoints ?? "http");
         if (points.HasFlag(Entrypoints.Grpc) && parsed.FirstOrDefault(f => f.Kind == Kind.Date) is { } date)
             throw new FeatureException(
@@ -168,7 +176,7 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
             var (name, kindText) = (pieces[0], pieces[1]);
             RequirePascalCase(name, $"The property name '{name}'");
             if (Reserved.Contains(name))
-                throw new FeatureException($"The property name {name} is reserved. Each entity has it already.");
+                throw new FeatureException($"The property name {name} is reserved. Each entity has a member with this name.");
             if (fields.Any(f => f.Name == name))
                 throw new FeatureException($"The property {name} is in the list two times.");
 
@@ -264,7 +272,8 @@ internal sealed record FileWrite(string Path, string Text);
 /// Lines for a file that many features share, such as AppDbContext. The script puts them above the line
 /// <c>// new-feature:{Slot}</c>, with its indent. When the file holds <see cref="Probe"/>, the lines are in already.
 /// </summary>
-internal sealed record Insertion(string Path, string Slot, string Probe, IReadOnlyList<string> Lines);
+/// <param name="WhenFileExists">The file is an example that scripts/remove-examples.cs can delete.</param>
+internal sealed record Insertion(string Path, string Slot, string Probe, IReadOnlyList<string> Lines, bool WhenFileExists = false);
 
 internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insertion> Insertions)
 {
@@ -391,11 +400,13 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
         }
         if (spec.Has(Entrypoints.Mcp))
         {
+            list.Add(new($"tests/{n.App}.FunctionalTests/Examples/Tenants/TenantExampleMcpToolTests.cs", "mcp-tools",
+                $"\"get_{n.Snake}\",", [$"\"add_{n.Snake}\", \"get_{n.Snake}\", \"list_{n.SnakePlural}\", \"update_{n.Snake}\","],
+                WhenFileExists: true));
             open.Add($"[\"get_{n.Snake}\"] = new(\"ToolAccessKind.Read. Each member reads the {n.WordsPlural} of the own tenant, and the tenant filter hides the others.\"),");
             open.Add($"[\"list_{n.SnakePlural}\"] = new(\"ToolAccessKind.Read. Each member lists the {n.WordsPlural} of the own tenant, and the tenant filter hides the others.\"),");
         }
-        if (open.Count > 0)
-            list.Add(new(sweep, "open-to-each-member", open[0][..open[0].IndexOf('=')], open));
+        list.AddRange(open.Select(line => new Insertion(sweep, "open-to-each-member", line[..line.IndexOf('=')], [line])));
 
         if (spec.Has(Entrypoints.Grpc))
         {
@@ -430,12 +441,27 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
     /// <summary>The file that declares the prefix, other than <paramref name="ownFile"/>, or null.</summary>
     public string? IdPrefixOwner(string prefix, string ownFile)
     {
-        var server = Path.Combine(root, $"{app}.Server");
         var probe = $"IdPrefix = \"{prefix}\"";
-        return Directory.EnumerateFiles(server, "*.cs", SearchOption.AllDirectories)
-            .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/'))
-            .Where(file => file != ownFile && !file.Contains("/obj/") && !file.Contains("/bin/"))
+        return ServerFiles()
+            .Where(file => file != ownFile)
             .FirstOrDefault(file => File.ReadAllText(Path.Combine(root, file)).Contains(probe, StringComparison.Ordinal));
+    }
+
+    private IEnumerable<string> ServerFiles()
+        => Directory.EnumerateFiles(Path.Combine(root, $"{app}.Server"), "*.cs", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/'))
+            .Where(file => !file.Contains("/obj/") && !file.Contains("/bin/"));
+
+    public bool HidesServerNamespace(string plural)
+        => plural == "Domain" || Directory.Exists(Path.Combine(root, $"{app}.Server", plural));
+
+    /// <summary>The file that declares the type, other than <paramref name="ownFile"/>, or null.</summary>
+    public string? TypeOwner(string type, string ownFile)
+    {
+        var declaration = new Regex($@"\b(?:class|record|struct|interface|enum)\s+{type}\b");
+        return ServerFiles()
+            .Where(file => file != ownFile)
+            .FirstOrDefault(file => declaration.IsMatch(File.ReadAllText(Path.Combine(root, file))));
     }
 
     /// <summary>The value of the permission when it exists, else one more than the highest value.</summary>
@@ -466,6 +492,8 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         foreach (var insertion in plan.Insertions)
         {
             var path = Path.Combine(root, insertion.Path);
+            if (insertion.WhenFileExists && !File.Exists(path))
+                continue;
             if (!edits.TryGetValue(insertion.Path, out var text))
                 text = File.Exists(path)
                     ? File.ReadAllText(path)
@@ -502,28 +530,53 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         return new ApplyResult([.. writes.Select(w => w.Path), .. edits.Keys.Order(StringComparer.Ordinal)]);
     }
 
+    /// <summary>
+    /// Before the first run writes the entity, stops when the model has changes that no migration has. The migration of
+    /// the feature would take them in.
+    /// </summary>
+    public void RequireNoPendingModelChanges(Spec spec)
+    {
+        if (HasMigration(spec) || File.Exists(Path.Combine(root, spec.Names.EntityFile)))
+            return;
+
+        var server = $"{app}.Server";
+        Run("dotnet", ["restore", Path.Combine(server, $"{server}.csproj")], NoChangeFailure);
+        RunEf(NoChangeFailure, "migrations", "has-pending-model-changes", "--project", server, "--startup-project", server);
+    }
+
+    private const string NoChangeFailure =
+        "The script changed no files. The model of the Server has changes that no migration has, or dotnet-ef could not " +
+        "check it. See the output above. Add the migration of those changes, then run the script again.";
+
+    private const string MigrationFailure =
+        "The script wrote the feature files but no migration. Correct the build, then run the script again.";
+
+    private bool HasMigration(Spec spec)
+        => Directory.EnumerateFiles(Path.Combine(root, $"{app}.Server", "Databases", "Migrations"),
+            $"*_{spec.Names.Migration}.cs", SearchOption.AllDirectories).Any();
+
     /// <summary>Adds the migration once. It gives the new permission to each admin that exists.</summary>
     public IReadOnlyList<string> AddMigration(Spec spec)
     {
         var n = spec.Names;
         var server = $"{app}.Server";
         var folder = Path.Combine(root, server, "Databases", "Migrations");
-        if (Directory.EnumerateFiles(folder, $"*_{n.Migration}.cs", SearchOption.AllDirectories).Any())
+        if (HasMigration(spec))
             return [];
 
         // dotnet-ef reads the project metadata before it builds, and that read needs the restored assets
-        Run("dotnet", "restore", Path.Combine(server, $"{server}.csproj"));
-        RunEf("migrations", "add", n.Migration, "--project", server, "--startup-project", server,
+        Run("dotnet", ["restore", Path.Combine(server, $"{server}.csproj")], MigrationFailure);
+        RunEf(MigrationFailure, "migrations", "add", n.Migration, "--project", server, "--startup-project", server,
             "--output-dir", "Databases/Migrations");
 
         var migration = Directory.GetFiles(folder, $"*_{n.Migration}.cs").Single();
         var text = File.ReadAllText(migration);
         var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         var down = text.IndexOf("protected override void Down(MigrationBuilder migrationBuilder)", StringComparison.Ordinal);
-        var upEnd = text.LastIndexOf($"{newline}        }}", down, StringComparison.Ordinal);
-        var downStart = text.IndexOf($"{{{newline}", down, StringComparison.Ordinal) + 1 + newline.Length;
-        if (down < 0 || upEnd < 0)
+        var upEnd = down < 0 ? -1 : text.LastIndexOf($"{newline}        }}", down, StringComparison.Ordinal);
+        if (upEnd < 0)
             throw new FeatureException($"The script could not find Up and Down in {migration}. Add the permission lines by hand.");
+        var downStart = text.IndexOf($"{{{newline}", down, StringComparison.Ordinal) + 1 + newline.Length;
 
         text = text.Insert(downStart, $"            migrationBuilder.DeletePermission(\"{n.PermissionName}\");{newline}{newline}");
         text = text.Insert(upEnd, $"{newline}{newline}            migrationBuilder.GrantPermissionToRole(\"Admin\", \"{n.PermissionName}\");");
@@ -537,16 +590,16 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
     }
 
     // Not a local tool: on Linux, a manifest with dotnet-ef and another tool fails dotnet tool restore (SDK 10.0.403)
-    private void RunEf(params string[] arguments)
+    private void RunEf(string failure, params string[] arguments)
     {
         var efVersion = XDocument.Load(Path.Combine(root, "Directory.Packages.props"))
             .Descendants("PackageVersion")
             .Single(p => (string?)p.Attribute("Include") == "Microsoft.EntityFrameworkCore.Design")
             .Attribute("Version")!.Value;
-        Run("dotnet", ["tool", "exec", $"dotnet-ef@{efVersion}", "--yes", "--", .. arguments]);
+        Run("dotnet", ["tool", "exec", $"dotnet-ef@{efVersion}", "--yes", "--", .. arguments], failure);
     }
 
-    private void Run(string command, params string[] arguments)
+    private void Run(string command, string[] arguments, string failure)
     {
         var line = $"{command} {string.Join(' ', arguments)}";
         Console.WriteLine($"> {line}");
@@ -556,8 +609,7 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
                 ?? throw new FeatureException($"The script could not start {command}.");
             process.WaitForExit();
             if (process.ExitCode != 0)
-                throw new FeatureException(
-                    $"'{line}' failed. The script wrote the feature files but no migration. Correct the build, then run the script again.");
+                throw new FeatureException($"'{line}' failed. {failure}");
         }
         catch (Win32Exception exception)
         {
@@ -2433,6 +2485,25 @@ internal static class Templates
 
             public class {{e}}McpToolTests : TestBase
             {
+                private static readonly string[] Tools =
+                    ["add_{{n.Snake}}", "get_{{n.Snake}}", "list_{{n.SnakePlural}}", "update_{{n.Snake}}"];
+
+                [Test]
+                [Arguments("User", new[] { "get_{{n.Snake}}", "list_{{n.SnakePlural}}" })]
+                [Arguments("Admin", new[] { "add_{{n.Snake}}", "get_{{n.Snake}}", "list_{{n.SnakePlural}}", "update_{{n.Snake}}" })]
+                public async Task tools_list_shows_only_the_tools_that_the_caller_can_use(string role, string[] expected)
+                {
+                    // Arrange
+                    await Add{{e}}AndSignInAsync(role);
+                    await using var client = await CreateMcpClientAsync();
+
+                    // Act
+                    var tools = await client.ListToolsAsync();
+
+                    // Assert
+                    tools.Select(t => t.Name).Where(Tools.Contains).ShouldBe(expected, ignoreOrder: true);
+                }
+
                 [Test]
                 public async Task a_member_reads_and_lists_with_the_tools()
                 {

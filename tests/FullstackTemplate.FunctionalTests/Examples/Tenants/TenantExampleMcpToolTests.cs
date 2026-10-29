@@ -50,12 +50,14 @@ public class TenantExampleMcpToolTests : TestBase
         var tools = await client.ListToolsAsync();
 
         // Assert
-        tools.Select(t => t.Name).Where(IsTenantOrWorkshopTool).ShouldBe(expected, ignoreOrder: true);
+        tools.Select(t => t.Name).Where(name => !ToolsOfGeneratedFeatures.Contains(name)).ShouldBe(expected, ignoreOrder: true);
     }
 
-    // The tools of a feature that scripts/new-feature.cs adds have their own tests
-    private static bool IsTenantOrWorkshopTool(string name)
-        => name.Split('_')[^1] is "tenant" or "tenants" or "workshop" or "workshops";
+    // The tools of a feature that scripts/new-feature.cs adds. Its McpToolTests check the list of each caller.
+    private static readonly HashSet<string> ToolsOfGeneratedFeatures =
+    [
+        // new-feature:mcp-tools
+    ];
 
     [Test]
     public async Task unregistered_client_with_a_user_sub_cannot_read_the_tenant_of_the_user()

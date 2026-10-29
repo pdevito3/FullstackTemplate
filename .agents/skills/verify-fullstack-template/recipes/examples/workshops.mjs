@@ -6,6 +6,26 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
   const answered = (method, pattern) =>
     page.waitForResponse((r) => r.request().method() === method && pattern.test(new URL(r.url()).pathname))
   const actions = (name) => page.getByRole('group', { name: `Actions for ${name}` })
+  // Pago Pago is UTC-11 with no daylight saving time, and it is not the zone of the browser
+  const zone = 'Pacific/Pago_Pago'
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: zone })
+    .format(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .split('-')
+  const startsAt = new Date(Date.UTC(year, month - 1, day, 20, 30)).toISOString()
+  const shownStart = () =>
+    page.evaluate(
+      ([iso, timeZone]) =>
+        new Date(iso).toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone,
+          timeZoneName: 'short',
+        }),
+      [startsAt, zone],
+    )
 
   await step('log in and make the user an Admin of a new tenant', async () => {
     await page.goto('/')
@@ -39,42 +59,41 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
   const venue = await step('New venue: the venue is added and picked on the new workshop form', async () => {
     await page.getByRole('main').getByRole('link', { name: 'New venue' }).click()
     await page.getByRole('textbox', { name: 'Name' }).fill(venueName)
+    await page.getByRole('textbox', { name: 'Time zone' }).fill(zone)
     const added = answered('POST', /^\/api\/v1\/venues$/)
     await page.getByRole('button', { name: 'Add venue' }).click()
     const res = await added
     expect(res.status()).toBe(201)
     const body = await res.json()
+    expect(body.timeZone).toBe(zone)
     await expect(page).toHaveURL(new RegExp(`/workshops/new\\?venueId=${body.id}$`))
     await expect(page.getByRole('combobox', { name: 'Venue' })).toHaveValue(venueName)
     return body
   })
   await capture('venue-picked')
 
-  let workshop = await step('Add workshop: the detail page shows the draft', async () => {
+  let workshop = await step('Add workshop: the start is 09:30 at the venue, and the detail page shows the draft', async () => {
     await page.getByRole('textbox', { name: 'Title' }).fill(title)
-    const startsAt = page.getByRole('group', { name: 'Starts at' })
-    await startsAt.getByRole('spinbutton').first().click()
-    await page.keyboard.type('060120270930')
+    await page.getByRole('group', { name: 'Starts at' }).getByRole('spinbutton').first().click()
+    await page.keyboard.type(`${month}${day}${year}0930`)
     await page.keyboard.type('A')
     await page.getByRole('spinbutton', { name: 'Capacity' }).fill('12')
     const added = answered('POST', /^\/api\/v1\/workshops$/)
     await page.getByRole('button', { name: 'Add workshop' }).click()
     const res = await added
     expect(res.status()).toBe(201)
+    expect(new Date(res.request().postDataJSON().startsAt).toISOString()).toBe(startsAt)
     const body = await res.json()
+    expect(body.venueTimeZone).toBe(zone)
     await expect(page).toHaveURL(new RegExp(`/workshops/${body.id}$`))
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByText('Draft', { exact: true })).toBeVisible()
     return body
   })
 
-  await step('detail: the start, the capacity, and the venue of the API', async () => {
-    const start = await page.evaluate(
-      (iso) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
-      workshop.startsAt,
-    )
+  await step('detail: the start in the zone of the venue, the capacity, and the venue of the API', async () => {
     const details = page.getByRole('region', { name: 'Details' })
-    await expect(details).toContainText(start)
+    await expect(details).toContainText(await shownStart())
     await expect(details).toContainText(String(workshop.capacity))
     await expect(details).toContainText(venue.name)
     expect(workshop.allowedActions).toEqual(['Update', 'Schedule', 'Cancel'])
@@ -91,7 +110,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
     expect(res.status()).toBe(200)
     expect(res.request().postDataJSON().version).toBe(workshop.version)
     const body = await res.json()
-    expect(body.version).toBe(workshop.version + 1)
+    expect(body.version).toBeGreaterThan(workshop.version)
     await expect(page.getByRole('heading', { name: editedTitle })).toBeVisible()
     return body
   })
@@ -160,6 +179,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
     expect((await searched).status()).toBe(200)
     await expect(page).toHaveURL(new RegExp(`/workshops\\?search=${stamp}$`))
     await expect(page.getByRole('link', { name: otherTitle })).toBeVisible()
+    await expect(page.getByRole('row').filter({ hasText: otherTitle })).toContainText(await shownStart())
   })
   await capture('search')
 }

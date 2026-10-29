@@ -135,6 +135,14 @@ if (sweep) {
   await context.addInitScript(trackLastFocused)
 }
 if (noWebFont) await blockWebFonts(context)
+// The dev build shows the TanStack Router Devtools button over the page. The production build has no devtools.
+await context.addInitScript(() => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style')
+    style.textContent = '.TanStackRouterDevtools { display: none !important; }'
+    document.head.append(style)
+  })
+})
 const page = await context.newPage()
 const cdp = sweep ? await context.newCDPSession(page) : null
 const sweepFaults = []

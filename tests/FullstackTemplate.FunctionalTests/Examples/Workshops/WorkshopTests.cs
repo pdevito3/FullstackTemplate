@@ -144,7 +144,8 @@ public class WorkshopTests : TestBase
             w => w.StartsAt = zone.ToInstant(today.Date, new TimeOnly(10, 0))!.Value, zone);
 
         // Act
-        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id), new { });
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = workshop.Version });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
@@ -154,21 +155,25 @@ public class WorkshopTests : TestBase
     }
 
     [Test]
-    public async Task a_schedule_that_runs_again_gives_the_scheduled_workshop()
+    public async Task a_second_schedule_gives_the_scheduled_workshop_with_no_change()
     {
         // Arrange
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
-        (await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id), new { }))
-            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        var first = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = workshop.Version });
+        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var scheduled = (await first.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
 
         // Act
-        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id), new { });
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = scheduled.Version });
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
         var dto = (await result.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
         dto.Status.ShouldBe("Scheduled");
         dto.AllowedActions.ShouldBe(["Cancel", "Complete"]);
+        dto.Version.ShouldBe(scheduled.Version);
     }
 
     [Test]
@@ -211,7 +216,8 @@ public class WorkshopTests : TestBase
     {
         // Arrange
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
-        (await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id), new { }))
+        (await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = workshop.Version }))
             .StatusCode.ShouldBe(HttpStatusCode.OK);
         (await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Complete(workshop.Id), new { }))
             .StatusCode.ShouldBe(HttpStatusCode.OK);

@@ -4,10 +4,13 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.TimeZones;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Examples.Venues;
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.Server.Examples.Workshops.Dtos;
+using FullstackTemplate.Server.Examples.Workshops.Models;
+using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.Fakes;
@@ -121,6 +124,60 @@ public class WorkshopCheckOrderTests : TestBase
         result.ShouldBeToolError("permission_denied");
     }
 
+    [Test]
+    [Arguments("Update")]
+    [Arguments("Schedule")]
+    public async Task a_stale_version_on_a_cancelled_workshop_is_a_conflict(string action)
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        (await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Cancel(workshop.Id), new { }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Act
+        var result = await SendAsync(action, workshop);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
+        problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("version");
+    }
+
+    [Test]
+    public async Task a_schedule_with_no_version_is_a_bad_request()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id), new { });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
+    public async Task a_schedule_of_a_scheduled_workshop_that_starts_today_gives_it_with_no_change()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddScheduledWorkshopThatStartsTodayAsync(members);
+        FactoryClient.SignInAsAppUser(members.Organizer.Identifier);
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = workshop.Version });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var dto = (await result.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
+        dto.Status.ShouldBe("Scheduled");
+        dto.Version.ShouldBe(workshop.Version);
+    }
+
     private sealed record Members(User Organizer, User Other, User Admin, Venue Venue);
 
     // The organizer and the other member hold only manage_workshops. The admin also holds manage_tenant.
@@ -136,6 +193,24 @@ public class WorkshopCheckOrderTests : TestBase
         await InsertAsync(users);
         await InsertAsync(venue);
         return new Members(users[0], users[1], users[2], venue);
+    }
+
+    // The workshop was scheduled 30 days before its start, and its start is now today at its venue.
+    private static async Task<Workshop> AddScheduledWorkshopThatStartsTodayAsync(Members members)
+    {
+        var zone = members.Venue.TimeZone;
+        var today = ZonedDate.TodayAt(zone, DateTimeOffset.UtcNow);
+        var workshop = Workshop.Create(members.Venue, new WorkshopForCreation
+        {
+            Title = "Glazing basics",
+            StartsAt = zone.ToInstant(today.Date, new TimeOnly(10, 0))!.Value,
+            Capacity = 12,
+            OrganizerId = members.Organizer.Id,
+        });
+        var plan = new ScheduleCase(workshop, members.Venue, workshop.StartsAt.AddDays(-30));
+        workshop.Schedule(((ScheduleDecision.Offered)WorkshopScheduling.Decide(plan)).Start);
+        await InsertAsync(workshop);
+        return workshop;
     }
 
     private async Task<WorkshopDto> AddWorkshopAsAsync(User organizer, Venue venue)

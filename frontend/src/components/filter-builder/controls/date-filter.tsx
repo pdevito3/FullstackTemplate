@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import {
   browserTimeZone,
   instantAt,
+  springGapMessage,
   startOfDayAt,
   timeZoneLabel,
   wallClockAt,
@@ -243,7 +244,7 @@ export function DateFilter({
             </div>
             {isTimeInGap && (
               <p role="alert" className="text-destructive text-sm">
-                {`This time does not exist${placeZone ? ` in ${timeZoneLabel(placeZone)}` : ''} on that day, because the clocks go forward. Choose another time.`}
+                {springGapMessage(placeZone)}
               </p>
             )}
           </div>

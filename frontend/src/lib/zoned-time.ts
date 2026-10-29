@@ -44,6 +44,14 @@ export function timeZoneLabel(zone: TimeZone): string {
   return names.find(isWordName) ?? names[names.length - 1]
 }
 
+/**
+ * The message for a typed time that the clocks skip in a spring gap, as `instantAt` gives null for it. With no zone, the
+ * time is in the zone of the browser, so the message names no zone. docs/messages.md rule 4: one rule, one message.
+ */
+export function springGapMessage(zone?: TimeZone): string {
+  return `This time does not exist${zone ? ` in ${timeZoneLabel(zone)}` : ''} on that day, because the clocks go forward. Choose another time.`
+}
+
 /** Not an abbreviation, such as "ET", and not an offset, such as "GMT-5". */
 function isWordName(name: string): boolean {
   return name.includes(' ') && !name.startsWith('GMT')

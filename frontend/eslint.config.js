@@ -4,6 +4,7 @@ import importX from 'eslint-plugin-import-x'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
+import ts from 'typescript'
 
 // docs/frontend.md, section "Links": a link to a route takes typed `to` and `params`, and keeps the React Aria behavior.
 const linkImports = [
@@ -39,13 +40,22 @@ const takesSelector = (type, action) =>
   isPlaywright(type, ['Page', 'Frame']) || (action === 'waitForSelector' && isPlaywright(type, ['ElementHandle']))
 
 const noPageActionRule = {
-  meta: { type: 'problem', schema: [], messages: { selector: stringSelectorMessage } },
+  meta: {
+    type: 'problem',
+    schema: [],
+    messages: {
+      selector: stringSelectorMessage,
+      any: 'This value has the type any, so the lint cannot see if it is a Playwright Page. Give the value its Playwright type.',
+    },
+  },
   create(context) {
     const services = context.sourceCode.parserServices
     return {
       [`CallExpression > MemberExpression.callee[property.name=/^(${selectorActions})$/]`](callee) {
         const type = services.getTypeAtLocation(callee.object)
-        if ((type.isUnion() ? type.types : [type]).some((part) => takesSelector(part, callee.property.name)))
+        if (type.flags & ts.TypeFlags.Any)
+          context.report({ node: callee.parent, messageId: 'any' })
+        else if ((type.isUnion() ? type.types : [type]).some((part) => takesSelector(part, callee.property.name)))
           context.report({ node: callee.parent, messageId: 'selector' })
       },
     }
@@ -61,6 +71,8 @@ const testOnlyRule = {
   selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
   message: 'Remove test.only. CI runs each test.',
 }
+
+const externalPageFileRules = [selectorStringRule, testOnlyRule]
 
 // docs/frontend/testing.md, section "Locators, tasks, and specs". Each message names the fix.
 const testFileRules = [
@@ -146,9 +158,6 @@ export default tseslint.config(
     plugins: { playwright: { rules: { 'no-page-action': noPageActionRule } } },
     rules: {
       'playwright/no-page-action': 'error',
-      // no-page-action cannot see a Page in a value of type any. no-explicit-any catches only an explicit any.
-      '@typescript-eslint/no-unsafe-call': 'error',
-      '@typescript-eslint/no-unsafe-member-access': 'error',
     },
   },
   {
@@ -158,11 +167,9 @@ export default tseslint.config(
     },
   },
   {
-    // e2e/ drives the login pages of the IdPs and Swagger UI, which have no roles or names of the app, so the rules
-    // for the position of an element and for the locators of a feature do not apply.
     files: ['e2e/**/*.ts'],
     rules: {
-      'no-restricted-syntax': ['error', selectorStringRule, testOnlyRule],
+      'no-restricted-syntax': ['error', ...externalPageFileRules],
     },
   },
   {

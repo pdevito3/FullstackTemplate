@@ -162,6 +162,7 @@ public sealed class DerivedEntityTests : IAsyncDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             var pet = modelBuilder.Entity<Pet>();
             pet.HasKey(p => p.Id);
             MapPets(pet);

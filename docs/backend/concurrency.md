@@ -30,9 +30,9 @@ A unique index can also tell that another user changed the record, for example a
 
 A command for one intent, such as a new permission, a role change, or a delete, sends no version. The `xmin` check of the owner row still stops its race between the load and the save. But the caller decided nothing on the old rows, so a 409 that says "Reload it" does not help the caller. Mark the command with `IRunsAgainWhenRaced` instead:
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/AddUserPermission/AddUserPermission.cs -->
 ```csharp
-public sealed record Command(string Id, [property: RequiredField] string Permission)
-    : IRequest<UserDto>, IRunsAgainWhenRaced;
+public sealed record Command(string Id, [property: RequiredField] string Permission) : IRequest<UserDto>, IRunsAgainWhenRaced;
 ```
 
 `RaceRetryBehavior` catches the `StaleVersionException` of a marked command. It calls `AppDbContext.DiscardLostRace`, which clears the tracked entities and the recorded audit actions. Then it waits for a short random time and runs the handler again in the same DI scope. The lost save rolled back, so the database has none of its changes. The caller, the validation, and the request span stay those of the first run. Each lost run that runs again adds a `race.lost` event with `app.race.run` to the request span. After 20 lost runs, the behavior adds a `race.exhausted` event with `app.race.run` and throws a `ConcurrentChangeException`.
@@ -63,10 +63,16 @@ A version guards the rows that a command writes. A rule over a set of rows can b
 
 `RootLock` in `Databases/` is a Postgres session advisory lock on one aggregate root. The template has one rule of this kind: `DeleteTenant` deletes each row that the tenant owns, and `AddAgent` and `AddUser` add an agent or a user to the tenant. The add of each new tenant-owned aggregate root takes the shared lock in the same way. A child add changes the version of its owner instead, and the delete loads each owner before its children. Without the lock, an agent or a user that is saved during `DeleteTenant` stays live in the deleted tenant. A live user in a deleted tenant keeps its identifier, so that person cannot sign up again. Each one runs its reads, its checks, and its save in the work of the lock:
 
+<!-- code: FullstackTemplate.Server/Domain/Agents/Features/AddAgent/AddAgent.cs -->
 ```csharp
 var added = await RootLock.Tenant.RunSharedAsync(dbContext, tenantId, async ct =>
 {
-    // Read the tenant, check it, add the agent, and save, all with ct
+    // ...
+    var agent = Agent.Create(request.Dto.ToAgentForCreation(tenantId), caller);
+    // ...
+    await dbContext.Agents.AddAsync(agent, ct);
+    await dbContext.SaveChangesAsync(ct);
+    return agent;
 }, cancellationToken);
 ```
 

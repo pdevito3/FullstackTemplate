@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
@@ -152,6 +153,7 @@ public class TenantOwnedRowsTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Shipment>().HasKey(s => s.Id);
             modelBuilder.Entity<Parcel>(parcel =>
             {

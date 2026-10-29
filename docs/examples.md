@@ -43,6 +43,7 @@ Put example code where the script finds it:
 - Put a file that is only an example in a folder named `Examples` (.NET), `examples` (the SPA and the tests), or `(examples)` (a TanStack Router route group, which adds no segment to the URL).
 - Put example lines in a shared file between two comments. Use the comment form of the file: `// example:start` and `// example:end` in C# and TypeScript, `# example:start` in YAML and shell, `<!-- example:start -->` in Markdown, and `{/* example:start */}` in JSX.
 - Do not let code outside the examples use example code. After the script runs, that code does not compile.
+- Keep each `// new-feature:<slot>` marker of `scripts/new-feature.cs` out of an example section. The new-feature script adds its lines above the marker, also in an app with no examples.
 
 <!-- example:start -->
 The `without-examples` job of CI runs the script, runs it again to prove that the second run changes nothing, and fails if an example name stays in a tracked file. Then it builds the app and runs all of the tests. The other CI jobs test the app with the examples.

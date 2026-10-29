@@ -53,6 +53,7 @@ public partial class Permission : ValueObject, IFixedNames
     // example:start
     public static Permission ManageWorkshops() => new(PermissionEnum.ManageWorkshops.Name);
     // example:end
+    // new-feature:permission-factories
 
     protected Permission() { } // EF Core
 
@@ -78,6 +79,7 @@ public partial class Permission : ValueObject, IFixedNames
         // example:start
         public const string ManageWorkshops = "manage_workshops";
         // example:end
+        // new-feature:permission-names
     }
 
     private sealed class PermissionEnum(string name, int value, string words) : SmartEnum<PermissionEnum>(name, value)
@@ -94,6 +96,7 @@ public partial class Permission : ValueObject, IFixedNames
         // example:start
         public static readonly PermissionEnum ManageWorkshops = new(Names.ManageWorkshops, 8, "manage workshops");
         // example:end
+        // new-feature:permission-values
 
         public string Words { get; } = words;
     }

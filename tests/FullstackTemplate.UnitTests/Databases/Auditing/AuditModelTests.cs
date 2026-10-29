@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
@@ -237,6 +238,7 @@ public class AuditModelTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<TenantedOwner>().HasKey(o => o.Id);
             modelBuilder.Entity<RestrictedChild>(child =>
             {
@@ -256,6 +258,7 @@ public class AuditModelTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<TNode>(node =>
             {
                 node.HasKey(n => n.Id);

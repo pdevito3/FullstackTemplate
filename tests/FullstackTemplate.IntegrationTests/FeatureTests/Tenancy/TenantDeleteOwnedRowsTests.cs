@@ -35,6 +35,7 @@ public class TenantDeleteOwnedRowsTests : TestBase
             // example:start
             .Under(tenant).AddVenue(out _).AddWorkshop(out _)
             // example:end
+            // new-feature:tenant-owned-rows
             .BuildAsync();
         scope.SetUserWithDefaults(identifier: admin.Identifier);
         var owned = await scope.ExecuteDbContextAsync(db => EachOwnedTypeAsync(db, type => Run(IdsOfTenant, type, db)));

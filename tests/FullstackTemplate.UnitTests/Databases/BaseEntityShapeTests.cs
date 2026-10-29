@@ -4,6 +4,7 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -172,6 +173,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Pet>().HasKey(p => p.Id);
             modelBuilder.Entity<Cat>().HasBaseType<Pet>();
         }
@@ -182,6 +184,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Pet>(pet =>
             {
                 pet.HasKey(p => p.Id);
@@ -196,6 +199,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Pet>(pet =>
             {
                 pet.HasKey(p => p.Id);
@@ -210,6 +214,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Pet>().HasKey(p => p.Id);
             modelBuilder.Entity<Cat>(cat =>
             {
@@ -231,6 +236,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Animal>().HasKey(a => a.Id);
             modelBuilder.Entity<TenantedDog>().HasBaseType<Animal>();
         }
@@ -256,6 +262,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Shelter>().HasKey(s => s.Id);
             modelBuilder.Entity<Kennel>(kennel =>
             {
@@ -279,6 +286,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Node>(node =>
             {
                 node.HasKey(n => n.Id);
@@ -298,6 +306,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Tally>().HasNoKey();
         }
     }
@@ -307,6 +316,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Tally>().HasKey(t => t.Id);
             modelBuilder.Entity<Tally>().ToView("tallies_view");
         }
@@ -317,6 +327,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Tally>().HasKey(t => t.Id);
             modelBuilder.Entity<Tally>().ToTable("tallies").ToView("tallies_view");
         }
@@ -327,6 +338,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Tally>().HasKey(t => t.Id);
             modelBuilder.Entity<Tally>().ToSqlQuery("SELECT * FROM tallies");
         }
@@ -344,6 +356,7 @@ public class BaseEntityShapeTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Box>(box =>
             {
                 box.HasKey(b => b.Id);

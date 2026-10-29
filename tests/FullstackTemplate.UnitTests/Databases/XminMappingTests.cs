@@ -3,6 +3,7 @@ namespace FullstackTemplate.UnitTests.Databases;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +56,7 @@ public class XminMappingTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Note>(note =>
             {
                 note.HasKey(n => n.Id);
@@ -88,6 +90,7 @@ public class XminMappingTests
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Shipment>(shipment =>
             {
                 shipment.ToTable("shipments");

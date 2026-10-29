@@ -86,6 +86,7 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities(typeof(User));
             modelBuilder.Entity<Note>(note =>
             {
                 note.HasKey(n => n.Id);

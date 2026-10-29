@@ -4,8 +4,7 @@ using System.Diagnostics;
 using FullstackTemplate.Server.Exceptions;
 using Shouldly;
 
-// The example of docs/backend/features-and-cqrs.md, "One rule set for two callers". A test below checks that the doc shows
-// this code.
+// The example of docs/backend/features-and-cqrs.md, "One rule set for two callers".
 
 public sealed record Room(string Id, int DaysAhead);
 
@@ -207,25 +206,6 @@ public class DecisionShapeExampleTests
         act.ShouldThrow<ArgumentException>().ParamName.ShouldBe("bookings");
     }
 
-    [Test]
-    public void the_doc_shows_the_code_of_this_example()
-    {
-        // Arrange
-        var root = FindRepositoryRoot();
-        var doc = File.ReadAllText(Path.Combine(root, "docs", "backend", "features-and-cqrs.md")).ReplaceLineEndings("\n");
-        var source = File.ReadAllText(Path.Combine(root, "tests", "FullstackTemplate.UnitTests", "Docs",
-            "DecisionShapeExampleTests.cs")).ReplaceLineEndings("\n");
-
-        // Act
-        var section = doc[doc.IndexOf("\n## One rule set for two callers\n", StringComparison.Ordinal)..];
-        var start = section.IndexOf("```csharp\n", StringComparison.Ordinal) + "```csharp\n".Length;
-        var sample = section[start..section.IndexOf("\n```", start, StringComparison.Ordinal)];
-
-        // Assert
-        sample.ShouldStartWith("public sealed record Room");
-        source.ShouldContain(sample);
-    }
-
     private static bool Refuses(BookingCase booking, DateOnly day)
     {
         try
@@ -245,15 +225,4 @@ public class DecisionShapeExampleTests
     // The window starts on the day, so a test can arrange a booking on any day
     private static Booking Booked(Room room, DateOnly day)
         => BookingHandlers.Book(new BookingCase(room with { DaysAhead = 365 }, [], day), day);
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "FullstackTemplate.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("The repository root was not found.");
-    }
 }

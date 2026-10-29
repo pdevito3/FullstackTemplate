@@ -82,6 +82,7 @@ public sealed class ReadModelViewTests : IAsyncDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.IgnoreTheAppEntities();
             modelBuilder.Entity<Box>().ToTable("boxes").HasKey(b => b.Id);
             modelBuilder.Entity<BoxCount>().HasNoKey().ToView("box_counts");
         }

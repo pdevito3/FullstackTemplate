@@ -41,7 +41,9 @@ Keep each C# file at 1000 lines or less. This rule covers all C# files in the so
 
 ## Add a new feature
 
-Do these steps in sequence. Each step has a doc in `docs/backend/`.
+For a new entity that a tenant owns, run `scripts/new-feature.cs`. It writes the entity, its configuration and migration, the DTOs, the add, get, list, update, and delete features, the entrypoints, the permission, and the tests. Then write the domain rules. The `backend-feature` skill gives the command and the steps after it. The `new-feature` job of CI runs the script for two samples, then builds and tests the result, so a change to a rule that breaks the output of the script fails CI.
+
+For another change, do these steps in sequence. Each step has a doc in `docs/backend/`.
 
 1. Create the domain entity ([domain-entities.md](backend/domain-entities.md)).
 2. Add the entity configuration, then add a migration ([entity-configurations.md](backend/entity-configurations.md)).
@@ -190,6 +192,8 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 The guard reads the user and their permission rows from the database in each handler that checks. It does not cache them and does not read them from the token. As a result, a removed permission or a deleted user is denied on the next request on each server instance. The cost is one indexed query in each handler that checks. The reasons are in [ADR 0009](adr/0009-permission-checks-in-the-handler.md).
 
 ### Add a permission
+
+`scripts/new-feature.cs` does steps 1, 2, and 6 for the permission of a new entity. For another permission:
 
 1. Add a constant to `Permission.Names` in `Permission.cs`, a value of `PermissionEnum` with that constant as its name, and a static method that returns it, for example `Permission.ManageOrders()`. Use a snake case name, for example `manage_orders`.
 2. Add an EF Core migration that gives the permission to the admins that exist (see [Migrations](#migrations)). Call `migrationBuilder.GrantPermissionToRole("Admin", "manage_orders")` in `Up`. Write the name as a string, so that the migration does not change when `Permission` changes. New admins get the permission from the role defaults. If the users with another permission also need the new one, call `GrantPermissionToHoldersOf` too, as `GrantReadPermissions` does.

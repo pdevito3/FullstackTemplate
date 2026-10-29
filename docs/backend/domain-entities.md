@@ -23,25 +23,34 @@ The constructor for EF Core is `protected` and calls `base(IdPrefix)`.
 
 ## Example
 
+<!-- code: FullstackTemplate.Server/Domain/Users/User.cs -->
 ```csharp
-public class User : BaseEntity, ITenantable
+public class User : BaseEntity, ITenantable, IDeletedWithEvent
 {
     public const string IdPrefix = "usr";
     public const int FirstNameMaxLength = 200;
+    // ...
 
+    [NotSensitive] public string TenantId { get; private set; } = default!;
     [Sensitive] public string FirstName { get; private set; } = default!;
+    // ...
     [Sensitive] public EmailAddress Email { get; private set; } = default!;
+    // ...
     [NotSensitive] public UserRole Role { get; private set; } = default!;
 
     private readonly List<UserPermission> _userPermissions = [];
     public IReadOnlyCollection<UserPermission> UserPermissions => _userPermissions.AsReadOnly();
 
+    // ...
     public static User Create(UserForCreation userForCreation)
     {
         var user = new User
         {
+            TenantId = userForCreation.TenantId,
             FirstName = userForCreation.FirstName,
+            // ...
             Email = EmailAddress.Of(userForCreation.Email),
+            // ...
             Role = UserRole.Of(userForCreation.Role)
         };
         // Set the ID before the permissions, because each permission copies the user ID.
@@ -56,6 +65,7 @@ public class User : BaseEntity, ITenantable
         return user;
     }
 
+    // ...
     public User UpdateRole(UserRole newRole)
     {
         if (newRole == Role)
@@ -68,14 +78,17 @@ public class User : BaseEntity, ITenantable
         return this;
     }
 
+    // ...
     private static void ValidateUser(User user)
     {
-        ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "firstName", "Please provide a first name.");
-        ValidationException.ThrowWhenLongerThan(user.FirstName, FirstNameMaxLength, "firstName",
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.TenantId, "tenantId", "Please provide a tenant.");
+        Exceptions.ValidationException.Must(EntityId.IsValid(user.TenantId, Tenants.Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
+        Exceptions.ValidationException.ThrowWhenNullOrWhitespace(user.FirstName, "firstName", "Please provide a first name.");
+        Exceptions.ValidationException.ThrowWhenLongerThan(user.FirstName, FirstNameMaxLength, "firstName",
             $"A first name can have no more than {FirstNameMaxLength} characters.");
-        ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.FirstName, "firstName",
+        Exceptions.ValidationException.ThrowWhenHasCharacterPostgresCannotStore(user.FirstName, "firstName",
             "A first name has a character that is not allowed.");
-        ValidationException.Must(EntityId.IsValid(user.TenantId, Tenant.IdPrefix), "tenantId", "Please provide a valid tenant ID.");
+        // ...
     }
 
     protected User() : base(IdPrefix) { } // For EF Core
@@ -88,6 +101,7 @@ The creation model has an `Id` only for tests. If the model has an `Id`, call `S
 
 `BaseEntity.Version` is the version of the row that the entity came from. A method that replaces fields from an edit form gets the version that the caller edited in its update model. It calls `GuardVersion` before it changes a value. When the versions are not the same, `GuardVersion` throws a `StaleVersionException`, which gives 409. Thus a stale form cannot overwrite the change of another user.
 
+<!-- code: FullstackTemplate.Server/Domain/Tenants/Tenant.cs -->
 ```csharp
 public Tenant Update(TenantForUpdate tenantForUpdate)
 {
@@ -107,11 +121,19 @@ A method for one intent, such as `UpdateRole` or `AddPermission`, gets no versio
 
 When a rule blocks a change in some states, put the rule in a private guard method. Call the guard at the start of each method that it protects.
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/CheckOrderExampleTests.cs -->
 ```csharp
-private void GuardIfInFinalState(string field, string subject)
+public Visit Reschedule(VisitForReschedule forReschedule)
 {
-    if (Status.IsFinalState())
-        throw new ValidationException(field, $"This order is in a final state. {subject} can not be modified.");
+    GuardVersion(forReschedule.Version);
+    GuardIfCancelled();
+    // ...
+}
+
+private void GuardIfCancelled()
+{
+    if (IsCancelled)
+        throw new ValidationException("day", CancelledMessage);
 }
 ```
 
@@ -132,6 +154,7 @@ The table is an action value object over a private SmartEnum, as `Domain/Users/U
 
 On their own record, a member holds the permissions of the user. `User` makes the caller again from the current permissions, so the response of a command that changes them lists the actions after the change. A delegated agent keeps the permissions that it loaded, so after it changes the permissions of its own user, the response can list an action that the next request refuses with 403.
 
+<!-- code: FullstackTemplate.Server/Domain/Users/User.cs -->
 ```csharp
 public IReadOnlyList<UserAction> AllowedActions(Caller caller)
 {
@@ -139,6 +162,7 @@ public IReadOnlyList<UserAction> AllowedActions(Caller caller)
     return UserAction.AllowedFor(OnThisRecord(caller, permissions), Id, permissions);
 }
 
+// ...
 public void GuardAllows(UserAction action, Caller caller)
 {
     var permissions = CurrentPermissions();
@@ -148,11 +172,15 @@ public void GuardAllows(UserAction action, Caller caller)
 
 The command checks the part of the rule that needs only the ID before the load, so a caller without the permission gets 403 for any ID. Then it checks the full rule after the load:
 
+<!-- code: FullstackTemplate.Server/Domain/Users/Features/DeleteUser/DeleteUser.cs -->
 ```csharp
 var caller = await permissionGuard.GetCallerAsync(cancellationToken);
 UserAction.Delete().GuardBeforeLoad(caller, request.Id);
 
-var user = await dbContext.Users.Include(u => u.UserPermissions).GetById(request.Id, cancellationToken);
+var user = await dbContext.Users
+    .TagWithOperationCallSite("users.delete.load")
+    .Include(u => u.UserPermissions)
+    .GetById(request.Id, cancellationToken);
 user.GuardAllows(UserAction.Delete(), caller);
 ```
 
@@ -168,10 +196,13 @@ A value object derives from `ValueObject`. It validates its value in the constru
 
 When a value has fixed options, back the value object with a private SmartEnum. Put the behavior for each option on the SmartEnum. Override `ToString` to give `Value`, so that a failed test assertion and a log show the option, not the type name. Do not give `ToString` to a value object that holds personal data, such as `EmailAddress`, because a log of the object then shows the data. Implement `IFixedNames`, so that a DTO field can list the names in the OpenAPI document (see rule 9 of [dtos-and-mappings.md](dtos-and-mappings.md)). `UserRole` is the example:
 
+<!-- code: FullstackTemplate.Server/Domain/Users/UserRole.cs -->
 ```csharp
 public partial class UserRole : ValueObject, IFixedNames
 {
+    // ...
     private const string RequestField = "role";
+
     private UserRoleEnum _role = null!;
 
     public string Value
@@ -181,28 +212,33 @@ public partial class UserRole : ValueObject, IFixedNames
         {
             if (!UserRoleEnum.TryFromName(value, true, out var parsed))
                 throw new ValidationException(RequestField, $"Invalid role: {value}");
+
             _role = parsed;
         }
     }
 
+    // ...
     public Permission[] GetDefaultPermissions() => _role.GetDefaultPermissions();
 
     public override string ToString() => Value;
 
-    public static List<string> ListNames() => UserRoleEnum.List.Select(x => x.Name).ToList();
-
     public static UserRole Of(string value) => new(value);
+    // ...
+    public static List<string> ListNames() => UserRoleEnum.List.Select(x => x.Name).ToList();
     public static UserRole Admin() => new(UserRoleEnum.Admin.Name);
-
-    private abstract class UserRoleEnum(string name, int value) : SmartEnum<UserRoleEnum>(name, value)
+    // ...
+    private abstract class UserRoleEnum(string name, int value)
+        : SmartEnum<UserRoleEnum>(name, value)
     {
         public static readonly UserRoleEnum Admin = new AdminType();
+        // ...
         public abstract Permission[] GetDefaultPermissions();
 
-        private class AdminType() : UserRoleEnum("Admin", 0)
+        private sealed class AdminType() : UserRoleEnum("Admin", 0)
         {
             public override Permission[] GetDefaultPermissions() => [.. Permission.GetAll()];
         }
+        // ...
     }
 }
 ```

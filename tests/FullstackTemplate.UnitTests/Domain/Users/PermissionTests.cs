@@ -13,6 +13,7 @@ public class PermissionTests
         // example:start
         "manage_workshops",
         // example:end
+        // new-feature:permission-names
     ];
 
     [Test]

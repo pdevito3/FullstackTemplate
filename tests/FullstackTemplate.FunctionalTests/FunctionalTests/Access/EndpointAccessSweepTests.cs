@@ -51,6 +51,7 @@ public class EndpointAccessSweepTests : TestBase
         ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
         ["GetWeatherForecast"] = new("Demo of a public endpoint. It has no tenant rows.", Anonymous: true),
         // example:end
+        // new-feature:open-to-each-member
     };
 
     private static readonly Dictionary<string, string> InfrastructureRoutes = new()
@@ -352,6 +353,7 @@ public class EndpointAccessSweepTests : TestBase
             .AddWorkshop(out var workshop)
             .Under(tenant)
             // example:end
+            // new-feature:sweep-graph
             .AddAgent(out var agent);
         var (member, admin, otherUser) = (users[0], users[1], users[2]);
         foreach (var permission in member.UserPermissions.ToList())
@@ -369,6 +371,7 @@ public class EndpointAccessSweepTests : TestBase
         await InsertAsync(venue);
         await InsertAsync(workshop);
         // example:end
+        // new-feature:sweep-inserts
 
         var idsByKind = new Dictionary<string, string>
         {
@@ -379,6 +382,7 @@ public class EndpointAccessSweepTests : TestBase
             ["venues"] = venue.Id,
             ["workshops"] = workshop.Id,
             // example:end
+            // new-feature:sweep-ids
         };
         return new TenantRecords(member, admin, new RecordIds(idsByKind, otherUser.Identifier));
     }

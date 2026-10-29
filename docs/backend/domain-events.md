@@ -42,18 +42,18 @@ The guarantee has two limits:
 
 An event carries the ID of the entity, and the values that its handlers need:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/DomainEventExampleTests.cs -->
 ```csharp
-public sealed record UserCreated(string UserId) : DomainEvent;
-
 public sealed record InspectionFailed(string InspectionId, string VehicleId) : DomainEvent;
 ```
 
 The entity method queues the event:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/DomainEventExampleTests.cs -->
 ```csharp
 public Inspection Fail(string finding)
 {
-    Status = InspectionStatus.Failed;
+    Failed = true;
     Finding = finding;
     QueueDomainEvent(new InspectionFailed(Id, VehicleId));
     return this;
@@ -62,6 +62,7 @@ public Inspection Fail(string finding)
 
 The feature calls the entity method and saves. It does not know about the handler:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/DomainEventExampleTests.cs -->
 ```csharp
 inspection.Fail(request.Finding);
 await dbContext.SaveChangesAsync(cancellationToken);
@@ -71,6 +72,7 @@ await dbContext.SaveChangesAsync(cancellationToken);
 
 A handler gets the event and the `AppDbContext` of the save. It loads the entities that it changes and calls their methods:
 
+<!-- code: tests/FullstackTemplate.UnitTests/Docs/DomainEventExampleTests.cs -->
 ```csharp
 /// <summary>
 /// A vehicle that failed an inspection must not stay in service.
@@ -79,7 +81,7 @@ public sealed class TakeVehicleOutOfServiceWhenInspectionFails : IDomainEventHan
 {
     public async Task Handle(InspectionFailed domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)
     {
-        var vehicle = await dbContext.Vehicles
+        var vehicle = await dbContext.Set<Vehicle>()
             .TagWithOperationCallSite("vehicles.out_of_service.load")
             .GetById(domainEvent.VehicleId, cancellationToken);
 

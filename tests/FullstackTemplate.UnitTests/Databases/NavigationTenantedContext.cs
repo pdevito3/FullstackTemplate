@@ -3,6 +3,7 @@ namespace FullstackTemplate.UnitTests.Databases;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -15,6 +16,7 @@ internal sealed class NavigationTenantedContext() : AppDbContext(TestModelOption
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.IgnoreTheAppEntities();
         modelBuilder.Entity<Order>().HasKey(order => order.Id);
         modelBuilder.Entity<OrderLine>(line =>
         {

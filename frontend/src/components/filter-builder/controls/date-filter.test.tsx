@@ -122,3 +122,28 @@ test('refuses a time that the clocks of the place skip in the spring', async () 
   )
   await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeDisabled()
 })
+
+test('labels the time of a filter with no zone the same way when the user adds it and when the user edits it', async () => {
+  // Arrange
+  const publishedAt: FilterConfig = { propertyKey: 'publishedAt', propertyLabel: 'Published At', controlType: 'date', dateType: 'datetimeUtc' }
+  const onSubmit = vi.fn()
+  const screen = await render(<DateFilter config={publishedAt} surface="submenu" onSubmit={onSubmit} />)
+  await page.getByRole('button', { name: 'Today', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Time', exact: true }).fill('09:00')
+  await page.getByRole('button', { name: 'Add Filter' }).click()
+  const value = onSubmit.mock.lastCall?.[0].value as DateValue
+  await screen.unmount()
+
+  // Act
+  await render(
+    <DateFilter
+      config={publishedAt}
+      surface="submenu"
+      initialFilter={{ id: '1', ...publishedAt, operator: Operators.EQUALS, value }}
+      onSubmit={() => {}}
+    />,
+  )
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: 'Time', exact: true })).toHaveValue('09:00')
+})

@@ -577,6 +577,35 @@ test.describe('a date filter of a place in another zone', () => {
   })
 })
 
+test.describe('a date filter with no zone, in a browser in New York', () => {
+  test.use({ timezoneId: 'America/New_York' })
+  test.skip(() => test.info().project.name !== 'utc', 'The describe sets its own zone.')
+
+  test('takes a local time that the clocks of the browser skip, because the field has no zone', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openAt(new Date('2026-03-01T17:00:00Z'))
+    await demo.chooseProperty('Scheduled At (Local)')
+
+    await demo.typeDate('Scheduled At (Local)', 'Date', '03082026')
+    await demo.at.time('Scheduled At (Local)', 'Time').fill('02:30')
+    await demo.at.addFilter('Scheduled At (Local)').click()
+
+    await expect(demo.at.queryKit).toHaveText('scheduledAt == "2026-03-08T02:30:00"')
+  })
+
+  test('names no zone when it refuses a time of the browser that the clocks skip', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openAt(new Date('2026-03-01T17:00:00Z'))
+    await demo.chooseProperty('Published At (UTC)')
+
+    await demo.typeDate('Published At (UTC)', 'Date', '03082026')
+    await demo.at.time('Published At (UTC)', 'Time').fill('02:30')
+
+    await expect(demo.at.dateMessage('Published At (UTC)', 'This time does not exist on that day, because the clocks go forward. Choose another time.')).toBeVisible()
+    await expect(demo.at.addFilter('Published At (UTC)')).toBeDisabled()
+  })
+})
+
 test.describe('the filter builder after the focused button goes away', () => {
   test('moves the focus to Add Filter when the user removes a filter with the keyboard', async ({ page }) => {
     const demo = filterDemoPage(page)

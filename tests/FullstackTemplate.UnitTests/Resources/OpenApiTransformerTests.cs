@@ -296,6 +296,49 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    public async Task limits_transformer_accepts_a_bound_with_an_exponent_from_a_transformer_before_it()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync(
+            (BoundsDto dto) => dto, new BoundsTransformer("0", "1.7976931348623157E+308"));
+
+        // Act
+        var document = await app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var properties = document.Components.ShouldNotBeNull().Schemas.ShouldNotBeNull()[nameof(BoundsDto)].Properties.ShouldNotBeNull();
+        properties["weight"].Maximum.ShouldBe("1.7976931348623157E+308");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_minimum_with_an_exponent_more_than_the_maximum()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer("1E+300", "1E+299"));
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum 1E+300 and the maximum 1E+299");
+    }
+
+    [Test]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_by_less_than_a_double_can_hold()
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((CloseBoundsDto dto) => dto);
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(CloseBoundsDto)}.count has the minimum {long.MaxValue} and the maximum {long.MaxValue - 1}");
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_member_that_is_not_a_public_static_number_field()
     {
         // Arrange
@@ -309,7 +352,8 @@ public class OpenApiTransformerTests
         exception.Message.ShouldContain($"{nameof(Limits)}.{nameof(Limits.Unit)}");
     }
 
-    private static async Task<WebApplication> AppWithLimitsTransformerAsync(Delegate handler)
+    private static async Task<WebApplication> AppWithLimitsTransformerAsync(
+        Delegate handler, IOpenApiSchemaTransformer? transformerBefore = null)
     {
         var builder = WebApplication.CreateSlimBuilder();
         // The Server appsettings.json in the test output sets Kestrel endpoints on 8080 and 8081, and they win over UseUrls
@@ -321,6 +365,8 @@ public class OpenApiTransformerTests
         {
             options.AddSchemaTransformer<RemoveStringFromNumbersTransformer>();
             options.AddSchemaTransformer<UnsignedIntegerRangeTransformer>();
+            if (transformerBefore is not null)
+                options.AddSchemaTransformer(transformerBefore);
             options.AddSchemaTransformer<SchemaLimitsTransformer>();
         });
         var app = builder.Build();
@@ -338,6 +384,8 @@ public class OpenApiTransformerTests
         public const int SeatsMin = 1;
         public const int VersionMax = 1000;
         public const string Unit = "kg";
+        public const long CountMin = long.MaxValue;
+        public const long CountMax = long.MaxValue - 1;
     }
 
     private sealed record LimitedDto
@@ -376,6 +424,28 @@ public class OpenApiTransformerTests
         [SchemaMinimum(typeof(Limits), nameof(Limits.QuantityMax))]
         [SchemaMaximum(typeof(Limits), nameof(Limits.QuantityMin))]
         public decimal Quantity { get; init; }
+    }
+
+    private sealed record CloseBoundsDto
+    {
+        [SchemaMinimum(typeof(Limits), nameof(Limits.CountMin))]
+        [SchemaMaximum(typeof(Limits), nameof(Limits.CountMax))]
+        public long Count { get; init; }
+    }
+
+    private sealed record BoundsDto
+    {
+        public double Weight { get; init; }
+    }
+
+    private sealed class BoundsTransformer(string minimum, string maximum) : IOpenApiSchemaTransformer
+    {
+        public Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
+        {
+            if (context.JsonPropertyInfo?.DeclaringType == typeof(BoundsDto))
+                (schema.Minimum, schema.Maximum) = (minimum, maximum);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed record NonNumericLimitDto

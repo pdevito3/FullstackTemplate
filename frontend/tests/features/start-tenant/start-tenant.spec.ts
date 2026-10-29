@@ -28,6 +28,10 @@ test.describe('a signed-in user with no tenant', () => {
     })
     await expect(start.at.started('Acme')).toBeVisible()
     await expect(start.at.homeLink).toBeFocused()
+
+    await start.goHome()
+
+    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY')
   })
 
   test('sees no notice on the home page after the start', async ({ page, api }) => {

@@ -141,6 +141,19 @@ test('a heading that the new page shows after it loads gets the focus from the m
   await expect.element(screen.getByRole('heading', { name: 'Late heading', level: 1 })).toHaveFocus()
 })
 
+test('a heading that shows after the user moved the focus off the main landmark leaves the focus where the user put it', async () => {
+  const { screen, router } = await renderLayoutAt('/')
+  router.history.push('/late-heading')
+  await expect.element(screen.getByRole('main')).toHaveFocus()
+  const trigger = screen.getByRole('button', { name: 'Toggle Sidebar' }).first()
+  ;(trigger.element() as HTMLElement).focus()
+
+  showLateHeading()
+
+  await expect.element(screen.getByRole('heading', { name: 'Late heading', level: 1 })).toBeVisible()
+  await expect.element(trigger).toHaveFocus()
+})
+
 test('a link in the page moves the focus to the main landmark when the new page has no level 1 heading', async () => {
   const { screen } = await renderLayoutAt('/')
   await userEvent.click(screen.getByRole('link', { name: 'Open the page with no heading' }))

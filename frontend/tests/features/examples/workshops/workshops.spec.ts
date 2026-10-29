@@ -4,8 +4,8 @@ import { aVenue } from '@tests/support/examples/venue-builder'
 import { aWorkshop } from '@tests/support/examples/workshop-builder'
 import { workshopPaths, workshopsApi } from '@tests/support/examples/workshops-api'
 import { expect, test } from '@tests/support/fixtures'
+import { appShellPage } from '@tests/features/app-shell/app-shell.tasks'
 import { useDefaultFontSize } from '@tests/support/screen'
-import { appShellPage } from '../../app-shell/app-shell.tasks'
 import { workshopsPage } from './workshops.tasks'
 
 test.describe('the workshops', () => {

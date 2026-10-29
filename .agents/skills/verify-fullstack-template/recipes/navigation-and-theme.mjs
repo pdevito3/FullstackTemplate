@@ -3,6 +3,14 @@ export default async ({ page, step, capture, settle, expect }) => {
   const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb', exact: true })
   // The layout has a Toggle Sidebar button in the header and a rail with the same name. Use the header one.
   const toggleSidebar = page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' }).first()
+  const announcement = page.locator('[data-slot="page-announcement"]')
+
+  await step('a link in the page: Go to the home page on a missing page gives the focus to the h1 of Home', async () => {
+    await page.goto('/no-such-page')
+    await page.getByRole('main').getByRole('link', { name: 'Go to the home page' }).click()
+    await expect(page).toHaveURL(/\/$/)
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
+  })
 
   await step('open / : breadcrumb is Home', async () => {
     await page.goto('/')
@@ -17,11 +25,14 @@ export default async ({ page, step, capture, settle, expect }) => {
     await expect(page.locator('[data-active="false"]')).toHaveCount(0)
   })
 
-  await step('choose About: URL /about, breadcrumb About', async () => {
-    await page.getByRole('link', { name: 'About' }).click()
+  await step('choose About: URL /about, breadcrumb About, the link keeps the focus, and the status region says About', async () => {
+    const about = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About' })
+    await about.click()
     await expect(page).toHaveURL(/\/about$/)
     await expect(breadcrumb).toHaveText('About')
     await expect(page.getByRole('heading', { name: 'About', level: 1 })).toBeVisible()
+    await expect(about).toBeFocused()
+    await expect(announcement).toHaveText('About')
   })
   await capture('about')
 
@@ -87,11 +98,13 @@ export default async ({ page, step, capture, settle, expect }) => {
     await expect(mobileSidebar.getByRole('button', { name: 'Close' })).toHaveCount(0)
   })
   await capture('mobile-sidebar', { fullPage: false })
-  await step('mobile: choose About in the sheet: URL /about, the sheet closes', async () => {
+  await step('mobile: choose About in the sheet: URL /about, the sheet closes, the focus is on the toggle, and the status region says About', async () => {
     await mobileSidebar.getByRole('link', { name: 'About' }).click()
     await expect(page).toHaveURL(/\/about$/)
     await expect(breadcrumb).toHaveText('About')
     await expect(mobileSidebar).toHaveCount(0)
+    await expect(toggleSidebar).toBeFocused()
+    await expect(announcement).toHaveText('About')
   })
   await capture('mobile-about', { fullPage: false })
 }

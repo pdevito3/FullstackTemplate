@@ -37,7 +37,7 @@ function RootComponent() {
   const page = routerState.matches[routerState.matches.length - 1]
   const isNotFound = routerState.matches.some((match) => match.globalNotFound)
   const pageName = isNotFound ? 'Not Found' : page?.staticData.breadcrumb
-  const content = useFocusContentAfterNavigation(routerState.resolvedLocation?.pathname)
+  const { content, announcement } = usePageFocusAfterNavigation(routerState.resolvedLocation?.pathname, pageName)
 
   return (
     <HrefRouterProvider>
@@ -60,11 +60,12 @@ function RootComponent() {
               </Breadcrumb>
             </div>
           </header>
-          <div ref={content} tabIndex={-1} className="flex flex-1 flex-col gap-4 p-4 pt-0 outline-none">
-            <NoTenantNotice />
+          <NoTenantNotice />
+          <div ref={content} className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <Outlet />
           </div>
         </SidebarInset>
+        <p ref={announcement} role="status" data-slot="page-announcement" className="sr-only" />
         {/* The default container is a footer, which is a contentinfo landmark. */}
         <TanStackRouterDevtools position="top-right" containerElement="div" />
       </SidebarProvider>
@@ -73,20 +74,39 @@ function RootComponent() {
 }
 
 /**
- * A link in the page unmounts with the page, so after a press on it the focus goes to the content of the new page,
- * not to the body. The location resolves after the lazy route loads, when the new page is on the screen.
+ * After a navigation, a screen reader must hear the new page. A link in the page unmounts with the page, so the focus
+ * goes to its level 1 heading, or to the main landmark. A link that stays, such as a sidebar link, keeps the focus, and
+ * the status region says the name of the page. The location resolves after the lazy route loads, when the new page is
+ * on the screen.
  */
-function useFocusContentAfterNavigation(pathname: string | undefined) {
+function usePageFocusAfterNavigation(pathname: string | undefined, pageName: string | undefined) {
   const content = useRef<HTMLDivElement>(null)
+  const announcement = useRef<HTMLParagraphElement>(null)
   const lastPathname = useRef(pathname)
 
   useEffect(() => {
     const previous = lastPathname.current
     lastPathname.current = pathname
     // The first load leaves the focus where the browser puts it.
-    if (previous === undefined || previous === pathname) return
-    if (document.activeElement === document.body) content.current?.focus({ preventScroll: true })
-  }, [pathname])
+    if (previous === undefined || previous === pathname || !content.current || !announcement.current) return
+    const focused = document.activeElement
+    const focusLost = !focused || focused === document.body
+    const focusOutsidePage = !focusLost && !content.current.contains(focused)
+    // An empty region between two announcements makes the second one a change, also for the same page name.
+    announcement.current.textContent = focusOutsidePage ? (pageName ?? '') : ''
+    if (focusLost) focusPageStart(content.current)
+  }, [pathname, pageName])
 
-  return content
+  return { content, announcement }
+}
+
+/** The target gets a tab index only while it has the focus, so that a later click on the page does not focus it. */
+function focusPageStart(content: HTMLElement) {
+  const target = content.querySelector('h1') ?? content.closest('main')
+  if (!target) return
+  if (!target.hasAttribute('tabindex')) {
+    target.setAttribute('tabindex', '-1')
+    target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true })
+  }
+  target.focus({ preventScroll: true })
 }

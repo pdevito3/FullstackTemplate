@@ -6,7 +6,10 @@ import { Link } from '@/components/ui/link'
 
 import { useMembership } from '../apis/get-membership'
 
-/** Tells a signed-in user with no user record, such as each user of a new database, how to start a tenant. */
+/**
+ * Tells a signed-in user with no user record, such as each user of a new database, how to start a tenant. It is a banner
+ * of the layout across the main area, because each page has its own width.
+ */
 export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -17,7 +20,7 @@ export function NoTenantNotice() {
     return (
       <section
         aria-label="Membership check"
-        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        className="mb-4 flex flex-wrap items-center justify-between gap-3 border-y border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         <p className="min-w-0">{membership.message}</p>
         {membership.retry && <Button variant="outline" size="sm" onPress={membership.retry}>Try Again</Button>}
@@ -30,7 +33,7 @@ export function NoTenantNotice() {
   return (
     <section
       aria-label="No tenant"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm"
+      className="mb-4 flex flex-wrap items-center justify-between gap-3 border-y border-border bg-muted/50 px-4 py-3 text-sm"
     >
       <p className="min-w-0">
         You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.

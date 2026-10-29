@@ -56,18 +56,25 @@ public static class WorkshopScheduling
     private static readonly Func<ScheduleCase, ScheduleRefusal?>[] Rules = [Movable, AfterToday, InOpeningHours];
 
     public static ScheduleDecision Decide(ScheduleCase schedule)
-        => Rules.Select(rule => rule(schedule)).FirstOrDefault(r => r is not null) is { } refusal
-            ? new ScheduleDecision.Refused(refusal)
-            : new ScheduleDecision.Offered(new SchedulableStart(schedule.Workshop.Id, schedule.Workshop.StartsAt));
+    {
+        // The rules apply only to a move, so a command that runs again after its own commit changes nothing, also on
+        // the start day
+        if (schedule.Workshop.Status == WorkshopStatus.Scheduled())
+            return Offer(schedule);
 
-    // A scheduled workshop passes, so a command that runs again after its own commit changes nothing
+        return Rules.Select(rule => rule(schedule)).FirstOrDefault(r => r is not null) is { } refusal
+            ? new ScheduleDecision.Refused(refusal)
+            : Offer(schedule);
+    }
+
+    private static ScheduleDecision.Offered Offer(ScheduleCase schedule)
+        => new(new SchedulableStart(schedule.Workshop.Id, schedule.Workshop.StartsAt));
+
     private static ScheduleRefusal.WrongStatus? Movable(ScheduleCase schedule)
     {
         var status = schedule.Workshop.Status;
         var scheduled = WorkshopStatus.Scheduled();
-        return status == scheduled || status.CanMoveTo(scheduled)
-            ? null
-            : new ScheduleRefusal.WrongStatus("status", status.MoveRefusal(scheduled));
+        return status.CanMoveTo(scheduled) ? null : new ScheduleRefusal.WrongStatus("status", status.MoveRefusal(scheduled));
     }
 
     private static ScheduleRefusal.NotOffered? AfterToday(ScheduleCase schedule)

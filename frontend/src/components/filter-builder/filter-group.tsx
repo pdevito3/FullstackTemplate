@@ -66,9 +66,11 @@ export function FilterGroup({
       <div className="p-2">
         {/* Group Header */}
         {/* In a narrow group, the actions wrap below the details, and each AND wraps below its filter. The checkbox
-            and the badge stay on one line. A header narrower than the two (8rem) wraps the text of the badge, and a
-            header narrower than both actions (7.25rem) shows only the icon of Ungroup. */}
-        <div data-slot="filter-group-header" className="@container/group-header flex flex-wrap items-start gap-1.5 mb-1.5">
+            and the badge stay on one line. On a phone, a group fills its line, so its header can be a container. A
+            container does not give its content width to its parent. A header narrower than the checkbox and the
+            badge (8rem) wraps the text of the badge, and a header narrower than both actions (7.25rem) shows only the
+            icon of Ungroup. */}
+        <div data-slot="filter-group-header" className="max-sm:@container/group-header flex flex-wrap items-start gap-1.5 mb-1.5">
           <div className="flex flex-1 flex-wrap items-center gap-1.5">
             <div className="flex min-w-0 items-center gap-1.5">
               {/* Selection Checkbox */}
@@ -141,7 +143,7 @@ export function FilterGroup({
         {/* Group Contents - Horizontal Layout */}
         <div className="flex flex-wrap items-start gap-2 pl-3 sm:pl-6">
           {group.filters.map((item, index) => (
-            <div key={item.id} className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
+            <div key={item.id} className={cn('flex max-w-full min-w-0 flex-wrap items-center gap-2', !isFilter(item) && 'max-sm:basis-full')}>
               {isFilter(item) ? (
                 <div className="flex min-w-0 items-center gap-2">
                   {showCheckbox && (

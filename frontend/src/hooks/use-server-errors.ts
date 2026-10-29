@@ -3,7 +3,7 @@ import type { FieldValues, Path, UseFormReturn } from 'react-hook-form'
 
 import { isStaleVersionError, validationErrorsOf } from '@/lib/problem-details'
 
-import type { SaveProblem } from './refused-save-alert'
+import type { SaveProblem } from '@/components/refused-save-alert'
 
 interface Refusal<F extends string> {
   byField: Partial<Record<F, string>>

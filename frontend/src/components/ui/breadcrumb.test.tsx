@@ -99,3 +99,28 @@ test('a current page that fits is a disabled link, not a button', async () => {
   await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
   expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
 })
+
+test('a current page that truncated under an earlier name is a link when it fits', async () => {
+  const trail = (width: number, name: string) => (
+    <header style={{ width }} className="flex h-16 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2 px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>{name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+    </header>
+  )
+  const screen = await render(trail(160, workOrder))
+  await expect.element(screen.getByRole('button', { name: workOrder })).toBeVisible()
+
+  await screen.rerender(trail(1280, 'Home'))
+  await expect.element(screen.getByRole('link', { name: 'Home' })).toBeVisible()
+  await screen.rerender(trail(1280, workOrder))
+
+  await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
+})

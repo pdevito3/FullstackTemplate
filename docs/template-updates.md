@@ -16,13 +16,15 @@ Do these steps before the first update. Commit each step alone, so that the merg
    git fetch template
    ```
 
-2. Find the template commit that the app has all changes of. The script uses the merge base of the app and the template, so do this check:
+2. Find the newest template commit that the app has all changes of. Get the script as [Run the merge](#run-the-merge) step 2 shows, and run it with `--find-base`:
 
    ```bash
-   git log -1 --format='%h %s %cs' "$(git merge-base HEAD template/main)"
+   dotnet run /tmp/template-merge.cs -- --find-base
    ```
 
-   If the command fails, the app has no template history, for example because it came from the GitHub "Use this template" button. If it shows an older commit than the app has the changes of, an earlier update copied, cherry-picked, or squashed the template changes instead of a merge. In both cases, give the correct commit to the script with `--base` (see [Run the merge](#run-the-merge)). After one merge with the script, the merge base is correct again.
+   The script prints the merge base and the commit that it found. The merge base is old when an earlier update merged the branch of a template pull request before GitHub squashed it, or copied or cherry-picked template commits. Then the merge base is the template commit before those changes, and a merge from it gives a conflict at each change that the app has already. The script walks the template history from the merge base to `template/main`. It stops at the first commit that the app does not have. The app has a commit when a commit of the app has the same subject, as `fix(bff): remove wall-clock limits from tests that fail under CPU load (#94)`, or when the app merged the head of its pull request. For example, the merge base of CarePoint was #72, and the script found #94 (`10bc415c`).
+
+   If the found commit is not the merge base, check that the app has the changes of the found commit and of each template commit before it, then give it to the script with `--base`. A short, common subject, such as `chore: update packages`, can match a commit of the app that is not a copy. Without `--base`, the script stops and tells you the commit to give. If the app has no template history, for example because it came from the GitHub "Use this template" button, give the template commit that the app was made from with `--base`. After one merge with the script, the merge base is correct again.
 
 3. Rename each path of the app that still has the template name. An older `init.cs` did not rename all paths, for example the folder of the verify skill. The script stops and lists these paths. Rename them with `git mv` as `init.cs` does, and change the references to them in the other files.
 
@@ -36,7 +38,7 @@ Do these steps before the first update. Commit each step alone, so that the merg
    git commit -m "chore: store each text file with LF, as the template does"
    ```
 
-   Without this step, a file that has CRLF in the app and LF in the template gives more conflicts. In the Fleet dry run, this step took the conflicts from 131 to 97.
+   Without this step, a file that has CRLF in the app and LF in the template gives more conflicts. In a dry run of Fleet `feat/v1` with the template at `dbaa6844`, this step took the conflicts from 135 to 101, and the conflicted files with CRLF from 41 to 0.
 
 ## Run the merge
 
@@ -61,10 +63,11 @@ Do these steps before the first update. Commit each step alone, so that the merg
    | `--ref <Commit>` | The template commit to merge. The default is `template/main`. |
    | `--base <Commit>` | The last template commit that the app has all changes of. The default is the merge base. |
    | `--display-name <DisplayName>` | The display name that `init.cs` gave the app. The default is the `<title>` of `frontend/index.html`. |
+   | `--find-base` | Print the newest template commit that the app has all changes of, and stop. See [Prepare the app once](#prepare-the-app-once), step 2. |
 
    The script does these steps:
 
-   - It stops if the tree has changes, if a merge or a rebase is open, or if a path of the app still has the template name.
+   - It stops if the tree has changes, if a merge or a rebase is open, if a path of the app still has the template name, or if the merge base is older than the template changes that the app has.
    - It makes a renamed copy of the base commit and of the new commit. It runs the `init.cs` of the new commit on both, so that a change of `init.cs` does not show as a change of the template.
    - It keeps the `UserSecretsId` of the AppHost and the default `AuthProvider` of the app in both copies.
    - It merges the renamed copies into the app, and leaves the merge open as `git merge` does. The second parent of the merge is the real template commit, so the next update starts from it.
@@ -78,7 +81,7 @@ Do these steps before the first update. Commit each step alone, so that the merg
 
    The second command shows each change of the template with the names of the app.
 
-To stop the merge, run `git merge --abort`.
+To stop the merge, run `git merge --abort`. The script writes the merge state before it merges, so this also works if the script stops during the merge. If `git merge --abort` says that there is no merge to abort, for example after an older version of the script stopped during the merge, run `git reset --hard`. The script started from a clean tree, so this removes only the changes of the merge.
 
 ## Resolve the conflicts
 
@@ -87,6 +90,7 @@ Each side of a conflict has a label. `HEAD` is the app, and `template <commit>` 
 | Conflict | What to do |
 |----------|------------|
 | The app deleted an example of the template, such as a demo page, and the template changed it (`git status` shows `deleted by us`) | Delete it again with `git rm <path>`. |
+| The template deleted or renamed a file that the app changed (`git status` shows `deleted by them`), such as `ConstraintFieldsTests.cs`, which the template renamed to `ConstraintErrorsTests.cs` | Find the template commit that deleted it with `git log --oneline -1 --diff-filter=DR <base>..<new commit> -- '*/<file name>'`, and read it with `git show -M --stat <commit>`. If the template renamed the file or moved its code, move the changes of the app there, then delete the old file with `git rm <path>`. If the template removed the code and the app still needs its change, keep the file with `git add <path>` and make it build against the new code. |
 | The app made its own copy of a template fix, and the template has its fix now (`both added`, or both changed the same lines) | Take the template version with `git checkout --theirs -- <path>`. Then delete the copy of the app if it has another path, and change the callers of the app copy. |
 | A package version in `Directory.Packages.props` | Take the higher version. |
 | The generated API contract: `<App>.Server/openapi/` and `frontend/src/api/generated*/` | Take one side, then make the files again with the `api-contract` skill. Do not edit these files by hand. |

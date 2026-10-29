@@ -80,7 +80,7 @@ export function useUpdateUser() {
 For an optimistic update, change only the query cache. In `onMutate`, cancel the queries, keep the old data, and set the new data. In `onError`, put back the old data. In `onSettled`, invalidate the queries.
 
 <!-- example:start -->
-In the workshop example, a save puts the answer of the Server in the detail cache and invalidates the lists: [update-workshop.ts:14](<../../frontend/src/examples/workshops/apis/update-workshop.ts#L14>). A refused action reads the workshop again, because another user can have changed it: [send-workshop-action.ts:26](<../../frontend/src/examples/workshops/apis/send-workshop-action.ts#L26>).
+In the workshop example, a save puts the answer of the Server in the detail cache and invalidates the lists: [update-workshop.ts:15](<../../frontend/src/examples/workshops/apis/update-workshop.ts#L15>). A refused action reads the workshop again, because another user can have changed it: [send-workshop-action.ts:27](<../../frontend/src/examples/workshops/apis/send-workshop-action.ts#L27>).
 <!-- example:end -->
 
 ## Errors

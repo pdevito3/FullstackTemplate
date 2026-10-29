@@ -61,7 +61,7 @@ function WorkshopPage() {
       <WorkshopActions
         workshop={workshop.data}
         pendingAction={action.isPending ? action.variables : undefined}
-        onAction={(command) => action.mutate(command, { onSuccess: () => headingRef.current?.focus() })}
+        onAction={(command) => action.mutate(command, { onSettled: () => headingRef.current?.focus() })}
       />
     </div>
   )

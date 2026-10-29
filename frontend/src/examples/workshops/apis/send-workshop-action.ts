@@ -19,6 +19,7 @@ export function useSendWorkshopAction(id: string) {
 
   return useMutation({
     mutationFn: (action: WorkshopCommand) => SEND[action](id),
+    onMutate: () => queryClient.cancelQueries({ queryKey: WorkshopKeys.detail(id) }),
     onSuccess: (workshop) => {
       queryClient.setQueryData(WorkshopKeys.detail(id), workshop)
       return queryClient.invalidateQueries({ queryKey: WorkshopKeys.lists() })

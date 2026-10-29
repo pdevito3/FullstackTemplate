@@ -51,7 +51,11 @@ function EditWorkshopPage() {
       {workshop.data.allowedActions.includes('Update') ? (
         <WorkshopEditForm workshop={workshop.data} onSave={handleSave} onLoadLatest={handleLoadLatest} />
       ) : (
-        <p className="text-muted-foreground">This workshop is {workshop.data.status.toLowerCase()}, so it cannot be edited.</p>
+        <p className="text-muted-foreground">
+          {workshop.data.status === 'Draft'
+            ? 'You cannot manage workshops. Ask a tenant admin for access.'
+            : `A ${workshop.data.status.toLowerCase()} workshop cannot be changed.`}
+        </p>
       )}
     </div>
   )

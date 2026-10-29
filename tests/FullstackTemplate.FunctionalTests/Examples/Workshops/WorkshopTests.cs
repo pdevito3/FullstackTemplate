@@ -2,6 +2,7 @@ namespace FullstackTemplate.FunctionalTests.Examples.Workshops;
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.TimeZones;
 using FullstackTemplate.Server.Examples.Workshops;
@@ -80,6 +81,23 @@ public class WorkshopTests : TestBase
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Type.ShouldBe(DomainProblemDetails.StaleVersionType);
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("version");
+    }
+
+    [Test]
+    public async Task a_workshop_in_the_list_and_alone_gives_the_time_zone_of_its_venue()
+    {
+        // Arrange
+        var (_, workshop) = await AddWorkshopAndSignInAsync("Admin", zone: TimeZoneId.Of("Pacific/Tongatapu"));
+
+        // Act
+        var list = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.GetList);
+        var one = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.Get(workshop.Id));
+
+        // Assert
+        var row = (await list.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().ShouldHaveSingleItem();
+        row.GetProperty("venueTimeZone").GetString().ShouldBe("Pacific/Tongatapu");
+        (await one.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("venueTimeZone").GetString()
+            .ShouldBe("Pacific/Tongatapu");
     }
 
     [Test]

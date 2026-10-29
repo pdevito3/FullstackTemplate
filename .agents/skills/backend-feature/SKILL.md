@@ -56,11 +56,11 @@ The script writes generic rules. Make them the rules of the domain:
 7. Regenerate and commit the API contract with the `api-contract` skill.
 8. Run `dotnet build FullstackTemplate.slnx` and `dotnet test --solution FullstackTemplate.slnx`.
 
-The script writes only a root that a tenant owns. For a child entity, an entity of all tenants, or a read model of a view, write the files by hand. Use the reference feature and the checklist of `docs/backend/audit-log.md`.
+The script writes only a root that a tenant owns. For a child entity, an entity of all tenants, or a read model of a view, write the files by hand. Use the files of a generated feature as the pattern, and the checklist of `docs/backend/audit-log.md`.
 
 ## 2. New Property
 
-Change each of these files, as the reference feature does:
+Change each of these files:
 
 | File | Change |
 |------|--------|

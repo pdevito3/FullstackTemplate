@@ -151,6 +151,7 @@ Proof standards:
 - Read `console.log` and `network.log` after each run. These lines are normal: the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
 - Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
+- At the end of a slice of a spec in `docs/specs/`, run `SpecRuleTests` (see `docs/specs/TEMPLATE.md`, section "Rules"). Each rule of the slice needs a test that names its ID.
 
 ## Cleanup
 

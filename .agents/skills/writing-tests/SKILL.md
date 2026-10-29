@@ -95,3 +95,5 @@ pnpm test:e2e
 If you changed the BFF, the AppHost, or the login code, also run `pnpm test:e2e:stack` against a running stack.
 
 If the change adds a command that runs again, takes a lock, or checks a rule over other rows, add a race test.
+
+If a test proves a rule of a spec in `docs/specs/`, name the rule ID on the test: `[Property("Rule", "R-1")]` on a .NET test, or the tag `@R-1` on a frontend test. When a slice builds a rule, remove `(later)` from its row. See `docs/specs/TEMPLATE.md`, section "Rules".

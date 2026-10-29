@@ -91,7 +91,7 @@ public sealed class TakeVehicleOutOfServiceWhenInspectionFails : IDomainEventHan
 The context finds each handler in the DI container. You do not register a handler.
 
 - A handler runs in the tenant of the entity that queued the event. The tenant query filters in the handler show the rows of this tenant only, also when the caller is system work or a machine client that sees all tenants. When a handler adds an entity, set its `TenantId` from a loaded entity of the event.
-- The tenant of the event is the `TenantId` of an `ITenantable` entity, or the `Id` of a `Tenant`. An entity with no tenant has no tenant to give, so the handlers of its events run in the tenant scope of the caller. An entity that gets its tenant through `ApplyTenanting` cannot queue a domain event, and the save throws a `NotSupportedException`.
+- The tenant of the event is the `TenantId` of an `ITenantable` entity, or the `Id` of a `Tenant`. An entity with no tenant has no tenant to give, so the handlers of its events run in the tenant scope of the save. That is the scope of the caller, or the scope of one tenant when the Server code runs the save in a narrowed scope of that tenant. An entity that gets its tenant through `ApplyTenanting` cannot queue a domain event, and the save throws a `NotSupportedException`.
 - One event can have many handlers. Make each handler independent of the others. The order of the handlers of one event is not defined.
 - The events run in the order that the entities queued them.
 - A handler can change an entity whose method queues a new event. The new event runs in the same save. After 10 rounds of new events, the save throws an exception, because the handlers then form a cycle.

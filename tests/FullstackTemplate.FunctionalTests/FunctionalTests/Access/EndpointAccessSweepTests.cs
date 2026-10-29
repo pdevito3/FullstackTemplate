@@ -460,7 +460,9 @@ public class EndpointAccessSweepTests : TestBase
             {
                 var value = ids.ValueFor(parameter.Name, Kind)
                     ?? throw new SweepSetupException($"The sweep does not know the route value {{{parameter.Name}}}. "
-                        + $"Give it a value in {nameof(RecordIds)}.{nameof(RecordIds.ValueFor)}.");
+                        + $"Give it the value of a real record in {nameof(RecordIds)}.{nameof(RecordIds.ValueFor)}. If the value "
+                        + $"names a record of a tenant, as a slug can, also add it to {nameof(RecordIds)}.{nameof(RecordIds.NamesARecord)} "
+                        + $"and give {nameof(RecordIds)}.{nameof(RecordIds.Unknown)} a value that names no record.");
                 path = path.Replace($"{{{parameter.Name}}}", Uri.EscapeDataString(value), StringComparison.Ordinal);
             }
 

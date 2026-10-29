@@ -72,6 +72,19 @@ public class AuditModelTests
     }
 
     [Test]
+    public void an_entity_whose_key_to_its_owner_is_not_cascade_is_a_root_that_needs_a_tenant_of_its_own()
+    {
+        // Arrange
+        using var context = new RestrictedChildContext();
+
+        // Act
+        var rootsWithNoTenant = RootsWithNoTenant(context.Model);
+
+        // Assert
+        rootsWithNoTenant.ShouldBe([typeof(RestrictedChild)]);
+    }
+
+    [Test]
     public void no_entity_type_is_owned()
     {
         // Arrange
@@ -204,6 +217,34 @@ public class AuditModelTests
     private sealed class UntenantedNode() : BaseEntity("und")
     {
         public string? ParentId { get; private set; }
+    }
+
+    private sealed class TenantedOwner() : BaseEntity("tow"), ITenantable
+    {
+        public string TenantId { get; private set; } = EntityId.New(Tenant.IdPrefix);
+    }
+
+    private sealed class RestrictedChild() : BaseEntity("rch")
+    {
+        public TenantedOwner Owner { get; private set; } = null!;
+    }
+
+    private sealed class RestrictedChildContext() : AppDbContext(
+        new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
+        TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
+        Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<TenantedOwner>().HasKey(o => o.Id);
+            modelBuilder.Entity<RestrictedChild>(child =>
+            {
+                child.HasKey(c => c.Id);
+                child.HasOne(c => c.Owner).WithMany().IsRequired().OnDelete(DeleteBehavior.Restrict);
+                child.ApplyTenanting(c => c.Owner.TenantId);
+            });
+        }
     }
 
     private sealed class TreeContext<TNode>() : AppDbContext(

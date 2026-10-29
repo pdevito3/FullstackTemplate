@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Examples.Workshops.Features;
 
 using System.Diagnostics;
 using Databases;
+using Domain;
 using Domain.Users;
 using Dtos;
 using Exceptions;
@@ -10,6 +11,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
+using Venues;
 
 public static class AddWorkshop
 {
@@ -28,6 +30,9 @@ public static class AddWorkshop
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageWorkshops());
+
+            if (!EntityId.IsValid(request.Dto.VenueId, Venue.IdPrefix))
+                throw new ValidationException(VenueIdField, "The venue does not exist.");
 
             // A caller that sees all tenants can name a venue of any tenant, so the tenant of the lock comes from the venue.
             var tenantId = await dbContext.Venues

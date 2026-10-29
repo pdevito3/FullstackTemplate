@@ -8,6 +8,6 @@ import * as z from 'zod'
 export const workshopForUpdateDtoSchema = z.object({
   title: z.string().max(200),
   startsAt: z.iso.datetime(),
-  capacity: z.int32().max(500),
+  capacity: z.int32().min(1).max(500),
   version: z.int().min(0).max(4294967295).describe('The version of the workshop that the caller loaded. A stale version gives 409.'),
 })

@@ -37,9 +37,9 @@ public class WorkshopTests
             $"A workshop title can have no more than {Workshop.TitleMaxLength} characters.");
         yield return () => (w => w.Title = "a\0b", "title", "A workshop title has a character that is not allowed.");
         yield return () => (w => w.StartsAt = default(DateTimeOffset), "startsAt", "Please provide a start.");
-        yield return () => (w => w.Capacity = 0, "capacity", $"A workshop has room for 1 to {Workshop.CapacityMaximum} people.");
+        yield return () => (w => w.Capacity = Workshop.CapacityMinimum - 1, "capacity", "A workshop has room for 1 to 500 people.");
         yield return () => (w => w.Capacity = Workshop.CapacityMaximum + 1, "capacity",
-            $"A workshop has room for 1 to {Workshop.CapacityMaximum} people.");
+            "A workshop has room for 1 to 500 people.");
     }
 
     [Test]

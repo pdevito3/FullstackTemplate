@@ -11,6 +11,7 @@ public class Workshop : BaseEntity, ITenantable
 {
     public const string IdPrefix = "wks";
     public const int TitleMaxLength = 200;
+    public const int CapacityMinimum = 1;
     public const int CapacityMaximum = 500;
     public const string ChangeRefusedMessage = "Only the organizer of this workshop or a tenant admin can change it.";
 
@@ -108,8 +109,8 @@ public class Workshop : BaseEntity, ITenantable
         ValidationException.ThrowWhenHasCharacterPostgresCannotStore(workshop.Title, "title",
             "A workshop title has a character that is not allowed.");
         ValidationException.MustNot(workshop.StartsAt == default, "startsAt", "Please provide a start.");
-        ValidationException.Must(workshop.Capacity is >= 1 and <= CapacityMaximum, "capacity",
-            $"A workshop has room for 1 to {CapacityMaximum} people.");
+        ValidationException.Must(workshop.Capacity is >= CapacityMinimum and <= CapacityMaximum, "capacity",
+            $"A workshop has room for {CapacityMinimum} to {CapacityMaximum} people.");
     }
 
     protected Workshop() : base(IdPrefix) { } // For EF Core

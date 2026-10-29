@@ -10,6 +10,7 @@ public sealed record WorkshopForUpdateDto
 
     public required DateTimeOffset StartsAt { get; init; }
 
+    [SchemaMinimum(typeof(Workshop), nameof(Workshop.CapacityMinimum))]
     [SchemaMaximum(typeof(Workshop), nameof(Workshop.CapacityMaximum))]
     public required int Capacity { get; init; }
 

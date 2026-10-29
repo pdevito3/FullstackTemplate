@@ -3448,6 +3448,7 @@
           },
           "capacity": {
             "maximum": 500,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
           }
@@ -3486,6 +3487,7 @@
           },
           "capacity": {
             "maximum": 500,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
           },

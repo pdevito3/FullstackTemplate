@@ -19,6 +19,7 @@ export type WorkshopForCreationDto = {
     /**
      * @description
      * Format: `int32`
+     * @minLength 1
      * @maxLength 500
      * @type integer
     */

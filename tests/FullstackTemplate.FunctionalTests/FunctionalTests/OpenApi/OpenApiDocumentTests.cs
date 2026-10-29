@@ -255,8 +255,8 @@ public class OpenApiDocumentTests
         (string Name, int Minimum, int Maximum)[] expectations =
         [
             // example:start
-            ("WorkshopForCreationDto.capacity", 1, Workshop.CapacityMaximum),
-            ("WorkshopForUpdateDto.capacity", 1, Workshop.CapacityMaximum),
+            ("WorkshopForCreationDto.capacity", Workshop.CapacityMinimum, Workshop.CapacityMaximum),
+            ("WorkshopForUpdateDto.capacity", Workshop.CapacityMinimum, Workshop.CapacityMaximum),
             // example:end
         ];
 

@@ -9,5 +9,5 @@ export const workshopForCreationDtoSchema = z.object({
   venueId: z.string(),
   title: z.string().max(200),
   startsAt: z.iso.datetime(),
-  capacity: z.int32().max(500),
+  capacity: z.int32().min(1).max(500),
 })

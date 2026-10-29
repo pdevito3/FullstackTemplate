@@ -63,68 +63,70 @@ export function FilterGroup({
     >
       <div className="p-2">
         {/* Group Header */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-          {/* Selection Checkbox */}
-          {showCheckbox && (
-            <Checkbox
-              aria-label="Select group"
-              isSelected={isSelected}
-              onChange={() => onToggleSelection(group.id)}
-              className="shrink-0"
-            />
-          )}
+        <div className="flex items-start gap-1.5 mb-1.5">
+          {/* The group details wrap, and the actions stay on the first line. */}
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {/* Selection Checkbox */}
+            {showCheckbox && (
+              <Checkbox
+                aria-label="Select group"
+                isSelected={isSelected}
+                onChange={() => onToggleSelection(group.id)}
+                className="shrink-0"
+              />
+            )}
 
-          {/* Group Label */}
-          <Badge variant="outline" className="text-xs font-medium shrink-0">
-            Group (Depth {depth})
-          </Badge>
+            {/* Group Label */}
+            <Badge variant="outline" className="text-xs font-medium shrink-0">
+              Group (Depth {depth})
+            </Badge>
 
-          {/* Logical Operator Toggle */}
-          <Button
-            variant="ghost"
-            size="xs"
-            onPress={() => onToggleOperator(group.id)}
-            className="h-6 px-2 text-xs font-medium shrink-0"
-          >
-            {group.logicalOperator}
-          </Button>
-
-          {/* Filter Count */}
-          <span className="text-xs text-muted-foreground shrink-0">
-            {group.filters.length}{' '}
-            {group.filters.length === 1 ? 'filter' : 'filters'}
-          </span>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Ungroup Button */}
-          <TooltipTrigger>
+            {/* Logical Operator Toggle */}
             <Button
               variant="ghost"
               size="xs"
-              onPress={() => onUngroup(group.id)}
-              className="h-6 px-2 text-xs shrink-0"
+              onPress={() => onToggleOperator(group.id)}
+              className="h-6 px-2 text-xs font-medium shrink-0"
             >
-              <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3" />
-              Ungroup
+              {group.logicalOperator}
             </Button>
-            <Tooltip>Move the filters to the parent group</Tooltip>
-          </TooltipTrigger>
 
-          {/* Remove Group Button */}
-          <TooltipTrigger>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onPress={() => onRemove(group.id)}
-              aria-label="Delete group"
-              className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive shrink-0"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-            </Button>
-            <Tooltip>Delete the group and all its filters</Tooltip>
-          </TooltipTrigger>
+            {/* Filter Count */}
+            <span className="text-xs text-muted-foreground shrink-0">
+              {group.filters.length}{' '}
+              {group.filters.length === 1 ? 'filter' : 'filters'}
+            </span>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* Ungroup Button */}
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="xs"
+                onPress={() => onUngroup(group.id)}
+                className="h-6 px-2 text-xs shrink-0"
+              >
+                <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3" />
+                Ungroup
+              </Button>
+              <Tooltip>Move the filters to the parent group</Tooltip>
+            </TooltipTrigger>
+
+            {/* Remove Group Button */}
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onPress={() => onRemove(group.id)}
+                aria-label="Delete group"
+                className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive shrink-0"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+              </Button>
+              <Tooltip>Delete the group and all its filters</Tooltip>
+            </TooltipTrigger>
+          </div>
         </div>
 
         {/* Group Contents - Horizontal Layout */}

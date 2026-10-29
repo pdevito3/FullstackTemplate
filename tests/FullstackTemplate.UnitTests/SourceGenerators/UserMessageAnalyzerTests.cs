@@ -24,6 +24,8 @@ public class UserMessageAnalyzerTests
                 public string Name { get; } = name;
                 public int Value { get; } = value;
 
+                public static System.Collections.Generic.IReadOnlyCollection<TEnum> List { get; } = [];
+
                 public static bool TryFromName(string name, bool ignoreCase, out TEnum result)
                 {
                     result = default!;
@@ -802,6 +804,194 @@ public class UserMessageAnalyzerTests
 
         // Assert
         diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_list_of_stored_names_from_list_names_or_a_select_gets_fstmsg001()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System.Collections.Generic;
+                using System.Linq;
+
+                // The shape of WorkOrderStatus in Fleet and ChargeKind in CarePoint
+                public class Grade : IFixedNames
+                {
+                    public static List<string> ListNames() => GradeEnum.List.OrderBy(x => x.Value).Select(x => x.Name).ToList();
+
+                    public static void Pick() => throw new ValidationException("grade", $"Use one of {string.Join(", ", ListNames())}.");
+
+                    public static void PickName() => throw new ValidationException("grade", $"Use one of {string.Join(", ", GradeEnum.List.Select(k => k.Name))}.");
+
+                    public static void PickValue() => throw new ValidationException("grade", $"Use one of {string.Join(", ", GradeEnum.List.Select(k => k.Value))}.");
+
+                    public static void PickFromHelper() => throw new ValidationException("grade", $"Use one of {string.Join(", ", Names())}.");
+
+                    public static void PickWords()
+                        => throw new ValidationException("grade", $"Use one of {string.Join(", ", GradeEnum.List.Where(k => k.Name != "").Select(k => k.Label))}. There are {GradeEnum.List.Count()}.");
+
+                    private static IEnumerable<string> Names() => GradeEnum.List.Select(x => x.Name);
+
+                    private sealed class GradeEnum(string name, int value, string label) : Ardalis.SmartEnum.SmartEnum<GradeEnum>(name, value)
+                    {
+                        public static readonly GradeEnum FirstGrade = new("FirstGrade", 0, "first grade");
+
+                        public string Label { get; } = label;
+                    }
+                }
+
+                // A ListNames that a loop builds
+                public class Level : IFixedNames
+                {
+                    public static List<string> ListNames()
+                    {
+                        var names = new List<string>();
+                        foreach (var level in LevelEnum.List)
+                            names.Add(level.Name);
+                        return names;
+                    }
+
+                    public static void Pick() => throw new ValidationException("level", $"Use one of {string.Join(", ", Level.ListNames())}.");
+
+                    private sealed class LevelEnum(string name, int value) : Ardalis.SmartEnum.SmartEnum<LevelEnum>(name, value);
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the stored name 'ListNames()'. " + Fix,
+            "A user message shows the stored name 'GradeEnum.List.Select(k => k.Name)'. " + Fix,
+            "A user message shows the stored name 'GradeEnum.List.Select(k => k.Value)'. " + Fix,
+            "A user message shows the stored name 'Names()'. " + Fix,
+            "A user message shows the stored name 'Level.ListNames()'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_try_method_that_is_not_a_parse_is_traced()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                public class Stage : IFixedNames
+                {
+                    public static void Start() => new Stage().MoveTo("CheckedIn");
+
+                    public bool TryMoveTo(string target) => target.Length > 0;
+
+                    public void MoveTo(string target)
+                    {
+                        if (!TryMoveTo(target))
+                            throw new ValidationException("stage", $"Cannot move to {target}.");
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the code name 'CheckedIn'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_guard_clause_parse_and_an_is_false_parse_are_not_traced()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System;
+
+                public static class Modes
+                {
+                    public static Mode Machine() => Parse(nameof(Mode.Machine));
+
+                    public static Mode Delegated() => ParseOrFail(nameof(Mode.Delegated));
+
+                    public static void Log() => Check(nameof(Mode.Machine));
+
+                    private static Mode Parse(string value)
+                    {
+                        if (Enum.TryParse<Mode>(value, out var mode))
+                            return mode;
+
+                        throw new ValidationException("mode", $"Invalid mode: {value}");
+                    }
+
+                    private static Mode ParseOrFail(string value)
+                    {
+                        if (Enum.TryParse<Mode>(value, out var mode) is false)
+                            throw new ValidationException("mode", $"Invalid mode: {value}");
+
+                        return mode;
+                    }
+
+                    // The if does not leave the method, so the throw also runs after a parse that accepts the value
+                    private static void Check(string value)
+                    {
+                        if (Enum.TryParse<Mode>(value, out _))
+                            Console.WriteLine(value);
+
+                        throw new ValidationException("mode", $"Invalid mode: {value}");
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the code name 'nameof(Mode.Machine)'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_reassigned_parameter_and_the_text_of_an_error_status_are_checked()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using Microsoft.AspNetCore.Http;
+
+                public class Order
+                {
+                    public Mode Kind { get; } = Mode.Machine;
+
+                    public void Close(string reason)
+                    {
+                        reason = $"The order is {Kind}.";
+                        throw new ValidationException("status", reason);
+                    }
+
+                    public void Reopen() => throw new ValidationException("status", Describe("closed"));
+
+                    private string Describe(string state)
+                    {
+                        state = $"The order is {Kind}.";
+                        return state;
+                    }
+
+                    public static IResult Locked() => Results.Text("The order is locked_out.", statusCode: 400);
+
+                    public static IResult Changed() => TypedResults.Text("Use read_users.", statusCode: StatusCodes.Status409Conflict);
+
+                    public static IResult Read() => Results.Text("read_users");
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the enum value 'Kind'. " + Fix,
+            "A user message shows the enum value 'Kind'. " + Fix,
+            "A user message shows the code name 'locked_out'. " + Fix,
+            "A user message shows the code name 'read_users'. " + Fix,
+        ]);
     }
 
     private static async Task<ImmutableArray<Diagnostic>> Run(string source)

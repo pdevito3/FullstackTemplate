@@ -11,7 +11,7 @@ const configs = [
   { width: 1280, height: 800, scheme: 'light', fontSize: 24 },
 ]
 const configName = ({ width, scheme, fontSize }) => `${width}px ${scheme} ${fontSize}px font`
-// A resize or a new font size can close an open overlay, such as a submenu. The sweep of an overlay keeps both.
+// A new font size closes an open submenu, so the sweep of an overlay keeps the size and the font of the recipe.
 const overlayConfigs = ({ width, height }) => [
   { width, height, scheme: 'light', fontSize: 16 },
   { width, height, scheme: 'dark', fontSize: 16 },
@@ -95,11 +95,12 @@ function markLayoutFaults() {
   const label = (el) => el.dataset.slot ?? el.closest('[data-slot]')?.dataset.slot ?? el.tagName.toLowerCase()
   const textOf = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 80)
   const oneLine = (value) => (value ?? '').trim().replace(/\s+/g, ' ')
-  // The element that the user can focus or press to read the full value: its title, or its accessible name.
-  // A Tooltip shows the accessible name of its trigger, so the name covers it.
+  // The sweep cannot tell whether a press shows the full value. It only finds that the title or the name holds it.
   const canShowFullValue = (el) => {
     const host = el.closest('a[href], button, input, select, textarea, summary, [tabindex]')
-    if (!host || host.tabIndex < 0 || host.matches(':disabled, [aria-disabled="true"]')) return false
+    if (!host || host.matches(':disabled, [aria-disabled="true"]')) return false
+    // A roving tabindex gives -1 to each item of a composite widget but the current one. The arrow keys focus the others.
+    if (host.tabIndex < 0 && !host.closest('[role=tablist], [role=menu], [role=listbox], [role=grid], [role=toolbar], [role=tree]')) return false
     const full = oneLine(el.textContent)
     const labelledBy = host.getAttribute('aria-labelledby')?.split(/\s+/).map((id) => document.getElementById(id)?.textContent).join(' ')
     const name = host.getAttribute('aria-label') ?? labelledBy ?? host.textContent
@@ -133,15 +134,15 @@ function markLayoutFaults() {
     if (isHidden(el)) continue
     const inline = [el.style.getPropertyValue('max-height'), el.style.getPropertyPriority('max-height')]
     el.style.removeProperty('max-height')
-    const classMax = parseFloat(getComputedStyle(el).maxHeight)
+    const classMax = getComputedStyle(el).maxHeight
     el.style.setProperty('max-height', ...inline)
+    if (!classMax.endsWith('px')) continue
     const height = el.getBoundingClientRect().height
-    if (height > classMax + 1) {
-      add(el, { kind: 'list grows past its max height', how: `is ${Math.round(height)} px high, and its class sets a max height of ${Math.round(classMax)} px` })
+    if (height > parseFloat(classMax) + 1) {
+      add(el, { kind: 'list grows past its max height', how: `is ${Math.round(height)} px high, and its class sets a max height of ${Math.round(parseFloat(classMax))} px` })
     }
   }
 
-  // A bar has a fixed height when its height does not come from its content. Its text must stay on one line.
   const hasFixedHeight = (el) => {
     const height = el.getBoundingClientRect().height
     const inline = [el.style.getPropertyValue('height'), el.style.getPropertyPriority('height')]
@@ -249,17 +250,17 @@ function recordFault(faults, measured, { at, url, config }) {
 // A resize can cross a breakpoint and remount the element that has the focus. The sweep gives the focus back,
 // or forgets the last focused element, so that the next focus check does not report a loss that the sweep caused.
 // A loss from before the capture stays for the focus check at the end of the step.
-// A viewport capture holds an open overlay. A scroll can close it, so its screenshots do not scroll.
-export async function sweepCapture({ page, cdp, settle, outDir, capture, faults, fullPage }) {
+// A capture that holds an open overlay is swept at the size and the font of the recipe, and its screenshots do not scroll.
+export async function sweepCapture({ page, cdp, settle, outDir, capture, faults, holdsOverlay }) {
   const url = page.url()
   const resting = { ...page.viewportSize(), scheme: 'light', fontSize: 16 }
   const scroll = await page.evaluate(() => [scrollX, scrollY])
   const focused = await page.evaluateHandle(() => document.activeElement)
-  for (const config of fullPage ? configs : overlayConfigs(resting)) {
+  for (const config of holdsOverlay ? overlayConfigs(resting) : configs) {
     await applyConfig(page, cdp, settle, config)
     for (const [index, measured] of (await page.evaluate(markLayoutFaults)).entries()) {
       const fault = recordFault(faults, measured, { at: capture, url, config })
-      if (fault) await screenshotOf(page, `[data-sweep-fault~="${index}"]`, path.join(outDir, fault.screenshot), { scroll: fullPage })
+      if (fault) await screenshotOf(page, `[data-sweep-fault~="${index}"]`, path.join(outDir, fault.screenshot), { scroll: !holdsOverlay })
     }
   }
   await page.evaluate(() => document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault')))

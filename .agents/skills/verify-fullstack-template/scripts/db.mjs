@@ -113,7 +113,13 @@ const changeCountsByTable = (diffs) =>
   Object.fromEntries(diffs.map(({ database, table, added, changed, deleted }) =>
     [`${database}.${table.schema}.${table.name}`, { added: added.length, changed: changed.length, deleted: deleted.length }]))
 
-// A failed restore gives the rows of the run in `error.changes`, so that the report shows what stayed in the database.
+export class RestoreError extends Error {
+  constructor(cause, changes) {
+    super(cause.message, { cause })
+    this.changes = changes
+  }
+}
+
 export function restore(container, before) {
   const diffs = differences(before, snapshot(container))
   const changes = changeCountsByTable(diffs)
@@ -124,7 +130,7 @@ export function restore(container, before) {
       throw new Error(`db: the restore left these tables different from the snapshot: ${Object.keys(changeCountsByTable(left)).join(', ')}`)
     }
   } catch (e) {
-    throw Object.assign(e, { changes })
+    throw new RestoreError(e, changes)
   }
   return changes
 }

@@ -11,6 +11,7 @@ using Microsoft.OpenApi;
 /// <see cref="SchemaMaximumAttribute"/> its <c>maximum</c>. The generated Zod schema of the SPA then has the limit, so a
 /// form reads it from the contract and not from a copy that can go stale. A max length on a schema that is not a string,
 /// or a minimum or a maximum on a schema that is not a number, fails the Debug build, so that no mark is silently lost.
+/// So does a minimum that is more than the maximum.
 /// </summary>
 public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
 {
@@ -47,6 +48,12 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
                 throw WrongSchemaType(property, "SchemaMaximum", schema, "a number");
             schema.Maximum = maximum.Maximum.ToString(CultureInfo.InvariantCulture);
         }
+
+        if (schema.Minimum is { } low && schema.Maximum is { } high
+            && decimal.Parse(low, CultureInfo.InvariantCulture) > decimal.Parse(high, CultureInfo.InvariantCulture))
+            throw new InvalidOperationException(
+                $"{property.DeclaringType.Name}.{property.Name} has the minimum {low} and the maximum {high}, so no value passes. "
+                + "Give [SchemaMinimum] a value that is not more than the value of [SchemaMaximum].");
 
         return Task.CompletedTask;
     }

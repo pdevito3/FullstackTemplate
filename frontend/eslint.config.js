@@ -235,7 +235,7 @@ export const queryKeyHasInputsRule = {
         const inKey = keyVariables(queryKey)
         const comesFromKey = (variable, path = []) => {
           const init = initOf(variable)
-          if (!init || hookCalledBy(init) || path.includes(variable))
+          if (!init || !['useMemo', 'useCallback', null].includes(hookCalledBy(init)) || path.includes(variable))
             return false
           const values = referencesIn(sourceCode, init).map((ref) => ref.resolved).filter((v) => isLocal(v) && isValue(v))
           return values.length > 0 && values.every((v) => inKey.has(v) || comesFromKey(v, [...path, variable]))

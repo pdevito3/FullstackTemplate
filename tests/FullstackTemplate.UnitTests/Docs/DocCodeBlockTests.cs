@@ -11,7 +11,7 @@ using Shouldly;
 public partial class DocCodeBlockTests
 {
     [Test]
-    public void a_block_with_no_source_a_missing_source_and_a_changed_line_are_listed()
+    public void a_block_with_no_source_a_missing_source_a_changed_line_and_no_code_are_listed()
     {
         // Arrange
         const string markdown = """
@@ -38,6 +38,11 @@ public partial class DocCodeBlockTests
             public int A { get; }
             public int B { get; set; }
             ```
+
+            <!-- code: Server/Entity.cs -->
+            ```C# title="Entity"
+            // ...
+            ```
             """;
         var files = new Dictionary<string, string>
         {
@@ -52,6 +57,7 @@ public partial class DocCodeBlockTests
             "docs/backend/x.md line 3: the C# block has no source. Put <!-- code: path/to/File.cs --> on the line before it, and copy the lines from that file.",
             "docs/backend/x.md line 8: the C# block names Server/Gone.cs, but the file does not exist.",
             "docs/backend/x.md line 20: the C# block differs from Server/Entity.cs at 'public int B { get; set; }'. Copy the lines from the file again.",
+            "docs/backend/x.md line 26: the C# block has no code.",
         ]);
     }
 
@@ -75,8 +81,9 @@ public partial class DocCodeBlockTests
     private static string? ReadSource(string root, string path)
     {
         var full = Path.GetFullPath(Path.Combine(root, path));
-        var segments = path.Split('/');
-        return full.StartsWith(root, StringComparison.Ordinal) && path.EndsWith(".cs", StringComparison.Ordinal)
+        var segments = Path.GetRelativePath(root, full).Split(Path.DirectorySeparatorChar);
+        return full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            && full.EndsWith(".cs", StringComparison.Ordinal)
             && !segments.Contains("bin") && !segments.Contains("obj") && File.Exists(full)
             ? File.ReadAllText(full)
             : null;
@@ -112,7 +119,9 @@ public partial class DocCodeBlockTests
                 continue;
             }
 
-            if (FirstLineNotInSource(lines[(open + 1)..end], text) is { } missing)
+            if (lines[(open + 1)..end].All(l => l.Trim() is "" or "// ..."))
+                faults.Add($"{docPath} line {lineNumber}: the C# block has no code.");
+            else if (FirstLineNotInSource(lines[(open + 1)..end], text) is { } missing)
                 faults.Add($"{docPath} line {lineNumber}: the C# block differs from {path} at '{missing}'. Copy the lines from the file again.");
         }
 
@@ -184,7 +193,7 @@ public partial class DocCodeBlockTests
         return directory?.FullName ?? throw new InvalidOperationException("The repository root was not found.");
     }
 
-    [GeneratedRegex(@"^\s*```(?:csharp|cs|c#)\s*$")]
+    [GeneratedRegex(@"^\s*```\s*(?:csharp|cs|c#)(?:\s.*)?$", RegexOptions.IgnoreCase)]
     private static partial Regex CSharpFence();
 
     [GeneratedRegex(@"^\s*<!--\s*code:\s*(\S+)\s*-->\s*$")]

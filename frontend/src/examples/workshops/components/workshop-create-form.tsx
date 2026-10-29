@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
 import { useServerErrors } from '@/examples/components/use-server-errors'
+import { useVenue } from '@/examples/venues/apis/get-venue'
 import { VenuePicker } from '@/examples/venues/components/venue-picker'
+import { parseTimeZone } from '@/lib/zoned-time'
 
 import { WorkshopFields } from './workshop-fields'
-import { WORKSHOP_FIELD_NAMES, limitsOf, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
+import { WORKSHOP_FIELD_NAMES, limitsOf, startInGapMessage, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
 
 const contract = workshopForCreationDtoSchema.shape
 const schema = workshopFieldsSchema(contract).extend({ venueId: z.string().min(1, 'Pick a venue.') })
@@ -27,11 +29,22 @@ interface WorkshopCreateFormProps {
 export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormProps) {
   const form = useForm({ resolver: zodResolver(schema), defaultValues: { venueId, title: '' } })
   const serverErrors = useServerErrors(form, FIELD_NAMES)
+  const venue = useVenue(form.watch('venueId') || undefined)
+  const zone = venue.data && parseTimeZone(venue.data.timeZone)
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
+    if (!zone) {
+      form.setError('venueId', { message: 'The venue did not load. Pick it again.' })
+      return
+    }
+    const body = toWorkshopBody(values, zone)
+    if (!body) {
+      form.setError('startsAt', { message: startInGapMessage(zone) })
+      return
+    }
     try {
-      await onSave({ venueId: values.venueId, ...toWorkshopBody(values) })
+      await onSave({ venueId: values.venueId, ...body })
     } catch (error) {
       serverErrors.show(error)
     }
@@ -52,7 +65,7 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
             />
           )}
         />
-        <WorkshopFields limits={limits} />
+        <WorkshopFields limits={limits} zone={zone} />
         <RefusedSaveAlert problem={serverErrors.problem} />
         <Button type="submit" className="self-start" isPending={form.formState.isSubmitting}>
           Add workshop

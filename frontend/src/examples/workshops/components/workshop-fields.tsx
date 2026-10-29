@@ -1,18 +1,21 @@
-import { getLocalTimeZone, now } from '@internationalized/date'
+import { toCalendarDateTime } from '@internationalized/date'
 import { useId } from 'react'
 import { Controller, useFormContext } from 'react-hook-form'
 
 import { JollyDatePicker } from '@/components/ui/date-picker'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { timeZoneLabel, todayAt, type TimeZone } from '@/lib/zoned-time'
 
 import type { WorkshopFieldLimits, WorkshopFieldValues } from './workshop-fields-schema'
 
 interface WorkshopFieldsProps {
   limits: WorkshopFieldLimits
+  /** The time zone of the venue, in which the user types the start. Undefined before the user picks a venue. */
+  zone: TimeZone | undefined
 }
 
-export function WorkshopFields({ limits }: WorkshopFieldsProps) {
+export function WorkshopFields({ limits, zone }: WorkshopFieldsProps) {
   const { control, register, formState } = useFormContext<WorkshopFieldValues>()
   const id = useId()
   const { errors } = formState
@@ -37,8 +40,10 @@ export function WorkshopFields({ limits }: WorkshopFieldsProps) {
         render={({ field, fieldState }) => (
           <JollyDatePicker
             label="Starts at"
+            description={zone ? `The time in ${timeZoneLabel(zone)}.` : 'The time at the venue that you pick.'}
             granularity="minute"
-            placeholderValue={now(getLocalTimeZone()).set({ second: 0, millisecond: 0 })}
+            timeZone={zone}
+            placeholderValue={zone && toCalendarDateTime(todayAt(zone, new Date()))}
             value={field.value ?? null}
             onChange={field.onChange}
             onBlur={field.onBlur}

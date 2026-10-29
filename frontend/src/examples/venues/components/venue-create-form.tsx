@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
 import { useServerErrors } from '@/examples/components/use-server-errors'
 import { stringWithMaxLengthOf } from '@/lib/api-contract'
+import { browserTimeZone } from '@/lib/zoned-time'
 
 const contract = venueForCreationDtoSchema.shape
 const schema = venueForCreationDtoSchema.extend({
@@ -27,7 +28,7 @@ interface VenueCreateFormProps {
 export function VenueCreateForm({ onSave }: VenueCreateFormProps) {
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    defaultValues: { name: '', timeZone: browserTimeZone() },
   })
   const serverErrors = useServerErrors(form, FIELD_NAMES)
   const id = useId()

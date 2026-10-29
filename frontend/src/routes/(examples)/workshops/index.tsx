@@ -109,7 +109,7 @@ function WorkshopRows({ list, search, onPageChange }: WorkshopRowsProps) {
                     {workshop.title}
                   </Link>
                 </TableCell>
-                <TableCell className="whitespace-nowrap">{formatStart(workshop.startsAt)}</TableCell>
+                <TableCell className="whitespace-nowrap">{formatStart(workshop)}</TableCell>
                 <TableCell className="whitespace-nowrap">{workshop.capacity}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   <WorkshopStatusBadge status={workshop.status} />

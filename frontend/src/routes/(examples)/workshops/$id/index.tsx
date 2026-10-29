@@ -32,7 +32,7 @@ function WorkshopPage() {
     )
   }
 
-  const { title, status, startsAt, capacity } = workshop.data
+  const { title, status, capacity } = workshop.data
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
@@ -46,7 +46,7 @@ function WorkshopPage() {
       <section aria-label="Details">
         <dl className="grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Starts</dt>
-          <dd>{formatStart(startsAt)}</dd>
+          <dd>{formatStart(workshop.data)}</dd>
           <dt className="text-muted-foreground">Capacity</dt>
           <dd>{capacity}</dd>
           <dt className="text-muted-foreground">Venue</dt>

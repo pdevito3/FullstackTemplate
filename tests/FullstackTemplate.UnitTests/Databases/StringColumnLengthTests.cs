@@ -41,6 +41,7 @@ public class StringColumnLengthTests
         ["venues.name"] = new("name", Text, v => TestGraph.Start(out _).AddVenue(out _, x => x.Name = v)),
         ["workshops.title"] = new("title", Text, v => TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out _, x => x.Title = v)),
         // example:end
+        // new-feature:caller-columns
     };
 
     private static readonly Dictionary<string, IReadOnlyList<string>> FixedOptionColumns = new()

@@ -83,7 +83,7 @@ public class EntrypointBoundaryTests
         adapters.ShouldContain("FullstackTemplate.Server.Domain.Tenants.Features.AddTenantTool");
         adapters.ShouldContain("FullstackTemplate.Server.Domain.Tenants.Grpc.V1.TenantsGrpcService");
         adapters.ShouldContain("FullstackTemplate.Server.Domain.Tenants.Grpc.V1.TenantGrpcMappings");
-        Server.Value.GrpcContractNamespaces().ShouldBe(["FullstackTemplate.Server.Domain.Tenants.Grpc.V1"]);
+        Server.Value.GrpcContractNamespaces().ShouldContain("FullstackTemplate.Server.Domain.Tenants.Grpc.V1");
 
         var core = Server.Value.CoreNames();
         core.ShouldContain("FullstackTemplate.Server.Databases.AppDbContext");

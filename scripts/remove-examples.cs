@@ -59,7 +59,6 @@ internal sealed partial class AppRepo(string root)
 {
     private const string ThisScript = "scripts/remove-examples.cs";
 
-    // scripts/template-merge.cs of the template reads this file, and then deletes the examples from each template update
     private const string RecordFile = "scripts/examples-removed.txt";
 
     private const string RecordText = "scripts/remove-examples.cs deleted the example code of the template from this app. scripts/template-merge.cs\nof the template reads this file, and deletes the example code from each template update. See docs/template-updates.md.\n";

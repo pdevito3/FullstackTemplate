@@ -111,8 +111,8 @@ internal sealed partial class App(string root)
             : MergeBase(tip) is { } mergeBase
                 ? mergeBase
                 : throw new MergeException($"The app and {templateRef} have no shared commit. Give the last template commit that the app has all changes of with --base. To find it, run the script with --find-base.");
-        if (baseRef is null && FoundBase(templateRef, tip, baseCommit) is { } found && found != baseCommit)
-            throw new MergeException($"The merge base {Describe(baseCommit)} is old. The app has all changes of the newer template commit {Describe(found)}, because an earlier update merged the branch of a template pull request or copied its commits. Run the script again with --base {Short(found)}.");
+        if (baseRef is null && FoundBase(templateRef, tip, baseCommit) is ({ } found, var subjectOnly) && found != baseCommit)
+            throw new MergeException($"The merge base {Describe(baseCommit)} is old. The app seems to have all changes of the newer template commit {Describe(found)}, because an earlier update merged the branch of a template pull request or copied its commits.{SubjectOnlyNote(subjectOnly)}\nRun the script again with --base {Short(found)}. To merge from the merge base, give --base {Short(baseCommit)}.");
         if (Git(root, out _, "merge-base", "--is-ancestor", baseCommit, tip) != 0)
             throw new MergeException($"{Short(baseCommit)} is not a commit of the template history of {Short(tip)}.");
         if (Git(root, "rev-parse", baseCommit).Trim() == tip)
@@ -179,8 +179,8 @@ internal sealed partial class App(string root)
         var tip = Tip(templateRef);
         var mergeBase = MergeBase(tip);
         Console.WriteLine(mergeBase is null ? $"The app and {templateRef} have no shared commit." : $"The merge base is {Describe(mergeBase)}.");
-        Console.WriteLine(FoundBase(templateRef, tip, mergeBase) is { } found
-            ? $"The newest template commit that the app has all changes of is {Describe(found)}.\nMerge with: dotnet run template-merge.cs -- --base {Short(found)}"
+        Console.WriteLine(FoundBase(templateRef, tip, mergeBase) is ({ } found, var subjectOnly)
+            ? $"The newest template commit that the app has all changes of is {Describe(found)}.{SubjectOnlyNote(subjectOnly)}\nMerge with: dotnet run template-merge.cs -- --base {Short(found)}"
             : "The app has no template commit. Give the template commit that init.cs made the app from with --base.");
     }
 
@@ -203,42 +203,58 @@ internal sealed partial class App(string root)
     // app does not have. The app has a commit when the commit is in its history, when a commit of the app after the
     // merge base has the same subject (a copy, or the squash of a pull request whose branch the app merged), or when
     // the app merged the head of its pull request. A walk that stops early gives more conflicts and loses no template
-    // change. A common subject that the app has for another reason can take the walk too far, so the script prints the
-    // commit that it found, and the merge uses it only when it is given with --base.
-    private string? FoundBase(string templateRef, string tip, string? mergeBase)
+    // change. A common subject that the app has for another reason can take the walk too far, so the walk also gives
+    // each commit that only a subject with no pull request number matched, for the user to check.
+    private (string? Commit, List<string> SubjectOnly) FoundBase(string templateRef, string tip, string? mergeBase)
     {
         var appCommits = Lines(Git(root, "rev-list", "HEAD")).ToHashSet(StringComparer.Ordinal);
         var appSubjects = Lines(mergeBase is null ? Git(root, "log", "--format=%s", "HEAD") : Git(root, "log", "--format=%s", "HEAD", "--not", mergeBase))
             .ToHashSet(StringComparer.Ordinal);
         var pullHeads = PullHeads(templateRef);
+        var subjectOnly = new List<string>();
         bool Has(string commit, string subject)
-            => appCommits.Contains(commit)
-               || appSubjects.Contains(subject)
-               || PullNumber().Match(subject) is { Success: true } pull && pullHeads.TryGetValue(pull.Groups["number"].Value, out var head) && appCommits.Contains(head);
+        {
+            if (appCommits.Contains(commit))
+                return true;
+            var pull = PullNumber().Match(subject);
+            if (pull.Success && pullHeads.TryGetValue(pull.Groups["number"].Value, out var head) && appCommits.Contains(head))
+                return true;
+            if (!appSubjects.Contains(subject))
+                return false;
+            if (!pull.Success)
+                subjectOnly.Add(commit);
+            return true;
+        }
 
         var found = mergeBase;
         foreach (var line in Lines(Git(root, "log", "--first-parent", "--reverse", "--format=%H %P%x00%s", mergeBase is null ? tip : $"{mergeBase}..{tip}")))
         {
             var (hashes, subject) = (line.Split('\0')[0].Split(' '), line.Split('\0')[1]);
             // A merge commit of the template brings the commits of its branch. The app has it when it has each of them.
-            var has = hashes.Length > 2
-                ? Has(hashes[0], subject) || Lines(Git(root, "log", "--format=%H%x00%s", $"{hashes[1]}..{hashes[2]}"))
-                    .All(branchLine => Has(branchLine.Split('\0')[0], branchLine.Split('\0')[1]))
-                : Has(hashes[0], subject);
+            var branch = hashes.Length > 2 ? Lines(Git(root, "log", "--format=%H%x00%s", $"{hashes[1]}..{hashes[2]}")) : [];
+            var has = appCommits.Contains(hashes[0])
+                || (branch.Length > 0 ? branch.All(branchLine => Has(branchLine.Split('\0')[0], branchLine.Split('\0')[1])) : Has(hashes[0], subject));
             if (!has)
                 break;
             found = hashes[0];
         }
 
-        return found;
+        return (found, subjectOnly.Where(commit => found is not null && Git(root, out _, "merge-base", "--is-ancestor", commit, found) == 0).ToList());
     }
+
+    // The commits that only a plain subject matched, as lines for a message
+    private string SubjectOnlyNote(List<string> commits)
+        => commits.Count == 0
+            ? ""
+            : $"\nOnly the subject of an app commit matched these template commits. Check that the app has their changes:\n  {string.Join("\n  ", commits.Select(Describe))}";
 
     // The head commit of each pull request of the template remote, by number. An empty map when the remote has none or
     // cannot be reached: then the subjects alone find the base.
     private Dictionary<string, string> PullHeads(string templateRef)
     {
-        var remote = templateRef.Split('/')[0];
-        if (!Lines(Git(root, "remote")).Contains(remote) || Git(root, out var heads, "ls-remote", remote, "refs/pull/*/head") != 0)
+        var remotes = Lines(Git(root, "remote"));
+        var remote = remotes.Contains(templateRef.Split('/')[0]) ? templateRef.Split('/')[0] : "template";
+        if (!remotes.Contains(remote) || Git(root, out var heads, "ls-remote", remote, "refs/pull/*/head") != 0)
             return [];
         return Lines(heads)
             .Select(line => line.Split('\t'))

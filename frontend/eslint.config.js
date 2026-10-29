@@ -28,11 +28,15 @@ const linkImports = [
 const selectorActions = 'click|dblclick|fill|type|press|pressSequentially|check|uncheck|setChecked|hover|tap|focus|selectOption|setInputFiles|dispatchEvent|textContent|innerText|innerHTML|getAttribute|inputValue|isChecked|isDisabled|isEditable|isEnabled|isHidden|isVisible|waitForSelector|dragAndDrop'
 const stringSelectorMessage = 'Do not give a selector string to an action. Find the element with getByRole or getByLabel in the *.locators.ts file of the feature, and call the action on that Locator.'
 
-const isPageOrFrame = (type) => {
+const isPlaywright = (type, names) => {
   const symbol = type.getSymbol()
-  return (symbol?.getName() === 'Page' || symbol?.getName() === 'Frame')
+  return names.includes(symbol?.getName())
     && symbol.declarations?.some((declaration) => declaration.getSourceFile().fileName.includes('/playwright-core/'))
 }
+
+// An ElementHandle has the other actions with no selector, and its waitForSelector takes one.
+const takesSelector = (type, action) =>
+  isPlaywright(type, ['Page', 'Frame']) || (action === 'waitForSelector' && isPlaywright(type, ['ElementHandle']))
 
 const noPageActionRule = {
   meta: { type: 'problem', schema: [], messages: { selector: stringSelectorMessage } },
@@ -41,19 +45,26 @@ const noPageActionRule = {
     return {
       [`CallExpression > MemberExpression.callee[property.name=/^(${selectorActions})$/]`](callee) {
         const type = services.getTypeAtLocation(callee.object)
-        if ((type.isUnion() ? type.types : [type]).some(isPageOrFrame))
+        if ((type.isUnion() ? type.types : [type]).some((part) => takesSelector(part, callee.property.name)))
           context.report({ node: callee.parent, messageId: 'selector' })
       },
     }
   },
 }
 
+const selectorStringRule = {
+  selector: 'CallExpression[callee.property.name=/^\\$\\$?(eval)?$/]',
+  message: stringSelectorMessage,
+}
+
+const testOnlyRule = {
+  selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
+  message: 'Remove test.only. CI runs each test.',
+}
+
 // docs/frontend/testing.md, section "Locators, tasks, and specs". Each message names the fix.
 const testFileRules = [
-  {
-    selector: 'CallExpression[callee.property.name=/^\\$\\$?(eval)?$/]',
-    message: stringSelectorMessage,
-  },
+  selectorStringRule,
   {
     selector: "CallExpression[callee.property.name='nth'], CallExpression[arguments.length=0][callee.property.name=/^(first|last)$/]",
     message: 'Do not find an element by its position. Give the element a role and a name in the app, and find it by them in the *.locators.ts file of the feature.',
@@ -77,10 +88,7 @@ const specFileRules = [
     selector: "CallExpression[callee.name='setTimeout']",
     message: 'A spec does not wait for a time. Wait for a response or a state in a task in the *.tasks.ts file of the feature.',
   },
-  {
-    selector: "MemberExpression[property.name='only']:matches([object.name='test'], [object.object.name='test'])",
-    message: 'Remove test.only. CI runs each test.',
-  },
+  testOnlyRule,
 ]
 
 export default tseslint.config(
@@ -131,14 +139,30 @@ export default tseslint.config(
     rules: { 'no-restricted-imports': 'off' },
   },
   {
-    files: ['tests/**/*.ts'],
+    files: ['tests/**/*.ts', 'e2e/**/*.ts'],
     languageOptions: {
       parserOptions: { project: './tsconfig.tests.json', tsconfigRootDir: import.meta.dirname },
     },
     plugins: { playwright: { rules: { 'no-page-action': noPageActionRule } } },
     rules: {
-      'no-restricted-syntax': ['error', ...testFileRules],
       'playwright/no-page-action': 'error',
+      // no-page-action cannot see a Page in a value of type any. no-explicit-any catches only an explicit any.
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+    },
+  },
+  {
+    files: ['tests/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...testFileRules],
+    },
+  },
+  {
+    // e2e/ drives the login pages of the IdPs and Swagger UI, which have no roles or names of the app, so the rules
+    // for the position of an element and for the locators of a feature do not apply.
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', selectorStringRule, testOnlyRule],
     },
   },
   {

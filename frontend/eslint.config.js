@@ -335,27 +335,28 @@ export const keyHasEachParamRule = {
   },
   create(context) {
     const { sourceCode } = context
-    const unwrap = (node) => ['TSAsExpression', 'TSSatisfiesExpression'].includes(node.parent.type) ? unwrap(node.parent) : node
+    const returnsOf = new Map()
+    const unwrap = (node) => ['TSAsExpression', 'TSSatisfiesExpression'].includes(node?.type) ? unwrap(node.expression) : node
     const ownerOf = (node) => node.type.endsWith('FunctionExpression') || node.type === 'FunctionDeclaration' ? node : ownerOf(node.parent)
-    const isItemOfKey = (identifier, fn) => {
-      if (identifier.parent.type !== 'ArrayExpression')
-        return false
-      const key = unwrap(identifier.parent)
-      return (key.parent === fn && fn.body === key)
-        || (key.parent.type === 'ReturnStatement' && ownerOf(key.parent) === fn)
-    }
-    const check = (fn) => {
-      for (const param of fn.params) {
-        if (param.type !== 'Identifier') {
-          context.report({ node: param, messageId: 'pattern' })
-          continue
+    return {
+      ReturnStatement(node) {
+        const fn = ownerOf(node.parent)
+        returnsOf.set(fn, [...(returnsOf.get(fn) ?? []), unwrap(node.argument)])
+      },
+      ':function:exit'(fn) {
+        const keys = fn.body.type === 'BlockStatement' ? returnsOf.get(fn) ?? [] : [unwrap(fn.body)]
+        for (const param of fn.params) {
+          if (param.type !== 'Identifier') {
+            context.report({ node: param, messageId: 'pattern' })
+            continue
+          }
+          const uses = sourceCode.getDeclaredVariables(fn).find((v) => v.identifiers.includes(param)).references.map((r) => r.identifier)
+          const inEachKey = keys.length > 0 && keys.every((key) => key?.type === 'ArrayExpression' && key.elements.some((item) => uses.includes(item)))
+          if (!inEachKey || !uses.every((use) => keys.includes(use.parent)))
+            context.report({ node: param, messageId: 'whole', data: { name: param.name } })
         }
-        const variable = sourceCode.getDeclaredVariables(fn).find((v) => v.identifiers.includes(param))
-        if (variable.references.length === 0 || !variable.references.every(({ identifier }) => isItemOfKey(identifier, fn)))
-          context.report({ node: param, messageId: 'whole', data: { name: param.name } })
-      }
+      },
     }
-    return { ':function': check }
   },
 }
 

@@ -37,6 +37,33 @@ export function appShellPage(page: Page) {
       await settled
     },
 
+    async pressHomeLink() {
+      const settled = page.waitForResponse(
+        (r) => r.request().method() === 'GET' && new URL(r.url()).pathname === weatherPaths.list,
+      )
+      await at.homeLink.press('Enter')
+      await settled
+    },
+
+    async pressAboutNavigationLink() {
+      await at.aboutNavigationLink.press('Enter')
+      await expect(at.aboutText).toBeVisible()
+    },
+
+    async openAboutFromMobileSidebar() {
+      await at.aboutNavigationLink.click()
+      await expect(at.aboutText).toBeVisible()
+      await expect(at.mobileSidebar).toHaveCount(0)
+    },
+
+    async clickBlankContent() {
+      await at.aboutText.click()
+    },
+
+    async focusedElement() {
+      return page.evaluate(() => (document.activeElement === document.body ? 'body' : document.activeElement?.tagName))
+    },
+
     async addWideContent(width: number) {
       await at.mainLandmarks.evaluate((main, width) => {
         const scroller = document.createElement('div')

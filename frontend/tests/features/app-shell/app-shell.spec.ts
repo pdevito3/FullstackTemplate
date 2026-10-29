@@ -122,6 +122,56 @@ test.describe('an unknown address', () => {
   })
 })
 
+test.describe('the focus after a navigation', () => {
+  test('a link in the page moves the focus to the level 1 heading of the new page', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
+    const shell = appShellPage(page)
+    await shell.openMissingPage()
+
+    await shell.pressHomeLink()
+
+    await expect(shell.at.weatherHeading).toBeFocused()
+  })
+
+  test('a sidebar link keeps the focus on the link and announces the new page', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
+    const shell = appShellPage(page)
+    await weatherForecastPage(page).open()
+
+    await shell.pressAboutNavigationLink()
+
+    await expect(shell.at.aboutNavigationLink).toBeFocused()
+    await expect(shell.at.pageAnnouncement).toHaveText('About')
+    await expect(shell.at.pageAnnouncement).toHaveAttribute('role', 'status')
+  })
+
+  test('a click on the content after a navigation leaves the focus on the body', async ({ page }) => {
+    const shell = appShellPage(page)
+    await shell.openMissingPage()
+    await shell.pressAboutNavigationLink()
+
+    await shell.clickBlankContent()
+
+    expect(await shell.focusedElement()).toBe('body')
+  })
+})
+
+test.describe('the focus after a navigation on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('a link of the mobile sidebar gives the focus back to the sidebar trigger and announces the new page', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
+    const shell = appShellPage(page)
+    await weatherForecastPage(page).open()
+    await shell.openMobileSidebar()
+
+    await shell.openAboutFromMobileSidebar()
+
+    await expect(shell.at.sidebarTrigger).toBeFocused()
+    await expect(shell.at.pageAnnouncement).toHaveText('About')
+  })
+})
+
 test.describe('the mobile sidebar with a 24 px default font', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

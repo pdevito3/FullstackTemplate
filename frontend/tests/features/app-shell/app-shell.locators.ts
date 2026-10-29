@@ -18,4 +18,5 @@ export const appShell = (page: Page) => ({
   notFoundHeading: page.getByRole('heading', { name: 'Page not found' }),
   homeLink: page.getByRole('link', { name: 'Go to the home page' }),
   weatherHeading: page.getByRole('heading', { name: 'Weather Forecast' }),
+  pageAnnouncement: page.locator('[data-slot="page-announcement"]'),
 })

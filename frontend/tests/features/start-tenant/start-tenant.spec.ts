@@ -31,7 +31,7 @@ test.describe('a signed-in user with no tenant', () => {
 
     await start.goHome()
 
-    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).not.toBe('BODY')
+    await expect(start.at.homeHeading).toBeFocused()
   })
 
   test('sees no notice on the home page after the start', async ({ page, api }) => {
@@ -82,6 +82,28 @@ test.describe('a signed-in user with no tenant', () => {
     expect(api.all('post', membershipPaths.start)).toHaveLength(0)
   })
 })
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 320, height: 640 },
+]) {
+  test.describe(`the notice at ${viewport.width}x${viewport.height}`, () => {
+    test.use({ actor: as.userWithNoTenant('Ada Lovelace'), viewport })
+
+    test('spans the main area under the header, so that it does not depend on the width of a page', async ({ page, api }) => {
+      api.mock(weatherApi.listReturns(aForecast()))
+      const start = startTenantPage(page)
+
+      await start.openAsSignedIn('/')
+
+      await expect(start.at.notice).toBeVisible()
+      const notice = await start.at.notice.boundingBox()
+      const main = await start.at.main.boundingBox()
+      expect(notice!.x).toBeCloseTo(main!.x, 0)
+      expect(notice!.width).toBeCloseTo(main!.width, 0)
+    })
+  })
+}
 
 test.describe('a signed-in user whose lookup the Server refuses', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })

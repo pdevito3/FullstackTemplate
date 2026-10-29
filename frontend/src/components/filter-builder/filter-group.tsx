@@ -55,6 +55,8 @@ export function FilterGroup({
 
   return (
     <Card
+      role="group"
+      aria-label={`Group (Depth ${depth})`}
       className={cn(
         'border-l-4 transition-all p-0',
         depthColor,
@@ -63,76 +65,78 @@ export function FilterGroup({
     >
       <div className="p-2">
         {/* Group Header */}
-        <div className="flex items-center gap-1.5 mb-1.5">
-          {/* Selection Checkbox */}
-          {showCheckbox && (
-            <Checkbox
-              aria-label="Select group"
-              isSelected={isSelected}
-              onChange={() => onToggleSelection(group.id)}
-              className="shrink-0"
-            />
-          )}
+        {/* In a narrow group, the actions wrap below the details, and each AND wraps below its filter. */}
+        <div data-slot="filter-group-header" className="flex flex-wrap items-start gap-1.5 mb-1.5">
+          <div className="flex flex-1 flex-wrap items-center gap-1.5">
+            {/* Selection Checkbox */}
+            {showCheckbox && (
+              <Checkbox
+                aria-label="Select group"
+                isSelected={isSelected}
+                onChange={() => onToggleSelection(group.id)}
+                className="shrink-0"
+              />
+            )}
 
-          {/* Group Label */}
-          <Badge variant="outline" className="text-xs font-medium shrink-0">
-            Group (Depth {depth})
-          </Badge>
+            {/* Group Label */}
+            <Badge variant="outline" className="text-xs font-medium shrink-0">
+              Group (Depth {depth})
+            </Badge>
 
-          {/* Logical Operator Toggle */}
-          <Button
-            variant="ghost"
-            size="xs"
-            onPress={() => onToggleOperator(group.id)}
-            className="h-6 px-2 text-xs font-medium shrink-0"
-          >
-            {group.logicalOperator}
-          </Button>
-
-          {/* Filter Count */}
-          <span className="text-xs text-muted-foreground shrink-0">
-            {group.filters.length}{' '}
-            {group.filters.length === 1 ? 'filter' : 'filters'}
-          </span>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Ungroup Button */}
-          <TooltipTrigger>
+            {/* Logical Operator Toggle */}
             <Button
               variant="ghost"
               size="xs"
-              onPress={() => onUngroup(group.id)}
-              className="h-6 px-2 text-xs shrink-0"
+              onPress={() => onToggleOperator(group.id)}
+              className="h-6 px-2 text-xs font-medium shrink-0"
             >
-              <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3" />
-              Ungroup
+              {group.logicalOperator}
             </Button>
-            <Tooltip>Move the filters to the parent group</Tooltip>
-          </TooltipTrigger>
 
-          {/* Remove Group Button */}
-          <TooltipTrigger>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onPress={() => onRemove(group.id)}
-              aria-label="Delete group"
-              className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive shrink-0"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-            </Button>
-            <Tooltip>Delete the group and all its filters</Tooltip>
-          </TooltipTrigger>
+            {/* Filter Count */}
+            <span className="text-xs text-muted-foreground shrink-0">
+              {group.filters.length}{' '}
+              {group.filters.length === 1 ? 'filter' : 'filters'}
+            </span>
+          </div>
+
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+            {/* Ungroup Button */}
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="xs"
+                onPress={() => onUngroup(group.id)}
+                className="h-6 px-2 text-xs shrink-0"
+              >
+                <HugeiconsIcon icon={UnfoldMoreIcon} className="size-3" />
+                Ungroup
+              </Button>
+              <Tooltip>Move the filters to the parent group</Tooltip>
+            </TooltipTrigger>
+
+            {/* Remove Group Button */}
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onPress={() => onRemove(group.id)}
+                aria-label="Delete group"
+                className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive shrink-0"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+              </Button>
+              <Tooltip>Delete the group and all its filters</Tooltip>
+            </TooltipTrigger>
+          </div>
         </div>
 
         {/* Group Contents - Horizontal Layout */}
-        <div className="flex flex-wrap items-start gap-2 pl-6">
+        <div className="flex flex-wrap items-start gap-2 pl-3 sm:pl-6">
           {group.filters.map((item, index) => (
-            <div key={item.id} className="flex items-center gap-2">
+            <div key={item.id} className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
               {isFilter(item) ? (
-                <>
+                <div className="flex min-w-0 items-center gap-2">
                   {showCheckbox && (
                     <Checkbox
                       aria-label={`Select filter: ${getFilterName(item)}`}
@@ -146,7 +150,7 @@ export function FilterGroup({
                     onRemove={() => onRemoveFilter(item.id)}
                     onEdit={() => onEditFilter(item)}
                   />
-                </>
+                </div>
               ) : (
                 <div className="w-full">
                   <FilterGroup
@@ -167,7 +171,7 @@ export function FilterGroup({
 
               {/* Show logical operator between items */}
               {index < group.filters.length - 1 && (
-                <span className="text-xs text-muted-foreground font-medium px-1">
+                <span className="shrink-0 text-xs text-muted-foreground font-medium px-1">
                   {group.logicalOperator}
                 </span>
               )}

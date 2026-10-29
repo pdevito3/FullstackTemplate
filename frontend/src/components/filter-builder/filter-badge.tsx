@@ -25,12 +25,12 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className="gap-1.5 pr-1 py-0.5 has-[[data-slot=filter-badge-edit]:hover]:bg-accent"
+      className="h-auto max-w-full min-w-0 shrink gap-1.5 pr-1 py-0.5 whitespace-normal has-[[data-slot=filter-badge-edit]:hover]:bg-accent"
     >
       <ButtonPrimitive
         data-slot="filter-badge-edit"
         onPress={onEdit}
-        className="flex cursor-pointer items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex min-w-0 cursor-pointer flex-wrap items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="font-medium">{filter.propertyLabel}</span>
         <span className="text-foreground/60 font-semibold px-1 text-xs">

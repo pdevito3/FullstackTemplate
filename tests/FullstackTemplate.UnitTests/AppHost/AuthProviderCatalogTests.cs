@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Shouldly;
 
 // An app can delete the providers that it does not use, so these tests name no provider. They cover the providers that exist.
+[NotInParallel(TestConstraints.HostEnvironment)]
 public class AuthProviderCatalogTests
 {
     public static IEnumerable<string> ProviderNames => AuthProviderCatalog.All.Select(provider => provider.Name);
@@ -72,7 +73,7 @@ public class AuthProviderCatalogTests
         var root = Path.GetDirectoryName(appHost)!;
         var provider = AuthProviderCatalog.Select(Settings(name));
 
-        // Assert
+        // Act & Assert
         File.Exists(Path.Combine(appHost, "AuthProviders", name, $"{name}AuthProvider.cs")).ShouldBeTrue(
             $"The class {name}AuthProvider must be in AuthProviders/{name}/, because scripts/init.cs finds the providers by folder.");
         File.Exists(Path.Combine(root, "frontend", "e2e", "idps", $"{name.ToLowerInvariant()}.json")).ShouldBe(provider.RunsE2eTests,
@@ -131,7 +132,7 @@ public class AuthProviderCatalogTests
         // Arrange
         var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
         var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
-        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
+        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
 
         // Act
         var config = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls);

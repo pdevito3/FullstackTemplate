@@ -10,8 +10,8 @@ function resource(displayName: string, overrides: Record<string, unknown> = {}) 
 
 const healthyResources = [
   resource('server', { urls: [{ name: 'https', url: 'https://localhost:7001' }] }),
-  resource('bff', { environment: { Auth__Authority: 'http://localhost:8080/realms/app' } }),
-  resource('webfrontend', { urls: [{ name: 'http', url: 'http://localhost:5173' }] }),
+  resource('bff', { environment: { Auth__Authority: 'http://localhost:24730/realms/app' } }),
+  resource('webfrontend', { urls: [{ name: 'http', url: 'http://localhost:24710' }] }),
   resource('webfrontend-installer', { state: 'Finished', healthStatus: null }),
 ]
 

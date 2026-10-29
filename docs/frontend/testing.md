@@ -81,6 +81,8 @@ Set only the values that the scenario is about. If a scenario needs a value that
 - Import `test` and `expect` from `@tests/support/fixtures`, not from `@playwright/test`.
 - Do not use `page.waitForTimeout`, retries, or `test.only`.
 
+Check: `pnpm lint` fails when a `*.spec.ts` file calls a selector (`locator`, `getByRole`, and the other `getBy` calls), a `page.waitFor` call, `setTimeout`, or `test.only` (also `test.describe.only`), or imports `test` or `expect` from `@playwright/test`. It fails on `waitForTimeout` in each file of `tests/`. The rules are in `frontend/eslint.config.js`. No check finds a wait in a locators file, and no check reads the three parts of a spec.
+
 ### Selectors
 
 Use the first of these that works:
@@ -91,13 +93,31 @@ Use the first of these that works:
 
 Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, the forecast grid is a `list`, and each day is a `listitem` with the date as its name.
 
+Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads each action of an object named `page` or `frame`, each `$`, `$$`, `$eval`, and `$$eval`, a string in the first argument of an action that takes no text, such as `click`, and two strings in a row, such as `fill('#a', 'x')`. It does not read the type of the object, so it misses a selector in a variable or before an options object on another page, such as `popup.click(sel)`. No check finds a CSS class or a tag chain in `locator()`.
+
 ### Facts about this app
 
 - A React Aria toast has the role `alertdialog`.
 - The queue of toasts renders in a view transition. The suite sets `reducedMotion: 'reduce'`, so each toast renders at once.
 - An error toast closes after 6 seconds. `toHaveCount` retries for 5 seconds, so `toHaveCount(1)` can pass when an extra toast closes. To prove that only one toast shows, read `count()` once.
 - The queries retry once (`main.tsx`). A failed load sends two requests, and the page shows the error after the second.
-- The page formats dates with the locale and the time zone of the browser. The suite sets `en-US` and `UTC`.
+- The suite sets the locale `en-US`. For the zone, see [Time zones](#time-zones).
+
+### Time zones
+
+A page that shows a time in the zone of the browser, not of its place, shows another day in a zone far from UTC. So the tests run in zones far from UTC:
+
+| Suite | Zone of the browser | Set in |
+|-------|---------------------|--------|
+| unit | `Pacific/Pago_Pago` (UTC-11) | `env.TZ` of the `unit` project in `vite.config.ts` |
+| component | `Pacific/Kiritimati` (UTC+14) | `contextOptions.timezoneId` of the `browser` project in `vite.config.ts` |
+| functional | `UTC`, `Pacific/Kiritimati`, and `Pacific/Pago_Pago` | the projects `utc`, `kiritimati`, and `pago-pago` in `playwright.config.ts` |
+
+Each functional test runs once in each project. To run one project, add `--project=kiritimati`.
+
+- A test of a page with no place sets its clock in the zone of the browser. Use `instantIn(wallClock, browserZone())` from `@tests/support/clock`, as `openOn` in `filter-demo.tasks.ts` does. Then today is the same date in each project.
+- A test of a time of a place gives the place a zone far from the browser, and sets the clock to an instant at which the date of the place is not the date of the browser or the UTC date. For example, at 07:00 UTC on August 16, it is August 15 in `Pacific/Pago_Pago` and August 16 in UTC and in `Pacific/Kiritimati`. Write the instant in UTC, such as `new Date('2026-08-16T07:00:00Z')`, so that it is the same instant in each project.
+- The tests that check this rule are `a date filter of a place in another zone` in `filter-demo.spec.ts`, `date-filter.test.tsx`, `date-picker.test.tsx`, `calendar: marks today and opens on today at the place of the date` in `calendar.test.tsx`, `querykit-converter.test.ts`, and `zoned-time.test.ts`. The forecast specs in `weather-forecast.spec.ts` fail in `pago-pago` when the page formats a `DateOnly` as midnight UTC.
 
 ### Add a feature
 

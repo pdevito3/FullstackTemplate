@@ -5,6 +5,7 @@ using Aspire.Hosting.ApplicationModel;
 using FullstackTemplate.AppHost;
 using Shouldly;
 
+[NotInParallel(TestConstraints.HostEnvironment)]
 public class IsolationTests
 {
     private const string IsolatedArgument = "--DcpPublisher:RandomizePorts=true";

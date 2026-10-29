@@ -35,7 +35,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// <summary>
     /// The origin of the Vite dev server (<c>services:webfrontend</c>). The browser opens the SPA there in a local run.
     /// </summary>
-    public const string SpaDevServer = "http://localhost:5173";
+    public const string SpaDevServer = "http://localhost:24710";
 
     public static BffApp Instance { get; private set; } = null!;
 

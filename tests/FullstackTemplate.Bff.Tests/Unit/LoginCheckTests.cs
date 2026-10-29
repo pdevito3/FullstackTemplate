@@ -15,6 +15,7 @@ public class LoginCheckTests
     [Arguments(IssuerParameterRule.IfPresent)]
     public void an_iss_that_equals_the_issuer_passes(IssuerParameterRule rule)
     {
+        // Act & Assert
         AuthorizationResponseIssuer.Validate(new StringValues(Issuer), rule, Issuer).ShouldBeNull();
     }
 
@@ -26,36 +27,42 @@ public class LoginCheckTests
     [Arguments(IssuerParameterRule.IfPresent, "")]
     public void an_iss_that_is_not_the_issuer_fails_with_an_ordinal_compare(IssuerParameterRule rule, string iss)
     {
+        // Act & Assert
         AuthorizationResponseIssuer.Validate(new StringValues(iss), rule, Issuer).ShouldNotBeNull();
     }
 
     [Test]
     public void a_missing_iss_fails_when_discovery_lists_the_parameter()
     {
+        // Act & Assert
         AuthorizationResponseIssuer.Validate(StringValues.Empty, IssuerParameterRule.Required, Issuer).ShouldNotBeNull();
     }
 
     [Test]
     public void a_missing_iss_passes_when_discovery_does_not_list_the_parameter()
     {
+        // Act & Assert
         AuthorizationResponseIssuer.Validate(StringValues.Empty, IssuerParameterRule.IfPresent, Issuer).ShouldBeNull();
     }
 
     [Test]
     public void two_iss_values_fail_even_when_one_matches()
     {
+        // Act & Assert
         AuthorizationResponseIssuer.Validate(new StringValues([Issuer, Issuer]), IssuerParameterRule.IfPresent, Issuer).ShouldNotBeNull();
     }
 
     [Test]
     public void disable_does_no_check()
     {
+        // Act & Assert
         AuthorizationResponseIssuer.Validate(new StringValues("https://evil.example"), IssuerParameterRule.Disabled, Issuer).ShouldBeNull();
     }
 
     [Test]
     public void an_id_token_with_only_the_client_id_as_audience_passes()
     {
+        // Act & Assert
         IdTokenChecks.CheckAudience(["client-1"], "client-1").ShouldBeNull();
     }
 
@@ -67,6 +74,7 @@ public class LoginCheckTests
     [Arguments("")]
     public void an_id_token_with_another_audience_fails(string audiences)
     {
+        // Act & Assert
         IdTokenChecks.CheckAudience(audiences.Split(' ', StringSplitOptions.RemoveEmptyEntries), "client-1").ShouldNotBeNull();
     }
 
@@ -77,8 +85,10 @@ public class LoginCheckTests
     [Arguments("kunde", "geheïm", "kunde:gehe%C3%AFm")]
     public void the_basic_header_form_encodes_the_client_id_and_the_secret_before_base64(string clientId, string secret, string expected)
     {
+        // Act
         var header = TokenClientAuthentication.BasicHeader(clientId, secret);
 
+        // Assert
         header.Scheme.ShouldBe("Basic");
         Encoding.UTF8.GetString(Convert.FromBase64String(header.Parameter!)).ShouldBe(expected);
     }

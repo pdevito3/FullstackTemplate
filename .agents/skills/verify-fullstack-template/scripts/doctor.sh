@@ -36,11 +36,12 @@ done < <(resource_table)
 
 web="$(jq -r .urls.web "$stack")"
 server="$(jq -r .urls.server "$stack")"
-[[ "$(url_of webfrontend http)" == "$web" ]] && ok "web URL $web" || fail "the web URL changed. stack.json is stale."
+build="$(jq -r '.build // "dev"' "$stack")"
+[[ "$(web_url "$build")" == "$web" ]] && ok "web URL $web ($build build)" || fail "the web URL changed. stack.json is stale."
 
-code="$(curl -s -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/weather")"
+code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/api/v1/weather")"
 [[ "$code" == "200" ]] && ok "GET $web/api/v1/weather -> 200" || fail "GET $web/api/v1/weather -> $code"
-code="$(curl -s -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/bff/user")"
+code="$(curl -sk -o /dev/null -w '%{http_code}' -H 'X-CSRF: 1' "$web/bff/user")"
 [[ "$code" == "204" || "$code" == "200" ]] && ok "GET /bff/user -> $code" || fail "GET /bff/user -> $code"
 code="$(curl -sk -o /dev/null -w '%{http_code}' "$server/health")"
 [[ "$code" == "200" ]] && ok "GET $server/health -> 200" || fail "GET $server/health -> $code"
@@ -53,8 +54,19 @@ if [[ "$auth_provider" == "DuendeDemo" ]]; then
   [[ "$code" == "200" ]] && ok "Duende demo IdP reachable" || fail "Duende demo IdP -> $code. Login recipes cannot pass."
 fi
 
+lock_pid="$(cat "$run_dir/recipe.lock" 2>/dev/null || true)"
+if [[ -n "$lock_pid" ]] && kill -0 "$lock_pid" 2>/dev/null; then
+  echo "warn  the recipe run with pid $lock_pid drives the stack now. browse.mjs refuses a second run until it ends."
+elif [[ -f "$run_dir/db-snapshot.json" ]]; then
+  echo "warn  a recipe run stopped before it restored the database. The next browse.mjs run restores it first. If that restore fails, delete $run_dir/db-snapshot.json."
+fi
+
 rev="$(git -C "$ROOT" rev-parse HEAD)"
 [[ "$rev" == "$(jq -r .gitRev "$stack")" ]] && ok "HEAD $rev matches the launch" \
-  || echo "warn  HEAD moved since launch. Frontend code hot-reloads. For server or BFF changes, run: dotnet aspire resource server rebuild --apphost $APPHOST_DIR"
+  || if [[ "$build" == "production" ]]; then
+    echo "warn  HEAD moved since launch. The production build does not reload. Run cleanup.sh, then launch.sh --preview."
+  else
+    echo "warn  HEAD moved since launch. Frontend code hot-reloads. For server or BFF changes, run: dotnet aspire resource server rebuild --apphost $APPHOST_DIR"
+  fi
 
 exit $(( fails > 0 ))

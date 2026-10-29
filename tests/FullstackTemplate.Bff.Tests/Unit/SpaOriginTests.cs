@@ -7,25 +7,29 @@ using Shouldly;
 public class SpaOriginTests
 {
     [Test]
-    [Arguments("http://localhost:5173")]
-    [Arguments("http://localhost:5173/")]
-    [Arguments("http://localhost:5173/some/path?q=1")]
+    [Arguments("http://localhost:24710")]
+    [Arguments("http://localhost:24710/")]
+    [Arguments("http://localhost:24710/some/path?q=1")]
     public void a_return_url_goes_to_the_origin_of_the_dev_server(string devServer)
     {
+        // Arrange
         var spaOrigin = Read(new() { ["services:webfrontend:http:0"] = devServer });
 
-        spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("http://localhost:5173/assets/42?tab=x");
+        // Act & Assert
+        spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("http://localhost:24710/assets/42?tab=x");
     }
 
     [Test]
     public void the_https_endpoint_of_the_dev_server_wins()
     {
+        // Arrange
         var spaOrigin = Read(new()
         {
             ["services:webfrontend:https:0"] = "https://localhost:5174",
-            ["services:webfrontend:http:0"] = "http://localhost:5173",
+            ["services:webfrontend:http:0"] = "http://localhost:24710",
         });
 
+        // Act & Assert
         spaOrigin.Resolve(LocalUrl.Root).ShouldBe("https://localhost:5174/");
     }
 
@@ -34,17 +38,20 @@ public class SpaOriginTests
     [Arguments("")]
     public void without_a_dev_server_a_return_url_stays_local(string? devServer)
     {
+        // Arrange
         var spaOrigin = Read(new() { ["services:webfrontend:http:0"] = devServer });
 
+        // Act & Assert
         spaOrigin.Resolve(Local("/assets/42?tab=x")).ShouldBe("/assets/42?tab=x");
     }
 
     [Test]
-    [Arguments("localhost:5173")]
-    [Arguments("ftp://localhost:5173")]
-    [Arguments("http://user:secret@localhost:5173")]
+    [Arguments("localhost:24710")]
+    [Arguments("ftp://localhost:24710")]
+    [Arguments("http://user:secret@localhost:24710")]
     public void a_dev_server_that_is_not_an_http_url_stops_the_startup(string devServer)
     {
+        // Act & Assert
         Should.Throw<InvalidOperationException>(() => Read(new() { ["services:webfrontend:http:0"] = devServer }));
     }
 

@@ -18,6 +18,7 @@ public class DomainEventShapeTests
     [Test]
     public void events_carry_no_entity()
     {
+        // Act & Assert
         EventsThatCarryAnEntity(Server).ShouldBeEmpty(
             "Put the ID of the entity in the event. The handler loads the entity from the dbContext of Handle.");
     }
@@ -25,18 +26,21 @@ public class DomainEventShapeTests
     [Test]
     public void handlers_are_sealed()
     {
+        // Act & Assert
         HandlersThatAreNotSealed(Server).ShouldBeEmpty("Make the handler a sealed class.");
     }
 
     [Test]
     public void events_are_sealed()
     {
+        // Act & Assert
         EventsThatAreNotSealed(Server).ShouldBeEmpty("Make the event a sealed record.");
     }
 
     [Test]
     public void handlers_handle_a_sealed_event()
     {
+        // Act & Assert
         HandlersOfAnEventThatIsNotSealed(Server).ShouldBeEmpty(
             "The context runs the handlers of the runtime type of the event only. Handle a sealed event type, " +
             "not a base type.");
@@ -45,6 +49,7 @@ public class DomainEventShapeTests
     [Test]
     public void handlers_take_only_time_and_options()
     {
+        // Act & Assert
         HandlersWithAForbiddenDependency(Server).ShouldBeEmpty(
             "A handler takes only TimeProvider and IOptions<T> in its constructor. It changes entities through the " +
             "dbContext of Handle, and it adds an entity to ask for work outside the database.");
@@ -53,6 +58,7 @@ public class DomainEventShapeTests
     [Test]
     public void no_type_uses_mediatr_notifications()
     {
+        // Act & Assert
         TypesThatUseMediatRNotifications(Server).ShouldBeEmpty(
             "A MediatR notification runs outside the save transaction. Derive the event from DomainEvent, and " +
             "implement IDomainEventHandler<TEvent> in the handler.");
@@ -61,12 +67,14 @@ public class DomainEventShapeTests
     [Test]
     public void the_scan_finds_the_server_events()
     {
+        // Act & Assert
         EventTypes(Server).ShouldContain(typeof(UserCreated));
     }
 
     [Test]
     public void rule_1_finds_each_place_of_an_entity_in_an_event()
     {
+        // Act & Assert
         EventsThatCarryAnEntity(Fixtures).ShouldBe(
         [
             "FullstackTemplate.ArchitectureFixtures.DomainEvents.EventWithEntity",
@@ -79,12 +87,14 @@ public class DomainEventShapeTests
     [Test]
     public void rule_2_finds_a_handler_that_is_not_sealed()
     {
+        // Act & Assert
         HandlersThatAreNotSealed(Fixtures).ShouldBe(["FullstackTemplate.ArchitectureFixtures.DomainEvents.UnsealedHandler"]);
     }
 
     [Test]
     public void rule_3_finds_each_forbidden_constructor_parameter()
     {
+        // Act & Assert
         HandlersWithAForbiddenDependency(Fixtures).ShouldBe(
         [
             "FullstackTemplate.ArchitectureFixtures.DomainEvents.HandlerWithSecondConstructor",
@@ -95,6 +105,7 @@ public class DomainEventShapeTests
     [Test]
     public void rule_4_finds_each_mediatr_notification_type()
     {
+        // Act & Assert
         TypesThatUseMediatRNotifications(Fixtures).ShouldBe(
         [
             "FullstackTemplate.ArchitectureFixtures.DomainEvents.NotificationHandlerWithMediatR",
@@ -105,12 +116,14 @@ public class DomainEventShapeTests
     [Test]
     public void rule_5_finds_an_event_that_is_not_sealed()
     {
+        // Act & Assert
         EventsThatAreNotSealed(Fixtures).ShouldBe(["FullstackTemplate.ArchitectureFixtures.DomainEvents.UnsealedEvent"]);
     }
 
     [Test]
     public void rule_6_finds_a_handler_of_an_event_that_is_not_sealed()
     {
+        // Act & Assert
         HandlersOfAnEventThatIsNotSealed(Fixtures)
             .ShouldBe(["FullstackTemplate.ArchitectureFixtures.DomainEvents.HandlerOfAbstractEvent"]);
     }
@@ -118,6 +131,7 @@ public class DomainEventShapeTests
     [Test]
     public void the_clean_fixtures_are_found_and_pass()
     {
+        // Act & Assert
         EventTypes(Fixtures).Select(t => t.Name).ShouldContain("CleanEvent");
         HandlerTypes(Fixtures).Select(t => t.Name).ShouldContain("CleanHandler");
         HandlerTypes(Fixtures).Select(t => t.Name).ShouldContain("CleanInternalHandler");

@@ -15,16 +15,43 @@ Put a test in the lowest suite that can prove the behavior. A lower suite is fas
 | One component in a real browser | Frontend component | `pnpm test` | `frontend/src/**/*.test.tsx` |
 | A page of the SPA: what the user sees and what the page sends to the BFF | Functional | `pnpm test:e2e` | `frontend/tests/features/**/*.spec.ts` |
 | Login, logout, the session cookie, a token refresh, DPoP, PAR, or the BFF against a real IdP | Stack | `pnpm test:e2e:stack` | `frontend/e2e/*.spec.ts` |
+| Who can call a Server endpoint: the 403 for a caller with no permission, and the 404 for a record of another tenant | .NET functional sweep, no new test | `dotnet test --solution FullstackTemplate.slnx` | `tests/FullstackTemplate.FunctionalTests/FunctionalTests/Access/EndpointAccessSweepTests.cs`. See "Access of a Server endpoint" below. |
 | A domain rule, a handler, or a Server endpoint | .NET | `dotnet test --solution FullstackTemplate.slnx` | `tests/`. See `docs/backend.md`, section "Tests". For test data, use the `test-entity-graph` skill. |
 | Two requests that race on the same rows | .NET integration test with `PauseAtQuery` | `dotnet test --solution FullstackTemplate.slnx` | `tests/FullstackTemplate.IntegrationTests/`. See `docs/backend.md#race-tests`. |
 
 Run all frontend commands in `frontend/`.
 
+## Access of a Server endpoint
+
+`EndpointAccessSweepTests` finds each HTTP endpoint, MCP tool, and gRPC method of the Server. It sends each one these calls:
+
+- A call with no user, with unknown IDs. The answer must be 401, or `Unauthenticated` on gRPC. MCP gets no such call, because `/mcp` refuses a call with no token before a tool runs, and `TenantMcpToolTests` checks that 401.
+- A member with no permissions, with the IDs of real records of the tenant. The answer must be 403.
+- The same member with unknown IDs. The answer must be 403, so that the answer does not tell which IDs exist.
+
+An entrypoint that names a record gets three more calls. It names a record when it has a route value `{id}` or `{identifier}`, a tool argument `id` or `identifier`, or a gRPC request field `id` or `identifier`:
+
+- An admin with all permissions, with the IDs of records of another tenant. The answer must be 404.
+- The same admin with unknown IDs. The answer must be 404.
+- The control call, last: an admin with all permissions, with the IDs of records of the own tenant. The answer must be a success, or 409 for the stale version of the sample body. A 404 here shows that the entrypoint reads an ID of the wrong kind, so the two 404 calls prove nothing. The control call uses a new tenant of its own, so that a delete does not remove a record that the other calls need.
+
+The sweep does not check a reference to a record in a request body, a query value, or another tool argument or gRPC field, for example `tenantId`. For such a reference, write a cross-tenant test in the tests of the feature.
+
+Thus do not write the 403 test or the cross-tenant test of a route value `{id}` for each new endpoint. Do these steps:
+
+1. Run the functional tests. If the sweep fails, its message names each endpoint, the caller, the expected status, and the actual status.
+2. If the handler has no permission check, add the check. See "Permission checks" in `docs/backend/features-and-cqrs.md`.
+3. If each member can use the endpoint with no permission, add it to `OpenToEachMember` in the sweep with the reason. The member call of an entry with the IDs of the tenant must then get a success. The member call with unknown IDs must get a success or 404. If the endpoint must also take a call with no user, give its entry `Anonymous: true`. The call with no user must then get a success. Each other endpoint must give 401 to a call with no user. The Server has no fallback policy, so an endpoint with no `.RequireAuthorization()` takes anonymous calls, and the sweep shows it as a gap.
+4. If the sweep cannot build the request, its message tells what to add. A route value `{id}` under a new first segment needs a record of that kind in `AddTenantAsync`.
+5. Map each HTTP endpoint as an `IEndpoint` in the versioned group. A route outside the group is a gap, unless it is in `InfrastructureRoutes` of the sweep with the reason.
+
+The sweep checks the permission of each endpoint, not of each DTO field. For a field with data of another permission, write the test of rule 12 of DTOs in `docs/backend/dtos-and-mappings.md`.
+
 ## When to run each Playwright suite
 
 `pnpm test:e2e` (functional):
 
-- Run it after each change in `frontend/src`. It needs no stack and takes about 10 seconds.
+- Run it after each change in `frontend/src`. It needs no stack. It runs each test in three zones, and it takes two to three minutes.
 - CI runs it on each pull request, in the `api-contract` job.
 - It mocks the BFF. Thus it cannot find a fault in the BFF, the Server, or the IdP.
 
@@ -59,6 +86,8 @@ Read `docs/frontend/testing.md` before you write one. Then do these steps:
 
 Obey these rules:
 
+- Each functional test runs in three zones: `UTC`, `Pacific/Kiritimati` (UTC+14), and `Pacific/Pago_Pago` (UTC-11). A test of a page with no place sets its clock with `instantIn(wallClock, browserZone())` from `@tests/support/clock`.
+- A time of a place shows and reads in the zone of the place (`docs/frontend/code-style.md`, section "Dates and times"). Test it with a place in a zone far from the browser, at an instant at which the date of the place is not the browser date or the UTC date. See "Time zones" in `docs/frontend/testing.md`. The test `a date filter of a place in another zone` in `filter-demo.spec.ts` checks this rule for the date filter, and `date-filter.test.tsx` and `calendar.test.tsx` check it for the controls.
 - Import `test` and `expect` from `@tests/support/fixtures`.
 - Use a role and a name for a selector. If the element has no role or name, give it one in the app.
 - Do not use `page.waitForTimeout`, `test.only`, or retries.
@@ -76,6 +105,7 @@ Obey these rules:
 - A unit test is `*.test.ts` beside the code. It runs in Node, and Vitest also type-checks it.
 - A component test is `*.test.tsx` beside the component. It runs in Chromium with Vitest browser mode. Render with `render` from `vitest-browser-react`. To hold a request, use `commands.holdRequests` from `vitest/browser`.
 - A test that needs today sets the time with `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime`, as `calendar.test.tsx` does. Make the time from local parts, for example `new Date(2026, 7, 15, 12)`, so that its date is the same in each time zone of the machine. Do not take today from the UTC date, such as `new Date().toISOString().slice(0, 10)`. From 00:00 UTC to local midnight in the Americas, the UTC date is one day after the local date.
+- The unit tests run in `Pacific/Pago_Pago` and the component tests in `Pacific/Kiritimati`. See "Time zones" in `docs/frontend/testing.md`.
 - See `docs/frontend.md`, section "Commands".
 
 ## Finish
@@ -90,5 +120,7 @@ pnpm test:e2e
 ```
 
 If you changed the BFF, the AppHost, or the login code, also run `pnpm test:e2e:stack` against a running stack.
+
+For a .NET test, mark the parts with `// Arrange`, `// Act`, and `// Assert` (`docs/backend.md`, section "Tests"). `TestMarkerTests` fails on each test without them.
 
 If the change adds a command that runs again, takes a lock, or checks a rule over other rows, add a race test.

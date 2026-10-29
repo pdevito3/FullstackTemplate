@@ -5,7 +5,7 @@ description: Launches the FullstackTemplate stack (Aspire, server, BFF, React SP
 
 # Verify FullstackTemplate
 
-The primary surface is the React SPA in a browser. All browser traffic goes through the Vite dev server to the BFF (`/bff/*`, `/api/*`, `/signin-oidc`). The BFF holds the tokens and calls the server with a JWT. Login uses ZeroFactor by default. ZeroFactor is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider that runs in the stack. Its login page lists the users (`admin@example.com` and `user@example.com`), and one click signs in. To test an interaction with a real IdP, start the stack with `--auth-provider <Name>`. `login()` supports `ZeroFactor` and `DuendeDemo`. For another provider, drive its login form from `frontend/e2e/idps/<name>.json`.
+The primary surface is the React SPA in a browser. All browser traffic goes through the Vite dev server to the BFF (`/bff/*`, `/api/*`, `/signin-oidc`). With `--preview`, the browser talks to the BFF directly, because the BFF serves the build. See [Production build](#production-build). The BFF holds the tokens and calls the server with a JWT. Login uses ZeroFactor by default. ZeroFactor is [0factor](https://github.com/c4l3b/0factor), a mock OIDC provider that runs in the stack. Its login page lists the users (`admin@example.com` and `user@example.com`), and one click signs in. To test an interaction with a real IdP, start the stack with `--auth-provider <Name>`. `login()` supports `ZeroFactor` and `DuendeDemo`. For another provider, drive its login form from `frontend/e2e/idps/<name>.json`.
 
 Other surfaces, not in the feature map yet:
 
@@ -23,11 +23,12 @@ S=.agents/skills/verify-fullstack-template
 - `launch.sh` always starts an `--isolated` stack: random ports, an empty database, and a copy of the user secrets. A stack in another worktree does not conflict.
 - Each checkout can run one stack for its AppHost path. If a stack runs for this checkout and this skill did not start it, `launch.sh` stops with an error. Do not drive that stack and do not stop it. It belongs to the user. Ask the user, or work in a git worktree.
 - Each recipe run gets a new Chromium context. No cookies or `localStorage` carry over between recipes.
+- Each recipe run gets the database of the run before it. `browse.mjs` puts back the rows that a recipe wrote. See [Data](#data).
 - If you use `--auth-provider DuendeDemo`, the IdP is shared and public. Use only the demo users. Do not change data on it.
 
 ## Launch
 
-1. Start the stack. The command blocks until `server`, `bff`, and `webfrontend` are healthy and `/api/v1/weather` answers 200 through Vite. A cold start takes about 1 to 3 minutes.
+1. Start the stack. The command blocks until `server`, `bff`, and `webfrontend` are healthy and `/api/v1/weather` answers 200 at the `web` URL: through Vite, or through the BFF with `--preview`. A cold start takes about 1 to 3 minutes.
 
    ```bash
    $S/scripts/launch.sh            # or: $S/scripts/launch.sh <RUN_ID>
@@ -39,7 +40,9 @@ S=.agents/skills/verify-fullstack-template
    $S/scripts/launch.sh --auth-provider DuendeDemo
    ```
 
-2. Read the last lines of the output. They give `RUN_DIR`, the `authProvider`, the `web` URL (the app), the `server` URL, and the `dashboard` URL.
+   To drive the production build of the SPA, give `--preview`. See [Production build](#production-build).
+
+2. Read the last lines of the output. They give `RUN_DIR`, the `authProvider`, the `build` (`dev` or `production`), the `web` URL (the app), the `server` URL, and the `dashboard` URL.
 
 The stack is ready when the output ends with `launch: ready.` and the URLs. The run state is in `artifacts/verify/<RUN_ID>/stack.json`. The file `artifacts/verify/.current` holds the RUN_ID of the live stack.
 
@@ -69,7 +72,7 @@ Each line starts with `ok` or `FAIL`. Exit code 0 means the stack is worth drivi
 The harness is `scripts/browse.mjs`. It loads Playwright from `frontend/node_modules`, opens Chromium at the `web` URL, runs one recipe, and saves the evidence.
 
 ```bash
-node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>]
+node $S/scripts/browse.mjs $S/recipes/<feature>.mjs [--headed] [--label <name>] [--keep-data]
 ```
 
 The command prints `ok` or `FAIL` for each step, then `PASSED` or `FAILED` and the evidence path. The exit code is 0 only when the recipe does not throw, the page has no uncaught error or console error, and the recipe has no unhandled promise rejection. A step error that the recipe catches logs `FAIL` but does not fail the run.
@@ -78,15 +81,24 @@ An uncaught error in the page (a Playwright `pageerror`) fails the run, even if 
 
 An unhandled promise rejection in the recipe also fails the run. An example is a `page.waitForResponse` that the recipe did not await and that never got its response. `steps.log` records each rejection on a line that starts with `unhandled rejection:`. If a step fails while such a promise waits, the run still writes `result.json` with the error of the step.
 
-To prove a feature in the map, run its recipe:
+To prove a feature in the map, run its recipe. To prove the whole map, run each recipe two times in a row:
 
 ```bash
-for r in weather-forecast login-logout secure-weather navigation-and-theme filter-builder components-showcase; do
-  node $S/scripts/browse.mjs $S/recipes/$r.mjs
-done
+$S/scripts/run-twice.sh                       # each recipe in recipes/
+$S/scripts/run-twice.sh <recipe.mjs> ...      # only these recipes
 ```
 
-To prove a new change, write a new recipe in the scratch folder of your run (for example `artifacts/verify/<RUN_ID>/recipes/my-change.mjs`). A recipe that needs a day takes it from the time zone of the data and books its own data for that day. It does not walk from today, because the seed data does not cover each day, and a time after local midnight may not have come yet at the place.
+`run-twice.sh` ends with a table of each run: the status, the rows that the run wrote, and whether the restore put them back. It ends with `run-twice: PASSED` only when each run passed. Run it on each recipe that you add or change.
+
+To prove a new change, write a new recipe in the scratch folder of your run (for example `artifacts/verify/<RUN_ID>/recipes/my-change.mjs`).
+
+Recipe rules. Each rule stops a recipe that passes one time and fails on the next run, on the next day, or on a slow machine:
+
+- Find a row by a search, a filter, or an ID that the recipe made. Do not find it by its place on a page or in a sort order, because other rows can come before it.
+- Make the data that the recipe needs. Do not expect seed rows, and do not expect a count of rows that the recipe did not make.
+- Take "today" from the time zone of the data, never from the clock of the machine. A recipe that needs a day books its own data for that day. It does not walk from today, because the seed data does not cover each day, and a time after local midnight may not have come yet at the place.
+- Wait for a named ready state with `expect(...)`: a heading, a row, a response, or a button that is enabled again. Never wait a fixed time.
+- After an action that changes a row, read the row again before the next edit. The response or a reload gives the new `version`.
 
 A recipe is an ES module with a default export. `browse.mjs` gives it these values:
 
@@ -125,6 +137,36 @@ Selector rules:
 
 For interactive exploration, the Playwright MCP server in `.mcp.json` also works. Give it the `web` URL from `stack.json`. Put the final proof in a recipe, because only a recipe gives a repeatable result and saves the evidence in the run directory.
 
+## Data
+
+`browse.mjs` keeps the database of the stack the same across recipe runs:
+
+1. Before the recipe, it copies each table of each database (`appdb`, `bffdb`) to `artifacts/verify/<RUN_ID>/db-snapshot.json`.
+2. After the recipe, also after a failed step or a page error, it deletes and inserts only the rows that differ from the copy. Then it reads the tables again. If one still differs, the run fails with `the restore left these tables different`.
+3. `result.json` gives the rows that the run wrote in `data.changes`, for example `"appdb.public.tenants": { "added": 1, "changed": 0, "deleted": 0 }`. If the restore failed, `data.restored` is `false`, and `data.changes` gives the rows that the run wrote. Some of them can still be in the database. If the restore failed before it read the rows, `data.changes` is `null` and `run-twice.sh` prints `unknown`.
+
+Each row that the restore did not touch keeps its `xmin`, which is the `version` of an entity. A row that the restore put back gets a new `xmin`. The next recipe reads its rows from the page, so it gets the new version.
+
+If a run stops before the restore (Ctrl-C, a killed process, a restore that failed), `db-snapshot.json` stays. The next `browse.mjs` run restores it first and prints `data: an earlier run did not restore the database`. The doctor prints a `warn` line while the file is there. If that restore also fails, for example after a migration changed a table, `browse.mjs` stops. Delete `db-snapshot.json` to keep the rows as they are, or launch a new stack.
+
+The restore changes only rows. The server keeps a cache of the tenant of each user for up to 30 minutes. A recipe that adds, deletes, or moves a user, or changes a tenant, can leave the old answer in that cache, so the next run can see it. Run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` after such a recipe.
+
+Only one recipe runs on a stack at a time. A restore would delete the rows of a second run. Do not drive the stack with the Playwright MCP server while a recipe runs, for the same reason. `browse.mjs` holds `recipe.lock` in the run directory, and a second run stops with `browse: the recipe run with pid <pid> drives this stack`.
+
+To look at the rows after a recipe, give `--keep-data`. The run then takes no copy and restores nothing, so the rows stay until the stack stops.
+
+## Production build
+
+The dev server compiles each module on request, and React runs in its development mode. Some faults show only in the production build, for example a React Aria collection that keeps old rows, or a missing chunk of a lazy route. To find them, drive the production build:
+
+```bash
+$S/scripts/launch.sh --preview
+```
+
+`--preview` builds the SPA with `vite build` into `artifacts/verify/<RUN_ID>/spa/`. The BFF serves that build from its web root, as a published BFF serves `wwwroot`, so `web` is the BFF URL. Recipes, `login()`, and `run-twice.sh` work the same way. A frontend change needs a new launch, because the build does not reload. The BFF still runs in the `Development` environment.
+
+Before a release, and after a change to a shared component in `frontend/src/components/ui/`, launch with `--preview` and run `run-twice.sh`.
+
 ## Evidence
 
 Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the recipe file name, or the value of `--label`. If that directory exists, the run writes to `<label>-2/`, then `<label>-3/`, and so on. The output line `evidence:` gives the directory.
@@ -137,8 +179,9 @@ Each recipe run writes to `artifacts/verify/<RUN_ID>/<label>/`. The label is the
 | `console.log` | Browser console errors and warnings, and page errors. Each page error starts with `[pageerror]`. |
 | `network.log` | Each response with status 400 or more. |
 | `trace.zip` | The Playwright trace. Open it with `pnpm --dir frontend exec playwright show-trace <path>`. |
-| `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. |
+| `result.json` | `passed` or `failed`, with the error message. `pageErrors` lists the message of each page error and each console error. One entry or more makes the status `failed`. `data` gives the rows that the restore put back. |
 | `NN-failure.png` | A capture of the page at the time of the failure. A failed step makes the capture before the cleanup of the recipe runs. A failure outside a step gets its capture after the recipe ends. |
+| `sweep.md`, `sweep.json`, `sweep-NN.png` | With `--sweep` only. Each layout and focus fault, the captures and configs where it showed, and a screenshot with a red outline on the element. See [Sweep](#sweep). |
 
 `artifacts/` is in `.gitignore`. The evidence stays after cleanup.
 
@@ -149,8 +192,39 @@ Proof standards:
 - Prove side effects next to the visible result. Examples: the HTTP status and the JSON of the API response, the `__Host-bff` cookie, the `ui-theme` value in `localStorage`.
 - Compare the screen with the data. For example, each weather card must show the `summary` and the temperature of the API row, not only "5 cards".
 - Read `console.log` and `network.log` after each run. These lines are normal: the 401 lines from the anonymous probes that a recipe makes on purpose, and, with DuendeDemo, the iframe `sandbox` warning from the Duende pages. Report each other error, even if the recipe passed.
-- Look at the screenshots. If something looks wrong (clipped, misaligned, unreadable in dark mode), report it, even if it is not part of your change.
+- Run the sweep on each recipe that your change touches. Then look at the screenshots with [ui-review.md](ui-review.md). Report each fault, even if it is not part of your change.
 - Do not mock the app. ZeroFactor is a mock IdP, but it gives real OIDC tokens. The BFF and the server validate them as they validate the tokens of any other provider. The Duende demo IdP is the only external system.
+
+## Sweep
+
+The sweep finds the layout and focus faults that a 1280x800 screenshot does not show. Run it on each recipe that your change touches, or on all recipes:
+
+```bash
+$S/scripts/sweep.sh                          # each recipe in recipes/
+$S/scripts/sweep.sh $S/recipes/<recipe>.mjs  # one recipe
+```
+
+`sweep.sh` runs each recipe two times: with `--sweep`, and with `--sweep --no-web-font`. The second run blocks the font files, so the page shows the fallback font, as before the web font loads. It prints `sweep: PASSED` or `sweep: FAILED`. A fault fails the run. To run the sweep on one run of a recipe, give `--sweep` to `browse.mjs`.
+
+With `--sweep`, `browse.mjs` does these things:
+
+- It gives long values to the text that the server sends. The fields are in `nameKeys` and `emailKeys` of `sweep.mjs`: `name`, `title`, `summary`, `description`, `label`, `firstName`, `lastName`, `fullName`, `tenantName`, `requestedBy`, `given_name`, `family_name`, and `email`, in an `/api/` answer and in the `/bff/user` claims. Each value becomes a 100-character name with no spaces, or a long email address with a hyphen. Each different value gets a different long value, and a value that came once gets the same long value each time, so that a recipe that compares the screen with the API still passes. An empty value stays empty. The long values are shorter than the maximum lengths of the server, so a form that saves them is valid. Add a key when a new field shows a name or a text that the user writes. This also changes each `/api/` answer that the recipe reads, with `page.waitForResponse` or with a `fetch`. A recipe that compares an API answer with a literal value that it sent, such as the name of a tenant that it made, fails under the sweep. In a recipe for the sweep, find a row by its ID and compare the screen with the API answer, not with the literal.
+- At each full-page `capture()`, it measures the page at 320, 390, and 1280 px wide, in the light and the dark theme, and with a 24 px default font at 390 and 1280 px. Then it puts back the viewport size of the recipe, the light theme, the scroll position, and the focus. If a resize removed the focused element, the next focus check does not report it.
+- At each `capture()` with `{ fullPage: false }`, which holds an open dialog, sheet, drawer, popover, or menu, it measures the page at the window size of the recipe, in the light and the dark theme. A resize or a new font size can close an overlay, such as a submenu, so these captures get no other width and no 24 px font. Give the overlay capture the width that you want to check, for example 1280 px for a dialog, because at 320 px a dialog shows as a bottom sheet.
+- At the end of each `step()`, it checks the focus.
+
+The checks:
+
+| Fault | What the sweep finds |
+|---|---|
+| Page scrolls sideways | The page is wider than the window. The report names the outermost elements, or the text, that go past the right edge. If it finds none, it names the page. |
+| Text is cut | Text that is wider or taller than its box, which hides the overflow, with no ellipsis. Text that runs out of a parent that hides the overflow. Text that ends with an ellipsis, with no element that shows the full value. That element is the text or its ancestor. It can get the focus (a tab index of 0 or more, or -1 in a tab list, menu, list box, grid, toolbar, or tree), it is not disabled or `aria-disabled`, and its `title` or its accessible name (`aria-label`, `aria-labelledby`, or its text) holds the full text. The sweep cannot tell whether a press or a focus shows that text. When it passes an ellipsis, press the element and look. Text in a scroll container is not cut. Text that is all outside its clip is hidden on purpose, for example the label of a collapsed sidebar item. |
+| Overlay goes past the window | A dialog, alert dialog, menu, list box, tooltip, or popover that goes past the left or the right edge of the window. |
+| List grows past its max height | An element whose inline `max-height` lets it grow taller than the `max-height` in pixels of its class. React Aria sets an inline `max-height` on a popover from the space on the page, and an inline style wins over a class. Give the React Aria `Popover` a `maxHeight` instead. |
+| Fixed-height bar wraps | A `header` or a `[role=toolbar]` whose height does not come from its content, with its text on more than one line, or with text that runs out of its height. A bar whose height comes from its content can wrap. |
+| Focus goes to the body | The focus is on the body, and the element that had it last was removed, disabled, hidden, or made inert. |
+
+The sweep checks the focus only at the end of each step. Make a step for each action that can move the focus.
 
 ## Cleanup
 

@@ -69,7 +69,7 @@ public class EmailAddressTests
         var email2 = EmailAddress.Of("test@example.com");
         var email3 = EmailAddress.Of("other@example.com");
 
-        // Assert
+        // Act & Assert
         email1.Equals(email2).ShouldBeTrue();
         email1.Equals(email3).ShouldBeFalse();
     }

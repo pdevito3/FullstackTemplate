@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
+import { parseDate } from '@internationalized/date'
 import { Refresh01Icon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -17,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { formatDate as formatDay } from '@/lib/zoned-time'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -54,13 +56,8 @@ function Index() {
   const currentError = showSecure && auth.isLoggedIn ? secureError : error
   const isLoading = showSecure && auth.isLoggedIn ? secureLoading : loading
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
+  const formatDate = (dateString: string) =>
+    formatDay(parseDate(dateString), { weekday: 'short', month: 'short', day: 'numeric' })
 
   const handleLogin = () => login('/')
   const handleLogout = () => auth.logoutUrl && logout(auth.logoutUrl)
@@ -69,7 +66,7 @@ function Index() {
     <div className="bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Weather Forecast</h1>
             <p className="text-muted-foreground mt-1">
@@ -78,12 +75,12 @@ function Index() {
           </div>
 
           {/* Auth Section */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {auth.isLoading ? (
               <span className="text-sm text-muted-foreground">Loading...</span>
             ) : auth.isLoggedIn ? (
               <>
-                <span className="text-sm">
+                <span className="min-w-0 text-sm wrap-anywhere">
                   Welcome, <span className="font-medium">{auth.username}</span>
                 </span>
                 <Button variant="outline" size="sm" onPress={handleLogout}>
@@ -105,7 +102,7 @@ function Index() {
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-4">
               {/* Left: Mode & Unit toggles */}
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 {auth.isLoggedIn && (
                   <Button
                     variant={showSecure ? 'default' : 'outline'}
@@ -270,20 +267,20 @@ function WeatherCard({ forecast, useCelsius, formatDate }: WeatherCardProps) {
   return (
     <Card role="listitem" aria-label={formatDate(forecast.date)} className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               {formatDate(forecast.date)}
             </p>
-            <CardTitle className="mt-1">{forecast.summary}</CardTitle>
+            <CardTitle className="mt-1 wrap-anywhere">{forecast.summary}</CardTitle>
           </div>
-          <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 text-muted-foreground" />
+          <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 shrink-0 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>
         {'requestedBy' in forecast && (
-          <Badge variant="secondary" className="mb-3 text-chart-2">
-            <HugeiconsIcon icon={SquareLock02Icon} className="w-3 h-3 mr-1" />
+          <Badge variant="secondary" className="mb-3 h-auto max-w-full whitespace-normal wrap-anywhere text-chart-2">
+            <HugeiconsIcon icon={SquareLock02Icon} className="w-3 h-3 mr-1 shrink-0" />
             {String(forecast.requestedBy)}
           </Badge>
         )}

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useEffect } from "react"
+import { createContext, useContext, useState, useMemo } from "react"
 import { CalendarDate, endOfMonth } from "@internationalized/date"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -52,20 +52,20 @@ function CalendarZoomProvider({ children, fixedHeight }: CalendarZoomProviderPro
   const currentYear = state?.focusedDate?.year ?? todayAt(browserTimeZone(), new Date()).year
 
   const [view, setView] = useState<CalendarView>("days")
-  // eslint-disable-next-line server-state/no-copied-state -- the user moves the shown year, and the effect below follows the focused date
   const [viewYear, setViewYear] = useState(currentYear)
   const [viewDecadeStart, setViewDecadeStart] = useState(
     Math.floor(currentYear / 12) * 12
   )
 
-  // Sync viewYear when calendar's focused date changes
   const focusedYear = state?.focusedDate?.year
-  useEffect(() => {
+  const [shownFocusedYear, setShownFocusedYear] = useState(focusedYear)
+  if (focusedYear !== shownFocusedYear) {
+    setShownFocusedYear(focusedYear)
     if (focusedYear !== undefined) {
       setViewYear(focusedYear)
       setViewDecadeStart(Math.floor(focusedYear / 12) * 12)
     }
-  }, [focusedYear])
+  }
 
   const contextValue = useMemo(
     () => ({

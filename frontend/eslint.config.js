@@ -126,7 +126,6 @@ const copiedRoots = (node) => {
   }
 }
 
-// docs/frontend/server-state.md, rule 2, and docs/frontend/client-state.md, "Calculate, do not store".
 export const noCopiedStateRule = {
   meta: {
     type: 'problem',
@@ -164,7 +163,6 @@ export const noCopiedStateRule = {
       return parent
     }
     const sourceOfValue = (node) => copiedRoots(node).map((root) => sourceOf(root, new Set())).find(Boolean)
-    // docs/frontend/client-state.md, "Effects": the render sets the state again when its source changes.
     const renderSetsAgain = (node, source) => {
       const setter = node.parent.type === 'VariableDeclarator' && node.parent.id.type === 'ArrayPattern' ? node.parent.id.elements[1] : null
       const variable = setter?.type === 'Identifier' && resolve(sourceCode.getScope(setter), setter.name)
@@ -202,7 +200,6 @@ const isValue = (variable) => {
   return !(init && (['ArrowFunctionExpression', 'FunctionExpression'].includes(init.type) || hookCalledBy(init) === 'useQueryClient'))
 }
 
-// docs/frontend/server-state.md, rule 3.
 export const queryKeyHasInputsRule = {
   meta: {
     type: 'problem',
@@ -255,7 +252,6 @@ export const queryKeyHasInputsRule = {
   },
 }
 
-// docs/frontend/server-state.md, rule 3.
 export const keyHasEachParamRule = {
   meta: {
     type: 'problem',

@@ -92,7 +92,8 @@ function JollyDatePicker<T extends AriaDateValue>({
       {...props}
     >
       {label && <Label>{label}</Label>}
-      <Group className="relative flex h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
+      {/* The field grows with its segments, because they wrap on a narrow screen or with a large font. */}
+      <Group className="relative flex min-h-8 w-full items-center overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none data-focus-within:border-ring data-focus-within:ring-3 data-focus-within:ring-ring/50 data-invalid:border-destructive data-invalid:ring-3 data-invalid:ring-destructive/20 data-disabled:opacity-50 dark:bg-input/30 dark:data-invalid:border-destructive/50 dark:data-invalid:ring-destructive/40">
         <DateInput className="flex-1" variant="ghost" />
         <Button
           variant="ghost"

@@ -41,7 +41,7 @@ public class CallerTests
         yield return () => ("anonymous", new Caller.Outsider(OutsiderKind.Anonymous), "Sign in to do this.");
         yield return () => ("machine client", new Caller.Outsider(OutsiderKind.MachineClient), MachineClientDenial);
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord),
-            "You need a user record in a tenant to do this.");
+            "You are not a member of a tenant. Ask a tenant admin to add you.");
         yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), UnknownClientDenial);
         yield return () => ("delegated agent whose user and grant hold it",
             DelegatedAgentOf([Permission.ManageUsers()], [Permission.ManageUsers()]), null);
@@ -70,7 +70,7 @@ public class CallerTests
         yield return () => ("machine client", new Caller.Outsider(OutsiderKind.MachineClient), SelfId,
             MachineClientDenial);
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord), SelfId,
-            "You need a user record in a tenant to do this.");
+            "You are not a member of a tenant. Ask a tenant admin to add you.");
         yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), SelfId,
             UnknownClientDenial);
         yield return () => ("delegated agent on the record of its user", DelegatedAgentOf([Permission.ManageUsers()], []),

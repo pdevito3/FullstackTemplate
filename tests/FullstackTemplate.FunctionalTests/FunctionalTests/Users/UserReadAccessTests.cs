@@ -148,7 +148,7 @@ public class UserReadAccessTests : TestBase
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier($"unknown-{Guid.NewGuid()}"));
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need a user record in a tenant to do this.");
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
     [Test]

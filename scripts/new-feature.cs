@@ -1150,11 +1150,12 @@ internal static class Templates
                                 throw new NotFoundException("The tenant does not exist.");
 
                             var {{n.Var}} = {{n.Entity}}.Create(request.Dto.To{{n.Entity}}ForCreation(tenantId));
+                            Activity.Current?.SetTag("app.{{n.Snake}}_id", {{n.Var}}.Id);
+
                             await dbContext.{{n.Plural}}.AddAsync({{n.Var}}, ct);
                             await dbContext.SaveChangesAsync(ct);
                             return {{n.Var}};
                         }, cancellationToken);
-                        Activity.Current?.SetTag("app.{{n.Snake}}_id", added.Id);
 
                         _logger.Here().Information("Added {{n.Words}} {{{n.Entity}}Id}", added.Id);
 
@@ -2210,6 +2211,7 @@ internal static class Templates
         return $$"""
             namespace {{n.App}}.IntegrationTests.FeatureTests.{{n.Plural}};
 
+            using {{n.Server}}.Domain.{{n.Plural}};
             using {{n.Server}}.Domain.{{n.Plural}}.Dtos;
             using {{n.Server}}.Domain.{{n.Plural}}.Features;
             using {{n.Server}}.Exceptions;
@@ -2328,7 +2330,7 @@ internal static class Templates
                 }
 
                 [Test]
-                public async Task a_delete_that_a_rival_update_beat_after_the_load_runs_again_and_deletes()
+                public async Task a_delete_that_a_rival_update_beat_after_the_load_runs_again_and_both_save()
                 {
                     // Arrange
                     var pause = PauseAtQuery.After("{{n.SnakePlural}}.delete.load");
@@ -2345,8 +2347,14 @@ internal static class Templates
 
                     // Assert
                     await delete;
-                    (await IsDeletedAsync({{v}}.Id)).ShouldBeTrue();
+                    var row = await LoadIgnoringFiltersAsync({{v}}.Id);
+                    row.IsDeleted.ShouldBeTrue();
+                    row.{{t}}.ShouldBe("Rival");
                 }
+
+                private static Task<{{e}}> LoadIgnoringFiltersAsync(string id)
+                    => new TestingServiceScope().ExecuteDbContextAsync(db =>
+                        db.{{n.Plural}}.IgnoreQueryFilters().AsNoTracking().SingleAsync(x => x.Id == id));
 
                 private static Task<bool> IsDeletedAsync(string id)
                     => new TestingServiceScope().ExecuteDbContextAsync(db =>
@@ -2537,8 +2545,10 @@ internal static class Templates
             using System.Net.Http.Json;
             using {{n.Server}}.Domain.{{n.Plural}};
             using {{n.Server}}.Domain.{{n.Plural}}.Dtos;
+            using {{n.Server}}.Resources.Entrypoints;
             using {{n.App}}.SharedTestHelpers.EntityGraphs;
             using {{n.App}}.SharedTestHelpers.Fakes.{{n.Plural}};
+            using Microsoft.AspNetCore.Mvc;
             using Shouldly;
             using TestUtilities;
 
@@ -2601,6 +2611,7 @@ internal static class Templates
 
                     // Assert
                     second.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+                    (await second.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Type.ShouldBe(DomainProblemDetails.StaleVersionType);
                 }
 
             {{Block([FunctionalArrange(s)], 4)}}

@@ -8,10 +8,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Resources;
 
 /// <summary>
-/// The rows that a tenant owns: each live row of each <see cref="BaseEntity"/> type that the tenant filter covers,
-/// except the tenant. The types come from the model, so a new tenant-owned entity needs no change here or in the
-/// tenant delete. The audit log keeps its entries, and <c>AuditEntry</c> is not a <see cref="BaseEntity"/>.
-/// The context builds the loaders once for each model and keeps them as a runtime annotation.
+/// The audit log of a deleted tenant stays: <c>AuditEntry</c> is not a <see cref="BaseEntity"/>, so no loader covers it.
 /// </summary>
 internal sealed class TenantOwnedRows
 {
@@ -22,6 +19,7 @@ internal sealed class TenantOwnedRows
 
     private sealed record OwnedType(string OperationName, LoadRows Load);
 
+    // A startup scan: it runs one time for each EF model, and the model keeps the loaders as a runtime annotation.
     private static readonly MethodInfo LoadRowsOfType = typeof(TenantOwnedRows)
         .GetMethod(nameof(LoadRowsAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
@@ -34,10 +32,9 @@ internal sealed class TenantOwnedRows
                 && e.ClrType.IsAssignableTo(typeof(BaseEntity))
                 && e.FindDeclaredQueryFilter(QueryFilterNames.Tenant) is not null)
             .Select(e => new OwnedType(
-                $"tenants.delete.load_{e.GetTableName()}",
+                $"tenants.delete.load_{e.GetTableName() ?? e.ClrType.Name}",
                 LoadRowsOfType.MakeGenericMethod(e.ClrType).CreateDelegate<LoadRows>()))];
 
-    /// <summary>Loads each live row that the tenant owns, with the change tracker on. The caller must see the tenant.</summary>
     public static Task<List<BaseEntity>> LoadAsync(AppDbContext dbContext, string tenantId, CancellationToken cancellationToken)
     {
         var ownedTypes = dbContext.Model

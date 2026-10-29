@@ -63,10 +63,6 @@ public class AppDbContext(
     /// </summary>
     public void RefreshTenantScope() => _tenantScope = null;
 
-    /// <summary>
-    /// Runs <paramref name="work"/> with the scope of one tenant, so that each tenant filter gives only the rows of
-    /// that tenant. The scope can only get narrower: the caller must see the tenant.
-    /// </summary>
     internal async Task<T> InTenantScopeAsync<T>(string tenantId, Func<Task<T>> work)
     {
         var scope = CurrentTenantScope;
@@ -421,6 +417,7 @@ public class AppDbContext(
                     $"The events of the next round: {eventTypes}.");
             }
 
+            var outer = _narrowedTenantScope;
             foreach (var (entry, queuedEvent) in queued)
             {
                 _narrowedTenantScope = TenantQueryFilterExtension.TenantIdOfDomainEvent(entry) is { } tenantId
@@ -432,7 +429,7 @@ public class AppDbContext(
                 }
                 finally
                 {
-                    _narrowedTenantScope = null;
+                    _narrowedTenantScope = outer;
                 }
             }
         }
@@ -502,9 +499,10 @@ public class AppDbContext(
                     break;
 
                 case EntityState.Deleted:
-                    if (entry.Entity is User { DeleteQueued: false })
-                        throw new InvalidOperationException(
-                            "Remove a user with Remove(user.Delete()), so that the save queues UserDeleted.");
+                    if (entry.Entity is IDeletedWithEvent { DeleteQueued: false })
+                        throw new InvalidOperationException(entry.Entity is User
+                            ? "Remove a user with Remove(user.Delete()), so that the save queues UserDeleted."
+                            : $"Remove a {entry.Metadata.ClrType.Name} with Remove(entity.Delete()), so that the save queues its delete event.");
 
                     entry.State = EntityState.Modified;
                     entry.Entity.UpdateLastModifiedOn(now);

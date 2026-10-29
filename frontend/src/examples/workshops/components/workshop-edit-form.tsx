@@ -6,6 +6,7 @@ import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop-for-update-dto'
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import { RefusedSaveAlert } from '@/components/refused-save-alert'
+import { LatestLoadedNote, StaleVersionAlert } from '@/components/stale-version-alert'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { useServerErrors } from '@/hooks/use-server-errors'
@@ -13,7 +14,6 @@ import { focusFirstError } from '@/lib/focus-first-error'
 import { latestOverEdits } from '@/lib/latest-over-edits'
 import { parseTimeZone, springGapMessage, wallClockAt } from '@/lib/zoned-time'
 
-import { LatestLoadedNote, StaleVersionAlert } from './stale-version-alert'
 import { WorkshopFields } from './workshop-fields'
 import { WORKSHOP_FIELD_NAMES, limitsOf, toWorkshopBody, workshopFieldsSchema, type WorkshopFieldName } from './workshop-fields-schema'
 
@@ -86,11 +86,12 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
         <WorkshopFields limits={limits} zone={zone} />
         <RefusedSaveAlert problem={serverErrors.problem} />
         <StaleVersionAlert
+          noun="workshop"
           problem={serverErrors.problem}
           isLoadingLatest={isLoadingLatest}
           onLoadLatest={handleLoadLatest}
         />
-        <LatestLoadedNote changed={changedByLatest} labels={FIELD_LABELS} />
+        <LatestLoadedNote noun="workshop" changed={changedByLatest} labels={FIELD_LABELS} />
         <Button type="submit" className="self-start" isPending={form.formState.isSubmitting}>
           Save
         </Button>

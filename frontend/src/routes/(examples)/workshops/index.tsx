@@ -6,6 +6,7 @@ import {
   getWorkshopListQuerySearchSchema,
 } from '@/api/generated/workshops/zod/get-workshop-list'
 import { QueryError } from '@/components/query-error'
+import { SearchBox } from '@/components/search-box'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 import { Pager } from '@/components/ui/pager'
@@ -13,7 +14,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useMembership } from '@/domain/membership/apis/get-membership'
 import { useWorkshopList } from '@/examples/workshops/apis/get-workshop-list'
 import { formatStart } from '@/examples/workshops/components/format-start'
-import { WorkshopSearch } from '@/examples/workshops/components/workshop-search'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { maxLengthOf } from '@/lib/api-contract'
@@ -73,7 +73,13 @@ function WorkshopsPage() {
         </p>
       ) : (
         <>
-          <WorkshopSearch search={search} maxLength={searchMaxLength} onSearch={handleSearch} />
+          <SearchBox
+            label="Search workshops"
+            placeholder="Title contains"
+            search={search}
+            maxLength={searchMaxLength}
+            onSearch={handleSearch}
+          />
           <WorkshopRows list={list} search={search} page={page} onPageChange={handlePageChange} />
         </>
       )}

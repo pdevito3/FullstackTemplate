@@ -12,7 +12,7 @@ const configs = [
 ]
 const configName = ({ width, scheme, fontSize }) => `${width}px ${scheme} ${fontSize}px font`
 
-const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'
+const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughesson'
 const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdomain.example-company-name.com'
 const nameKeys = new Set(['name', 'title', 'summary', 'description', 'label', 'firstName', 'lastName', 'fullName', 'tenantName',
   'requestedBy', 'given_name', 'family_name'])
@@ -21,11 +21,12 @@ const emailKeys = new Set(['email'])
 function longValues() {
   const seen = new Map()
   const longFor = (key, value) => {
-    if (!seen.has(value)) {
+    const seenKey = `${emailKeys.has(key) ? 'email' : 'name'}|${value}`
+    if (!seen.has(seenKey)) {
       const id = String(seen.size).padStart(3, '0')
-      seen.set(value, emailKeys.has(key) ? longEmail.replace('@', `${id}@`) : longName.slice(0, -id.length) + id)
+      seen.set(seenKey, emailKeys.has(key) ? longEmail.replace('@', `${id}@`) : longName.slice(0, -id.length) + id)
     }
-    return seen.get(value)
+    return seen.get(seenKey)
   }
   const rewrites = (key, value) => typeof value === 'string' && value !== '' && (nameKeys.has(key) || emailKeys.has(key))
   const walk = (node) => {
@@ -43,7 +44,8 @@ export async function routeLongValues(context, webUrl) {
   const rewrite = longValues()
   await context.route((url) => url.origin === new URL(webUrl).origin && (url.pathname.startsWith('/api/') || url.pathname === '/bff/user'),
     async (route) => {
-      const response = await route.fetch()
+      const response = await route.fetch().catch(() => null)
+      if (!response) return route.abort().catch(() => {})
       const { 'content-length': _, ...headers } = response.headers()
       if (!(headers['content-type'] ?? '').includes('json')) return route.fulfill({ response })
       const json = await response.json().catch(() => undefined)
@@ -176,6 +178,7 @@ function recordFault(faults, measured, { at, url, config }) {
 
 // A resize can cross a breakpoint and remount the element that has the focus. The sweep gives the focus back,
 // or forgets the last focused element, so that the next focus check does not report a loss that the sweep caused.
+// A loss from before the capture stays for the focus check at the end of the step.
 export async function sweepCapture({ page, cdp, settle, outDir, capture, faults }) {
   const url = page.url()
   const resting = { ...page.viewportSize(), scheme: 'light', fontSize: 16 }
@@ -192,7 +195,8 @@ export async function sweepCapture({ page, cdp, settle, outDir, capture, faults 
   await applyConfig(page, cdp, settle, resting)
   await page.evaluate(([x, y]) => scrollTo(x, y), scroll)
   await focused.evaluate((el) => {
-    if (el?.isConnected && el !== document.body) el.focus({ preventScroll: true })
+    if (!el || el === document.body) return
+    if (el.isConnected) el.focus({ preventScroll: true })
     window.__sweepFocused = document.activeElement === document.body ? null : document.activeElement
   })
   await focused.dispose()

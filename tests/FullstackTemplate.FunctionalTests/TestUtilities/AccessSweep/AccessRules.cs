@@ -13,7 +13,7 @@ public enum SweepCall
 /// <param name="Key">The endpoint name, the tool name, or the full gRPC method name. The allow list uses it.</param>
 public sealed record SweepTarget(string Key, string Label, bool NamesARecord);
 
-/// <param name="Anonymous">A call with no user gets a success, not the code of a missing token.</param>
+/// <param name="Anonymous">A call with no user does not get the code of a missing token.</param>
 public sealed record Open(string Reason, bool Anonymous = false);
 
 public sealed record Outcome(string Code, string Detail);
@@ -69,7 +69,8 @@ public static class AccessRules
         => call switch
         {
             SweepCall.NoUser when entry is { Anonymous: true }
-                => (codes.IsSuccess, "a success, because its allow-list entry is anonymous"),
+                => (code => codes.IsSuccess(code) || code == codes.NotFound,
+                    $"a success or {codes.NotFound}, because its allow-list entry is anonymous"),
             SweepCall.NoUser
                 => (code => code == codes.Unauthenticated,
                     $"{codes.Unauthenticated}, because no allow-list entry marks it anonymous"),

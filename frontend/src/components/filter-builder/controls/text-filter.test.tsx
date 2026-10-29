@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -8,7 +8,7 @@ import { TextFilter } from './text-filter'
 
 const firstName: FilterConfig = { propertyKey: 'firstName', propertyLabel: 'First Name', controlType: 'text' }
 const endQuoteMessage =
-  'A filter value cannot start or end with a quote. Remove the quote, or choose Contains and type the text inside the quotes.'
+  'A filter value cannot start or end with a quote. Remove the quote at the start or the end.'
 
 function filterWith(operator: Filter['operator']): Filter {
   return { id: '1', ...firstName, operator, value: 'x' }
@@ -69,4 +69,39 @@ test('removes the message when the user removes the quote', async () => {
   // Assert
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
   await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeEnabled()
+})
+
+test('shows no alert while the user types a quote inside the text', async () => {
+  // Arrange
+  await render(<TextFilter config={firstName} surface="dialog" onSubmit={() => {}} />)
+  const field = page.getByRole('textbox', { name: 'Value' })
+  const alerts: Node[] = []
+  const observer = new MutationObserver((mutations) =>
+    alerts.push(...mutations.flatMap((m) => [...m.addedNodes]).filter((n) => n instanceof Element && n.closest('[role="alert"]'))),
+  )
+  observer.observe(document.body, { childList: true, subtree: true })
+  onTestFinished(() => observer.disconnect())
+
+  // Act
+  await userEvent.type(field, 'Say "hi" now')
+
+  // Assert
+  await expect.element(field).toHaveValue('Say "hi" now')
+  expect(alerts).toEqual([])
+  await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeEnabled()
+})
+
+test('shows the message for a quote at the end when the field loses the focus', async () => {
+  // Arrange
+  await render(<TextFilter config={firstName} surface="dialog" onSubmit={() => {}} />)
+  const field = page.getByRole('textbox', { name: 'Value' })
+  await userEvent.type(field, 'quote"')
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
+
+  // Act
+  await userEvent.tab()
+
+  // Assert
+  await expect.element(page.getByRole('alert')).toHaveTextContent(endQuoteMessage)
+  await expect.element(field).toHaveAccessibleDescription(endQuoteMessage)
 })

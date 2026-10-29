@@ -19,7 +19,7 @@ test.describe('a text filter with a quote', () => {
     await demo.at.textValue('First Name').fill('"Paul"')
 
     await expect(demo.at.textValue('First Name')).toHaveAccessibleDescription(
-      'A filter value cannot start or end with a quote. Remove the quote, or choose Contains and type the text inside the quotes.',
+      'A filter value cannot start or end with a quote. Remove the quote at the start or the end.',
     )
     await expect(demo.at.addFilter('First Name')).toBeDisabled()
   })

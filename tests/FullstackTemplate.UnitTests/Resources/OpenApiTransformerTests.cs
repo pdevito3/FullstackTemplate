@@ -325,6 +325,23 @@ public class OpenApiTransformerTests
     }
 
     [Test]
+    [Arguments("2E-30", "1E-30")]
+    [Arguments("1.6E-28", "1.5E-28")]
+    public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_below_the_decimal_range(
+        string minimum, string maximum)
+    {
+        // Arrange
+        await using var app = await AppWithLimitsTransformerAsync((BoundsDto dto) => dto, new BoundsTransformer(minimum, maximum));
+
+        // Act
+        var act = () => app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1").GetOpenApiDocumentAsync();
+
+        // Assert
+        var exception = await act.ShouldThrowAsync<InvalidOperationException>();
+        exception.Message.ShouldContain($"{nameof(BoundsDto)}.weight has the minimum {minimum} and the maximum {maximum}");
+    }
+
+    [Test]
     public async Task limits_transformer_rejects_a_minimum_more_than_the_maximum_by_less_than_a_double_can_hold()
     {
         // Arrange

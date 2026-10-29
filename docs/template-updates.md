@@ -81,7 +81,7 @@ Do these steps before the first update. Commit each step alone, so that the merg
 
    The second command shows each change of the template with the names of the app.
 
-To stop the merge, run `git merge --abort`. The script writes the merge state before it merges, so this also works if the script stops during the merge. If `git merge --abort` says that there is no merge to abort, for example after an older version of the script stopped during the merge, run `git reset --hard`. Then run `git status`. If it lists untracked files that the merge added, read the list and delete them with `git clean -fd`. The script started from a clean tree, so this removes only the changes of the merge.
+To stop the merge, run `git merge --abort`. The script writes the merge state before it merges, so this also works if the script stops during the merge. If the script was killed during the merge, `git merge --abort` can fail with `index.lock: File exists`. Make sure that no other git command runs in the app, delete `.git/index.lock`, and run `git merge --abort` again. If `git merge --abort` says that there is no merge to abort, for example after an older version of the script stopped during the merge, run `git reset --hard`. Then run `git status`. If it lists untracked files that the merge added, read the list and delete them with `git clean -fd`. The script started from a clean tree, so this removes only the changes of the merge.
 
 ## Resolve the conflicts
 
@@ -89,7 +89,7 @@ Each side of a conflict has a label. `HEAD` is the app, and `template <commit>` 
 
 | Conflict | What to do |
 |----------|------------|
-| The app deleted an example of the template, such as a demo page, and the template changed it (`git status` shows `deleted by us`) | Delete it again with `git rm <path>`. |
+| The app deleted a file, and the template changed it (`git status` shows `deleted by us`). The app can have deleted a demo of the template, or it can have moved the code to another file | Find the app commit that deleted it with `git log --oneline -1 --diff-filter=DR HEAD -- <path>`, and read it with `git show -M --stat <commit>`. If the app moved the code, read the change of the template with `git diff refs/template-merge/base refs/template-merge/tip -- <path>`, and make the same change where the code is now. Then delete the file again with `git rm <path>`. |
 | The template deleted or renamed a file that the app changed (`git status` shows `deleted by them`), such as `ConstraintFieldsTests.cs`, which the template renamed to `ConstraintErrorsTests.cs` | Find the template commit that deleted it with `git log --oneline -1 --diff-filter=DR <base>..<new commit> -- '*/<file name>'`, and read it with `git show -M --stat <commit>`. If the template renamed the file or moved its code, move the changes of the app there, then delete the old file with `git rm <path>`. If the template removed the code and the app still needs its change, keep the file with `git add <path>` and make it build against the new code. |
 | The app made its own copy of a template fix, and the template has its fix now (`both added`, or both changed the same lines) | Take the template version with `git checkout --theirs -- <path>`. Then delete the copy of the app if it has another path, and change the callers of the app copy. |
 | A package version in `Directory.Packages.props` | Take the higher version. |

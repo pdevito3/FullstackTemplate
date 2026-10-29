@@ -1,7 +1,7 @@
 ---
 name: backend-feature
 description: Scaffolds backend features including new domain entities, new properties on existing entities, and new business operations. Use when creating a new domain entity, extending an existing entity with new properties, or adding new business features/commands.
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash(dotnet:*, ls:*, mkdir:*)
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash(dotnet:*, ls:*, mkdir:*, pnpm:*)
 ---
 
 # Backend Feature
@@ -29,9 +29,14 @@ Read the rule doc of each area in `docs/backend/` before you change it.
    ```bash
    dotnet run scripts/new-feature.cs -- SupplyItem --entrypoints http,mcp \
      --fields "Name:text, Notes:text?, Code:text:public, Quantity:int, IsActive:bool, ReceivedOn:date, CountedAt:instant"
+   dotnet run scripts/new-feature.cs -- Delivery --entrypoints http,mcp \
+     --fields "Title:text, SupplyItem:ref, DueOn:zoned-date"
    ```
 
-   Run it with no arguments to see the options. The first property must be required text: the list searches and sorts by it. A text, date, or instant value is `[Sensitive]`. Add `:public` when the value cannot hold personal data. Protobuf has no date type, so the script refuses `date` with `grpc`.
+   Run it with no arguments to see the options. The first property must be required text: the list searches and sorts by it. A text, date, zoned date, or instant value is `[Sensitive]`. Add `:public` when the value cannot hold personal data. Protobuf has no date type, so the script refuses `date` and `zoned-date` with `grpc`.
+
+   - `zoned-date` is a day at the place of the entity, such as a due date. The script adds the property `TimeZone`, an IANA ID that the add sets. To get the current day at the place, use `ZonedDate.TodayAt(TimeZone, now)`, not the date of the server.
+   - `SupplyItem:ref` is the property `SupplyItemId`: the ID of a `SupplyItem` of the same tenant. Add the parent with the script first. The add loads the parent and refuses an ID that the caller cannot see. An update does not change the reference. An entity has at most one `ref`.
 
 The script writes a tenant-owned root with add, get, list, update, and delete. It adds:
 
@@ -47,12 +52,12 @@ A second run with the same input changes nothing. When a file that the script wr
 
 The script writes generic rules. Make them the rules of the domain:
 
-1. In the entity, set each max length, minimum, and maximum. Rewrite each message so that a user understands it (`docs/messages.md`). Update the messages in the unit tests of the entity to match.
+1. In the entity, set each max length, minimum, and maximum. The script writes each message from the names of the entity and the property, for example `Please give the supply item a value for "Received on".` Rewrite a message when a user needs other words to understand it (`docs/messages.md`). Update the messages in the unit tests of the entity to match.
 2. Check each `[Sensitive]` and `[NotSensitive]` mark (`docs/backend/audit-log.md`).
 3. Make each value that a person names into a value object, such as `EmailAddress` (`docs/backend/domain-entities.md`).
 4. Add the guards and the business methods. For a rule that two callers share, or a rule that reads more than one aggregate, use the decision shape (`docs/backend/features-and-cqrs.md#one-rule-set-for-two-callers`).
 5. Make the rules in `SharedTestHelpers/Fakes/<Plural>/<Entity>Rules.cs` give realistic values.
-6. If a unique value, a foreign key to another entity, or a child entity is necessary, change the configuration and add a migration (`docs/backend/entity-configurations.md`).
+6. If a unique value, a second foreign key, or a child entity is necessary, change the configuration and add a migration (`docs/backend/entity-configurations.md`).
 7. Regenerate and commit the API contract with the `api-contract` skill.
 8. Run `dotnet build FullstackTemplate.slnx` and `dotnet test --solution FullstackTemplate.slnx`.
 

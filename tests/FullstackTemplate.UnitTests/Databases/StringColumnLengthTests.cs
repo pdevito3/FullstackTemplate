@@ -55,6 +55,7 @@ public class StringColumnLengthTests
         ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),
         ["workshops.status"] = WorkshopStatus.ListNames(),
         // example:end
+        // new-feature:fixed-option-columns
     };
 
     private static readonly HashSet<string> ServerWrittenColumns =

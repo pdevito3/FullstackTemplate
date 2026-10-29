@@ -44,6 +44,20 @@ public class NewFeatureTextTests
     }
 
     [Test]
+    public async Task a_reference_and_a_zoned_date_name_the_parent_and_the_time_zone()
+    {
+        // Act
+        var lines = await MessagesAsync("Shipment", "Title:text, Carrier:ref, DueOn:zoned-date");
+
+        // Assert
+        lines.ShouldContain("CarrierId not found: The carrier does not exist. Choose another carrier.");
+        lines.ShouldContain("CarrierId tool parameter: The ID of the carrier of the shipment. An ID that the caller cannot see gives the invalid_argument error. An update does not change it.");
+        lines.ShouldContain("TimeZone tool parameter: The time zone of the shipment, an IANA ID such as America/Chicago. An update does not change it.");
+        lines.ShouldContain("DueOn missing: Please give the shipment a value for \"Due on\".");
+        lines.ShouldContain("DueOn tool parameter: The \"Due on\" value of the shipment, a date such as 2026-01-02 in the time zone of the shipment.");
+    }
+
+    [Test]
     [Arguments("Shipment", "a shipment")]
     [Arguments("Order", "an order")]
     [Arguments("UserNote", "a user note")]

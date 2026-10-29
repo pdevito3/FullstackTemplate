@@ -78,6 +78,39 @@ jobs:
           cd ../older-Acme.Shop
           if git grep -inP '(?<!pdevito3/)fullstack|full[ ._-]stack[ ._-]?template' -- ':!scripts/init.cs'; then exit 1; fi
 
+      # The pnpm version comes from packageManager in frontend/package.json
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # docs/template-updates.md: an app that deleted the examples of the parent commit takes this commit with no
+      # conflict, and gets no example code again
+      - name: Merge this commit into an app that deleted the examples
+        run: |
+          if ! git cat-file -e HEAD~1:scripts/remove-examples.cs 2>/dev/null; then
+            echo "The parent commit has no scripts/remove-examples.cs, so there is nothing to check."
+            exit 0
+          fi
+          tip=$(git rev-parse HEAD)
+          git worktree add --detach ../no-examples HEAD~1
+          cd ../no-examples
+          dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop'
+          git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "chore: make Acme.Shop"
+          dotnet run scripts/remove-examples.cs
+          git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "chore: delete the examples"
+          dotnet run "$GITHUB_WORKSPACE/scripts/template-merge.cs" -- --ref "$tip"
+          git diff --exit-code --name-only --diff-filter=U
+          if git ls-files | grep -E '(^|/)(Examples|examples|\(examples\))/'; then exit 1; fi
+          if git grep -n -I -E 'example:(start|end)' -- ':!scripts/remove-examples.cs' ':!docs/examples.md'; then exit 1; fi
+
       # The rename uses a dotted name, because Aspire turns the dots of a project name into underscores
       - name: Run the init script
         run: dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop' --auth-provider Keycloak

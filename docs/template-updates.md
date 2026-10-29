@@ -71,6 +71,7 @@ Do these steps before the first update. Commit each step alone, so that the merg
    - It removes each temporary worktree that an earlier run of the script left, for example after a kill.
    - It makes a renamed copy of the base commit and of the new commit. It runs the `init.cs` of the new commit on both, so that a change of `init.cs` does not show as a change of the template.
    - It keeps the `UserSecretsId` of the AppHost and the default `AuthProvider` of the app in both copies.
+   - If the app deleted the examples, it deletes them from both copies too. See [An app that deleted the examples](#an-app-that-deleted-the-examples).
    - It merges the renamed copies into the app, and leaves the merge open as `git merge` does. The second parent of the merge is the real template commit, so the next update starts from it.
 
 3. Read what changed in the template before you resolve a conflict:
@@ -83,6 +84,12 @@ Do these steps before the first update. Commit each step alone, so that the merg
    The second command shows each change of the template with the names of the app.
 
 To stop the merge, run `git merge --abort`. The script writes the merge state before it merges, so this also works if the script stops during the merge. If the script was killed during the merge, `git merge --abort` can fail with `index.lock: File exists`. Make sure that no other git command runs in the app, delete `.git/index.lock`, and run `git merge --abort` again. If `git merge --abort` says that there is no merge to abort, for example after an older version of the script stopped during the merge, run `git reset --hard`. Then run `git status`. If it lists untracked files that the merge added, read the list and delete them with `git clean -fd`. The script started from a clean tree, so this removes only the changes of the merge.
+
+## An app that deleted the examples
+
+`scripts/remove-examples.cs` writes `scripts/examples-removed.txt` when it deletes the example code (see [examples.md](examples.md)). When the app has this file, the script runs the `scripts/remove-examples.cs` of each renamed copy on that copy, after `init.cs`. Then neither side of the merge has example code. Thus the merge adds no example file again, and a change of the template to an example gives no conflict. A change of the template to the other code merges as usual.
+
+Each run builds the Server and the SPA of the copy, so the script takes a few minutes longer. If the base commit has no `scripts/remove-examples.cs`, the script stops. Give a newer base with `--base`.
 
 ## Resolve the conflicts
 

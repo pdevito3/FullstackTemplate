@@ -59,3 +59,43 @@ test('a BreadcrumbLink as the last item is the current page: disabled, not an an
   await expect.element(current).not.toHaveAttribute('tabindex')
   expect(current.element().closest('a')).toBeNull()
 })
+
+const workOrder = 'T-101 work order for the north yard compressor'
+
+async function renderWorkOrderTrail(width: number) {
+  const trail = () => (
+    <header style={{ width }} className="flex h-16 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2 px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink to="/">Work orders</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbPage>{workOrder}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+    </header>
+  )
+  const router = createRouter({ routeTree: createRootRoute({ component: trail }), history: createMemoryHistory() })
+  return render(<RouterProvider router={router} />)
+}
+
+test('a current page that truncates is a button that shows its full name in a popover', async () => {
+  const screen = await renderWorkOrderTrail(320)
+  const current = screen.getByRole('button', { name: workOrder })
+  await expect.element(current).toHaveAttribute('aria-current', 'page')
+
+  await current.click()
+
+  await expect.element(screen.getByRole('dialog', { name: 'Current page' })).toHaveTextContent(workOrder)
+})
+
+test('a current page that fits is a disabled link, not a button', async () => {
+  const screen = await renderWorkOrderTrail(1280)
+
+  await expect.element(screen.getByRole('link', { name: workOrder })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('button', { name: workOrder }).query()).toBeNull()
+})

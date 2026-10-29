@@ -271,7 +271,7 @@ The permission guard reads the agent and its grant from the database in each che
 
 ### What an agent sees in MCP
 
-Each MCP tool declares what it needs with `[ToolAccess]` (see [endpoints.md](backend/endpoints.md#tool-access)). `tools/list` shows an agent only the tools that its permissions allow, and a call to another tool gets a `permission_denied` tool error. The denial names the side that lacks the permission. For example, an admin who acts through an agent with no `manage_tenant` grant gets "The agent clinic-assistant is not granted the manage_tenant permission. A tenant admin can grant it."
+Each MCP tool declares what it needs with `[ToolAccess]` (see [endpoints.md](backend/endpoints.md#tool-access)). `tools/list` shows an agent only the tools that its permissions allow, and a call to another tool gets a `permission_denied` tool error. The denial names the side that lacks the permission. For example, an admin who acts through an agent with no `manage_tenant` grant gets "This agent has no grant to manage the tenant. A tenant admin can grant it."
 
 When you add an MCP tool:
 

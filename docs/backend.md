@@ -109,7 +109,7 @@ To remove a version, remove it from `SupportedVersions`. Then delete its documen
 
 ## Error responses
 
-All error responses use RFC 7807 problem details. `Exceptions/DomainError.cs` classifies the domain exceptions, and `Resources/Entrypoints/DomainProblemDetails.cs` maps them to HTTP. gRPC and MCP map the same classes (see [endpoints.md](backend/endpoints.md)):
+All error responses use RFC 7807 problem details. The text of each message follows [messages.md](messages.md). `Exceptions/DomainError.cs` classifies the domain exceptions, and `Resources/Entrypoints/DomainProblemDetails.cs` maps them to HTTP. gRPC and MCP map the same classes (see [endpoints.md](backend/endpoints.md)):
 
 | Exception | Status |
 |-----------|--------|

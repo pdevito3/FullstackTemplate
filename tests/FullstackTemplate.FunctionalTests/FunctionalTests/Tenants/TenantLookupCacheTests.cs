@@ -166,6 +166,6 @@ public class TenantLookupCacheTests : TestBase
     {
         result.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail
-            .ShouldBe("You need a user record in a tenant to do this.");
+            .ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 }

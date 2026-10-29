@@ -83,7 +83,7 @@ public class TenantMcpToolTests : TestBase
         // Assert
         result.ShouldBeToolError("permission_denied");
         result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldBe(
-            $"The agent {agent.ClientId} is not granted the manage_tenant permission. A tenant admin can grant it.");
+            "This agent has no grant to manage the tenant. A tenant admin can grant it.");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
     }
 
@@ -348,8 +348,8 @@ public class TenantMcpToolTests : TestBase
 
         // Assert
         result.ShouldBeToolError("permission_denied");
-        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString().ShouldNotBeNull()
-            .ShouldContain("manage_tenant");
+        result.StructuredContent.ShouldNotBeNull().GetProperty("detail").GetString()
+            .ShouldBe("You cannot manage the tenant. Ask a tenant admin for access.");
         (await FindAsync<Tenant>(tenant.Id)).ShouldNotBeNull().Name.ShouldBe(tenant.Name);
     }
 

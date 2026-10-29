@@ -18,5 +18,6 @@ export const appShell = (page: Page) => ({
   notFoundHeading: page.getByRole('heading', { name: 'Page not found' }),
   homeLink: page.getByRole('link', { name: 'Go to the home page' }),
   weatherHeading: page.getByRole('heading', { name: 'Weather Forecast' }),
+  homeSubtitle: page.getByText('.NET Aspire + React with a BFF'),
   pageAnnouncement: page.getByTestId('page-announcement'),
 })

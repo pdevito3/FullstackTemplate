@@ -57,7 +57,7 @@ export function appShellPage(page: Page) {
     },
 
     async clickBlankContent() {
-      await at.aboutText.click()
+      await at.homeSubtitle.click()
     },
 
     async focusedElement() {

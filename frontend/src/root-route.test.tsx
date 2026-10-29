@@ -101,9 +101,12 @@ test('a click on the content after the focus move does not give the focus to the
   await userEvent.click(screen.getByRole('link', { name: 'Open the page with a heading' }))
   await expect.element(screen.getByRole('heading', { name: 'Heading', level: 1 })).toHaveFocus()
 
+  await userEvent.click(screen.getByRole('heading', { name: 'Heading', level: 1 }))
+  expect(document.activeElement).toBe(document.body)
   await userEvent.click(screen.getByText('The text of the page'))
 
   expect(document.activeElement).toBe(document.body)
+  expect(screen.getByRole('heading', { name: 'Heading', level: 1 }).element()).not.toHaveAttribute('tabindex')
 })
 
 test('a click on the content after the focus move to the main landmark does not keep the focus on it', async () => {

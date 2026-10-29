@@ -145,10 +145,12 @@ test.describe('the focus after a navigation', () => {
     await expect(shell.at.pageAnnouncement).toHaveAttribute('role', 'status')
   })
 
-  test('a click on the content after a navigation leaves the focus on the body', async ({ page }) => {
+  test('a click on the content after the focus moves to the heading leaves the focus on the body', async ({ page, api }) => {
+    api.mock(weatherApi.listReturns(aForecast()))
     const shell = appShellPage(page)
     await shell.openMissingPage()
-    await shell.pressAboutNavigationLink()
+    await shell.pressHomeLink()
+    await expect(shell.at.weatherHeading).toBeFocused()
 
     await shell.clickBlankContent()
 

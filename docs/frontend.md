@@ -220,7 +220,11 @@ const filterConfig = [
 />
 ```
 
-The control types are text, number, date, boolean, and multiselect. Groups can use AND or OR. For a date of a place, give the config the `timeZone` of the place, as "Starts At in Pago Pago" in `routes/filter-demo.tsx` does. See "Dates and times" in [code-style.md](frontend/code-style.md).
+The control types are text, number, date, boolean, and multiselect. Groups can use AND or OR. For a date of a place, give the config the `timeZone` of the place. See "Dates and times" in [code-style.md](frontend/code-style.md).
+
+<!-- example:start -->
+"Starts At in Pago Pago" in `routes/(examples)/filter-demo.tsx` gives the `timeZone` of a place.
+<!-- example:end -->
 
 ## Forms
 

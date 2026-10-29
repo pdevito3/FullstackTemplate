@@ -60,7 +60,10 @@ Read `docs/frontend/testing.md` before you write one. Then do these steps:
 Obey these rules:
 
 - Each functional test runs in three zones: `UTC`, `Pacific/Kiritimati` (UTC+14), and `Pacific/Pago_Pago` (UTC-11). A test of a page with no place sets its clock with `instantIn(wallClock, browserZone())` from `@tests/support/clock`.
-- A time of a place shows and reads in the zone of the place (`docs/frontend/code-style.md`, section "Dates and times"). Test it with a place in a zone far from the browser, at an instant at which the date of the place is not the browser date or the UTC date. See "Time zones" in `docs/frontend/testing.md`. The test `a date filter of a place in another zone` in `filter-demo.spec.ts` checks this rule for the date filter, and `date-filter.test.tsx` and `calendar.test.tsx` check it for the controls.
+- A time of a place shows and reads in the zone of the place (`docs/frontend/code-style.md`, section "Dates and times"). Test it with a place in a zone far from the browser, at an instant at which the date of the place is not the browser date or the UTC date. See "Time zones" in `docs/frontend/testing.md`. `date-filter.test.tsx` and `calendar.test.tsx` check this rule for the controls.
+<!-- example:start -->
+- The test `a date filter of a place in another zone` in `filter-demo.spec.ts` checks the rule for the date filter of a page.
+<!-- example:end -->
 - Import `test` and `expect` from `@tests/support/fixtures`.
 - Use a role and a name for a selector. If the element has no role or name, give it one in the app.
 - Do not use `page.waitForTimeout`, `test.only`, or retries.

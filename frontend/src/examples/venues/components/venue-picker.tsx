@@ -24,14 +24,22 @@ import { VenueKeys } from '../apis/venue.keys'
 const searchMaxLength = maxLengthOf(getVenueListQuerySearchSchema.unwrap())
 
 /**
- * The options are the pages of the search, and the picked venue when no loaded page has it. React Aria shows the
- * name of the pick only while the pick is an option, so a pick from a later page or from a link stays in the list.
+ * The options are the pages of the search, with the picked venue from its detail query. React Aria shows the name of
+ * the pick only while the pick is an option, so a pick from a later page or from a link stays in the list. The detail
+ * query owns the name of the pick, so a rename shows after it reads the venue again.
  */
 function optionsWithPick(venues: VenueDto[], pick: VenueDto | undefined): VenueDto[] {
-  if (!pick || venues.some((venue) => venue.id === pick.id)) {
+  if (!pick) {
     return venues
   }
-  return [pick, ...venues]
+  return venues.some((venue) => venue.id === pick.id)
+    ? venues.map((venue) => (venue.id === pick.id ? pick : venue))
+    : [pick, ...venues]
+}
+
+function emptyText(results: { isPending: boolean; isError: boolean }) {
+  if (results.isError) return 'The venues did not load. Close the list, then open it to try again.'
+  return results.isPending ? 'Loading venues' : 'No venue found.'
 }
 
 interface VenuePickerProps {
@@ -51,6 +59,7 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
   const results = useVenueSearch(text === pick.data?.name ? '' : text.trim())
   const venues = results.data?.pages.flatMap((page) => page.venues) ?? []
   const options = optionsWithPick(venues, pick.data)
+  const empty = emptyText(results)
 
   const handleSelectionChange = (key: Key | null) => {
     const venue = options.find((option) => option.id === key)
@@ -65,6 +74,9 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
       value={value || null}
       onChange={handleSelectionChange}
       onInputChange={sendText}
+      onOpenChange={(isOpen) => {
+        if (isOpen && results.isError) results.refetch()
+      }}
       onBlur={onBlur}
       isInvalid={!!errorMessage}
       allowsEmptyCollection
@@ -78,7 +90,7 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
         </Text>
       )}
       <ComboboxContent>
-        <ComboboxList renderEmptyState={() => <ComboboxEmpty>{results.isPending ? 'Loading venues' : 'No venue found.'}</ComboboxEmpty>}>
+        <ComboboxList renderEmptyState={() => <ComboboxEmpty>{empty}</ComboboxEmpty>}>
           <Collection items={options}>
             {(venue) => (
               <ComboboxItem id={venue.id} textValue={venue.name}>

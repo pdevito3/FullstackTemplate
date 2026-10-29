@@ -5,6 +5,7 @@ name: CI
 # The job also builds, lints, and tests the frontend against the contract, and runs the functional suite of the frontend. The test job runs the .NET tests.
 # The line-endings job fails when a tracked text file has a CR. .gitattributes stores each text file with LF.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
+# The new-feature job runs scripts/new-feature.cs for two sample entities, then lints, builds, and tests the result.
 # example:start
 # The without-examples job runs scripts/remove-examples.cs, then builds and tests the app that is left. See docs/examples.md.
 # example:end
@@ -248,6 +249,75 @@ jobs:
       # The bff-tests job runs the BFF tests, so this job skips them.
       - name: Run the tests
         run: dotnet test --solution FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
+
+  new-feature:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        examples:
+          - keep
+          # example:start
+          - remove
+          # example:end
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - uses: bufbuild/buf-action@85aebf73123b5c15fd5528aaecbf9129cddf7fa7 # v1.6.0
+        with:
+          version: 1.74.0
+          setup_only: true
+
+      # example:start
+      - name: Remove the examples
+        if: matrix.examples == 'remove'
+        run: |
+          dotnet run scripts/remove-examples.cs
+          git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Remove the examples"
+      # example:end
+
+      # The two samples have each property kind, each operation, and each entrypoint. Protobuf has no date, so the
+      # gRPC sample has none.
+      - name: Generate the sample features
+        run: |
+          dotnet run scripts/new-feature.cs -- SupplyItem --entrypoints http,mcp \
+            --fields "Name:text, Notes:text?, Code:text:public, Quantity:int, IsActive:bool, ReceivedOn:date, CountedAt:instant"
+          dotnet run scripts/new-feature.cs -- StockBox --entrypoints http,grpc,mcp \
+            --fields "Label:text:public, Memo:text?, Count:int, Enabled:bool, SeenAt:instant"
+
+      - name: Fail if a second run changes a file
+        run: |
+          git add --all
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Add the sample features"
+          dotnet run scripts/new-feature.cs -- SupplyItem --entrypoints http,mcp \
+            --fields "Name:text, Notes:text?, Code:text:public, Quantity:int, IsActive:bool, ReceivedOn:date, CountedAt:instant"
+          dotnet run scripts/new-feature.cs -- StockBox --entrypoints http,grpc,mcp \
+            --fields "Label:text:public, Memo:text?, Count:int, Enabled:bool, SeenAt:instant"
+          git add --intent-to-add --all
+          git diff --exit-code --stat
+
+      - name: Lint the gRPC contract
+        run: buf lint
+
+      - name: Build the solution
+        run: dotnet build FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
+
+      - name: Run the .NET tests
+        run: dotnet test --solution FullstackTemplate.slnx --no-build -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
 
   # A path filter, not paths: on the trigger, so that a skipped BFF job still reports a status.
   changes:

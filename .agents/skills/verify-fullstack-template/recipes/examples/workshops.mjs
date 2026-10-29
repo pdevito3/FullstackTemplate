@@ -8,6 +8,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
   const actions = (name) => page.getByRole('group', { name: `Actions for ${name}` })
 
   await step('log in and make the user an Admin of a new tenant', async () => {
+    await page.goto('/')
     await login()
     const status = await page.evaluate(async (stamp) => {
       const headers = { 'X-CSRF': '1', 'Content-Type': 'application/json' }

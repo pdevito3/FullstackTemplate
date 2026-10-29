@@ -92,13 +92,26 @@ const initOf = (variable) => {
   return def?.type === 'Variable' ? def.node.init : null
 }
 
+const callWrappers = ['MemberExpression', 'ChainExpression', 'TSNonNullExpression', 'AwaitExpression']
+
 const hookCalledBy = (init) => {
   let node = init
-  while (node && ['MemberExpression', 'ChainExpression', 'TSNonNullExpression', 'AwaitExpression'].includes(node.type))
+  while (node && callWrappers.includes(node.type))
     node = node.object ?? node.expression ?? node.argument
   return node?.type === 'CallExpression' && node.callee.type === 'Identifier' && /^use[A-Z]/.test(node.callee.name)
     ? node.callee.name
     : null
+}
+
+const fieldOfCall = (init) => {
+  let node = init
+  let field = null
+  while (node && callWrappers.includes(node.type)) {
+    if (node.type === 'MemberExpression')
+      field = node.computed ? null : node.property.name
+    node = node.object ?? node.expression ?? node.argument
+  }
+  return field
 }
 
 const isFirstValueName = (name) => /^(initial|default)([A-Z]|$)/.test(name)
@@ -136,7 +149,7 @@ const functionNameOf = (fn) => fn.id?.name ?? (fn.parent.type === 'VariableDecla
 const takesQueryData = (variable, property) => {
   const { id } = variable.defs[0].node
   if (id.type === 'Identifier')
-    return property === 'data'
+    return (fieldOfCall(initOf(variable)) ?? property) === 'data'
   const field = id.type === 'ObjectPattern' && id.properties.find((p) => p.type === 'Property'
     && (p.value.type === 'AssignmentPattern' ? p.value.left : p.value) === variable.identifiers[0])
   return Boolean(field) && !field.computed && field.key.name === 'data'
@@ -163,8 +176,7 @@ export const noCopiedStateRule = {
       const property = parent.type === 'MemberExpression' && parent.object === identifier && !parent.computed ? parent.property.name : null
       const isParameter = variable.defs[0]?.type === 'Parameter'
       const init = initOf(variable)
-      const isCopy = Boolean(init) && !hookCalledBy(init) && copiedRoots(init).length > 0
-      if ((isFirstValueName(variable.name) && !isCopy) || (property && isFirstValueName(property)))
+      if ((isParameter && isFirstValueName(variable.name)) || (property && isFirstValueName(property)))
         return null
       if (isParameter)
         return /^use[A-Z]/.test(functionNameOf(variable.scope.block) ?? '')

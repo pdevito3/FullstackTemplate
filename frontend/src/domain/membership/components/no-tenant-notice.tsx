@@ -1,5 +1,6 @@
 import { useRouterState } from '@tanstack/react-router'
 
+import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 
@@ -10,7 +11,21 @@ export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
-  if (membership.status !== 'no-tenant' || pathname === '/start-tenant') return null
+  if (pathname === '/start-tenant') return null
+
+  if (membership.status === 'error') {
+    return (
+      <section
+        aria-label="Membership check"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+      >
+        <p className="min-w-0">{membership.message}</p>
+        {membership.retry && <Button variant="outline" size="sm" onPress={membership.retry}>Try Again</Button>}
+      </section>
+    )
+  }
+
+  if (membership.status !== 'no-tenant') return null
 
   return (
     <section

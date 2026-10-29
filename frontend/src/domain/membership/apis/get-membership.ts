@@ -48,7 +48,7 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
     : new Error(`The membership check failed with status ${result.status}.`)
 }
 
-/** A refusal of the Server, such as a 403 for a deleted user whose tenant is still cached, does not change on a retry. */
+/** A refusal of the Server, such as a 403 for a deleted user whose tenant is still cached, does not change on an immediate retry. */
 const isRefusal = (error: unknown): error is ProblemDetailsError =>
   isProblemDetailsError(error) && (error.status ?? 500) < 500
 
@@ -64,11 +64,15 @@ export function useMembership(): Membership {
     retry: (failureCount, error) => !isRefusal(error) && failureCount < 1,
   })
 
-  if (claims.isPending) return { status: 'loading' }
-  if (claims.isError) return { status: 'error', message: CHECK_FAILED, retry: () => void claims.refetch() }
+  // A failed refetch keeps the data of the last answer, and that answer is still good to show.
+  if (claims.data === undefined) {
+    return claims.isError
+      ? { status: 'error', message: CHECK_FAILED, retry: () => void claims.refetch() }
+      : { status: 'loading' }
+  }
   if (!claims.data || !identifier) return { status: 'signed-out' }
-  if (user.isPending) return { status: 'loading' }
-  if (user.isError) {
+  if (user.data === undefined) {
+    if (!user.isError) return { status: 'loading' }
     return isRefusal(user.error)
       ? { status: 'error', message: user.error.displayMessage }
       : { status: 'error', message: CHECK_FAILED, retry: () => void user.refetch() }

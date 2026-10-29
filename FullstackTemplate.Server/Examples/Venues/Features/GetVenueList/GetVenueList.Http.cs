@@ -21,7 +21,7 @@ public sealed class GetVenueListEndpoint : IEndpoint
     /// Gets a paginated list of Venues. The search finds the venues whose name contains the text.
     /// </summary>
     public static async Task<Ok<PagedList<VenueDto>>> Handle(
-        string? filters,
+        [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
         string? sortOrder,
         [MaxLength(VenueParametersDto.SearchMaxLength)] string? search,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,

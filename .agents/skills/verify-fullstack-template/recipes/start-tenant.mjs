@@ -33,7 +33,7 @@ export default async ({ page, step, capture, expect, login }) => {
   await capture('start-tenant-form')
 
   await step('an empty tenant name is refused in the form', async () => {
-    await form.getByRole('button', { name: 'Start tenant' }).click()
+    await form.getByRole('button', { name: 'Start a tenant' }).click()
     await expect(form.getByRole('alert')).toHaveText('Enter a tenant name.')
   })
 
@@ -41,7 +41,7 @@ export default async ({ page, step, capture, expect, login }) => {
   const started = await step('start the tenant: POST /api/v1/users/initiate is 201 with the role Admin', async () => {
     await form.getByLabel('Tenant name', { exact: true }).fill(tenantName)
     const res = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/api/v1/users/initiate'))
-    await form.getByRole('button', { name: 'Start tenant' }).click()
+    await form.getByRole('button', { name: 'Start a tenant' }).click()
     const r = await res
     expect(r.status()).toBe(201)
     const body = await r.json()
@@ -57,10 +57,10 @@ export default async ({ page, step, capture, expect, login }) => {
   })
   await capture('started')
 
-  await step('go to the home page: the notice is gone', async () => {
+  await step('go to the home page: the page heading has the focus, and the notice is gone', async () => {
     await homeLink.click()
     await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
     await expect(notice).toHaveCount(0)
   })
   await capture('home-after-start')

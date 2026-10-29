@@ -203,6 +203,9 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+  [data-page-focus]:focus {
+    @apply outline-none;
+  }
 }
 
 /* The React Aria Sheet plays this animation while the drawer is swiped, opened, or closed. */

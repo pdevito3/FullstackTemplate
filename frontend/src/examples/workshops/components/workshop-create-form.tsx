@@ -11,10 +11,10 @@ import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
 import { useServerErrors } from '@/examples/components/use-server-errors'
 import { useVenue } from '@/examples/venues/apis/get-venue'
 import { VenuePicker } from '@/examples/venues/components/venue-picker'
-import { parseTimeZone } from '@/lib/zoned-time'
+import { parseTimeZone, springGapMessage } from '@/lib/zoned-time'
 
 import { WorkshopFields } from './workshop-fields'
-import { WORKSHOP_FIELD_NAMES, limitsOf, startInGapMessage, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
+import { WORKSHOP_FIELD_NAMES, limitsOf, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
 
 const contract = workshopForCreationDtoSchema.shape
 const schema = workshopFieldsSchema(contract).extend({ venueId: z.string().min(1, 'Pick a venue.') })
@@ -40,7 +40,7 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
     }
     const body = toWorkshopBody(values, zone)
     if (!body) {
-      form.setError('startsAt', { message: startInGapMessage(zone) }, { shouldFocus: true })
+      form.setError('startsAt', { message: springGapMessage(zone) }, { shouldFocus: true })
       return
     }
     try {

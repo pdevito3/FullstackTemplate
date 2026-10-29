@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import {
   browserTimeZone,
   instantAt,
+  springGapMessage,
   startOfDayAt,
   timeZoneLabel,
   wallClockAt,
@@ -141,7 +142,7 @@ export function DateFilter({
 
   const isValid = Boolean(startDateValue) && !isTimeInGap
   // A user can be in another zone than the place, so the label names the zone of the place.
-  const timeLabel = placeZone ? `Time in ${timeZoneLabel(placeZone)}` : 'Time'
+  const timeLabel = placeZone ? timeZoneLabel(placeZone) : 'Time'
   // In a wide sheet, such as a phone on its side, a month grid of the full width has wide, flat day cells. The other
   // fields and the footer use the full width, as in the other controls.
   const calendarClassName = isMobile ? 'mx-auto w-full max-w-md' : undefined
@@ -243,7 +244,7 @@ export function DateFilter({
             </div>
             {isTimeInGap && (
               <p role="alert" className="text-destructive text-sm">
-                {`This time does not exist${placeZone ? ` in ${timeZoneLabel(placeZone)}` : ''} on that day, because the clocks go forward. Choose another time.`}
+                {springGapMessage(placeZone)}
               </p>
             )}
           </div>

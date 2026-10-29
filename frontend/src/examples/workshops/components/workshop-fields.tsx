@@ -37,18 +37,24 @@ export function WorkshopFields({ limits, zone }: WorkshopFieldsProps) {
         control={control}
         name="startsAt"
         render={({ field, fieldState }) => (
-          <JollyDatePicker
-            label="Starts at"
-            description={zone ? `The time in ${timeZoneLabel(zone)}.` : 'The time at the venue that you pick.'}
-            granularity="minute"
-            timeZone={zone}
-            placeholderValue={zone && toCalendarDateTime(todayAt(zone, new Date()))}
-            value={field.value ?? null}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            isInvalid={fieldState.invalid}
-            errorMessage={fieldState.error?.message}
-          />
+          // The picker takes no focus, so a refused start puts the focus on its first segment.
+          <div
+            className="contents"
+            ref={(box) => field.ref(box && { focus: () => box.querySelector<HTMLElement>('[role="spinbutton"]')?.focus() })}
+          >
+            <JollyDatePicker
+              label="Starts at"
+              description={zone ? `The time in ${timeZoneLabel(zone)}.` : 'The time at the venue that you pick.'}
+              granularity="minute"
+              timeZone={zone}
+              placeholderValue={zone && toCalendarDateTime(todayAt(zone, new Date()))}
+              value={field.value ?? null}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              isInvalid={fieldState.invalid}
+              errorMessage={fieldState.error?.message}
+            />
+          </div>
         )}
       />
 

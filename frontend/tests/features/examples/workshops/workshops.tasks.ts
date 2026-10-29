@@ -19,6 +19,15 @@ export function workshopsPage(page: Page) {
       }, right)
     },
 
+    /** How far the content of the box that holds the table goes past its right edge, so that a user must scroll it. */
+    async tableScroll() {
+      return at.grid.evaluate((grid) => grid.parentElement!.scrollWidth - grid.parentElement!.clientWidth)
+    },
+
+    async lineCount(text: Locator) {
+      return text.evaluate((node) => node.getClientRects().length)
+    },
+
     async pageOverflow() {
       return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     },
@@ -188,6 +197,22 @@ export function workshopsPage(page: Page) {
     async sendWithEnter(title: string, action: string, path: string) {
       const settled = answered('POST', path)
       await at.actionButton(title, action).press('Enter')
+      await settled
+    },
+
+    async askToCancel(title: string) {
+      await at.actionButton(title, 'Cancel workshop').click()
+      await expect(at.cancelDialog).toBeVisible()
+    },
+
+    async keepWorkshop() {
+      await at.keepWorkshop.click()
+      await expect(at.cancelDialog).toBeHidden()
+    },
+
+    async confirmCancel(path: string) {
+      const settled = answered('POST', path)
+      await at.confirmCancel.click()
       await settled
     },
 

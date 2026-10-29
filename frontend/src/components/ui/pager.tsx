@@ -1,4 +1,4 @@
-import type * as React from "react"
+import { useEffect, useRef, type ReactNode, type Ref } from "react"
 
 import type { PaginationMetadata } from "@/api/generated/models/types/pagination-metadata"
 import { Button } from "@/components/ui/button"
@@ -6,16 +6,14 @@ import { Button } from "@/components/ui/button"
 interface PagerButtonProps {
   isAvailable: boolean
   onPress: () => void
-  children: React.ReactNode
+  ref: Ref<HTMLButtonElement>
+  children: ReactNode
 }
 
-/**
- * A pager button that keeps the focus at the first and the last page. A disabled button loses the focus to the
- * body, so a keyboard user who pressed Next to reach the last page would have to Tab from the start of the page.
- */
-function PagerButton({ isAvailable, onPress, children }: PagerButtonProps) {
+function PagerButton({ isAvailable, onPress, ref, children }: PagerButtonProps) {
   return (
     <Button
+      ref={ref}
       variant="outline"
       size="sm"
       aria-disabled={!isAvailable || undefined}
@@ -26,6 +24,40 @@ function PagerButton({ isAvailable, onPress, children }: PagerButtonProps) {
     >
       {children}
     </Button>
+  )
+}
+
+interface PagerButtonsProps {
+  hasPrevious: boolean
+  hasNext: boolean
+  onPrevious: () => void
+  onNext: () => void
+}
+
+/**
+ * Previous and Next. A press that reaches the first or the last page makes the pressed button do nothing, so the
+ * focus moves to the other button. The buttons use `aria-disabled`, not `disabled`, because a disabled button drops
+ * the focus to the body before the move.
+ */
+function PagerButtons({ hasPrevious, hasNext, onPrevious, onNext }: PagerButtonsProps) {
+  const previous = useRef<HTMLButtonElement>(null)
+  const next = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const focused = document.activeElement
+    if (!hasNext && focused === next.current) previous.current?.focus()
+    else if (!hasPrevious && focused === previous.current) next.current?.focus()
+  }, [hasPrevious, hasNext])
+
+  return (
+    <>
+      <PagerButton ref={previous} isAvailable={hasPrevious} onPress={onPrevious}>
+        Previous
+      </PagerButton>
+      <PagerButton ref={next} isAvailable={hasNext} onPress={onNext}>
+        Next
+      </PagerButton>
+    </>
   )
 }
 
@@ -43,14 +75,14 @@ function Pager({ label, pagination, onPageChange }: PagerProps) {
       <span className="mr-auto text-sm text-muted-foreground">
         Page {pageNumber} of {Math.max(totalPages, 1)}
       </span>
-      <PagerButton isAvailable={hasPrevious} onPress={() => onPageChange(pageNumber - 1)}>
-        Previous
-      </PagerButton>
-      <PagerButton isAvailable={hasNext} onPress={() => onPageChange(pageNumber + 1)}>
-        Next
-      </PagerButton>
+      <PagerButtons
+        hasPrevious={hasPrevious}
+        hasNext={hasNext}
+        onPrevious={() => onPageChange(pageNumber - 1)}
+        onNext={() => onPageChange(pageNumber + 1)}
+      />
     </nav>
   )
 }
 
-export { Pager, PagerButton }
+export { Pager, PagerButtons }

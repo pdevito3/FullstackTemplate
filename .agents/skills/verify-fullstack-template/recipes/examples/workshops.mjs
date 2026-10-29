@@ -25,24 +25,17 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       [startsAt, zone],
     )
 
-  await step('log in and make the user an Admin of a new tenant', async () => {
+  await step('log in and start a tenant on the Start a tenant page, as its admin', async () => {
     await page.goto('/')
     await login()
-    const status = await page.evaluate(async (stamp) => {
-      const headers = { 'X-CSRF': '1', 'Content-Type': 'application/json' }
-      const me = await (await fetch('/api/v1/users/me', { headers })).json()
-      const body = {
-        tenantName: `Verify ${stamp}`,
-        firstName: 'Verify',
-        lastName: 'Admin',
-        identifier: me.identifier,
-        email: `verify-${stamp}@example.com`,
-        username: `verify-${stamp}`,
-        role: 'Admin',
-      }
-      return (await fetch('/api/v1/users/initiate', { method: 'POST', headers, body: JSON.stringify(body) })).status
-    }, stamp)
-    expect([201, 409]).toContain(status)
+    await page.getByRole('region', { name: 'No tenant' }).getByRole('link', { name: 'Start a tenant' }).click()
+    const form = page.getByRole('form', { name: 'Start a tenant' })
+    await form.getByLabel('Tenant name', { exact: true }).fill(`Verify ${stamp}`)
+    const started = answered('POST', /^\/api\/v1\/users\/initiate$/)
+    await form.getByRole('button', { name: 'Start tenant' }).click()
+    const res = await started
+    expect(res.status()).toBe(201)
+    expect((await res.json()).user.role).toBe('Admin')
   })
 
   await step('Examples, Workshops: the list opens', async () => {
@@ -167,6 +160,22 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
     await expect(actions(otherTab.title).getByRole('link', { name: 'Edit' })).toHaveCount(0)
   })
   await capture('scheduled')
+
+  await step('Cancel workshop asks first: Keep workshop sends nothing, and the focus goes back to the button', async () => {
+    const cancelButton = actions(otherTab.title).getByRole('button', { name: 'Cancel workshop' })
+    const dialog = page.getByRole('dialog', { name: 'Cancel this workshop?' })
+    let sent = 0
+    const count = (r) => r.method() === 'POST' && /\/cancel$/.test(new URL(r.url()).pathname) && sent++
+    page.on('request', count)
+    await cancelButton.click()
+    await expect(dialog).toBeVisible()
+    await capture('cancel-dialog')
+    await dialog.getByRole('button', { name: 'Keep workshop' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(cancelButton).toBeFocused()
+    page.off('request', count)
+    expect(sent).toBe(0)
+  })
 
   await step('search: the URL and the request have the search, and the row shows', async () => {
     await page.goto('/workshops')

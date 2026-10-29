@@ -1,7 +1,18 @@
+import type { ReactElement } from 'react'
+
 import type { WorkshopDto, WorkshopDtoAllowedActionsEnumKey } from '@/api/generated/models/types/workshop-dto'
 import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
+import {
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from '@/components/ui/responsive-dialog'
 
 export type WorkshopCommand = Exclude<WorkshopDtoAllowedActionsEnumKey, 'Update'>
 
@@ -31,17 +42,49 @@ export function WorkshopActions({ workshop, pendingAction, onAction }: WorkshopA
           Edit
         </Link>
       )}
-      {workshop.allowedActions.filter(isCommand).map((action) => (
-        <Button
-          key={action}
-          variant={action === 'Cancel' ? 'destructive' : 'outline'}
-          isPending={pendingAction === action}
-          isDisabled={pendingAction !== undefined && pendingAction !== action}
-          onPress={() => onAction(action)}
-        >
-          {LABELS[action]}
-        </Button>
-      ))}
+      {workshop.allowedActions.filter(isCommand).map((action) => {
+        const button = (
+          <Button
+            key={action}
+            variant={action === 'Cancel' ? 'destructive' : 'outline'}
+            isPending={pendingAction === action}
+            isDisabled={pendingAction !== undefined && pendingAction !== action}
+            onPress={action === 'Cancel' ? undefined : () => onAction(action)}
+          >
+            {LABELS[action]}
+          </Button>
+        )
+        return action === 'Cancel' ? (
+          <ConfirmCancel key={action} onConfirm={() => onAction(action)}>
+            {button}
+          </ConfirmCancel>
+        ) : (
+          button
+        )
+      })}
     </div>
+  )
+}
+
+/** A cancel cannot be undone, so the Cancel workshop button opens a dialog that asks first. */
+function ConfirmCancel({ children, onConfirm }: { children: ReactElement; onConfirm: () => void }) {
+  return (
+    <ResponsiveDialogTrigger>
+      {children}
+      <ResponsiveDialog>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Cancel this workshop?</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            After you cancel it, you cannot schedule, change, or complete it.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <ResponsiveDialogFooter>
+          <ResponsiveDialogClose>Keep workshop</ResponsiveDialogClose>
+          <ResponsiveDialogClose variant="destructive" onPress={onConfirm}>
+            Cancel workshop
+          </ResponsiveDialogClose>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialog>
+    </ResponsiveDialogTrigger>
   )
 }

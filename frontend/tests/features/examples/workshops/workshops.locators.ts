@@ -6,12 +6,16 @@ export const workshops = (page: Page) => {
   const venueForm = page.getByRole('form', { name: 'New venue' })
   const newStart = newForm.getByRole('group', { name: 'Starts at' })
   const editStart = editForm.getByRole('group', { name: 'Starts at' })
+  const cancelDialog = page.getByRole('dialog', { name: 'Cancel this workshop?' })
   const staleAlert = editForm.getByRole('alert').filter({ hasText: 'Someone else saved this workshop' })
 
   return {
     listHeading: page.getByRole('heading', { name: 'Workshops', exact: true }),
     search: page.getByRole('searchbox', { name: 'Search workshops' }),
+    grid: page.getByRole('grid', { name: 'Workshops' }),
     row: (title: string) => page.getByRole('grid', { name: 'Workshops' }).getByRole('row', { name: new RegExp(`^${title}`) }),
+    rowStatus: (title: string, status: string) =>
+      page.getByRole('grid', { name: 'Workshops' }).getByRole('row', { name: new RegExp(`^${title}`) }).getByText(status, { exact: true }),
     titleLink: (title: string) => page.getByRole('link', { name: title, exact: true }),
     pager: page.getByRole('navigation', { name: 'Pages of workshops' }),
     nextPage: page.getByRole('navigation', { name: 'Pages of workshops' }).getByRole('button', { name: 'Next' }),
@@ -27,6 +31,9 @@ export const workshops = (page: Page) => {
     actions: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }),
     actionButton: (title: string, name: string) =>
       page.getByRole('group', { name: `Actions for ${title}` }).getByRole('button', { name, exact: true }),
+    cancelDialog,
+    confirmCancel: cancelDialog.getByRole('button', { name: 'Cancel workshop', exact: true }),
+    keepWorkshop: cancelDialog.getByRole('button', { name: 'Keep workshop', exact: true }),
     editLink: (title: string) => page.getByRole('group', { name: `Actions for ${title}` }).getByRole('link', { name: 'Edit' }),
     newHeading: page.getByRole('heading', { name: 'New workshop', exact: true }),
     newForm,

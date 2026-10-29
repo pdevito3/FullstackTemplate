@@ -61,7 +61,7 @@ function WorkshopsPage() {
 
       <WorkshopSearch search={search} maxLength={searchMaxLength} onSearch={handleSearch} />
 
-      <WorkshopRows list={list} search={search} onPageChange={handlePageChange} />
+      <WorkshopRows list={list} search={search} page={page} onPageChange={handlePageChange} />
     </div>
   )
 }
@@ -69,10 +69,11 @@ function WorkshopsPage() {
 interface WorkshopRowsProps {
   list: ReturnType<typeof useWorkshopList>
   search: string
+  page: number
   onPageChange: (pageNumber: number) => void
 }
 
-function WorkshopRows({ list, search, onPageChange }: WorkshopRowsProps) {
+function WorkshopRows({ list, search, page, onPageChange }: WorkshopRowsProps) {
   if (list.isPending) {
     return <p role="status" aria-label="Loading workshops" className="text-muted-foreground">Loading workshops</p>
   }
@@ -82,6 +83,17 @@ function WorkshopRows({ list, search, onPageChange }: WorkshopRowsProps) {
   }
 
   const { workshops, pagination } = list.data
+
+  if (workshops.length === 0 && page > 1) {
+    return (
+      <p className="text-muted-foreground">
+        There are no workshops on page {page}.{' '}
+        <Link to="/workshops" search={{ search: search || undefined }} className="underline underline-offset-4 hover:text-primary">
+          Go to page 1
+        </Link>
+      </p>
+    )
+  }
 
   if (workshops.length === 0) {
     return (

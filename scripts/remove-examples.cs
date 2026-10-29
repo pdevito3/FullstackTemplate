@@ -30,6 +30,7 @@ try
     app.Remove(removal);
     app.WriteModelSnapshot();
     app.WriteGeneratedFiles();
+    app.RecordRemoval();
 
     Console.WriteLine(removal.IsDue
         ? $"Deleted {removal.Folders.Count} example folders and the example sections of {removal.Sections.Count} files."
@@ -69,6 +70,11 @@ internal sealed partial class AppRepo(string root)
         "workshops tables and the manage_workshops permission. If the database of your app ran that migration, add a " +
         "migration that drops the two tables and calls migrationBuilder.DeletePermission(\"manage_workshops\"). A row " +
         "of a permission that Permission does not know stops each load of its user.";
+
+    // scripts/template-merge.cs of the template reads this file, and then deletes the examples from each template update
+    private const string RecordFile = "scripts/examples-removed.txt";
+
+    private const string RecordText = "scripts/remove-examples.cs deleted the example code of the template from this app. scripts/template-merge.cs\nof the template reads this file, and deletes the example code from each template update. See docs/template-updates.md.\n";
 
     private static readonly HashSet<string> ExampleFolderNames = new(StringComparer.Ordinal) { "Examples", "examples", "(examples)" };
 
@@ -164,6 +170,8 @@ internal sealed partial class AppRepo(string root)
         Run(Frontend, "pnpm", "generate:api");
         Run(Frontend, "pnpm", "build");
     }
+
+    public void RecordRemoval() => File.WriteAllText(Path.Combine(root, RecordFile), RecordText);
 
     private static string? ExampleFolderOf(string file)
     {

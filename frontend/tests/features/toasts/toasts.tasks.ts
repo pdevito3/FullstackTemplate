@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { takesUpSpace } from '@tests/support/screen'
+import { sharedComponentsPage } from '@tests/support/shared-components'
 import { toastDemo, type ToastButton } from './toasts.locators'
 
 // The toasts pause and restart their timers in ResizeObserver callbacks. The browser runs all the callbacks of one
@@ -32,7 +33,7 @@ export function toastDemoPage(page: Page) {
     },
 
     async open() {
-      await page.goto('/components')
+      await page.goto(sharedComponentsPage)
       await expect(at.heading).toBeVisible()
     },
 
@@ -45,9 +46,12 @@ export function toastDemoPage(page: Page) {
       await expect(at.toasts).toHaveCount(buttons.length)
     },
 
+    // The sheet plays its slide-in on the real time of the page, not on the clock of the test. A sheet that closes
+    // before the slide-in ends waits for the clock, so the task waits for the end of the slide-in.
     async openBottomSheet() {
       await at.openDialog.press('Enter')
       await expect(at.dialog).toBeVisible()
+      await at.sheet.evaluate((sheet) => Promise.all(sheet.getAnimations().map((animation) => animation.finished)))
       await nextResizeObserverCallbacks(page)
     },
 

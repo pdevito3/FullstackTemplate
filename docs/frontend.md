@@ -135,7 +135,7 @@ Fix the cause on the Server: the DTO, an attribute such as `[NamesOf<T>]`, or a 
 | A number field also takes a string | `RemoveStringFromNumbersTransformer` |
 | A `uint` field has no range | `UnsignedIntegerRangeTransformer` |
 | A field of names is a `string`, not a union of the names | `[NamesOf<T>]` on the DTO property, and `FixedNamesTransformer` |
-| A request field has no max length or no maximum | `[SchemaMaxLength]` or `[SchemaMaximum]` on the request DTO property, and `SchemaLimitsTransformer` |
+| A request field has no max length, no minimum, or no maximum | `[SchemaMaxLength]`, `[SchemaMinimum]`, or `[SchemaMaximum]` on the request DTO property, and `SchemaLimitsTransformer` |
 | A query parameter has no max length | `[MaxLength]` on the parameter of the endpoint handler |
 | A request body or a response has a type for each media type | `JsonContentTypeTransformer` |
 | A list client has no type for the `X-Pagination` header | `PaginationHeaderTransformer` |
@@ -245,7 +245,7 @@ const form = useForm({
 })
 ```
 
-Take each limit of a form field from the generated Zod schema of its DTO, not from a copy of the number. `maxLengthOf` and `maximumOf` in `lib/api-contract.ts` read the limit. For a text field, use `stringWithMaxLengthOf`, not `z.string().max()`. The Server counts code points, but `.max()` counts UTF-16 units and refuses text that the Server takes. These functions throw when the contract has no limit. A `uint` field always has a maximum in the contract, so `maximumOf` does not catch a missing `[SchemaMaximum]` on a `uint`. To fix that, add `[SchemaMaxLength]` or `[SchemaMaximum]` to the DTO on the Server, then regenerate the contract (see [API contract](#api-contract)).
+Take each limit of a form field from the generated Zod schema of its DTO, not from a copy of the number. `maxLengthOf`, `minimumOf`, and `maximumOf` in `lib/api-contract.ts` read the limit. For a text field, use `stringWithMaxLengthOf`, not `z.string().max()`. The Server counts code points, but `.max()` counts UTF-16 units and refuses text that the Server takes. These functions throw when the contract has no limit. To fix that, add `[SchemaMaxLength]`, `[SchemaMinimum]`, or `[SchemaMaximum]` to the DTO on the Server, then regenerate the contract (see [API contract](#api-contract)). A `uint` field always has a minimum and a maximum in the contract, so `minimumOf` and `maximumOf` do not catch a missing `[SchemaMinimum]` or `[SchemaMaximum]` on a `uint`.
 
 ```typescript
 const firstName = userForCreationDtoSchema.shape.firstName

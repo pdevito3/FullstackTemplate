@@ -57,6 +57,8 @@ frontend/
       fixtures.ts                # `test` with the `actor` and `api` fixtures
 ```
 
+A test of a shared component, such as the date picker, the overlays, or the toasts, opens `src/test/fixtures/shared-components.html`. This page shows the components in the layout of the app. Do not test a shared component on an example page, because `scripts/remove-examples.cs` deletes the example pages and their tests. Only the Vite dev server serves the page, so it is not in the production build.
+
 ### Mocks
 
 A mock is a `MockRoute`: a plain object with a method, a full path, a status, and a body. Each area has one file in `tests/support/api/`. Each method of the file is one answer of the API, and its name states the scenario: `usersApi.currentIs(...)`, `usersApi.currentFails(...)`.
@@ -118,7 +120,7 @@ Use the first of these that works:
 
 Never use a CSS class, a tag chain, or an `nth` index. If an element has no role or name, give it one in the app. For example, a grid of cards is a `list`, and each card is a `listitem` with its title as its name.
 
-Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads each action of an object named `page` or `frame`, each `$`, `$$`, `$eval`, and `$$eval`, a string in the first argument of an action that takes no text, such as `click`, and two strings in a row, such as `fill('#a', 'x')`. It does not read the type of the object, so it misses a selector in a variable or before an options object on another page, such as `popup.click(sel)`. No check finds a CSS class or a tag chain in `locator()`.
+Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of `tests/`, also on a helper of a builder with that name. It also fails when an action gets a selector string, such as `page.click('text=Save')`, `page.fill('#name', name)`, or `page.$('.card')`. The rule reads the type of the object, so it fails on each action of a Playwright `Page` or `Frame` with any name, such as `popup.fill('#name', name)` or `page.mainFrame().fill(selector, name)`. A union type, such as `Page | Frame`, counts. A value of type `any` does not. It also fails on each `$`, `$$`, `$eval`, and `$$eval`. No check finds a CSS class or a tag chain in `locator()`.
 
 ### Facts about this app
 

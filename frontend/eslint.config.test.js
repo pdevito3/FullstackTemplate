@@ -78,6 +78,20 @@ describe('server-state/no-copied-state', () => {
 
     expect(serverStateMessages(code)).toEqual([])
   })
+
+  it('takes state that the render sets again from its source, and reports state that an effect sets again', () => {
+    const synced = `function Search({ search }) {
+      const [shown, setShown] = useState(search)
+      if (search !== shown) setShown(search)
+    }`
+    const inEffect = `function Search({ search }) {
+      const [shown, setShown] = useState(search)
+      useEffect(() => { setShown(search) }, [search])
+    }`
+
+    expect(serverStateMessages(synced)).toEqual([])
+    expect(serverStateMessages(inEffect)).toEqual(['no-copied-state: This state copies the prop `search`'])
+  })
 })
 
 describe('server-state/query-key-has-inputs', () => {

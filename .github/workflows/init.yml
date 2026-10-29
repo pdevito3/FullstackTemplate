@@ -18,9 +18,11 @@ jobs:
   init:
     runs-on: ubuntu-latest
     steps:
+      # The merge step needs the parent commit
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
@@ -54,6 +56,28 @@ jobs:
           grep -q '<title>Acme.FullstackTemplate</title>' frontend/index.html
           dotnet build Acme.FullstackTemplate.AppHost/Acme.FullstackTemplate.AppHost.csproj
 
+      # docs/template-updates.md: an app that init.cs made from the parent commit takes this commit with no conflict,
+      # keeps its auth provider, and has this commit as its next merge base. The second app has a name that holds the
+      # template name.
+      - name: Merge this commit into an app made from the parent commit
+        run: |
+          tip=$(git rev-parse HEAD)
+          for name in Acme.Shop Acme.FullstackTemplate; do
+            git worktree add --detach "../older-$name" HEAD~1
+            cd "../older-$name"
+            dotnet run scripts/init.cs --name "$name" --display-name 'Acme Shop' --auth-provider Keycloak
+            git add --all
+            git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "chore: make $name"
+            dotnet run "$GITHUB_WORKSPACE/scripts/template-merge.cs" -- --ref "$tip"
+            git diff --exit-code --name-only --diff-filter=U
+            git -c user.name=ci -c user.email=ci@localhost commit --quiet --no-edit
+            test "$(git merge-base HEAD "$tip")" = "$tip"
+            grep -q '"AuthProvider": "Keycloak"' "$name.AppHost/appsettings.json"
+            cd "$GITHUB_WORKSPACE"
+          done
+          cd ../older-Acme.Shop
+          if git grep -inP '(?<!pdevito3/)fullstack|full[ ._-]stack[ ._-]?template' -- ':!scripts/init.cs'; then exit 1; fi
+
       # The rename uses a dotted name, because Aspire turns the dots of a project name into underscores
       - name: Run the init script
         run: dotnet run scripts/init.cs --name Acme.Shop --display-name 'Acme Shop' --auth-provider Keycloak
@@ -70,7 +94,7 @@ jobs:
       # settings, so the last grep skips them.
       - name: Fail if a file that only this repo uses is left
         run: |
-          for path in .github/workflows/init.yml .github/workflows/conformance.yml frontend/conformance \
+          for path in .github/workflows/init.yml .github/workflows/conformance.yml frontend/conformance scripts/template-merge.cs \
             Acme.Shop.AppHost/AuthProviders/Conformance \
             Acme.Shop.Server/Resources/Entrypoints/UserinfoAuthenticationHandler.cs \
             tests/Acme.Shop.UnitTests/Resources/UserinfoAuthenticationTests.cs; do

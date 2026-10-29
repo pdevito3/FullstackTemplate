@@ -114,10 +114,12 @@ internal sealed partial class AppRepo(string root)
 
     // The files and folders that only this repo uses, with the paths before the rename. The CI job of this script can
     // run only before the rename. The OpenID conformance suite tests the BFF of this repo, and it needs a provider and
-    // a userinfo check in the server that an app has no use for.
+    // a userinfo check in the server that an app has no use for. An app reads the merge script from the template remote
+    // (see docs/template-updates.md), so that it always runs the newest one.
     private static readonly string[] RepoOnlyPaths =
     [
         ".github/workflows/init.yml",
+        "scripts/template-merge.cs",
         ".github/workflows/conformance.yml",
         "FullstackTemplate.AppHost/AuthProviders/Conformance",
         "FullstackTemplate.Server/Resources/Entrypoints/UserinfoAuthenticationHandler.cs",

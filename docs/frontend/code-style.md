@@ -35,7 +35,7 @@ function isUserDto(value: unknown): value is UserDto {
 5. Use an early return for a loading, empty, or error state. Do not nest ternaries.
 
 <!-- example:start -->
-The workshop list returns early for its loading, error, and empty states: [index.tsx:76](<../../frontend/src/routes/(examples)/workshops/index.tsx#L76>).
+The workshop list returns early for its loading, error, and empty states: [index.tsx:77](<../../frontend/src/routes/(examples)/workshops/index.tsx#L77>).
 <!-- example:end -->
 6. Load a heavy component or library with `lazy` or a dynamic `import()`.
 
@@ -85,7 +85,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 4. A table cell wraps its text. Give `whitespace-nowrap` to a cell that holds a code, a date, an amount, an email address, or a badge, so that only prose wraps.
 
 <!-- example:start -->
-The workshop list wraps only the title: [index.tsx:112](<../../frontend/src/routes/(examples)/workshops/index.tsx#L112>).
+The workshop list wraps only the title: [index.tsx:119](<../../frontend/src/routes/(examples)/workshops/index.tsx#L119>). The start, the capacity, and the status have `whitespace-nowrap`: [index.tsx:124](<../../frontend/src/routes/(examples)/workshops/index.tsx#L124>).
 <!-- example:end -->
 
 ## Dates and times

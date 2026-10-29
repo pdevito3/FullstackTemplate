@@ -58,7 +58,7 @@ Give the `signal` to the client, so that TanStack Query can cancel the request.
 When more than one place uses the same query, put the key, the function, and the options in one `queryOptions` object. Then `useQuery`, `useSuspenseQuery`, and `queryClient.prefetchQuery` can share it.
 
 <!-- example:start -->
-The workshop example has one `queryOptions` for the detail: [get-workshop.ts:8](<../../frontend/src/examples/workshops/apis/get-workshop.ts#L8>). The list keeps the last page on the screen while the next one loads: [get-workshop-list.ts:26](<../../frontend/src/examples/workshops/apis/get-workshop-list.ts#L26>). The venue picker loads its search one page at a time with `useInfiniteQuery`: [get-venue-list.ts:12](<../../frontend/src/examples/venues/apis/get-venue-list.ts#L12>).
+The workshop example has one `queryOptions` for the detail: [get-workshop.ts:8](<../../frontend/src/examples/workshops/apis/get-workshop.ts#L8>). The list keeps the last page on the screen while the next one loads: [get-workshop-list.ts:25](<../../frontend/src/examples/workshops/apis/get-workshop-list.ts#L25>). The venue picker loads its search one page at a time with `useInfiniteQuery`: [get-venue-list.ts:11](<../../frontend/src/examples/venues/apis/get-venue-list.ts#L11>).
 <!-- example:end -->
 
 ## Mutation
@@ -124,7 +124,7 @@ Use `defaultValues` in an edit form, not `values`. With `values`, a refetch can 
 When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`, and the toast shows the `detail`. A create can also get this type, when a unique index of the Server tells that another user changed the record. For a create, keep the input of the user and refetch the list or the parent record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new data. Do not send the PUT again with the new version, because that overwrites the other change.
 
 <!-- example:start -->
-In the workshop example, the edit form keeps the loaded version in `defaultValues`: [workshop-edit-form.tsx:43](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L43>). `isStaleVersionError` reads the type: [problem-details.ts:89](<../../frontend/src/lib/problem-details.ts#L89>). `Load the latest` refetches the detail and resets the form, on the same page: [workshop-edit-form.tsx:56](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L56>) and [edit.tsx:40](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx#L40>). The form shows the problem itself, so this save sends no toast.
+In the workshop example, the edit form keeps the loaded version in `defaultValues`: [workshop-edit-form.tsx:42](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L42>). `isStaleVersionError` reads the type: [problem-details.ts:89](<../../frontend/src/lib/problem-details.ts#L89>). `Load the latest` refetches the detail and resets the form, on the same page: [workshop-edit-form.tsx:61](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx#L61>) and [edit.tsx:40](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx#L40>). The form shows the problem itself, so this save sends no toast.
 <!-- example:end -->
 
 ## Do not

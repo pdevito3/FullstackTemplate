@@ -86,7 +86,7 @@ Do not use an effect for these jobs:
 | Update state after another state update | Do both updates in one event handler |
 
 <!-- example:start -->
-The search box of the workshop list changes its text during render when the URL changes from outside, not with a `key`. A `key` would remount the box on each URL change, and the remount would drop the text that the user typed after the last search: [workshop-search.tsx:30](<../../frontend/src/examples/workshops/components/workshop-search.tsx#L30>). The debounce timer is an effect with a cleanup: [use-debounced-callback.ts:7](<../../frontend/src/examples/use-debounced-callback.ts#L7>).
+The search box of the workshop list changes its text during render when the URL changes from outside, not with a `key`. A `key` would remount the box on each URL change, and the remount would drop the text that the user typed after the last search: [workshop-search.tsx:29](<../../frontend/src/examples/workshops/components/workshop-search.tsx#L29>). The debounce timer is an effect with a cleanup: [use-debounced-callback.ts:7](<../../frontend/src/examples/use-debounced-callback.ts#L7>).
 <!-- example:end -->
 
 ## Memoization

@@ -28,7 +28,7 @@ A component that takes a save function as a prop does not need answers. Give it 
 A click on an option of a combobox can scroll the page, and a scroll of the page closes the list. Pick an option with `userEvent.keyboard('{ArrowDown}{Enter}')`.
 <!-- example:start -->
 
-The workshop example has these component tests: the limits of the contract and the stale-version reload of the edit form ([workshop-edit-form.test.tsx:41](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx#L41>), [workshop-edit-form.test.tsx:65](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx#L65>)), the venue picker with a pick that is not on the first page ([venue-picker.test.tsx:56](<../../frontend/src/examples/venues/components/venue-picker.test.tsx#L56>)), and the search and the page of the list in the URL ([workshop-list.test.tsx:62](<../../frontend/src/examples/workshops/workshop-list.test.tsx#L62>)).
+The workshop example has these component tests: the limits of the contract and the stale-version reload of the edit form ([workshop-edit-form.test.tsx:42](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx#L42>), [workshop-edit-form.test.tsx:66](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx#L66>)), the venue picker with a pick that is not on the first page ([venue-picker.test.tsx:56](<../../frontend/src/examples/venues/components/venue-picker.test.tsx#L56>)), and the search and the page of the list in the URL ([workshop-list.test.tsx:63](<../../frontend/src/examples/workshops/workshop-list.test.tsx#L63>)).
 <!-- example:end -->
 
 ## The functional suite
@@ -95,7 +95,7 @@ Set only the values that the scenario is about. If a scenario needs a value that
 `aProblem().staleVersion()` and `aProblem().invalid(errors)` make the 409 of a stale save and the 422 of a validation problem, as the Server sends them.
 <!-- example:start -->
 
-The workshop builder gives each status the actions that a caller with `manage_workshops` gets, and `seenByReader()` takes them away: [workshop-builder.ts:9](<../../frontend/tests/support/examples/workshop-builder.ts#L9>). The spec of the workshops walks from the list to the detail and the edit form, and reloads after a stale save: [workshops.spec.ts:14](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L14>).
+The workshop builder gives each status the actions that a caller with `manage_workshops` gets, and `seenByReader()` takes them away: [workshop-builder.ts:9](<../../frontend/tests/support/examples/workshop-builder.ts#L9>). The spec of the workshops walks from the list to the detail and the edit form, and reloads after a stale save: [workshops.spec.ts:14](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L14>). It reads and shows each start in the zone of the venue, at a fixed clock on which the day at the venue is not the UTC day: [workshops.spec.ts:51](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L51>).
 <!-- example:end -->
 
 ### Locators, tasks, and specs

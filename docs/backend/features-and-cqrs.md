@@ -173,7 +173,7 @@ Each use of the shape has four tests. `tests/FullstackTemplate.UnitTests/Docs/De
 - A test that each kind of the refusal type and of the decision type is nested in its base record. C# cannot close a record hierarchy, so this test does it.
 
 <!-- example:start -->
-The workshop example uses the shape for a rule that reads two aggregates, the workshop and the time zone of its venue. It has one caller, the command that schedules a workshop. The rules are in [WorkshopScheduling.cs:56](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L56), the proof type is in [WorkshopScheduling.cs:35](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L35), and the handler switches on the decision in [ScheduleWorkshop.cs:36](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L36).
+The workshop example uses the shape for a rule that reads two aggregates, the workshop and the time zone of its venue. It has one caller, the command that schedules a workshop. The rules are in [WorkshopScheduling.cs:56](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L56), the proof type is in [WorkshopScheduling.cs:35](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs#L35), and the handler switches on the decision in [ScheduleWorkshop.cs:35](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs#L35).
 <!-- example:end -->
 
 ## List query

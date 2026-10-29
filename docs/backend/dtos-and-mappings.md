@@ -43,7 +43,7 @@ Endpoint gets UserForCreationDto
 11. When the SPA must know if the caller can do an action on a record, put the answer on the response DTO. Use `AllowedActions`, a list of names with `[NamesOf<TAction>]`, or a flag, for example `IsFinal`. Compute the answer in the entity, with the code that the command checks (see [domain-entities.md](domain-entities.md#allowed-actions)). The mapper takes the caller, for example `user.ToUserDto(caller)`. A list query projects to the DTO, so its handler adds the actions after the page loads, as `UserMapper.AddAllowedActions` does. The SPA reads the answer. It does not copy the rule.
 
 <!-- example:start -->
-In the workshop example, `WorkshopDto` lists the names of the status and of the actions ([WorkshopDto.cs:12](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopDto.cs#L12)), and `WorkshopForCreationDto` names the limits of the domain ([WorkshopForCreationDto.cs:11](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopForCreationDto.cs#L11)).
+In the workshop example, `WorkshopDto` lists the names of the status and of the actions ([WorkshopDto.cs:14](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopDto.cs#L14)), and `WorkshopForCreationDto` names the limits of the domain ([WorkshopForCreationDto.cs:11](../../FullstackTemplate.Server/Examples/Workshops/Dtos/WorkshopForCreationDto.cs#L11)).
 <!-- example:end -->
 
 ```csharp

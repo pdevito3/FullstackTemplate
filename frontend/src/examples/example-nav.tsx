@@ -23,6 +23,14 @@ const exampleItems = [
     title: "Filter Builder",
     url: "/filter-demo",
   },
+  {
+    title: "Workshops",
+    url: "/workshops",
+  },
+  {
+    title: "New venue",
+    url: "/venues/new",
+  },
 ] as const
 
 interface ExampleNavProps {

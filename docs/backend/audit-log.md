@@ -127,6 +127,10 @@ The cursor text is `{occurred_at in microseconds since 1970}_{record_id}_{ordina
 - `BulkInsertTests` proves the bulk insert against Postgres, also a lost commit and a conflict. `LostCommitReplyTests` proves a save after a lost commit.
 - `GetAuditEntryPageTests` proves the endpoint and the redaction for each permission.
 
+<!-- example:start -->
+In the workshop example, [WorkshopCommandTests.cs](../../tests/FullstackTemplate.IntegrationTests/Examples/Workshops/WorkshopCommandTests.cs) reads the audit entries of the workshop commands.
+<!-- example:end -->
+
 ## Telemetry
 
 The read tags its feature span with `app.audit.entity_id` and `app.audit.reads_sensitive`. A bulk insert has a `database.bulk_insert` span with `app.bulk_insert.entity_type` and `app.bulk_insert.row_count`. Npgsql adds a span for each COPY. A save that finds its audit entries after a lost acknowledgment of the commit adds the span event `database.save.lost_reply_committed`. See [feature-telemetry.md](feature-telemetry.md).

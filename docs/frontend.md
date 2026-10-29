@@ -136,6 +136,7 @@ Fix the cause on the Server: the DTO, an attribute such as `[NamesOf<T>]`, or a 
 | A `uint` field has no range | `UnsignedIntegerRangeTransformer` |
 | A field of names is a `string`, not a union of the names | `[NamesOf<T>]` on the DTO property, and `FixedNamesTransformer` |
 | A request field has no max length, no minimum, or no maximum | `[SchemaMaxLength]`, `[SchemaMinimum]`, or `[SchemaMaximum]` on the request DTO property, and `SchemaLimitsTransformer` |
+| A query parameter has no max length | `[MaxLength]` on the parameter of the endpoint handler |
 | A request body or a response has a type for each media type | `JsonContentTypeTransformer` |
 | A list client has no type for the `X-Pagination` header | `PaginationHeaderTransformer` |
 | A secured operation has no 401 response | `UnauthorizedResponseTransformer` |
@@ -250,3 +251,7 @@ Take each limit of a form field from the generated Zod schema of its DTO, not fr
 const firstName = userForCreationDtoSchema.shape.firstName
 const schema = z.object({ firstName: stringWithMaxLengthOf(firstName).min(1, 'Required') })
 ```
+
+<!-- example:start -->
+The workshop forms read the max length of the title and the maximum of the capacity from the contract: [`limitsOf`](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts>) and [`workshopFieldsSchema`](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts>). The search boxes read the max length of the `search` query parameter: [`searchMaxLength`](<../frontend/src/routes/(examples)/workshops/index.tsx>) and [`searchMaxLength`](<../frontend/src/examples/venues/components/venue-picker.tsx>). The venue picker keeps a pick that no loaded page has, by loading it by its ID: [`optionsWithPick`](<../frontend/src/examples/venues/components/venue-picker.tsx>).
+<!-- example:end -->

@@ -16,20 +16,18 @@ public sealed partial class TimeZoneId : ValueObject
         .Where(zone => zone.HasIanaId)
         .ToFrozenDictionary(zone => zone.Id, zone => zone.Id, StringComparer.OrdinalIgnoreCase);
 
-    private TimeZoneInfo _zone = null!;
-    private string _value = null!;
+    private TimeZoneInfo? _zone;
 
-    public string Value
+    public string Value { get; private set; } = null!;
+
+    // EF Core sets only Value when it loads a row, so the zone is found from the value on first use
+    private TimeZoneInfo Zone => _zone ??= Find(Value);
+
+    private TimeZoneId(string value)
     {
-        get => _value;
-        private set
-        {
-            _zone = Find(value);
-            _value = value;
-        }
+        _zone = Find(value);
+        Value = value;
     }
-
-    private TimeZoneId(string value) => Value = value;
 
     public static TimeZoneId Of(string value) => new(value);
 
@@ -37,7 +35,7 @@ public sealed partial class TimeZoneId : ValueObject
 
     public (DateOnly Date, TimeOnly Time) ToLocal(DateTimeOffset instant)
     {
-        var local = TimeZoneInfo.ConvertTime(instant, _zone).DateTime;
+        var local = TimeZoneInfo.ConvertTime(instant, Zone).DateTime;
         return (DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local));
     }
 
@@ -53,8 +51,8 @@ public sealed partial class TimeZoneId : ValueObject
         // instant of it. IsInvalidTime and GetUtcOffset alone are wrong for some changes, for example the gap at
         // midnight in Asuncion on 2024-10-06.
         var instants = new[] { local.AddDays(-1), local, local.AddDays(1) }
-            .Select(near => new DateTimeOffset(local, _zone.GetUtcOffset(near)))
-            .Where(instant => TimeZoneInfo.ConvertTime(instant, _zone).DateTime == local)
+            .Select(near => new DateTimeOffset(local, Zone.GetUtcOffset(near)))
+            .Where(instant => TimeZoneInfo.ConvertTime(instant, Zone).DateTime == local)
             .ToList();
         return instants.Count == 0 ? null : instants.Min().ToUniversalTime();
     }

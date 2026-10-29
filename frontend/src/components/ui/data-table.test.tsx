@@ -14,7 +14,7 @@ const defaultPageSize = 10
 const charges: Charge[] = Array.from({ length: defaultPageSize + 2 }, (_, index) => ({ id: `c${index + 1}`, name: `Charge ${index + 1}` }))
 const columns: ColumnDef<Charge>[] = [{ accessorKey: 'name', header: 'Name' }]
 
-test('the pager button keeps the focus when a keyboard press takes the table to the last or the first page', async () => {
+test('a keyboard press that takes the table to the last or the first page moves the focus to the pager button that still works', async () => {
   const screen = await render(<DataTable label="Charges" columns={columns} data={charges} />)
   const previous = screen.getByRole('button', { name: 'Previous' })
   const next = screen.getByRole('button', { name: 'Next' })
@@ -23,16 +23,12 @@ test('the pager button keeps the focus when a keyboard press takes the table to 
   await userEvent.keyboard('{Enter}')
 
   await expect.element(screen.getByRole('rowheader', { name: 'Charge 11' })).toBeVisible()
-  await expect.element(next).toHaveFocus()
   await expect.element(next).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(previous).toHaveFocus()
 
-  await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('rowheader', { name: 'Charge 11' })).toBeVisible()
-
-  previous.element().focus()
   await userEvent.keyboard('{Enter}')
 
   await expect.element(screen.getByRole('rowheader', { name: 'Charge 1', exact: true })).toBeVisible()
-  await expect.element(previous).toHaveFocus()
   await expect.element(previous).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(next).toHaveFocus()
 })

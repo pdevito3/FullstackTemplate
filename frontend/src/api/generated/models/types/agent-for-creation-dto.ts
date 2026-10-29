@@ -15,6 +15,7 @@ export const agentForCreationDtoPermissionsEnum = {
     manage_tenant: "manage_tenant",
     manage_user_access: "manage_user_access",
     manage_users: "manage_users",
+    manage_workshops: "manage_workshops",
     read_agents: "read_agents",
     read_audit_log: "read_audit_log",
     read_audit_log_sensitive: "read_audit_log_sensitive",

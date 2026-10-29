@@ -460,6 +460,140 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.ToTable("user_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Examples.Venues.Venue", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "TimeZone", "FullstackTemplate.Server.Examples.Venues.Venue.TimeZone#TimeZoneId", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("time_zone");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_venues");
+
+                    b.HasIndex("TenantId", "Name", "Id")
+                        .HasDatabaseName("ix_venues_tenant_id_name_id");
+
+                    b.ToTable("venues", (string)null);
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Examples.Workshops.Workshop", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<string>("OrganizerId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("organizer_id")
+                        .UseCollation("C");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("VenueId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("venue_id")
+                        .UseCollation("C");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "FullstackTemplate.Server.Examples.Workshops.Workshop.Status#WorkshopStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("status");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_workshops");
+
+                    b.HasIndex("VenueId")
+                        .HasDatabaseName("ix_workshops_venue_id");
+
+                    b.HasIndex("TenantId", "StartsAt", "Id")
+                        .HasDatabaseName("ix_workshops_tenant_id_starts_at_id");
+
+                    b.ToTable("workshops", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>
                 {
                     b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
@@ -502,6 +636,33 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasConstraintName("fk_user_permissions_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Examples.Venues.Venue", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_venues_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Examples.Workshops.Workshop", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_workshops_tenants_tenant_id");
+
+                    b.HasOne("FullstackTemplate.Server.Examples.Venues.Venue", null)
+                        .WithMany()
+                        .HasForeignKey("VenueId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_workshops_venues_venue_id");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>

@@ -117,6 +117,10 @@ private void GuardIfInFinalState(string field, string subject)
 
 When the rule needs facts from other aggregates, or a second caller needs the same answer, use the decision shape in [features-and-cqrs.md](features-and-cqrs.md#one-rule-set-for-two-callers).
 
+<!-- example:start -->
+In the workshop example, `Workshop.Update` checks the version first, then refuses a status that cannot change, then returns with no change when each value is the current value: [Workshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs).
+<!-- example:end -->
+
 ### Allowed actions
 
 When the SPA shows a button for an action on a record, the entity gives two methods that read one table:
@@ -153,6 +157,10 @@ user.GuardAllows(UserAction.Delete(), caller);
 ```
 
 `UserActionTests` has the tests of the table. One test gives each action the refusal text of each case. Another checks, for each caller in a small table, that an action is in `AllowedActions` only when `GuardAllows` does not throw.
+
+<!-- example:start -->
+In the workshop example, the command calls `WorkshopAction.GuardCaller` before the load, so a caller without `manage_workshops` gets 403 for any ID ([WorkshopAction.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopAction.cs)). After the load, `Workshop.GuardChangeBy` permits only the organizer of the workshop or a caller with `manage_tenant`, and then the entity refuses a status that does not permit the action ([Workshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs)). `Workshop.AllowedActions` and `WorkshopMapper.AddAllowedActions` ([WorkshopMapper.cs](../../FullstackTemplate.Server/Examples/Workshops/Mappings/WorkshopMapper.cs)) call the same `WorkshopAction.AllowedFor` with the organizer and the status. `WorkshopActionTests` checks, for each caller in a small table, that an action is in `AllowedActions` only when the command does not refuse it.
+<!-- example:end -->
 
 ## Value objects
 
@@ -199,7 +207,11 @@ public partial class UserRole : ValueObject, IFixedNames
 }
 ```
 
-A date that belongs to a place is a `ZonedDate`, for example a clinic day or the due date of a service at a yard. It holds the `DateOnly` and the `TimeZoneId` of the place. `TimeZoneId` accepts only an IANA ID that the server knows, such as `America/Chicago`. Linux refuses a wrong case of an ID. macOS refuses a wrong case only of a zone that it lists, not of an alias such as `Asia/Calcutta`. It refuses a Windows ID such as `Central Standard Time`. Do not store a `ZonedDate`. The entity stores the `DateOnly` and the `TimeZoneId` of its place, and makes the `ZonedDate` when it needs one. Map the `TimeZoneId` with `ComplexProperty`, and give its column `TimeZoneId.MaxLength`. List the column in `CallerColumns` of `StringColumnLengthTests`. Take today with `ZonedDate.TodayAt(zone, timeProvider.GetUtcNow())`, never from the UTC date. A rule that compares a date to today compares it to today at the place. `Start` is the first instant of the day. It is local midnight, or the end of a gap at midnight. `End` is the `Start` of the next day, and the day does not contain it. `TimeZoneId.ToInstant(date, time)` gives null for a time in a spring gap, and the first instant for a time in the repeated fall hour. The SPA shows and reads the times of a place in its zone with `frontend/src/lib/zoned-time.ts`. See "Dates and times" in [code-style.md](../frontend/code-style.md).
+A date that belongs to a place is a `ZonedDate`, for example a clinic day or the due date of a service at a yard. It holds the `DateOnly` and the `TimeZoneId` of the place. `TimeZoneId` accepts only an IANA ID that the server knows, such as `America/Chicago`. Linux refuses a wrong case of an ID. macOS refuses a wrong case only of a zone that it lists, not of an alias such as `Asia/Calcutta`. It refuses a Windows ID such as `Central Standard Time`. Do not store a `ZonedDate`. The entity stores the `DateOnly` and the `TimeZoneId` of its place, and makes the `ZonedDate` when it needs one. Map the `TimeZoneId` with `ComplexProperty`, and give its column `TimeZoneId.MaxLength`. List the column in `FixedOptionColumns` of `StringColumnLengthTests` with the IANA IDs of the server, because a caller can send only an ID that the server knows. Take today with `ZonedDate.TodayAt(zone, timeProvider.GetUtcNow())`, never from the UTC date. A rule that compares a date to today compares it to today at the place. `Start` is the first instant of the day. It is local midnight, or the end of a gap at midnight. `End` is the `Start` of the next day, and the day does not contain it. `TimeZoneId.ToInstant(date, time)` gives null for a time in a spring gap, and the first instant for a time in the repeated fall hour. The SPA shows and reads the times of a place in its zone with `frontend/src/lib/zoned-time.ts`. See "Dates and times" in [code-style.md](../frontend/code-style.md).
+
+<!-- example:start -->
+`WorkshopStatus` is a state machine. Each option of its SmartEnum lists the statuses that can come next, and `MoveTo` refuses each other move with a 422: [`WorkshopStatus.MoveTo`](../../FullstackTemplate.Server/Examples/Workshops/WorkshopStatus.cs). `Venue` stores a `TimeZoneId`: [`Venue.TimeZone`](../../FullstackTemplate.Server/Examples/Venues/Venue.cs).
+<!-- example:end -->
 
 To map a value object to a column, see [entity-configurations.md](entity-configurations.md#value-objects).
 

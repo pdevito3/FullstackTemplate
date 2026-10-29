@@ -22,6 +22,10 @@ Do not catch a `StaleVersionException` of a command that sends a version, and do
 
 A unique index can also tell that another user changed the record, for example an index that permits one current revision for each document. Give such an index `ForStaleVersion` (see [entity-configurations.md](entity-configurations.md#unique-indexes)). When the index stops a save, `AppDbContext` throws a `StaleVersionException`. The caller gets the same 409 as for an old version, with the same `type`, `title`, `detail`, and `errors`. Thus the SPA handles the two in the same way. A command with `IRunsAgainWhenRaced` runs again after such a save, the same as after a failed `xmin` check.
 
+<!-- example:start -->
+`UpdateWorkshop` and `ScheduleWorkshop` send a version. `Workshop.Update` checks it with `GuardVersion` ([Workshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs)), and `WorkshopScheduling.Decide` checks it before its other rules ([WorkshopScheduling.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs)).
+<!-- example:end -->
+
 ## Run again
 
 A command for one intent, such as a new permission, a role change, or a delete, sends no version. The `xmin` check of the owner row still stops its race between the load and the save. But the caller decided nothing on the old rows, so a 409 that says "Reload it" does not help the caller. Mark the command with `IRunsAgainWhenRaced` instead:
@@ -48,6 +52,10 @@ The tests do not see these breaks of the rules. Check them in the review:
 - A background job in the shared plumbing or the composition root that sends a marked command. `EntrypointBoundaryTests` reads only the core types. `DiscardLostRace` then clears the tracked changes of the job.
 
 Each marked command has a race test (see [Race tests](../backend.md#race-tests)). The test pauses the command after its load, commits a rival write to the same aggregate, and checks that both changes saved.
+
+<!-- example:start -->
+`CancelWorkshop` and `CompleteWorkshop` run again when raced: [CancelWorkshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Features/CancelWorkshop/CancelWorkshop.cs). A move to the status that the workshop has returns it with no change, so a run after its own commit gives the same end state: [Workshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Workshop.cs). `ScheduleWorkshop` sends a version, so it does not run again, and a rival save gives it the stale-version 409. The race tests are in [WorkshopCommandTests.cs](../../tests/FullstackTemplate.IntegrationTests/Examples/Workshops/WorkshopCommandTests.cs).
+<!-- example:end -->
 
 ## Lock
 

@@ -84,9 +84,23 @@ function convertFilter(filter: Filter): string {
  * Convert a text filter to QueryKit string
  */
 function convertTextFilter(propertyKey: string, operator: string, value: string): string {
-  // For text values, wrap in quotes if they contain spaces
-  const quotedValue = value.includes(' ') ? `"${value}"` : value
-  return `${propertyKey} ${operator} ${quotedValue}`
+  return `${propertyKey} ${operator} ${quoteText(value)}`
+}
+
+/**
+ * Writes a text value as a QueryKit string literal. QueryKit reads an unquoted value as a name, a number, or `null`,
+ * and it has no escape in `"..."`. So a value with a quote goes in a raw literal: the value between runs of quotes
+ * that are longer than each run in the value, and at least three long. QueryKit cannot keep a quote at the start or
+ * the end of a value, so this function removes those quotes.
+ */
+function quoteText(value: string): string {
+  const text = value.replace(/^"+|"+$/g, '')
+  if (!text.includes('"')) {
+    return `"${text}"`
+  }
+  const longestRun = Math.max(...(text.match(/"+/g) ?? []).map((run) => run.length))
+  const delimiter = '"'.repeat(Math.max(3, longestRun + 1))
+  return `${delimiter}${text}${delimiter}`
 }
 
 /**
@@ -103,7 +117,7 @@ function convertMultiSelectFilter(
   }
 
   // Format array values
-  const formattedValues = value.map((v) => (v.includes(' ') ? `"${v}"` : v)).join(', ')
+  const formattedValues = value.map(quoteText).join(', ')
 
   // Add % prefix to operator for "all must match" semantics
   const finalOperator = matchAll ? `%${operator}` : operator

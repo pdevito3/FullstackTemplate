@@ -61,7 +61,7 @@ export default async ({ page, step, capture, settle, expect }) => {
     await dialog.getByRole('button', { name: 'Add Filter' }).click()
     await expect(dialog).toHaveCount(0)
     await expect(paulBadge).toBeVisible()
-    await expect(queryKit).toHaveText('firstName @=* Paul')
+    await expect(queryKit).toHaveText('firstName @=* "Paul"')
   })
   await capture('text-filter')
 
@@ -78,7 +78,7 @@ export default async ({ page, step, capture, settle, expect }) => {
     await expect(statusFilter).toHaveCount(0)
     await expect(propertyMenu).toHaveCount(0)
     await expect(statusBadge).toBeVisible()
-    await expect(queryKit).toContainText('firstName @=* Paul && status ^^ [open]')
+    await expect(queryKit).toContainText('firstName @=* "Paul" && status ^^ ["open"]')
   })
 
   await step('edit the First Name badge: the value becomes Pat', async () => {
@@ -87,24 +87,24 @@ export default async ({ page, step, capture, settle, expect }) => {
     await dialog.getByRole('textbox', { name: 'Value' }).fill('Pat')
     await dialog.getByRole('button', { name: 'Update Filter' }).click()
     await expect(dialog).toHaveCount(0)
-    await expect(queryKit).toHaveText('firstName @=* Pat && status ^^ [open]')
+    await expect(queryKit).toHaveText('firstName @=* "Pat" && status ^^ ["open"]')
   })
 
   await step('remove the Status badge with its named x button', async () => {
     await page.getByRole('button', { name: /^Remove filter: Status \|/ }).click()
     await expect(statusBadge).toHaveCount(0)
-    await expect(queryKit).toHaveText('firstName @=* Pat')
+    await expect(queryKit).toHaveText('firstName @=* "Pat"')
   })
 
   await step('choose the Urgent Bugs preset: it replaces the filters', async () => {
     await page.getByRole('button', { name: 'Urgent Bugs' }).click()
     await expect(badge(/First Name/)).toHaveCount(0)
-    await expect(queryKit).toHaveText('labels ^$ [bug] && labels ^$ [urgent]')
+    await expect(queryKit).toHaveText('labels ^$ ["bug"] && labels ^$ ["urgent"]')
   })
 
   await step('choose Switch to OR: the operator becomes ||', async () => {
     await page.getByRole('button', { name: 'Switch to OR' }).click()
-    await expect(queryKit).toHaveText('labels ^$ [bug] || labels ^$ [urgent]')
+    await expect(queryKit).toHaveText('labels ^$ ["bug"] || labels ^$ ["urgent"]')
     await expect(page.getByRole('button', { name: 'Switch to AND' })).toBeVisible()
   })
   await capture('preset-or')
@@ -133,7 +133,7 @@ export default async ({ page, step, capture, settle, expect }) => {
 
   await step('group two filters: the QueryKit string gets parentheses', async () => {
     await page.getByRole('button', { name: 'Urgent Bugs' }).click()
-    await expect(queryKit).toHaveText('labels ^$ [bug] && labels ^$ [urgent]')
+    await expect(queryKit).toHaveText('labels ^$ ["bug"] && labels ^$ ["urgent"]')
     await page.getByRole('button', { name: 'Group Filters' }).click()
     await expect(page.getByRole('button', { name: 'Group Filters' })).toBeDisabled()
     // Each checkbox is named after the badge text. React Aria hides the native input,
@@ -146,14 +146,14 @@ export default async ({ page, step, capture, settle, expect }) => {
     await capture('grouping-selection')
     await page.getByRole('button', { name: 'Group Selected (2)' }).click()
     await expect(page.getByText('Group (Depth 1)')).toBeVisible()
-    await expect(queryKit).toHaveText('(labels ^$ [bug] && labels ^$ [urgent])')
+    await expect(queryKit).toHaveText('(labels ^$ ["bug"] && labels ^$ ["urgent"])')
   })
   await capture('grouped')
 
   await step('choose Ungroup: the filters go back to the root without parentheses', async () => {
     await page.getByRole('button', { name: 'Ungroup' }).click()
     await expect(page.getByText('Group (Depth 1)')).toHaveCount(0)
-    await expect(queryKit).toHaveText('labels ^$ [bug] && labels ^$ [urgent]')
+    await expect(queryKit).toHaveText('labels ^$ ["bug"] && labels ^$ ["urgent"]')
     await page.getByRole('button', { name: 'Clear' }).click()
     await expect(queryKitCard).toContainText('No filters applied yet')
   })
@@ -171,7 +171,7 @@ export default async ({ page, step, capture, settle, expect }) => {
     await statusFilter.getByRole('button', { name: 'Add (2)' }).click()
     await expect(statusFilter).toHaveCount(0)
     await expect(badge(/Status\s*\|.*Open, In Progress/)).toBeVisible()
-    await expect(queryKit).toHaveText('status ^^ [open, in-progress]')
+    await expect(queryKit).toHaveText('status ^^ ["open", "in-progress"]')
   })
   await capture('multiselect-two-values')
 

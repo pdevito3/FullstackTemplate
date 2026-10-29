@@ -29,7 +29,8 @@ async function messagesOf(ruleEntry) {
   return result.messages.map((message) => message.message)
 }
 
-describe('playwright/no-page-action', () => {
+// The first lint builds the TypeScript program of the tests, which takes more than the 5 s default on a cold machine
+describe('playwright/no-page-action', { timeout: 60_000 }, () => {
   it('reports a selector string with the message of its option', async () => {
     expect(await messagesOf(['error', 'Use a Locator.'])).toEqual(['Use a Locator.'])
   })

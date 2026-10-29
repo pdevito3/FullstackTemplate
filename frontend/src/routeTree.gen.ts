@@ -14,6 +14,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as examplesWeatherRouteImport } from './routes/(examples)/weather'
 import { Route as examplesFilterDemoRouteImport } from './routes/(examples)/filter-demo'
 import { Route as examplesComponentsRouteImport } from './routes/(examples)/components'
+import { Route as examplesWorkshopsIndexRouteImport } from './routes/(examples)/workshops/index'
+import { Route as examplesWorkshopsNewRouteImport } from './routes/(examples)/workshops/new'
+import { Route as examplesVenuesNewRouteImport } from './routes/(examples)/venues/new'
+import { Route as examplesWorkshopsIdIndexRouteImport } from './routes/(examples)/workshops/$id/index'
+import { Route as examplesWorkshopsIdEditRouteImport } from './routes/(examples)/workshops/$id/edit'
 
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
@@ -40,6 +45,32 @@ const examplesComponentsRoute = examplesComponentsRouteImport.update({
   path: '/components',
   getParentRoute: () => rootRouteImport,
 } as any)
+const examplesWorkshopsIndexRoute = examplesWorkshopsIndexRouteImport.update({
+  id: '/(examples)/workshops/',
+  path: '/workshops/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesWorkshopsNewRoute = examplesWorkshopsNewRouteImport.update({
+  id: '/(examples)/workshops/new',
+  path: '/workshops/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesVenuesNewRoute = examplesVenuesNewRouteImport.update({
+  id: '/(examples)/venues/new',
+  path: '/venues/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const examplesWorkshopsIdIndexRoute =
+  examplesWorkshopsIdIndexRouteImport.update({
+    id: '/(examples)/workshops/$id/',
+    path: '/workshops/$id/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const examplesWorkshopsIdEditRoute = examplesWorkshopsIdEditRouteImport.update({
+  id: '/(examples)/workshops/$id/edit',
+  path: '/workshops/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +78,11 @@ export interface FileRoutesByFullPath {
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
   '/weather': typeof examplesWeatherRoute
+  '/venues/new': typeof examplesVenuesNewRoute
+  '/workshops/new': typeof examplesWorkshopsNewRoute
+  '/workshops': typeof examplesWorkshopsIndexRoute
+  '/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
+  '/workshops/$id': typeof examplesWorkshopsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +90,11 @@ export interface FileRoutesByTo {
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
   '/weather': typeof examplesWeatherRoute
+  '/venues/new': typeof examplesVenuesNewRoute
+  '/workshops/new': typeof examplesWorkshopsNewRoute
+  '/workshops': typeof examplesWorkshopsIndexRoute
+  '/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
+  '/workshops/$id': typeof examplesWorkshopsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,12 +103,37 @@ export interface FileRoutesById {
   '/(examples)/components': typeof examplesComponentsRoute
   '/(examples)/filter-demo': typeof examplesFilterDemoRoute
   '/(examples)/weather': typeof examplesWeatherRoute
+  '/(examples)/venues/new': typeof examplesVenuesNewRoute
+  '/(examples)/workshops/new': typeof examplesWorkshopsNewRoute
+  '/(examples)/workshops/': typeof examplesWorkshopsIndexRoute
+  '/(examples)/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
+  '/(examples)/workshops/$id/': typeof examplesWorkshopsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/components' | '/filter-demo' | '/weather'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/components'
+    | '/filter-demo'
+    | '/weather'
+    | '/venues/new'
+    | '/workshops/new'
+    | '/workshops'
+    | '/workshops/$id/edit'
+    | '/workshops/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/components' | '/filter-demo' | '/weather'
+  to:
+    | '/'
+    | '/about'
+    | '/components'
+    | '/filter-demo'
+    | '/weather'
+    | '/venues/new'
+    | '/workshops/new'
+    | '/workshops'
+    | '/workshops/$id/edit'
+    | '/workshops/$id'
   id:
     | '__root__'
     | '/'
@@ -75,6 +141,11 @@ export interface FileRouteTypes {
     | '/(examples)/components'
     | '/(examples)/filter-demo'
     | '/(examples)/weather'
+    | '/(examples)/venues/new'
+    | '/(examples)/workshops/new'
+    | '/(examples)/workshops/'
+    | '/(examples)/workshops/$id/edit'
+    | '/(examples)/workshops/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -83,6 +154,11 @@ export interface RootRouteChildren {
   examplesComponentsRoute: typeof examplesComponentsRoute
   examplesFilterDemoRoute: typeof examplesFilterDemoRoute
   examplesWeatherRoute: typeof examplesWeatherRoute
+  examplesVenuesNewRoute: typeof examplesVenuesNewRoute
+  examplesWorkshopsNewRoute: typeof examplesWorkshopsNewRoute
+  examplesWorkshopsIndexRoute: typeof examplesWorkshopsIndexRoute
+  examplesWorkshopsIdEditRoute: typeof examplesWorkshopsIdEditRoute
+  examplesWorkshopsIdIndexRoute: typeof examplesWorkshopsIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,6 +198,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof examplesComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(examples)/workshops/': {
+      id: '/(examples)/workshops/'
+      path: '/workshops'
+      fullPath: '/workshops'
+      preLoaderRoute: typeof examplesWorkshopsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/new': {
+      id: '/(examples)/workshops/new'
+      path: '/workshops/new'
+      fullPath: '/workshops/new'
+      preLoaderRoute: typeof examplesWorkshopsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/venues/new': {
+      id: '/(examples)/venues/new'
+      path: '/venues/new'
+      fullPath: '/venues/new'
+      preLoaderRoute: typeof examplesVenuesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/$id/': {
+      id: '/(examples)/workshops/$id/'
+      path: '/workshops/$id'
+      fullPath: '/workshops/$id'
+      preLoaderRoute: typeof examplesWorkshopsIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(examples)/workshops/$id/edit': {
+      id: '/(examples)/workshops/$id/edit'
+      path: '/workshops/$id/edit'
+      fullPath: '/workshops/$id/edit'
+      preLoaderRoute: typeof examplesWorkshopsIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -131,6 +242,11 @@ const rootRouteChildren: RootRouteChildren = {
   examplesComponentsRoute: examplesComponentsRoute,
   examplesFilterDemoRoute: examplesFilterDemoRoute,
   examplesWeatherRoute: examplesWeatherRoute,
+  examplesVenuesNewRoute: examplesVenuesNewRoute,
+  examplesWorkshopsNewRoute: examplesWorkshopsNewRoute,
+  examplesWorkshopsIndexRoute: examplesWorkshopsIndexRoute,
+  examplesWorkshopsIdEditRoute: examplesWorkshopsIdEditRoute,
+  examplesWorkshopsIdIndexRoute: examplesWorkshopsIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

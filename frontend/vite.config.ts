@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
 import { playwright } from '@vitest/browser-playwright'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import { holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests } from './vitest.commands'
+import { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests } from './vitest.commands'
 
 // Vendor libraries that the root layout loads on every page. Each group gets
 // its own chunk, so the entry chunk stays small and the browser can cache the
@@ -119,7 +119,7 @@ export default defineConfig({
             provider: playwright({ contextOptions: { timezoneId: 'Pacific/Kiritimati' } }),
             headless: true,
             instances: [{ browser: 'chromium' }],
-            commands: { holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests },
+            commands: { answerRequests, holdRequests, movePointerOnto, pressPointer, releasePointer, releaseRequests },
           },
         },
       },

@@ -11,6 +11,26 @@ The frontend has four test suites. Put a test in the lowest suite that can prove
 
 CI runs the unit, component, and functional suites on each pull request. CI runs the stack suite when the `changes` job finds a change on the login path: the BFF, the AppHost, the SPA, or the stack suite. See the `bff` filter in `.github/workflows/ci.yml`.
 
+## The component suite
+
+A component test renders one component, or one route with `createMemoryHistory`, in Chromium. A component that loads data gets its answers from `commands.answerRequests`. It answers each request to `/api/*` and `/bff/*` that matches the method, the path, and the query parameters of an answer. A later answer wins, so put the most specific answer last. A request with no answer goes on to the dev server and fails. Remove the answers at the end of the test:
+
+```ts
+await commands.answerRequests([
+  { method: 'GET', path: '/api/v1/users', headers: { 'x-pagination': pagination }, body: [user] },
+  { method: 'GET', path: '/api/v1/users', query: { pageNumber: '2' }, headers: { 'x-pagination': page2 }, body: [other] },
+])
+onTestFinished(() => commands.answerRequests([]))
+```
+
+A component that takes a save function as a prop does not need answers. Give it a `vi.fn()` that resolves, or that rejects with a `ProblemDetailsError`.
+
+A click on an option of a combobox can scroll the page, and a scroll of the page closes the list. Pick an option with `userEvent.keyboard('{ArrowDown}{Enter}')`.
+<!-- example:start -->
+
+The workshop example has these component tests: the limits of the contract and the stale-version reload of the edit form ([workshop-edit-form.test.tsx:41](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx#L41>), [workshop-edit-form.test.tsx:65](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx#L65>)), the venue picker with a pick that is not on the first page ([venue-picker.test.tsx:56](<../../frontend/src/examples/venues/components/venue-picker.test.tsx#L56>)), and the search and the page of the list in the URL ([workshop-list.test.tsx:62](<../../frontend/src/examples/workshops/workshop-list.test.tsx#L62>)).
+<!-- example:end -->
+
 ## The functional suite
 
 `pnpm test:e2e` starts the Vite dev server on a free port. Then it runs the specs in Chromium. No BFF, Server, or IdP runs. The suite mocks each request to `/api/*` and `/bff/*` in the browser with `page.route`. The hooks, the components, the generated clients, and `apiClient` all run.
@@ -71,6 +91,12 @@ All test data comes from the builders in `tests/support/builders/`:
 4. The types come from the generated client. A builder derives each dependent value, so the data cannot contradict itself.
 
 Set only the values that the scenario is about. If a scenario needs a value that no builder method sets, add the method to the builder.
+
+`aProblem().staleVersion()` and `aProblem().invalid(errors)` make the 409 of a stale save and the 422 of a validation problem, as the Server sends them.
+<!-- example:start -->
+
+The workshop builder gives each status the actions that a caller with `manage_workshops` gets, and `seenByReader()` takes them away: [workshop-builder.ts:9](<../../frontend/tests/support/examples/workshop-builder.ts#L9>). The spec of the workshops walks from the list to the detail and the edit form, and reloads after a stale save: [workshops.spec.ts:14](<../../frontend/tests/features/examples/workshops/workshops.spec.ts#L14>).
+<!-- example:end -->
 
 ### Locators, tasks, and specs
 

@@ -8,6 +8,7 @@ import {
   GroupContext,
   Input as InputPrimitive,
   ListBoxItem as ListBoxItemPrimitive,
+  ListBoxLoadMoreItem as ListBoxLoadMoreItemPrimitive,
   ListBox as ListBoxPrimitive,
   ListBoxSection as ListBoxSectionPrimitive,
   OverlayTriggerStateContext,
@@ -21,6 +22,7 @@ import {
   type GroupProps,
   type InputProps,
   type ListBoxItemProps,
+  type ListBoxLoadMoreItemProps,
   type ListBoxProps,
   type ListBoxSectionProps,
   type TagListProps,
@@ -347,6 +349,22 @@ function ComboboxItem<T extends object>({
   )
 }
 
+/**
+ * Asks for the next page of options when the user scrolls to the end of the list. Put it after a `Collection` of the
+ * options in `ComboboxList`. It shows its text while `isLoading` is true.
+ */
+function ComboboxLoadMore({ className, children = "Loading more", ...props }: ListBoxLoadMoreItemProps) {
+  return (
+    <ListBoxLoadMoreItemPrimitive
+      data-slot="combobox-load-more"
+      className={cn("py-1 text-center text-sm text-muted-foreground", className)}
+      {...props}
+    >
+      {children}
+    </ListBoxLoadMoreItemPrimitive>
+  )
+}
+
 function ComboboxGroup<T extends object>({
   className,
   ...props
@@ -491,6 +509,7 @@ export {
   ComboboxItem,
   ComboboxGroup,
   ComboboxEmpty,
+  ComboboxLoadMore,
   ComboboxChips,
   ComboboxChip,
   ComboboxChipList,

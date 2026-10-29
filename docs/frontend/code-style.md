@@ -13,6 +13,10 @@ These rules apply to the TypeScript and React code in `frontend/src/`. `pnpm lin
 7. Use `import type` for an import that is only a type.
 8. A file under `src/domain/` reads the answers of the Server and formats them. It does not decide a business rule. See rule 8 of [server-state.md](server-state.md#rules).
 
+<!-- example:start -->
+In the workshop example, a `Record` of a generated union maps each status to its badge variant: [workshop-status-badge.tsx:4](<../../frontend/src/examples/workshops/components/workshop-status-badge.tsx#L4>).
+<!-- example:end -->
+
 ```typescript
 export const USER_ROLES = ['Admin', 'User'] as const
 export type UserRole = (typeof USER_ROLES)[number]
@@ -29,6 +33,10 @@ function isUserDto(value: unknown): value is UserDto {
 3. React 19 passes `ref` as a prop. Do not use `forwardRef`.
 4. Name a handler prop `onX`. Name the handler inside the component `handleX`.
 5. Use an early return for a loading, empty, or error state. Do not nest ternaries.
+
+<!-- example:start -->
+The workshop list returns early for its loading, error, and empty states: [index.tsx:76](<../../frontend/src/routes/(examples)/workshops/index.tsx#L76>).
+<!-- example:end -->
 6. Load a heavy component or library with `lazy` or a dynamic `import()`.
 
 ```typescript
@@ -75,6 +83,10 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 2. Make component variants with `cva`. See `components/ui/button.tsx`.
 3. Use the theme tokens, such as `bg-background` and `text-muted-foreground`. Do not use a fixed color, because the dark theme does not change it.
 4. A table cell wraps its text. Give `whitespace-nowrap` to a cell that holds a code, a date, an amount, an email address, or a badge, so that only prose wraps.
+
+<!-- example:start -->
+The workshop list wraps only the title: [index.tsx:112](<../../frontend/src/routes/(examples)/workshops/index.tsx#L112>).
+<!-- example:end -->
 
 ## Dates and times
 

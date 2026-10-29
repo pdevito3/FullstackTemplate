@@ -1,5 +1,7 @@
 import type { BrowserCommand } from 'vitest/node'
 
+import type { Answer } from './src/test/answer'
+
 // Browser commands for the component tests. They run in Node and drive the Playwright page.
 // A test calls them with `commands` from 'vitest/browser'.
 
@@ -42,6 +44,56 @@ export const releaseRequests: BrowserCommand<[path: string]> = async ({ page }, 
   holds.delete(path)
   hold.release()
   await page.unroute(hold.matcher, hold.handler)
+}
+
+// The paths that the app sends to the BFF. The test server serves the source files under /src, so they do not match.
+const isBffRequest = (url: URL) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/bff/')
+
+// Test files run at the same time, each on its own page, so each page has its own answers.
+const answering = new WeakMap<Page, { answers: Answer[]; handler: RouteHandler }>()
+
+const isAnswerFor = (request: { method: () => string; url: () => string }) => (answer: Answer) => {
+  const url = new URL(request.url())
+  return (
+    answer.method === request.method() &&
+    answer.path === url.pathname &&
+    Object.entries(answer.query ?? {}).every(([name, value]) => url.searchParams.get(name) === value)
+  )
+}
+
+/**
+ * Answers each request that matches an answer. A later answer wins over an earlier one, so a test can change the
+ * answer of the Server. A request with no answer goes on. `answerRequests([])` removes all answers.
+ */
+export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page }, answers) => {
+  const current = answering.get(page)
+  if (answers.length === 0) {
+    if (current) await page.unroute(isBffRequest, current.handler)
+    answering.delete(page)
+    return
+  }
+  if (current) {
+    current.answers = answers
+    return
+  }
+  const state = {
+    answers,
+    handler: async (route: Parameters<RouteHandler>[0]) => {
+      const answer = state.answers.findLast(isAnswerFor(route.request()))
+      if (!answer) {
+        await route.fallback()
+        return
+      }
+      await route.fulfill({
+        status: answer.status ?? 200,
+        headers: answer.headers,
+        contentType: 'application/json',
+        body: answer.body === undefined ? '' : JSON.stringify(answer.body),
+      })
+    },
+  }
+  answering.set(page, state)
+  await page.route(isBffRequest, state.handler)
 }
 
 type Role = Parameters<Page['getByRole']>[0]

@@ -249,3 +249,7 @@ Take each limit of a form field from the generated Zod schema of its DTO, not fr
 const firstName = userForCreationDtoSchema.shape.firstName
 const schema = z.object({ firstName: stringWithMaxLengthOf(firstName).min(1, 'Required') })
 ```
+
+<!-- example:start -->
+The workshop forms read the max length of the title and the maximum of the capacity from the contract: [workshop-fields-schema.ts:19](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts#L19>) and [workshop-fields-schema.ts:24](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts#L24>). The search boxes read the max length of the `search` query parameter: [index.tsx:25](<../frontend/src/routes/(examples)/workshops/index.tsx#L25>) and [venue-picker.tsx:24](<../frontend/src/examples/venues/components/venue-picker.tsx#L24>). The venue picker keeps a pick that no loaded page has, by loading it by its ID: [venue-picker.tsx:30](<../frontend/src/examples/venues/components/venue-picker.tsx#L30>).
+<!-- example:end -->

@@ -5,6 +5,8 @@
  * This is the standard error response format from .NET APIs with Problem Details enabled.
  */
 
+import * as z from 'zod'
+
 import type { ProblemDetails as ContractProblemDetails } from '@/api/generated/models/types/problem-details'
 
 /**
@@ -77,4 +79,26 @@ export function isProblemDetails(obj: unknown): obj is ProblemDetails {
     typeof pd.title === 'string' &&
     typeof pd.status === 'number'
   )
+}
+
+/** The problem type of a save that sent the version of a record that another caller changed. */
+export const STALE_VERSION_PROBLEM_TYPE = 'urn:fullstacktemplate:problem:stale-version'
+
+/**
+ * True when the Server refused a save because another caller saved the record first. Read the type, not the status,
+ * because a 409 can also be a duplicate value.
+ */
+export function isStaleVersionError(error: unknown): boolean {
+  return isProblemDetailsError(error) && error.problemDetails.type === STALE_VERSION_PROBLEM_TYPE
+}
+
+const validationErrorsSchema = z.record(z.string(), z.array(z.string()))
+
+/** The messages of a validation problem by field name, for example `{ title: ['Please provide a title.'] }`. */
+export function validationErrorsOf(error: unknown): Record<string, string[]> {
+  if (!isProblemDetailsError(error)) {
+    return {}
+  }
+  const parsed = validationErrorsSchema.safeParse(error.problemDetails.errors)
+  return parsed.success ? parsed.data : {}
 }

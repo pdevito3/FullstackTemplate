@@ -1,0 +1,83 @@
+import { expect, type Page } from '@playwright/test'
+import { workshopPaths } from '@tests/support/examples/workshops-api'
+import { workshops } from './workshops.locators'
+
+export function workshopsPage(page: Page) {
+  const at = workshops(page)
+  const answered = (method: string, path: string) =>
+    page.waitForResponse((r) => r.request().method() === method && new URL(r.url()).pathname === path)
+
+  return {
+    at,
+
+    async openList() {
+      const settled = answered('GET', workshopPaths.list)
+      await page.goto('/workshops')
+      await expect(at.listHeading).toBeVisible()
+      await settled
+    },
+
+    async openDetail(id: string, venueId: string) {
+      const settled = Promise.all([answered('GET', workshopPaths.one(id)), answered('GET', workshopPaths.venue(venueId))])
+      await page.goto(`/workshops/${id}`)
+      await settled
+    },
+
+    async searchFor(text: string) {
+      const settled = answered('GET', workshopPaths.list)
+      await at.search.fill(text)
+      await settled
+    },
+
+    async goToNextPage() {
+      const settled = answered('GET', workshopPaths.list)
+      await at.nextPage.click()
+      await settled
+    },
+
+    async openWorkshop(title: string, id: string, venueId: string) {
+      const settled = Promise.all([answered('GET', workshopPaths.one(id)), answered('GET', workshopPaths.venue(venueId))])
+      await at.titleLink(title).click()
+      await expect(at.detailHeading(title)).toBeVisible()
+      await settled
+    },
+
+    async edit(title: string) {
+      await at.editLink(title).click()
+      await expect(at.editForm).toBeVisible()
+    },
+
+    async renameTo(title: string) {
+      await at.title.fill(title)
+    },
+
+    async saveRefused(id: string) {
+      const settled = answered('PUT', workshopPaths.one(id))
+      await at.save.click()
+      await settled
+    },
+
+    async saveAndOpenDetail(id: string, venueId: string) {
+      const settled = Promise.all([
+        answered('PUT', workshopPaths.one(id)),
+        answered('GET', workshopPaths.one(id)),
+        answered('GET', workshopPaths.venue(venueId)),
+      ])
+      await at.save.click()
+      await settled
+    },
+
+    async loadLatest(id: string) {
+      const settled = answered('GET', workshopPaths.one(id))
+      await at.loadLatest.click()
+      await settled
+    },
+
+    /** Presses the button of an action. `path` is the endpoint that the button sends to. */
+    async send(title: string, action: string, path: string) {
+      const settled = answered('POST', path)
+      await at.actionButton(title, action).click()
+      await settled
+    },
+  }
+}

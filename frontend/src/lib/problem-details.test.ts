@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { ProblemDetailsError, isProblemDetails, isProblemDetailsError } from '@/lib/problem-details'
+import {
+  ProblemDetailsError,
+  STALE_VERSION_PROBLEM_TYPE,
+  isProblemDetails,
+  isProblemDetailsError,
+  isStaleVersionError,
+  validationErrorsOf,
+} from '@/lib/problem-details'
 
 const problem = {
   type: 'https://tools.ietf.org/html/rfc9110#section-15.5.5',
@@ -57,5 +64,32 @@ describe('ProblemDetailsError', () => {
     const error = new ProblemDetailsError({ type: problem.type, status: 500 })
 
     expect(error.displayMessage).toBe('An error occurred')
+  })
+})
+
+describe('isStaleVersionError', () => {
+  it('is true for the stale-version problem type', () => {
+    expect(isStaleVersionError(new ProblemDetailsError({ type: STALE_VERSION_PROBLEM_TYPE, title: 'Conflict', status: 409 }))).toBe(true)
+  })
+
+  it('is false for another 409, such as a duplicate value', () => {
+    const duplicate = new ProblemDetailsError({ type: 'https://tools.ietf.org/html/rfc9110#section-15.5.10', title: 'Conflict', status: 409 })
+
+    expect(isStaleVersionError(duplicate)).toBe(false)
+    expect(isStaleVersionError(new Error('x'))).toBe(false)
+  })
+})
+
+describe('validationErrorsOf', () => {
+  it('gives the messages of each field of a validation problem', () => {
+    const error = new ProblemDetailsError({ ...problem, status: 422, errors: { title: ['Please provide a title.'] } })
+
+    expect(validationErrorsOf(error)).toEqual({ title: ['Please provide a title.'] })
+  })
+
+  it('gives no messages for a problem without errors or for another error', () => {
+    expect(validationErrorsOf(new ProblemDetailsError(problem))).toEqual({})
+    expect(validationErrorsOf(new ProblemDetailsError({ ...problem, errors: 'not a map' }))).toEqual({})
+    expect(validationErrorsOf(new Error('x'))).toEqual({})
   })
 })

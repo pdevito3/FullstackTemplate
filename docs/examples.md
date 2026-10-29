@@ -28,7 +28,8 @@ A marker with no partner stops the script before it changes a file. Do not put a
 | The `Examples` menu of the sidebar | `frontend/src/examples/example-nav.tsx` |
 | The `get_tenant`, `list_tenants`, and `update_tenant` MCP tools | `FullstackTemplate.Server/Examples/Tenants/` |
 | The venues and workshops API, its `list_workshops` and `cancel_workshop` MCP tools, and the `manage_workshops` permission | `FullstackTemplate.Server/Examples/Venues/`, `FullstackTemplate.Server/Examples/Workshops/`, `FullstackTemplate.Server/Databases/EntityConfigurations/Examples/`, `FullstackTemplate.Server/Databases/Migrations/Examples/` |
-| The tests of the examples | the `Examples/` and `examples/` folders of the test projects and of `frontend/tests/` |
+| The workshop pages at `/workshops` and `/venues/new`: the list, the detail, the edit and create forms, and the venue picker | `frontend/src/examples/workshops/`, `frontend/src/examples/venues/`, `frontend/src/examples/components/`, `frontend/src/routes/(examples)/workshops/`, `frontend/src/routes/(examples)/venues/` |
+| The tests of the examples | the `Examples/` and `examples/` folders of the test projects, of `frontend/tests/`, and of `frontend/src/` |
 | The recipes of the example pages in the verify skill | `.agents/skills/verify-fullstack-template/features/examples/` and `recipes/examples/` |
 
 The script deletes the migration of the example tables. A database that ran it still has the `venues` and `workshops` tables and the `manage_workshops` permission. If the database of your app ran that migration, add a migration that drops the two tables and calls `migrationBuilder.DeletePermission("manage_workshops")`. A row of a permission that `Permission` does not know stops each load of its user.

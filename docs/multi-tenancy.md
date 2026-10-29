@@ -122,7 +122,7 @@ The migration hosted service does not use a system scope. Migrations do not read
 
 ## Domain event handlers
 
-A domain event handler runs in the tenant of the `ITenantable` entity or the `Tenant` that queued the event. While the handler runs, the scope of the context is `TenantScope.ForTenant` of that tenant, so the filter shows the rows of this tenant only. This is also true when the caller has `TenantScope.AllTenants` or `TenantScope.NoTenant`. After the handler, the context uses the scope of the caller again. The handler of an event from an entity with no tenant runs in the scope of the caller. See [domain-events.md](backend/domain-events.md#handlers).
+A domain event handler runs in the tenant of the `ITenantable` entity or the `Tenant` that queued the event. While the handler runs, the scope of the context is `TenantScope.ForTenant` of that tenant, so the filter shows the rows of this tenant only. This is also true when the caller has `TenantScope.AllTenants` or `TenantScope.NoTenant`. After the handler, the context uses the scope of the caller again. The handler of an event from an entity with no tenant runs in the scope of the save: the scope of the caller, or the tenant of `InTenantScopeAsync` when the save runs in it. See [domain-events.md](backend/domain-events.md#handlers).
 
 ## Row scope and capability
 

@@ -35,9 +35,12 @@ public class SpecRuleTests
             | R-1 | 422 | Give the work order a title. |
             """;
         const string dotnetTest = """
-            [Test, Property("Rule", "R-1")]
-            [TUnit.Core.Property("Rule","R-4")]
-            public async Task a_work_order_with_no_title_is_refused() { }
+            public class WorkOrderTests
+            {
+                [Test, Property("Rule", "R-1")]
+                [TUnit.Core.Property("Rule","R-4")]
+                public async Task a_work_order_with_no_title_is_refused() { }
+            }
             """;
         const string frontendTest = """
             test('a closed work order shows no reopen button', { tag: ['@R-9'] }, async () => {})
@@ -112,6 +115,145 @@ public class SpecRuleTests
             "Line 3 of docs/specs/work-orders.md has '`R-1`' in the ID column. Write the ID as R-1, or as R-1 (later).",
             "Line 4 of docs/specs/work-orders.md has 'R-2(later)' in the ID column. Write the ID as R-1, or as R-1 (later).",
         ]);
+    }
+
+    [Test]
+    public void only_a_test_method_that_runs_names_a_rule()
+    {
+        // Arrange
+        const string source = """
+            public class WorkOrderTests
+            {
+                [Test, Property("Rule", "R-1")]
+                public async Task a_work_order_with_no_title_is_refused() { }
+
+                [Test]
+                [TUnit.Core.PropertyAttribute("Rule", "R-2")]
+                public async Task a_long_title_is_refused() { }
+
+                [Test, Skip("Not built yet"), Property("Rule", "R-3")]
+                public async Task a_closed_work_order_does_not_open_again() { }
+
+                [Property("Rule", "R-4")]
+                private static void Arrange() { }
+
+                // [Property("Rule", "R-5")]
+                [Test]
+                public async Task a_part_has_a_number() { }
+
+                public const string Example = "[Property(\"Rule\", \"R-6\")]";
+            }
+
+            [Skip("Not built yet")]
+            public class SiteTests
+            {
+                [Test, Property("Rule", "R-7")]
+                public async Task a_site_has_a_time_zone() { }
+            }
+            """;
+
+        // Act
+        var named = SpecRules.NamedIn("tests/WorkOrderTests.cs", source);
+
+        // Assert
+        named.Select(r => r.Id).ShouldBe(["R-1", "R-2"]);
+    }
+
+    [Test]
+    public void only_the_title_tag_or_annotation_of_a_frontend_test_that_runs_names_a_rule()
+    {
+        // Arrange
+        const string source = """
+            test('a closed work order shows no reopen button @R-1', async () => {})
+            test('a work order can close', { tag: ['@R-2', '@smoke'] }, async () => {})
+            test('a part has a number', { annotation: { type: 'rule', description: '@R-3' } }, async () => {})
+            it("formats a due date @R-4", () => {})
+            test(`a title with // in it @R-5`, async () => {})
+            // covers @R-6
+            /* @R-7 */
+            test.skip('a site has a time zone @R-8', async () => {})
+            test.fixme('a site has a name', { tag: '@R-9' }, async () => {})
+            const note = 'see @R-10'
+            const admin = 'admin@ACME-1.com'
+            """;
+
+        // Act
+        var named = SpecRules.NamedIn("frontend/tests/work-orders.spec.ts", source);
+
+        // Assert
+        named.Select(r => r.Id).ShouldBe(["R-1", "R-2", "R-3", "R-4", "R-5"]);
+    }
+
+    [Test]
+    public void a_rules_section_that_the_check_cannot_read_is_a_fault()
+    {
+        // Arrange
+        const string spec = """
+            ## 3. Rules
+
+            | Rule ID | Rule |
+            |---|---|
+            | P-7 | A work order has a title. |
+
+            - P-8: A closed work order does not open again.
+
+            ## 4. Permissions
+
+            | Permission | Words in a message |
+            |---|---|
+            | `manage_work_orders` | manage work orders |
+            """;
+
+        // Act
+        var read = SpecRules.Read("docs/specs/work-orders.md", spec);
+
+        // Assert
+        read.Rules.ShouldBeEmpty();
+        read.Faults.ShouldBe([
+            "Line 3 of docs/specs/work-orders.md starts a table in the Rules section whose first column is 'Rule ID'. Name the first column ID.",
+            "Line 7 of docs/specs/work-orders.md has the rule P-8 in a list. Write each rule as a row of the table whose first column is ID.",
+            "The Rules section of docs/specs/work-orders.md has no table whose first column is ID, so the check reads no rules from it. Write each rule as a row of that table, or write None.",
+        ]);
+    }
+
+    [Test]
+    public void a_rules_section_with_a_rule_table_or_none_is_read()
+    {
+        // Arrange
+        const string spec = """
+            # Spec: work orders
+
+            ## Rules
+
+            A .NET test names a rule:
+
+            - A test: `[Property("Rule", "R-1")]`.
+
+            | ID | Rule |
+            |---|---|
+            | R-1 | A work order has a title. |
+
+            ### Parts
+
+            | ID | Rule |
+            |---|---|
+            | R-2 | A part has a number. |
+
+            ## Permissions
+
+            | Permission | Words in a message |
+            |---|---|
+            | `manage_work_orders` | manage work orders |
+            """;
+
+        // Act
+        var read = SpecRules.Read("docs/specs/work-orders.md", spec);
+        var none = SpecRules.Read("docs/specs/sites.md", "## 3. Rules\n\nNone.\n\n## 4. Permissions\n");
+
+        // Assert
+        read.Rules.Select(r => r.Id).ShouldBe(["R-1", "R-2"]);
+        read.Faults.ShouldBeEmpty();
+        none.Faults.ShouldBeEmpty();
     }
 
     [Test]

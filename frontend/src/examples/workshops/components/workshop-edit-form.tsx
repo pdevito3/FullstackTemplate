@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
@@ -9,9 +8,9 @@ import { RefusedSaveAlert } from '@/components/refused-save-alert'
 import { LatestLoadedNote, StaleVersionAlert } from '@/components/stale-version-alert'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
+import { useLoadLatest } from '@/hooks/use-load-latest'
 import { useServerErrors } from '@/hooks/use-server-errors'
 import { focusFirstError } from '@/lib/focus-first-error'
-import { latestOverEdits } from '@/lib/latest-over-edits'
 import { parseTimeZone, springGapMessage, wallClockAt } from '@/lib/zoned-time'
 
 import { WorkshopFields } from './workshop-fields'
@@ -41,13 +40,12 @@ interface WorkshopEditFormProps {
 export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEditFormProps) {
   const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop), shouldFocusError: false })
   const serverErrors = useServerErrors(form, WORKSHOP_FIELD_NAMES)
-  const [isLoadingLatest, setIsLoadingLatest] = useState(false)
-  const [changedByLatest, setChangedByLatest] = useState<WorkshopFieldName[] | null>(null)
+  const latest = useLoadLatest(form, WORKSHOP_FIELD_NAMES)
   const zone = parseTimeZone(workshop.venueTimeZone)
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
-    setChangedByLatest(null)
+    latest.clear()
     const body = toWorkshopBody(values, zone)
     if (!body) {
       form.setError('startsAt', { message: springGapMessage(zone) }, { shouldFocus: true })
@@ -61,23 +59,11 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
   }, focusFirstError(form, WORKSHOP_FIELD_NAMES))
 
   const handleLoadLatest = async () => {
-    setIsLoadingLatest(true)
-    try {
-      const latest = await onLoadLatest()
-      if (latest) {
-        const edited = form.getValues()
-        const latestValues = valuesOf(latest)
-        const { changed, kept } = latestOverEdits(form.formState.defaultValues ?? {}, edited, latestValues, WORKSHOP_FIELD_NAMES)
-        // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
-        form.setFocus(changed[0] ?? WORKSHOP_FIELD_NAMES[0])
-        form.reset(latestValues)
-        for (const field of kept) form.setValue(field, edited[field], { shouldDirty: true })
-        setChangedByLatest(changed)
-        serverErrors.clear()
-      }
-    } finally {
-      setIsLoadingLatest(false)
-    }
+    const loaded = await latest.load(async () => {
+      const record = await onLoadLatest()
+      return record && valuesOf(record)
+    })
+    if (loaded) serverErrors.clear()
   }
 
   return (
@@ -88,10 +74,10 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
         <StaleVersionAlert
           noun="workshop"
           problem={serverErrors.problem}
-          isLoadingLatest={isLoadingLatest}
+          isLoadingLatest={latest.isLoading}
           onLoadLatest={handleLoadLatest}
         />
-        <LatestLoadedNote noun="workshop" changed={changedByLatest} labels={FIELD_LABELS} />
+        <LatestLoadedNote noun="workshop" changed={latest.changed} labels={FIELD_LABELS} />
         <Button type="submit" className="self-start" isPending={form.formState.isSubmitting}>
           Save
         </Button>

@@ -1,6 +1,6 @@
 import type { DateValue } from '@internationalized/date'
 
-type TextComparable = string | number | boolean | DateValue | null | undefined
+export type TextComparable = string | number | boolean | DateValue | null | undefined
 
 export interface LatestOverEdits<F extends string> {
   changed: F[]

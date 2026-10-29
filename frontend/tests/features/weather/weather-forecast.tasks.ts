@@ -29,8 +29,7 @@ export function weatherForecastPage(page: Page) {
       await expect(at.loading).toBeVisible()
     },
 
-    // The text, not the element: a box that does not wrap grows with its text, so its own scroll width does not
-    // show the overflow.
+    // Measures the text, because a box that does not wrap grows with its text and has no scroll overflow.
     async textOverflowPast(text: Locator, container?: Locator) {
       const right = container
         ? await container.evaluate((node) => node.getBoundingClientRect().right)

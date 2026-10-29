@@ -1,6 +1,7 @@
 import { weatherApi } from '@tests/support/api/weather-api'
 import { aForecast } from '@tests/support/builders/forecast-builder'
 import { expect, test } from '@tests/support/fixtures'
+import { useDefaultFontSize } from '@tests/support/screen'
 import { weatherForecastPage } from '../weather/weather-forecast.tasks'
 import { appShellPage } from './app-shell.tasks'
 
@@ -126,7 +127,7 @@ test.describe('the mobile sidebar with a 24 px default font', () => {
 
   test('fits in a 390 px window', async ({ page }) => {
     const shell = appShellPage(page)
-    await shell.useDefaultFontSize(24)
+    await useDefaultFontSize(page, 24)
     await shell.openAbout()
 
     await shell.openMobileSidebar()

@@ -1,5 +1,5 @@
 import { test, expect } from '@tests/support/fixtures'
-import { takesUpSpace } from '@tests/support/screen'
+import { takesUpSpace, useDefaultFontSize } from '@tests/support/screen'
 import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
@@ -729,7 +729,7 @@ test.describe('a nested filter group on a 320 px phone with a 24 px font', () =>
 
   test('fits the group header and the filters inside each group', async ({ page }) => {
     const demo = filterDemoPage(page)
-    await demo.useDefaultFontSize(24)
+    await useDefaultFontSize(page, 24)
     await demo.openNestedGroups()
 
     await demo.at.toolbarButton('Group Filters').click()

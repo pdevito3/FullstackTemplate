@@ -43,12 +43,6 @@ export function filterDemoPage(page: Page) {
       await checkbox.locator('xpath=ancestor::label').click()
     },
 
-    // Chromium only (CDP). It keeps the 13:16 ratio of the fixed font to the standard font of Chromium.
-    async useDefaultFontSize(px: number) {
-      const cdp = await page.context().newCDPSession(page)
-      await cdp.send('Page.setFontSizes', { fontSizes: { standard: px, fixed: Math.round((px * 13) / 16) } })
-    },
-
     /** How far the content of the element goes past its right edge. */
     async overflowOf(element: Locator) {
       return element.evaluate((node) => node.scrollWidth - node.clientWidth)

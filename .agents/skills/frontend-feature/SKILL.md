@@ -33,7 +33,7 @@ The shared parts of a page are in the app, also after the removal. Use them. Do 
 | Part | Use |
 |---|---|
 | A query that failed, with a retry | `QueryError` in [`components/query-error.tsx`](../../../frontend/src/components/query-error.tsx) |
-| The page heading that takes the focus on load | `PageHeading` in [`components/page-heading.tsx`](../../../frontend/src/components/page-heading.tsx) |
+| The page heading. The root layout moves the focus to it after a navigation, and a page moves the focus to it after an action | `PageHeading` in [`components/page-heading.tsx`](../../../frontend/src/components/page-heading.tsx) |
 | The refusals of a save, on the fields and above the buttons | `useServerErrors` in [`hooks/use-server-errors.ts`](../../../frontend/src/hooks/use-server-errors.ts) and `RefusedSaveAlert` in [`components/refused-save-alert.tsx`](../../../frontend/src/components/refused-save-alert.tsx) |
 | The focus on the first invalid field, in the order of the form | `focusFirstError` in [`lib/focus-first-error.ts`](../../../frontend/src/lib/focus-first-error.ts) |
 | The debounce of a search box | `useDebouncedCallback` in [`hooks/use-debounced-callback.ts`](../../../frontend/src/hooks/use-debounced-callback.ts) |

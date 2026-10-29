@@ -84,6 +84,19 @@ public class WorkshopSchedulingTests
     }
 
     [Test]
+    public void a_scheduled_workshop_on_its_start_day_is_offered_again_because_the_date_rules_apply_only_to_a_move()
+    {
+        // Arrange
+        var schedule = Case(Chicago, 0, 18, "Scheduled");
+
+        // Act
+        var decision = WorkshopScheduling.Decide(schedule);
+
+        // Assert
+        decision.ShouldBeOfType<ScheduleDecision.Offered>().Start.StartsAt.ShouldBe(schedule.Workshop.StartsAt);
+    }
+
+    [Test]
     public void a_case_that_breaks_each_rule_gets_the_refusal_of_the_first_rule_that_it_breaks()
     {
         // Act

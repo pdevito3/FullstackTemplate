@@ -8,6 +8,10 @@ import type { ProblemDetails } from '../../models/types/problem-details'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetAgentListQuery = {
+    /**
+     * @maxLength 2000
+     * @type string | undefined
+    */
     filters?: string;
     sortOrder?: string;
     /**

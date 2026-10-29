@@ -7,6 +7,10 @@ import type { TenantDto } from '../../models/types/tenant-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetTenantListQuery = {
+    /**
+     * @maxLength 2000
+     * @type string | undefined
+    */
     filters?: string;
     sortOrder?: string;
     /**

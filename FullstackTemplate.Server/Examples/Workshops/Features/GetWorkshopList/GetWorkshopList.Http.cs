@@ -21,7 +21,7 @@ public sealed class GetWorkshopListEndpoint : IEndpoint
     /// Gets a paginated list of Workshops. The search finds the workshops whose title contains the text.
     /// </summary>
     public static async Task<Ok<PagedList<WorkshopDto>>> Handle(
-        string? filters,
+        [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
         string? sortOrder,
         [MaxLength(WorkshopParametersDto.SearchMaxLength)] string? search,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,

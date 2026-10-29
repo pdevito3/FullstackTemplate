@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.EmailAddresses;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources;
 // example:start
 using FullstackTemplate.Server.Domain.TimeZones;
 using FullstackTemplate.Server.Examples.Venues;
@@ -101,6 +102,26 @@ public class OpenApiDocumentTests
         parameters.ShouldNotBeEmpty();
         foreach (var (operation, name) in parameters)
             char.IsLower(name[0]).ShouldBeTrue($"{operation} {name}");
+    }
+
+    // The Server refuses a longer filter, so the SPA reads the limit from the contract
+    [Test]
+    public async Task each_filters_parameter_has_the_max_length_of_querykit()
+    {
+        // Arrange
+        var root = await LoadDocumentAsync();
+
+        // Act
+        var filters = Operations(root)
+            .SelectMany(o => (o.Operation["parameters"]?.AsArray() ?? [])
+                .Where(p => p!["name"]!.GetValue<string>() == QueryKitInputExtensions.FiltersParameter)
+                .Select(p => (Operation: o.Name, MaxLength: p!["schema"]?["maxLength"]?.GetValue<int>())))
+            .ToList();
+
+        // Assert
+        filters.ShouldNotBeEmpty();
+        foreach (var (operation, maxLength) in filters)
+            maxLength.ShouldBe(CustomQueryKitConfiguration.FilterMaxLength, operation);
     }
 
     [Test]

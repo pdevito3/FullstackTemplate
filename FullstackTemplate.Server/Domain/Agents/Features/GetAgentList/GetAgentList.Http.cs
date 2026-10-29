@@ -22,7 +22,7 @@ public sealed class GetAgentListEndpoint : IEndpoint
     /// Gets a paginated list of Agents.
     /// </summary>
     public static async Task<Ok<PagedList<AgentDto>>> Handle(
-        string? filters,
+        [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
         string? sortOrder,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
         [Range(1, int.MaxValue)] int? pageSize,

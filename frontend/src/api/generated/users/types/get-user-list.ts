@@ -8,6 +8,10 @@ import type { UserDto } from '../../models/types/user-dto'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
 
 export type GetUserListQuery = {
+    /**
+     * @maxLength 2000
+     * @type string | undefined
+    */
     filters?: string;
     sortOrder?: string;
     /**

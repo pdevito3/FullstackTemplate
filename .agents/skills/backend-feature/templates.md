@@ -581,7 +581,7 @@ public sealed class Get[EntityName]ListEndpoint : IEndpoint
     /// </summary>
     // One nullable parameter for each query value, with the camelCase name of the contract
     public static async Task<Ok<PagedList<[EntityName]Dto>>> Handle(
-        string? filters,
+        [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
         string? sortOrder,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
         [Range(1, int.MaxValue)] int? pageSize,

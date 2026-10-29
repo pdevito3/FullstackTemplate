@@ -17,6 +17,10 @@ const vendorChunks: Record<string, string[]> = {
   router: ['@tanstack/react-router', '@tanstack/router-core', '@tanstack/history'],
   query: ['@tanstack/react-query', '@tanstack/query-core'],
   motion: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'],
+  // example:start
+  // The workshop routes check their URL search with zod, and validateSearch loads with the entry
+  zod: ['zod'],
+  // example:end
 }
 
 function vendorChunk(id: string): string | undefined {

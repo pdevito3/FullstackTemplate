@@ -127,7 +127,15 @@ describe('formatInstant', () => {
 })
 
 describe('timeZoneLabel', () => {
-  it('shows the IANA ID with spaces', () => {
-    expect(timeZoneLabel(pagoPago)).toBe('Pacific/Pago Pago')
+  it.each([
+    ['Pacific/Pago_Pago', 'American Samoa Time'],
+    ['Europe/Berlin', 'Germany Time'],
+    ['Asia/Bangkok', 'Thailand Time'],
+    ['America/New_York', 'Eastern Time'],
+    ['America/Phoenix', 'Mountain Standard Time'],
+    ['UTC', 'Coordinated Universal Time'],
+    ['Etc/GMT+5', 'GMT-05:00'],
+  ])('names %s as a user knows it: %s', (zone, name) => {
+    expect(timeZoneLabel(parseTimeZone(zone))).toBe(name)
   })
 })

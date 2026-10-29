@@ -570,7 +570,7 @@ test.describe('a date filter of a place in another zone', () => {
     await demo.openAt(new Date('2026-08-16T07:00:00Z'))
     await demo.chooseProperty('Starts At in Pago Pago')
 
-    await demo.addTodayAtTimeFilter('Starts At in Pago Pago', 'Time in Pacific/Pago Pago', '09:00')
+    await demo.addTodayAtTimeFilter('Starts At in Pago Pago', 'American Samoa Time', '09:00')
 
     await expect(demo.at.editFilter('Starts At in Pago Pago')).toHaveAccessibleName(/Aug 15, 2026/)
     await expect(demo.at.queryKit).toHaveText('startsAt == "2026-08-15T20:00:00Z"')

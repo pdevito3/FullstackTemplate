@@ -113,12 +113,24 @@ const changeCountsByTable = (diffs) =>
   Object.fromEntries(diffs.map(({ database, table, added, changed, deleted }) =>
     [`${database}.${table.schema}.${table.name}`, { added: added.length, changed: changed.length, deleted: deleted.length }]))
 
+export class RestoreError extends Error {
+  constructor(cause, changes) {
+    super(cause.message, { cause })
+    this.changes = changes
+  }
+}
+
 export function restore(container, before) {
   const diffs = differences(before, snapshot(container))
-  for (const [database, sql] of restoreSql(before, diffs)) psql(container, database, sql)
-  const left = differences(before, snapshot(container))
-  if (left.length) {
-    throw new Error(`db: the restore left these tables different from the snapshot: ${Object.keys(changeCountsByTable(left)).join(', ')}`)
+  const changes = changeCountsByTable(diffs)
+  try {
+    for (const [database, sql] of restoreSql(before, diffs)) psql(container, database, sql)
+    const left = differences(before, snapshot(container))
+    if (left.length) {
+      throw new Error(`db: the restore left these tables different from the snapshot: ${Object.keys(changeCountsByTable(left)).join(', ')}`)
+    }
+  } catch (e) {
+    throw new RestoreError(e, changes)
   }
-  return changeCountsByTable(diffs)
+  return changes
 }

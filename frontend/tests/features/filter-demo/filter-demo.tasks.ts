@@ -38,6 +38,26 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    // React Aria hides the native input, so the click goes to its label, as a user clicks.
+    async select(checkbox: Locator) {
+      await checkbox.locator('xpath=ancestor::label').click()
+    },
+
+    /** How far the content of the element goes past its right edge. */
+    async overflowOf(element: Locator) {
+      return element.evaluate((node) => node.scrollWidth - node.clientWidth)
+    },
+
+    async openNestedGroups() {
+      await this.open()
+      await at.toolbarButton('Complex Nested Query').click()
+      await at.toolbarButton('Group Filters').click()
+      await this.select(at.groupAction(1, 'Select group'))
+      await this.select(at.selectFilter('First Name | Equals | John'))
+      await at.groupSelected.click()
+      await expect(at.group(2)).toBeVisible()
+    },
+
     async chooseProperty(propertyLabel: string) {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()

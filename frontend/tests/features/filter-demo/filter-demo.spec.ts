@@ -1,5 +1,5 @@
 import { test, expect } from '@tests/support/fixtures'
-import { takesUpSpace } from '@tests/support/screen'
+import { takesUpSpace, useDefaultFontSize } from '@tests/support/screen'
 import { filterDemoPage } from './filter-demo.tasks'
 
 const phone = { width: 390, height: 844 }
@@ -574,5 +574,171 @@ test.describe('a date filter of a place in another zone', () => {
 
     await expect(demo.at.editFilter('Starts At in Pago Pago')).toHaveAccessibleName(/Aug 15, 2026/)
     await expect(demo.at.queryKit).toHaveText('startsAt == "2026-08-15T20:00:00Z"')
+  })
+})
+
+test.describe('the filter builder after the focused button goes away', () => {
+  test('moves the focus to Add Filter when the user removes a filter with the keyboard', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.removeFilterNamed('Labels | Has | Bug').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.removeFilter('Labels')).toHaveCount(1)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Clear', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.toolbarButton('Clear').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.toolbarButton('Clear')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Cancel when the user starts to group, and back to Add Filter after Cancel', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.toolbarButton('Group Filters').focus()
+    await page.keyboard.press('Enter')
+    await expect(demo.at.toolbarButton('Cancel')).toBeFocused()
+
+    await page.keyboard.press('Enter')
+    await expect(demo.at.toolbarButton('Cancel')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Group Selected and after Ungroup', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+    await demo.at.toolbarButton('Group Filters').click()
+    for (const value of ['Bug', 'Urgent']) {
+      await demo.select(demo.at.selectFilter(`Labels | Has | ${value}`))
+    }
+
+    await demo.at.groupSelected.focus()
+    await page.keyboard.press('Enter')
+    await expect(demo.at.addFilterMenu).toBeFocused()
+
+    await demo.at.toolbarButton('Ungroup').focus()
+    await page.keyboard.press('Enter')
+    await expect(demo.at.toolbarButton('Ungroup')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+})
+
+test.describe('the filter builder after a click removes the clicked button', () => {
+  test('moves the focus to Add Filter after a click on Remove filter', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.removeFilterNamed('Labels | Has | Bug').click()
+
+    await expect(demo.at.removeFilter('Labels')).toHaveCount(1)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after a click on Clear', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Urgent Bugs').click()
+
+    await demo.at.toolbarButton('Clear').click()
+
+    await expect(demo.at.toolbarButton('Clear')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after a click on Delete group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.toolbarButton('Complex Nested Query').click()
+
+    await demo.at.groupAction(1, 'Delete group').click()
+
+    await expect(demo.at.group(1)).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+})
+
+test.describe('the filter builder after a key removes a button in a nested group', () => {
+  test('moves the focus to Add Filter after Remove filter in the inner group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.removeFilterNamed('First Name | Equals | Jane').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.removeFilterNamed('First Name | Equals | Jane')).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Delete group of the inner group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.groupAction(2, 'Delete group').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.group(2)).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+
+  test('moves the focus to Add Filter after Ungroup of the inner group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openNestedGroups()
+
+    await demo.at.groupAction(2, 'Ungroup').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(demo.at.group(2)).toHaveCount(0)
+    await expect(demo.at.addFilterMenu).toBeFocused()
+  })
+})
+
+test.describe('a filter group on a 390 px phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('keeps Ungroup and Delete group on the line of its Group badge', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+
+    await demo.at.toolbarButton('Complex Nested Query').click()
+
+    const badge = await demo.edgesOf(demo.at.groupBadge(1))
+    for (const action of ['Ungroup', 'Delete group'] as const) {
+      const button = await demo.edgesOf(demo.at.groupAction(1, action))
+      expect(button.top, action).toBeLessThan(badge.bottom)
+      expect(button.bottom, action).toBeGreaterThan(badge.top)
+    }
+  })
+})
+
+test.describe('a nested filter group on a 320 px phone with a 24 px font', () => {
+  test.use({ viewport: { width: 320, height: 640 } })
+
+  test('fits the group header and the filters inside each group', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await useDefaultFontSize(page, 24)
+    await demo.openNestedGroups()
+
+    await demo.at.toolbarButton('Group Filters').click()
+
+    for (const depth of [1, 2]) {
+      for (const action of ['Ungroup', 'Delete group'] as const) {
+        expect(await demo.overlapOf(demo.at.groupBadge(depth), demo.at.groupAction(depth, action)), `depth ${depth} ${action}`).toBeNull()
+      }
+      expect(await demo.overflowOf(demo.at.group(depth)), `depth ${depth}`).toBeLessThanOrEqual(0)
+    }
   })
 })

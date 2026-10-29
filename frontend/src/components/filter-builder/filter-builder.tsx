@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { FolderAddIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,9 @@ export function FilterBuilder({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [editingFilter, setEditingFilter] = useState<Filter | null>(null)
   const [isGroupingMode, setIsGroupingMode] = useState(false)
+  const addFilterRef = useRef<HTMLButtonElement>(null)
+  const focusAddFilter = () => addFilterRef.current?.focus()
+  const cancelGroupingRef = useRef<HTMLButtonElement>(null)
 
   const handleAddFilter = (filter: Omit<Filter, 'id'>) => {
     const newFilter: Filter = {
@@ -37,6 +41,7 @@ export function FilterBuilder({
   }
 
   const handleRemoveFilter = (filterId: string) => {
+    focusAddFilter()
     actions.removeFilter(filterId)
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -54,6 +59,7 @@ export function FilterBuilder({
   }
 
   const handleUngroup = (groupId: string) => {
+    focusAddFilter()
     actions.ungroup(groupId)
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -86,15 +92,18 @@ export function FilterBuilder({
   }
 
   const handleEnterGroupingMode = () => {
-    setIsGroupingMode(true)
+    flushSync(() => setIsGroupingMode(true))
+    cancelGroupingRef.current?.focus()
   }
 
   const handleCancelGrouping = () => {
+    focusAddFilter()
     setIsGroupingMode(false)
     setSelectedIds(new Set())
   }
 
   const handleClearAll = () => {
+    focusAddFilter()
     actions.clearAll()
     setSelectedIds(new Set())
   }
@@ -108,6 +117,7 @@ export function FilterBuilder({
       return
     }
 
+    focusAddFilter()
     actions.createGroup(ids, LogicalOperators.AND)
     setSelectedIds(new Set())
     setIsGroupingMode(false)
@@ -124,6 +134,7 @@ export function FilterBuilder({
         <FilterPropertyMenu
           options={filterOptions}
           onAddFilter={handleAddFilter}
+          triggerRef={addFilterRef}
         />
 
         {/* Grouping Controls */}
@@ -163,6 +174,7 @@ export function FilterBuilder({
             </Button>
 
             <Button
+              ref={cancelGroupingRef}
               variant="outline"
               size="sm"
               onPress={handleCancelGrouping}
@@ -187,9 +199,9 @@ export function FilterBuilder({
 
       <div className="flex flex-wrap items-start gap-3">
         {state.filters.map((item, index) => (
-          <div key={item.id} className="flex items-center gap-1.5">
+          <div key={item.id} className="flex max-w-full min-w-0 items-center gap-1.5">
             {isFilter(item) ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 {isGroupingMode && (
                   <Checkbox
                     aria-label={`Select filter: ${getFilterName(item)}`}
@@ -224,7 +236,7 @@ export function FilterBuilder({
 
             {/* Show logical operator between items */}
             {index < state.filters.length - 1 && (
-              <span className="text-sm text-muted-foreground font-medium px-1">
+              <span className="shrink-0 text-sm text-muted-foreground font-medium px-1">
                 {state.rootLogicalOperator}
               </span>
             )}

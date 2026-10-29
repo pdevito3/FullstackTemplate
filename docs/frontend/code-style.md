@@ -68,6 +68,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 4. Give a `Dialog` or a `Popover` a title or an `aria-label`. Give an icon-only `Button` an `aria-label`. Use a `Tooltip`, not the `title` attribute.
 5. Use `Link` from `@/components/ui/link` for a link to a route, with `to` and `params`. See [Links](../frontend.md#links).
 6. To show a toast, call `Notification.success`, `error`, `info`, or `warning` from `@/components/notification`.
+7. After an action removes, hides, or disables the focused element, move the focus to a named target: the next row, the heading, or the trigger. Name the target in the code. For example, `filter-builder.tsx` moves the focus to `addFilterRef` when a filter, a group, or the Clear button goes away.
 
 ## Styles
 
@@ -75,6 +76,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 2. Make component variants with `cva`. See `components/ui/button.tsx`.
 3. Use the theme tokens, such as `bg-background` and `text-muted-foreground`. Do not use a fixed color, because the dark theme does not change it.
 4. A table cell wraps its text. Give `whitespace-nowrap` to a cell that holds a code, a date, an amount, an email address, or a badge, so that only prose wraps.
+5. Outside a table, each text that comes from data wraps or shows its full value on demand. A name or an email address can have no spaces, so give it `wrap-anywhere`, and give `min-w-0` to its flex item. A text that truncates is in a button or a link that shows the full value. The sweep of the verify skill finds the text that does not obey this rule.
 
 ## Dates and times
 

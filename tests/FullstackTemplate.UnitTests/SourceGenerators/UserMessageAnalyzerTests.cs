@@ -994,6 +994,113 @@ public class UserMessageAnalyzerTests
         ]);
     }
 
+    [Test]
+    public async Task a_generic_list_names_a_chain_over_a_local_and_a_coalesce_assignment_are_checked()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace Other
+            {
+                using System.Collections.Generic;
+
+                public interface IFixedNames
+                {
+                    static abstract List<string> ListNames();
+                }
+
+                public static class Choices
+                {
+                    public static string Of<T>() where T : IFixedNames => string.Join(", ", T.ListNames());
+                }
+            }
+
+            namespace App
+            {
+                using System.Linq;
+
+                public class Kind : Other.IFixedNames
+                {
+                    private static readonly string[] Names = KindEnum.List.Select(x => x.Name).ToArray();
+
+                    public static System.Collections.Generic.List<string> ListNames() => [.. Names];
+
+                    public static void Generic() => throw new ValidationException("kind", $"Use one of {Other.Choices.Of<Kind>()}.");
+
+                    public static void Ordered() => throw new ValidationException("kind", $"Use one of {string.Join(", ", Names.Order())}.");
+
+                    public static void Trimmed() => throw new ValidationException("kind", $"Use one of {string.Join(", ", KindEnum.List.Select(x => x.Name).Select(n => n.Trim()))}.");
+
+                    public static void Longest() => throw new ValidationException("kind", $"The longest is {KindEnum.List.Max(k => k.Label)}.");
+
+                    public static void Deny(Permission permission, string? message = null)
+                    {
+                        message ??= $"You cannot {permission.Value}.";
+                        throw new ForbiddenAccessException(message);
+                    }
+
+                    private sealed class KindEnum(string name, int value, string label) : Ardalis.SmartEnum.SmartEnum<KindEnum>(name, value)
+                    {
+                        public static readonly KindEnum LateCancellation = new("LateCancellation", 0, "late cancellation");
+
+                        public string Label { get; } = label;
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the stored name 'T.ListNames()'. " + Fix,
+            "A user message shows the stored name 'KindEnum.List.Select(x => x.Name)'. " + Fix,
+            "A user message shows the stored name 'KindEnum.List.Select(x => x.Name).Select(n => n.Trim())'. " + Fix,
+            "A user message shows the stored name 'permission.Value'. " + Fix,
+        ]);
+    }
+
+    [Test]
+    public async Task a_yield_return_guard_and_a_throw_in_a_local_function_are_not_parses()
+    {
+        // Act
+        var diagnostics = await Run("""
+            namespace App
+            {
+                using System;
+                using System.Collections.Generic;
+
+                public static class Modes
+                {
+                    public static void Machine() => _ = Parse(nameof(Mode.Machine));
+
+                    public static void Delegated() => _ = Check(nameof(Mode.Delegated), true);
+
+                    private static IEnumerable<Mode> Parse(string value)
+                    {
+                        if (Enum.TryParse<Mode>(value, out var mode))
+                            yield return mode;
+
+                        throw new ValidationException("mode", $"Invalid mode: {value}");
+                    }
+
+                    private static string Check(string value, bool strict)
+                    {
+                        if (strict)
+                            Fail();
+                        if (Enum.TryParse<Mode>(value, out _))
+                            return "ok";
+                        void Fail() => throw new ValidationException("mode", $"Unknown mode {value}");
+                        return "";
+                    }
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the code name 'nameof(Mode.Machine)'. " + Fix,
+            "A user message shows the code name 'nameof(Mode.Delegated)'. " + Fix,
+        ]);
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> Run(string source)
     {
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)

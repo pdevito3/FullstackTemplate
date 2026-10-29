@@ -7,6 +7,7 @@ import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
+import { focusFirstError } from '@/examples/components/focus-first-error'
 import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
 import { useServerErrors } from '@/examples/components/use-server-errors'
 import { parseTimeZone, wallClockAt } from '@/lib/zoned-time'
@@ -35,7 +36,7 @@ interface WorkshopEditFormProps {
 }
 
 export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEditFormProps) {
-  const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop) })
+  const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop), shouldFocusError: false })
   const serverErrors = useServerErrors(form, WORKSHOP_FIELD_NAMES)
   const [isLoadingLatest, setIsLoadingLatest] = useState(false)
   const zone = parseTimeZone(workshop.venueTimeZone)
@@ -44,7 +45,7 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
     serverErrors.clear()
     const body = toWorkshopBody(values, zone)
     if (!body) {
-      form.setError('startsAt', { message: startInGapMessage(zone) })
+      form.setError('startsAt', { message: startInGapMessage(zone) }, { shouldFocus: true })
       return
     }
     try {
@@ -52,7 +53,7 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
     } catch (error) {
       serverErrors.show(error)
     }
-  })
+  }, focusFirstError(form, WORKSHOP_FIELD_NAMES))
 
   const handleLoadLatest = async () => {
     setIsLoadingLatest(true)

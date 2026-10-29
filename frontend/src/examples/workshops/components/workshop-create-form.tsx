@@ -6,6 +6,7 @@ import type { WorkshopForCreationDto } from '@/api/generated/models/types/worksh
 import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/workshop-for-creation-dto'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
+import { focusFirstError } from '@/examples/components/focus-first-error'
 import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
 import { useServerErrors } from '@/examples/components/use-server-errors'
 import { useVenue } from '@/examples/venues/apis/get-venue'
@@ -26,7 +27,7 @@ interface WorkshopCreateFormProps {
 }
 
 export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormProps) {
-  const form = useForm({ resolver: zodResolver(schema), defaultValues: { venueId, title: '' } })
+  const form = useForm({ resolver: zodResolver(schema), defaultValues: { venueId, title: '' }, shouldFocusError: false })
   const serverErrors = useServerErrors(form, FIELD_NAMES)
   const venue = useVenue(form.watch('venueId') || undefined)
   const zone = venue.data && parseTimeZone(venue.data.timeZone)
@@ -34,12 +35,12 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
     if (!zone) {
-      form.setError('venueId', { message: 'The venue did not load. Pick it again.' })
+      form.setError('venueId', { message: 'The venue did not load. Pick it again.' }, { shouldFocus: true })
       return
     }
     const body = toWorkshopBody(values, zone)
     if (!body) {
-      form.setError('startsAt', { message: startInGapMessage(zone) })
+      form.setError('startsAt', { message: startInGapMessage(zone) }, { shouldFocus: true })
       return
     }
     try {
@@ -47,7 +48,7 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
     } catch (error) {
       serverErrors.show(error)
     }
-  })
+  }, focusFirstError(form, FIELD_NAMES))
 
   return (
     <Form {...form}>
@@ -57,6 +58,7 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
           name="venueId"
           render={({ field, fieldState }) => (
             <VenuePicker
+              ref={field.ref}
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}

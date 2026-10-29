@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type Ref } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Collection, Text, type Key } from 'react-aria-components'
 
@@ -35,13 +35,14 @@ function optionsWithPick(venues: VenueDto[], pick: VenueDto | undefined): VenueD
 }
 
 interface VenuePickerProps {
+  ref?: Ref<HTMLInputElement>
   value: string
   onChange: (venueId: string) => void
   onBlur?: () => void
   errorMessage?: string
 }
 
-export function VenuePicker({ value, onChange, onBlur, errorMessage }: VenuePickerProps) {
+export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: VenuePickerProps) {
   const queryClient = useQueryClient()
   const [text, setText] = useState('')
   const sendText = useDebouncedCallback(setText)
@@ -70,7 +71,7 @@ export function VenuePicker({ value, onChange, onBlur, errorMessage }: VenuePick
       className="flex flex-col gap-2"
     >
       <Label>Venue</Label>
-      <ComboboxInput placeholder="Search venues" maxLength={searchMaxLength} className="w-full" />
+      <ComboboxInput ref={ref} placeholder="Search venues" maxLength={searchMaxLength} className="w-full" />
       {errorMessage && (
         <Text slot="errorMessage" className="text-sm text-destructive">
           {errorMessage}

@@ -7,7 +7,6 @@ export const toastDemo = (page: Page) => ({
   showToast: (name: ToastButton) => page.getByRole('button', { name, exact: true }),
   openDialog: page.getByRole('button', { name: 'Open Dialog', exact: true }),
   dialog: page.getByRole('dialog', { name: 'Dialog Title' }),
-  sheet: page.locator('[data-slot="responsive-dialog-content"]'),
   dialogTitle: page.getByRole('dialog', { name: 'Dialog Title' }).getByRole('heading', { name: 'Dialog Title' }),
   closeDialog: page.getByRole('dialog', { name: 'Dialog Title' }).getByRole('button', { name: 'Continue' }),
   region: page.getByRole('region', { name: /notification/ }),

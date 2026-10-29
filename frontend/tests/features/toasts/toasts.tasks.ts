@@ -46,18 +46,22 @@ export function toastDemoPage(page: Page) {
       await expect(at.toasts).toHaveCount(buttons.length)
     },
 
-    // The sheet plays its slide-in on the real time of the page, not on the clock of the test. A sheet that closes
-    // before the slide-in ends waits for the clock, so the task waits for the end of the slide-in.
     async openBottomSheet() {
       await at.openDialog.press('Enter')
       await expect(at.dialog).toBeVisible()
-      await at.sheet.evaluate((sheet) => Promise.all(sheet.getAnimations().map((animation) => animation.finished)))
       await nextResizeObserverCallbacks(page)
     },
 
+    // The sheet starts its exit in an animation frame, and the clock of the test holds the frames. So the task moves
+    // the clock in small steps until the sheet is gone. The steps are short next to the times of the toasts.
     async closeBottomSheet() {
       await at.closeDialog.press('Enter')
-      await expect(at.dialog).toBeHidden()
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(16)
+          return at.dialog.count()
+        })
+        .toBe(0)
       await nextResizeObserverCallbacks(page)
     },
 

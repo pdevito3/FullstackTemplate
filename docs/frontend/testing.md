@@ -26,6 +26,8 @@ onTestFinished(() => commands.answerRequests([]))
 A component that takes a save function as a prop does not need answers. Give it a `vi.fn()` that resolves, or that rejects with a `ProblemDetailsError`.
 
 A click on an option of a combobox can scroll the page, and a scroll of the page closes the list. Pick an option with `userEvent.keyboard('{ArrowDown}{Enter}')`.
+
+When a component test fails in CI, open the `.vitest/attachments/` folder in the test report artifact of the job. It has the failure screenshot and the Playwright trace of each failed test. Open the trace at https://trace.playwright.dev. For a test that timed out, the last action with no end is the step that the test waited on. Only CI records the traces, because they make the suite about 40% slower. To record them locally, run `CI=1 pnpm test`.
 <!-- example:start -->
 
 The workshop example has these component tests: the limits of the contract and the stale-version reload of the edit form ([`refuses a title and a capacity over the limits of the contract`](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx>), [`after a stale save, loads the latest`](<../../frontend/src/examples/workshops/components/workshop-edit-form.test.tsx>)), the venue picker with a pick that is not on the first page ([`shows a picked venue that is not on the first page`](<../../frontend/src/examples/venues/components/venue-picker.test.tsx>)), and the search and the page of the list in the URL ([`puts the page in the URL`](<../../frontend/src/examples/workshops/workshop-list.test.tsx>)).

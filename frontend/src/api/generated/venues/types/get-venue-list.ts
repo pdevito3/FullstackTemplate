@@ -7,6 +7,10 @@ import type { ValidationProblemDetails } from '../../models/types/validation-pro
 import type { VenueDto } from '../../models/types/venue-dto'
 
 export type GetVenueListQuery = {
+    /**
+     * @maxLength 2000
+     * @type string | undefined
+    */
     filters?: string;
     sortOrder?: string;
     /**

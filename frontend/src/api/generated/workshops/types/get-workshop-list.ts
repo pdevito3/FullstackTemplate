@@ -7,6 +7,10 @@ import type { ValidationProblemDetails } from '../../models/types/validation-pro
 import type { WorkshopDto } from '../../models/types/workshop-dto'
 
 export type GetWorkshopListQuery = {
+    /**
+     * @maxLength 2000
+     * @type string | undefined
+    */
     filters?: string;
     sortOrder?: string;
     /**

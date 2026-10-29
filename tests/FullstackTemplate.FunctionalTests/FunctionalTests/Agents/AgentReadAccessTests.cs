@@ -14,7 +14,7 @@ using TestUtilities;
 
 /// <summary>
 /// A user with the read_agents permission can read the agents of the tenant. A command that returns an agent needs it
-/// too.
+/// too, except AddAgent, whose response has only the values of the request and the new ID.
 /// </summary>
 public class AgentReadAccessTests : TestBase
 {
@@ -77,6 +77,29 @@ public class AgentReadAccessTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await result.Content.ReadFromJsonAsync<AgentDto>()).ShouldNotBeNull().Id.ShouldBe(agent.Id);
+    }
+
+    [Test]
+    public async Task member_with_only_manage_agents_adds_an_agent_but_cannot_read_it_after()
+    {
+        // Arrange
+        var (member, _) = await AddMemberAndAgentAsync(Permission.ManageAgents());
+        SignInAs(member);
+        var dto = new AgentForCreationDto { Name = "Report bot", ClientId = "report-bot", Mode = "delegated" };
+
+        // Act
+        var addResult = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Agents.Create, dto);
+        var added = await addResult.Content.ReadFromJsonAsync<AgentDto>();
+        var getResult = await FactoryClient.GetRequestAsync(ApiRoutes.Agents.GetRecord(added!.Id));
+
+        // Assert
+        addResult.StatusCode.ShouldBe(HttpStatusCode.Created);
+        added.TenantId.ShouldBe(member.TenantId);
+        added.Name.ShouldBe(dto.Name);
+        added.ClientId.ShouldBe(dto.ClientId);
+        added.Mode.ShouldBe(dto.Mode);
+        added.Permissions.ShouldBeEmpty();
+        await ShouldBeForbiddenAsync(getResult, ReadAgentsDenial);
     }
 
     // A command returns the record of the agent, so manage_agents alone must not show it

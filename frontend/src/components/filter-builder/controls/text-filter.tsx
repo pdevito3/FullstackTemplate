@@ -5,7 +5,7 @@ import { ResponsiveDialogFooter } from '@/components/ui/responsive-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Filter, FilterControlProps, OperatorType } from '../types'
-import { hasEndQuote, TEXT_END_QUOTE_MESSAGE } from '../utils/querykit-text'
+import { textValueFault, textValueMessage } from '../utils/querykit-text'
 import {
   getDefaultOperator,
   getOperatorsForControlType,
@@ -52,15 +52,15 @@ export function TextFilter({
   const errorId = useId()
 
   const text = value.trim()
-  const endQuote = hasEndQuote(text)
-  const canSubmit = text !== '' && !endQuote
-  const [checked, setChecked] = useState(false)
-  // A quote at the end can be the start of a quote inside the text, so wait until the user is done typing.
-  const showEndQuote = endQuote && (checked || text.startsWith('"'))
+  const fault = textValueFault(text)
+  // A quote or a bracket at the end can start one inside the text, so the message waits until the user asks to add the
+  // filter. On a blur it would move the buttons under a press, and the click would miss them.
+  const [checked, setChecked] = useState(fault !== undefined)
+  const showFault = fault !== undefined && (checked || text.startsWith('"'))
 
   const handleSubmit = () => {
     setChecked(true)
-    if (!canSubmit) {
+    if (text === '' || fault) {
       return
     }
 
@@ -94,14 +94,13 @@ export function TextFilter({
           <Input
             autoFocus={autoFocus}
             id={valueId}
-            aria-invalid={showEndQuote || undefined}
-            aria-describedby={showEndQuote ? errorId : undefined}
+            aria-invalid={showFault || undefined}
+            aria-describedby={showFault ? errorId : undefined}
             value={value}
             onChange={(e) => {
               setValue(e.target.value)
               setChecked(false)
             }}
-            onBlur={() => setChecked(true)}
             placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -109,9 +108,9 @@ export function TextFilter({
               }
             }}
           />
-          {showEndQuote && (
+          {showFault && (
             <p id={errorId} role="alert" className="text-destructive text-sm">
-              {TEXT_END_QUOTE_MESSAGE}
+              {textValueMessage(fault)}
             </p>
           )}
         </div>
@@ -130,7 +129,7 @@ export function TextFilter({
         <Button variant="outline" onPress={onCancel}>
           Cancel
         </Button>
-        <Button onPress={handleSubmit} isDisabled={!canSubmit}>
+        <Button onPress={handleSubmit} isDisabled={text === ''}>
           {initialFilter ? 'Update' : 'Add'} Filter
         </Button>
       </ResponsiveDialogFooter>

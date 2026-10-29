@@ -5,53 +5,28 @@ import { offsetAt, wallClockAt } from '@/lib/zoned-time'
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
 import { wallClockZone } from './date-zone'
-import { hasEndQuote } from './querykit-text'
+import { filterValueFault } from './querykit-text'
 import { LogicalOperators } from './operators'
 
 /**
- * Convert filter state to QueryKit filter string
+ * Convert filter state to QueryKit filter string. A filter with a value that QueryKit cannot hold is left out, and its
+ * badge says so.
  */
 export function toQueryKitString(state: FilterState): string {
-  if (state.filters.length === 0) {
-    return ''
-  }
-
-  if (state.filters.length === 1) {
-    return convertFilterOrGroup(state.filters[0])
-  }
-
-  const filterStrings = state.filters.map(convertFilterOrGroup)
-  const operator = state.rootLogicalOperator === LogicalOperators.AND ? ' && ' : ' || '
-
-  return filterStrings.join(operator)
+  return joinFilters(state.filters, state.rootLogicalOperator)
 }
 
-/**
- * Convert a single filter or group to QueryKit string
- */
+function joinFilters(items: (Filter | FilterGroup)[], logicalOperator: FilterGroup['logicalOperator']): string {
+  const operator = logicalOperator === LogicalOperators.AND ? ' && ' : ' || '
+  return items.map(convertFilterOrGroup).filter(Boolean).join(operator)
+}
+
 function convertFilterOrGroup(item: Filter | FilterGroup): string {
   if (isFilter(item)) {
-    return convertFilter(item)
+    return filterValueFault(item) ? '' : convertFilter(item)
   }
-  return convertGroup(item)
-}
-
-/**
- * Convert a filter group to QueryKit string
- */
-function convertGroup(group: FilterGroup): string {
-  if (group.filters.length === 0) {
-    return ''
-  }
-
-  if (group.filters.length === 1) {
-    return `(${convertFilterOrGroup(group.filters[0])})`
-  }
-
-  const filterStrings = group.filters.map(convertFilterOrGroup)
-  const operator = group.logicalOperator === LogicalOperators.AND ? ' && ' : ' || '
-
-  return `(${filterStrings.join(operator)})`
+  const filters = joinFilters(item.filters, item.logicalOperator)
+  return filters ? `(${filters})` : ''
 }
 
 /**
@@ -94,11 +69,6 @@ function convertTextFilter(propertyKey: string, operator: string, value: string)
  * least three long.
  */
 function quoteText(value: string): string {
-  if (hasEndQuote(value)) {
-    throw new Error(
-      `QueryKit cannot hold a quote at the start or the end of a value, so a filter cannot hold ${JSON.stringify(value)}. Refuse the value where the filter gets it.`
-    )
-  }
   if (!value.includes('"')) {
     return `"${value}"`
   }

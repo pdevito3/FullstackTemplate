@@ -8,6 +8,7 @@ using Exceptions;
 using QueryKit;
 using QueryKit.Configuration;
 using QueryKit.Exceptions;
+using Sprache;
 
 /// <summary>
 /// Applies the <c>filters</c> and <c>sortOrder</c> values of a list request with QueryKit.
@@ -19,7 +20,7 @@ public static class QueryKitInputExtensions
     public const string SortOrderParameter = "sortOrder";
     public const string FilterNotReadMessage = "The filter could not be read. Change the filter, then try again.";
     public const string SortOrderNotReadMessage = "The sort order could not be read. Change the sort, then try again.";
-    public const string FilterTooLongMessage = "The filter is too long. Remove some conditions, then try again.";
+    public const string FilterTooLongMessage = "The filter is too long. Remove a condition or shorten a value, then try again.";
     public const string FilterTooDeepMessage = "The filter has too many nested groups. Remove a group, then try again.";
     // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
     private const string AllowedActionsMember = "AllowedActions";
@@ -30,7 +31,7 @@ public static class QueryKitInputExtensions
         {
             // Filter values go to Postgres as parameters, and Postgres refuses a parameter that it cannot store
             if (!PostgresText.CanStore(filters))
-                throw new QueryInputException(FiltersParameter, "The filter has a character that is not allowed.");
+                throw new QueryInputException(FiltersParameter, "The filter has a character that is not allowed. Remove it, then try again.");
             var predicate = FilterParser.ParseFilter<T>(filters, config);
             RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
             return query.Where(predicate);
@@ -67,10 +68,10 @@ public static class QueryKitInputExtensions
             return apply();
         }
         // The message of QueryKit names the place of the fault and the property names of the code, so the response gets
-        // a fixed message and the trace gets the exception.
+        // a fixed message.
         catch (QueryKitException exception) when (IsInputError(exception))
         {
-            Activity.Current?.AddException(exception);
+            AddToSpan(exception);
             throw new QueryInputException(parameter, MessageFor(parameter, exception), exception);
         }
         // An operator that does not fit the type of the property fails in .NET, for example ^^ on a string.
@@ -80,6 +81,24 @@ public static class QueryKitInputExtensions
             Activity.Current?.AddException(exception);
             throw new QueryInputException(parameter, NotReadMessage(parameter), exception);
         }
+    }
+
+    // A span never holds user-entered text, and the message of QueryKit can hold a value of the filter, as in "The value
+    // 'x' is not a valid Int32". So the span gets only a message that holds no input: the place of a parse fault, or a
+    // limit. The stack trace is that of the exception alone, because ToString() adds the messages of inner exceptions.
+    private static void AddToSpan(QueryKitException exception)
+    {
+        var message = exception switch
+        {
+            QueryKitInputLengthExceededException or QueryKitNestingDepthExceededException => exception.Message,
+            { InnerException: ParseException parse } => $"Failed at {parse.Position}.",
+            _ => exception.GetType().Name,
+        };
+        Activity.Current?.AddException(exception, new TagList
+        {
+            { "exception.message", message },
+            { "exception.stacktrace", exception.StackTrace },
+        });
     }
 
     private static string MessageFor(string parameter, QueryKitException exception) => exception switch

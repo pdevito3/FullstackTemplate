@@ -60,19 +60,35 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
-    public void the_span_gets_the_message_of_querykit()
+    public void the_span_gets_the_place_of_a_parse_fault()
     {
         // Arrange
         using var activity = _source.StartActivity("list").ShouldNotBeNull();
 
         // Act
-        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Name == a\"b", new CustomQueryKitConfiguration()));
+        Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Name == a\"b", new CustomQueryKitConfiguration()));
 
         // Assert
         var recorded = activity.Events.ShouldHaveSingleItem();
         recorded.Name.ShouldBe("exception");
-        recorded.Tags.ShouldContain(new KeyValuePair<string, object?>("exception.message", exception.InnerException!.Message));
-        exception.InnerException.Message.ShouldContain("parsing failure");
+        recorded.Tags.ShouldContain(new KeyValuePair<string, object?>("exception.message", "Failed at Line 1, Column 10."));
+    }
+
+    // A value that does not convert gets a QueryKit message that holds the value
+    [Test]
+    [Arguments("Version == \"jane@example.com\"")]
+    [Arguments("Name == \"jane@example.com\" && Version == \"jane@example.com\"")]
+    public void the_span_does_not_get_the_text_of_the_filter(string filters)
+    {
+        // Arrange
+        using var activity = _source.StartActivity("list").ShouldNotBeNull();
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.InnerException.ShouldNotBeNull().ToString().ShouldContain("jane@example.com");
+        activity.Events.ShouldHaveSingleItem().Tags.ShouldAllBe(tag => !(tag.Value ?? "").ToString()!.Contains("jane@example.com"));
     }
 
     [Test]
@@ -85,7 +101,7 @@ public class QueryKitInputExtensionsTests : IDisposable
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
 
         // Assert
-        exception.Message.ShouldBe("The filter is too long. Remove some conditions, then try again.");
+        exception.Message.ShouldBe("The filter is too long. Remove a condition or shorten a value, then try again.");
         exception.InnerException.ShouldBeOfType<QueryKitInputLengthExceededException>();
     }
 

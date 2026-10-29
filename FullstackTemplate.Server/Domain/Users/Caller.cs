@@ -109,7 +109,7 @@ public abstract record Caller
             OutsiderKind.Anonymous => "Sign in to do this.",
             OutsiderKind.MachineClient =>
                 "This client has no permissions. It can read only the data that needs no permission.",
-            OutsiderKind.NoUserRecord => "You need a user record in a tenant to do this.",
+            OutsiderKind.NoUserRecord => "You are not a member of a tenant. Ask a tenant admin to add you.",
             OutsiderKind.UnknownClient =>
                 "This client is not a registered agent of your tenant. A tenant admin can register it.",
             _ => throw new UnreachableException(),

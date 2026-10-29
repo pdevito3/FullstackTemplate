@@ -11,11 +11,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>
-/// Checks the text of each message that a user can read for a code name or an ID (docs/messages.md, rule 1). A user
-/// message is a string that goes to a parameter named <c>message</c> or <c>*Message</c> of a method of the project, such as
-/// the constructor of an exception or <c>ForRequestField</c>, to a FluentValidation <c>WithMessage</c>, or to a string field
-/// whose name ends in <c>Message</c>. The analyzer follows the string back through the methods, properties, fields, locals,
-/// and parameters of the project, so a message that a helper builds is checked too.
+/// Checks the text of each message that a user can read for a code name or an ID (docs/messages.md, rule 1). The list of
+/// user messages is in "The check" of docs/messages.md. The analyzer follows the string back through the methods,
+/// properties, fields, locals, and parameters of the project, so a message that a helper builds is checked too.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UserMessageAnalyzer : DiagnosticAnalyzer

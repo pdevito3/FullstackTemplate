@@ -5,6 +5,7 @@ using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Services;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -143,7 +144,7 @@ public class AuditSensitivityTests
     private sealed record UsersExportedAgain(AuditSubject Subject) : AuditAction(Subject);
 }
 
-/// <summary>The model of <see cref="AppDbContext"/> plus a <see cref="Payslip"/> whose values have converters.</summary>
+/// <summary>The tenant of <see cref="AppDbContext"/> and a <see cref="Payslip"/> whose values have converters.</summary>
 file sealed class ConvertedValuesContext() : AppDbContext(
     new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
     TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
@@ -151,13 +152,14 @@ file sealed class ConvertedValuesContext() : AppDbContext(
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.IgnoreTheAppEntities();
         modelBuilder.Entity<Payslip>(payslip =>
         {
             payslip.HasKey(p => p.Id);
             payslip.Property(p => p.Salary).HasConversion<long>();
             payslip.Property(p => p.Format).HasConversion<string>();
         });
-        base.OnModelCreating(modelBuilder);
     }
 }
 

@@ -200,6 +200,26 @@ const isValue = (variable) => {
   return !(init && (['ArrowFunctionExpression', 'FunctionExpression'].includes(init.type) || hookCalledBy(init) === 'useQueryClient'))
 }
 
+// The fields that a read takes from its variable: `params.page.toFixed()` reads `page` of `params`.
+const fieldsRead = (identifier) => {
+  const fields = []
+  for (let node = identifier; ;) {
+    const { parent } = node
+    if (['TSNonNullExpression', 'ChainExpression'].includes(parent.type)) {
+      node = parent
+    } else if (parent.type === 'MemberExpression' && parent.object === node && !parent.computed
+      && !(parent.parent.type === 'CallExpression' && parent.parent.callee === parent)) {
+      fields.push(parent.property.name)
+      node = parent
+    } else {
+      return fields
+    }
+  }
+}
+
+const readOf = (ref) => ({ variable: ref.resolved, fields: fieldsRead(ref.identifier) })
+const covers = (key, read) => key.variable === read.variable && key.fields.every((field, i) => read.fields[i] === field)
+
 export const queryKeyHasInputsRule = {
   meta: {
     type: 'problem',
@@ -210,19 +230,23 @@ export const queryKeyHasInputsRule = {
   },
   create(context) {
     const { sourceCode } = context
-    const keyVariables = (node) => {
-      const found = new Set()
+    const keyReads = (node) => {
+      const reads = []
+      const followed = new Set()
       const add = (ref) => {
         const variable = ref.resolved
-        if (!isLocal(variable) || found.has(variable))
+        if (!isLocal(variable))
           return
-        found.add(variable)
+        reads.push(readOf(ref))
+        if (followed.has(variable))
+          return
+        followed.add(variable)
         const init = initOf(variable)
         if (init)
           referencesIn(sourceCode, init).forEach(add)
       }
       referencesIn(sourceCode, node).forEach(add)
-      return found
+      return reads
     }
 
     return {
@@ -232,26 +256,41 @@ export const queryKeyHasInputsRule = {
         const queryFn = property('queryFn')
         if (!queryKey || !queryFn || !['ArrowFunctionExpression', 'FunctionExpression'].includes(queryFn.type))
           return
-        const inKey = keyVariables(queryKey)
+        const inKey = keyReads(queryKey)
+        const isInKey = (read) => inKey.some((key) => covers(key, read))
         const comesFromKey = (variable, path = []) => {
           const init = initOf(variable)
           if (!init || !['useMemo', 'useCallback', null].includes(hookCalledBy(init)) || path.includes(variable))
             return false
-          const values = referencesIn(sourceCode, init).map((ref) => ref.resolved).filter((v) => isLocal(v) && isValue(v))
-          return values.length > 0 && values.every((v) => inKey.has(v) || comesFromKey(v, [...path, variable]))
+          const reads = referencesIn(sourceCode, init).filter((ref) => isLocal(ref.resolved) && isValue(ref.resolved)).map(readOf)
+          return reads.length > 0 && reads.every((read) => isInKey(read) || comesFromKey(read.variable, [...path, variable]))
         }
         const reported = new Set()
         for (const ref of referencesIn(sourceCode, queryFn)) {
           const variable = ref.resolved
-          if (!isLocal(variable) || within(variable.scope.block, queryFn) || !isValue(variable) || inKey.has(variable)
-            || comesFromKey(variable) || reported.has(variable) || isInClientOptions(ref.identifier, queryFn))
+          if (!isLocal(variable) || within(variable.scope.block, queryFn) || !isValue(variable) || isInClientOptions(ref.identifier, queryFn))
             continue
-          reported.add(variable)
-          context.report({ node: ref.identifier, messageId: 'missing', data: { name: variable.name } })
+          const read = readOf(ref)
+          const name = [variable.name, ...read.fields].join('.')
+          if (isInKey(read) || comesFromKey(variable) || reported.has(name))
+            continue
+          reported.add(name)
+          context.report({ node: ref.identifier, messageId: 'missing', data: { name } })
         }
       },
     }
   },
+}
+
+// The fields of an inline type such as `{ search: string; page: number }`, or null when the type does not list them.
+const fieldsOfType = (pattern) => {
+  const type = pattern.typeAnnotation?.typeAnnotation
+  if (type?.type !== 'TSTypeLiteral')
+    return null
+  const names = type.members.map((member) => member.type === 'TSPropertySignature' && !member.computed
+    ? member.key.name ?? member.key.value
+    : null)
+  return names.includes(null) ? null : names
 }
 
 export const keyHasEachParamRule = {
@@ -260,9 +299,12 @@ export const keyHasEachParamRule = {
     schema: [],
     messages: {
       partial: 'The key uses only a part of `{{name}}`, or none of it, so two requests that differ in another value share one cache entry. Put all of `{{name}}` in the key (docs/frontend/server-state.md, rule 3).',
+      field: 'The key leaves out `{{name}}` of this parameter, so two requests that differ in `{{name}}` share one cache entry. Put `{{name}}` in the key (docs/frontend/server-state.md, rule 3).',
+      apart: 'The key takes apart a parameter of type `{{type}}`, so the lint cannot see a field that the pattern leaves out, and two requests that differ in that field share one cache entry. Take the parameter whole and put it in the key, such as `(params: {{type}}) => [..., params]` (docs/frontend/server-state.md, rule 3).',
     },
   },
   create(context) {
+    const { sourceCode } = context
     const isWholeUse = ({ identifier }) => {
       const { parent } = identifier
       if (parent.type !== 'MemberExpression' || parent.object !== identifier)
@@ -270,12 +312,47 @@ export const keyHasEachParamRule = {
       return parent.parent.type === 'CallExpression' && parent.parent.callee === parent
     }
     const check = (fn) => {
-      for (const variable of context.sourceCode.getDeclaredVariables(fn)) {
-        if (variable.defs[0]?.type === 'FunctionName')
-          continue
-        if (!variable.references.some(isWholeUse))
-          context.report({ node: variable.identifiers[0], messageId: 'partial', data: { name: variable.name } })
+      const variables = sourceCode.getDeclaredVariables(fn)
+      const checkName = (identifier, fields) => {
+        const variable = variables.find((v) => v.identifiers.includes(identifier))
+        if (!variable || variable.references.some(isWholeUse))
+          return
+        if (!fields) {
+          context.report({ node: identifier, messageId: 'partial', data: { name: identifier.name } })
+          return
+        }
+        const read = new Set(variable.references.map(({ identifier: { parent } }) => !parent.computed && parent.property?.name))
+        for (const name of fields.filter((field) => !read.has(field)))
+          context.report({ node: identifier, messageId: 'field', data: { name } })
       }
+      const visit = (node) => {
+        switch (node.type) {
+          case 'AssignmentPattern':
+            return visit(node.left)
+          case 'Identifier':
+            return checkName(node, fieldsOfType(node))
+          case 'RestElement':
+            return visit(node.argument)
+          case 'ObjectPattern': {
+            const fields = fieldsOfType(node)
+            const hasRest = node.properties.some((p) => p.type === 'RestElement')
+            if (!hasRest && !fields) {
+              const annotation = node.typeAnnotation?.typeAnnotation
+              context.report({ node, messageId: 'apart', data: { type: annotation ? sourceCode.getText(annotation) : 'unknown' } })
+            }
+            const taken = node.properties.map((p) => p.type === 'Property' && !p.computed ? p.key.name ?? p.key.value : null)
+            if (!hasRest && fields)
+              for (const name of fields.filter((field) => !taken.includes(field)))
+                context.report({ node, messageId: 'field', data: { name } })
+            return node.properties.forEach((p) => visit(p.type === 'Property' ? p.value : p))
+          }
+          default: {
+            const annotation = node.typeAnnotation?.typeAnnotation
+            return context.report({ node, messageId: 'apart', data: { type: annotation ? sourceCode.getText(annotation) : 'unknown' } })
+          }
+        }
+      }
+      fn.params.forEach(visit)
     }
     return { 'Property > ArrowFunctionExpression.value': check, 'Property > FunctionExpression.value': check }
   },

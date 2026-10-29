@@ -210,7 +210,7 @@ async function capture(name, { fullPage = true } = {}) {
   const aria = await page.locator('body').ariaSnapshot()
   writeFileSync(path.join(outDir, `${base}.aria.txt`), `# ${page.url()}\n${aria}\n`)
   log('steps.log', `cap   ${base} ${page.url()}`)
-  if (sweep && fullPage && name !== 'failure') await sweepCapture({ page, cdp, settle, outDir, capture: base, faults: sweepFaults })
+  if (sweep && name !== 'failure') await sweepCapture({ page, cdp, settle, outDir, capture: base, faults: sweepFaults, fullPage })
 }
 
 // Logs in through the real BFF and the IdP of the stack, then returns the user's `name` claim from the BFF.

@@ -11,6 +11,11 @@ const configs = [
   { width: 1280, height: 800, scheme: 'light', fontSize: 24 },
 ]
 const configName = ({ width, scheme, fontSize }) => `${width}px ${scheme} ${fontSize}px font`
+// A resize or a new font size can close an open overlay, such as a submenu. The sweep of an overlay keeps both.
+const overlayConfigs = ({ width, height }) => [
+  { width, height, scheme: 'light', fontSize: 16 },
+  { width, height, scheme: 'dark', fontSize: 16 },
+]
 
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughesson'
 const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdomain.example-company-name.com'
@@ -89,8 +94,17 @@ function markLayoutFaults() {
   const scrolls = (overflow) => overflow === 'auto' || overflow === 'scroll'
   const label = (el) => el.dataset.slot ?? el.closest('[data-slot]')?.dataset.slot ?? el.tagName.toLowerCase()
   const textOf = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 80)
-  const canShowFullValue = (el) =>
-    el.closest('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [role=button], [role=link]') !== null
+  const oneLine = (value) => (value ?? '').trim().replace(/\s+/g, ' ')
+  // The element that the user can focus or press to read the full value: its title, or its accessible name.
+  // A Tooltip shows the accessible name of its trigger, so the name covers it.
+  const canShowFullValue = (el) => {
+    const host = el.closest('a[href], button, input, select, textarea, summary, [tabindex]')
+    if (!host || host.tabIndex < 0 || host.matches(':disabled, [aria-disabled="true"]')) return false
+    const full = oneLine(el.textContent)
+    const labelledBy = host.getAttribute('aria-labelledby')?.split(/\s+/).map((id) => document.getElementById(id)?.textContent).join(' ')
+    const name = host.getAttribute('aria-label') ?? labelledBy ?? host.textContent
+    return [host.getAttribute('title'), name].some((value) => oneLine(value).includes(full))
+  }
   const ownText = (el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
   const textRect = (text) => {
     const range = document.createRange()
@@ -105,6 +119,62 @@ function markLayoutFaults() {
   }
 
   const width = document.documentElement.clientWidth
+  const overlays = '[role=dialog], [role=alertdialog], [role=menu], [role=listbox], [role=tooltip], [data-slot=popover-content]'
+  for (const el of document.querySelectorAll(overlays)) {
+    if (isHidden(el) || el.parentElement?.closest(overlays)) continue
+    const box = el.getBoundingClientRect()
+    if (box.left < -1 || box.right > width + 1) {
+      add(el, { kind: 'overlay goes past the window', how: `spans ${Math.round(box.left)} to ${Math.round(box.right)} px in a ${width} px window` })
+    }
+  }
+
+  // React Aria sets an inline max-height from the space on the page, and an inline style wins over a class.
+  for (const el of document.querySelectorAll('[style*="max-height"]')) {
+    if (isHidden(el)) continue
+    const inline = [el.style.getPropertyValue('max-height'), el.style.getPropertyPriority('max-height')]
+    el.style.removeProperty('max-height')
+    const classMax = parseFloat(getComputedStyle(el).maxHeight)
+    el.style.setProperty('max-height', ...inline)
+    const height = el.getBoundingClientRect().height
+    if (height > classMax + 1) {
+      add(el, { kind: 'list grows past its max height', how: `is ${Math.round(height)} px high, and its class sets a max height of ${Math.round(classMax)} px` })
+    }
+  }
+
+  // A bar has a fixed height when its height does not come from its content. Its text must stay on one line.
+  const hasFixedHeight = (el) => {
+    const height = el.getBoundingClientRect().height
+    const inline = [el.style.getPropertyValue('height'), el.style.getPropertyPriority('height')]
+    el.style.setProperty('height', 'auto', 'important')
+    const contentHeight = el.getBoundingClientRect().height
+    el.style.removeProperty('height')
+    if (inline[0]) el.style.setProperty('height', ...inline)
+    return Math.abs(contentHeight - height) > 1
+  }
+  for (const bar of document.querySelectorAll('header, [role=toolbar]')) {
+    if (isHidden(bar) || !hasFixedHeight(bar)) continue
+    const walker = document.createTreeWalker(bar, NodeFilter.SHOW_TEXT)
+    const rects = []
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent.trim() || isHidden(node.parentElement)) continue
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      rects.push(...[...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0))
+    }
+    let lines = 0
+    let lineBottom = -Infinity
+    for (const rect of rects.sort((a, b) => a.top - b.top)) {
+      if (rect.top >= lineBottom - 1) lines++
+      lineBottom = Math.max(lineBottom, rect.bottom)
+    }
+    const box = bar.getBoundingClientRect()
+    const element = bar.dataset.slot ?? bar.getAttribute('role') ?? bar.tagName.toLowerCase()
+    if (lines > 1) add(bar, { kind: 'fixed-height bar wraps', element, how: `has its text on ${lines} lines` })
+    else if (rects.some((rect) => rect.top < box.top - 1 || rect.bottom > box.bottom + 1)) {
+      add(bar, { kind: 'fixed-height bar wraps', element, how: 'has text that runs out of its height' })
+    }
+  }
+
   if (document.documentElement.scrollWidth > width + 1) {
     const past = (right) => right > width + 1
     const clippedInside = (node) => {
@@ -164,7 +234,7 @@ function markLayoutFaults() {
 }
 
 function recordFault(faults, measured, { at, url, config }) {
-  const key = [new URL(url).pathname, measured.kind, measured.element, measured.text, measured.how.replace(/\d+ px/g, '')].join('|')
+  const key = [new URL(url).pathname, measured.kind, measured.element, measured.text, measured.how.replace(/-?\d+/g, '')].join('|')
   const known = faults.find((fault) => fault.key === key)
   if (known) {
     if (!known.at.includes(at)) known.at.push(at)
@@ -179,16 +249,17 @@ function recordFault(faults, measured, { at, url, config }) {
 // A resize can cross a breakpoint and remount the element that has the focus. The sweep gives the focus back,
 // or forgets the last focused element, so that the next focus check does not report a loss that the sweep caused.
 // A loss from before the capture stays for the focus check at the end of the step.
-export async function sweepCapture({ page, cdp, settle, outDir, capture, faults }) {
+// A viewport capture holds an open overlay. A scroll can close it, so its screenshots do not scroll.
+export async function sweepCapture({ page, cdp, settle, outDir, capture, faults, fullPage }) {
   const url = page.url()
   const resting = { ...page.viewportSize(), scheme: 'light', fontSize: 16 }
   const scroll = await page.evaluate(() => [scrollX, scrollY])
   const focused = await page.evaluateHandle(() => document.activeElement)
-  for (const config of configs) {
+  for (const config of fullPage ? configs : overlayConfigs(resting)) {
     await applyConfig(page, cdp, settle, config)
     for (const [index, measured] of (await page.evaluate(markLayoutFaults)).entries()) {
       const fault = recordFault(faults, measured, { at: capture, url, config })
-      if (fault) await screenshotOf(page, `[data-sweep-fault~="${index}"]`, path.join(outDir, fault.screenshot))
+      if (fault) await screenshotOf(page, `[data-sweep-fault~="${index}"]`, path.join(outDir, fault.screenshot), { scroll: fullPage })
     }
   }
   await page.evaluate(() => document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault')))
@@ -202,14 +273,14 @@ export async function sweepCapture({ page, cdp, settle, outDir, capture, faults 
   await focused.dispose()
 }
 
-async function screenshotOf(page, selector, file) {
+async function screenshotOf(page, selector, file, { scroll }) {
   const el = page.locator(selector).first()
   // Only the window scrolls. A scrollIntoView also scrolls each overflow: hidden ancestor, and the next config
   // then measures a page that the user cannot get to.
-  await el.evaluate((node) => {
-    scrollTo(scrollX, node.getBoundingClientRect().top + scrollY - innerHeight / 3)
+  await el.evaluate((node, scroll) => {
+    if (scroll) scrollTo(scrollX, node.getBoundingClientRect().top + scrollY - innerHeight / 3)
     node.style.setProperty('outline', '3px solid red', 'important')
-  }, null, { timeout: 1000 }).catch(() => {})
+  }, scroll, { timeout: 1000 }).catch(() => {})
   await page.screenshot({ path: file })
   await el.evaluate((node) => node.style.removeProperty('outline'), null, { timeout: 1000 }).catch(() => {})
 }

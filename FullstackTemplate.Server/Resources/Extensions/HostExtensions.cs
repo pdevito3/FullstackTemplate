@@ -12,6 +12,7 @@ using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.OpenTelemetry;
+using Entrypoints.Grpc;
 
 public static class HostExtensions
 {
@@ -108,7 +109,8 @@ public static class HostExtensions
                 .Enrich.FromLogContext()
                 .Enrich.WithMachineName()
                 .Enrich.WithThreadId()
-                .Enrich.WithProperty("Application", builder.Environment.ApplicationName);
+                .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
+                .Enrich.With<GrpcStatusDetailRedaction>();
 
             if (!string.IsNullOrWhiteSpace(otlpEndpoint))
                 lc.WriteTo.OpenTelemetry(options =>

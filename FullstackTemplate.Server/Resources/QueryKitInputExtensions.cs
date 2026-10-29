@@ -26,6 +26,11 @@ public static partial class QueryKitInputExtensions
     public const string FilterTooDeepMessage = "The filter has too many nested groups. Remove a group, then try again.";
     public const string SoundsLikeMessage =
         "This list cannot filter with the sounds-like operators ~~ and !~. Choose another operator, then try again.";
+    public const string InOperatorListMessage =
+        "The operators ^^ and !^^ need a list of values, for example [\"a\", \"b\"]. Put the values in brackets, then try again.";
+    public const string NullValueMessage = "Only the operators == and != can compare with null. Change the operator, then try again.";
+    public const string ListFieldNullMessage =
+        "A field that holds a list cannot compare with null. To find an empty list, use #== 0, then try again.";
     // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
     private const string AllowedActionsMember = "AllowedActions";
 
@@ -38,6 +43,7 @@ public static partial class QueryKitInputExtensions
                 throw new QueryInputException(FiltersParameter, FilterCharacterMessage);
             var predicate = FilterParser.ParseFilter<T>(filters, config);
             RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
+            RefuseNullThatTheQueryCannotRun(predicate);
             return query.Where(predicate);
         });
 
@@ -61,6 +67,19 @@ public static partial class QueryKitInputExtensions
         if (MemberReader.Reads(expression, AllowedActionsMember))
             throw new QueryInputException(parameter,
                 $"The {Words(parameter)} cannot use the allowed actions, because they depend on the user. Choose another field.");
+    }
+
+    // QueryKit parses these filters, and the query fails with 500 when it runs:
+    // - A case-insensitive operator with null, such as ==* null, calls ToLower on the null.
+    // - == null or != null on a list field compares the whole list, and EF cannot translate it.
+    private static void RefuseNullThatTheQueryCannotRun(Expression predicate)
+    {
+        var reader = new NullReader();
+        reader.Visit(predicate);
+        if (reader.CallsOnNull)
+            throw new QueryInputException(FiltersParameter, NullValueMessage);
+        if (reader.ComparesListWithNull)
+            throw new QueryInputException(FiltersParameter, ListFieldNullMessage);
     }
 
     private static string Words(string parameter) => parameter == SortOrderParameter ? "sort order" : "filter";
@@ -113,12 +132,18 @@ public static partial class QueryKitInputExtensions
             $"The filter names the field {match.Groups[1].Value}, which this list does not have. Use one of these fields: {FieldsOf<T>()}.",
         SortParsingException when UnknownSortField().Match(exception.Message) is { Success: true } match =>
             $"The sort order names the field {match.Groups[1].Value}, which this list does not have. Use one of these fields: {FieldsOf<T>()}.",
+        _ when OperatorRefusal(exception) is { } refusal && InOperatorNeedsList().IsMatch(refusal.Message) => InOperatorListMessage,
+        _ when OperatorRefusal(exception) is { } refusal && OperatorRefusesNull().IsMatch(refusal.Message) => NullValueMessage,
         { InnerException: ParseException parse } =>
             $"The {Words(parameter)} could not be read at character {parse.Position.Pos + 1}. Check the operator and the quotes there, then try again.",
         ParsingException when ValueDoesNotFit().Match(exception.Message) is { Success: true } match =>
             $"A value in the filter does not fit the field {match.Groups[1].Value}. Change the value, then try again.",
         _ => NotReadMessage(parameter),
     };
+
+    // An operator refuses its value with a QueryKitParsingException, and the parser can wrap it in a ParsingException
+    private static QueryKitParsingException? OperatorRefusal(QueryKitException exception) =>
+        exception as QueryKitParsingException ?? exception.InnerException as QueryKitParsingException;
 
     private static string FieldsOf<T>() => string.Join(", ", RequestRules.For(typeof(T))
         .Where(rule => rule.Holds == PropertyHolds.Value
@@ -133,6 +158,12 @@ public static partial class QueryKitInputExtensions
 
     [GeneratedRegex(@"^The value '.*' is not a valid \S+ for the filter property '([^']+)'\.$")]
     private static partial Regex ValueDoesNotFit();
+
+    [GeneratedRegex(@"^The \S+ operator needs a list value, for example \[""a"", ""b""\]\.$")]
+    private static partial Regex InOperatorNeedsList();
+
+    [GeneratedRegex(@"^The '\S+' operator does not accept a null value\. Use '==' or '!=' to compare with null\.$")]
+    private static partial Regex OperatorRefusesNull();
 
     private static string NotReadMessage(string parameter) =>
         parameter == SortOrderParameter ? SortOrderNotReadMessage : FilterNotReadMessage;
@@ -153,5 +184,33 @@ public static partial class QueryKitInputExtensions
             _reads |= node.Member.Name == memberName;
             return base.VisitMember(node);
         }
+    }
+
+    private sealed class NullReader : ExpressionVisitor
+    {
+        public bool CallsOnNull { get; private set; }
+        public bool ComparesListWithNull { get; private set; }
+
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            CallsOnNull |= IsNull(node.Object);
+            return base.VisitMethodCall(node);
+        }
+
+        protected override Expression VisitBinary(BinaryExpression node)
+        {
+            if (node.NodeType is ExpressionType.Equal or ExpressionType.NotEqual)
+                ComparesListWithNull |= (IsNull(node.Right) && IsList(node.Left.Type)) || (IsNull(node.Left) && IsList(node.Right.Type));
+            return base.VisitBinary(node);
+        }
+
+        private static bool IsNull(Expression? expression) => expression switch
+        {
+            ConstantExpression { Value: null } => true,
+            UnaryExpression { NodeType: ExpressionType.Convert, Operand: var operand } => IsNull(operand),
+            _ => false,
+        };
+
+        private static bool IsList(Type type) => type != typeof(string) && type.IsAssignableTo(typeof(System.Collections.IEnumerable));
     }
 }

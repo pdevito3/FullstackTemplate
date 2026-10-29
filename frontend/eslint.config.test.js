@@ -196,6 +196,7 @@ describe('server-state/query-key-has-inputs', () => {
     ['useQuery({ queryKey: ["x", params], queryFn: () => get({ filter: toFilter(params.search) }) })', [], 'params'],
     ['useQuery({ queryKey: ["x", id], queryFn: () => get({ id, options: { suppressErrorToast: opts.suppress } }) })', [], 'id, opts'],
     ['useQuery({ queryKey: ["x", search.trim()], queryFn: () => get({ search: search.trim() }) })', [], 'search'],
+    ['(() => { const pageSize = 25; const now = Date.now(); return useQuery({ queryKey: ["x", params], queryFn: () => get({ ...params, pageSize, now }) }) })()', ['now'], 'params'],
     ['useInfiniteQuery({ queryKey: ["x", search], queryFn: ({ pageParam, signal }) => get({ search, pageParam, signal }), initialPageParam: 1, getNextPageParam: () => 2 })', [], 'search'],
   ])('checks the probe %s', (call, names, parameters) => {
     const code = `const PAGE_SIZE = 10\nfunction useProbe(${parameters}) { return ${call} }`

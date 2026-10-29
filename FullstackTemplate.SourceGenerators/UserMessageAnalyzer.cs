@@ -40,9 +40,10 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		isEnabledByDefault: true,
 		customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-	// A snake_case word, such as manage_users, or a PascalCase word with two or more parts, such as CheckedIn
+	// A snake_case word, such as manage_users, or a PascalCase word with two or more parts, such as CheckedIn. A word in
+	// braces, such as {PropertyName}, is a placeholder that FluentValidation fills with words.
 	private static readonly Regex CodeWord = new(
-		@"\b(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b",
+		@"\b(?<!\{)(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+)\b(?!\})",
 		RegexOptions.CultureInvariant);
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(CodeName, Id);
@@ -56,7 +57,8 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		{
 			var flow = new StringFlow();
 			start.RegisterOperationAction(flow.Record, OperationKind.Return, OperationKind.FieldInitializer,
-				OperationKind.VariableDeclarator, OperationKind.SimpleAssignment, OperationKind.Argument);
+				OperationKind.PropertyInitializer, OperationKind.VariableDeclarator, OperationKind.SimpleAssignment,
+				OperationKind.Argument);
 			start.RegisterCompilationEndAction(flow.Report);
 		});
 	}
@@ -85,16 +87,37 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 							_messages.Add(initializer.Value);
 					}
 					break;
+				case IPropertyInitializerOperation initializer:
+					foreach (var property in initializer.InitializedProperties)
+					{
+						if (property.GetMethod is { } getter)
+							Add(getter, initializer.Value);
+						if (property.Type.SpecialType == SpecialType.System_String && property.Name.EndsWith("Message", StringComparison.Ordinal))
+							_messages.Add(initializer.Value);
+					}
+					break;
 				case IVariableDeclaratorOperation { Initializer: { } initializer } declarator:
 					Add(declarator.Symbol, initializer.Value);
 					break;
 				case ISimpleAssignmentOperation { Target: ILocalReferenceOperation local } assignment:
 					Add(local.Local, assignment.Value);
 					break;
+				case ISimpleAssignmentOperation { Target: IPropertyReferenceOperation { Property: var property } } assignment
+					when IsProblemText(property) || IsErrorToolText(property, assignment):
+					_messages.Add(assignment.Value);
+					break;
 				case IArgumentOperation { Parameter: { Type.SpecialType: SpecialType.System_String } parameter } argument:
 					Add(parameter.OriginalDefinition, argument.Value);
-					if (IsMessageParameter(parameter))
+					if (IsMessageParameter(parameter, argument))
 						_messages.Add(argument.Value);
+					break;
+				case IArgumentOperation { Parameter.ContainingSymbol: IMethodSymbol { Name: "WithMessage" } method, Value: IDelegateCreationOperation { Target: IAnonymousFunctionOperation lambda } }
+					when IsIn(method.ContainingType, "FluentValidation"):
+					foreach (var returned in lambda.Body.Descendants().OfType<IReturnOperation>())
+					{
+						if (returned.ReturnedValue is { } value && SymbolEqualityComparer.Default.Equals(OwnerOf(returned, lambda.Symbol), lambda.Symbol))
+							_messages.Add(value);
+					}
 					break;
 			}
 		}
@@ -126,17 +149,72 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			return containingSymbol;
 		}
 
-		private static bool IsMessageParameter(IParameterSymbol parameter)
+		private static bool IsMessageParameter(IParameterSymbol parameter, IArgumentOperation argument)
 		{
-			var method = parameter.ContainingSymbol as IMethodSymbol;
-			if (method is { Name: "WithMessage" } && method.ContainingNamespace?.ToDisplayString().StartsWith("FluentValidation", StringComparison.Ordinal) == true)
+			if (parameter.ContainingSymbol is not IMethodSymbol method)
+				return false;
+			if (method.Name == "WithMessage" && IsIn(method.ContainingType, "FluentValidation"))
 				return true;
+			if (method.ContainingType is { Name: "TypedResults" or "Results" } results && IsIn(results, "Microsoft.AspNetCore.Http"))
+			{
+				return method.Name is "Problem" or "ValidationProblem"
+					? parameter.Name is "detail" or "title"
+					: method.Name is "BadRequest" or "Conflict" or "NotFound" or "UnprocessableEntity" or "InternalServerError";
+			}
 
-			return (parameter.Name == "message" || parameter.Name.EndsWith("Message", StringComparison.Ordinal))
-				&& method is not null
-				&& method.Locations.Any(static l => l.IsInSource);
+			var inSource = method.Locations.Any(static l => l.IsInSource);
+			if (method.MethodKind == MethodKind.Constructor && parameter.Name == "message" && !inSource)
+			{
+				// The SDK sends the text of an McpException to the client. Another exception of a package is a user message
+				// only as the base of an exception of the project, because only the exceptions of the project map to a problem.
+				return DerivesFrom(method.ContainingType, "ModelContextProtocol", "McpException")
+					|| (argument.Parent is IInvocationOperation && DerivesFrom(method.ContainingType, "System", "Exception"));
+			}
+
+			return inSource && (parameter.Name == "message" || parameter.Name.EndsWith("Message", StringComparison.Ordinal));
+		}
+
+		private static bool IsProblemText(IPropertySymbol property)
+			=> property.Name is "Detail" or "Title" && DerivesFrom(property.ContainingType, "Microsoft.AspNetCore.Mvc", "ProblemDetails");
+
+		// The text of a tool result that is set in the initializer of a result with IsError = true
+		private static bool IsErrorToolText(IPropertySymbol property, IOperation assignment)
+		{
+			if (property.Name != "Text" || !DerivesFrom(property.ContainingType, "ModelContextProtocol.Protocol", "TextContentBlock"))
+				return false;
+
+			for (var parent = assignment.Parent; parent is not null; parent = parent.Parent)
+			{
+				if (parent is IObjectCreationOperation { Type: { } type, Initializer: { } initializer }
+					&& DerivesFrom(type, "ModelContextProtocol.Protocol", "CallToolResult"))
+				{
+					// IsError is a bool?, so the true is in a conversion
+					return initializer.Initializers.Any(static i => i is ISimpleAssignmentOperation
+					{
+						Target: IPropertyReferenceOperation { Property.Name: "IsError" },
+						Value: IConversionOperation { Operand.ConstantValue: { HasValue: true, Value: true } } or { ConstantValue: { HasValue: true, Value: true } },
+					});
+				}
+			}
+
+			return false;
 		}
 	}
+
+	private static bool DerivesFrom(ITypeSymbol? type, string ns, string name)
+	{
+		for (var current = type; current is not null; current = current.BaseType)
+		{
+			if (current.Name == name && current.ContainingNamespace?.ToDisplayString() == ns)
+				return true;
+		}
+
+		return false;
+	}
+
+	private static bool IsIn(ITypeSymbol? type, string ns)
+		=> type?.ContainingNamespace?.ToDisplayString() is { } name
+			&& (name == ns || name.StartsWith(ns + ".", StringComparison.Ordinal));
 
 	/// <summary>
 	/// Visits the values that reach a user message, and reports each code name and ID in them once. Each value is checked
@@ -207,7 +285,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					Follow(local.Local, call);
 					break;
 				case IParameterReferenceOperation parameter:
-					FollowParameter(parameter.Parameter, call);
+					FollowParameter(parameter, call);
 					break;
 			}
 		}
@@ -223,8 +301,9 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 		// Inside a helper that the message calls, the parameter holds the argument of that call. Outside one, as for the
 		// message parameter of a guard, it holds the argument of each call.
-		private void FollowParameter(IParameterSymbol parameter, Call? call)
+		private void FollowParameter(IParameterReferenceOperation reference, Call? call)
 		{
+			var parameter = reference.Parameter;
 			for (var frame = call; frame is not null; frame = frame.Caller)
 			{
 				if (!SymbolEqualityComparer.Default.Equals(frame.Invocation.TargetMethod.OriginalDefinition, parameter.ContainingSymbol.OriginalDefinition))
@@ -235,8 +314,31 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				return;
 			}
 
-			Follow(parameter, null);
+			if (!IsRejectedByParse(reference))
+				Follow(parameter, null);
 		}
+
+		// In "Invalid permission: {value}" after Permission.TryFromName(value, ...) fails, the value is not a name that the
+		// parse accepts, so it is the text that the user sent. A caller that passes a name, such as Permission.ManageUsers(),
+		// never gets to the message.
+		private static bool IsRejectedByParse(IParameterReferenceOperation reference)
+		{
+			var thrown = false;
+			for (var parent = reference.Parent; parent is not null; parent = parent.Parent)
+			{
+				if (parent is IThrowOperation)
+					thrown = true;
+				else if (thrown && parent is IConditionalOperation conditional && conditional.Condition.DescendantsAndSelf().Any(o => IsParseOf(o, reference.Parameter)))
+					return true;
+			}
+
+			return false;
+		}
+
+		private static bool IsParseOf(IOperation operation, IParameterSymbol parameter)
+			=> operation is IInvocationOperation { TargetMethod.ContainingType: { } type } invocation
+				&& (type.SpecialType == SpecialType.System_Enum || IsFixedName(type))
+				&& invocation.Arguments.Any(a => Unwrap(a.Value) is IParameterReferenceOperation p && SymbolEqualityComparer.Default.Equals(p.Parameter, parameter));
 
 		// A value that is reported is not followed further, so the getter of a code does not get a second report
 		private bool ReportedAsShown(IOperation value)
@@ -275,6 +377,10 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					return "the stored name";
 				case IPropertyReferenceOperation { Property.Name: "Name" or "FullName" } property when IsReflectionType(property.Instance?.Type ?? property.Property.ContainingType):
 					return "the type name";
+				case IInvocationOperation { TargetMethod: { Name: "GetName" or "GetNames", ContainingType.SpecialType: SpecialType.System_Enum } }:
+					return "the enum value";
+				case { Type: { } type } when ElementOf(type) is { } element && (element.TypeKind == TypeKind.Enum || IsFixedName(element)):
+					return element.TypeKind == TypeKind.Enum ? "the enum value" : "the stored name";
 				case IPropertyReferenceOperation { Property.GetMethod: { } getter } when depth < 3:
 					return CodeOfReturns(getter, depth);
 				case IInvocationOperation invocation when depth < 3:
@@ -322,6 +428,22 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			}
 
 			return false;
+		}
+
+		// The item type of an array or a collection, such as the result of Enum.GetValues<T>()
+		private static ITypeSymbol? ElementOf(ITypeSymbol type)
+		{
+			if (type is IArrayTypeSymbol array)
+				return array.ElementType;
+			if (type.SpecialType == SpecialType.System_String)
+				return null;
+
+			if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Collections_Generic_IEnumerable_T } enumerable)
+				return enumerable.TypeArguments[0];
+
+			return type.AllInterfaces
+				.FirstOrDefault(static i => i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+				?.TypeArguments[0];
 		}
 
 		private static bool IsReflectionType(ITypeSymbol? type)

@@ -29,7 +29,7 @@
     <!-- Reverse proxy -->
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- Dependency Injection -->
-    <PackageVersion Include="QueryKit" Version="1.16.1" />
+    <PackageVersion Include="QueryKit" Version="1.16.2" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="MediatR" Version="12.5.0" />
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1" />

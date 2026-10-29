@@ -216,6 +216,8 @@ _logger.Here().Information("Created tenant {TenantId} for new user {UserId}", te
 
 Log only ids, names of operations, and counts. The privacy rule for spans also applies to logs.
 
+Grpc.AspNetCore.Server logs each error status at `Information`, with the detail of the status. The detail is the message for the caller, and it can hold text that the caller typed. `GrpcStatusDetailRedaction` keeps the status code in that log and puts a fixed text in place of the detail. The other logs of a failed call stay, such as a message that the Server cannot read, a content type that is not gRPC, and a method that the Server does not have. `GrpcLogTests` checks each of them.
+
 ### Console output
 
 In Development, the console uses a `Serilog.Expressions` template. Each line shows the time, the level, `SourceContext`, `CallSite`, and the trace id. The message is on the next line. In other environments, the console writes `CompactJsonFormatter` JSON. `appsettings.json` gives the formatter as an object, so that `appsettings.Development.json` can replace its type.

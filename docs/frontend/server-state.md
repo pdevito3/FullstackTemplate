@@ -74,7 +74,6 @@ export function useUpdateUser() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    // The edit form shows each refusal itself (see "Errors")
     mutationFn: ({ id, body }: { id: string; body: UserForUpdateDto }) =>
       updateUser({ path: { id }, body, options: { suppressErrorToast: true } }),
     onSuccess: (_, { id }) => {

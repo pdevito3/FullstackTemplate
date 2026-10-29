@@ -10,6 +10,7 @@ import {
   offsetAt,
   parseTimeZone,
   startOfDayAt,
+  springGapMessage,
   timeZoneLabel,
   todayAt,
   wallClockAt,
@@ -127,7 +128,29 @@ describe('formatInstant', () => {
 })
 
 describe('timeZoneLabel', () => {
-  it('shows the IANA ID with spaces', () => {
-    expect(timeZoneLabel(pagoPago)).toBe('Pacific/Pago Pago')
+  it.each([
+    ['Pacific/Pago_Pago', 'American Samoa Time'],
+    ['Europe/Berlin', 'Germany Time'],
+    ['Asia/Bangkok', 'Thailand Time'],
+    ['America/New_York', 'Eastern Time'],
+    ['US/Eastern', 'Eastern Time'],
+    ['Brazil/East', 'São Paulo Time'],
+    ['America/Phoenix', 'Mountain Standard Time'],
+    ['UTC', 'Coordinated Universal Time'],
+    ['Etc/GMT+5', 'GMT-05:00'],
+  ])('names %s as a user knows it: %s', (zone, name) => {
+    expect(timeZoneLabel(parseTimeZone(zone))).toBe(name)
+  })
+})
+
+describe('springGapMessage', () => {
+  it('names the zone of the place as timeZoneLabel does', () => {
+    expect(springGapMessage(parseTimeZone('America/Chicago'))).toBe(
+      'This time does not exist in Central Time on that day, because the clocks go forward. Choose another time.',
+    )
+  })
+
+  it('names no zone for a time in the zone of the browser', () => {
+    expect(springGapMessage()).toBe('This time does not exist on that day, because the clocks go forward. Choose another time.')
   })
 })

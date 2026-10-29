@@ -49,17 +49,3 @@ export function toWorkshopBody(
   const instant = instantAt(startsAt, zone)
   return instant && { title, startsAt: instant.toISOString(), capacity }
 }
-
-/**
- * Where the time of a zone is, in words that a person knows: "in Chicago" for America/Chicago. A zone with no place
- * in its ID, such as UTC or an old alias such as Singapore, gives "at the venue". docs/messages.md rule 1 keeps the
- * ID off the screen.
- */
-export function whereIs(zone: TimeZone): string {
-  const [area, ...rest] = zone.split('/')
-  return rest.length > 0 && area !== 'Etc' ? `in ${rest[rest.length - 1].replaceAll('_', ' ')}` : 'at the venue'
-}
-
-export function startInGapMessage(zone: TimeZone): string {
-  return `This time does not exist ${whereIs(zone)} on that day, because the clocks go forward. Choose another time.`
-}

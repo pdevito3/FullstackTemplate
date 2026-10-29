@@ -32,7 +32,7 @@ test('takes today and reads the typed time in the zone of the place, not of the 
 
     // Act
     await page.getByRole('button', { name: 'Today', exact: true }).click()
-    await page.getByRole('textbox', { name: 'Time in Pacific/Pago Pago' }).fill('09:00')
+    await page.getByRole('textbox', { name: 'American Samoa Time' }).fill('09:00')
     await page.getByRole('button', { name: 'Add Filter' }).click()
 
     // Assert
@@ -61,7 +61,7 @@ test('shows a filter to edit at its date and time in the zone of the place', asy
 
   // Assert
   await expect.element(page.getByRole('group', { name: 'Date' })).toHaveTextContent('8/14/2026')
-  await expect.element(page.getByRole('textbox', { name: 'Time in Pacific/Pago Pago' })).toHaveValue('09:00')
+  await expect.element(page.getByRole('textbox', { name: 'American Samoa Time' })).toHaveValue('09:00')
 })
 
 test('keeps the time of a filter to edit when the config has no zone', async () => {
@@ -103,7 +103,7 @@ test('names the zone that a filter to edit reads its time in, not the zone of th
   )
 
   // Assert
-  await expect.element(page.getByRole('textbox', { name: 'Time in Pacific/Pago Pago' })).toHaveValue('09:00')
+  await expect.element(page.getByRole('textbox', { name: 'American Samoa Time' })).toHaveValue('09:00')
 })
 
 test('refuses a time that the clocks of the place skip in the spring', async () => {
@@ -114,11 +114,11 @@ test('refuses a time that the clocks of the place skip in the spring', async () 
   // Act
   await page.getByRole('spinbutton', { name: 'month, Date' }).click()
   await userEvent.keyboard('03082026')
-  await page.getByRole('textbox', { name: 'Time in America/New York' }).fill('02:30')
+  await page.getByRole('textbox', { name: 'Eastern Time' }).fill('02:30')
 
   // Assert
   await expect.element(page.getByRole('alert')).toHaveTextContent(
-    'This time does not exist in America/New York on that day, because the clocks go forward. Choose another time.',
+    'This time does not exist in Eastern Time on that day, because the clocks go forward. Choose another time.',
   )
   await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeDisabled()
 })

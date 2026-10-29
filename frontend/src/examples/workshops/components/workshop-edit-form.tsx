@@ -10,11 +10,11 @@ import { Form } from '@/components/ui/form'
 import { focusFirstError } from '@/examples/components/focus-first-error'
 import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
 import { useServerErrors } from '@/examples/components/use-server-errors'
-import { parseTimeZone, wallClockAt } from '@/lib/zoned-time'
+import { parseTimeZone, springGapMessage, wallClockAt } from '@/lib/zoned-time'
 
 import { StaleVersionAlert } from './stale-version-alert'
 import { WorkshopFields } from './workshop-fields'
-import { WORKSHOP_FIELD_NAMES, limitsOf, startInGapMessage, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
+import { WORKSHOP_FIELD_NAMES, limitsOf, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
 
 const contract = workshopForUpdateDtoSchema.shape
 const schema = workshopFieldsSchema(contract).extend({ version: contract.version })
@@ -45,7 +45,7 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
     serverErrors.clear()
     const body = toWorkshopBody(values, zone)
     if (!body) {
-      form.setError('startsAt', { message: startInGapMessage(zone) }, { shouldFocus: true })
+      form.setError('startsAt', { message: springGapMessage(zone) }, { shouldFocus: true })
       return
     }
     try {

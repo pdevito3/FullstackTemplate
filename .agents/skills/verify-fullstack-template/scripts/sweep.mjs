@@ -67,7 +67,14 @@ export function trackLastFocused() {
   }, true)
 }
 
-function readFocusLoss() {
+// React Aria gives the focus back in the animation frame after an overlay unmounts, so for one frame it is on the body.
+// The check waits two frames, because a callback of the first frame can run before the callback of React Aria.
+// A hidden headed window runs no frames, so the wait also ends after 100 ms.
+async function readFocusLoss() {
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+    setTimeout(resolve, 100)
+  })
   const el = window.__sweepFocused
   if (!el || (document.activeElement && document.activeElement !== document.body)) return null
   const reason = !el.isConnected ? 'was removed' : el.matches(':disabled') ? 'was disabled'

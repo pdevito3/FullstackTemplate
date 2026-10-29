@@ -48,6 +48,10 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
             schema.Maximum = maximum.Maximum.ToString(CultureInfo.InvariantCulture);
         }
 
+        if (schema is { Minimum: { } low, Maximum: { } high }
+            && decimal.Parse(low, CultureInfo.InvariantCulture) > decimal.Parse(high, CultureInfo.InvariantCulture))
+            throw NoValuePasses(property, low, high);
+
         return Task.CompletedTask;
     }
 
@@ -55,4 +59,8 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
         JsonPropertyInfo property, string attribute, OpenApiSchema schema, string allowed) =>
         new($"{property.DeclaringType.Name}.{property.Name} has [{attribute}], but its schema type is {schema.Type}. "
             + $"Put [{attribute}] only on {allowed}.");
+
+    private static InvalidOperationException NoValuePasses(JsonPropertyInfo property, string minimum, string maximum) =>
+        new($"{property.DeclaringType.Name}.{property.Name} has the minimum {minimum} and the maximum {maximum}, so no value passes. "
+            + "Give it a minimum that is not more than its maximum.");
 }

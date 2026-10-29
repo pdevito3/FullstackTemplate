@@ -278,6 +278,8 @@ describe('server-state/key-has-each-param', () => {
     ['the parameter given to a call', 'list: (params: RecordListParams) => listKey(params),', [whole('params')]],
     ['the whole parameter and a field of it', 'list: (params: RecordListParams) => [...RecordKeys.lists(), params, params.search] as const,', [whole('params')]],
     ['a parameter that the key does not use', 'detail: (id: string, tab: string) => [...RecordKeys.all, id] as const,', [whole('tab')]],
+    ['a branch that returns a key with no parameter', 'list: (params: RecordListParams) => { if (flag) return [...RecordKeys.lists()] as const; return [...RecordKeys.lists(), params] as const },', [whole('params')]],
+    ['a choice between two keys', 'list: (params: RecordListParams) => (flag ? [...RecordKeys.lists(), params] : [...RecordKeys.lists()]),', [whole('params')]],
   ])('reports %s', (_, property, expected) => {
     expect(serverStateMessages(keysOf(property), keysFile)).toEqual(expected)
   })

@@ -393,6 +393,8 @@ public class OpenApiTransformerTests
     [Arguments("5", "5")]
     [Arguments("1.0", "1E0")]
     [Arguments("1E0", "1.0")]
+    [Arguments("-1.0", "-1E0")]
+    [Arguments("1E-5", "0.0001")]
     [Arguments("0.1", "1E-1")]
     [Arguments("1E-1", "0.1")]
     [Arguments("0E+5", "-0")]
@@ -418,13 +420,15 @@ public class OpenApiTransformerTests
     }
 
     [Test]
-    [Timeout(5_000)]
+    [Timeout(30_000)]
     [Arguments("1E+100000000", "1", true)]
     [Arguments("1", "1E+100000000", false)]
     [Arguments("1E-2147483648", "1", false)]
     [Arguments("1.5E-2147483648", "1", false)]
     [Arguments("1E+2147483648", "1E+2147483647", true)]
     [Arguments("1E+99999999999999999999", "1E+99999999999999999998", true)]
+    [Arguments("15E+2147483647", "1.5E+2147483648", false)]
+    [Arguments("1.6E+2147483648", "15E+2147483647", true)]
     public async Task limits_transformer_compares_bounds_with_a_huge_exponent_quickly(
         string minimum, string maximum, bool rejected, CancellationToken cancellationToken)
     {

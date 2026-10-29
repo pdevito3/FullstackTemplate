@@ -74,7 +74,9 @@ export function useUpdateUser() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UserForUpdateDto }) => updateUser({ path: { id }, body }),
+    // The edit form shows each refusal itself (see "Errors")
+    mutationFn: ({ id, body }: { id: string; body: UserForUpdateDto }) =>
+      updateUser({ path: { id }, body, options: { suppressErrorToast: true } }),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: UserKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: UserKeys.lists() })
@@ -107,8 +109,10 @@ retry: (failureCount, error) => {
 },
 ```
 
+A form that shows each refusal itself, with `useServerErrors`, sends `{ suppressErrorToast: true }` in the `options` of its mutation, so the error does not show twice (messages.md, "In the SPA").
+
 <!-- example:start -->
-A form that shows each refusal itself sends `suppressErrorToast`, so the error does not show twice: [`useUpdateWorkshop`](<../../frontend/src/examples/workshops/apis/update-workshop.ts>).
+The workshop forms do this: [`useUpdateWorkshop`](<../../frontend/src/examples/workshops/apis/update-workshop.ts>).
 <!-- example:end -->
 
 `useServerErrors` shows a refusal in the form: each validation message on its field, a stale version as its own problem, and every other message in `RefusedSaveAlert` above the buttons. See [`refusalOf`](../../frontend/src/hooks/use-server-errors.ts) and [`RefusedSaveAlert`](../../frontend/src/components/refused-save-alert.tsx).
@@ -131,7 +135,7 @@ const form = useForm<UserFormData>({
 
 Use `defaultValues` in an edit form, not `values`. With `values`, a refetch can put the new version under the edits of the user. The save then overwrites a change that the user did not see.
 
-When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`, and the toast shows the `detail`. A create can also get this type, when a unique index of the Server tells that another user changed the record. For a create, keep the input of the user and refetch the list or the parent record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new record. After the reload, a field that the new record changed shows the saved value, and each other field keeps the edit of the user. [`latestOverEdits`](../../frontend/src/lib/latest-over-edits.ts) sorts the fields. Name the fields that changed, and move the focus to the first of them. Do not send the PUT again with the new version, because that overwrites the other change.
+When another user saved the record first, the PUT gets a 409 with the type `urn:fullstacktemplate:problem:stale-version`. A create can also get this type, when a unique index of the Server tells that another user changed the record. For a create, keep the input of the user and refetch the list or the parent record. Find a stale save by `error.problemDetails.type === 'urn:fullstacktemplate:problem:stale-version'` on the `ProblemDetailsError`, not by the status alone, because a 409 can also be a duplicate value. Keep the edits of the user in the form. Give a way to load the record again, for example a button that refetches the detail query and resets the form with the new record. After the reload, a field that the new record changed shows the saved value, and each other field keeps the edit of the user. [`latestOverEdits`](../../frontend/src/lib/latest-over-edits.ts) sorts the fields. Name the fields that changed, and move the focus to the first of them. Do not send the PUT again with the new version, because that overwrites the other change.
 
 <!-- example:start -->
 In the workshop example, the edit form keeps the loaded version in `defaultValues`: [`WorkshopEditForm`](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx>). `isStaleVersionError` reads the type: [`isStaleVersionError`](<../../frontend/src/lib/problem-details.ts>). `Load the latest` refetches the detail, keeps the edits that the latest save did not change, and names the fields that it changed, on the same page: [`handleLoadLatest`](<../../frontend/src/examples/workshops/components/workshop-edit-form.tsx>) and [`EditWorkshopPage`](<../../frontend/src/routes/(examples)/workshops/$id/edit.tsx>). The form shows the problem itself, so this save sends no toast.

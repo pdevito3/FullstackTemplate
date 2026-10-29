@@ -63,6 +63,9 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
     try {
       const latest = await onLoadLatest()
       if (latest) {
+        // The alert and its button go away. The user makes the edits again, so the focus goes to the first field.
+        // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
+        form.setFocus('title')
         form.reset(valuesOf(latest))
         serverErrors.clear()
       }

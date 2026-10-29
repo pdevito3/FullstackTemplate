@@ -55,27 +55,45 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
         return Task.CompletedTask;
     }
 
-    private static bool IsMoreThan(string low, string high)
-    {
-        var (lowDigits, lowExponent) = DigitsAndExponent(low);
-        var (highDigits, highExponent) = DigitsAndExponent(high);
-        var exponent = Math.Min(lowExponent, highExponent);
-        return lowDigits * BigInteger.Pow(10, lowExponent - exponent)
-            > highDigits * BigInteger.Pow(10, highExponent - exponent);
-    }
+    private static bool IsMoreThan(string low, string high) =>
+        JsonNumber.Parse(low).CompareTo(JsonNumber.Parse(high)) > 0;
 
-    private static (BigInteger Digits, int Exponent) DigitsAndExponent(string number)
+    /// <summary>The exact value of a JSON number: <c>Sign × Digits × 10^Exponent</c>, with <c>Digits</c> not negative.</summary>
+    private readonly record struct JsonNumber(int Sign, BigInteger Digits, BigInteger Exponent) : IComparable<JsonNumber>
     {
-        var e = number.IndexOfAny(['e', 'E']);
-        var exponent = e < 0 ? 0 : int.Parse(number.AsSpan(e + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
-        var mantissa = e < 0 ? number : number[..e];
-        var point = mantissa.IndexOf('.');
-        if (point >= 0)
+        public static JsonNumber Parse(string number)
         {
-            exponent -= mantissa.Length - point - 1;
-            mantissa = mantissa.Remove(point, 1);
+            var e = number.IndexOfAny(['e', 'E']);
+            var exponent = e < 0
+                ? BigInteger.Zero
+                : BigInteger.Parse(number.AsSpan(e + 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+            var mantissa = e < 0 ? number : number[..e];
+            var point = mantissa.IndexOf('.');
+            if (point >= 0)
+            {
+                exponent -= mantissa.Length - point - 1;
+                mantissa = mantissa.Remove(point, 1);
+            }
+            var digits = BigInteger.Parse(mantissa, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+            return new(digits.Sign, BigInteger.Abs(digits), exponent);
         }
-        return (BigInteger.Parse(mantissa, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture), exponent);
+
+        public int CompareTo(JsonNumber other) =>
+            Sign != other.Sign || Sign == 0 ? Sign.CompareTo(other.Sign) : Sign * CompareSizes(other);
+
+        private int CompareSizes(JsonNumber other)
+        {
+            var byMagnitude = Magnitude.CompareTo(other.Magnitude);
+            if (byMagnitude != 0)
+                return byMagnitude;
+            // With equal magnitudes, the exponents differ by less than the digit count, so the power stays small
+            var exponent = BigInteger.Min(Exponent, other.Exponent);
+            return (Digits * BigInteger.Pow(10, (int)(Exponent - exponent)))
+                .CompareTo(other.Digits * BigInteger.Pow(10, (int)(other.Exponent - exponent)));
+        }
+
+        /// <summary>The value is at least <c>10^(Magnitude - 1)</c> and less than <c>10^Magnitude</c>.</summary>
+        private BigInteger Magnitude => Exponent + Digits.ToString(CultureInfo.InvariantCulture).Length;
     }
 
     private static InvalidOperationException WrongSchemaType(

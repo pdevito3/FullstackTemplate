@@ -13,7 +13,12 @@ async function messagesOf(ruleEntry) {
       files: ['tests/**/*.ts'],
       languageOptions: {
         parser: tseslint.parser,
-        parserOptions: { project: './tsconfig.tests.json', tsconfigRootDir: import.meta.dirname },
+        // With CI=true, typescript-eslint reads the types from the files on disk, not from the text that this test lints
+        parserOptions: {
+          project: './tsconfig.tests.json',
+          tsconfigRootDir: import.meta.dirname,
+          disallowAutomaticSingleRunInference: true,
+        },
       },
       plugins: { playwright: { rules: { 'no-page-action': noPageActionRule } } },
       rules: { 'playwright/no-page-action': ruleEntry },

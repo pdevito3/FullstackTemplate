@@ -5,7 +5,7 @@
   "password": "password123!",
   "usernameSelector": "input[name=\"loginId\"]",
   "passwordSelector": "input[name=\"password\"]",
-  "submitSelector": "button:has-text(\"Submit\")",
+  "submitSelector": "role=button[name=\"Submit\" s]",
   "capabilities": {
     "revocation": false,
     "issuerParameter": true,

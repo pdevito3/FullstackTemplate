@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-react'
 
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
-import { maximumOf, maxLengthOf } from '@/lib/api-contract'
+import { maximumOf, maxLengthOf, minimumOf } from '@/lib/api-contract'
 import { ProblemDetailsError, STALE_VERSION_PROBLEM_TYPE } from '@/lib/problem-details'
 
 import { WorkshopEditForm } from './workshop-edit-form'
@@ -51,6 +51,21 @@ test('refuses a title and a capacity over the limits of the contract, and does n
   await expect.element(form.screen.getByText(`Use ${titleMax} characters or fewer.`)).toBeVisible()
   await expect.element(form.screen.getByText(`Use ${capacityMax} or fewer.`)).toBeVisible()
   await expect.element(form.screen.getByText(`Up to ${titleMax} characters.`)).toBeVisible()
+  expect(form.onSave).not.toHaveBeenCalled()
+})
+
+test('refuses a capacity under the minimum of the contract, and its hint gives the range of the Server', async () => {
+  const capacityMin = minimumOf(workshopForUpdateDtoSchema.shape.capacity)
+  const capacityMax = maximumOf(workshopForUpdateDtoSchema.shape.capacity)
+  const form = await renderForm()
+
+  await userEvent.fill(form.capacity, String(capacityMin - 1))
+  await userEvent.click(form.save)
+
+  await expect.element(form.screen.getByText(`Use ${capacityMin} or more.`)).toBeVisible()
+  await expect.element(form.capacity).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(form.capacity).toHaveFocus()
+  await expect.element(form.screen.getByText(`A workshop has room for ${capacityMin} to ${capacityMax} people.`)).toBeVisible()
   expect(form.onSave).not.toHaveBeenCalled()
 })
 

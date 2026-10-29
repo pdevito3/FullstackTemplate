@@ -249,6 +249,23 @@ test.describe('the focus after an action that removes the focused button', () =>
 
     await expect(workshops.at.detailHeading('Kubb in depth')).toBeFocused()
   })
+
+  test('Load the latest puts the focus on the title, the first field of the form', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id } = workshop.build()
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openEditForm(id)
+    await workshops.renameTo('Kubb in depth')
+    api.mock(workshopsApi.updateFails(id, aProblem().staleVersion()), workshopsApi.oneIs(workshop.savedAgain({ title: 'Kubb for teams' })))
+    await workshops.saveRefused(id)
+
+    await workshops.loadLatest(id)
+
+    await expect(workshops.at.staleAlert).toBeHidden()
+    await expect(workshops.at.title).toHaveValue('Kubb for teams')
+    await expect(workshops.at.title).toBeFocused()
+  })
 })
 
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'

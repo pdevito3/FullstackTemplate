@@ -9,13 +9,6 @@ using Shouldly;
 /// </summary>
 public class SpecRuleTests
 {
-    // These two files hold rule IDs as examples
-    private static readonly string[] Excluded =
-    [
-        "tests/FullstackTemplate.UnitTests/Docs/SpecRules.cs",
-        "tests/FullstackTemplate.UnitTests/Docs/SpecRuleTests.cs",
-    ];
-
     private static readonly string[] FrontendTestFolders = ["tests", "e2e"];
 
     [Test]
@@ -175,6 +168,12 @@ public class SpecRuleTests
             test.fixme('a site has a name', { tag: '@R-9' }, async () => {})
             const note = 'see @R-10'
             const admin = 'admin@ACME-1.com'
+            test.describe.skip('a group that does not run', () => { test('in a skipped group @R-11', async () => {}) })
+            describe.skip('a group that does not run', () => { it('in a skipped group @R-12', () => {}) })
+            it('skipped by its options', { skip: true, tag: '@R-13' }, () => {})
+            const call = "test('in a string @R-14')"
+            const quote = /'/
+            // test('commented out after a quote @R-15', async () => {})
             """;
 
         // Act
@@ -217,6 +216,26 @@ public class SpecRuleTests
     }
 
     [Test]
+    public void a_heading_with_the_word_rules_starts_a_rules_section_up_to_the_end_of_the_file()
+    {
+        // Arrange
+        const string spec = """
+            ## 3. Business rules
+
+            - R-2: A closed work order does not open again.
+            """;
+
+        // Act
+        var read = SpecRules.Read("docs/specs/work-orders.md", spec);
+
+        // Assert
+        read.Faults.ShouldBe([
+            "Line 3 of docs/specs/work-orders.md has the rule R-2 in a list. Write each rule as a row of the table whose first column is ID.",
+            "The Rules section of docs/specs/work-orders.md has no table whose first column is ID, so the check reads no rules from it. Write each rule as a row of that table, or write None.",
+        ]);
+    }
+
+    [Test]
     public void a_rules_section_with_a_rule_table_or_none_is_read()
     {
         // Arrange
@@ -248,7 +267,7 @@ public class SpecRuleTests
 
         // Act
         var read = SpecRules.Read("docs/specs/work-orders.md", spec);
-        var none = SpecRules.Read("docs/specs/sites.md", "## 3. Rules\n\nNone.\n\n## 4. Permissions\n");
+        var none = SpecRules.Read("docs/specs/sites.md", "## 3. Rules\n\nNone.\n\nA slice adds the rules.\n\n## 4. Permissions\n");
 
         // Assert
         read.Rules.Select(r => r.Id).ShouldBe(["R-1", "R-2"]);
@@ -303,7 +322,7 @@ public class SpecRuleTests
 
         return dotnet.Concat(frontendSuites).Concat(frontendUnits)
             .Select(file => Relative(root, file))
-            .Where(file => !file.Split('/').Intersect(["bin", "obj"]).Any() && !Excluded.Contains(file));
+            .Where(file => !file.Split('/').Intersect(["bin", "obj"]).Any());
     }
 
     private static string Relative(string root, string file) => Path.GetRelativePath(root, file).Replace('\\', '/');

@@ -99,6 +99,9 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				case ISimpleAssignmentOperation { Target: ILocalReferenceOperation local } assignment:
 					Add(local.Local, assignment.Value);
 					break;
+				case ISimpleAssignmentOperation { Target: IParameterReferenceOperation parameter } assignment:
+					Add(parameter.Parameter, assignment.Value);
+					break;
 				case ISimpleAssignmentOperation { Target: IPropertyReferenceOperation { Property: var property } } assignment
 					when IsProblemText(property) || IsErrorToolText(property, assignment):
 					_messages.Add(assignment.Value);
@@ -128,7 +131,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 		private void Add(ISymbol symbol, IOperation value)
 		{
-			if (value.Type?.SpecialType == SpecialType.System_String)
+			if (IsStrings(value.Type))
 				_values.GetOrAdd(symbol.OriginalDefinition, static _ => new ConcurrentBag<IOperation>()).Add(value);
 		}
 
@@ -156,9 +159,12 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				return parameter.Name == "detail";
 			if (method.ContainingType is { Name: "TypedResults" or "Results" } results && IsIn(results, "Microsoft.AspNetCore.Http"))
 			{
-				return method.Name is "Problem" or "ValidationProblem"
-					? parameter.Name is "detail" or "title"
-					: method.Name is "BadRequest" or "Conflict" or "NotFound" or "UnprocessableEntity" or "InternalServerError";
+				return method.Name switch
+				{
+					"Problem" or "ValidationProblem" => parameter.Name is "detail" or "title",
+					"Text" or "Content" => parameter.Name == "content" && HasErrorStatus(argument),
+					_ => method.Name is "BadRequest" or "Conflict" or "NotFound" or "UnprocessableEntity" or "InternalServerError",
+				};
 			}
 
 			var inSource = method.Locations.Any(static l => l.IsInSource);
@@ -172,6 +178,12 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 			return inSource && (parameter.Name == "message" || parameter.Name.EndsWith("Message", StringComparison.Ordinal));
 		}
+
+		private static bool HasErrorStatus(IArgumentOperation argument)
+			=> argument.Parent is IInvocationOperation invocation
+				&& invocation.Arguments.Any(static a => a.Parameter?.Name == "statusCode"
+					&& Unwrap(a.Value)?.ConstantValue is { HasValue: true, Value: int code }
+					&& code >= 400);
 
 		private static bool IsProblemText(IPropertySymbol property)
 			=> property.Name is "Detail" or "Title" && DerivesFrom(property.ContainingType, "Microsoft.AspNetCore.Mvc", "ProblemDetails");
@@ -210,6 +222,34 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 		return false;
 	}
+
+	private static IOperation? Unwrap(IOperation? operation)
+	{
+		while (operation is IConversionOperation or IParenthesizedOperation)
+			operation = operation is IConversionOperation conversion ? conversion.Operand : ((IParenthesizedOperation)operation).Operand;
+
+		return operation;
+	}
+
+	// The item type of an array or a collection, such as the result of Enum.GetValues<T>()
+	private static ITypeSymbol? ElementOf(ITypeSymbol type)
+	{
+		if (type is IArrayTypeSymbol array)
+			return array.ElementType;
+		if (type.SpecialType == SpecialType.System_String)
+			return null;
+
+		if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Collections_Generic_IEnumerable_T } enumerable)
+			return enumerable.TypeArguments[0];
+
+		return type.AllInterfaces
+			.FirstOrDefault(static i => i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+			?.TypeArguments[0];
+	}
+
+	// A string, or a list of strings such as the result of ListNames()
+	private static bool IsStrings(ITypeSymbol? type)
+		=> type is not null && (type.SpecialType == SpecialType.System_String || ElementOf(type)?.SpecialType == SpecialType.System_String);
 
 	private static bool IsIn(ITypeSymbol? type, string ns)
 		=> type?.ContainingNamespace?.ToDisplayString() is { } name
@@ -310,6 +350,11 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 
 				var argument = frame.Invocation.Arguments.FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.Parameter?.OriginalDefinition, parameter.OriginalDefinition));
 				Visit(argument?.Value, frame.Caller);
+				if (_followed.Add((parameter.OriginalDefinition, frame)) && values.TryGetValue(parameter.OriginalDefinition, out var assigned))
+				{
+					foreach (var value in assigned.Where(static v => v.Parent is ISimpleAssignmentOperation))
+						Visit(value, frame);
+				}
 				return;
 			}
 
@@ -320,8 +365,9 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		// In "Invalid permission: {value}" after Permission.TryFromName(value, ...) fails, the value is not a name that the
 		// parse accepts, so it is the text that the user sent. A caller that passes a name, such as Permission.ManageUsers(),
 		// never gets to the message.
-		// The throw is the branch of the nearest condition where the parse fails: "Try(value) ? x : throw" or
-		// "if (!Try(value)) throw". A condition with more than the parse, such as "Try(value) && ...", does not count.
+		// The throw is on the branch of the nearest condition where the parse fails, "Try(value) ? x : throw" or
+		// "if (!Try(value)) throw", or right after "if (Try(value)) return". A condition with more than the parse, such as
+		// "Try(value) && ...", does not count.
 		private static bool IsRejectedByParse(IParameterReferenceOperation reference)
 		{
 			var thrown = reference.Parent;
@@ -331,21 +377,55 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			IOperation? branch = thrown;
 			for (var parent = thrown?.Parent; parent is not null; branch = parent, parent = parent.Parent)
 			{
+				if (parent is IBlockOperation block && FollowsAcceptingGuard(block, branch!, reference.Parameter))
+					return true;
 				if (parent is not IConditionalOperation conditional)
 					continue;
 
-				var condition = Unwrap(conditional.Condition);
-				return ReferenceEquals(branch, conditional.WhenFalse)
-					? IsParseOf(condition, reference.Parameter)
-					: condition is IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } not && IsParseOf(Unwrap(not.Operand), reference.Parameter);
+				return ParseAccepts(conditional.Condition, reference.Parameter) is { } accepts
+					&& accepts == ReferenceEquals(branch, conditional.WhenFalse);
 			}
 
 			return false;
 		}
 
+		// "if (Try(value)) return x;" just before the statement, so the statement runs only when the parse fails
+		private static bool FollowsAcceptingGuard(IBlockOperation block, IOperation statement, IParameterSymbol parameter)
+		{
+			var index = block.Operations.IndexOf(statement);
+			return index > 0
+				&& block.Operations[index - 1] is IConditionalOperation { WhenFalse: null } guard
+				&& Exits(guard.WhenTrue)
+				&& ParseAccepts(guard.Condition, parameter) == true;
+		}
+
+		private static bool Exits(IOperation operation) => operation switch
+		{
+			IReturnOperation or IThrowOperation or IExpressionStatementOperation { Operation: IThrowOperation } => true,
+			IBlockOperation { Operations: { Length: > 0 } operations } => Exits(operations[operations.Length - 1]),
+			_ => false,
+		};
+
+		// True when the condition holds for a value that the parse accepts, false when it holds for a value that it
+		// rejects, and null when the condition is not a parse of the parameter
+		private static bool? ParseAccepts(IOperation? condition, IParameterSymbol parameter)
+		{
+			var operation = Unwrap(condition);
+			if (IsParseOf(operation, parameter))
+				return true;
+
+			return operation switch
+			{
+				IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } not => !ParseAccepts(not.Operand, parameter),
+				IIsPatternOperation { Pattern: IConstantPatternOperation { Value.ConstantValue: { HasValue: true, Value: bool expected } } } pattern
+					=> expected ? ParseAccepts(pattern.Value, parameter) : !ParseAccepts(pattern.Value, parameter),
+				_ => null,
+			};
+		}
+
 		private static bool IsParseOf(IOperation? operation, IParameterSymbol parameter)
 			=> operation is IInvocationOperation { TargetMethod: { ContainingType: { } type } method } invocation
-				&& (method.Name.StartsWith("Try", StringComparison.Ordinal) || method.Name == "IsDefined")
+				&& method.Name is "TryFromName" or "TryFromValue" or "TryParse" or "IsDefined"
 				&& (type.SpecialType == SpecialType.System_Enum || IsFixedName(type))
 				&& invocation.Arguments.Any(a => Unwrap(a.Value) is IParameterReferenceOperation p && SymbolEqualityComparer.Default.Equals(p.Parameter, parameter));
 
@@ -395,6 +475,13 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 					return "the enum value";
 				case { Type: { } type } when ElementOf(type) is { } element && (element.TypeKind == TypeKind.Enum || IsFixedName(element)):
 					return element.TypeKind == TypeKind.Enum ? "the enum value" : "the stored name";
+				case IInvocationOperation { TargetMethod: { Name: "ListNames", ContainingType: { } type } } when IsFixedName(type):
+					return "the stored name";
+				case IInvocationOperation { TargetMethod: { Name: "Select" } method } select when IsIn(method.ContainingType, "System.Linq") && depth < 3:
+					return CodeOfSelected(select, depth);
+				case IInvocationOperation { TargetMethod.IsExtensionMethod: true, Arguments: { Length: > 0 } arguments } linq
+					when IsIn(linq.TargetMethod.ContainingType, "System.Linq") && IsStrings(linq.Type) && depth < 3:
+					return CodeOf(Unwrap(arguments[0].Value), depth + 1);
 				case IPropertyReferenceOperation { Property.GetMethod: { } getter } when depth < 3:
 					return CodeOfReturns(getter, depth);
 				case IInvocationOperation invocation when depth < 3:
@@ -402,6 +489,29 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 				default:
 					return null;
 			}
+		}
+
+		// Select(x => x.Name) over the items of a SmartEnum or an IFixedNames list gives the stored names
+		private string? CodeOfSelected(IInvocationOperation select, int depth)
+		{
+			foreach (var argument in select.Arguments)
+			{
+				switch (argument.Value)
+				{
+					case IDelegateCreationOperation { Target: IAnonymousFunctionOperation lambda }:
+						var code = lambda.Body.Descendants().OfType<IReturnOperation>()
+							.Select(r => CodeOf(Unwrap(r.ReturnedValue), depth + 1))
+							.FirstOrDefault(static c => c is not null);
+						if (code is not null)
+							return code;
+						break;
+					case IDelegateCreationOperation { Target: IMethodReferenceOperation reference }
+						when CodeOfReturns(reference.Method, depth) is { } returned:
+						return returned;
+				}
+			}
+
+			return null;
 		}
 
 		private string? CodeOfReturns(IMethodSymbol method, int depth)
@@ -444,35 +554,11 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			return false;
 		}
 
-		// The item type of an array or a collection, such as the result of Enum.GetValues<T>()
-		private static ITypeSymbol? ElementOf(ITypeSymbol type)
-		{
-			if (type is IArrayTypeSymbol array)
-				return array.ElementType;
-			if (type.SpecialType == SpecialType.System_String)
-				return null;
-
-			if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Collections_Generic_IEnumerable_T } enumerable)
-				return enumerable.TypeArguments[0];
-
-			return type.AllInterfaces
-				.FirstOrDefault(static i => i.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
-				?.TypeArguments[0];
-		}
-
 		private static bool IsReflectionType(ITypeSymbol? type)
 			=> type?.ToDisplayString() is "System.Type" or "System.Reflection.MemberInfo" or "System.Reflection.TypeInfo";
 
 		private static bool IsNumber(ITypeSymbol type)
 			=> type.SpecialType is >= SpecialType.System_SByte and <= SpecialType.System_Double;
-
-		private static IOperation? Unwrap(IOperation? operation)
-		{
-			while (operation is IConversionOperation or IParenthesizedOperation)
-				operation = operation is IConversionOperation conversion ? conversion.Operand : ((IParenthesizedOperation)operation).Operand;
-
-			return operation;
-		}
 
 		private void Report(DiagnosticDescriptor descriptor, Location location, string shown)
 		{

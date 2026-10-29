@@ -21,21 +21,28 @@ A 400 for a request that does not bind names the JSON field, for example "The fi
 - The message of an exception class of the Server: the string that its constructor gives to the base exception, whatever the name of its parameter. This covers the domain exceptions and `ValidationException.Must`. A message for a developer uses an exception of .NET, such as `InvalidOperationException`.
 - The message of an `McpException`. The MCP SDK sends it to the client.
 - The text of a `CallToolResult` with `IsError = true`, when the initializer of the result sets the text.
-- The `detail` and `title` of `TypedResults.Problem` and `TypedResults.ValidationProblem`, the string of `TypedResults.BadRequest`, `Conflict`, `NotFound`, `UnprocessableEntity`, and `InternalServerError`, and the same methods of `Results`. Also the `Detail` and `Title` of a `ProblemDetails`.
+- The `detail` and `title` of `TypedResults.Problem` and `TypedResults.ValidationProblem`, the string of `TypedResults.BadRequest`, `Conflict`, `NotFound`, `UnprocessableEntity`, and `InternalServerError`, the `content` of `TypedResults.Text` and `TypedResults.Content` when the `statusCode` is a constant of 400 or more, and the same methods of `Results`. Also the `Detail` and `Title` of a `ProblemDetails`.
 - A parameter named `message` or `*Message` of a method of the Server, for example `ForRequestField`.
 - A FluentValidation `WithMessage`, with a string or with a lambda, and the `errorMessage` of a `ValidationFailure` or of `AddFailure`.
 - The `detail` of a gRPC `Status`.
 - A string field or property whose name ends in `Message`, for example `Tenant.NameInUseMessage`.
 
-It follows the string back through the methods, properties (also an auto-property with an initializer), fields, locals, and parameters of the Server. So it also checks a message that a helper builds, such as the denials of `Caller`. A value that the message shows (as the whole message, in an interpolation, in a concatenation, or through a string method such as `string.Format`) is checked where it comes from too. A helper that the message calls, such as a quote helper, is checked with the arguments of that call only. A number, such as `(int)mode`, is not a code. A word in braces, such as `{PropertyName}`, is a placeholder that FluentValidation replaces, so it is not a code. Do not use `{PropertyValue}` for an enum or a SmartEnum: it shows the code.
+It follows the string back through the methods, properties (also an auto-property with an initializer), fields, locals, and parameters of the Server. A value that the code assigns to a parameter, such as `reason = $"...";`, is followed too. So it also checks a message that a helper builds, such as the denials of `Caller`. A value that the message shows (as the whole message, in an interpolation, in a concatenation, or through a string method such as `string.Format`) is checked where it comes from too. A helper that the message calls, such as a quote helper, is checked with the arguments of that call only. A number, such as `(int)mode`, is not a code. A word in braces, such as `{PropertyName}`, is a placeholder that FluentValidation replaces, so it is not a code. Do not use `{PropertyValue}` for an enum or a SmartEnum: it shows the code.
 
-A message after a parse that fails can show the value that the parse did not accept, as `Invalid permission: {value}` after `PermissionEnum.TryFromName(value, ...)` does. A parse is a `Try*` or `IsDefined` method of a SmartEnum, of an `IFixedNames` value object, or of `Enum`, such as `Enum.TryParse`. The parse must be the whole condition, and the throw must be on the branch where it fails: `Try(value) ? x : throw ...` or `if (!Try(value)) throw ...`. The value is the text that the user sent, so the analyzer does not follow it to the callers. A caller that gives a name that the parse accepts, such as `Permission.ManageUsers()`, never gets to the message. The text of the message and the other values that it shows are checked.
+A message after a parse that fails can show the value that the parse did not accept, as `Invalid permission: {value}` after `PermissionEnum.TryFromName(value, ...)` does. A parse is `TryFromName`, `TryFromValue`, `TryParse`, or `IsDefined` of a SmartEnum, of an `IFixedNames` value object, or of `Enum`, such as `Enum.TryParse`. Another `Try*` method, such as `TryMoveTo`, is not a parse. The parse must be the whole condition, and the throw must be on the branch where it fails. These forms are accepted:
+
+- `Try(value) ? x : throw ...`
+- `if (!Try(value)) throw ...`
+- `if (Try(value, out var parsed) is false) throw ...`
+- `if (Try(value)) return ...;` as the statement just before the throw
+
+ The value is the text that the user sent, so the analyzer does not follow it to the callers. A caller that gives a name that the parse accepts, such as `Permission.ManageUsers()`, never gets to the message. The text of the message and the other values that it shows are checked.
 
 Then it fails the build:
 
 | Rule | Fails when |
 |------|------------|
-| `FSTMSG001` | The text has a snake_case word or a PascalCase word with two or more parts. Or the message shows an enum value, the stored name of a SmartEnum or an `IFixedNames` value object (its `Value`, its `Name`, or its `ToString`), a list of enum values or stored names (such as `Enum.GetValues<T>()` or `Enum.GetNames<T>()`), a type name (`Type.Name` or `Type.FullName`), or `nameof`. |
+| `FSTMSG001` | The text has a snake_case word or a PascalCase word with two or more parts. Or the message shows an enum value, the stored name of a SmartEnum or an `IFixedNames` value object (its `Value`, its `Name`, or its `ToString`), a list of enum values or stored names (such as `Enum.GetValues<T>()`, `Enum.GetNames<T>()`, `ListNames()` of an `IFixedNames` type, or `KindEnum.List.Select(x => x.Name)`), a type name (`Type.Name` or `Type.FullName`), or `nameof`. |
 | `FSTMSG002` | The message shows an ID: a member, a local, or a parameter whose name is `Id` or ends in `Id`, such as `{defectId}` or `{agent.ClientId}`, or a value of a type whose name ends in `Id`, such as a `TimeZoneId` value. |
 
 The error says what to write instead. `UserMessageAnalyzerTests` has a failing case for each kind, among them the permission code of CarePoint 112, the status name of CarePoint 32, and the raw ID of Fleet 76. A message for a developer, such as an `InvalidOperationException` about the model, is not a user message, so it can name types and IDs.
@@ -44,7 +51,10 @@ A brand name with two capitals, such as ZeroFactor or GitHub, matches the Pascal
 
 These paths are not checked:
 
-- A text that a lambda or a delegate builds, other than a `WithMessage` function. For example, a list of names from `Select(x => x.Name)`.
+- A text that a lambda or a delegate builds, other than a `WithMessage` function and the `Select` of a list. For example, `items.Aggregate((a, b) => a + b)`.
+- A text that a `StringBuilder` builds.
+- A value that `+=` adds to a local or a parameter.
+- The `content` of `Results.Text` or `Results.Content` when the `statusCode` is not a constant.
 - A value that comes from a positional record property, such as `DomainError.Detail`. The analyzer does not follow it to the place that makes the record.
 - The text of a tool result that is set outside the initializer of the `CallToolResult`, or a result whose `IsError` is not the constant `true`.
 - The message of an exception of a package that the Server creates with `new`, other than `McpException`. `DomainError` maps some of them, such as the `ValidationException` of FluentValidation, but their text comes from a `ValidationFailure`, which is checked.

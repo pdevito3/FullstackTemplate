@@ -11,10 +11,6 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
-/// <summary>
-/// The assert reads the tenant-owned types from the EF model, so it covers a new tenant-owned entity once the arrange
-/// adds a row of it.
-/// </summary>
 public class TenantDeleteOwnedRowsTests : TestBase
 {
     private static readonly MethodInfo IdsOfTenant = typeof(TenantDeleteOwnedRowsTests)
@@ -36,8 +32,9 @@ public class TenantDeleteOwnedRowsTests : TestBase
             .BuildAsync();
         scope.SetUserWithDefaults(identifier: admin.Identifier);
         var owned = await scope.ExecuteDbContextAsync(db => EachOwnedTypeAsync(db, type => Run(IdsOfTenant, type, db)));
-        owned.Where(type => type.Value.Count > 0).Select(type => type.Key)
-            .ShouldBe(["Agent", "AgentPermission", "User", "UserPermission"], ignoreOrder: true);
+        owned.ShouldNotBeEmpty();
+        owned.Where(type => type.Value.Count == 0).Select(type => type.Key).ShouldBeEmpty(
+            "The test proves the tenant delete only for the types that it seeds. Add a row of each tenant-owned type to the arrange.");
 
         // Act
         await scope.SendAsync(new DeleteTenant.Command(tenant.Id));

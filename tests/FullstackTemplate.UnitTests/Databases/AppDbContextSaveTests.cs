@@ -75,6 +75,60 @@ public sealed class AppDbContextSaveTests
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message.ShouldContain("only after its save ends");
     }
 
+    [Test]
+    public async Task a_domain_event_with_no_tenant_keeps_the_tenant_scope_of_its_save()
+    {
+        // Arrange
+        var handler = new RecordsTheScope();
+        var services = new ServiceCollection()
+            .AddSingleton<IDomainEventHandler<NoteAdded>>(handler)
+            .BuildServiceProvider();
+        var tenantScopes = Substitute.For<ITenantScopeProvider>();
+        tenantScopes.GetCurrentScope().Returns(TenantScope.AllTenants);
+        await using var dbContext = new NoteContext(tenantScopes, new DomainEventDispatcher(services));
+        dbContext.Add(new Note());
+        var tenantId = EntityId.New(Tenant.IdPrefix);
+
+        // Act
+        var act = () => dbContext.InTenantScopeAsync(tenantId, () => dbContext.SaveChangesAsync());
+
+        // Assert
+        await act.ShouldThrowAsync<SaveStopped>();
+        handler.Scope.ShouldBe(TenantScope.ForTenant(tenantId));
+    }
+
+    private sealed class Note : BaseEntity
+    {
+        public Note() : base("not") => QueueDomainEvent(new NoteAdded());
+    }
+
+    private sealed record NoteAdded : DomainEvent;
+
+    private sealed class SaveStopped : Exception;
+
+    private sealed class RecordsTheScope : IDomainEventHandler<NoteAdded>
+    {
+        public TenantScope? Scope { get; private set; }
+
+        public Task Handle(NoteAdded domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)
+        {
+            Scope = dbContext.CurrentTenantScope;
+            throw new SaveStopped();
+        }
+    }
+
+    private sealed class NoteContext(ITenantScopeProvider tenantScopes, DomainEventDispatcher dispatcher) : AppDbContext(
+        new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
+        TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
+        tenantScopes, dispatcher)
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Note>().HasKey(n => n.Id);
+        }
+    }
+
     private sealed class DiscardsTheLostRace : IDomainEventHandler<TenantCreated>
     {
         public Task Handle(TenantCreated domainEvent, AppDbContext dbContext, CancellationToken cancellationToken)

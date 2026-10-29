@@ -91,7 +91,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
+          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js'],
           // A zone far from UTC, so that a test that takes a date from UTC or from the machine fails on every machine.
           // See docs/frontend/testing.md, section "Time zones".
           env: { TZ: 'Pacific/Pago_Pago' },

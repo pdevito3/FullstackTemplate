@@ -181,5 +181,16 @@ export function workshopsPage(page: Page) {
       await at.actionButton(title, action).click()
       await settled
     },
+
+    /** Presses the button of an action with the keyboard, as a keyboard user does. */
+    async sendWithEnter(title: string, action: string, path: string) {
+      const settled = answered('POST', path)
+      await at.actionButton(title, action).press('Enter')
+      await settled
+    },
+
+    async pressEnter() {
+      await page.keyboard.press('Enter')
+    },
   }
 }

@@ -266,6 +266,26 @@ test.describe('the focus after an action that removes the focused button', () =>
     await expect(workshops.at.title).toHaveValue('Kubb for teams')
     await expect(workshops.at.title).toBeFocused()
   })
+
+  test('Schedule puts the focus on the heading, so a second Enter sends no other action', async ({ page, api }) => {
+    const draft = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = draft.build()
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openDetail(id, venueId)
+    api.mock(workshopsApi.actionMoves('schedule', draft.inStatus('Scheduled')))
+
+    await workshops.sendWithEnter('Intro to Kubb', 'Schedule', workshopPaths.action(id, 'schedule'))
+
+    await expect(workshops.at.status('Scheduled')).toBeVisible()
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
+
+    await workshops.pressEnter()
+
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
+    expect(api.all('post', workshopPaths.action(id, 'cancel'))).toHaveLength(0)
+    expect(api.all('post', workshopPaths.action(id, 'complete'))).toHaveLength(0)
+  })
 })
 
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'

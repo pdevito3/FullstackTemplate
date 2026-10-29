@@ -1,0 +1,28 @@
+import { useRouterState } from '@tanstack/react-router'
+
+import { buttonVariants } from '@/components/ui/button-variants'
+import { Link } from '@/components/ui/link'
+
+import { useMembership } from '../apis/get-membership'
+
+/** Each page tells a signed-in user with no tenant how to get one. A new database has no user records. */
+export function NoTenantNotice() {
+  const membership = useMembership()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+
+  if (membership.status !== 'no-tenant' || pathname === '/start-tenant') return null
+
+  return (
+    <section
+      aria-label="No tenant"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm"
+    >
+      <p className="min-w-0">
+        You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.
+      </p>
+      <Link to="/start-tenant" className={buttonVariants({ size: 'sm' })}>
+        Start a tenant
+      </Link>
+    </section>
+  )
+}

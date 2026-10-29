@@ -10,6 +10,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { NoTenantNotice } from '@/domain/membership/components/no-tenant-notice'
 import { HrefRouterProvider } from '@/components/ui/link'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -58,6 +59,7 @@ function RootComponent() {
             </div>
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <NoTenantNotice />
             <Outlet />
           </div>
         </SidebarInset>

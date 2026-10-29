@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import type { AuthState, BffClaim } from '../types'
 import { AuthKeys } from './auth.keys'
@@ -68,15 +68,18 @@ function parseAuthClaims(claims: BffClaim[]): Omit<AuthState, 'isLoading'> {
   }
 }
 
+/** The claims of the BFF session, for each hook that reads them. */
+export const authClaimsQuery = queryOptions({
+  queryKey: AuthKeys.user(),
+  queryFn: getUser,
+  staleTime: 5 * 60 * 1000, // Consider auth data fresh for 5 minutes
+})
+
 /**
  * Hook for fetching and managing auth state
  */
 export function useAuth(): AuthState {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: AuthKeys.user(),
-    queryFn: getUser,
-    staleTime: 5 * 60 * 1000, // Consider auth data fresh for 5 minutes
-  })
+  const { data, isLoading, isError } = useQuery(authClaimsQuery)
 
   if (isLoading) {
     return {

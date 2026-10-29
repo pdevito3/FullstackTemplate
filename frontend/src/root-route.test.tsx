@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -9,6 +10,7 @@ import {
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 
+import { AuthKeys } from '@/domain/auth/apis/auth.keys'
 import { Route as RootRoute } from '@/routes/__root'
 import { routeTree } from '@/routeTree.gen'
 
@@ -24,7 +26,14 @@ async function renderLayoutAt(path: string) {
     routeTree: rootRoute.addChildren([userRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
-  const screen = await render(<RouterProvider router={router} />)
+  // The layout reads the session. An anonymous visitor has none, so the layout sends no request.
+  const queryClient = new QueryClient()
+  queryClient.setQueryData(AuthKeys.user(), null)
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
   await expect.element(screen.getByRole('heading', { name: 'User' })).toBeVisible()
   return screen
 }

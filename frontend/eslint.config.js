@@ -47,7 +47,7 @@ const testFileRules = [
     message: stringSelectorMessage,
   },
   {
-    selector: `CallExpression[callee.property.name=/^(${selectorActions})$/][arguments.length>1][arguments.1.type!='ObjectExpression']:not(${onPage}):has(> ${isString}:first-child)`,
+    selector: `CallExpression[callee.property.name=/^(${selectorActions})$/][arguments.length>1][arguments.1.type!=/^(ObjectExpression|Identifier)$/]:not(${onPage}):has(> ${isString}:first-child)`,
     message: stringSelectorMessage,
   },
   {

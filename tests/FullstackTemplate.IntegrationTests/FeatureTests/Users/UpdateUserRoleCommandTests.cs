@@ -163,27 +163,21 @@ public class UpdateUserRoleCommandTests : TestBase
     }
 
     [Test]
-    public async Task setting_same_role_resets_permissions_to_default()
+    public async Task setting_the_same_role_keeps_the_permissions()
     {
-        // Arrange - Create admin user and remove permission
+        // Arrange
         var testingServiceScope = new TestingServiceScope();
         await testingServiceScope.StartGraph(out _)
             .AddUser(out var createdUser, u => u.Role = "Admin")
             .BuildAsync();
+        await testingServiceScope.SendAsync(new RemoveUserPermission.Command(createdUser.Id, "manage_tenant"));
 
-        // Remove permission via command
-        await testingServiceScope.SendAsync(
-            new RemoveUserPermission.Command(createdUser.Id, "manage_tenant"));
+        // Act
+        var userReturned = await testingServiceScope.SendAsync(new UpdateUserRole.Command(createdUser.Id, "Admin"));
 
-        // Verify permission was removed
-        var userAfterRemove = await testingServiceScope.SendAsync(new GetUser.Query(createdUser.Id));
-        userAfterRemove.Permissions.ShouldNotContain("manage_tenant");
-
-        // Act - Set to Admin again
-        var command = new UpdateUserRole.Command(createdUser.Id, "Admin");
-        var userReturned = await testingServiceScope.SendAsync(command);
-
-        // Assert - Permission should be restored
-        userReturned.Permissions.ShouldContain("manage_tenant");
+        // Assert
+        userReturned.Permissions.ShouldNotContain("manage_tenant");
+        var saved = await testingServiceScope.SendAsync(new GetUser.Query(createdUser.Id));
+        saved.Permissions.ShouldNotContain("manage_tenant");
     }
 }

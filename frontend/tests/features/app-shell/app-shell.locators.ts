@@ -17,4 +17,6 @@ export const appShell = (page: Page) => ({
   wideContent: page.getByRole('region', { name: 'Wide content' }),
   notFoundHeading: page.getByRole('heading', { name: 'Page not found' }),
   homeLink: page.getByRole('link', { name: 'Go to the home page' }),
+  homeSubtitle: page.getByText('.NET Aspire + React with a BFF'),
+  pageAnnouncement: page.getByTestId('page-announcement'),
 })

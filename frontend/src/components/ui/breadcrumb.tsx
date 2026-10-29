@@ -36,7 +36,7 @@ function BreadcrumbList<T extends object>({
     <BreadcrumbsPrimitive
       data-slot="breadcrumb-list"
       className={cn(
-        "flex items-center gap-1.5 text-sm text-muted-foreground",
+        "flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground",
         className
       )}
       {...props}
@@ -55,7 +55,7 @@ function BreadcrumbItem({
       data-slot="breadcrumb-item"
       className={composeRenderProps(className, (className) =>
         cn(
-          "inline-flex items-center gap-1 not-data-current:shrink-0 not-data-current:whitespace-nowrap data-current:min-w-0",
+          "inline-flex items-center gap-1 not-data-current:shrink-0 not-data-current:whitespace-nowrap data-current:min-w-0 data-current:grow data-current:basis-[4em]",
           className
         )
       )}
@@ -137,7 +137,7 @@ function CurrentPage({ className, children }: { className?: string; children?: s
       >
         <span
           className={cn(
-            "-mx-1 rounded-sm px-1 group-focus-visible/page:ring-2 group-focus-visible/page:ring-ring/50",
+            "-mx-1 rounded-sm px-1 py-0.5 group-focus-visible/page:ring-2 group-focus-visible/page:ring-ring/50",
             pageClassName
           )}
         >

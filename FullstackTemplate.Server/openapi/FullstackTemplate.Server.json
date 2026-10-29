@@ -90,6 +90,7 @@
             "name": "filters",
             "in": "query",
             "schema": {
+              "maxLength": 2000,
               "type": "string"
             }
           },
@@ -593,6 +594,7 @@
             "name": "filters",
             "in": "query",
             "schema": {
+              "maxLength": 2000,
               "type": "string"
             }
           },
@@ -952,6 +954,7 @@
             "name": "filters",
             "in": "query",
             "schema": {
+              "maxLength": 2000,
               "type": "string"
             }
           },
@@ -1753,6 +1756,7 @@
             "name": "filters",
             "in": "query",
             "schema": {
+              "maxLength": 2000,
               "type": "string"
             }
           },
@@ -2004,6 +2008,7 @@
             "name": "filters",
             "in": "query",
             "schema": {
+              "maxLength": 2000,
               "type": "string"
             }
           },

@@ -73,12 +73,6 @@ function RootComponent() {
   )
 }
 
-/**
- * After a navigation, a screen reader must hear the new page. A link in the page unmounts with the page, so the focus
- * goes to its level 1 heading, or to the main landmark. A link that stays, such as a sidebar link, keeps the focus, and
- * the status region says the name of the page. The location resolves after the lazy route loads, when the new page is
- * on the screen.
- */
 function usePageFocusAfterNavigation(pathname: string | undefined, pageName: string | undefined) {
   const content = useRef<HTMLDivElement>(null)
   const announcement = useRef<HTMLParagraphElement>(null)
@@ -90,23 +84,37 @@ function usePageFocusAfterNavigation(pathname: string | undefined, pageName: str
     // The first load leaves the focus where the browser puts it.
     if (previous === undefined || previous === pathname || !content.current || !announcement.current) return
     const focused = document.activeElement
-    const focusLost = !focused || focused === document.body
-    const focusOutsidePage = !focusLost && !content.current.contains(focused)
-    // An empty region between two announcements makes the second one a change, also for the same page name.
-    announcement.current.textContent = focusOutsidePage ? (pageName ?? '') : ''
-    if (focusLost) focusPageStart(content.current)
+    if (!focused || focused === document.body) {
+      focusWithoutTabStop(content.current.querySelector('h1') ?? content.current.closest('main'))
+    } else if (!content.current.contains(focused)) {
+      announce(announcement.current, pageName ?? '')
+    }
   }, [pathname, pageName])
 
   return { content, announcement }
 }
 
-/** The target gets a tab index only while it has the focus, so that a later click on the page does not focus it. */
-function focusPageStart(content: HTMLElement) {
-  const target = content.querySelector('h1') ?? content.closest('main')
+function focusWithoutTabStop(target: HTMLElement | null) {
   if (!target) return
   if (!target.hasAttribute('tabindex')) {
     target.setAttribute('tabindex', '-1')
-    target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true })
+    target.setAttribute('data-page-focus', '')
+    target.addEventListener(
+      'blur',
+      () => {
+        target.removeAttribute('tabindex')
+        target.removeAttribute('data-page-focus')
+      },
+      { once: true },
+    )
   }
   target.focus({ preventScroll: true })
+}
+
+// A screen reader speaks a live region when its text changes, so the same text again needs an empty frame first.
+function announce(region: HTMLElement, text: string) {
+  region.textContent = ''
+  requestAnimationFrame(() => {
+    region.textContent = text
+  })
 }

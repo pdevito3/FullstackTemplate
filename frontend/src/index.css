@@ -203,8 +203,7 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
-  /* The layout focuses the heading or the main landmark of a new page for a screen reader. It is not a control, so it shows no ring. */
-  :is(h1, main)[tabindex='-1']:focus {
+  [data-page-focus]:focus {
     @apply outline-none;
   }
 }

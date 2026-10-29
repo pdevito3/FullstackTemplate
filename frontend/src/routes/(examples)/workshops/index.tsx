@@ -14,6 +14,7 @@ import { formatStart } from '@/examples/workshops/components/format-start'
 import { QueryError } from '@/examples/components/query-error'
 import { WorkshopSearch } from '@/examples/workshops/components/workshop-search'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { maxLengthOf } from '@/lib/api-contract'
 
 const listSearchSchema = z.object({
@@ -72,6 +73,9 @@ interface WorkshopRowsProps {
 }
 
 function WorkshopRows({ list, search, page, onPageChange }: WorkshopRowsProps) {
+  // A phone has no room for four columns, so the title cell shows the start and the capacity under the title.
+  const isMobile = useIsMobile()
+
   if (list.isPending) {
     return <p role="status" aria-label="Loading workshops" className="text-muted-foreground">Loading workshops</p>
   }
@@ -107,20 +111,25 @@ function WorkshopRows({ list, search, page, onPageChange }: WorkshopRowsProps) {
         <Table aria-label="Workshops">
           <TableHeader>
             <TableHead isRowHeader>Title</TableHead>
-            <TableHead>Starts</TableHead>
-            <TableHead>Capacity</TableHead>
+            {!isMobile && <TableHead>Starts</TableHead>}
+            {!isMobile && <TableHead>Capacity</TableHead>}
             <TableHead>Status</TableHead>
           </TableHeader>
           <TableBody>
             {workshops.map((workshop) => (
               <TableRow key={workshop.id} id={workshop.id}>
-                <TableCell>
+                <TableCell className="wrap-anywhere">
                   <Link to="/workshops/$id" params={{ id: workshop.id }} className="font-medium underline-offset-4 hover:underline">
                     {workshop.title}
                   </Link>
+                  {isMobile && (
+                    <p className="text-sm text-muted-foreground">
+                      {formatStart(workshop)}, capacity {workshop.capacity}
+                    </p>
+                  )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap">{formatStart(workshop)}</TableCell>
-                <TableCell className="whitespace-nowrap">{workshop.capacity}</TableCell>
+                {!isMobile && <TableCell className="whitespace-nowrap">{formatStart(workshop)}</TableCell>}
+                {!isMobile && <TableCell className="whitespace-nowrap">{workshop.capacity}</TableCell>}
                 <TableCell className="whitespace-nowrap">
                   <WorkshopStatusBadge status={workshop.status} />
                 </TableCell>

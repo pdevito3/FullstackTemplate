@@ -5,7 +5,7 @@ import { Notification } from '@/components/notification'
 import { Link } from '@/components/ui/link'
 import { useWorkshop } from '@/examples/workshops/apis/get-workshop'
 import { useUpdateWorkshop } from '@/examples/workshops/apis/update-workshop'
-import { QueryError } from '@/examples/components/query-error'
+import { QueryError } from '@/components/query-error'
 import { WorkshopEditForm } from '@/examples/workshops/components/workshop-edit-form'
 
 export const Route = createFileRoute('/(examples)/workshops/$id/edit')({

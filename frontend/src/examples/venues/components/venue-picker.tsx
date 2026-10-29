@@ -16,7 +16,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { maxLengthOf } from '@/lib/api-contract'
 
-import { useDebouncedCallback } from '../../use-debounced-callback'
+import { useDebouncedCallback } from '@/hooks/use-debounced-callback'
 import { useVenue } from '../apis/get-venue'
 import { useVenueSearch } from '../apis/get-venue-list'
 import { VenueKeys } from '../apis/venue.keys'

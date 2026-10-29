@@ -100,8 +100,10 @@ retry: (failureCount, error) => {
 ```
 
 <!-- example:start -->
-A form that shows each refusal itself sends `suppressErrorToast`, so the error does not show twice: [`useUpdateWorkshop`](<../../frontend/src/examples/workshops/apis/update-workshop.ts>). `refusalOf` puts each validation message on its field, and every other message above the buttons: [`refusalOf`](<../../frontend/src/examples/components/use-server-errors.ts>).
+A form that shows each refusal itself sends `suppressErrorToast`, so the error does not show twice: [`useUpdateWorkshop`](<../../frontend/src/examples/workshops/apis/update-workshop.ts>).
 <!-- example:end -->
+
+`useServerErrors` shows a refusal in the form: each validation message on its field, a stale version as its own problem, and every other message in `RefusedSaveAlert` above the buttons. See [`refusalOf`](../../frontend/src/hooks/use-server-errors.ts) and [`RefusedSaveAlert`](../../frontend/src/components/refused-save-alert.tsx).
 
 ## Cache times
 

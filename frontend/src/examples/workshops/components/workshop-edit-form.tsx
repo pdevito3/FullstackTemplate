@@ -7,9 +7,9 @@ import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { focusFirstError } from '@/examples/components/focus-first-error'
-import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
-import { useServerErrors } from '@/examples/components/use-server-errors'
+import { focusFirstError } from '@/lib/focus-first-error'
+import { RefusedSaveAlert } from '@/components/refused-save-alert'
+import { useServerErrors } from '@/hooks/use-server-errors'
 import { parseTimeZone, wallClockAt } from '@/lib/zoned-time'
 
 import { StaleVersionAlert } from './stale-version-alert'

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import type { SaveProblem } from '@/examples/components/refused-save-alert'
+import type { SaveProblem } from '@/components/refused-save-alert'
 
 interface StaleVersionAlertProps {
   problem: SaveProblem | null

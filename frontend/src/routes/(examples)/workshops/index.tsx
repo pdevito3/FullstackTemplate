@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useMembership } from '@/domain/membership/apis/get-membership'
 import { useWorkshopList } from '@/examples/workshops/apis/get-workshop-list'
 import { formatStart } from '@/examples/workshops/components/format-start'
-import { QueryError } from '@/examples/components/query-error'
+import { QueryError } from '@/components/query-error'
 import { WorkshopSearch } from '@/examples/workshops/components/workshop-search'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 import { useIsMobile } from '@/hooks/use-mobile'

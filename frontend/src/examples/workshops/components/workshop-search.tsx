@@ -3,7 +3,7 @@ import { useId, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-import { useDebouncedCallback } from '../../use-debounced-callback'
+import { useDebouncedCallback } from '@/hooks/use-debounced-callback'
 
 interface WorkshopSearchProps {
   search: string

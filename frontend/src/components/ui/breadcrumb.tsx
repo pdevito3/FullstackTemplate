@@ -94,10 +94,9 @@ const BreadcrumbLink = createRouterLink(function BreadcrumbLinkHost({
 })
 
 /**
- * The current page truncates in a narrow trail. A truncated page becomes a
- * button that shows the full name in a popover, so that a phone user can read
- * it, because a Tooltip does not open on touch. It stays a button until the
- * name changes, so that a wider window does not remove the focused button.
+ * When the name truncates, the current page becomes a button that opens the
+ * full name in a popover, because a Tooltip does not open on touch. It stays a
+ * button until the name changes, so a resize does not unmount a focused button.
  */
 function BreadcrumbPage({ className, children }: { className?: string; children?: string }) {
   const [truncatedName, setTruncatedName] = React.useState<string>()
@@ -107,6 +106,7 @@ function BreadcrumbPage({ className, children }: { className?: string; children?
       if (!element) return
       const observer = new ResizeObserver(() => {
         if (element.scrollWidth > element.clientWidth) setTruncatedName(children)
+        else setTruncatedName((name) => (name === children ? name : undefined))
       })
       observer.observe(element)
       return () => observer.disconnect()

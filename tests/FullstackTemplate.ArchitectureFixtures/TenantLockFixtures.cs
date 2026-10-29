@@ -65,6 +65,21 @@ public static class AddRangeWithNoLock
     }
 }
 
+public static class AddRangeThroughTheContextWithNoLock
+{
+    public static Task Add(AppDbContext dbContext, Agent agent, User user, CancellationToken cancellationToken)
+    {
+        dbContext.AddRange(agent, user);
+        return dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+
+public static class BulkInsertWithNoLock
+{
+    public static Task Add(AppDbContext dbContext, IEnumerable<Agent> agents, CancellationToken cancellationToken)
+        => dbContext.BulkInsertAsync(agents, cancellationToken);
+}
+
 public static class AddAfterTheSharedWork
 {
     public static async Task Add(AppDbContext dbContext, Agent agent, CancellationToken cancellationToken)

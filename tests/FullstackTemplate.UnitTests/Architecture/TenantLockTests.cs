@@ -22,7 +22,13 @@ using Shouldly;
 /// </summary>
 public class TenantLockTests
 {
-    private static readonly HashSet<string> AddMethods = new(StringComparer.Ordinal) { "Add", "AddAsync", "AddRange", "AddRangeAsync" };
+    private static readonly HashSet<string> AddMethods = new(StringComparer.Ordinal)
+    {
+        "Add", "AddAsync", "AddRange", "AddRangeAsync", nameof(AppDbContext.BulkInsertAsync),
+    };
+
+    // An add of an object, such as the AddRange of the context, has no entity type in the IL, so it can add a root.
+    private static readonly string UntypedEntity = typeof(object).FullName!;
 
     [Test]
     public void each_add_of_a_tenant_owned_root_saves_in_the_shared_lock_of_its_tenant()
@@ -40,7 +46,7 @@ public class TenantLockTests
     }
 
     [Test]
-    public void rule_finds_an_add_with_no_lock_through_a_set_the_context_or_a_range_and_an_add_after_or_in_another_lock()
+    public void rule_finds_an_add_with_no_lock_through_a_set_the_context_a_range_or_a_bulk_insert_and_an_add_after_or_in_another_lock()
     {
         // Arrange
         using var context = new AppDbContextFactory().CreateDbContext([]);
@@ -53,9 +59,11 @@ public class TenantLockTests
         [
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddAfterTheSharedWork adds Agent",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddInExclusiveWork adds Agent",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddRangeThroughTheContextWithNoLock adds Object",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddRangeWithNoLock adds User",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddThroughTheContextWithNoLock adds User",
             "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.AddWithNoLock adds Agent",
+            "FullstackTemplate.ArchitectureFixtures.Core.TenantLock.BulkInsertWithNoLock adds Agent",
         ]);
     }
 
@@ -84,7 +92,7 @@ public class TenantLockTests
         var addsATenant = adds.Where(a => a.Entity == typeof(Tenant).FullName).Select(a => a.Owner).ToHashSet(StringComparer.Ordinal);
 
         return adds
-            .Where(a => roots.Contains(a.Entity) && !addsATenant.Contains(a.Owner) && !sharedWork.Contains(BodyOwner(a.Method)))
+            .Where(a => (roots.Contains(a.Entity) || a.Entity == UntypedEntity) && !addsATenant.Contains(a.Owner) && !sharedWork.Contains(BodyOwner(a.Method)))
             .Select(a => $"{a.Owner} adds {a.Entity[(a.Entity.LastIndexOf('.') + 1)..]}")
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -116,9 +124,9 @@ public class TenantLockTests
             return null;
         if (method.DeclaringType is GenericInstanceType { ElementType.FullName: "Microsoft.EntityFrameworkCore.DbSet`1" } set)
             return set.GenericArguments[0].FullName;
-        if (method is GenericInstanceMethod { GenericArguments: [var entity] } && IsContext(method.DeclaringType))
-            return entity.FullName;
-        return null;
+        if (!IsContext(method.DeclaringType))
+            return null;
+        return method is GenericInstanceMethod { GenericArguments: [var entity] } ? entity.FullName : UntypedEntity;
     }
 
     private static bool IsContext(TypeReference type)

@@ -29,6 +29,7 @@ public class EntityIdTests
     [Arguments("abcdefghijklmnopqr")]
     public void new_and_is_valid_reject_a_prefix_that_is_not_1_to_17_lower_case_letters(string prefix)
     {
+        // Act & Assert
         Should.Throw<ArgumentException>(() => EntityId.New(prefix));
         Should.Throw<ArgumentException>(() => EntityId.IsValid("usr_a", prefix));
     }
@@ -103,12 +104,14 @@ public class EntityIdTests
     [Arguments("usr_a")]
     public void is_valid_accepts_lower_case_letters_and_digits_after_the_prefix(string id)
     {
+        // Act & Assert
         EntityId.IsValid(id, "usr").ShouldBeTrue();
     }
 
     [Test]
     public void is_valid_accepts_new_ids_and_the_default_test_tenant_id()
     {
+        // Act & Assert
         EntityId.IsValid(EntityId.New(User.IdPrefix), User.IdPrefix).ShouldBeTrue();
         EntityId.IsValid($"{Tenant.IdPrefix}_{new string('1', 32)}", Tenant.IdPrefix).ShouldBeTrue();
     }
@@ -120,7 +123,7 @@ public class EntityIdTests
         var maxLength = $"usr_{new string('a', EntityId.MaxLength - "usr_".Length)}";
         var tooLong = maxLength + "a";
 
-        // Assert
+        // Act & Assert
         maxLength.Length.ShouldBe(EntityId.MaxLength);
         EntityId.IsValid(maxLength, "usr").ShouldBeTrue();
         EntityId.IsValid(tooLong, "usr").ShouldBeFalse();
@@ -137,6 +140,7 @@ public class EntityIdTests
     [Arguments(null, "usr")]
     public void is_valid_rejects_other_prefixes_and_characters(string? id, string prefix)
     {
+        // Act & Assert
         EntityId.IsValid(id, prefix).ShouldBeFalse();
     }
 

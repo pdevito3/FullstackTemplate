@@ -24,10 +24,13 @@ public class McpJwtBearerChallengeTests : TestBase
     [Test]
     public async Task a_request_to_mcp_with_no_token_gets_the_metadata_url_in_the_first_challenge()
     {
+        // Arrange
         await using var app = await StartAsync();
 
+        // Act
         using var response = await app.GetTestClient().PostAsync(EntrypointRegistration.McpPath, null);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenges = response.Headers.WwwAuthenticate.ToList();
         challenges.Select(c => c.Scheme).ShouldBe(["Bearer", "DPoP"]);
@@ -38,12 +41,15 @@ public class McpJwtBearerChallengeTests : TestBase
     [Test]
     public async Task a_request_to_mcp_with_a_bad_token_gets_the_metadata_url_and_the_error()
     {
+        // Arrange
         await using var app = await StartAsync();
         using var request = new HttpRequestMessage(HttpMethod.Post, EntrypointRegistration.McpPath);
         request.Headers.Authorization = new("Bearer", TokenWithUnknownKey());
 
+        // Act
         using var response = await app.GetTestClient().SendAsync(request);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenges = response.Headers.WwwAuthenticate.ToList();
         challenges.Select(c => c.Scheme).ShouldBe(["Bearer", "DPoP"]);
@@ -54,12 +60,15 @@ public class McpJwtBearerChallengeTests : TestBase
     [Test]
     public async Task a_request_to_mcp_that_fails_a_dpop_check_keeps_only_the_dpop_challenge()
     {
+        // Arrange
         await using var app = await StartAsync();
         using var request = new HttpRequestMessage(HttpMethod.Post, EntrypointRegistration.McpPath);
         request.Headers.Authorization = new("DPoP", TokenWithUnknownKey());
 
+        // Act
         using var response = await app.GetTestClient().SendAsync(request);
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenge = response.Headers.WwwAuthenticate.ShouldHaveSingleItem();
         challenge.Scheme.ShouldBe("DPoP");
@@ -69,10 +78,13 @@ public class McpJwtBearerChallengeTests : TestBase
     [Test]
     public async Task a_request_to_the_http_api_with_no_token_gets_no_metadata_url()
     {
+        // Arrange
         await using var app = await StartAsync();
 
+        // Act
         using var response = await app.GetTestClient().GetAsync("/api/v1/tenants");
 
+        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenges = response.Headers.WwwAuthenticate.ToList();
         challenges.Select(c => c.Scheme).ShouldBe(["DPoP", "Bearer"], ignoreOrder: true);

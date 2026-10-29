@@ -80,8 +80,8 @@ test.describe('the landmarks of the layout', () => {
 
     await shell.openAbout()
 
-    await expect(shell.at.mainNavigation.getByRole('link', { name: 'Home' })).toBeVisible()
-    await expect(shell.at.mainNavigation.getByRole('link', { name: 'About' })).toBeVisible()
+    await expect(shell.at.homeNavigationLink).toBeVisible()
+    await expect(shell.at.aboutNavigationLink).toBeVisible()
   })
 })
 

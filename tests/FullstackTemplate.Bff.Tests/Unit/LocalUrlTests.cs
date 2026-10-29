@@ -15,6 +15,7 @@ public class LocalUrlTests
     [Arguments("/a/..//evil.example")]
     public void a_local_path_passes_unchanged(string returnUrl)
     {
+        // Act & Assert
         LocalUrl.TryParse(returnUrl, out var localUrl).ShouldBeTrue();
         localUrl!.Value.ShouldBe(returnUrl);
     }
@@ -27,6 +28,7 @@ public class LocalUrlTests
     [Arguments("/\uFF0Fevil.example", "/%EF%BC%8Fevil.example")]
     public void a_non_ascii_character_becomes_its_percent_encoded_utf8_bytes(string returnUrl, string expected)
     {
+        // Act & Assert
         LocalUrl.TryParse(returnUrl, out var localUrl).ShouldBeTrue();
         localUrl!.Value.ShouldBe(expected);
     }
@@ -54,6 +56,7 @@ public class LocalUrlTests
     [Arguments("/a\udc00b")]
     public void a_value_that_is_not_a_local_path_fails(string? returnUrl)
     {
+        // Act & Assert
         LocalUrl.TryParse(returnUrl, out var localUrl).ShouldBeFalse();
         localUrl.ShouldBeNull();
     }

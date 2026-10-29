@@ -1,0 +1,15 @@
+diff --git a/dist/index.js b/dist/index.js
+index 3105ebe97ddd7add6c4257602029ea58e7a11fd0..fbcce9fc6587a424f0b98a506994750a7d7d1e8a 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -614,7 +614,9 @@ const startChunkTrace = async (command, { name, title }) => {
+ 		const path = resolveTracesPath(command, name);
+ 		provider.pendingTraces.set(path, sessionId);
+ 		await context.tracing.startChunk({
+-			name,
++			// Playwright writes the chunk to `<name>.trace` in one folder for all contexts. Two test files that run
++			// a test of the same name at the same time wrote one file, and the zip of the first failed the test.
++			name: `${sessionId}-${name}`,
+ 			title
+ 		});
+ 		return;

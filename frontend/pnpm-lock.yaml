@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@vitest/browser-playwright@5.0.5':
+    hash: 32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3
+    path: patches/@vitest__browser-playwright@5.0.5.patch
+
 importers:
 
   .:
@@ -74,13 +79,13 @@ importers:
         version: 9.39.2
       '@kubb/plugin-axios':
         specifier: ^5.7.0
-        version: 5.7.0(axios@1.20.0)(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))(zod@4.3.4)
+        version: 5.7.0(axios@1.20.0)(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(vitest@5.0.5)(zod@4.3.4)
       '@kubb/plugin-ts':
         specifier: ^5.0.14
-        version: 5.0.14(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+        version: 5.0.14(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(vitest@5.0.5)
       '@kubb/plugin-zod':
         specifier: ^5.4.12
-        version: 5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(zod@4.3.4)
+        version: 5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(zod@4.3.4)
       '@playwright/test':
         specifier: 1.64.1
         version: 1.64.1
@@ -104,7 +109,7 @@ importers:
         version: 5.1.2(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       '@vitest/browser-playwright':
         specifier: 5.0.5
-        version: 5.0.5(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
+        version: 5.0.5(patch_hash=32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3)(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
       eslint:
         specifier: ^9.39.1
         version: 9.39.2(jiti@2.7.0)
@@ -122,7 +127,7 @@ importers:
         version: 16.5.0
       kubb:
         specifier: ^5.11.0
-        version: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+        version: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
       playwright:
         specifier: 1.64.1
         version: 1.64.1
@@ -146,7 +151,7 @@ importers:
         version: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       vitest-browser-react:
         specifier: ^2.3.0
-        version: 2.3.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+        version: 2.3.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@5.0.5)
 
 packages:
 
@@ -765,36 +770,42 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rolldown/binding-linux-arm64-musl@1.2.14':
     resolution: {integrity: sha512-BJ2CL19M6uuWesMgnqJzgxoI+N+eV7b0A9O9vLV42y+gitC41fNa8KElau1tHVzuLWX5GzEuxMPhAO0tQXQMkg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rolldown/binding-linux-ppc64-gnu@1.2.14':
     resolution: {integrity: sha512-4+Kl8daPV8NDHaD7mfCcc1pRM+Qg7ab8DyMm5FG5WoZgv4h2i3KFN1CybYBNbQqmuYm7ftJLvmMI1eHYJ22S/Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rolldown/binding-linux-s390x-gnu@1.2.14':
     resolution: {integrity: sha512-V/h8ePq1fKDrmtFMz6xcCN3DKvuvMRrwwD1q0PkBeeo4DpK64biaKvqWGVxqCeYKqeRk7gE7/iKPxLCn08O97A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rolldown/binding-linux-x64-gnu@1.2.14':
     resolution: {integrity: sha512-WxalXzgrLVpKC93xfpaJ3gCXUWzeCr+FRCbDVD2mUAy4L6Vo3lNVz0epUEUpxPWJkLNYUwM4OSIikv36OJ9mLg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rolldown/binding-linux-x64-musl@1.2.14':
     resolution: {integrity: sha512-3G3tnAmTpdk9jO3GQtyHXqeFD2SlecfTws/Y3M2mmj9nMBwwuLT4kur8sZKeu7ENUHSpVO3cIsm5A52LEWWwlg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rolldown/binding-openharmony-arm64@1.2.14':
     resolution: {integrity: sha512-qyr5XiNGxm2ytx17vvtcJ9nXn6v1gENETi503bJx3OGwZ1tSonj7BosxbMa/xeAfSl5iS9X6KjEWYXLu6v1L7Q==}
@@ -863,56 +874,67 @@ packages:
     resolution: {integrity: sha512-EHMUcDwhtdRGlXZsGSIuXSYwD5kOT9NVnx9sqzYiwAc91wfYOE1g1djOEDseZJKKqtHAHGwnGPQu3kytmfaXLQ==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.54.0':
     resolution: {integrity: sha512-+pBrqEjaakN2ySv5RVrj/qLytYhPKEUwk+e3SFU5jTLHIcAtqh2rLrd/OkbNuHJpsBgxsD8ccJt5ga/SeG0JmA==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.54.0':
     resolution: {integrity: sha512-NSqc7rE9wuUaRBsBp5ckQ5CVz5aIRKCwsoa6WMF7G01sX3/qHUw/z4pv+D+ahL1EIKy6Enpcnz1RY8pf7bjwng==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.54.0':
     resolution: {integrity: sha512-gr5vDbg3Bakga5kbdpqx81m2n9IX8M6gIMlQQIXiLTNeQW6CucvuInJ91EuCJ/JYvc+rcLLsDFcfAD1K7fMofg==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.54.0':
     resolution: {integrity: sha512-gsrtB1NA3ZYj2vq0Rzkylo9ylCtW/PhpLEivlgWe0bpgtX5+9j9EZa0wtZiCjgu6zmSeZWyI/e2YRX1URozpIw==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-gnu@4.54.0':
     resolution: {integrity: sha512-y3qNOfTBStmFNq+t4s7Tmc9hW2ENtPg8FeUD/VShI7rKxNW7O4fFeaYbMsd3tpFlIg1Q8IapFgy7Q9i2BqeBvA==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-gnu@4.54.0':
     resolution: {integrity: sha512-89sepv7h2lIVPsFma8iwmccN7Yjjtgz0Rj/Ou6fEqg3HDhpCa+Et+YSufy27i6b0Wav69Qv4WBNl3Rs6pwhebQ==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.54.0':
     resolution: {integrity: sha512-ZcU77ieh0M2Q8Ur7D5X7KvK+UxbXeDHwiOt/CPSBTI1fBmeDMivW0dPkdqkT4rOgDjrDDBUed9x4EgraIKoR2A==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.54.0':
     resolution: {integrity: sha512-2AdWy5RdDF5+4YfG/YesGDDtbyJlC9LHmL6rZw6FurBJ5n4vFGupsOBGfwMRjBYH7qRQowT8D/U4LoSvVwOhSQ==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.54.0':
     resolution: {integrity: sha512-WGt5J8Ij/rvyqpFexxk3ffKqqbLf9AqrTBbWDk7ApGUzaIs6V+s2s84kAxklFwmMF/vBNGrVdYgbblCOFFezMQ==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.54.0':
     resolution: {integrity: sha512-JzQmb38ATzHjxlPHuTH6tE7ojnMKM2kYNzt44LO/jJi8BpceEC8QuXYA908n8r3CNuG/B3BV8VR3Hi1rYtmPiw==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-openharmony-arm64@4.54.0':
     resolution: {integrity: sha512-huT3fd0iC7jigGh7n3q/+lfPcXxBi+om/Rs3yiFxjvSxbSB6aohDFXbWvlspaqjeOh+hx7DDHS+5Es5qRkWkZg==}
@@ -1066,24 +1088,28 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.1.18':
     resolution: {integrity: sha512-1px92582HkPQlaaCkdRcio71p8bc8i/ap5807tPRDK/uw953cauQBT8c5tVGkOwrHMfc2Yh6UuxaH4vtTjGvHg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.1.18':
     resolution: {integrity: sha512-v3gyT0ivkfBLoZGF9LyHmts0Isc8jHZyVcbzio6Wpzifg/+5ZJpDiRiUhDLkcr7f/r38SWNe7ucxmGW3j3Kb/g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.1.18':
     resolution: {integrity: sha512-bhJ2y2OQNlcRwwgOAGMY0xTFStt4/wyU6pvI6LSuZpRgKQwxTec0/3Scu91O8ir7qCR3AuepQKLU/kX99FouqQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.1.18':
     resolution: {integrity: sha512-LffYTvPjODiP6PT16oNeUQJzNVyJl1cjIebq/rWWBF+3eDst5JGEFSc5cWxyRCJ0Mxl+KyIkqRxk1XPEs9x8TA==}
@@ -1367,51 +1393,61 @@ packages:
     resolution: {integrity: sha512-zJc0H99FEPoFfSrNpa91HYfxzfAJCr502oxNK1cfdC9hlaFI43RT+JFCann9JUgZmLzzntChHyn13Sgn9ljHNg==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@unrs/resolver-binding-linux-arm64-musl@1.12.2':
     resolution: {integrity: sha512-KQ3Lki6l+Pz1k/eBipN41ES+YUK30beLGb9YqcB1O542cyLCNE6GaxrfcY3T6EezmGGk84wb5XyO9loTM9tkcA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@unrs/resolver-binding-linux-loong64-gnu@1.12.2':
     resolution: {integrity: sha512-3SJGEh1DborhG6pyxvhPzCT4bbSIVihsvgJc13P1bHG7KLdNDaF9T3gsTwFc7Jw/5Y5/iWOjkEx7Zy0NvCGX3Q==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@unrs/resolver-binding-linux-loong64-musl@1.12.2':
     resolution: {integrity: sha512-jiuG/Obbel7uw1PwHNFfrkiKhLAF6mnyZ6aWlOAVN9WqKm8v0OFGnciJIHu8+CMvXLQ8AD51LPzAoUfT21D5Ew==}
     cpu: [loong64]
     os: [linux]
+    libc: [musl]
 
   '@unrs/resolver-binding-linux-ppc64-gnu@1.12.2':
     resolution: {integrity: sha512-q7xRvVpmcfeL+LlZg8Pbbo6QaTZwDU5BaGZbwfhkEsXJn3Was8xYfE0RBH266xZt0rM6B7i8xAYIvjthuUIWHg==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-gnu@1.12.2':
     resolution: {integrity: sha512-0CVdx6lcnT3Q9inOH8tsMIOJ6ImndllMjqJHg8RLVdB7Vq4SfkEXl9mCSsVNuNA4MCYycRicCUxPCabVHJRr6A==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-musl@1.12.2':
     resolution: {integrity: sha512-iOwlRo9vnp6R6ohHQS11n0NnfdXx/omhkocmIfaPRpQhKZ+3BDMkkdRVh53qjkFkpPddf+FETA28NwGN7l5l+w==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@unrs/resolver-binding-linux-s390x-gnu@1.12.2':
     resolution: {integrity: sha512-HYJtLfXq94q8iZNFT1lknx258wlkkWhZeUXJRqzKBBUJ00CvZ+N33zgbCqimLjsyw5Va6uUxhVa12mI+kaveEw==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-gnu@1.12.2':
     resolution: {integrity: sha512-mPsUhunKKDih5O96Y6enDQyHc1SqBPlY1E/SfMWDM3EdJ95Z9CArPeCVwCCqbP45ljvivdEk8Fxn+SIb1rDAJQ==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-musl@1.12.2':
     resolution: {integrity: sha512-azrt6+5ydLd8Vt210AAFis/lZevSfPw93EJRIJG+xPu4WCJ8K0kppCTpMyLPcKT7H15M4Jnt2tMp5bOvCkRC6A==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@unrs/resolver-binding-openharmony-arm64@1.12.2':
     resolution: {integrity: sha512-YZ9hP4O0X9PQb8eO980qmLNGH4zT3I9+SZTdt0Pr0YyuGQhYKoOZkV02VzrzyOZJ5xIJ3UFIenKkUkGg8GjgWQ==}
@@ -1504,31 +1540,37 @@ packages:
     resolution: {integrity: sha512-0OyIH53C0I1CbADHn9FSdCfX5qbpeLwJhmOVhonFJNYheybOnkSJ50qGMfTJIb8y5zrwqvLs7FVBvz6Fk8maZg==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@yuku-core/binding-linux-arm-musl@0.19.0':
     resolution: {integrity: sha512-z/iPfkCOCSXE34VXNt0uP1ORSW+4mEa9b5CiJcWZeqZH08g49bFU/jRM2T04f+Wpw5mJ6HIzNBiojxeAbrHjeg==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@yuku-core/binding-linux-arm64-gnu@0.19.0':
     resolution: {integrity: sha512-jLNTi+gzaRwBJ+gwhCJ+rDb5dmx/8hEBx93UWd7hjMSqPTL1D1wvVSvXVAldV5kALvju7b0/m51EHEhs4+I1fA==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@yuku-core/binding-linux-arm64-musl@0.19.0':
     resolution: {integrity: sha512-YwyPIdW/rN2Fmv0MTFWi47FaB3F9g+2b+sJISyAw83Yd60RWH4T3Nx6XkAHHVN+uKJNBAd6So7/BVihSiFYvuQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@yuku-core/binding-linux-x64-gnu@0.19.0':
     resolution: {integrity: sha512-/vskaAXVX3ESR43FiTdfiYS7z1b9uoQJwVQ/0RgUHgN2sWoAyCZs+aX4CgU7eKGIHTVfp9VFwv+c+2XchYiEtQ==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@yuku-core/binding-linux-x64-musl@0.19.0':
     resolution: {integrity: sha512-FuXL5igeSKib9Rye02TdH+D6SQezTyGxIATMu1Qsn/QywrzwpGl35OLpS2C1x5vpGLeVE2XgiLd5mVPFHmIglQ==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@yuku-core/binding-win32-arm64@0.19.0':
     resolution: {integrity: sha512-YuJAe7zEKT1Xa7LuHlhGJpPnYQeVtvo0rZvNjJRqkH0hQGOw4C8QeP30Tg5VKGzZfo2x8CjhjEhKt4TmLwfmdg==}
@@ -2248,24 +2290,28 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.30.2:
     resolution: {integrity: sha512-5Vh9dGeblpTxWHpOx8iauV02popZDsCYMPIgiuw97OJ5uaDsL86cnqSFs5LZkG3ghHoX5isLgWzMs+eD1YzrnA==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.30.2:
     resolution: {integrity: sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.30.2:
     resolution: {integrity: sha512-XJaLUUFXb6/QG2lGIW6aIk6jKdtjtcffUT0NKvIqhSBY3hh9Ch+1LCeH80dR9q9LBjG3ewbDjnumefsLsP6aiA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.30.2:
     resolution: {integrity: sha512-FZn+vaj7zLv//D/192WFFVA0RgHawIcHqLX9xuWiQt7P0PtdFEVaxgF9rjM/IRYHQXNnk61/H/gb2Ei+kUQ4xQ==}
@@ -3500,10 +3546,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@kubb/adapter-oas@5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/adapter-oas@5.11.0(openapi-types@12.1.3)(vitest@5.0.5)':
     dependencies:
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/kit': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
+      '@kubb/kit': 5.11.0(vitest@5.0.5)
       '@readme/openapi-parser': 9.1.0(openapi-types@12.1.3)
       '@scalar/openapi-upgrader': 0.4.5
       api-ref-bundler: 0.5.1
@@ -3533,20 +3579,20 @@ snapshots:
 
   '@kubb/ast@5.11.0': {}
 
-  '@kubb/cli@5.11.0(@kubb/adapter-oas@5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(@kubb/mcp@5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(@kubb/studio@5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/cli@5.11.0(@kubb/adapter-oas@5.11.0(openapi-types@12.1.3)(vitest@5.0.5))(@kubb/mcp@5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5))(@kubb/studio@5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5))(vitest@5.0.5)':
     dependencies:
       '@clack/prompts': 1.8.1
       '@gunshi/plugin-dryrun': 0.37.3
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
       chokidar: 5.0.0
       gunshi: 0.37.3
       jiti: 2.7.0
       tinyexec: 1.3.1
       verkit: 0.5.0
     optionalDependencies:
-      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/mcp': 5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/studio': 5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5)
+      '@kubb/mcp': 5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5)
+      '@kubb/studio': 5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -3569,7 +3615,7 @@ snapshots:
       - uploadthing
       - vitest
 
-  '@kubb/core@5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/core@5.11.0(vitest@5.0.5)':
     dependencies:
       '@kubb/ast': 5.11.0
       tinyexec: 1.3.1
@@ -3598,10 +3644,10 @@ snapshots:
       - ioredis
       - uploadthing
 
-  '@kubb/kit@5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/kit@5.11.0(vitest@5.0.5)':
     dependencies:
       '@kubb/ast': 5.11.0
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
     optionalDependencies:
       vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     transitivePeerDependencies:
@@ -3625,10 +3671,10 @@ snapshots:
       - ioredis
       - uploadthing
 
-  '@kubb/mcp@5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/mcp@5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5)':
     dependencies:
-      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5)
+      '@kubb/core': 5.11.0(vitest@5.0.5)
       '@kubb/renderer-jsx': 5.11.0
       '@tmcp/transport-stdio': 0.5.0(tmcp@1.20.0(typescript@5.9.3))
       jiti: 2.7.0
@@ -3658,10 +3704,10 @@ snapshots:
       - uploadthing
       - vitest
 
-  '@kubb/parser-md@5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/parser-md@5.11.0(vitest@5.0.5)':
     dependencies:
       '@kubb/ast': 5.11.0
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
       yaml: 2.9.1
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -3685,10 +3731,10 @@ snapshots:
       - uploadthing
       - vitest
 
-  '@kubb/parser-ts@5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/parser-ts@5.11.0(vitest@5.0.5)':
     dependencies:
       '@kubb/ast': 5.11.0
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
       typescript: 6.0.3
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -3712,11 +3758,11 @@ snapshots:
       - uploadthing
       - vitest
 
-  '@kubb/plugin-axios@5.7.0(axios@1.20.0)(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))(zod@4.3.4)':
+  '@kubb/plugin-axios@5.7.0(axios@1.20.0)(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(vitest@5.0.5)(zod@4.3.4)':
     dependencies:
-      '@kubb/plugin-ts': 5.0.14(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/plugin-zod': 5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(zod@4.3.4)
-      kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/plugin-ts': 5.0.14(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(vitest@5.0.5)
+      '@kubb/plugin-zod': 5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(zod@4.3.4)
+      kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
     optionalDependencies:
       axios: 1.20.0
     transitivePeerDependencies:
@@ -3742,10 +3788,10 @@ snapshots:
       - vitest
       - zod
 
-  '@kubb/plugin-barrel@5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/plugin-barrel@5.11.0(vitest@5.0.5)':
     dependencies:
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/kit': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
+      '@kubb/kit': 5.11.0(vitest@5.0.5)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -3768,10 +3814,10 @@ snapshots:
       - uploadthing
       - vitest
 
-  '@kubb/plugin-ts@5.0.14(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/plugin-ts@5.0.14(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(vitest@5.0.5)':
     dependencies:
-      '@kubb/parser-ts': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/parser-ts': 5.11.0(vitest@5.0.5)
+      kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
       typescript: 6.0.3
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -3795,9 +3841,9 @@ snapshots:
       - uploadthing
       - vitest
 
-  '@kubb/plugin-zod@5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(zod@4.3.4)':
+  '@kubb/plugin-zod@5.4.12(kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5))(zod@4.3.4)':
     dependencies:
-      kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
     optionalDependencies:
       zod: 4.3.4
 
@@ -3806,10 +3852,10 @@ snapshots:
       '@kubb/ast': 5.11.0
       yaml: 2.9.1
 
-  '@kubb/studio@5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@kubb/studio@5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5)':
     dependencies:
       '@kubb/ast': 5.11.0
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/core': 5.11.0(vitest@5.0.5)
       capnweb: 0.12.0
       diff: 9.0.0
       magicast: 0.5.5
@@ -4528,9 +4574,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/browser-playwright@5.0.5(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
+  '@vitest/browser-playwright@5.0.5(patch_hash=32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3)(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
     dependencies:
-      '@vitest/browser': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@vitest/browser': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       playwright: 1.64.1
       tinyrainbow: 3.2.0
@@ -4541,11 +4587,11 @@ snapshots:
       - utf-8-validate
       - vite
 
-  '@vitest/browser@5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@vitest/browser@5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
     dependencies:
       '@blazediff/core': 1.10.0
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
-      '@vitest/ui': 5.0.5(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@vitest/ui': 5.0.5(vitest@5.0.5)
       '@vitest/utils': 5.0.5
       magic-string: 1.4.3
       pngjs: 7.0.0
@@ -4574,7 +4620,7 @@ snapshots:
 
   '@vitest/spy@5.0.5': {}
 
-  '@vitest/ui@5.0.5(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))':
+  '@vitest/ui@5.0.5(vitest@5.0.5)':
     dependencies:
       '@vitest/utils': 5.0.5
       fflate: 0.8.3
@@ -5254,19 +5300,19 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))):
+  kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(tsx@4.21.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5):
     dependencies:
-      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/cli': 5.11.0(@kubb/adapter-oas@5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(@kubb/mcp@5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(@kubb/studio@5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/kit': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/mcp': 5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/parser-md': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/parser-ts': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/plugin-barrel': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5)
+      '@kubb/cli': 5.11.0(@kubb/adapter-oas@5.11.0(openapi-types@12.1.3)(vitest@5.0.5))(@kubb/mcp@5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5))(@kubb/studio@5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5))(vitest@5.0.5)
+      '@kubb/core': 5.11.0(vitest@5.0.5)
+      '@kubb/kit': 5.11.0(vitest@5.0.5)
+      '@kubb/mcp': 5.11.0(@kubb/renderer-jsx@5.11.0)(openapi-types@12.1.3)(typescript@5.9.3)(vitest@5.0.5)
+      '@kubb/parser-md': 5.11.0(vitest@5.0.5)
+      '@kubb/parser-ts': 5.11.0(vitest@5.0.5)
+      '@kubb/plugin-barrel': 5.11.0(vitest@5.0.5)
       '@kubb/renderer-jsx': 5.11.0
-      '@kubb/studio': 5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      unplugin-kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/studio': 5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5)
+      unplugin-kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
     optionalDependencies:
       vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     transitivePeerDependencies:
@@ -5849,13 +5895,13 @@ snapshots:
 
   undici@6.29.1: {}
 
-  unplugin-kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))):
+  unplugin-kubb@5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5):
     dependencies:
-      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/core': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/parser-md': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/parser-ts': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
-      '@kubb/plugin-barrel': 5.11.0(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@kubb/adapter-oas': 5.11.0(openapi-types@12.1.3)(vitest@5.0.5)
+      '@kubb/core': 5.11.0(vitest@5.0.5)
+      '@kubb/parser-md': 5.11.0(vitest@5.0.5)
+      '@kubb/parser-ts': 5.11.0(vitest@5.0.5)
+      '@kubb/plugin-barrel': 5.11.0(vitest@5.0.5)
       unplugin: 3.4.0(esbuild@0.27.2)(rolldown@1.2.14)(rollup@4.54.0)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     optionalDependencies:
       esbuild: 0.27.2
@@ -5994,7 +6040,7 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.9.1
 
-  vitest-browser-react@2.3.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))):
+  vitest-browser-react@2.3.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@5.0.5):
     dependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -6021,8 +6067,8 @@ snapshots:
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@types/node': 24.10.4
-      '@vitest/browser-playwright': 5.0.5(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
-      '@vitest/ui': 5.0.5(vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)))
+      '@vitest/browser-playwright': 5.0.5(patch_hash=32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3)(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
+      '@vitest/ui': 5.0.5(vitest@5.0.5)
     transitivePeerDependencies:
       - msw
 

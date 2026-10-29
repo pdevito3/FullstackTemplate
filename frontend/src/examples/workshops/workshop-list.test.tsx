@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { commands, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -42,7 +42,6 @@ async function renderListAt(path: string) {
     { method: 'GET', path: '/api/v1/workshops', query: { pageNumber: '2' }, headers: pagination(2, 3), body: [workshop('Page two')] },
     { method: 'GET', path: '/api/v1/workshops', query: { search: 'Kubb' }, headers: pagination(1, 1), body: [workshop('Kubb basics')] },
   ])
-  onTestFinished(() => commands.answerRequests([]))
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [path] }) })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const screen = await render(

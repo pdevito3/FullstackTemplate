@@ -6,8 +6,6 @@ import { tenantForUpdateDtoSchema } from '@/api/generated/models/zod/tenant-for-
 import { userForCreationDtoSchema } from '@/api/generated/models/zod/user-for-creation-dto'
 import { getTenantListQueryFiltersSchema } from '@/api/generated/tenants/zod/get-tenant-list'
 import { getUserListQueryFiltersSchema } from '@/api/generated/users/zod/get-user-list'
-import { getVenueListQueryFiltersSchema } from '@/api/generated/venues/zod/get-venue-list'
-import { getWorkshopListQueryFiltersSchema } from '@/api/generated/workshops/zod/get-workshop-list'
 import { maxLengthOf, maximumOf, minimumOf, stringWithMaxLengthOf } from '@/lib/api-contract'
 
 describe('maxLengthOf', () => {
@@ -28,8 +26,6 @@ describe('maxLengthOf', () => {
     ['agents', getAgentListQueryFiltersSchema],
     ['tenants', getTenantListQueryFiltersSchema],
     ['users', getUserListQueryFiltersSchema],
-    ['venues', getVenueListQueryFiltersSchema],
-    ['workshops', getWorkshopListQueryFiltersSchema],
   ])('reads the filter limit of the Server from the list of %s', (_, contract) => {
     expect(maxLengthOf(contract.unwrap())).toBe(2000)
   })

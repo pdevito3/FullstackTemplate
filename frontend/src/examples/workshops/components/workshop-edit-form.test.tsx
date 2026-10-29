@@ -114,3 +114,18 @@ test('puts the focus on the field that the Server refused, so a keyboard user is
   await expect.element(form.screen.getByText('The venue has room for 15 people.')).toBeVisible()
   await expect.element(form.capacity).toHaveFocus()
 })
+
+test('puts the focus in the start when the Server refuses the start', async () => {
+  const refused = new ProblemDetailsError({
+    type: 'validation',
+    title: 'One or more validation errors occurred.',
+    status: 422,
+    errors: { startsAt: ['Choose a start after today.'] },
+  })
+  const form = await renderForm(vi.fn().mockRejectedValue(refused))
+
+  await userEvent.click(form.save)
+
+  await expect.element(form.screen.getByText('Choose a start after today.')).toBeVisible()
+  await expect.element(form.screen.getByRole('group', { name: 'Starts at' }).getByRole('spinbutton').first()).toHaveFocus()
+})

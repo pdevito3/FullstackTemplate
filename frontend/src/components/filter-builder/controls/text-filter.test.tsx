@@ -9,20 +9,23 @@ import { TextFilter } from './text-filter'
 const firstName: FilterConfig = { propertyKey: 'firstName', propertyLabel: 'First Name', controlType: 'text' }
 const endQuoteMessage =
   'A filter value cannot start or end with a quote. Remove the quote at the start or the end.'
+const bracketsMessage = 'A filter value cannot start with [ and end with ]. Remove the [ at the start or the ] at the end.'
 
 function filterWith(operator: Filter['operator']): Filter {
   return { id: '1', ...firstName, operator, value: 'x' }
 }
 
 test.each([
-  { operator: Operators.EQUALS, value: '"Paul"' },
-  { operator: Operators.EQUALS, value: '"Quoted" title' },
-  { operator: Operators.STARTS_WITH, value: '"Quoted' },
-  { operator: Operators.NOT_EQUALS, value: '"Paul"' },
-  { operator: Operators.CONTAINS, value: 'quote"' },
-  { operator: Operators.CONTAINS, value: '""' },
-  { operator: Operators.CONTAINS, value: '  "Paul"  ' },
-])('refuses $operator $value and tells the user why', async ({ operator, value }) => {
+  { operator: Operators.EQUALS, value: '"Paul"', message: endQuoteMessage },
+  { operator: Operators.EQUALS, value: '"Quoted" title', message: endQuoteMessage },
+  { operator: Operators.STARTS_WITH, value: '"Quoted', message: endQuoteMessage },
+  { operator: Operators.NOT_EQUALS, value: '"Paul"', message: endQuoteMessage },
+  { operator: Operators.CONTAINS, value: 'quote"', message: endQuoteMessage },
+  { operator: Operators.CONTAINS, value: '""', message: endQuoteMessage },
+  { operator: Operators.CONTAINS, value: '  "Paul"  ', message: endQuoteMessage },
+  { operator: Operators.CONTAINS, value: '[DRAFT]', message: bracketsMessage },
+  { operator: Operators.EQUALS, value: '[]', message: bracketsMessage },
+])('refuses $operator $value and tells the user why', async ({ operator, value, message }) => {
   // Arrange
   const onSubmit = vi.fn()
   await render(<TextFilter config={firstName} surface="dialog" initialFilter={filterWith(operator)} onSubmit={onSubmit} />)
@@ -33,11 +36,36 @@ test.each([
   await userEvent.keyboard('{Enter}')
 
   // Assert
-  await expect.element(page.getByRole('alert')).toHaveTextContent(endQuoteMessage)
-  await expect.element(field).toHaveAccessibleDescription(endQuoteMessage)
+  await expect.element(page.getByRole('alert')).toHaveTextContent(message)
+  await expect.element(field).toHaveAccessibleDescription(message)
   await expect.element(field).toHaveAttribute('aria-invalid', 'true')
-  await expect.element(page.getByRole('button', { name: 'Update Filter' })).toBeDisabled()
   expect(onSubmit).not.toHaveBeenCalled()
+})
+
+test('shows the message when the user clicks Add Filter, and does not add the filter', async () => {
+  // Arrange
+  const onSubmit = vi.fn()
+  await render(<TextFilter config={firstName} surface="dialog" onSubmit={onSubmit} />)
+  const field = page.getByRole('textbox', { name: 'Value' })
+  await field.fill('quote"')
+
+  // Act
+  await page.getByRole('button', { name: 'Add Filter' }).click()
+
+  // Assert
+  await expect.element(field).toHaveAccessibleDescription(endQuoteMessage)
+  expect(onSubmit).not.toHaveBeenCalled()
+})
+
+test('shows the message of a filter that it edits at once', async () => {
+  // Arrange
+  const filter: Filter = { ...filterWith(Operators.EQUALS), value: '"John"' }
+
+  // Act
+  await render(<TextFilter config={firstName} surface="dialog" initialFilter={filter} onSubmit={() => {}} />)
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: 'Value' })).toHaveAccessibleDescription(endQuoteMessage)
 })
 
 test('takes a quote inside the text as it is', async () => {
@@ -68,7 +96,6 @@ test('removes the message when the user removes the quote', async () => {
 
   // Assert
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeEnabled()
 })
 
 test('shows no alert while the user types a quote inside the text', async () => {
@@ -88,20 +115,31 @@ test('shows no alert while the user types a quote inside the text', async () => 
   // Assert
   await expect.element(field).toHaveValue('Say "hi" now')
   expect(alerts).toEqual([])
-  await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeEnabled()
 })
 
-test('shows the message for a quote at the end when the field loses the focus', async () => {
+test('shows no message for a quote at the end when the field loses the focus, so that no control moves under a click', async () => {
   // Arrange
   await render(<TextFilter config={firstName} surface="dialog" onSubmit={() => {}} />)
   const field = page.getByRole('textbox', { name: 'Value' })
   await userEvent.type(field, 'quote"')
-  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
 
   // Act
   await userEvent.tab()
 
   // Assert
-  await expect.element(page.getByRole('alert')).toHaveTextContent(endQuoteMessage)
-  await expect.element(field).toHaveAccessibleDescription(endQuoteMessage)
+  await expect.element(page.getByRole('checkbox', { name: 'Case sensitive' })).toHaveFocus()
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
+})
+
+test('takes one mouse click on Cancel after a quote at the end', async () => {
+  // Arrange
+  const onCancel = vi.fn()
+  await render(<TextFilter config={firstName} surface="dialog" onSubmit={() => {}} onCancel={onCancel} />)
+  await page.getByRole('textbox', { name: 'Value' }).fill('Paul"')
+
+  // Act
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  // Assert
+  expect(onCancel).toHaveBeenCalledOnce()
 })

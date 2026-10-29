@@ -45,3 +45,18 @@ export function maximumOf(contract: z.ZodNumber): number {
   }
   return contract.maxValue
 }
+
+/**
+ * Reads the smallest value of a number field from the generated Zod schema of its DTO. It throws when the contract has
+ * no minimum. To fix it, give the DTO property `[SchemaMinimum]` on the Server, then regenerate. A `uint` field always
+ * has the minimum 0 in the contract, so this check does not catch a missing `[SchemaMinimum]` on a `uint`.
+ */
+export function minimumOf(contract: z.ZodNumber): number {
+  // minValue is never null for a number: it is -Infinity for z.number() and the smallest safe integer for z.int().
+  // Only a min check comes from the contract.
+  const hasMinimum = contract._zod.def.checks?.some((check) => check._zod.def.check === 'greater_than') ?? false
+  if (!hasMinimum || contract.minValue === null) {
+    throw new Error('The API contract gives this field no minimum. Give the DTO property [SchemaMinimum].')
+  }
+  return contract.minValue
+}

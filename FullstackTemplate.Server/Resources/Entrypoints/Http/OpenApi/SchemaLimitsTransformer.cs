@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
 /// <summary>
-/// Gives each property with a <see cref="SchemaMaxLengthAttribute"/> its <c>maxLength</c>, and each property with a
+/// Gives each property with a <see cref="SchemaMaxLengthAttribute"/> its <c>maxLength</c>, each property with a
+/// <see cref="SchemaMinimumAttribute"/> its <c>minimum</c>, and each property with a
 /// <see cref="SchemaMaximumAttribute"/> its <c>maximum</c>. The generated Zod schema of the SPA then has the limit, so a
 /// form reads it from the contract and not from a copy that can go stale. A max length on a schema that is not a string,
-/// or a maximum on a schema that is not a number, fails the Debug build, so that no mark is silently lost.
+/// or a minimum or a maximum on a schema that is not a number, fails the Debug build, so that no mark is silently lost.
 /// </summary>
 public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
 {
@@ -29,6 +30,14 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
             if (type != JsonSchemaType.String)
                 throw WrongSchemaType(property, "SchemaMaxLength", schema, "a string");
             schema.MaxLength = maxLength.MaxLength;
+        }
+
+        if (attributes.GetCustomAttributes(typeof(SchemaMinimumAttribute), false)
+            is [SchemaMinimumAttribute minimum])
+        {
+            if (type is not (JsonSchemaType.Integer or JsonSchemaType.Number))
+                throw WrongSchemaType(property, "SchemaMinimum", schema, "a number");
+            schema.Minimum = minimum.Minimum.ToString(CultureInfo.InvariantCulture);
         }
 
         if (attributes.GetCustomAttributes(typeof(SchemaMaximumAttribute), false)

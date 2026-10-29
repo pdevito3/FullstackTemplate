@@ -11,7 +11,7 @@ Regenerate after a change to any of these:
 
 - An endpoint route, its name (`.WithName`), its tag (`.WithTags`), or its statuses
 - A request DTO or a response DTO
-- An attribute that a transformer reads, such as `[NamesOf<T>]`, `[SchemaMaxLength]`, or `[SchemaMaximum]`
+- An attribute that a transformer reads, such as `[NamesOf<T>]`, `[SchemaMaxLength]`, `[SchemaMinimum]`, or `[SchemaMaximum]`
 - A transformer in `FullstackTemplate.Server/Resources/Entrypoints/Http/OpenApi/`
 - `SupportedVersions`. To add or remove a version, also follow `docs/backend.md#api-versioning`
 
@@ -42,7 +42,7 @@ The rules are in `docs/frontend/server-state.md` and `docs/frontend.md`.
 - Give the `signal` of the query function to the client.
 - A list client (an operation name that ends in `List`) returns the full response. The hook reads the `X-Pagination` header with `parsePagination`.
 - Pick `throwOnError` by the error mode that `docs/frontend.md#api-client` gives.
-- A form takes each limit from the generated Zod schema of its DTO, with `stringWithMaxLengthOf`, `maxLengthOf`, or `maximumOf` from `lib/api-contract.ts`. If a function throws because the contract has no limit, add `[SchemaMaxLength]` or `[SchemaMaximum]` to the request DTO on the Server and regenerate. See `docs/frontend.md#forms`.
+- A form takes each limit from the generated Zod schema of its DTO, with `stringWithMaxLengthOf`, `maxLengthOf`, `minimumOf`, or `maximumOf` from `lib/api-contract.ts`. If a function throws because the contract has no limit, add `[SchemaMaxLength]`, `[SchemaMinimum]`, or `[SchemaMaximum]` to the request DTO on the Server and regenerate. See `docs/frontend.md#forms`.
 
 ## Review the result
 

@@ -14,6 +14,7 @@ const workshop: WorkshopDto = {
   venueId: 'v_1',
   title: 'Intro to Kubb',
   startsAt: '2026-06-01T15:00:00+00:00',
+  venueTimeZone: 'America/Chicago',
   capacity: 20,
   status: 'Draft',
   allowedActions: ['Update', 'Schedule', 'Cancel'],

@@ -32,6 +32,11 @@ export type WorkshopDto = {
     */
     startsAt: string;
     /**
+     * @description The IANA time zone of the venue, for example America/Chicago. The SPA shows the start in this zone.
+     * @type string
+    */
+    venueTimeZone: string;
+    /**
      * @description
      * Format: `int32`
      * @type integer

@@ -24,7 +24,10 @@ public static class GetWorkshop
             var workshop = await dbContext.Workshops
                 .TagWithOperationCallSite("workshops.get_by_id")
                 .GetById(request.Id, cancellationToken);
-            return workshop.ToWorkshopDto(caller);
+            var venue = await dbContext.Venues
+                .TagWithOperationCallSite("workshops.get_by_id.load_venue")
+                .GetById(workshop.VenueId, cancellationToken);
+            return workshop.ToWorkshopDto(venue, caller);
         }
     }
 }

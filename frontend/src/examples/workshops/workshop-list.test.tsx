@@ -14,6 +14,7 @@ const workshop = (title: string): WorkshopDto => ({
   venueId: 'v_1',
   title,
   startsAt: '2026-06-01T15:00:00+00:00',
+  venueTimeZone: 'America/Chicago',
   capacity: 20,
   status: 'Draft',
   allowedActions: [],

@@ -22,11 +22,13 @@ class WorkshopBuilder {
 
   static create() {
     const n = next()
+    const venue = aVenue().build()
     return new WorkshopBuilder({
       id: `00000000-0000-4000-9000-${String(n).padStart(12, '0')}`,
-      venueId: aVenue().build().id,
+      venueId: venue.id,
       title: `Workshop ${n}`,
       startsAt: '2026-06-01T15:00:00+00:00',
+      venueTimeZone: venue.timeZone,
       capacity: 20,
       status: 'Draft',
       allowedActions: MANAGER_ACTIONS.Draft,
@@ -48,8 +50,10 @@ class WorkshopBuilder {
   withCapacity(capacity: number) {
     return this.with({ capacity })
   }
-  at(venue: { build(): { id: string } }) {
-    return this.with({ venueId: venue.build().id })
+  /** The venue, and its time zone, in which the SPA shows the start. */
+  at(venue: { build(): { id: string; timeZone: string } }) {
+    const { id, timeZone } = venue.build()
+    return this.with({ venueId: id, venueTimeZone: timeZone })
   }
   /** The status, with the actions that a caller with manage_workshops gets for it. */
   inStatus(status: WorkshopDtoStatusEnumKey) {

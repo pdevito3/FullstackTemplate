@@ -3351,6 +3351,7 @@
           "venueId",
           "title",
           "startsAt",
+          "venueTimeZone",
           "capacity",
           "status",
           "allowedActions",
@@ -3370,6 +3371,10 @@
           "startsAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "venueTimeZone": {
+            "type": "string",
+            "description": "The IANA time zone of the venue, for example America/Chicago. The SPA shows the start in this zone."
           },
           "capacity": {
             "type": "integer",

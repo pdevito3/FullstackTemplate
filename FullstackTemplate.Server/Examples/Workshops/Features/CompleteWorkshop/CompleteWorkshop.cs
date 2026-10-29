@@ -41,7 +41,10 @@ public static class CompleteWorkshop
                 WorkshopMetrics.RecordStatusChange(workshop.Status);
             }
 
-            return workshop.ToWorkshopDto(caller);
+            var venue = await dbContext.Venues
+                .TagWithOperationCallSite("workshops.complete.load_venue")
+                .GetById(workshop.VenueId, cancellationToken);
+            return workshop.ToWorkshopDto(venue, caller);
         }
     }
 }

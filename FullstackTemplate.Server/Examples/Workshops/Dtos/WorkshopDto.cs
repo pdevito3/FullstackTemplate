@@ -8,6 +8,8 @@ public sealed record WorkshopDto
     public string VenueId { get; init; } = default!;
     public string Title { get; init; } = default!;
     public DateTimeOffset StartsAt { get; init; }
+    /// <summary>The IANA time zone of the venue, for example America/Chicago. The SPA shows the start in this zone.</summary>
+    public string VenueTimeZone { get; init; } = default!;
     public int Capacity { get; init; }
     [NamesOf<WorkshopStatus>]
     public string Status { get; init; } = default!;

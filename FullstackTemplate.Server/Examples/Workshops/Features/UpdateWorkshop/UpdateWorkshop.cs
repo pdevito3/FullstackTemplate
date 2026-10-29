@@ -34,7 +34,10 @@ public static class UpdateWorkshop
 
             _logger.Here().Information("Updated workshop {WorkshopId}", workshop.Id);
 
-            return workshop.ToWorkshopDto(caller);
+            var venue = await dbContext.Venues
+                .TagWithOperationCallSite("workshops.update.load_venue")
+                .GetById(workshop.VenueId, cancellationToken);
+            return workshop.ToWorkshopDto(venue, caller);
         }
     }
 }

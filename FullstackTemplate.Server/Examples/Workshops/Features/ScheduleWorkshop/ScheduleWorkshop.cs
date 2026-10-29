@@ -53,7 +53,7 @@ public static class ScheduleWorkshop
                 WorkshopMetrics.RecordStatusChange(workshop.Status);
             }
 
-            return workshop.ToWorkshopDto(caller);
+            return workshop.ToWorkshopDto(schedule.Venue, caller);
         }
 
         private async Task<ScheduleCase> LoadCaseAsync(string workshopId, CancellationToken cancellationToken)

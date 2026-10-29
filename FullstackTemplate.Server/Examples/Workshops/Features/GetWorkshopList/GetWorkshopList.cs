@@ -42,7 +42,7 @@ public static class GetWorkshopList
             }
 
             // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
-            var query = workshops.ToWorkshopDtoQueryable();
+            var query = workshops.ToWorkshopDtoQueryable(dbContext.Venues);
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);

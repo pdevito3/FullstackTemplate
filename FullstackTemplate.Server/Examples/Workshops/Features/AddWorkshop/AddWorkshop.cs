@@ -41,7 +41,7 @@ public static class AddWorkshop
 
             _logger.Here().Information("Added workshop {WorkshopId} at venue {VenueId}", workshop.Id, venue.Id);
 
-            return workshop.ToWorkshopDto(caller);
+            return workshop.ToWorkshopDto(venue, caller);
         }
     }
 }

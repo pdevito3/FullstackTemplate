@@ -10,6 +10,7 @@ export const workshopDtoSchema = z.object({
   venueId: z.string(),
   title: z.string(),
   startsAt: z.iso.datetime(),
+  venueTimeZone: z.string().describe('The IANA time zone of the venue, for example America/Chicago. The SPA shows the start in this zone.'),
   capacity: z.int32(),
   status: z.enum(['Draft', 'Scheduled', 'Cancelled', 'Completed']),
   allowedActions: z.array(z.enum(['Update', 'Schedule', 'Cancel', 'Complete'])).describe('The actions that the caller can send for this workshop now. A button in the SPA reads this list.'),

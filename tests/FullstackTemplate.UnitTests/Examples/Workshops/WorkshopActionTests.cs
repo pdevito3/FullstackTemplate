@@ -51,14 +51,16 @@ public class WorkshopActionTests
     {
         // Arrange
         var caller = new Caller.Member("usr_caller", [Permission.ManageWorkshops()]);
-        var workshops = Statuses.Select(Arrange).ToList();
-        var rows = workshops.Select(w => w.ToWorkshopDto(Caller.AllTenantsManager.Instance) with { AllowedActions = [] }).ToList();
+        var arranged = Statuses.Select(ArrangeAtVenue).ToList();
+        var rows = arranged
+            .Select(a => a.Workshop.ToWorkshopDto(a.Venue, Caller.AllTenantsManager.Instance) with { AllowedActions = [] })
+            .ToList();
 
         // Act
         rows.AddAllowedActions(caller);
 
         // Assert
-        rows.Select(r => r.AllowedActions).ShouldBe(workshops.Select(w => w.ToWorkshopDto(caller).AllowedActions));
+        rows.Select(r => r.AllowedActions).ShouldBe(arranged.Select(a => a.Workshop.ToWorkshopDto(a.Venue, caller).AllowedActions));
     }
 
     [Test]

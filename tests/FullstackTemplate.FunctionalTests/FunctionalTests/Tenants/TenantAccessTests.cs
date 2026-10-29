@@ -126,7 +126,7 @@ public class TenantAccessTests : TestBase
             ApiRoutes.Tenants.Put(tenant.Id), new { name = $"renamed-{Guid.NewGuid()}", version = tenant.Version });
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need the manage_tenant permission to do this.");
+        await ShouldBeForbiddenAsync(result, "You cannot manage the tenant. Ask a tenant admin for access.");
         var name = await ExecuteDbContextAsync(db => db.Tenants
             .Where(t => t.Id == tenant.Id).Select(t => t.Name).SingleAsync());
         name.ShouldBe(tenant.Name);
@@ -193,7 +193,7 @@ public class TenantAccessTests : TestBase
         var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need the manage_tenant permission to do this.");
+        await ShouldBeForbiddenAsync(result, "You cannot manage the tenant. Ask a tenant admin for access.");
         var exists = await ExecuteDbContextAsync(db => db.Tenants.AnyAsync(t => t.Id == tenant.Id));
         exists.ShouldBeTrue();
     }

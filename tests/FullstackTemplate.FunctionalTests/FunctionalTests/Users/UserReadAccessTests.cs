@@ -22,7 +22,7 @@ using TestUtilities;
 /// </summary>
 public class UserReadAccessTests : TestBase
 {
-    private const string ReadUsersDenial = "You need the read_users permission to do this.";
+    private const string ReadUsersDenial = "You cannot see the users of the tenant. Ask a tenant admin for access.";
 
     [Test]
     public async Task member_without_read_users_cannot_list_the_users()
@@ -148,7 +148,7 @@ public class UserReadAccessTests : TestBase
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier($"unknown-{Guid.NewGuid()}"));
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You need a user record in a tenant to do this.");
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
     [Test]

@@ -18,7 +18,7 @@ using TestUtilities;
 /// </summary>
 public class AgentReadAccessTests : TestBase
 {
-    private const string ReadAgentsDenial = "You need the read_agents permission to do this.";
+    private const string ReadAgentsDenial = "You cannot see the agents of the tenant. Ask a tenant admin for access.";
 
     [Test]
     public async Task member_without_read_agents_cannot_list_the_agents()

@@ -61,7 +61,7 @@ public class UserManagementAccessTests : TestBase
 
         // Assert
         var problem = await ShouldBeForbiddenAsync(result);
-        problem.Detail.ShouldBe("You need the manage_users permission to do this.");
+        problem.Detail.ShouldBe("You cannot manage users. Ask a tenant admin for access.");
         var exists = await ExecuteDbContextAsync(db => db.Users.AnyAsync(u => u.Id == other.Id));
         exists.ShouldBeTrue();
     }

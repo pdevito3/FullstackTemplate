@@ -187,7 +187,7 @@ public class WorkshopCommandTests : TestBase
         var today = ZonedDate.TodayAt(zone, DateTimeOffset.UtcNow);
         await testingServiceScope.StartGraph(out _)
             .AddVenue(out _, v => v.TimeZone = zone.Value)
-            .AddWorkshop(out var workshop, w => w.StartsAt = today.Start)
+            .AddWorkshop(out var workshop, w => w.StartsAt = zone.ToInstant(today.Date, new TimeOnly(10, 0))!.Value)
             .BuildAsync();
 
         // Act
@@ -196,6 +196,7 @@ public class WorkshopCommandTests : TestBase
         // Assert
         var refusal = await act.ShouldThrowAsync<ValidationException>();
         refusal.Property.ShouldBe("startsAt");
+        refusal.Message.ShouldBe("A workshop must start on a day after today at its venue.");
         (await testingServiceScope.SendAsync(new GetWorkshop.Query(workshop.Id))).Status.ShouldBe("Draft");
     }
 

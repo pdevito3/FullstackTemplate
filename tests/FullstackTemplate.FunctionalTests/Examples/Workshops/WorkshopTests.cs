@@ -87,8 +87,9 @@ public class WorkshopTests : TestBase
     {
         // Arrange
         var zone = TimeZoneId.Of("America/Chicago");
+        var today = ZonedDate.TodayAt(zone, DateTimeOffset.UtcNow);
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin",
-            w => w.StartsAt = ZonedDate.TodayAt(zone, DateTimeOffset.UtcNow).Start, zone);
+            w => w.StartsAt = zone.ToInstant(today.Date, new TimeOnly(10, 0))!.Value, zone);
 
         // Act
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id), new { });
@@ -97,6 +98,7 @@ public class WorkshopTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
         problem.Errors.ShouldHaveSingleItem().Key.ShouldBe("startsAt");
+        problem.Errors["startsAt"].ShouldBe(["A workshop must start on a day after today at its venue."]);
     }
 
     [Test]

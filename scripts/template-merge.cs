@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 
 const string Usage = """
     Usage: dotnet run template-merge.cs -- [--ref <Commit>] [--base <Commit>] [--display-name <DisplayName>]
+           dotnet run template-merge.cs -- --find-base [--ref <Commit>]
 
       --ref <Commit>              The template commit to merge. The default is template/main.
       --base <Commit>             The last template commit that the app has all changes of. The default is the merge
@@ -23,6 +24,9 @@ const string Usage = """
       --display-name <DisplayName>
                                   The display name that init.cs gave the app, for example "Acme Shop". The default is
                                   the <title> of frontend/index.html.
+      --find-base                 Print the newest template commit that the app has all changes of, and stop. The
+                                  script finds it by the subjects of the commits of the app, and by the heads of the
+                                  template pull requests that the app merged. Give it to the merge with --base.
 
     The script needs a clean git tree. It writes the renamed template commits to refs/template-merge/base and
     refs/template-merge/tip, so that `git diff refs/template-merge/base refs/template-merge/tip` shows each change of
@@ -32,6 +36,7 @@ const string Usage = """
 var templateRef = "template/main";
 string? baseRef = null;
 string? displayName = null;
+var findBase = false;
 for (var i = 0; i < args.Length; i++)
 {
     switch (args[i])
@@ -45,6 +50,9 @@ for (var i = 0; i < args.Length; i++)
         case "--display-name" when i + 1 < args.Length:
             displayName = args[++i];
             break;
+        case "--find-base":
+            findBase = true;
+            break;
         default:
             Console.Error.WriteLine($"The argument '{args[i]}' is not known or has no value.");
             Console.Error.WriteLine(Usage);
@@ -55,7 +63,10 @@ for (var i = 0; i < args.Length; i++)
 try
 {
     var app = new App(App.RootOf(Directory.GetCurrentDirectory()));
-    app.Merge(templateRef, baseRef, displayName ?? app.DisplayName);
+    if (findBase)
+        app.PrintBase(templateRef);
+    else
+        app.Merge(templateRef, baseRef, displayName ?? app.DisplayName);
     return 0;
 }
 catch (MergeException exception)
@@ -94,16 +105,14 @@ internal sealed partial class App(string root)
         if (OpenOperations.Any(name => Path.Exists(GitPath(name))))
             throw new MergeException("A merge, a cherry-pick, a revert, or a rebase is open. Finish it or abort it, then run the script again.");
 
-        var tip = Commit(templateRef, $"'{templateRef}' is not a commit. Add the template as a remote and fetch it: git remote add template https://github.com/pdevito3/FullstackTemplate.git && git fetch template");
-        if (Git(root, out _, "merge-base", "--is-ancestor", tip, "HEAD") == 0)
-            throw new MergeException($"The app has {Short(tip)} already. There is nothing to merge.");
+        var tip = Tip(templateRef);
         var baseCommit = baseRef is not null
             ? Commit(baseRef, $"'{baseRef}' is not a commit. Fetch the template, then give a template commit.")
-            : Git(root, out var mergeBase, "merge-base", "HEAD", tip) == 0
-                ? mergeBase.Trim()
-                : throw new MergeException(Git(root, "rev-parse", "--is-shallow-repository").Trim() == "true"
-                    ? "The app is a shallow clone, so git cannot find the merge base. Run git fetch --unshallow, then run the script again."
-                    : $"The app and {templateRef} have no shared commit. Give the last template commit that the app has all changes of with --base.");
+            : MergeBase(tip) is { } mergeBase
+                ? mergeBase
+                : throw new MergeException($"The app and {templateRef} have no shared commit. Give the last template commit that the app has all changes of with --base. To find it, run the script with --find-base.");
+        if (baseRef is null && FoundBase(templateRef, tip, baseCommit) is { } found && found != baseCommit)
+            throw new MergeException($"The merge base {Describe(baseCommit)} is old. The app has all changes of the newer template commit {Describe(found)}, because an earlier update merged the branch of a template pull request or copied its commits. Run the script again with --base {Short(found)}.");
         if (Git(root, out _, "merge-base", "--is-ancestor", baseCommit, tip) != 0)
             throw new MergeException($"{Short(baseCommit)} is not a commit of the template history of {Short(tip)}.");
         if (Git(root, "rev-parse", baseCommit).Trim() == tip)
@@ -140,16 +149,22 @@ internal sealed partial class App(string root)
             [$"GITHEAD_{head}"] = "HEAD",
             [$"GITHEAD_{renamedTip}"] = $"template {Short(tip)}",
         };
-        // merge-recursive exits with 1 for a conflict, and with a higher code when it did not merge
-        var merge = Git(root, out _, labels, "merge-recursive", "--renormalize", renamedBase, "--", head, renamedTip);
-        if (merge > 1)
-            throw new MergeException("git merge-recursive did not merge, and the app has no change. Read the git message above, correct the cause, then run the script again.");
-
-        // A second parent on the real template commit makes it the merge base of the next merge
+        // A second parent on the real template commit makes it the merge base of the next merge. The script writes
+        // the merge state before it merges, so that git merge --abort works if the script stops during the merge.
+        string[] mergeState = ["MERGE_HEAD", "MERGE_MODE", "MERGE_MSG"];
         File.WriteAllText(GitPath("ORIG_HEAD"), head + "\n");
         File.WriteAllText(GitPath("MERGE_HEAD"), tip + "\n");
         File.WriteAllText(GitPath("MERGE_MODE"), "no-ff");
         File.WriteAllText(GitPath("MERGE_MSG"), $"merge: bring template {Short(tip)} into {Name}\n");
+
+        // merge-recursive exits with 1 for a conflict, and with a higher code when it did not merge
+        var merge = Git(root, out _, labels, "merge-recursive", "--renormalize", renamedBase, "--", head, renamedTip);
+        if (merge > 1)
+        {
+            foreach (var name in mergeState)
+                File.Delete(GitPath(name));
+            throw new MergeException("git merge-recursive did not merge, and the app has no change. Read the git message above, correct the cause, then run the script again.");
+        }
 
         var conflicts = Git(root, "diff", "--name-only", "--diff-filter=U").Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Console.WriteLine(merge == 0 && conflicts.Length == 0
@@ -158,6 +173,81 @@ internal sealed partial class App(string root)
         Console.WriteLine("The template commits of the merge: git log --oneline " + $"{Short(baseCommit)}..{Short(tip)}");
         Console.WriteLine("The changes of the template in the names of the app: git diff refs/template-merge/base refs/template-merge/tip");
     }
+
+    public void PrintBase(string templateRef)
+    {
+        var tip = Tip(templateRef);
+        var mergeBase = MergeBase(tip);
+        Console.WriteLine(mergeBase is null ? $"The app and {templateRef} have no shared commit." : $"The merge base is {Describe(mergeBase)}.");
+        Console.WriteLine(FoundBase(templateRef, tip, mergeBase) is { } found
+            ? $"The newest template commit that the app has all changes of is {Describe(found)}.\nMerge with: dotnet run template-merge.cs -- --base {Short(found)}"
+            : "The app has no template commit. Give the template commit that init.cs made the app from with --base.");
+    }
+
+    private string Tip(string templateRef)
+    {
+        var tip = Commit(templateRef, $"'{templateRef}' is not a commit. Add the template as a remote and fetch it: git remote add template https://github.com/pdevito3/FullstackTemplate.git && git fetch template");
+        return Git(root, out _, "merge-base", "--is-ancestor", tip, "HEAD") == 0
+            ? throw new MergeException($"The app has {Short(tip)} already. There is nothing to merge.")
+            : tip;
+    }
+
+    private string? MergeBase(string tip)
+        => Git(root, out var mergeBase, "merge-base", "HEAD", tip) == 0
+            ? mergeBase.Trim()
+            : Git(root, "rev-parse", "--is-shallow-repository").Trim() == "true"
+                ? throw new MergeException("The app is a shallow clone, so git cannot find the merge base. Run git fetch --unshallow, then run the script again.")
+                : null;
+
+    // Walks the template history from the merge base to the tip, oldest first, and stops at the first commit that the
+    // app does not have. The app has a commit when the commit is in its history, when a commit of the app after the
+    // merge base has the same subject (a copy, or the squash of a pull request whose branch the app merged), or when
+    // the app merged the head of its pull request. A walk that stops early gives more conflicts and loses no template
+    // change. A common subject that the app has for another reason can take the walk too far, so the script prints the
+    // commit that it found, and the merge uses it only when it is given with --base.
+    private string? FoundBase(string templateRef, string tip, string? mergeBase)
+    {
+        var appCommits = Lines(Git(root, "rev-list", "HEAD")).ToHashSet(StringComparer.Ordinal);
+        var appSubjects = Lines(mergeBase is null ? Git(root, "log", "--format=%s", "HEAD") : Git(root, "log", "--format=%s", "HEAD", "--not", mergeBase))
+            .ToHashSet(StringComparer.Ordinal);
+        var pullHeads = PullHeads(templateRef);
+        bool Has(string commit, string subject)
+            => appCommits.Contains(commit)
+               || appSubjects.Contains(subject)
+               || PullNumber().Match(subject) is { Success: true } pull && pullHeads.TryGetValue(pull.Groups["number"].Value, out var head) && appCommits.Contains(head);
+
+        var found = mergeBase;
+        foreach (var line in Lines(Git(root, "log", "--first-parent", "--reverse", "--format=%H %P%x00%s", mergeBase is null ? tip : $"{mergeBase}..{tip}")))
+        {
+            var (hashes, subject) = (line.Split('\0')[0].Split(' '), line.Split('\0')[1]);
+            // A merge commit of the template brings the commits of its branch. The app has it when it has each of them.
+            var has = hashes.Length > 2
+                ? Has(hashes[0], subject) || Lines(Git(root, "log", "--format=%H%x00%s", $"{hashes[1]}..{hashes[2]}"))
+                    .All(branchLine => Has(branchLine.Split('\0')[0], branchLine.Split('\0')[1]))
+                : Has(hashes[0], subject);
+            if (!has)
+                break;
+            found = hashes[0];
+        }
+
+        return found;
+    }
+
+    // The head commit of each pull request of the template remote, by number. An empty map when the remote has none or
+    // cannot be reached: then the subjects alone find the base.
+    private Dictionary<string, string> PullHeads(string templateRef)
+    {
+        var remote = templateRef.Split('/')[0];
+        if (!Lines(Git(root, "remote")).Contains(remote) || Git(root, out var heads, "ls-remote", remote, "refs/pull/*/head") != 0)
+            return [];
+        return Lines(heads)
+            .Select(line => line.Split('\t'))
+            .ToDictionary(parts => parts[1].Split('/')[2], parts => parts[0]);
+    }
+
+    private static string[] Lines(string output) => output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+    private string Describe(string commit) => Git(root, "log", "-1", "--format=%h %s", commit).Trim();
 
     // Checks out the commit in a temporary worktree, renames it with the init.cs of the new template commit, and
     // commits the result. The same init.cs on both sides keeps a change of init.cs out of the merge.
@@ -240,18 +330,30 @@ internal sealed partial class App(string root)
         return git.ExitCode;
     }
 
+    // The output of init.cs is about the renamed copy of the template, not the app, so it shows only on a failure.
     private static void Run(string folder, string command, params string[] arguments)
     {
-        using var process = Process.Start(new ProcessStartInfo(command, arguments) { WorkingDirectory = folder })
-            ?? throw new MergeException($"The script could not start {command}.");
+        var startInfo = new ProcessStartInfo(command, arguments)
+        {
+            WorkingDirectory = folder,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        using var process = Process.Start(startInfo) ?? throw new MergeException($"The script could not start {command}.");
+        var error = process.StandardError.ReadToEndAsync();
+        var output = process.StandardOutput.ReadToEnd();
         process.WaitForExit();
         if (process.ExitCode != 0)
-            throw new MergeException($"{command} {string.Join(' ', arguments)} failed in {folder}.");
+            throw new MergeException($"{output}{error.Result}{command} {string.Join(' ', arguments)} failed in {folder}.");
     }
 
     // The forms of the template name that init.cs renames. A link to the template repo keeps the name.
     [GeneratedRegex(@"Projects\.FullstackTemplate_|(?<!pdevito3/)FullstackTemplate|(?<!pdevito3/)fullstacktemplate|fullstack-template|Fullstack Template")]
     private static partial Regex TemplateName();
+
+    // The number that a squash merge of GitHub puts at the end of the subject, as "fix: a fault (#94)"
+    [GeneratedRegex(@"\(#(?<number>\d+)\)$")]
+    private static partial Regex PullNumber();
 
     [GeneratedRegex("<title>(?<title>[^<]*)</title>")]
     private static partial Regex TitlePattern();

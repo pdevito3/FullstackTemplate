@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { workshopPaths } from '@tests/support/examples/workshops-api'
 import { workshops } from './workshops.locators'
 
@@ -9,6 +9,20 @@ export function workshopsPage(page: Page) {
 
   return {
     at,
+
+    // Measures the text, because a box that does not wrap grows with its text and has no scroll overflow.
+    async textOverflowPast(text: Locator) {
+      const right = await page.evaluate(() => document.documentElement.clientWidth)
+      return text.evaluate((node, right) => {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        return range.getBoundingClientRect().right - right
+      }, right)
+    },
+
+    async pageOverflow() {
+      return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    },
 
     async openList() {
       const settled = answered('GET', workshopPaths.list)

@@ -200,3 +200,23 @@ test.describe('the workshops', () => {
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
 })
+
+const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'
+
+test.describe('a workshop with a long title at a venue with a long name, on a 320 px phone', () => {
+  test.use({ actor: as.user('Ana Admin'), viewport: { width: 320, height: 640 } })
+
+  test('the detail wraps the title and each value in the window', async ({ page, api }) => {
+    const venue = aVenue().named(longName)
+    const workshop = aWorkshop().titled(longName).at(venue)
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+
+    await workshops.openDetail(workshop.build().id, venue.build().id)
+
+    await expect(workshops.at.details).toContainText(longName)
+    expect(await workshops.pageOverflow()).toBe(0)
+    expect(await workshops.textOverflowPast(workshops.at.detailHeading(longName))).toBeLessThanOrEqual(0)
+    expect(await workshops.textOverflowPast(workshops.at.details)).toBeLessThanOrEqual(0)
+  })
+})

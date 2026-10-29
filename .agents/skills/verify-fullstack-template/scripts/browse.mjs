@@ -305,13 +305,13 @@ try {
       data = { restored: true, changes: restore(postgres, before) }
       rmSync(snapshotFile)
     } catch (e) {
-      data = { restored: false, changes: {}, error: e.message }
+      data = { restored: false, changes: e.changes ?? null, error: e.message }
       if (status === 'passed') {
         status = 'failed'
         error = e.message
       }
     }
-    const tables = Object.keys(data.changes)
+    const tables = Object.keys(data.changes ?? {})
     log('steps.log', `data: ${data.error ?? (tables.length ? `restored ${tables.join(', ')}` : 'no rows changed')}`)
   }
   writeFileSync(

@@ -5,7 +5,7 @@ import { offsetAt, wallClockAt } from '@/lib/zoned-time'
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
 import { wallClockZone } from './date-zone'
-import { withoutEndQuotes } from './querykit-text'
+import { hasEndQuote } from './querykit-text'
 import { LogicalOperators } from './operators'
 
 /**
@@ -94,13 +94,17 @@ function convertTextFilter(propertyKey: string, operator: string, value: string)
  * least three long.
  */
 function quoteText(value: string): string {
-  const text = withoutEndQuotes(value)
-  if (!text.includes('"')) {
-    return `"${text}"`
+  if (hasEndQuote(value)) {
+    throw new Error(
+      `QueryKit cannot hold a quote at the start or the end of a value, so a filter cannot hold ${JSON.stringify(value)}. Refuse the value where the filter gets it.`
+    )
   }
-  const longestRun = Math.max(...(text.match(/"+/g) ?? []).map((run) => run.length))
+  if (!value.includes('"')) {
+    return `"${value}"`
+  }
+  const longestRun = Math.max(...(value.match(/"+/g) ?? []).map((run) => run.length))
   const delimiter = '"'.repeat(Math.max(3, longestRun + 1))
-  return `${delimiter}${text}${delimiter}`
+  return `${delimiter}${value}${delimiter}`
 }
 
 /**

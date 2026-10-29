@@ -5,7 +5,7 @@ import { ResponsiveDialogFooter } from '@/components/ui/responsive-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Filter, FilterControlProps, OperatorType } from '../types'
-import { withoutEndQuotes } from '../utils/querykit-text'
+import { hasEndQuote, TEXT_END_QUOTE_MESSAGE } from '../utils/querykit-text'
 import {
   getDefaultOperator,
   getOperatorsForControlType,
@@ -49,11 +49,14 @@ export function TextFilter({
   )
   const supportsCaseSensitivity = operatorSupportsCaseSensitivity(operator)
   const valueId = useId()
+  const errorId = useId()
 
-  const text = withoutEndQuotes(value.trim())
+  const text = value.trim()
+  const endQuote = hasEndQuote(text)
+  const canSubmit = text !== '' && !endQuote
 
   const handleSubmit = () => {
-    if (!text.trim()) {
+    if (!canSubmit) {
       return
     }
 
@@ -87,6 +90,8 @@ export function TextFilter({
           <Input
             autoFocus={autoFocus}
             id={valueId}
+            aria-invalid={endQuote || undefined}
+            aria-describedby={endQuote ? errorId : undefined}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
@@ -96,6 +101,11 @@ export function TextFilter({
               }
             }}
           />
+          {endQuote && (
+            <p id={errorId} role="alert" className="text-destructive text-sm">
+              {TEXT_END_QUOTE_MESSAGE}
+            </p>
+          )}
         </div>
 
         {supportsCaseSensitivity && (
@@ -112,7 +122,7 @@ export function TextFilter({
         <Button variant="outline" onPress={onCancel}>
           Cancel
         </Button>
-        <Button onPress={handleSubmit} isDisabled={!text.trim()}>
+        <Button onPress={handleSubmit} isDisabled={!canSubmit}>
           {initialFilter ? 'Update' : 'Add'} Filter
         </Button>
       </ResponsiveDialogFooter>

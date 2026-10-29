@@ -1593,7 +1593,7 @@ internal static class Templates
                 /// Gets a page of {{n.WordsPlural}}. The search finds the {{n.WordsPlural}} whose "{{s.Title.Label}}" value contains the text.
                 /// </summary>
                 public static async Task<Ok<PagedList<{{n.Entity}}Dto>>> Handle(
-                    string? filters,
+                    [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
                     string? sortOrder,
                     [MaxLength({{n.Entity}}ParametersDto.SearchMaxLength)] string? search,
                     [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,

@@ -16,7 +16,7 @@ The sidebar also has an `Examples` submenu with the example pages.
 - `nav-active` marks only the sidebar items of the current route as active.
 - `nav-collapse` collapses the sidebar to icons and expands it again.
 - `theme-toggle` sets light, dark, or system. The value stays after a reload.
-- `nav-focus` tells a screen reader the new page after a link. A link in the page unmounts, so the focus goes to the level 1 heading of the new page, or to the main landmark when the page has no level 1 heading. A page that shows its heading after its data loads, such as a workshop, gets the focus on the heading then. After this focus move, the status region stays empty. A sidebar link keeps the focus, and the status region `getByTestId('page-announcement')` gets the breadcrumb name of the page.
+- `nav-focus` tells a screen reader the new page after a link. A link in the page unmounts, so the focus goes to the level 1 heading of the new page, or to the main landmark when the page has no level 1 heading. A page that shows its heading after its data loads gets the focus on the heading then. After this focus move, the status region stays empty. A sidebar link keeps the focus, and the status region `getByTestId('page-announcement')` gets the breadcrumb name of the page.
 - `nav-mobile` opens the sidebar as a sheet on a narrow viewport. A link in the sheet goes to its page and closes the sheet.
 
 ## How to get to it (user POV)

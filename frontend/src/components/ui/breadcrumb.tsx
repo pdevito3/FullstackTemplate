@@ -137,7 +137,7 @@ function CurrentPage({ className, children }: { className?: string; children?: s
       >
         <span
           className={cn(
-            "-mx-1 rounded-sm px-1 group-focus-visible/page:ring-2 group-focus-visible/page:ring-ring/50",
+            "-mx-1 rounded-sm px-1 py-0.5 group-focus-visible/page:ring-2 group-focus-visible/page:ring-ring/50",
             pageClassName
           )}
         >

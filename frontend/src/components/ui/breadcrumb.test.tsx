@@ -34,7 +34,8 @@ test.each([320, 375])('a long trail stays on one line in a %i px header and trun
   const lineHeight = parseFloat(getComputedStyle(name).lineHeight)
   const middle = (el: Element) => (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2
 
-  expect(name.getBoundingClientRect().height).toBeLessThanOrEqual(lineHeight)
+  const { paddingTop, paddingBottom } = getComputedStyle(name)
+  expect(name.clientHeight - parseFloat(paddingTop) - parseFloat(paddingBottom)).toBeLessThanOrEqual(lineHeight)
   expect(crumb.getBoundingClientRect().height).toBeLessThanOrEqual(lineHeight)
   expect(Math.abs(middle(name) - middle(crumb))).toBeLessThanOrEqual(1)
   expect(crumbItem.scrollWidth).toBeLessThanOrEqual(crumbItem.clientWidth)

@@ -5,6 +5,7 @@ import { aWorkshop } from '@tests/support/examples/workshop-builder'
 import { workshopPaths, workshopsApi } from '@tests/support/examples/workshops-api'
 import { expect, test } from '@tests/support/fixtures'
 import { useDefaultFontSize } from '@tests/support/screen'
+import { appShellPage } from '../../app-shell/app-shell.tasks'
 import { workshopsPage } from './workshops.tasks'
 
 test.describe('the workshops', () => {
@@ -260,6 +261,40 @@ test.describe('the workshops of a signed-in user with no tenant', () => {
     await expect(workshops.at.emptyList).toHaveCount(0)
     await expect(workshops.at.newWorkshopLink).toHaveCount(0)
     await expect(workshops.at.newVenueLink).toHaveCount(0)
+  })
+})
+
+test.describe('the focus after a link in a workshop page', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  const venue = aVenue().named('Main Hall')
+
+  test('New workshop moves the focus to the heading of the form and says nothing in the status region', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]), workshopsApi.venueListReturns([venue]))
+    const workshops = workshopsPage(page)
+    await workshops.controlTheClock()
+    await workshops.openList()
+
+    await workshops.pressNewWorkshopLink()
+    await workshops.letPendingAnnouncementsPass()
+
+    await expect(workshops.at.newHeading).toBeFocused()
+    await expect(appShellPage(page).at.pageAnnouncement).toHaveText('')
+  })
+
+  test('a workshop title moves the focus to the heading that shows after the workshop loads, and says nothing', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = workshop.build()
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.controlTheClock()
+    await workshops.openList()
+
+    await workshops.pressWorkshopLink('Intro to Kubb', id, venueId)
+    await workshops.letPendingAnnouncementsPass()
+
+    await expect(workshops.at.detailHeading('Intro to Kubb')).toBeFocused()
+    await expect(appShellPage(page).at.pageAnnouncement).toHaveText('')
   })
 })
 

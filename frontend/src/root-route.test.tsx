@@ -7,7 +7,8 @@ import {
   RouterProvider,
   type AnyRoute,
 } from '@tanstack/react-router'
-import { expect, test } from 'vitest'
+import { useState } from 'react'
+import { afterEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 
@@ -15,6 +16,18 @@ import { Link } from '@/components/ui/link'
 import { AuthKeys } from '@/domain/auth/apis/auth.keys'
 import { Route as RootRoute } from '@/routes/__root'
 import { routeTree } from '@/routeTree.gen'
+
+let showLateHeading = () => {}
+
+function PageWithLateHeading() {
+  const [shown, setShown] = useState(false)
+  showLateHeading = () => setShown(true)
+  return shown ? <h1>Late heading</h1> : <p>Loading the page</p>
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 async function renderLayoutAt(path: string) {
   const rootRoute = createRootRoute({ component: RootRoute.options.component })
@@ -59,8 +72,14 @@ async function renderLayoutAt(path: string) {
     staticData: { breadcrumb: 'No heading' },
     component: () => <p>A page with no heading</p>,
   })
+  const lateHeadingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/late-heading',
+    staticData: { breadcrumb: 'Late heading' },
+    component: PageWithLateHeading,
+  })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([userRoute, linksRoute, headingRoute, noHeadingRoute]),
+    routeTree: rootRoute.addChildren([userRoute, linksRoute, headingRoute, noHeadingRoute, lateHeadingRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
   // Seed an anonymous session, so that the session and membership queries of the layout send no request.
@@ -86,6 +105,40 @@ test('a link in the page moves the focus to the level 1 heading of the new page'
   await userEvent.click(screen.getByRole('link', { name: 'Open the page with a heading' }))
 
   await expect.element(screen.getByRole('heading', { name: 'Heading', level: 1 })).toHaveFocus()
+})
+
+test('a link in the page that moves the focus to the heading says nothing in the status region', async () => {
+  const { screen } = await renderLayoutAt('/')
+  // The test moves the clock, so each pending announcement is spoken before the assertion.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  await userEvent.click(screen.getByRole('link', { name: 'Open the page with a heading' }))
+  await expect.element(screen.getByRole('heading', { name: 'Heading', level: 1 })).toHaveFocus()
+
+  vi.runAllTimers()
+
+  expect(screen.getByTestId('page-announcement').element().textContent).toBe('')
+})
+
+test('the first load leaves the focus on the body and says nothing in the status region', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  const { screen } = await renderLayoutAt('/about')
+  await expect.element(screen.getByRole('heading', { name: 'Heading', level: 1 })).toBeVisible()
+
+  vi.runAllTimers()
+
+  expect(document.activeElement).toBe(document.body)
+  expect(screen.getByTestId('page-announcement').element().textContent).toBe('')
+})
+
+test('a heading that the new page shows after it loads gets the focus from the main landmark', async () => {
+  const { screen, router } = await renderLayoutAt('/')
+  router.history.push('/late-heading')
+  await expect.element(screen.getByText('Loading the page')).toBeVisible()
+  await expect.element(screen.getByRole('main')).toHaveFocus()
+
+  showLateHeading()
+
+  await expect.element(screen.getByRole('heading', { name: 'Late heading', level: 1 })).toHaveFocus()
 })
 
 test('a link in the page moves the focus to the main landmark when the new page has no level 1 heading', async () => {

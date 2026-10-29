@@ -255,6 +255,36 @@ export function filterDemoPage(page: Page) {
       return middle(a) > b.top && middle(a) < b.bottom && middle(b) > a.top && middle(b) < a.bottom
     },
 
+    async linesOfBadgeAndOfItsWordsAsParagraph(element: Locator): Promise<{ badge: number; paragraph: number; words: string }> {
+      return element.evaluate((node) => {
+        const linesOf = (root: Node) => {
+          const range = document.createRange()
+          const tops: number[] = []
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+          for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+            range.selectNodeContents(text)
+            for (const rect of range.getClientRects()) if (rect.width > 0) tops.push(rect.top)
+          }
+          tops.sort((a, b) => a - b)
+          const fontSize = parseFloat(getComputedStyle(node).fontSize)
+          return tops.filter((top, index) => index === 0 || top - tops[index - 1] > fontSize / 2).length
+        }
+        const textNodes = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+        const texts: string[] = []
+        for (let text = textNodes.nextNode(); text; text = textNodes.nextNode()) texts.push(text.textContent ?? '')
+        const words = texts.join(' ').replace(/\s+/g, ' ').trim()
+        const paragraph = document.createElement('p')
+        paragraph.textContent = words
+        const style = getComputedStyle(node)
+        paragraph.style.cssText = `position:absolute;visibility:hidden;margin:0;width:${node.getBoundingClientRect().width}px`
+        for (const property of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'] as const) paragraph.style[property] = style[property]
+        document.body.append(paragraph)
+        const result = { badge: linesOf(node), paragraph: linesOf(paragraph), words }
+        paragraph.remove()
+        return result
+      })
+    },
+
     async edgesOf(element: Locator) {
       const box = await element.boundingBox()
       if (!box) throw new Error('The element is not on the page.')

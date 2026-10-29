@@ -53,6 +53,8 @@ export const filterDemo = (page: Page) => {
     selectFilter: (name: string) => page.getByRole('checkbox', { name: `Select filter: ${name}`, exact: true }),
     groupSelected: page.getByRole('button', { name: /^Group Selected/ }),
     group: (depth: number) => page.getByRole('group', { name: `Group (Depth ${depth})`, exact: true }),
+    filterBadgeEdit: (depth: number, propertyLabel: string) =>
+      page.getByRole('group', { name: `Group (Depth ${depth})`, exact: true }).getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     groupHeader,
     groupBadge: (depth: number) => groupHeader(depth).getByText(`Group (Depth ${depth})`, { exact: true }),
     groupAction: (depth: number, name: 'Ungroup' | 'Delete group' | 'Select group') =>

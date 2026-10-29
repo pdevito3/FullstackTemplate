@@ -52,6 +52,8 @@ Read the doc for an area before you change code in that area.
 
 The pattern rules are in `docs/backend/` and `docs/frontend/`. Before you write code in an area, read its rule doc. Obey the rules in it.
 
+To add a Server feature, use the `backend-feature` skill. To add the SPA pages of a feature (a list, a detail page, a create or edit form, or a search picker), use the `frontend-feature` skill.
+
 ## Run the application
 
 The Aspire CLI is a local tool in `dotnet-tools.json`. Run `dotnet tool restore` once, then use `dotnet aspire`.

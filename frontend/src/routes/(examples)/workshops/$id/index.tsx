@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useRef } from 'react'
 
+import { PageHeading } from '@/components/page-heading'
+import { QueryError } from '@/components/query-error'
 import { Link } from '@/components/ui/link'
 import { useVenue } from '@/examples/venues/apis/get-venue'
 import { useWorkshop } from '@/examples/workshops/apis/get-workshop'
 import { useSendWorkshopAction } from '@/examples/workshops/apis/send-workshop-action'
 import { formatStart } from '@/examples/workshops/components/format-start'
-import { PageHeading } from '@/examples/components/page-heading'
-import { QueryError } from '@/examples/components/query-error'
 import { WorkshopActions } from '@/examples/workshops/components/workshop-actions'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 

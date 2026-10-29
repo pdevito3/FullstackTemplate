@@ -9,6 +9,8 @@ The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack
 
 The text of each toast, alert, label, and message follows [messages.md](messages.md).
 
+To add the pages of a feature (a list, a detail page, a create or edit form, or a search picker), follow the [frontend-feature skill](../.agents/skills/frontend-feature/SKILL.md).
+
 ## Commands
 
 ```bash

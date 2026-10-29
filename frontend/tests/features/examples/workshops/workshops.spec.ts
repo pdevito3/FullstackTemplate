@@ -371,7 +371,7 @@ test.describe('the focus after an action that removes the focused button', () =>
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
 
-  test('Load the latest puts the focus on the title, the first field of the form', async ({ page, api }) => {
+  test('Load the latest puts the focus on the first field that the latest save changed', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id } = workshop.build()
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))

@@ -1,24 +1,26 @@
-import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop-for-update-dto'
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
+import { RefusedSaveAlert } from '@/components/refused-save-alert'
+import { LatestLoadedNote, StaleVersionAlert } from '@/components/stale-version-alert'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
-import { focusFirstError } from '@/examples/components/focus-first-error'
-import { RefusedSaveAlert } from '@/examples/components/refused-save-alert'
-import { useServerErrors } from '@/examples/components/use-server-errors'
+import { useLoadLatest } from '@/hooks/use-load-latest'
+import { useServerErrors } from '@/hooks/use-server-errors'
+import { focusFirstError } from '@/lib/focus-first-error'
 import { parseTimeZone, springGapMessage, wallClockAt } from '@/lib/zoned-time'
 
-import { StaleVersionAlert } from './stale-version-alert'
 import { WorkshopFields } from './workshop-fields'
-import { WORKSHOP_FIELD_NAMES, limitsOf, toWorkshopBody, workshopFieldsSchema } from './workshop-fields-schema'
+import { WORKSHOP_FIELD_NAMES, limitsOf, toWorkshopBody, workshopFieldsSchema, type WorkshopFieldName } from './workshop-fields-schema'
 
 const contract = workshopForUpdateDtoSchema.shape
 const schema = workshopFieldsSchema(contract).extend({ version: contract.version })
 const limits = limitsOf(contract)
+
+const FIELD_LABELS: Record<WorkshopFieldName, string> = { title: 'Title', startsAt: 'Starts at', capacity: 'Capacity' }
 
 function valuesOf(workshop: WorkshopDto) {
   return {
@@ -38,11 +40,12 @@ interface WorkshopEditFormProps {
 export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEditFormProps) {
   const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop), shouldFocusError: false })
   const serverErrors = useServerErrors(form, WORKSHOP_FIELD_NAMES)
-  const [isLoadingLatest, setIsLoadingLatest] = useState(false)
+  const latest = useLoadLatest(form, WORKSHOP_FIELD_NAMES)
   const zone = parseTimeZone(workshop.venueTimeZone)
 
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
+    latest.clear()
     const body = toWorkshopBody(values, zone)
     if (!body) {
       form.setError('startsAt', { message: springGapMessage(zone) }, { shouldFocus: true })
@@ -56,18 +59,11 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
   }, focusFirstError(form, WORKSHOP_FIELD_NAMES))
 
   const handleLoadLatest = async () => {
-    setIsLoadingLatest(true)
-    try {
-      const latest = await onLoadLatest()
-      if (latest) {
-        // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
-        form.setFocus('title')
-        form.reset(valuesOf(latest))
-        serverErrors.clear()
-      }
-    } finally {
-      setIsLoadingLatest(false)
-    }
+    const loaded = await latest.load(async () => {
+      const record = await onLoadLatest()
+      return record && valuesOf(record)
+    })
+    if (loaded) serverErrors.clear()
   }
 
   return (
@@ -76,10 +72,12 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
         <WorkshopFields limits={limits} zone={zone} />
         <RefusedSaveAlert problem={serverErrors.problem} />
         <StaleVersionAlert
+          noun="workshop"
           problem={serverErrors.problem}
-          isLoadingLatest={isLoadingLatest}
+          isLoadingLatest={latest.isLoading}
           onLoadLatest={handleLoadLatest}
         />
+        <LatestLoadedNote noun="workshop" changed={latest.changed} labels={FIELD_LABELS} />
         <Button type="submit" className="self-start" isPending={form.formState.isSubmitting}>
           Save
         </Button>

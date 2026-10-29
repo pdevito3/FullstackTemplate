@@ -17,7 +17,16 @@ try
 {
     var root = Path.GetFullPath(Path.Combine((string)AppContext.GetData("EntryPointFileDirectoryPath")!, ".."));
     var repo = Repo.Load(root);
-    var spec = Spec.Parse(args, repo);
+    var messagesOnly = args.Contains("--messages");
+    var spec = Spec.Parse([.. args.Where(a => a != "--messages")], repo.App, repo.ProtoPackage);
+    if (messagesOnly)
+    {
+        foreach (var line in Texts.All(spec))
+            Console.WriteLine(line);
+        return 0;
+    }
+
+    spec.RequireFreeNamesIn(repo);
     var plan = Plan.For(spec, repo);
     repo.RequireNoPendingModelChanges(spec);
     var result = repo.Apply(plan);
@@ -114,9 +123,11 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         --entrypoints  A list of http, grpc, and mcp, or none. The default is http.
         --plural       The plural of the entity. The default adds s, es, or ies.
         --prefix       The prefix of the ID: 1 to 17 lower-case letters. The default is the first 3 letters.
+        --messages     Print each text of the feature that a person reads, and change no file.
         """;
 
-    public static Spec Parse(string[] args, Repo repo)
+    /// <summary>Reads the arguments. It does not look at the files of the app: see <see cref="RequireFreeNamesIn"/>.</summary>
+    public static Spec Parse(string[] args, string app, string protoPackage)
     {
         if (args.Length == 0 || args.Contains("--help") || args.Contains("-h"))
             throw new FeatureException(Usage);
@@ -143,16 +154,9 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         RequirePascalCase(plural, "The plural");
         if (plural == entity)
             throw new FeatureException("The plural must not be the same as the entity name. Give --plural.");
-        if (repo.HidesServerNamespace(plural))
-            throw new FeatureException(
-                $"The namespace Domain.{plural} would hide the namespace {repo.App}.Server.{plural} in the domain code. Give another --plural.");
-        if (repo.TypeOwner(entity, $"{repo.App}.Server/Domain/{plural}/{entity}.cs") is { } typeOwner)
-            throw new FeatureException($"The type {entity} is in use in {typeOwner}. Give another entity name.");
         prefix ??= new string(entity.ToLowerInvariant().Take(3).ToArray());
         if (!Regex.IsMatch(prefix, "^[a-z]{1,17}$"))
             throw new FeatureException($"The ID prefix '{prefix}' must have 1 to 17 lower-case letters. Give --prefix.");
-        if (repo.IdPrefixOwner(prefix, $"{repo.App}.Server/Domain/{plural}/{entity}.cs") is { } owner)
-            throw new FeatureException($"The ID prefix '{prefix}' is in use in {owner}. Give another with --prefix.");
 
         var parsed = ParseFields(fields ?? throw new FeatureException($"Give the properties with --fields.\n\n{Usage}"));
         if (parsed.Any(f => f.Name == entity))
@@ -162,7 +166,20 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
             throw new FeatureException(
                 $"The property {date.Name} is a date, and protobuf has no date type. Use instant, or leave out grpc.");
 
-        return new Spec(new Names(repo.App, entity, plural, prefix, repo.ProtoPackage), parsed, points);
+        return new Spec(new Names(app, entity, plural, prefix, protoPackage), parsed, points);
+    }
+
+    /// <summary>Stops when a name of the feature is in use in the app.</summary>
+    public void RequireFreeNamesIn(Repo repo)
+    {
+        var n = Names;
+        if (repo.HidesServerNamespace(n.Plural))
+            throw new FeatureException(
+                $"The namespace Domain.{n.Plural} would hide the namespace {n.Server}.{n.Plural} in the domain code. Give another --plural.");
+        if (repo.TypeOwner(n.Entity, n.EntityFile) is { } typeOwner)
+            throw new FeatureException($"The type {n.Entity} is in use in {typeOwner}. Give another entity name.");
+        if (repo.IdPrefixOwner(n.Prefix, n.EntityFile) is { } owner)
+            throw new FeatureException($"The ID prefix '{n.Prefix}' is in use in {owner}. Give another with --prefix.");
     }
 
     private static List<Field> ParseFields(string text)
@@ -625,6 +642,80 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
 }
 
 /// <summary>
+/// The texts of the feature that a person or a model reads: the messages of the domain rules and the descriptions of
+/// the MCP tools. <c>--messages</c> prints them, so that a test can read them for any name.
+/// </summary>
+internal static class Texts
+{
+    public static string Missing(Spec s, Field f) => $"Please provide the {f.Words} of the {s.Names.Words}.";
+
+    public static string TooLong(Spec s, Field f, string limit)
+        => $"The {f.Words} of {s.Names.A} {s.Names.Words} can have no more than {limit} characters.";
+
+    public static string BadCharacter(Spec s, Field f) => $"The {f.Words} of {s.Names.A} {s.Names.Words} has a character that is not allowed.";
+
+    public static string OutOfRange(Spec s, Field f, string minimum, string maximum)
+        => $"The {f.Words} of {s.Names.A} {s.Names.Words} is from {minimum} to {maximum}.";
+
+    public static string AddToOtherTenant(Spec s) => $"You can add {s.Names.A} {s.Names.Words} only to your own tenant.";
+
+    public static string ToolParameter(Spec s, Field f) => f.Kind switch
+    {
+        Kind.Date => $"The {f.Words} of the {s.Names.Words}, for example 2026-01-02.",
+        Kind.Instant => $"The {f.Words} of the {s.Names.Words}, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
+        Kind.Int => $"The {f.Words} of the {s.Names.Words}, a whole number. A value out of range gives the invalid_argument error.",
+        Kind.Text when f.Optional => $"The {f.Words} of the {s.Names.Words}. Leave it out for none.",
+        _ => $"The {f.Words} of the {s.Names.Words}.",
+    };
+
+    public static string AddTool(Spec s)
+        => $"Adds {s.Names.A} {s.Names.Words} to the caller's tenant. The caller needs the {s.Names.PermissionName} permission in the tenant.";
+
+    public static string GetTool(Spec s) => $"Gets one {s.Names.Words} of the caller's tenant by its ID.";
+
+    public static string ListTool(Spec s) => $"Gets one page of the {s.Names.WordsPlural} of the caller's tenant, with the page data.";
+
+    public static string Search(Spec s) => $"A text that the {s.Title.Words} contains, with no regard to case.";
+
+    public static string Filters(Spec s)
+        => $"A QueryKit filter on the fields of {s.Names.A} {s.Names.Words}, for example: {s.Title.Json} @=* \"text\"";
+
+    public static string UpdateTool(Spec s)
+        => $"Updates {s.Names.A} {s.Names.Words} of the caller's tenant. The caller needs the {s.Names.PermissionName} permission in the tenant.";
+
+    /// <summary>Each text, one to a line, with a key before it. A limit shows as the name of its constant.</summary>
+    public static IEnumerable<string> All(Spec s)
+    {
+        yield return $"add to other tenant: {AddToOtherTenant(s)}";
+        foreach (var f in s.Fields)
+        {
+            switch (f.Kind)
+            {
+                case Kind.Text:
+                    if (!f.Optional)
+                        yield return $"{f.Name} missing: {Missing(s, f)}";
+                    yield return $"{f.Name} too long: {TooLong(s, f, $"{{{f.Name}MaxLength}}")}";
+                    yield return $"{f.Name} bad character: {BadCharacter(s, f)}";
+                    break;
+                case Kind.Int:
+                    yield return $"{f.Name} out of range: {OutOfRange(s, f, $"{{{f.Name}Minimum}}", $"{{{f.Name}Maximum}}")}";
+                    break;
+                case Kind.Date or Kind.Instant:
+                    yield return $"{f.Name} missing: {Missing(s, f)}";
+                    break;
+            }
+            yield return $"{f.Name} tool parameter: {ToolParameter(s, f)}";
+        }
+        yield return $"add tool: {AddTool(s)}";
+        yield return $"get tool: {GetTool(s)}";
+        yield return $"list tool: {ListTool(s)}";
+        yield return $"list search: {Search(s)}";
+        yield return $"list filters: {Filters(s)}";
+        yield return $"update tool: {UpdateTool(s)}";
+    }
+}
+
+/// <summary>
 /// The text of each file. A block of lines goes into a template at column 0 and carries its own indent.
 /// </summary>
 internal static class Templates
@@ -637,15 +728,17 @@ internal static class Templates
 
     private static string Mark(Field f) => f.NeedsMark ? (f.Sensitive ? "[Sensitive] " : "[NotSensitive] ") : "";
 
-    private static string Missing(Spec s, Field f) => $"Please provide the {f.Words} of the {s.Names.Words}.";
+    // A text goes into a C# string literal, so a quote and a backslash need an escape
+    private static string Cs(string text) => text.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
-    private static string TooLong(Spec s, Field f, string owner)
-        => $"The {f.Words} of {s.Names.A} {s.Names.Words} can have no more than {{{owner}{f.Name}MaxLength}} characters.";
+    private static string Missing(Spec s, Field f) => Cs(Texts.Missing(s, f));
 
-    private static string BadCharacter(Spec s, Field f) => $"The {f.Words} of {s.Names.A} {s.Names.Words} has a character that is not allowed.";
+    private static string TooLong(Spec s, Field f, string owner) => Cs(Texts.TooLong(s, f, $"{{{owner}{f.Name}MaxLength}}"));
+
+    private static string BadCharacter(Spec s, Field f) => Cs(Texts.BadCharacter(s, f));
 
     private static string OutOfRange(Spec s, Field f, string owner)
-        => $"The {f.Words} of {s.Names.A} {s.Names.Words} is from {{{owner}{f.Name}Minimum}} to {{{owner}{f.Name}Maximum}}.";
+        => Cs(Texts.OutOfRange(s, f, $"{{{owner}{f.Name}Minimum}}", $"{{{owner}{f.Name}Maximum}}"));
 
     private static string ModelProperty(Field f) => f.Kind == Kind.Text && !f.Optional
         ? $"public string {f.Name} {{ get; init; }} = default!;"
@@ -977,7 +1070,7 @@ internal static class Templates
                         await permissionGuard.RequireAsync(Permission.{{n.Permission}}(), cancellationToken);
 
                         var tenantId = dbContext.CurrentTenantScope.TenantId
-                            ?? throw new ForbiddenAccessException("You can add {{n.A}} {{n.Words}} only to your own tenant.");
+                            ?? throw new ForbiddenAccessException("{{Cs(Texts.AddToOtherTenant(s))}}");
                         Activity.Current?.SetTag("app.tenant_id", tenantId);
 
                         // The shared lock keeps a tenant delete out until the save, so the {{n.Words}} does not land in a deleted tenant.
@@ -1374,15 +1467,7 @@ internal static class Templates
 
     private static string ToolParameter(Spec s, Field f)
     {
-        var what = f.Kind switch
-        {
-            Kind.Date => $"The {f.Words} of the {s.Names.Words}, for example 2026-01-02.",
-            Kind.Instant => $"The {f.Words} of the {s.Names.Words}, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
-            Kind.Int => $"The {f.Words} of the {s.Names.Words}, a whole number. A value out of range gives the invalid_argument error.",
-            Kind.Text when f.Optional => $"The {f.Words} of the {s.Names.Words}. Leave it out for none.",
-            _ => $"The {f.Words} of the {s.Names.Words}.",
-        };
-        var description = $"[Description(\"{what}\")]";
+        var description = $"[Description(\"{Cs(Texts.ToolParameter(s, f))}\")]";
         return f.Optional ? $"{description} string? {f.Camel} = null," : $"{description} {f.Type} {f.Camel},";
     }
 
@@ -1423,7 +1508,7 @@ internal static class Templates
             {
                 [McpServerTool(Name = "add_{{n.Snake}}", Destructive = false, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
-                [Description("Adds {{n.A}} {{n.Words}} to the caller's tenant. The caller needs the {{n.PermissionName}} permission in the tenant.")]
+                [Description("{{Cs(Texts.AddTool(s))}}")]
                 public static Task<{{n.Entity}}Dto> Handle(
             {{Block(ToolParameters(s, forUpdate: false), 8)}})
                     => mediator.Send(new Add{{n.Entity}}.Command(
@@ -1443,7 +1528,7 @@ internal static class Templates
             {
                 [McpServerTool(Name = "get_{{n.Snake}}", ReadOnly = true, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
-                [Description("Gets one {{n.Words}} of the caller's tenant by its ID.")]
+                [Description("{{Cs(Texts.GetTool(s))}}")]
                 public static Task<{{n.Entity}}Dto> Handle(
                     IMediator mediator,
                     [Description("The {{n.Words}} ID, for example {{n.Prefix}}_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f.")] string id,
@@ -1463,14 +1548,14 @@ internal static class Templates
             {
                 [McpServerTool(Name = "list_{{n.SnakePlural}}", ReadOnly = true, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
-                [Description("Gets one page of the {{n.WordsPlural}} of the caller's tenant, with the page data.")]
+                [Description("{{Cs(Texts.ListTool(s))}}")]
                 public static async Task<McpPage<{{n.Entity}}Dto>> Handle(
                     IMediator mediator,
                     CancellationToken cancellationToken,
-                    [Description("A text that the {{s.Title.Words}} contains, with no regard to case.")] string? search = null,
+                    [Description("{{Cs(Texts.Search(s))}}")] string? search = null,
                     [Description("The page number. The first page is 1. Leave it out for the first page.")] int? pageNumber = null,
                     [Description("The number of {{n.WordsPlural}} on a page, at least 1. Leave it out for the default size. A value more than the maximum gives the maximum. The result gives the size that was used.")] int? pageSize = null,
-                    [Description("A QueryKit filter on the fields of {{n.A}} {{n.Words}}, for example: {{s.Title.Json}} @=* \"text\"")] string? filters = null,
+                    [Description("{{Cs(Texts.Filters(s))}}")] string? filters = null,
                     [Description("A QueryKit sort order, for example: -{{s.Title.Json}}")] string? sortOrder = null)
                 {
                     var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder, search);
@@ -1492,7 +1577,7 @@ internal static class Templates
                 // An update overwrites the values, so the tool is not additive: the MCP spec says destructive.
                 [McpServerTool(Name = "update_{{n.Snake}}", Destructive = true, Idempotent = true, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
-                [Description("Updates {{n.A}} {{n.Words}} of the caller's tenant. The caller needs the {{n.PermissionName}} permission in the tenant.")]
+                [Description("{{Cs(Texts.UpdateTool(s))}}")]
                 public static Task<{{n.Entity}}Dto> Handle(
             {{Block(ToolParameters(s, forUpdate: true), 8)}})
                     => mediator.Send(new Update{{n.Entity}}.Command(id,

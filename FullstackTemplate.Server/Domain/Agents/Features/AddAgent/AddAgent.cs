@@ -35,6 +35,8 @@ public static class AddAgent
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             caller.Require(Permission.ManageAgents());
+            if (AgentMode.Of(request.Dto.Mode).IsMachine)
+                caller.RequireManagesAllTenants();
             caller.Require((request.Dto.Permissions ?? []).Select((name, i) => Permission.Of(name, $"permissions[{i}]")));
 
             var tenantId = ResolveTenantId(request.Dto.TenantId);

@@ -71,7 +71,7 @@ public class Workshop : BaseEntity, ITenantable
 
     public Workshop Complete() => MoveTo(WorkshopStatus.Completed());
 
-    /// <summary>The actions that the caller can send for this workshop now. The read DTO carries them.</summary>
+    /// <summary>The actions that the caller can send for this workshop now.</summary>
     public IReadOnlyList<WorkshopAction> AllowedActions(Caller caller) => WorkshopAction.AllowedFor(caller, Status);
 
     private Workshop MoveTo(WorkshopStatus target)

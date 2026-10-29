@@ -29,7 +29,6 @@ public static class UpdateWorkshop
                 .TagWithOperationCallSite("workshops.update.load")
                 .GetById(request.Id, cancellationToken);
 
-            // The form sends the version that it loaded, so a change by another request after that gives 409
             workshop.Update(request.Dto.ToWorkshopForUpdate());
             await dbContext.SaveChangesAsync(cancellationToken);
 

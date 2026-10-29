@@ -1,5 +1,3 @@
-// The type of an answer of the answerRequests command, in vitest.commands.ts. The tests and the command share it.
-
 /** A response that the page gets for a request of the app, instead of a response of a server. */
 export interface Answer {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'

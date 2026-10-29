@@ -7,7 +7,6 @@ import { VenueKeys } from './venue.keys'
 
 const VENUE_PAGE_SIZE = 10
 
-/** The venues whose name contains `search`, one page at a time. */
 export function useVenueSearch(search: string) {
   return useInfiniteQuery({
     queryKey: VenueKeys.list(search),

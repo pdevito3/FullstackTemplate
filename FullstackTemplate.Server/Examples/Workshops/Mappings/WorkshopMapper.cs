@@ -8,7 +8,6 @@ using Riok.Mapperly.Abstractions;
 [Mapper]
 public static partial class WorkshopMapper
 {
-    /// <summary>The DTO with the actions that <paramref name="caller"/> can send for the workshop.</summary>
     public static WorkshopDto ToWorkshopDto(this Workshop workshop, Caller caller)
         => workshop.ToWorkshopDtoWithoutActions() with { AllowedActions = NamesOf(workshop.AllowedActions(caller)) };
 

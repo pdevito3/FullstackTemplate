@@ -22,7 +22,6 @@ export function useWorkshopList(params: WorkshopListParams) {
       })
       return { workshops: result.data, pagination: parsePagination(result) }
     },
-    // The last page stays on the screen while the next search or page loads, so the list does not jump.
     placeholderData: keepPreviousData,
   })
 }

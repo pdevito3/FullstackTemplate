@@ -12,7 +12,6 @@ interface WorkshopFieldsProps {
   limits: WorkshopFieldLimits
 }
 
-/** The title, the start, and the capacity, in the form of the create page or of the edit page. */
 export function WorkshopFields({ limits }: WorkshopFieldsProps) {
   const { control, register, formState } = useFormContext<WorkshopFieldValues>()
   const id = useId()

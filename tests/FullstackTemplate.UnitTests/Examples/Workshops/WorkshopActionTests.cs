@@ -88,7 +88,6 @@ public class WorkshopActionTests
                     });
                     return true;
                 case "Schedule":
-                    // The same decision as ScheduleWorkshop
                     if (WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, Clock.Now)) is not ScheduleDecision.Offered offered)
                         return false;
                     workshop.Schedule(offered.Start);

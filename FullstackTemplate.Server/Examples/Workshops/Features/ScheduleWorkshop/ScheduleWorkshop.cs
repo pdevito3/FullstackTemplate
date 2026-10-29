@@ -32,7 +32,6 @@ public static class ScheduleWorkshop
             var workshop = schedule.Workshop;
             var wasScheduled = workshop.Status == WorkshopStatus.Scheduled();
 
-            // One decision
             switch (WorkshopScheduling.Decide(schedule))
             {
                 case ScheduleDecision.Offered offered:
@@ -46,7 +45,6 @@ public static class ScheduleWorkshop
                     throw new UnreachableException();
             }
 
-            // One save
             await dbContext.SaveChangesAsync(cancellationToken);
 
             if (!wasScheduled)

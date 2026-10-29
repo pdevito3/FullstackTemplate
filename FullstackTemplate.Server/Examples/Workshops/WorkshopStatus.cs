@@ -10,7 +10,6 @@ using Exceptions;
 /// </summary>
 public partial class WorkshopStatus : ValueObject, IFixedNames
 {
-    // The key in the errors of the problem is the name of the request field
     private const string RequestField = "status";
 
     private WorkshopStatusEnum _status = null!;
@@ -45,7 +44,6 @@ public partial class WorkshopStatus : ValueObject, IFixedNames
         return target;
     }
 
-    /// <summary>The message of a move that this status does not allow.</summary>
     public string MoveRefusal(WorkshopStatus target)
         => $"A {Value.ToLowerInvariant()} workshop cannot be {target.Value.ToLowerInvariant()}.";
 

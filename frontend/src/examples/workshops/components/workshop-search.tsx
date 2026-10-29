@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label'
 import { useDebouncedCallback } from '../../use-debounced-callback'
 
 interface WorkshopSearchProps {
-  /** The search in the URL. */
   search: string
   maxLength: number
   /** Puts the text in the URL. `base` is the search that the URL had when the user typed. */

@@ -31,7 +31,6 @@ function valuesOf(workshop: WorkshopDto) {
 interface WorkshopEditFormProps {
   workshop: WorkshopDto
   onSave: (body: WorkshopForUpdateDto) => Promise<unknown>
-  /** Reads the workshop from the Server again. */
   onLoadLatest: () => Promise<WorkshopDto | undefined>
 }
 

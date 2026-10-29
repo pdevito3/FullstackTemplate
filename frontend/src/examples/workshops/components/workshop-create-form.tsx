@@ -28,7 +28,6 @@ export function WorkshopCreateForm({ venueId = '', onSave }: WorkshopCreateFormP
   const form = useForm({ resolver: zodResolver(schema), defaultValues: { venueId, title: '' } })
   const serverErrors = useServerErrors(form, FIELD_NAMES)
 
-  // A create keeps the input of the user on any refusal, and the form has no version to load.
   const handleSubmit = form.handleSubmit(async (values) => {
     serverErrors.clear()
     try {

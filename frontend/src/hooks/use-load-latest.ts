@@ -3,12 +3,14 @@ import type { FieldValues, Path, PathValue, UseFormReturn } from 'react-hook-for
 
 import { latestOverEdits, type TextComparable } from '@/lib/latest-over-edits'
 
+type TextField<T extends FieldValues> = { [K in Path<T>]: PathValue<T, K> extends TextComparable ? K : never }[Path<T>]
+
 /**
  * The Load the latest button of an edit form after a stale save. `load` reads the record again and gives its form
  * values. Each field that the latest save changed takes the saved value, each other field keeps the edit of the user,
  * and the focus goes to the first changed field. `changed` names those fields for `LatestLoadedNote`.
  */
-export function useLoadLatest<T extends FieldValues, F extends Path<T> & string>(
+export function useLoadLatest<T extends FieldValues, F extends TextField<T>>(
   form: UseFormReturn<T>,
   fields: readonly F[],
 ) {
@@ -22,8 +24,7 @@ export function useLoadLatest<T extends FieldValues, F extends Path<T> & string>
       const latest = await read()
       if (!latest) return false
       const edited = form.getValues()
-      const fieldsOf = (values: T) => values as Partial<Record<F, TextComparable>>
-      const result = latestOverEdits(form.formState.defaultValues ?? {}, fieldsOf(edited), fieldsOf(latest), fields)
+      const result = latestOverEdits<F>(form.formState.defaultValues ?? {}, edited, latest, fields)
       // Before the reset, because a reset drops the field refs that setFocus reads until the next render.
       form.setFocus(result.changed[0] ?? fields[0])
       form.reset(latest)

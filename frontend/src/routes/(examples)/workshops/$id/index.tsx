@@ -40,11 +40,11 @@ function WorkshopPage() {
         All workshops
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <h1 className="min-w-0 text-3xl font-bold tracking-tight wrap-anywhere">{title}</h1>
         <WorkshopStatusBadge status={status} />
       </div>
       <section aria-label="Details">
-        <dl className="grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+        <dl className="grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm wrap-anywhere">
           <dt className="text-muted-foreground">Starts</dt>
           <dd>{formatStart(workshop.data)}</dd>
           <dt className="text-muted-foreground">Capacity</dt>

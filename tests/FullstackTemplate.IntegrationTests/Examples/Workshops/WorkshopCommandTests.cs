@@ -157,6 +157,28 @@ public class WorkshopCommandTests : TestBase
     }
 
     [Test]
+    public async Task a_complete_that_a_rival_cancel_beat_after_the_load_runs_again_and_keeps_the_cancel()
+    {
+        // Arrange
+        var pause = PauseAtQuery.After("workshops.complete.load");
+        await using var services = pause.BuildServices();
+        var testingServiceScope = new TestingServiceScope();
+        await testingServiceScope.StartGraph(out _).AddVenue(out _).AddWorkshop(out var workshop).BuildAsync();
+        await testingServiceScope.SendAsync(new ScheduleWorkshop.Command(workshop.Id));
+
+        // Act
+        var complete = new TestingServiceScope(services).SendAsync(new CompleteWorkshop.Command(workshop.Id));
+        await pause.ReachedAsync();
+        await new TestingServiceScope().SendAsync(new CancelWorkshop.Command(workshop.Id));
+        pause.Release();
+
+        // Assert
+        (await Should.ThrowAsync<ValidationException>(complete))
+            .Message.ShouldBe("A cancelled workshop cannot be completed.");
+        (await new TestingServiceScope().SendAsync(new GetWorkshop.Query(workshop.Id))).Status.ShouldBe("Cancelled");
+    }
+
+    [Test]
     public async Task a_schedule_of_a_start_today_at_the_venue_is_refused()
     {
         // Arrange

@@ -204,14 +204,17 @@ internal sealed partial class App(string root)
     // app does not have. The app has a commit when the commit is in its history, when a commit of the app after the
     // merge base has the same subject (a copy, or the squash of a pull request whose branch the app merged), or when
     // the app merged the head of its pull request. A walk that stops early gives more conflicts and loses no template
-    // change. A common subject that the app has for another reason can take the walk too far, so the walk also gives
-    // each commit that only a subject with no pull request number matched, for the user to check.
+    // change. A subject that the app has for another reason, also one with the same pull request number, can take the
+    // walk too far, so the walk also gives each commit that matched only by its subject and not by its changes, for the
+    // user to check.
     private (string? Commit, List<string> SubjectOnly) FoundBase(string templateRef, string tip, string? mergeBase)
     {
         var appCommits = Lines(Git(root, "rev-list", "HEAD")).ToHashSet(StringComparer.Ordinal);
-        var appSubjects = Lines(mergeBase is null ? Git(root, "log", "--format=%s", "HEAD") : Git(root, "log", "--format=%s", "HEAD", "--not", mergeBase))
-            .ToHashSet(StringComparer.Ordinal);
+        var appCommitsBySubject = Lines(mergeBase is null ? Git(root, "log", "--format=%H%x00%s", "HEAD") : Git(root, "log", "--format=%H%x00%s", "HEAD", "--not", mergeBase))
+            .Select(line => line.Split('\0'))
+            .ToLookup(parts => parts[1], parts => parts[0], StringComparer.Ordinal);
         var pullHeads = PullHeads(templateRef);
+        string[] appForms = [$"Projects.{Name.Replace('.', '_')}_", Name, Name.ToLowerInvariant(), Name.ToLowerInvariant().Replace('.', '-'), DisplayName];
         var subjectOnly = new List<string>();
         bool Has(string commit, string subject)
         {
@@ -220,9 +223,10 @@ internal sealed partial class App(string root)
             var pull = PullNumber().Match(subject);
             if (pull.Success && pullHeads.TryGetValue(pull.Groups["number"].Value, out var head) && appCommits.Contains(head))
                 return true;
-            if (!appSubjects.Contains(subject))
+            if (!appCommitsBySubject.Contains(subject))
                 return false;
-            if (!pull.Success)
+            var changes = ChangesOf(commit, line => TemplateName().Replace(line, NamePlaceholder));
+            if (!appCommitsBySubject[subject].Any(copy => ChangesOf(copy, line => appForms.Aggregate(line, (text, form) => text.Replace(form, NamePlaceholder, StringComparison.Ordinal))) == changes))
                 subjectOnly.Add(commit);
             return true;
         }
@@ -243,11 +247,20 @@ internal sealed partial class App(string root)
         return (found, subjectOnly.Where(commit => found is not null && Git(root, out _, "merge-base", "--is-ancestor", commit, found) == 0).ToList());
     }
 
-    // The commits that only a plain subject matched, as lines for a message
+    // The commits that only a subject matched, as lines for a message
     private string SubjectOnlyNote(List<string> commits)
         => commits.Count == 0
             ? ""
-            : $"\nOnly the subject of an app commit matched these template commits. Check that the app has their changes:\n  {string.Join("\n  ", commits.Select(Describe))}";
+            : $"\nAn app commit has the subject of each of these template commits, but not the same changes. Check that the app has their changes:\n  {string.Join("\n  ", commits.Select(Describe))}";
+
+    private const string NamePlaceholder = "<name>";
+
+    // The diff of the commit with each form of the name made one placeholder, and with no blob IDs or line numbers, so
+    // that a copy of a template commit in the app has the same changes as the template commit
+    private string ChangesOf(string commit, Func<string, string> withoutName)
+        => string.Join('\n', Lines(Git(root, "show", "--format=", "--no-color", "--no-ext-diff", commit))
+            .Where(line => !line.StartsWith("index ", StringComparison.Ordinal) && !line.StartsWith("@@", StringComparison.Ordinal))
+            .Select(withoutName));
 
     // The head commit of each pull request of the template remote, by number. An empty map when the remote has none or
     // cannot be reached: then the subjects alone find the base.

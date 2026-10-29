@@ -106,12 +106,12 @@ function JollyDatePicker<T extends AriaDateValue>({
         <Dialog className="outline-none">
           <Calendar defaultFocusedValue={date || props.placeholderValue || !timeZone ? undefined : todayAt(timeZone, new Date())}>
             <CalendarHeading />
-            <CalendarGrid>
+            <CalendarGrid timeZone={timeZone}>
               <CalendarGridHeader>
                 {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
               </CalendarGridHeader>
               <CalendarGridBody>
-                {(date) => <CalendarCell date={date} timeZone={timeZone} />}
+                {(date) => <CalendarCell date={date} />}
               </CalendarGridBody>
             </CalendarGrid>
           </Calendar>
@@ -206,12 +206,12 @@ function JollyDateRangePicker<T extends AriaDateValue>({
         <Dialog className="outline-none">
           <RangeCalendar defaultFocusedValue={range || props.placeholderValue || !timeZone ? undefined : todayAt(timeZone, new Date())}>
             <CalendarHeading />
-            <CalendarGrid>
+            <CalendarGrid timeZone={timeZone}>
               <CalendarGridHeader>
                 {(day) => <CalendarHeaderCell>{day}</CalendarHeaderCell>}
               </CalendarGridHeader>
               <CalendarGridBody>
-                {(date) => <CalendarCell date={date} timeZone={timeZone} />}
+                {(date) => <CalendarCell date={date} />}
               </CalendarGridBody>
             </CalendarGrid>
           </RangeCalendar>

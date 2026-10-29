@@ -493,3 +493,25 @@ test('calendar: marks today and opens on today at the place of the date, not in 
     vi.useRealTimers()
   }
 })
+
+test.each([
+  ['calendar', () => <JollyCalendar aria-label="Date" timeZone={parseTimeZone('Pacific/Pago_Pago')} />],
+  ['range calendar', () => <JollyRangeCalendar aria-label="Stay" timeZone={parseTimeZone('Pacific/Pago_Pago')} />],
+])('%s: a screen reader hears Today on today at the place, not on today in the zone of the browser', async (_, Component) => {
+  // Arrange
+  vi.useFakeTimers({ toFake: ['Date'] })
+  // 05:00 UTC on September 1 is August 31 in Pago Pago, and September 1 in Kiritimati, the zone of the component tests.
+  vi.setSystemTime(new Date('2026-09-01T05:00:00Z'))
+  try {
+    // Act
+    const screen = await render(<Component />)
+
+    // Assert
+    await expect.element(screen.getByRole('button', { name: 'Today, Monday, August 31, 2026', exact: true })).toHaveAttribute('data-today')
+    const browserToday = screen.getByRole('button', { name: /September 1, 2026/ })
+    await expect.element(browserToday).toHaveAccessibleName('Tuesday, September 1, 2026')
+    await expect.element(browserToday).not.toHaveAttribute('data-today')
+  } finally {
+    vi.useRealTimers()
+  }
+})

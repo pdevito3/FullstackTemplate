@@ -22,7 +22,6 @@ public class Workshop : BaseEntity, ITenantable
     [NotSensitive] public int Capacity { get; private set; }
     [NotSensitive] public WorkshopStatus Status { get; private set; } = default!;
 
-    /// <summary>The user ID of the member who added the workshop. Null when an agent or system work added it.</summary>
     [NotSensitive] public string? OrganizerId { get; private set; }
 
     public static Workshop Create(Venue venue, WorkshopForCreation workshopForCreation)
@@ -51,8 +50,7 @@ public class Workshop : BaseEntity, ITenantable
         GuardVersion(workshopForUpdate.Version);
         ValidationException.Must(Status.CanBeEdited, "status",
             $"A {Status.Words} workshop cannot be changed.");
-        if (workshopForUpdate.Title == Title && workshopForUpdate.StartsAt == StartsAt
-            && workshopForUpdate.Capacity == Capacity)
+        if (HasValuesOf(workshopForUpdate))
             return this;
 
         Title = workshopForUpdate.Title;
@@ -64,6 +62,10 @@ public class Workshop : BaseEntity, ITenantable
 
         return this;
     }
+
+    public bool HasValuesOf(WorkshopForUpdate workshopForUpdate)
+        => workshopForUpdate.Title == Title && workshopForUpdate.StartsAt == StartsAt
+            && workshopForUpdate.Capacity == Capacity;
 
     public Workshop Schedule(SchedulableStart start)
     {
@@ -79,8 +81,6 @@ public class Workshop : BaseEntity, ITenantable
 
     public IReadOnlyList<WorkshopAction> AllowedActions(Caller caller) => WorkshopAction.AllowedFor(caller, OrganizerId, Status);
 
-    /// <summary>The rule on the row that each command of <see cref="WorkshopAction"/> checks after the load.</summary>
-    /// <exception cref="ForbiddenAccessException">The caller is not the organizer and cannot manage the tenant.</exception>
     public void GuardChangeBy(Caller caller)
     {
         if (!IsChangeableBy(caller, OrganizerId))

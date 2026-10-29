@@ -30,10 +30,13 @@ public static class UpdateWorkshop
                 .GetById(request.Id, cancellationToken);
             workshop.GuardChangeBy(caller);
 
-            workshop.Update(request.Dto.ToWorkshopForUpdate());
+            var workshopForUpdate = request.Dto.ToWorkshopForUpdate();
+            var changes = !workshop.HasValuesOf(workshopForUpdate);
+            workshop.Update(workshopForUpdate);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.Here().Information("Updated workshop {WorkshopId}", workshop.Id);
+            if (changes)
+                _logger.Here().Information("Updated workshop {WorkshopId}", workshop.Id);
 
             var venue = await dbContext.Venues
                 .TagWithOperationCallSite("workshops.update.load_venue")

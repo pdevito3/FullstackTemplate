@@ -19,8 +19,7 @@ export function workshopsPage(page: Page) {
       }, right)
     },
 
-    /** How far the content of the box that holds the table goes past its right edge, so that a user must scroll it. */
-    async tableScroll() {
+    async sidewaysOverflowOfTable() {
       return at.grid.evaluate((grid) => grid.parentElement!.scrollWidth - grid.parentElement!.clientWidth)
     },
 

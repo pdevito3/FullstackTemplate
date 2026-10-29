@@ -73,7 +73,6 @@ interface WorkshopRowsProps {
 }
 
 function WorkshopRows({ list, search, page, onPageChange }: WorkshopRowsProps) {
-  // A phone has no room for four columns, so the title cell shows the start and the capacity under the title.
   const isMobile = useIsMobile()
 
   if (list.isPending) {

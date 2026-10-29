@@ -384,7 +384,7 @@ test.describe('the workshop list on a 320 px phone', () => {
 
     await workshops.openList()
 
-    expect(await workshops.tableScroll()).toBe(0)
+    expect(await workshops.sidewaysOverflowOfTable()).toBe(0)
     expect(await workshops.pageOverflow()).toBe(0)
     await expect(workshops.at.row('Intro to Kubb for product teams')).toContainText('120')
     expect(await workshops.textOverflowPast(workshops.at.rowStatus('Intro to Kubb for product teams', 'Draft'))).toBeLessThanOrEqual(0)

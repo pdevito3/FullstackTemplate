@@ -7,6 +7,5 @@ public sealed record WorkshopForCreation
     public string Title { get; init; } = default!;
     public DateTimeOffset StartsAt { get; init; }
     public int Capacity { get; init; }
-    /// <summary>The user ID of the member who adds the workshop. Null when another kind of caller adds it.</summary>
     public string? OrganizerId { get; init; }
 }

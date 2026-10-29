@@ -66,7 +66,6 @@ export function WorkshopActions({ workshop, pendingAction, onAction }: WorkshopA
   )
 }
 
-/** A cancel cannot be undone, so the Cancel workshop button opens a dialog that asks first. */
 function ConfirmCancel({ children, onConfirm }: { children: ReactElement; onConfirm: () => void }) {
   return (
     <ResponsiveDialogTrigger>

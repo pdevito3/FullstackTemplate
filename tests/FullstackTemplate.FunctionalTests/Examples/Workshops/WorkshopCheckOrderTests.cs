@@ -18,8 +18,6 @@ using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
 
-// Each test sends one request that breaks two steps of "The order of the checks" in docs/backend/features-and-cqrs.md,
-// and asserts the response of the first step.
 public class WorkshopCheckOrderTests : TestBase
 {
     private const string RowRefusal = "Only the organizer of this workshop or a tenant admin can change it.";
@@ -29,7 +27,7 @@ public class WorkshopCheckOrderTests : TestBase
     {
         // Arrange
         var members = await AddMembersAsync();
-        FactoryClient.SignInAsAppUser(members.Other.Identifier);
+        FactoryClient.SignInAsAppUser(members.OtherWorkshopManager.Identifier);
 
         // Act
         var result = await FactoryClient.PutJsonRequestAsync(ApiRoutes.Workshops.Update(EntityId.New(Workshop.IdPrefix)),
@@ -49,7 +47,7 @@ public class WorkshopCheckOrderTests : TestBase
         // Arrange
         var members = await AddMembersAsync();
         var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
-        FactoryClient.SignInAsAppUser(members.Other.Identifier);
+        FactoryClient.SignInAsAppUser(members.OtherWorkshopManager.Identifier);
 
         // Act
         var result = await SendAsync(action, workshop);
@@ -80,7 +78,7 @@ public class WorkshopCheckOrderTests : TestBase
         // Arrange
         var members = await AddMembersAsync();
         var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
-        FactoryClient.SignInAsAppUser(members.Admin.Identifier);
+        FactoryClient.SignInAsAppUser(members.TenantAdmin.Identifier);
 
         // Act
         var result = await SendAsync("Update", workshop);
@@ -98,13 +96,13 @@ public class WorkshopCheckOrderTests : TestBase
 
         // Act
         var byOrganizer = await ActionsAsync(members.Organizer, workshop.Id);
-        var byOther = await ActionsAsync(members.Other, workshop.Id);
-        var byAdmin = await ActionsAsync(members.Admin, workshop.Id);
+        var byOtherWorkshopManager = await ActionsAsync(members.OtherWorkshopManager, workshop.Id);
+        var byTenantAdmin = await ActionsAsync(members.TenantAdmin, workshop.Id);
 
         // Assert
         byOrganizer.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
-        byOther.ShouldBe(["detail: ", "row: "]);
-        byAdmin.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
+        byOtherWorkshopManager.ShouldBe(["detail: ", "row: "]);
+        byTenantAdmin.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
     }
 
     [Test]
@@ -113,7 +111,7 @@ public class WorkshopCheckOrderTests : TestBase
         // Arrange
         var members = await AddMembersAsync();
         var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
-        FactoryClient.SignInAsAppUser(members.Other.Identifier);
+        FactoryClient.SignInAsAppUser(members.OtherWorkshopManager.Identifier);
         await using var client = await CreateMcpClientAsync();
 
         // Act
@@ -199,9 +197,8 @@ public class WorkshopCheckOrderTests : TestBase
         dto.Version.ShouldBe(workshop.Version);
     }
 
-    private sealed record Members(User Organizer, User Other, User Admin, Venue Venue);
+    private sealed record Members(User Organizer, User OtherWorkshopManager, User TenantAdmin, Venue Venue);
 
-    // The organizer and the other member hold only manage_workshops. The admin also holds manage_tenant.
     private static async Task<Members> AddMembersAsync()
     {
         TestGraph.Start(out _)
@@ -216,7 +213,6 @@ public class WorkshopCheckOrderTests : TestBase
         return new Members(users[0], users[1], users[2], venue);
     }
 
-    // The workshop was scheduled 30 days before its start, and its start is now today at its venue.
     private static async Task<Workshop> AddScheduledWorkshopThatStartsTodayAsync(Members members)
     {
         var zone = members.Venue.TimeZone;

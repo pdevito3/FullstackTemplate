@@ -5,19 +5,17 @@ using Venues;
 
 public sealed record ScheduleCase
 {
-    public ScheduleCase(Workshop workshop, Venue venue, DateTimeOffset now, uint version)
+    public ScheduleCase(Workshop workshop, Venue venue, DateTimeOffset now, uint loadedVersion)
     {
         if (workshop.VenueId != venue.Id)
             throw new ArgumentException("Give the venue of the workshop.", nameof(venue));
-        (Workshop, Venue, Now, Version) = (workshop, venue, now, version);
+        (Workshop, Venue, Now, LoadedVersion) = (workshop, venue, now, loadedVersion);
     }
 
     public Workshop Workshop { get; }
     public Venue Venue { get; }
     public DateTimeOffset Now { get; }
-
-    /// <summary>The version of the workshop that the caller loaded.</summary>
-    public uint Version { get; }
+    public uint LoadedVersion { get; }
 }
 
 public abstract record ScheduleRefusal
@@ -56,10 +54,6 @@ public static class WorkshopScheduling
     private static readonly Func<ScheduleCase, ScheduleRefusal?>[] Guards = [CurrentVersion, Movable];
     private static readonly Func<ScheduleCase, ScheduleRefusal?>[] StartRules = [AfterToday, InOpeningHours];
 
-    /// <summary>
-    /// Checks in the order of the checks of a command: the version, the status, the no-op of a workshop that is
-    /// already scheduled, then the rules of the start.
-    /// </summary>
     public static ScheduleDecision Decide(ScheduleCase schedule)
     {
         if (FirstRefusal(Guards, schedule) is { } refusal)
@@ -80,7 +74,7 @@ public static class WorkshopScheduling
         => new(new SchedulableStart(schedule.Workshop.Id, schedule.Workshop.StartsAt));
 
     private static ScheduleRefusal.StaleVersion? CurrentVersion(ScheduleCase schedule)
-        => schedule.Version == schedule.Workshop.Version
+        => schedule.LoadedVersion == schedule.Workshop.Version
             ? null
             : new ScheduleRefusal.StaleVersion(StaleVersionException.Field, StaleVersionException.StaleMessage);
 

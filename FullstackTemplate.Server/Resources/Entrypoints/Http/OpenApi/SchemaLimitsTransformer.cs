@@ -48,8 +48,10 @@ public sealed class SchemaLimitsTransformer : IOpenApiSchemaTransformer
             schema.Maximum = maximum.Maximum.ToString(CultureInfo.InvariantCulture);
         }
 
+        // A bound is a JSON number, which can have an exponent. Another transformer can write one past the decimal range
         if (schema is { Minimum: { } low, Maximum: { } high }
-            && decimal.Parse(low, CultureInfo.InvariantCulture) > decimal.Parse(high, CultureInfo.InvariantCulture))
+            && double.Parse(low, NumberStyles.Float, CultureInfo.InvariantCulture)
+               > double.Parse(high, NumberStyles.Float, CultureInfo.InvariantCulture))
             throw NoValuePasses(property, low, high);
 
         return Task.CompletedTask;

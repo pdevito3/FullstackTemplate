@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useId, useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { OperatorType, Filter, FilterControlProps, FilterOption } from '../types'
 import { getDefaultOperator, Operators, pickOperator } from '../utils/operators'
+import { hasEndQuote, optionsEndQuoteMessage } from '../utils/querykit-text'
 import { FilterControlFooter } from './filter-control-footer'
 import { OperatorSelect } from './operator-select'
 
@@ -47,6 +48,11 @@ export function MultiSelectFilter({
   const rootOptions = useMemo(() => options.filter(opt => !opt.isNested), [options])
   const allRootSelected = rootOptions.length > 0 && rootOptions.every(opt => selected.includes(opt.value))
 
+  const labelOf = (value: string) => options.find((opt) => opt.value === value)?.label ?? value
+  const endQuoteValues = selected.filter(hasEndQuote)
+  const canSubmit = selected.length > 0 && endQuoteValues.length === 0
+  const errorId = useId()
+
   const toggleOption = (value: string) => {
     setSelected((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
@@ -71,15 +77,11 @@ export function MultiSelectFilter({
   }
 
   const handleSubmit = () => {
-    if (selected.length === 0) {
+    if (!canSubmit) {
       return
     }
 
-    // Get labels for the selected values
-    const selectedLabels = selected.map((value) => {
-      const option = options.find((opt) => opt.value === value)
-      return option?.label ?? value
-    })
+    const selectedLabels = selected.map(labelOf)
 
     onSubmit({
       propertyKey,
@@ -140,6 +142,8 @@ export function MultiSelectFilter({
               >
                 <Checkbox
                   isSelected={selected.includes(option.value)}
+                  isInvalid={endQuoteValues.includes(option.value)}
+                  aria-describedby={endQuoteValues.includes(option.value) ? errorId : undefined}
                   onChange={() => toggleOption(option.value)}
                   className="flex-1"
                 >
@@ -159,10 +163,16 @@ export function MultiSelectFilter({
             ))
           )}
         </div>
+
+        {endQuoteValues.length > 0 && (
+          <p id={errorId} role="alert" className="text-destructive text-sm">
+            {optionsEndQuoteMessage(endQuoteValues.map(labelOf))}
+          </p>
+        )}
       </div>
 
       <FilterControlFooter surface={surface}>
-        <Button onPress={handleSubmit} isDisabled={selected.length === 0} className="w-full">
+        <Button onPress={handleSubmit} isDisabled={!canSubmit} className="w-full">
           {initialFilter ? 'Update' : 'Add'} ({selected.length})
         </Button>
       </FilterControlFooter>

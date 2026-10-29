@@ -5,52 +5,28 @@ import { offsetAt, wallClockAt } from '@/lib/zoned-time'
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
 import { wallClockZone } from './date-zone'
+import { filterValueFault } from './querykit-text'
 import { LogicalOperators } from './operators'
 
 /**
- * Convert filter state to QueryKit filter string
+ * Convert filter state to QueryKit filter string. A filter with a value that QueryKit cannot hold is left out, and its
+ * badge says so.
  */
 export function toQueryKitString(state: FilterState): string {
-  if (state.filters.length === 0) {
-    return ''
-  }
-
-  if (state.filters.length === 1) {
-    return convertFilterOrGroup(state.filters[0])
-  }
-
-  const filterStrings = state.filters.map(convertFilterOrGroup)
-  const operator = state.rootLogicalOperator === LogicalOperators.AND ? ' && ' : ' || '
-
-  return filterStrings.join(operator)
+  return joinFilters(state.filters, state.rootLogicalOperator)
 }
 
-/**
- * Convert a single filter or group to QueryKit string
- */
+function joinFilters(items: (Filter | FilterGroup)[], logicalOperator: FilterGroup['logicalOperator']): string {
+  const operator = logicalOperator === LogicalOperators.AND ? ' && ' : ' || '
+  return items.map(convertFilterOrGroup).filter(Boolean).join(operator)
+}
+
 function convertFilterOrGroup(item: Filter | FilterGroup): string {
   if (isFilter(item)) {
-    return convertFilter(item)
+    return filterValueFault(item) ? '' : convertFilter(item)
   }
-  return convertGroup(item)
-}
-
-/**
- * Convert a filter group to QueryKit string
- */
-function convertGroup(group: FilterGroup): string {
-  if (group.filters.length === 0) {
-    return ''
-  }
-
-  if (group.filters.length === 1) {
-    return `(${convertFilterOrGroup(group.filters[0])})`
-  }
-
-  const filterStrings = group.filters.map(convertFilterOrGroup)
-  const operator = group.logicalOperator === LogicalOperators.AND ? ' && ' : ' || '
-
-  return `(${filterStrings.join(operator)})`
+  const filters = joinFilters(item.filters, item.logicalOperator)
+  return filters ? `(${filters})` : ''
 }
 
 /**
@@ -84,9 +60,21 @@ function convertFilter(filter: Filter): string {
  * Convert a text filter to QueryKit string
  */
 function convertTextFilter(propertyKey: string, operator: string, value: string): string {
-  // For text values, wrap in quotes if they contain spaces
-  const quotedValue = value.includes(' ') ? `"${value}"` : value
-  return `${propertyKey} ${operator} ${quotedValue}`
+  return `${propertyKey} ${operator} ${quoteText(value)}`
+}
+
+/**
+ * QueryKit reads an unquoted value as a name, a number, or `null`, and it has no escape in `"..."`. So a value with a
+ * quote goes in a raw literal: the value between runs of quotes that are longer than each run in the value, and at
+ * least three long.
+ */
+function quoteText(value: string): string {
+  if (!value.includes('"')) {
+    return `"${value}"`
+  }
+  const longestRun = Math.max(...(value.match(/"+/g) ?? []).map((run) => run.length))
+  const delimiter = '"'.repeat(Math.max(3, longestRun + 1))
+  return `${delimiter}${value}${delimiter}`
 }
 
 /**
@@ -103,7 +91,7 @@ function convertMultiSelectFilter(
   }
 
   // Format array values
-  const formattedValues = value.map((v) => (v.includes(' ') ? `"${v}"` : v)).join(', ')
+  const formattedValues = value.map(quoteText).join(', ')
 
   // Add % prefix to operator for "all must match" semantics
   const finalOperator = matchAll ? `%${operator}` : operator

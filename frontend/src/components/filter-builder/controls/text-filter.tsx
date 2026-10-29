@@ -5,6 +5,7 @@ import { ResponsiveDialogFooter } from '@/components/ui/responsive-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Filter, FilterControlProps, OperatorType } from '../types'
+import { withoutEndQuotes } from '../utils/querykit-text'
 import {
   getDefaultOperator,
   getOperatorsForControlType,
@@ -49,8 +50,10 @@ export function TextFilter({
   const supportsCaseSensitivity = operatorSupportsCaseSensitivity(operator)
   const valueId = useId()
 
+  const text = withoutEndQuotes(value.trim())
+
   const handleSubmit = () => {
-    if (!value.trim()) {
+    if (!text.trim()) {
       return
     }
 
@@ -65,7 +68,7 @@ export function TextFilter({
       propertyLabel,
       controlType: 'text',
       operator: finalOperator,
-      value: value.trim(),
+      value: text,
       caseSensitive,
     } as Omit<Filter, 'id'>)
   }
@@ -109,7 +112,7 @@ export function TextFilter({
         <Button variant="outline" onPress={onCancel}>
           Cancel
         </Button>
-        <Button onPress={handleSubmit} isDisabled={!value.trim()}>
+        <Button onPress={handleSubmit} isDisabled={!text.trim()}>
           {initialFilter ? 'Update' : 'Add'} Filter
         </Button>
       </ResponsiveDialogFooter>

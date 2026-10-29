@@ -85,6 +85,7 @@ public class WorkshopListQueryTests : TestBase
     [
         ("title == \"\"\"Say \"hi\" now\"\"\"", ["Say \"hi\" now"]),
         ("title == \"\"\"\"a\"\"\"b\"\"\"\"", ["a\"\"\"b"]),
+        ("title @=* \"\"\"say \"HI\"\"\"", ["Say \"hi\" now"]),
         (@"title == ""c\d""", [@"c\d"]),
         ("title == \"in-progress\"", ["in-progress"]),
         ("title == \"a.b\"", ["a.b"]),

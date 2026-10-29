@@ -262,7 +262,7 @@ const filterConfig = [
   filterOptions={filterConfig}
   onChange={(state) => {
     const queryString = toQueryKitString(state)
-    // "firstName == John && status ^^ [active]"
+    // 'firstName == "John" && status ^^ ["active"]'
   }}
 />
 ```

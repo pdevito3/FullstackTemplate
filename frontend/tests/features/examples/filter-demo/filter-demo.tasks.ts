@@ -139,7 +139,7 @@ export function filterDemoPage(page: Page) {
     async addTextFilter(propertyLabel: string, value: string) {
       await at.addFilterMenu.click()
       await at.property(propertyLabel).click()
-      await at.control(propertyLabel).getByRole('textbox', { name: 'Value', exact: true }).fill(value)
+      await at.textValue(propertyLabel).fill(value)
       await at.addFilter(propertyLabel).click()
       await expect(at.control(propertyLabel)).toBeHidden()
     },

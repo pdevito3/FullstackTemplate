@@ -37,6 +37,7 @@ export const filterDemo = (page: Page) => {
     selectMonth: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Select month', exact: true }),
     monthOption: (propertyLabel: string, name: string) =>
       control(propertyLabel).getByRole('listbox', { name: 'Month picker' }).getByRole('option', { name, exact: true }),
+    textValue: (propertyLabel: string) => control(propertyLabel).getByRole('textbox', { name: 'Value', exact: true }),
     addFilter: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: 'Add Filter', exact: true }),
     addSelected: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: /^Add \(\d+\)$/ }),
     option: (propertyLabel: string, name: string) => control(propertyLabel).getByRole('checkbox', { name, exact: true }),

@@ -133,6 +133,8 @@ describe('timeZoneLabel', () => {
     ['Europe/Berlin', 'Germany Time'],
     ['Asia/Bangkok', 'Thailand Time'],
     ['America/New_York', 'Eastern Time'],
+    ['US/Eastern', 'Eastern Time'],
+    ['Brazil/East', 'São Paulo Time'],
     ['America/Phoenix', 'Mountain Standard Time'],
     ['UTC', 'Coordinated Universal Time'],
     ['Etc/GMT+5', 'GMT-05:00'],

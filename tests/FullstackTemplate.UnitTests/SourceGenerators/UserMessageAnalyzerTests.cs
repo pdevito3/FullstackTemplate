@@ -1109,16 +1109,21 @@ public class UserMessageAnalyzerTests
             namespace App
             {
                 using System.Collections.Generic;
+                using System.Collections.Immutable;
 
                 public class Grade : IFixedNames
                 {
                     private static readonly string[] Allowed = ListNames().ToArray();
+
+                    private static readonly ImmutableArray<string> Fixed = ListNames().ToImmutableArray();
 
                     public static List<string> ListNames() => ["FirstGrade"];
 
                     public static void Inline() => throw new ValidationException("grade", $"Use {string.Join(", ", Grade.ListNames().ToArray())}.");
 
                     public static void Field() => throw new ValidationException("grade", $"Use {string.Join(", ", Allowed)}.");
+
+                    public static void Immutable() => throw new ValidationException("grade", $"Use {string.Join(", ", Fixed)}.");
 
                     public static void Local()
                     {
@@ -1132,6 +1137,7 @@ public class UserMessageAnalyzerTests
         // Assert
         diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
             "A user message shows the stored name 'ListNames().ToArray()'. " + Fix,
+            "A user message shows the stored name 'ListNames().ToImmutableArray()'. " + Fix,
             "A user message shows the stored name 'Grade.ListNames().ToArray()'. " + Fix,
             "A user message shows the stored name 'Grade.ListNames().ToArray()'. " + Fix,
         ]);
@@ -1156,6 +1162,9 @@ public class UserMessageAnalyzerTests
                     public static void Cases(IReadOnlyList<(Permission Permission, string Case)> options)
                         => throw new ForbiddenAccessException($"You need {string.Join(", or ", options.Select(o => $"the {o.Permission.Value} permission {o.Case}"))}.");
 
+                    public static void Joined(IReadOnlyList<Permission> permissions)
+                        => throw new ForbiddenAccessException($"You need {string.Join(", ", permissions.Select(p => "'" + p.Value + "'"))}.");
+
                     public static void Words(IReadOnlyList<(Permission Permission, string Case)> options)
                         => throw new ForbiddenAccessException($"You need {string.Join(", or ", options.Select(o => $"the {o.Permission.Words} permission {o.Case}"))}.");
                 }
@@ -1166,6 +1175,7 @@ public class UserMessageAnalyzerTests
         diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
             "A user message shows the stored name 'permissions.Select(p => $\"'{p.Value}'\")'. " + Fix,
             "A user message shows the stored name 'options.Select(o => $\"the {o.Permission.Value} permission {o.Case}\")'. " + Fix,
+            "A user message shows the stored name 'permissions.Select(p => \"'\" + p.Value + \"'\")'. " + Fix,
         ]);
     }
 
@@ -1174,9 +1184,16 @@ public class UserMessageAnalyzerTests
     {
         // Act
         var diagnostics = await Run("""
+            namespace System.Paint
+            {
+                public enum Shade { Red, Blue }
+            }
+
             namespace App
             {
                 using System;
+                using System.IO;
+                using System.Paint;
 
                 // The shape of the overlap message of WorkingHours in CarePoint
                 public static class Blocks
@@ -1184,6 +1201,14 @@ public class UserMessageAnalyzerTests
                     public static void Overlaps(DayOfWeek day) => throw new ValidationException("blocks", $"This block overlaps the {day} block.");
 
                     public static void OverlapsText(DayOfWeek day) => throw new ValidationException("blocks", $"This block overlaps the {day.ToString()} block.");
+
+                    public static void OverlapsName(DayOfWeek day) => throw new ValidationException("blocks", $"This block overlaps the {Enum.GetName(day)} block.");
+
+                    public static void Days() => throw new ValidationException("day", $"Use {string.Join(", ", Enum.GetNames<DayOfWeek>())}.");
+
+                    public static void Open(FileMode mode) => throw new ValidationException("mode", $"Use {mode}.");
+
+                    public static void Paint(Shade shade) => throw new ValidationException("shade", $"Use {shade}.");
 
                     public static void Compare(StringComparison comparison) => throw new ValidationException("compare", $"Use {comparison}.");
 
@@ -1194,6 +1219,8 @@ public class UserMessageAnalyzerTests
 
         // Assert
         diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
+            "A user message shows the enum value 'mode'. " + Fix,
+            "A user message shows the enum value 'shade'. " + Fix,
             "A user message shows the enum value 'comparison'. " + Fix,
             "A user message shows the enum value 'mode'. " + Fix,
         ]);

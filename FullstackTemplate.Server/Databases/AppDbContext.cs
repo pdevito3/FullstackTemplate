@@ -7,6 +7,7 @@ using Domain.Agents;
 using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
+// new-feature:db-usings
 using EntityConfigurations;
 // example:start
 using Examples.Venues;
@@ -43,6 +44,7 @@ public class AppDbContext(
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<Workshop> Workshops => Set<Workshop>();
     // example:end
+    // new-feature:db-sets
     #endregion
 
     private TenantScope? _tenantScope;

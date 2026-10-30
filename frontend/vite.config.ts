@@ -193,7 +193,7 @@ export default defineConfig({
             headless: true,
             instances: [{ browser: 'chromium' }],
             // CI keeps a Playwright trace of each failed test, so that a test that hangs shows the step it waited on.
-            // The trace costs about 40% more run time, so a local run does not record it.
+            // The trace costs about 50% more run time, so a local run does not record it. See docs/frontend/testing.md.
             trace: process.env.CI ? 'retain-on-failure' : 'off',
             commands: {
               answerRequests,

@@ -234,7 +234,7 @@ import { Link } from '@/components/ui/link'
 - The link sets `aria-current="page"` only when it goes to the current page, with the same search params.
 - To disable a link, set `disabled`.
 - `BreadcrumbLink`, `SidebarMenuLink`, and `SidebarMenuSubLink` take the same props.
-- `SidebarMenuLink` and `SidebarMenuSubLink` set `aria-current="page"` from their `isActive` prop, not from the router.
+- `SidebarMenuLink` and `SidebarMenuSubLink` set `aria-current` from their `current` prop, not from the router: `page` on the page of the item, and `true` on a page under it. The `useCurrentNavItem` hook in `components/current-nav-item.ts` picks the one current item of the sidebar with the match of the router.
 - To make another link component, render `RouterLinkPrimitive` in it and wrap it with `createRouterLink`. See `BreadcrumbLink` in `components/ui/breadcrumb.tsx`.
 
 ESLint does not let you import `Link` from `react-aria-components`, `@animate-ui/react/primitives/react-aria`, or `@tanstack/react-router`.

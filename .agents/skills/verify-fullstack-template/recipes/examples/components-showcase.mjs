@@ -157,6 +157,15 @@ export default async ({ page, step, capture, settle, expect }) => {
     await page.getByRole('button', { name: 'Done' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })
+  await step('drawer: Escape closes it while it slides in, and the focus goes back to Open Drawer', async () => {
+    await page.getByRole('button', { name: 'Open Drawer' }).click()
+    await expect(page.getByRole('dialog', { name: 'Drawer Title' })).toBeVisible()
+    const entering = await page.locator('[data-slot="drawer-overlay"]').evaluate((el) => el.hasAttribute('data-entering'))
+    await page.keyboard.press('Escape')
+    if (!entering) throw new Error('the drawer had slid in before the Escape, so this step proves nothing')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Open Drawer' })).toBeFocused()
+  })
 
   await step('dropdown menu: Options shows three items', async () => {
     await page.getByRole('button', { name: 'Options' }).click()

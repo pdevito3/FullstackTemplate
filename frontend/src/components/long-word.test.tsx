@@ -26,6 +26,21 @@ import { Sheet, SheetDescription, SheetHeader, SheetTitle } from '@/components/u
 
 const longWord = 'Northdepotfleetmaintenanceworkorderforthevehiclewithplatexyz'
 
+// Cards are usually in a grid. At 1280 px this grid puts three cards in a row.
+const cardGrid = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+
+// A page form is 512 px wide at 1280 px and the long word fits in it. A form in a dialog is narrower.
+function DialogForm({ children }: { children: ReactNode }) {
+  return (
+    <ResponsiveDialog isOpen>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle>Edit the place</ResponsiveDialogTitle>
+      </ResponsiveDialogHeader>
+      <form className="flex flex-col gap-5">{children}</form>
+    </ResponsiveDialog>
+  )
+}
+
 afterEach(() => {
   toastQueue.clear()
 })
@@ -70,7 +85,20 @@ async function expectLongWordToFit(textSelector: string, boxSelector: string, co
   }
 }
 
-const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; text: string; box: string; count: number }[] = [
+// A part gets a 1280 px case only when its real layout at 1280 px is too narrow for the long word.
+// In a wider layout the word fits, and the case cannot fail.
+const allWidths = [320, 1280]
+const phoneOnly = [320]
+
+const cases: {
+  name: string
+  ui: () => ReactNode
+  open?: () => Promise<void>
+  text: string
+  box: string
+  count: number
+  widths: number[]
+}[] = [
   {
     name: 'responsive dialog',
     ui: () => (
@@ -84,6 +112,7 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: '[data-slot=responsive-dialog-title], [data-slot=responsive-dialog-description]',
     box: '[data-slot=responsive-dialog-content]',
     count: 2,
+    widths: allWidths,
   },
   {
     name: 'dialog',
@@ -98,6 +127,7 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: '[data-slot=dialog-title], [data-slot=dialog-description]',
     box: '[data-slot=dialog-content]',
     count: 2,
+    widths: allWidths,
   },
   {
     name: 'sheet',
@@ -112,35 +142,43 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: '[data-slot=sheet-title], [data-slot=sheet-description]',
     box: '[data-slot=sheet-content]',
     count: 2,
+    widths: allWidths,
   },
   {
     name: 'drawer',
     ui: () => (
       <Drawer isOpen>
-        <DrawerHeader>
-          <DrawerTitle>{longWord} details</DrawerTitle>
-          <DrawerDescription>{longWord} goes away.</DrawerDescription>
-        </DrawerHeader>
+        {/* A bottom drawer is as wide as the window, so its content is in a narrow column. */}
+        <div data-testid="drawer-column" className="mx-auto w-full max-w-sm">
+          <DrawerHeader>
+            <DrawerTitle>{longWord} details</DrawerTitle>
+            <DrawerDescription>{longWord} goes away.</DrawerDescription>
+          </DrawerHeader>
+        </div>
       </Drawer>
     ),
     text: '[data-slot=drawer-title], [data-slot=drawer-description]',
-    box: '[data-slot=drawer-content]',
+    box: '[data-testid=drawer-column]',
     count: 2,
+    widths: allWidths,
   },
   {
     name: 'card',
     ui: () => (
-      <Card>
-        <CardHeader>
-          <CardTitle>{longWord}</CardTitle>
-          <CardDescription>{longWord}</CardDescription>
-          <CardAction>Edit</CardAction>
-        </CardHeader>
-      </Card>
+      <div className={cardGrid}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{longWord}</CardTitle>
+            <CardDescription>{longWord}</CardDescription>
+            <CardAction>Edit</CardAction>
+          </CardHeader>
+        </Card>
+      </div>
     ),
     text: '[data-slot=card-title], [data-slot=card-description]',
     box: '[data-slot=card]',
     count: 2,
+    widths: allWidths,
   },
   {
     name: 'page heading',
@@ -148,6 +186,7 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: 'h1',
     box: 'body',
     count: 1,
+    widths: phoneOnly,
   },
   {
     name: 'query error',
@@ -155,13 +194,19 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: '[role=alert] p',
     box: '[role=alert]',
     count: 2,
+    widths: phoneOnly,
   },
   {
     name: 'refused save alert',
-    ui: () => <RefusedSaveAlert problem={{ kind: 'refused', messages: [`${longWord} is in use.`] }} />,
+    ui: () => (
+      <DialogForm>
+        <RefusedSaveAlert problem={{ kind: 'refused', messages: [`${longWord} is in use.`] }} />
+      </DialogForm>
+    ),
     text: '[role=alert] p',
     box: '[role=alert]',
     count: 1,
+    widths: allWidths,
   },
   {
     name: 'select option',
@@ -178,19 +223,22 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: '[data-slot=select-item] > span:first-child',
     box: '[role=listbox]',
     count: 1,
+    widths: allWidths,
   },
   {
     name: 'combobox option',
     ui: () => (
-      <Combobox>
-        <Label>Place</Label>
-        <ComboboxInput />
-        <ComboboxContent>
-          <ComboboxList>
-            <ComboboxItem id="place">{longWord}</ComboboxItem>
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
+      <DialogForm>
+        <Combobox>
+          <Label>Place</Label>
+          <ComboboxInput />
+          <ComboboxContent>
+            <ComboboxList>
+              <ComboboxItem id="place">{longWord}</ComboboxItem>
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
+      </DialogForm>
     ),
     open: async () => {
       await userEvent.click(page.getByRole('combobox', { name: 'Place' }))
@@ -199,30 +247,39 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     text: '[data-slot=combobox-item]',
     box: '[role=listbox]',
     count: 1,
+    widths: allWidths,
   },
   {
     name: 'multi-select chip',
-    ui: () => <MultiSelect options={[{ value: 'place', label: longWord }]} defaultValue={['place']} />,
+    ui: () => (
+      <DialogForm>
+        <MultiSelect options={[{ value: 'place', label: longWord }]} defaultValue={['place']} />
+      </DialogForm>
+    ),
     text: '[data-slot=combobox-chip]',
     box: '[data-slot=combobox-chips]',
     count: 1,
+    widths: phoneOnly,
   },
   {
     name: 'field description and error',
     ui: () => (
-      <div data-testid="field">
-        <FieldDescription>Sent to {longWord}@example.com</FieldDescription>
-        <FieldError>{longWord}@example.com is in use.</FieldError>
-      </div>
+      <DialogForm>
+        <div data-testid="field">
+          <FieldDescription>Sent to {longWord}@example.com</FieldDescription>
+          <FieldError>{longWord}@example.com is in use.</FieldError>
+        </div>
+      </DialogForm>
     ),
     text: '[data-slot=field-description], [data-slot=field-error]',
     box: '[data-testid=field]',
     count: 2,
+    widths: allWidths,
   },
 ]
 
-for (const width of [320, 1280]) {
-  for (const { name, ui, open, text, box, count } of cases) {
+for (const { name, ui, open, text, box, count, widths } of cases) {
+  for (const width of widths) {
     test(`at ${width} px, a ${name} wraps a long word in its box`, async () => {
       // Arrange
       await page.viewport(width, 800)
@@ -235,16 +292,17 @@ for (const width of [320, 1280]) {
       await expectLongWordToFit(text, box, count)
     })
   }
-
-  test(`at ${width} px, a toast wraps a long word in its title and description`, async () => {
-    // Arrange
-    await page.viewport(width, 800)
-    await render(<Toaster />)
-
-    // Act
-    Notification.success(`Deleted ${longWord}`, { description: `${longWord} goes away.` })
-
-    // Assert
-    await expectLongWordToFit('[data-slot=toast] [slot=title], [data-slot=toast] [slot=description]', '[data-slot=toast]', 2)
-  })
 }
+
+// A toast is at most 500 px wide at each width, so a phone is the only width where the long word does not fit.
+test('at 320 px, a toast wraps a long word in its title and description', async () => {
+  // Arrange
+  await page.viewport(320, 800)
+  await render(<Toaster />)
+
+  // Act
+  Notification.success(`Deleted ${longWord}`, { description: `${longWord} goes away.` })
+
+  // Assert
+  await expectLongWordToFit('[data-slot=toast] [slot=title], [data-slot=toast] [slot=description]', '[data-slot=toast]', 2)
+})

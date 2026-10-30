@@ -141,7 +141,7 @@ function ResponsiveDialog({
           {showCloseButton && (
             <ResponsiveDialogClose
               variant="ghost"
-              className="absolute top-2 right-2 z-20 max-md:size-8"
+              className="absolute top-2 right-2 z-20 max-md:size-8 md:top-3"
               size="icon-sm"
             >
               <HugeiconsIcon icon={Cancel01Icon} />
@@ -207,7 +207,7 @@ function ResponsiveDialogTitle({
       slot="title"
       data-slot="responsive-dialog-title"
       className={cn(
-        "text-base leading-none font-semibold md:text-sm md:font-medium",
+        "text-base leading-snug font-semibold wrap-anywhere md:text-sm md:font-medium",
         "in-data-close-button:max-md:px-8 in-data-close-button:md:pr-8",
         className
       )}
@@ -226,7 +226,7 @@ function ResponsiveDialogDescription({
       id={useDialogDescriptionId(id)}
       data-slot="responsive-dialog-description"
       className={cn(
-        "text-sm text-muted-foreground",
+        "text-sm text-muted-foreground wrap-anywhere",
         "*:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className
       )}

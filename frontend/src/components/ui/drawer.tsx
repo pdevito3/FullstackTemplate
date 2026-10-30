@@ -19,11 +19,12 @@ import {
   useDialogDescriptionId,
 } from "@/components/ui/dialog-description"
 
+function isBefore(node: Node, other: Node) {
+  return (node.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+}
+
 // While the React Aria `Sheet` slides in, it keeps the focus outside the sheet, but it
-// handles Escape only inside the sheet. So the drawer takes an Escape from an element
-// before it in the document: the page, or an overlay under it. An overlay that opens above
-// the drawer, such as a Select in it, portals after it and keeps its own Escape. The
-// Escape stops here, so that an overlay under the drawer does not close too.
+// handles Escape only inside the sheet.
 function CloseOnEscape({
   overlayRef,
   onClose,
@@ -35,7 +36,7 @@ function CloseOnEscape({
     const onKeyDown = (event: KeyboardEvent) => {
       const overlay = overlayRef.current
       if (event.key !== "Escape" || !overlay || !(event.target instanceof Node)) return
-      if (!(event.target.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING)) return
+      if (!isBefore(event.target, overlay)) return
       event.stopPropagation()
       onClose()
     }
@@ -76,7 +77,7 @@ function Drawer({
   children,
   position = "bottom",
   ...props
-}: Omit<SheetOverlayPrimitiveProps, "className" | "children" | "position"> & {
+}: Omit<SheetOverlayPrimitiveProps, "className" | "children" | "position" | "UNSTABLE_portalContainer"> & {
   className?: string
   children: React.ReactNode
   position?: "top" | "right" | "bottom" | "left"
@@ -93,7 +94,9 @@ function Drawer({
     >
       {({ isEntering, isExiting, state }) => (
         <>
-          {isEntering && !isExiting && !props.preventDismissal && <CloseOnEscape overlayRef={overlayRef} onClose={state.close} />}
+          {isEntering && !isExiting && !props.preventDismissal && (
+            <CloseOnEscape overlayRef={overlayRef} onClose={state.close} />
+          )}
           <SheetBackdropPrimitive
             data-slot="drawer-backdrop"
             swipeAnimation="drawer-backdrop-fade"

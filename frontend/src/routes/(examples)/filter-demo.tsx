@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { parseTimeZone } from '@/lib/zoned-time'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/(examples)/filter-demo')({
   component: FilterDemoPage,
@@ -349,7 +350,7 @@ function FilterDemoPage() {
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Filter Builder Demo</h1>
+        <PageHeading className="mb-2">Filter Builder Demo</PageHeading>
         <p className="text-muted-foreground">
           Test the dynamic filter component with various property types,
           operators, and nested grouping.

@@ -7,6 +7,7 @@ const configs = [
   { width: 390, height: 844, scheme: 'dark', fontSize: 16 },
   { width: 1280, height: 800, scheme: 'light', fontSize: 16 },
   { width: 1280, height: 800, scheme: 'dark', fontSize: 16 },
+  { width: 320, height: 640, scheme: 'light', fontSize: 24 },
   { width: 390, height: 844, scheme: 'light', fontSize: 24 },
   { width: 1280, height: 800, scheme: 'light', fontSize: 24 },
 ]
@@ -236,6 +237,44 @@ function markLayoutFaults() {
       }
       checkX &&= !scrolls(nodeStyle.overflowX)
       checkY &&= !scrolls(nodeStyle.overflowY)
+    }
+  }
+
+  // A heading shows its overflow, so a word that is wider than the heading runs over the gutter but can stay inside the window.
+  // Each text node counts only up to the edges of a box inside the heading that clips it, for example a title that truncates.
+  const shownTextOf = (heading) => {
+    const shown = { left: Infinity, right: -Infinity }
+    const walker = document.createTreeWalker(heading, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent.trim() || isHidden(node.parentElement)) continue
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      let { left, right } = range.getBoundingClientRect()
+      for (let box = node.parentElement; box !== heading; box = box.parentElement) {
+        if (!clipsContent(getComputedStyle(box).overflowX)) continue
+        const clip = box.getBoundingClientRect()
+        left = Math.max(left, clip.left)
+        right = Math.min(right, clip.right)
+      }
+      if (right <= left) continue
+      shown.left = Math.min(shown.left, left)
+      shown.right = Math.max(shown.right, right)
+    }
+    return shown
+  }
+  for (const heading of document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')) {
+    if (!heading.offsetWidth || isHidden(heading)) continue
+    const style = getComputedStyle(heading)
+    if (style.display === 'inline' || style.overflowX !== 'visible') continue
+    const rect = heading.getBoundingClientRect()
+    const scale = rect.width / heading.offsetWidth
+    const left = rect.left + (heading.clientLeft + parseFloat(style.paddingLeft)) * scale
+    const right = left + (heading.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) * scale
+    const shown = shownTextOf(heading)
+    const overrun = Math.max(0, shown.right - right) + Math.max(0, left - shown.left)
+    if (overrun > 1) {
+      add(heading, { kind: 'heading text runs past its box', element: heading.dataset.slot ?? heading.tagName.toLowerCase(),
+        how: `runs ${Math.round(overrun)} px past the ${Math.round(right - left)} px of its box` })
     }
   }
   return faults

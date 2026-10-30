@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { formatDate as formatDay } from '@/lib/zoned-time'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/(examples)/weather')({
   component: Index,
@@ -68,7 +69,7 @@ function Index() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Weather Forecast</h1>
+            <PageHeading>Weather Forecast</PageHeading>
             <p className="text-muted-foreground mt-1">
               .NET Aspire + React with a BFF
             </p>

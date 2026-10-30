@@ -8,6 +8,7 @@ import { useCurrentUser } from '@/domain/users/apis/get-current-user'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -21,7 +22,7 @@ function Home() {
   return (
     <div className="bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold tracking-tight">Fullstack Template</h1>
+        <PageHeading>Fullstack Template</PageHeading>
         <p className="text-muted-foreground mt-1">.NET Aspire + React with a BFF</p>
 
         <Card className="mt-8">

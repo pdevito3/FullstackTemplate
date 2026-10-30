@@ -201,7 +201,7 @@ The workshop list checks its search and its page like this: [`listSearchSchema`]
 
 ## Bundle size
 
-`pnpm build` fails when the entry chunk is larger than 400 kB of minified code. The entry chunk loads on each first page. The budget is `entryChunkBudgetKb` in `frontend/vite.config.ts`.
+`pnpm build` fails when the JavaScript that `dist/index.html` loads is more than 950 kB of minified code. That is the entry chunk in the `<script type="module">` tag and each chunk in the `modulepreload` links, which the entry imports statically. The budget does not count the CSS, or the chunk of a route, which loads after the entry runs. The budget is `firstPageBudgetKb` in `frontend/vite.config.ts`. The error gives the size of each chunk that it counts.
 
 When the build fails:
 
@@ -213,9 +213,9 @@ When the build fails:
    ```
 
    The command fails with the budget error, but it writes the list first. The list can contain NUL bytes, so search it with `grep -a` or open it in an editor.
-2. In `dist-stats.yml`, read the modules under the chunk that the budget error names. Find the module that should not be there.
+2. In `dist-stats.yml`, read the modules under the chunks that the budget error names. Find the module that should not be there.
 3. Find the import that brings it in. Usually it is a route option or an inline type import in a route file. See the rules in [Routes](#routes).
-4. If a vendor library must load on the first page, add it to `vendorChunks` in `frontend/vite.config.ts`. It then gets its own chunk.
+4. If a vendor library must load on the first page, you can add it to `vendorChunks` in `frontend/vite.config.ts`. It then gets its own chunk, which the browser caches apart from the app code. The chunk still loads on the first page, so the budget still counts it. A move to `vendorChunks` does not make a build pass.
 5. Increase the budget only when the first page must have the new code. Write the reason in the commit message.
 
 ## Links

@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig, type Plugin, type ProxyOptions } from 'vite'
+import { defineConfig, type Plugin, type ProxyOptions, type Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
@@ -39,22 +39,40 @@ function vendorChunk(id: string): string | undefined {
   )
 }
 
-// The largest entry chunk that `pnpm build` takes, in kB of minified code. See docs/frontend.md, section "Bundle size".
-const entryChunkBudgetKb = 400
+const firstPageBudgetKb = 950
 
-const failOverEntryChunkBudget: Plugin = {
-  name: 'entry-chunk-budget',
+type ChunkSize = { fileName: string; sizeKb: number }
+
+function firstPageChunks(bundle: Rollup.OutputBundle): ChunkSize[] {
+  const chunks = new Map(
+    Object.values(bundle)
+      .filter((output) => output.type === 'chunk')
+      .map((chunk) => [chunk.fileName, chunk]),
+  )
+  const loaded = new Set<Rollup.OutputChunk>()
+  const visit = (chunk: Rollup.OutputChunk | undefined) => {
+    if (!chunk || loaded.has(chunk)) return
+    loaded.add(chunk)
+    chunk.imports.forEach((fileName) => visit(chunks.get(fileName)))
+  }
+  for (const chunk of chunks.values()) if (chunk.isEntry) visit(chunk)
+  return [...loaded]
+    .map((chunk) => ({ fileName: chunk.fileName, sizeKb: Buffer.byteLength(chunk.code) / 1000 }))
+    .sort((a, b) => b.sizeKb - a.sizeKb)
+}
+
+const failOverFirstPageBudget: Plugin = {
+  name: 'first-page-budget',
   apply: 'build',
   writeBundle(_, bundle) {
-    for (const chunk of Object.values(bundle)) {
-      if (chunk.type !== 'chunk' || !chunk.isEntry) continue
-      const sizeKb = Buffer.byteLength(chunk.code) / 1000
-      if (sizeKb > entryChunkBudgetKb) {
-        this.error(
-          `The entry chunk ${chunk.fileName} is ${sizeKb.toFixed(2)} kB, over the budget of ${entryChunkBudgetKb} kB. ` +
-            'Find the module that grew it, and see docs/frontend.md, section "Bundle size".',
-        )
-      }
+    const loaded = firstPageChunks(bundle)
+    const totalKb = loaded.reduce((sum, chunk) => sum + chunk.sizeKb, 0)
+    if (totalKb > firstPageBudgetKb) {
+      this.error(
+        `The first page loads ${totalKb.toFixed(2)} kB, over the budget of ${firstPageBudgetKb} kB: ` +
+          loaded.map((chunk) => `${chunk.fileName} ${chunk.sizeKb.toFixed(2)} kB`).join(', ') +
+          '. Find the module that grew it, and see docs/frontend.md, section "Bundle size".',
+      )
     }
   },
 }
@@ -117,7 +135,7 @@ export default defineConfig({
         exportType: 'default',
       },
     }),
-    failOverEntryChunkBudget,
+    failOverFirstPageBudget,
     failBffRequestsWithNoBff,
   ],
   build: {

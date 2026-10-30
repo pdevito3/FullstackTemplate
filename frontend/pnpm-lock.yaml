@@ -8,6 +8,9 @@ patchedDependencies:
   '@vitest/browser-playwright@5.0.5':
     hash: 32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3
     path: patches/@vitest__browser-playwright@5.0.5.patch
+  '@vitest/browser@5.0.5':
+    hash: d2c0c7008a9fdc0dba85281e9e58a5e58c26ec1c97c9e0cdd14c4d159830a5f6
+    path: patches/@vitest__browser@5.0.5.patch
 
 importers:
 
@@ -4576,7 +4579,7 @@ snapshots:
 
   '@vitest/browser-playwright@5.0.5(patch_hash=32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3)(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
     dependencies:
-      '@vitest/browser': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
+      '@vitest/browser': 5.0.5(patch_hash=d2c0c7008a9fdc0dba85281e9e58a5e58c26ec1c97c9e0cdd14c4d159830a5f6)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       playwright: 1.64.1
       tinyrainbow: 3.2.0
@@ -4587,7 +4590,7 @@ snapshots:
       - utf-8-validate
       - vite
 
-  '@vitest/browser@5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
+  '@vitest/browser@5.0.5(patch_hash=d2c0c7008a9fdc0dba85281e9e58a5e58c26ec1c97c9e0cdd14c4d159830a5f6)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
     dependencies:
       '@blazediff/core': 1.10.0
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))

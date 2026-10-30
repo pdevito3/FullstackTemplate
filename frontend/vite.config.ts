@@ -15,6 +15,7 @@ import {
   releaseRequests,
   takeUnansweredRequests,
 } from './vitest.commands'
+import { firstPageChunks } from './first-page-chunks'
 
 // Vendor libraries that can load on the first page. Each group gets its own
 // chunk, so the entry chunk stays small and the browser can cache the
@@ -39,22 +40,20 @@ function vendorChunk(id: string): string | undefined {
   )
 }
 
-// The largest entry chunk that `pnpm build` takes, in kB of minified code. See docs/frontend.md, section "Bundle size".
-const entryChunkBudgetKb = 400
+const firstPageBudgetKb = 950
 
-const failOverEntryChunkBudget: Plugin = {
-  name: 'entry-chunk-budget',
+const failOverFirstPageBudget: Plugin = {
+  name: 'first-page-budget',
   apply: 'build',
   writeBundle(_, bundle) {
-    for (const chunk of Object.values(bundle)) {
-      if (chunk.type !== 'chunk' || !chunk.isEntry) continue
-      const sizeKb = Buffer.byteLength(chunk.code) / 1000
-      if (sizeKb > entryChunkBudgetKb) {
-        this.error(
-          `The entry chunk ${chunk.fileName} is ${sizeKb.toFixed(2)} kB, over the budget of ${entryChunkBudgetKb} kB. ` +
-            'Find the module that grew it, and see docs/frontend.md, section "Bundle size".',
-        )
-      }
+    const loaded = firstPageChunks(bundle)
+    const totalKb = loaded.reduce((sum, chunk) => sum + chunk.sizeKb, 0)
+    if (totalKb > firstPageBudgetKb) {
+      this.error(
+        `The first page loads ${totalKb.toFixed(2)} kB, over the budget of ${firstPageBudgetKb} kB: ` +
+          loaded.map((chunk) => `${chunk.fileName} ${chunk.sizeKb.toFixed(2)} kB`).join(', ') +
+          '. Find the module that grew it, and see docs/frontend.md, section "Bundle size".',
+      )
     }
   },
 }
@@ -117,7 +116,7 @@ export default defineConfig({
         exportType: 'default',
       },
     }),
-    failOverEntryChunkBudget,
+    failOverFirstPageBudget,
     failBffRequestsWithNoBff,
   ],
   build: {
@@ -140,7 +139,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js'],
+          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js', 'first-page-chunks.test.ts'],
           // A zone far from UTC, so that a test that takes a date from UTC or from the machine fails on every machine.
           // See docs/frontend/testing.md, section "Time zones".
           env: { TZ: 'Pacific/Pago_Pago' },
@@ -175,7 +174,7 @@ export default defineConfig({
             headless: true,
             instances: [{ browser: 'chromium' }],
             // CI keeps a Playwright trace of each failed test, so that a test that hangs shows the step it waited on.
-            // The trace costs about 40% more run time, so a local run does not record it.
+            // The trace costs about 50% more run time, so a local run does not record it. See docs/frontend/testing.md.
             trace: process.env.CI ? 'retain-on-failure' : 'off',
             commands: {
               answerRequests,

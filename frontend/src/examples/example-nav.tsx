@@ -14,13 +14,12 @@ import type { CurrentNavItem } from "@/components/current-nav-item"
 import { exampleItems } from "./example-nav-items"
 
 interface ExampleNavProps {
-  currentPath: string
   current: CurrentNavItem | undefined
   onNavigate: () => void
 }
 
-export function ExampleNav({ currentPath, current, onNavigate }: ExampleNavProps) {
-  const isExampleActive = exampleItems.some((item) => currentPath === item.url || currentPath.startsWith(item.url + "/"))
+export function ExampleNav({ current, onNavigate }: ExampleNavProps) {
+  const isExampleActive = exampleItems.some((item) => item.url === current?.url)
 
   return (
     <Collapsible defaultExpanded={isExampleActive} className="group/collapsible">

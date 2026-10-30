@@ -1,4 +1,4 @@
-import { useMatchRoute, useRouterState } from "@tanstack/react-router"
+import { useMatchRoute } from "@tanstack/react-router"
 import {
   Home01Icon,
   InformationCircleIcon,
@@ -55,8 +55,6 @@ const navUrls = [
 ]
 
 export function AppSidebar() {
-  const routerState = useRouterState()
-  const currentPath = routerState.location.pathname
   const matchRoute = useMatchRoute()
   const current = currentNavItem(navUrls, (to, fuzzy) => matchRoute({ to, fuzzy }) !== false)
   const { setOpenMobile } = useSidebar()
@@ -104,7 +102,7 @@ export function AppSidebar() {
                 })}
 
                 {/* example:start */}
-                <ExampleNav currentPath={currentPath} current={current} onNavigate={closeMobile} />
+                <ExampleNav current={current} onNavigate={closeMobile} />
                 {/* example:end */}
               </SidebarMenu>
             </SidebarGroupContent>

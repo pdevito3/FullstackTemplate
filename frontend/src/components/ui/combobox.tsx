@@ -454,7 +454,7 @@ function ComboboxChip({
       data-slot="combobox-chip"
       className={composeRenderProps(className, (className) =>
         cn(
-          "flex min-h-[calc(--spacing(5.25))] w-fit max-w-full items-center justify-center gap-1 rounded-sm bg-muted px-1.5 text-xs font-medium wrap-anywhere text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0",
+          "flex min-h-[calc(--spacing(5.25))] w-fit items-center justify-center gap-1 rounded-sm bg-muted px-1.5 text-xs font-medium wrap-anywhere text-foreground has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0",
           className
         )
       )}

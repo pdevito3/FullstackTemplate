@@ -102,11 +102,11 @@ export function Toaster() {
               className={cn('size-5 shrink-0 mt-0.5', iconColors[toast.content.type])}
             />
             <div className="flex-1 min-w-0">
-              <Text slot="title" className="block text-sm font-medium text-foreground">
+              <Text slot="title" className="block text-sm font-medium text-foreground wrap-anywhere">
                 {toast.content.message}
               </Text>
               {toast.content.description && (
-                <Text slot="description" className="mt-1 block text-sm text-muted-foreground">
+                <Text slot="description" className="mt-1 block text-sm text-muted-foreground wrap-anywhere">
                   {toast.content.description}
                 </Text>
               )}

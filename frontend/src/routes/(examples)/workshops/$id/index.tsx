@@ -43,7 +43,7 @@ function WorkshopPage() {
         All workshops
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <PageHeading ref={headingRef} className="min-w-0 wrap-anywhere">
+        <PageHeading ref={headingRef}>
           {title}
         </PageHeading>
         <WorkshopStatusBadge status={status} />

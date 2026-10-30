@@ -89,6 +89,7 @@ function Dialog({
         <DialogPrimitive
           data-slot="dialog"
           aria-describedby={descriptionId}
+          data-close-button={showCloseButton || undefined}
           className="[display:inherit] [gap:inherit] outline-none"
         >
           <DialogDescriptionContext.Provider value={setDescriptionId}>
@@ -97,7 +98,7 @@ function Dialog({
           {showCloseButton && (
             <DialogClose
               variant="ghost"
-              className="absolute top-2 right-2"
+              className="absolute top-3 right-2"
               size="icon-sm"
             >
               <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
@@ -129,7 +130,7 @@ function DialogTitle({
       slot="title"
       data-slot="dialog-title"
       className={cn(
-        "text-base leading-none font-medium",
+        "text-base leading-snug font-medium wrap-anywhere in-data-close-button:pr-8",
         className
       )}
       {...props}
@@ -147,7 +148,7 @@ function DialogDescription({
       id={useDialogDescriptionId(id)}
       data-slot="dialog-description"
       className={cn(
-        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "text-sm text-muted-foreground wrap-anywhere *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className
       )}
       {...props}

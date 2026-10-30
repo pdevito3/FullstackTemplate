@@ -5,6 +5,7 @@ import { Notification } from '@/components/notification'
 import { Link } from '@/components/ui/link'
 import { useAddVenue } from '@/examples/venues/apis/add-venue'
 import { VenueCreateForm } from '@/examples/venues/components/venue-create-form'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/(examples)/venues/new')({
   component: NewVenuePage,
@@ -26,7 +27,7 @@ function NewVenuePage() {
       <Link to="/workshops" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         All workshops
       </Link>
-      <h1 className="text-3xl font-bold tracking-tight">New venue</h1>
+      <PageHeading>New venue</PageHeading>
       <VenueCreateForm onSave={handleSave} />
     </div>
   )

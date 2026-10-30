@@ -101,6 +101,7 @@ import {
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog'
 import { browserTimeZone, todayAt } from '@/lib/zoned-time'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/(examples)/components')({
   component: ComponentsPage,
@@ -177,10 +178,10 @@ function ComponentsPage() {
   return (
     <>
       <div className="w-full">
-        <div className="max-w-[1200px] mx-auto px-8 py-10 max-md:px-4">
+        <div className="max-w-[1200px] mx-auto px-8 py-10 max-md:px-4 max-[20rem]:px-0">
           {/* Header */}
           <div className="mb-10">
-            <h1 className="text-4xl font-bold mb-2">Component Library</h1>
+            <PageHeading className="mb-2">Component Library</PageHeading>
             <p className="text-text-secondary text-lg">
               React Aria components with sky accent theme and Nunito Sans font
             </p>
@@ -252,7 +253,7 @@ function ComponentsPage() {
             <h2 className="text-2xl font-semibold mb-4">Form Inputs</h2>
             <Card>
               <CardContent className="space-y-6">
-                <div className="grid gap-4 max-w-sm">
+                <div className="grid max-w-sm grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" type="email" placeholder="Enter your email" />
@@ -269,7 +270,7 @@ function ComponentsPage() {
             <h2 className="text-2xl font-semibold mb-4">Select, Combobox & Autocomplete</h2>
             <Card>
               <CardContent>
-                <div className="grid gap-6 max-w-sm">
+                <div className="grid max-w-sm grid-cols-1 gap-6">
                   {/* Select */}
                   <Select
                     value={selectedFramework}
@@ -567,7 +568,7 @@ function ComponentsPage() {
             <h2 className="text-2xl font-semibold mb-4">Command</h2>
             <Card>
               <CardContent>
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Command className="rounded-lg border">
                     <CommandInput placeholder="Type a command or search..." />
                     <CommandList renderEmptyState={() => <CommandEmpty>No results found.</CommandEmpty>}>
@@ -598,7 +599,7 @@ function ComponentsPage() {
                   </Command>
                   <div>
                     <Button variant="outline" onPress={() => setIsCommandOpen(true)}>
-                      Open Command Menu
+                      Open Command
                     </Button>
                     <CommandDialog isOpen={isCommandOpen} onOpenChange={setIsCommandOpen}>
                       <Command>

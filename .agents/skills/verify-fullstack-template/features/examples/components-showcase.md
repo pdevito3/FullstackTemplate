@@ -52,7 +52,7 @@ Preconditions:
 - **Calendar zoom.** Click `Pick a date`, then `Select month`. The focus is in the listbox `Month picker`, and the popover width does not change (1 px tolerance). ArrowUp (or ArrowDown in the first row) moves the focus by one row of 3 options. Click `Select year`. The focus is in the listbox `Year picker`, and the width does not change. Press Escape. The dialog closes. Open it again, click `Select month` and `Select year`, then click a year option and a month option. The focus is on a day cell. Press Escape. The dialog closes.
 - **Tooltip.** Move the mouse, then hover `Notifications`. The tooltip text is `You have 3 notifications`.
 - **Inline command.** Run `page.getByRole('searchbox').first().fill('calc')`. The menu item `Calculator` shows. `Calendar` does not show.
-- **Command dialog.** Click `Open Command Menu`. Fill `sett` in the searchbox of the dialog. One menu item shows. Press Enter. The dialog closes.
+- **Command dialog.** Click `Open Command`. Fill `sett` in the searchbox of the dialog. One menu item shows. Press Enter. The dialog closes.
 - **Toast.** Click `Success`. A toast with `Changes saved` shows. Click its `Close` button. The toast goes away in less than 1000 ms. If the toast throws a `pageerror`, `browse.mjs` fails the run.
 - **Collapsible.** Click `Toggle`. The text `@radix-ui/colors` shows. Click `Toggle` again. The text hides.
 - **Mobile dialog.** Set the viewport to 390x844 and click `Open Dialog`. The dialog `Dialog Title` shows as a bottom sheet.

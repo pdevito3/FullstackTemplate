@@ -1,4 +1,3 @@
-import { useMatchRoute } from "@tanstack/react-router"
 import {
   Home01Icon,
   InformationCircleIcon,
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useSidebar } from "@/components/ui/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { currentNavItem } from "@/components/current-nav-item"
+import { useCurrentNavItem } from "@/components/current-nav-item"
 // example:start
 import { ExampleNav } from "@/examples/example-nav"
 import { exampleNavUrls } from "@/examples/example-nav-items"
@@ -55,8 +54,7 @@ const navUrls = [
 ]
 
 export function AppSidebar() {
-  const matchRoute = useMatchRoute()
-  const current = currentNavItem(navUrls, (to, fuzzy) => matchRoute({ to, fuzzy }) !== false)
+  const current = useCurrentNavItem(navUrls)
   const { setOpenMobile } = useSidebar()
 
   // On mobile the sidebar is a sheet over the page. Close it when a link is

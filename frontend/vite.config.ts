@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig, type Plugin, type ProxyOptions, type Rollup } from 'vite'
+import { defineConfig, type Plugin, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import svgr from 'vite-plugin-svgr'
@@ -15,6 +15,7 @@ import {
   releaseRequests,
   takeUnansweredRequests,
 } from './vitest.commands'
+import { firstPageChunks } from './first-page-chunks'
 
 // Vendor libraries that can load on the first page. Each group gets its own
 // chunk, so the entry chunk stays small and the browser can cache the
@@ -40,26 +41,6 @@ function vendorChunk(id: string): string | undefined {
 }
 
 const firstPageBudgetKb = 950
-
-type ChunkSize = { fileName: string; sizeKb: number }
-
-function firstPageChunks(bundle: Rollup.OutputBundle): ChunkSize[] {
-  const chunks = new Map(
-    Object.values(bundle)
-      .filter((output) => output.type === 'chunk')
-      .map((chunk) => [chunk.fileName, chunk]),
-  )
-  const loaded = new Set<Rollup.OutputChunk>()
-  const visit = (chunk: Rollup.OutputChunk | undefined) => {
-    if (!chunk || loaded.has(chunk)) return
-    loaded.add(chunk)
-    chunk.imports.forEach((fileName) => visit(chunks.get(fileName)))
-  }
-  for (const chunk of chunks.values()) if (chunk.isEntry) visit(chunk)
-  return [...loaded]
-    .map((chunk) => ({ fileName: chunk.fileName, sizeKb: Buffer.byteLength(chunk.code) / 1000 }))
-    .sort((a, b) => b.sizeKb - a.sizeKb)
-}
 
 const failOverFirstPageBudget: Plugin = {
   name: 'first-page-budget',
@@ -158,7 +139,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js'],
+          include: ['src/**/*.test.ts', 'e2e/**/*.test.ts', 'eslint.config.test.js', 'first-page-chunks.test.ts'],
           // A zone far from UTC, so that a test that takes a date from UTC or from the machine fails on every machine.
           // See docs/frontend/testing.md, section "Time zones".
           env: { TZ: 'Pacific/Pago_Pago' },

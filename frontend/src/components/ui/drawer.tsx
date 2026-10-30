@@ -19,10 +19,22 @@ import {
   useDialogDescriptionId,
 } from "@/components/ui/dialog-description"
 
-// Known fault, accepted for now: the experimental React Aria `Sheet` ignores Escape
-// while its enter animation runs, because the focus stays on the trigger until the
-// animation ends. vaul (the drawer on main before the React Aria migration) did not
-// have this fault. If React Aria does not correct it, go back to vaul for the drawer.
+// While the React Aria `Sheet` slides in, it keeps the focus on the trigger, but it
+// handles Escape only inside the sheet. The Escape stops here, so that an overlay under
+// the drawer does not close too.
+function CloseOnEscape({ onClose }: { onClose: () => void }) {
+  React.useEffect(() => {
+    const opener = document.activeElement
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.target !== opener) return
+      event.stopPropagation()
+      onClose()
+    }
+    document.addEventListener("keydown", onKeyDown, true)
+    return () => document.removeEventListener("keydown", onKeyDown, true)
+  }, [onClose])
+  return null
+}
 
 function DrawerTrigger({ ...props }: SheetTriggerPrimitiveProps) {
   return <SheetTriggerPrimitive {...props} />
@@ -68,38 +80,43 @@ function Drawer({
       className="fixed inset-0 z-50"
       {...props}
     >
-      <SheetBackdropPrimitive
-        data-slot="drawer-backdrop"
-        swipeAnimation="drawer-backdrop-fade"
-        className="fixed inset-0 bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
-      />
-      <SheetPrimitive
-        data-slot="drawer-content"
-        overscrollPadding
-        className={cn(
-          // overscrollPadding adds 100vh or 100vw of padding. box-content keeps it out of the size classes.
-          "group/drawer-content z-10 box-content flex flex-col bg-background text-sm will-change-transform",
-          "data-[position=bottom]:max-h-[80vh] data-[position=bottom]:w-full data-[position=bottom]:rounded-t-xl data-[position=bottom]:border-t",
-          // On a phone, index.css sets --toast-reserve, the room of the toasts at the top. The drawer stops below them.
-          // To change the bottom cap, override this class with the same variant prefix.
-          "data-[position=bottom]:supports-[height:100dvh]:max-h-[min(80vh,calc(100dvh-var(--toast-reserve,0px)))]",
-          "data-[position=top]:max-h-[80vh] data-[position=top]:w-full data-[position=top]:rounded-b-xl data-[position=top]:border-b",
-          "data-[position=left]:h-full data-[position=left]:w-3/4 data-[position=left]:rounded-r-xl data-[position=left]:border-r data-[position=left]:sm:max-w-sm",
-          "data-[position=right]:h-full data-[position=right]:w-3/4 data-[position=right]:rounded-l-xl data-[position=right]:border-l data-[position=right]:sm:max-w-sm",
-          className
-        )}
-      >
-        <div className="mx-auto mt-4 hidden h-1 w-[100px] shrink-0 rounded-full bg-muted group-data-[position=bottom]/drawer-content:block" />
-        <SheetContentPrimitive
-          data-slot="drawer"
-          aria-describedby={descriptionId}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-(--sheet-scroll-padding-y) outline-none"
-        >
-          <DialogDescriptionContext.Provider value={setDescriptionId}>
-            {children}
-          </DialogDescriptionContext.Provider>
-        </SheetContentPrimitive>
-      </SheetPrimitive>
+      {({ isEntering, isExiting, state }) => (
+        <>
+          {isEntering && !isExiting && !props.preventDismissal && <CloseOnEscape onClose={state.close} />}
+          <SheetBackdropPrimitive
+            data-slot="drawer-backdrop"
+            swipeAnimation="drawer-backdrop-fade"
+            className="fixed inset-0 bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+          />
+          <SheetPrimitive
+            data-slot="drawer-content"
+            overscrollPadding
+            className={cn(
+              // overscrollPadding adds 100vh or 100vw of padding. box-content keeps it out of the size classes.
+              "group/drawer-content z-10 box-content flex flex-col bg-background text-sm will-change-transform",
+              "data-[position=bottom]:max-h-[80vh] data-[position=bottom]:w-full data-[position=bottom]:rounded-t-xl data-[position=bottom]:border-t",
+              // On a phone, index.css sets --toast-reserve, the room of the toasts at the top. The drawer stops below them.
+              // To change the bottom cap, override this class with the same variant prefix.
+              "data-[position=bottom]:supports-[height:100dvh]:max-h-[min(80vh,calc(100dvh-var(--toast-reserve,0px)))]",
+              "data-[position=top]:max-h-[80vh] data-[position=top]:w-full data-[position=top]:rounded-b-xl data-[position=top]:border-b",
+              "data-[position=left]:h-full data-[position=left]:w-3/4 data-[position=left]:rounded-r-xl data-[position=left]:border-r data-[position=left]:sm:max-w-sm",
+              "data-[position=right]:h-full data-[position=right]:w-3/4 data-[position=right]:rounded-l-xl data-[position=right]:border-l data-[position=right]:sm:max-w-sm",
+              className
+            )}
+          >
+            <div className="mx-auto mt-4 hidden h-1 w-[100px] shrink-0 rounded-full bg-muted group-data-[position=bottom]/drawer-content:block" />
+            <SheetContentPrimitive
+              data-slot="drawer"
+              aria-describedby={descriptionId}
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-(--sheet-scroll-padding-y) outline-none"
+            >
+              <DialogDescriptionContext.Provider value={setDescriptionId}>
+                {children}
+              </DialogDescriptionContext.Provider>
+            </SheetContentPrimitive>
+          </SheetPrimitive>
+        </>
+      )}
     </SheetOverlayPrimitive>
   )
 }

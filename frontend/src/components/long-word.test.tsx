@@ -13,7 +13,8 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/comp
 import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Drawer, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
-import { FieldDescription, FieldError } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { MultiSelect } from '@/components/ui/multi-select'
 import {
   ResponsiveDialog,
@@ -45,16 +46,39 @@ afterEach(() => {
   toastQueue.clear()
 })
 
-function textOverflow(text: Element, box: Element): string | undefined {
+// The line boxes of the text nodes only. A range over the element also holds the boxes of its child elements, such as a button.
+// The rectangle of a text is the content area of the font, and a font can be taller than its line height.
+// The line box is the line height around the content area. Chrome rounds the top half of the leading down.
+function textLines(text: Element): DOMRect[] {
+  const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT)
   const range = document.createRange()
-  range.selectNodeContents(text)
-  const { left, right } = range.getBoundingClientRect()
+  const lines: DOMRect[] = []
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    range.selectNodeContents(node)
+    const lineHeight = parseFloat(getComputedStyle(node.parentElement!).lineHeight)
+    for (const { left, top, width, height } of range.getClientRects()) {
+      const lineBox = Number.isNaN(lineHeight) ? height : lineHeight
+      lines.push(new DOMRect(left, top - Math.floor((lineBox - height) / 2), width, lineBox))
+    }
+  }
+  return lines
+}
+
+function textOverflow(text: Element, box: Element): string | undefined {
+  const lines = textLines(text)
+  if (lines.length === 0) return 'the text shows no line'
+  const left = Math.min(...lines.map((line) => line.left))
+  const right = Math.max(...lines.map((line) => line.right))
+  const top = Math.min(...lines.map((line) => line.top))
+  const bottom = Math.max(...lines.map((line) => line.bottom))
   const boxRect = box.getBoundingClientRect()
   if (right > boxRect.right + 0.5 || left < boxRect.left - 0.5) {
     return `the text spans ${Math.round(left)} to ${Math.round(right)}, its box ${Math.round(boxRect.left)} to ${Math.round(boxRect.right)}`
   }
+  if (bottom > boxRect.bottom + 0.5 || top < boxRect.top - 0.5) {
+    return `the text spans ${Math.round(top)} to ${Math.round(bottom)} down, its box ${Math.round(boxRect.top)} to ${Math.round(boxRect.bottom)}`
+  }
   if (right > window.innerWidth + 0.5) return `the text ends at ${Math.round(right)}, past the window`
-  const lines = [...range.getClientRects()]
   const { fontSize, lineHeight } = getComputedStyle(text)
   if (new Set(lines.map((line) => Math.round(line.top))).size > 1 && parseFloat(lineHeight) < 1.2 * parseFloat(fontSize)) {
     return `the text wraps with a line height of ${lineHeight} for a font size of ${fontSize}`
@@ -75,13 +99,15 @@ async function openAnimationsEnded() {
   await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
 }
 
-async function expectLongWordToFit(textSelector: string, boxSelector: string, count: number) {
+async function expectLongWordToFit(textSelector: string, boxSelectors: string | string[], count: number) {
   await expect.poll(() => document.querySelectorAll(textSelector).length).toBe(count)
   await openAnimationsEnded()
   for (const text of document.querySelectorAll(textSelector)) {
-    const box = text.closest(boxSelector)
-    expect(box, `${boxSelector} holds ${textSelector}`).not.toBeNull()
-    expect(textOverflow(text, box!), `${text.getAttribute('data-slot') ?? text.tagName}`).toBeUndefined()
+    for (const boxSelector of [boxSelectors].flat()) {
+      const box = text.closest(boxSelector)
+      expect(box, `${boxSelector} holds ${textSelector}`).not.toBeNull()
+      expect(textOverflow(text, box!), `${text.getAttribute('data-slot') ?? text.tagName} in ${boxSelector}`).toBeUndefined()
+    }
   }
 }
 
@@ -95,7 +121,7 @@ const cases: {
   ui: () => ReactNode
   open?: () => Promise<void>
   text: string
-  box: string
+  box: string | string[]
   count: number
   widths: number[]
 }[] = [
@@ -257,7 +283,7 @@ const cases: {
       </DialogForm>
     ),
     text: '[data-slot=combobox-chip]',
-    box: '[data-slot=combobox-chips]',
+    box: ['[data-slot=combobox-chip]', '[data-slot=combobox-chips]'],
     count: 1,
     widths: phoneOnly,
   },
@@ -265,14 +291,16 @@ const cases: {
     name: 'field description and error',
     ui: () => (
       <DialogForm>
-        <div data-testid="field">
+        <Field>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <Input id="email" />
           <FieldDescription>Sent to {longWord}@example.com</FieldDescription>
           <FieldError>{longWord}@example.com is in use.</FieldError>
-        </div>
+        </Field>
       </DialogForm>
     ),
     text: '[data-slot=field-description], [data-slot=field-error]',
-    box: '[data-testid=field]',
+    box: '[data-slot=field]',
     count: 2,
     widths: allWidths,
   },

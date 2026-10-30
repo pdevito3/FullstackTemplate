@@ -9,37 +9,17 @@ import {
   SidebarMenuSubLink,
 } from "@/components/ui/sidebar"
 import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-menu-button-variants"
+import type { CurrentNavItem } from "@/components/current-nav-item"
 
-const exampleItems = [
-  {
-    title: "Weather",
-    url: "/weather",
-  },
-  {
-    title: "Components",
-    url: "/components",
-  },
-  {
-    title: "Filter Builder",
-    url: "/filter-demo",
-  },
-  {
-    title: "Workshops",
-    url: "/workshops",
-  },
-  {
-    title: "New venue",
-    url: "/venues/new",
-  },
-] as const
+import { exampleItems } from "./example-nav-items"
 
 interface ExampleNavProps {
-  currentPath: string
+  current: CurrentNavItem | undefined
   onNavigate: () => void
 }
 
-export function ExampleNav({ currentPath, onNavigate }: ExampleNavProps) {
-  const isExampleActive = exampleItems.some((item) => currentPath === item.url || currentPath.startsWith(item.url + "/"))
+export function ExampleNav({ current, onNavigate }: ExampleNavProps) {
+  const isExampleActive = exampleItems.some((item) => item.url === current?.url)
 
   return (
     <Collapsible defaultExpanded={isExampleActive} className="group/collapsible">
@@ -55,10 +35,10 @@ export function ExampleNav({ currentPath, onNavigate }: ExampleNavProps) {
         <CollapsibleContent>
           <SidebarMenuSub>
             {exampleItems.map((item) => {
-              const isActive = currentPath === item.url
+              const itemCurrent = current?.url === item.url ? current.current : undefined
               return (
-                <SidebarMenuSubItem key={item.title} isActive={isActive}>
-                  <SidebarMenuSubLink to={item.url} isActive={isActive} onPress={onNavigate}>
+                <SidebarMenuSubItem key={item.title} isActive={itemCurrent !== undefined}>
+                  <SidebarMenuSubLink to={item.url} current={itemCurrent} onPress={onNavigate}>
                     <span>{item.title}</span>
                   </SidebarMenuSubLink>
                 </SidebarMenuSubItem>

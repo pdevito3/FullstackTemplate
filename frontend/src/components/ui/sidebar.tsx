@@ -496,23 +496,26 @@ function SidebarMenuButton({
   )
 }
 
+export type SidebarLinkCurrent = "page" | "true"
+
 const SidebarMenuLink = createRouterLink(function SidebarMenuLinkHost({
-  isActive = false,
+  current,
   variant = "default",
   size = "default",
   tooltip,
   className,
   ...props
-}: RouterLinkHostProps & SidebarMenuButtonOptions) {
+}: RouterLinkHostProps &
+  Omit<SidebarMenuButtonOptions, "isActive"> & { current?: SidebarLinkCurrent }) {
   return (
     <SidebarMenuButtonTooltip tooltip={tooltip}>
       <RouterLinkPrimitive
         data-slot="sidebar-menu-button"
         data-sidebar="menu-button"
         data-size={size}
-        data-active={isActive || undefined}
+        data-active={current ? true : undefined}
         {...props}
-        aria-current={isActive ? "page" : undefined}
+        aria-current={current}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
       />
     </SidebarMenuButtonTooltip>
@@ -678,18 +681,19 @@ function SidebarMenuSubButton({
 
 const SidebarMenuSubLink = createRouterLink(function SidebarMenuSubLinkHost({
   size = "md",
-  isActive = false,
+  current,
   className,
   ...props
-}: RouterLinkHostProps & SidebarMenuSubButtonOptions) {
+}: RouterLinkHostProps &
+  Omit<SidebarMenuSubButtonOptions, "isActive"> & { current?: SidebarLinkCurrent }) {
   return (
     <RouterLinkPrimitive
       data-slot="sidebar-menu-sub-button"
       data-sidebar="menu-sub-button"
       data-size={size}
-      data-active={isActive || undefined}
+      data-active={current ? true : undefined}
       {...props}
-      aria-current={isActive ? "page" : undefined}
+      aria-current={current}
       className={cn(sidebarMenuSubButtonClassName, className)}
     />
   )

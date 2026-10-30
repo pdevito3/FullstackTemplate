@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { firstPageChunks } from './first-page-chunks'
 
-type ChunkInput = { isEntry?: boolean; imports?: string[]; dynamicImports?: string[]; bytes?: number }
+type ChunkInput = { isEntry?: boolean; imports?: string[]; dynamicImports?: string[]; bytes?: number; code?: string }
 
 function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
   const outputs: Record<string, unknown> = {
@@ -16,7 +16,7 @@ function bundleOf(chunks: Record<string, ChunkInput>): Rollup.OutputBundle {
       isEntry: chunk.isEntry ?? false,
       imports: chunk.imports ?? [],
       dynamicImports: chunk.dynamicImports ?? [],
-      code: 'x'.repeat(chunk.bytes ?? 1000),
+      code: chunk.code ?? 'x'.repeat(chunk.bytes ?? 1000),
     }
   }
   return outputs as Rollup.OutputBundle
@@ -65,5 +65,11 @@ describe('firstPageChunks', () => {
       { fileName: 'aria.js', sizeKb: 542.02 },
       { fileName: 'index.js', sizeKb: 2.5 },
     ])
+  })
+
+  it('gives the size in bytes of the code, not in characters', () => {
+    const bundle = bundleOf({ 'index.js': { isEntry: true, code: 'é' } })
+
+    expect(firstPageChunks(bundle)).toEqual([{ fileName: 'index.js', sizeKb: 0.002 }])
   })
 })

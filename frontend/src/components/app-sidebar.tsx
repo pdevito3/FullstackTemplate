@@ -1,4 +1,4 @@
-import { useRouterState } from "@tanstack/react-router"
+import { useMatchRoute, useRouterState } from "@tanstack/react-router"
 import {
   Home01Icon,
   InformationCircleIcon,
@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/sidebar"
 import { useSidebar } from "@/components/ui/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { currentNavItem } from "@/components/current-nav-item"
 // example:start
 import { ExampleNav } from "@/examples/example-nav"
+import { exampleNavUrls } from "@/examples/example-nav-items"
 // example:end
 
 const appName = "Fullstack Template"
@@ -45,10 +47,18 @@ const navItems = [
   },
 ] as const
 
+const navUrls = [
+  ...navItems.map((item) => item.url),
+  // example:start
+  ...exampleNavUrls,
+  // example:end
+]
 
 export function AppSidebar() {
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
+  const matchRoute = useMatchRoute()
+  const current = currentNavItem(navUrls, (to, fuzzy) => matchRoute({ to, fuzzy }) !== false)
   const { setOpenMobile } = useSidebar()
 
   // On mobile the sidebar is a sheet over the page. Close it when a link is
@@ -78,10 +88,14 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {navItems.map((item) => {
-                  const isActive = currentPath === item.url
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuLink to={item.url} isActive={isActive} tooltip={item.title} onPress={closeMobile}>
+                      <SidebarMenuLink
+                        to={item.url}
+                        current={current?.url === item.url ? current.current : undefined}
+                        tooltip={item.title}
+                        onPress={closeMobile}
+                      >
                         <HugeiconsIcon icon={item.icon} />
                         <span>{item.title}</span>
                       </SidebarMenuLink>
@@ -90,7 +104,7 @@ export function AppSidebar() {
                 })}
 
                 {/* example:start */}
-                <ExampleNav currentPath={currentPath} onNavigate={closeMobile} />
+                <ExampleNav currentPath={currentPath} current={current} onNavigate={closeMobile} />
                 {/* example:end */}
               </SidebarMenu>
             </SidebarGroupContent>

@@ -10,7 +10,7 @@ export function RefusedSaveAlert({ problem }: RefusedSaveAlertProps) {
   }
 
   return (
-    <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+    <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive wrap-anywhere">
       {problem.messages.map((message, i) => (
         <p key={`${i}-${message}`}>{message}</p>
       ))}

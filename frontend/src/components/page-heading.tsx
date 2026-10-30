@@ -11,7 +11,7 @@ interface PageHeadingProps {
 // The root layout moves the focus to the heading after a navigation. tabIndex lets a page move it there after an action.
 export function PageHeading({ children, className, ref }: PageHeadingProps) {
   return (
-    <h1 ref={ref} tabIndex={-1} className={cn('text-3xl font-bold tracking-tight outline-none', className)}>
+    <h1 ref={ref} tabIndex={-1} className={cn('min-w-0 text-3xl font-bold tracking-tight wrap-anywhere outline-none', className)}>
       {children}
     </h1>
   )

@@ -272,7 +272,7 @@ function WeatherCard({ forecast, useCelsius, formatDate }: WeatherCardProps) {
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
               {formatDate(forecast.date)}
             </p>
-            <CardTitle className="mt-1 wrap-anywhere">{forecast.summary}</CardTitle>
+            <CardTitle className="mt-1">{forecast.summary}</CardTitle>
           </div>
           <HugeiconsIcon icon={SUMMARY_ICONS[forecast.summary ?? ""] ?? CloudIcon} className="w-6 h-6 shrink-0 text-muted-foreground" />
         </div>

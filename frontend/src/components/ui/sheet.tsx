@@ -114,6 +114,7 @@ function Sheet({
         <SheetPrimitive
           data-slot="sheet"
           aria-describedby={descriptionId}
+          data-close-button={showCloseButton || undefined}
           className="[display:inherit] h-full max-h-[inherit] [flex-direction:inherit] [gap:inherit] outline-none"
         >
           <DialogDescriptionContext.Provider value={setDescriptionId}>
@@ -186,7 +187,7 @@ function SheetTitle({
       slot="title"
       data-slot="sheet-title"
       className={cn(
-        "text-base font-medium text-foreground",
+        "text-base font-medium text-foreground wrap-anywhere in-data-close-button:pr-8",
         className
       )}
       {...props}
@@ -203,7 +204,7 @@ function SheetDescription({
     <div
       id={useDialogDescriptionId(id)}
       data-slot="sheet-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-muted-foreground wrap-anywhere", className)}
       {...props}
     />
   )

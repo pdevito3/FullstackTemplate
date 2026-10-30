@@ -7,6 +7,7 @@ const configs = [
   { width: 390, height: 844, scheme: 'dark', fontSize: 16 },
   { width: 1280, height: 800, scheme: 'light', fontSize: 16 },
   { width: 1280, height: 800, scheme: 'dark', fontSize: 16 },
+  { width: 320, height: 640, scheme: 'light', fontSize: 24 },
   { width: 390, height: 844, scheme: 'light', fontSize: 24 },
   { width: 1280, height: 800, scheme: 'light', fontSize: 24 },
 ]

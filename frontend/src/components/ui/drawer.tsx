@@ -19,20 +19,29 @@ import {
   useDialogDescriptionId,
 } from "@/components/ui/dialog-description"
 
-// While the React Aria `Sheet` slides in, it keeps the focus on the trigger, but it
-// handles Escape only inside the sheet. The Escape stops here, so that an overlay under
-// the drawer does not close too.
-function CloseOnEscape({ onClose }: { onClose: () => void }) {
+// While the React Aria `Sheet` slides in, it keeps the focus outside the sheet, but it
+// handles Escape only inside the sheet. So the drawer takes an Escape from an element
+// before it in the document: the page, or an overlay under it. An overlay that opens above
+// the drawer, such as a Select in it, portals after it and keeps its own Escape. The
+// Escape stops here, so that an overlay under the drawer does not close too.
+function CloseOnEscape({
+  overlayRef,
+  onClose,
+}: {
+  overlayRef: React.RefObject<HTMLDivElement | null>
+  onClose: () => void
+}) {
   React.useEffect(() => {
-    const opener = document.activeElement
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.target !== opener) return
+      const overlay = overlayRef.current
+      if (event.key !== "Escape" || !overlay || !(event.target instanceof Node)) return
+      if (!(event.target.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING)) return
       event.stopPropagation()
       onClose()
     }
     document.addEventListener("keydown", onKeyDown, true)
     return () => document.removeEventListener("keydown", onKeyDown, true)
-  }, [onClose])
+  }, [overlayRef, onClose])
   return null
 }
 
@@ -73,8 +82,10 @@ function Drawer({
   position?: "top" | "right" | "bottom" | "left"
 }) {
   const [descriptionId, setDescriptionId] = React.useState<string>()
+  const overlayRef = React.useRef<HTMLDivElement>(null)
   return (
     <SheetOverlayPrimitive
+      ref={overlayRef}
       data-slot="drawer-overlay"
       position={position}
       className="fixed inset-0 z-50"
@@ -82,7 +93,7 @@ function Drawer({
     >
       {({ isEntering, isExiting, state }) => (
         <>
-          {isEntering && !isExiting && !props.preventDismissal && <CloseOnEscape onClose={state.close} />}
+          {isEntering && !isExiting && !props.preventDismissal && <CloseOnEscape overlayRef={overlayRef} onClose={state.close} />}
           <SheetBackdropPrimitive
             data-slot="drawer-backdrop"
             swipeAnimation="drawer-backdrop-fade"

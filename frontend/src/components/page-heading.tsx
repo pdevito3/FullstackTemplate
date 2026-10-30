@@ -9,8 +9,8 @@ interface PageHeadingProps {
 }
 
 // The root layout moves the focus to the heading after a navigation. tabIndex lets a page move it there after an action.
-// A window narrower than 20rem is a 320 px phone with a font larger than 16 px. There the heading is one size smaller, so
-// that a word of the heading fits the width and the page does not scroll sideways.
+// A media query measures rem in the font size of the browser, so a window narrower than 20rem is narrow for its text:
+// under 320 px at a 16 px font, under 480 px at a 24 px font. There the heading is one size smaller, so that a word of it fits.
 export function PageHeading({ children, className, ref }: PageHeadingProps) {
   return (
     <h1

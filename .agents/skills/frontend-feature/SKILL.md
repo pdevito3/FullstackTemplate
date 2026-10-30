@@ -99,7 +99,7 @@ function RoomsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
-      <h1 className="text-3xl font-bold tracking-tight">Rooms</h1>
+      <PageHeading>Rooms</PageHeading>
       <SearchBox label="Search rooms" placeholder="Name contains" search={search} maxLength={searchMaxLength} onSearch={handleSearch} />
       {/* RoomRows returns early for each state of step 3, and for a user with no tenant, then shows the Table and the Pager */}
       <RoomRows list={list} search={search} page={page} onPageChange={handlePageChange} />

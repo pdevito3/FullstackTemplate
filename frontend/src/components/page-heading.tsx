@@ -16,7 +16,7 @@ export function PageHeading({ children, className, ref }: PageHeadingProps) {
     <h1
       ref={ref}
       tabIndex={-1}
-      className={cn('text-2xl font-bold tracking-tight outline-none min-[20rem]:text-3xl', className)}
+      className={cn('text-2xl font-bold tracking-tight wrap-anywhere outline-none min-[20rem]:text-3xl', className)}
     >
       {children}
     </h1>

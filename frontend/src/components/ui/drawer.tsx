@@ -135,7 +135,7 @@ function DrawerTitle({
     <Heading
       slot="title"
       data-slot="drawer-title"
-      className={cn("text-base font-medium text-foreground", className)}
+      className={cn("text-base font-medium text-foreground wrap-anywhere", className)}
       {...props}
     />
   )
@@ -150,7 +150,7 @@ function DrawerDescription({
     <div
       id={useDialogDescriptionId(id)}
       data-slot="drawer-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-muted-foreground wrap-anywhere", className)}
       {...props}
     />
   )

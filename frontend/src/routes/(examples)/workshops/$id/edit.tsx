@@ -7,6 +7,7 @@ import { Link } from '@/components/ui/link'
 import { useWorkshop } from '@/examples/workshops/apis/get-workshop'
 import { useUpdateWorkshop } from '@/examples/workshops/apis/update-workshop'
 import { WorkshopEditForm } from '@/examples/workshops/components/workshop-edit-form'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/(examples)/workshops/$id/edit')({
   component: EditWorkshopPage,
@@ -47,7 +48,7 @@ function EditWorkshopPage() {
       <Link to="/workshops/$id" params={{ id }} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         Back to the workshop
       </Link>
-      <h1 className="text-3xl font-bold tracking-tight">Edit workshop</h1>
+      <PageHeading>Edit workshop</PageHeading>
       {workshop.data.allowedActions.includes('Update') ? (
         <WorkshopEditForm workshop={workshop.data} onSave={handleSave} onLoadLatest={handleLoadLatest} />
       ) : (

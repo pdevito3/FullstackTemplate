@@ -240,7 +240,7 @@ export default async ({ page, step, capture, settle, expect }) => {
   })
 
   await step('command dialog: open, type sett, Enter closes it', async () => {
-    await page.getByRole('button', { name: 'Open Command Menu' }).click()
+    await page.getByRole('button', { name: 'Open Command' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('searchbox').fill('sett')

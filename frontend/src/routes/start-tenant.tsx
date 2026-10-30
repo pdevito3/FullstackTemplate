@@ -8,6 +8,7 @@ import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 import { useMembership } from '@/domain/membership/apis/get-membership'
 import { useStartTenant } from '@/domain/membership/apis/start-tenant'
 import { StartTenantForm } from '@/domain/membership/components/start-tenant-form'
+import { PageHeading } from '@/components/page-heading'
 
 export const Route = createFileRoute('/start-tenant')({
   component: StartTenantPage,
@@ -17,7 +18,7 @@ export const Route = createFileRoute('/start-tenant')({
 function StartTenantPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
-      <h1 className="text-3xl font-bold tracking-tight">Start a tenant</h1>
+      <PageHeading>Start a tenant</PageHeading>
       <div className="mt-6">
         <StartTenantContent />
       </div>

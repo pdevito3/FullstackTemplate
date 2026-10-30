@@ -17,6 +17,7 @@ import { formatStart } from '@/examples/workshops/components/format-start'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { maxLengthOf } from '@/lib/api-contract'
+import { PageHeading } from '@/components/page-heading'
 
 const listSearchSchema = z.object({
   search: getWorkshopListQuerySearchSchema.catch(undefined),
@@ -51,9 +52,9 @@ function WorkshopsPage() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Workshops</h1>
+        <PageHeading>Workshops</PageHeading>
         {canAdd && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link to="/venues/new" className={buttonVariants({ variant: 'outline' })}>
               New venue
             </Link>

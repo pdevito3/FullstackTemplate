@@ -166,12 +166,12 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
   {
     name: 'select option',
     ui: () => (
-      <Select defaultOpen aria-label="Venue">
+      <Select defaultOpen aria-label="Place">
         <SelectTrigger>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem id="venue">{longWord}</SelectItem>
+          <SelectItem id="place">{longWord}</SelectItem>
         </SelectContent>
       </Select>
     ),
@@ -183,17 +183,17 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
     name: 'combobox option',
     ui: () => (
       <Combobox>
-        <Label>Venue</Label>
+        <Label>Place</Label>
         <ComboboxInput />
         <ComboboxContent>
           <ComboboxList>
-            <ComboboxItem id="venue">{longWord}</ComboboxItem>
+            <ComboboxItem id="place">{longWord}</ComboboxItem>
           </ComboboxList>
         </ComboboxContent>
       </Combobox>
     ),
     open: async () => {
-      await userEvent.click(page.getByRole('combobox', { name: 'Venue' }))
+      await userEvent.click(page.getByRole('combobox', { name: 'Place' }))
       await userEvent.keyboard('{ArrowDown}')
     },
     text: '[data-slot=combobox-item]',
@@ -202,7 +202,7 @@ const cases: { name: string; ui: () => ReactNode; open?: () => Promise<void>; te
   },
   {
     name: 'multi-select chip',
-    ui: () => <MultiSelect options={[{ value: 'venue', label: longWord }]} defaultValue={['venue']} />,
+    ui: () => <MultiSelect options={[{ value: 'place', label: longWord }]} defaultValue={['place']} />,
     text: '[data-slot=combobox-chip]',
     box: '[data-slot=combobox-chips]',
     count: 1,

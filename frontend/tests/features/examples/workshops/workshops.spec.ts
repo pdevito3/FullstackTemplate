@@ -46,6 +46,21 @@ test.describe('the workshops', () => {
     expect(api.last('put', workshopPaths.one(id))?.body).toMatchObject({ version: 2 })
   })
 
+  test('the sidebar marks Workshops as the page on the list, and as the current item on a workshop', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = workshop.build()
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+
+    await workshops.openList()
+
+    await expect(workshops.at.workshopsNavLink).toHaveAttribute('aria-current', 'page')
+
+    await workshops.openWorkshop('Intro to Kubb', id, venueId)
+
+    await expect(workshops.at.workshopsNavLink).toHaveAttribute('aria-current', 'true')
+  })
+
   const now = new Date('2026-08-16T07:00:00Z')
   const harbor = aVenue().named('Harbor Hall').inZone('Pacific/Pago_Pago')
 

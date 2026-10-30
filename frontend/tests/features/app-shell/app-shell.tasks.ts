@@ -28,6 +28,11 @@ export function appShellPage(page: Page) {
       await expect(at.currentPage).toBeVisible()
     },
 
+    async openAboutLookalike() {
+      await page.goto('/aboutx')
+      await expect(at.notFoundHeading).toBeVisible()
+    },
+
     async goHome() {
       await at.homeLink.click()
       await page.waitForURL('/')

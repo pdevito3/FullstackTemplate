@@ -11,6 +11,7 @@ export const workshops = (page: Page) => {
 
   return {
     listHeading: page.getByRole('heading', { name: 'Workshops', exact: true }),
+    workshopsNavLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Workshops', exact: true }),
     search: page.getByRole('searchbox', { name: 'Search workshops' }),
     grid: page.getByRole('grid', { name: 'Workshops' }),
     row: (title: string) => page.getByRole('grid', { name: 'Workshops' }).getByRole('row', { name: new RegExp(`^${title}`) }),

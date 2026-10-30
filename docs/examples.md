@@ -26,7 +26,7 @@ A marker with no partner stops the script before it changes a file. A change to 
 |---------|-------------|
 | The weather API and its page at `/weather` | `FullstackTemplate.Server/Examples/Weather/`, `frontend/src/examples/weather/`, `frontend/src/routes/(examples)/weather.tsx` |
 | The component library at `/components` and the filter builder demo at `/filter-demo` | `frontend/src/routes/(examples)/` |
-| The `Examples` menu of the sidebar | `frontend/src/examples/example-nav.tsx` |
+| The `Examples` menu of the sidebar | `frontend/src/examples/example-nav.tsx`, `frontend/src/examples/example-nav-items.ts` |
 | The `get_tenant`, `list_tenants`, and `update_tenant` MCP tools | `FullstackTemplate.Server/Examples/Tenants/` |
 | The venues and workshops API, its `list_workshops` and `cancel_workshop` MCP tools, and the `manage_workshops` permission | `FullstackTemplate.Server/Examples/Venues/`, `FullstackTemplate.Server/Examples/Workshops/`, `FullstackTemplate.Server/Databases/EntityConfigurations/Examples/`, `FullstackTemplate.Server/Databases/Migrations/Examples/` |
 | The workshop pages at `/workshops` and `/venues/new`: the list, the detail, the edit and create forms, and the venue picker | `frontend/src/examples/workshops/`, `frontend/src/examples/venues/`, `frontend/src/routes/(examples)/workshops/`, `frontend/src/routes/(examples)/venues/` |

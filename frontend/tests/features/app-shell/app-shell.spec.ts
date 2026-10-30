@@ -75,6 +75,27 @@ test.describe('the landmarks of the layout', () => {
   })
 })
 
+test.describe('the current item of the sidebar', () => {
+  test('on the about page, About is the page and Home is not current', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openAbout()
+
+    await expect(shell.at.aboutNavigationLink).toHaveAttribute('aria-current', 'page')
+    await expect(shell.at.homeNavigationLink).not.toHaveAttribute('aria-current')
+    await expect(shell.at.currentNavigationItems).toHaveCount(1)
+  })
+
+  test('on a path that only starts with the URL of an item, no item is current', async ({ page }) => {
+    const shell = appShellPage(page)
+
+    await shell.openAboutLookalike()
+
+    await expect(shell.at.aboutNavigationLink).toBeVisible()
+    await expect(shell.at.currentNavigationItems).toHaveCount(0)
+  })
+})
+
 test.describe('wide content next to the open sidebar', () => {
   test.use({ viewport: { width: 1024, height: 720 } })
 

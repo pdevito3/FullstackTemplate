@@ -12,6 +12,7 @@ export const appShell = (page: Page) => ({
   mobileSidebarAppName: page.locator('[data-slot="sidebar"][data-mobile="true"]').getByText('Fullstack Template', { exact: true }),
   homeNavigationLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }),
   aboutNavigationLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About' }),
+  currentNavigationItems: page.getByRole('navigation', { name: 'Main' }).locator('[aria-current]'),
   sidebarTrigger: page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' }),
   mainLandmarks: page.getByRole('main'),
   wideContent: page.getByRole('region', { name: 'Wide content' }),

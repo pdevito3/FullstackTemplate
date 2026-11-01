@@ -146,7 +146,7 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
 
         <Entity>       The PascalCase name of the entity, for example SupplyItem.
         --fields       The properties. A kind is text, text?, int, bool, date, zoned-date, instant, or ref. The first
-                       property must be text: the list searches and sorts by it. Add :public to text, date,
+                       property must be text: the list sorts by it. Add :public to text, date,
                        zoned-date, or instant when the value cannot hold personal data. Each other value of these
                        kinds is [Sensitive] in the audit log.
                        A zoned-date is a day in the time zone of the entity, so the script adds the property TimeZone.
@@ -284,7 +284,7 @@ internal sealed record Spec(Names Names, IReadOnlyList<Field> Fields, Entrypoint
         }
 
         if (fields.Count == 0 || fields[0] is not { Kind: Kind.Text, Optional: false })
-            throw new FeatureException("The first property must be required text, such as Name:text. The list searches and sorts by it.");
+            throw new FeatureException("The first property must be required text, such as Name:text. The list sorts by it.");
         if (fields.Count(f => f.Kind == Kind.ParentId) > 1)
             throw new FeatureException("An entity can have one ref. Make the other references by hand after the run.");
 
@@ -838,10 +838,10 @@ internal static class Texts
 
     public static string ListTool(Spec s) => $"Gets one page of the {s.Names.WordsPlural} of the caller's tenant, with the page data.";
 
-    public static string Search(Spec s) => $"A text that the {QuotedLabel(s.Title)} contains, with no regard to case.";
-
     public static string Filters(Spec s)
-        => $"A QueryKit filter on the fields of {s.Names.A} {s.Names.Words}, for example: {s.Title.Json} @=* \"text\"";
+        => $"A QueryKit filter on the fields of {s.Names.A} {s.Names.Words}, for example: {s.Title.Json} @=* \"text\". "
+            + $"Put text with a \" in a raw string with one space on each side, for example: {s.Title.Json} @=* \"\"\" say \"hi\" \"\"\". "
+            + "Its delimiter is one quote more than the longest run of quotes in the text, and at least three quotes.";
 
     public static string UpdateTool(Spec s)
         => $"Updates {s.Names.A} {s.Names.Words} of the caller's tenant. The caller needs the {s.Names.PermissionName} permission in the tenant.";
@@ -874,7 +874,6 @@ internal static class Texts
         yield return $"add tool: {AddTool(s)}";
         yield return $"get tool: {GetTool(s)}";
         yield return $"list tool: {ListTool(s)}";
-        yield return $"list search: {Search(s)}";
         yield return $"list filters: {Filters(s)}";
         yield return $"update tool: {UpdateTool(s)}";
     }
@@ -1124,22 +1123,17 @@ internal static class Templates
 
         public sealed class {{s.Names.Entity}}ParametersDto : BasePaginationParameters
         {
-            public const int SearchMaxLength = {{s.Names.Entity}}.{{s.Title.Name}}MaxLength;
-
             public string? Filters { get; set; }
 
             public string? SortOrder { get; set; }
 
-            public string? Search { get; set; }
-
             public static {{s.Names.Entity}}ParametersDto From(
-                int? pageNumber, int? pageSize, string? filters, string? sortOrder, string? search)
+                int? pageNumber, int? pageSize, string? filters, string? sortOrder)
             {
                 var parameters = new {{s.Names.Entity}}ParametersDto
                 {
                     Filters = string.IsNullOrEmpty(filters) ? null : filters,
                     SortOrder = string.IsNullOrEmpty(sortOrder) ? null : sortOrder,
-                    Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
                 };
                 parameters.SetPage(pageNumber, pageSize);
                 return parameters;
@@ -1360,7 +1354,6 @@ internal static class Templates
 
             using Databases;
             using Dtos;
-            using Exceptions;
             using Mappings;
             using MediatR;
             using Microsoft.EntityFrameworkCore;
@@ -1372,29 +1365,14 @@ internal static class Templates
 
                 public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, PagedList<{{n.Entity}}Dto>>
                 {
-                    private const string SearchParameter = "search";
-
                     public async Task<PagedList<{{n.Entity}}Dto>> Handle(Query request, CancellationToken cancellationToken)
                     {
                         var queryKitConfig = new CustomQueryKitConfiguration();
 
-                        var rows = dbContext.{{n.Plural}}
+                        var query = dbContext.{{n.Plural}}
                             .TagWithOperationCallSite("{{n.SnakePlural}}.list")
-                            .AsNoTracking();
-
-                        if (request.Parameters.Search is { } search)
-                        {
-                            if (search.Length > {{n.Entity}}ParametersDto.SearchMaxLength)
-                                throw new QueryInputException(SearchParameter,
-                                    $"A search can have no more than {{{n.Entity}}ParametersDto.SearchMaxLength} characters.");
-                            if (!PostgresText.CanStore(search))
-                                throw new QueryInputException(SearchParameter, "The search has a character that is not allowed.");
-
-                            var pattern = LikePattern.Containing(search);
-                            rows = rows.Where(x => EF.Functions.ILike(x.{{s.Title.Name}}, pattern, LikePattern.EscapeCharacter));
-                        }
-
-                        var query = rows.To{{n.Entity}}DtoQueryable();
+                            .AsNoTracking()
+                            .To{{n.Entity}}DtoQueryable();
 
                         if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                             query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);
@@ -1589,18 +1567,17 @@ internal static class Templates
                     .ProducesValidationProblem();
 
                 /// <summary>
-                /// Gets a page of {{n.WordsPlural}}. The search finds the {{n.WordsPlural}} whose "{{s.Title.Label}}" value contains the text.
+                /// Gets a page of {{n.WordsPlural}}.
                 /// </summary>
                 public static async Task<Ok<PagedList<{{n.Entity}}Dto>>> Handle(
                     [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
                     string? sortOrder,
-                    [MaxLength({{n.Entity}}ParametersDto.SearchMaxLength)] string? search,
                     [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
                     [Range(1, int.MaxValue)] int? pageSize,
                     IMediator mediator,
                     CancellationToken cancellationToken)
                 {
-                    var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder, search);
+                    var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder);
 
                     var result = await mediator.Send(new Get{{n.Entity}}List.Query(parameters), cancellationToken);
                     return TypedResults.Ok(result);
@@ -1775,13 +1752,12 @@ internal static class Templates
                 public static async Task<McpPage<{{n.Entity}}Dto>> Handle(
                     IMediator mediator,
                     CancellationToken cancellationToken,
-                    [Description("{{EscapeForCs(Texts.Search(s))}}")] string? search = null,
                     [Description("The page number. The first page is 1. Leave it out for the first page.")] int? pageNumber = null,
                     [Description("The number of {{n.WordsPlural}} on a page, at least 1. Leave it out for the default size. A value more than the maximum gives the maximum. The result gives the size that was used.")] int? pageSize = null,
                     [Description("{{EscapeForCs(Texts.Filters(s))}}")] string? filters = null,
                     [Description("A QueryKit sort order, for example: -{{s.Title.Json}}")] string? sortOrder = null)
                 {
-                    var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder, search);
+                    var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder);
                     var result = await mediator.Send(new Get{{n.Entity}}List.Query(parameters), cancellationToken);
                     return McpPage.From(result);
                 }
@@ -1841,7 +1817,7 @@ internal static class Templates
               // Gets one {{n.Words}}. NOT_FOUND when the caller cannot see {{n.A}} {{n.Words}} with the ID.
               rpc Get{{n.Entity}}(Get{{n.Entity}}Request) returns (Get{{n.Entity}}Response);
 
-              // Gets one page of {{n.WordsPlural}}. INVALID_ARGUMENT for a bad search, filter, sort order, or page.
+              // Gets one page of {{n.WordsPlural}}. INVALID_ARGUMENT for a bad filter, sort order, or page.
               rpc List{{n.Plural}}(List{{n.Plural}}Request) returns (List{{n.Plural}}Response);
 
               // Adds {{n.A}} {{n.Words}}. PERMISSION_DENIED without the {{n.PermissionName}} permission.
@@ -1874,8 +1850,6 @@ internal static class Templates
               optional int32 page_size = 2;
               optional string filters = 3;
               optional string sort_order = 4;
-              // {{Texts.Search(s)}}
-              optional string search = 5;
             }
 
             message List{{n.Plural}}Response {
@@ -2045,8 +2019,7 @@ internal static class Templates
                         request.HasPageNumber ? request.PageNumber : null,
                         request.HasPageSize ? request.PageSize : null,
                         request.HasFilters ? request.Filters : null,
-                        request.HasSortOrder ? request.SortOrder : null,
-                        request.HasSearch ? request.Search : null);
+                        request.HasSortOrder ? request.SortOrder : null);
 
                     var result = await mediator.Send(new Get{{n.Entity}}List.Query(parameters), context.CancellationToken);
 
@@ -2586,9 +2559,9 @@ internal static class Templates
     public static string ListQueryTests(Spec s)
     {
         var n = s.Names;
-        var (e, t) = (n.Entity, s.Title.Name);
-        var usings = Usings([$"{n.Ns}.Dtos", $"{n.Ns}.Features", $"{n.Server}.Exceptions",
-            $"{n.App}.SharedTestHelpers.EntityGraphs", s.Parent?.BlueprintNamespace, "Shouldly"]);
+        var (e, t, json) = (n.Entity, s.Title.Name, s.Title.Json);
+        var usings = Usings([$"{n.Ns}.Dtos", $"{n.Ns}.Features", $"{n.App}.SharedTestHelpers.EntityGraphs",
+            $"{n.App}.SharedTestHelpers.Utilities", s.Parent?.BlueprintNamespace, "Shouldly"]);
         return $$"""
             namespace {{n.App}}.IntegrationTests.FeatureTests.{{n.Plural}};
 
@@ -2597,7 +2570,7 @@ internal static class Templates
             public class {{e}}ListQueryTests : TestBase
             {
                 [Test]
-                public async Task a_search_finds_the_text_with_no_regard_to_case_and_reads_each_like_character_as_plain_text()
+                public async Task a_filter_finds_the_text_with_no_regard_to_case_and_reads_each_like_character_and_quote_as_plain_text()
                 {
                     // Arrange
                     var testingServiceScope = new TestingServiceScope();
@@ -2610,39 +2583,36 @@ internal static class Templates
                             x => x.{{t}} = $"{marker} a_b",
                             x => x.{{t}} = $"{marker} axb",
                             x => x.{{t}} = $"{marker} c\\d",
-                            x => x.{{t}} = $"{marker} cd")
+                            x => x.{{t}} = $"{marker} cd",
+                            x => x.{{t}} = $"\"{marker} quoted",
+                            x => x.{{t}} = $"{marker} quoted\"",
+                            x => x.{{t}} = $"{marker} quoted",
+                            x => x.{{t}} = $"{marker} say \"\"\"hi\"\"\"")
                         .BuildAsync();
 
                     // Act
-                    var byCase = await SearchAsync(testingServiceScope, $" north {marker.ToUpperInvariant()} ");
-                    var percent = await SearchAsync(testingServiceScope, $"{marker} 50%");
-                    var underscore = await SearchAsync(testingServiceScope, $"{marker} a_b");
-                    var backslash = await SearchAsync(testingServiceScope, $"{marker} c\\d");
+                    var byCase = await ContainingAsync(testingServiceScope, $"north {marker.ToUpperInvariant()}");
+                    var percent = await ContainingAsync(testingServiceScope, $"{marker} 50%");
+                    var underscore = await ContainingAsync(testingServiceScope, $"{marker} a_b");
+                    var backslash = await ContainingAsync(testingServiceScope, $"{marker} c\\d");
+                    var quoteAtStart = await ContainingAsync(testingServiceScope, $"\"{marker} quoted");
+                    var quoteAtEnd = await ContainingAsync(testingServiceScope, $"{marker} quoted\"");
+                    var quoteRun = await ContainingAsync(testingServiceScope, $"{marker} say \"\"\"hi\"\"\"");
 
                     // Assert
                     byCase.ShouldBe([$"North {marker}"]);
                     percent.ShouldBe([$"{marker} 50% full"]);
                     underscore.ShouldBe([$"{marker} a_b"]);
                     backslash.ShouldBe([$"{marker} c\\d"]);
+                    quoteAtStart.ShouldBe([$"\"{marker} quoted"]);
+                    quoteAtEnd.ShouldBe([$"{marker} quoted\""]);
+                    quoteRun.ShouldBe([$"{marker} say \"\"\"hi\"\"\""]);
                 }
 
-                [Test]
-                public async Task a_search_longer_than_its_maximum_gives_a_query_input_error()
+                private static async Task<List<string>> ContainingAsync(TestingServiceScope scope, string text)
                 {
-                    // Arrange
-                    var testingServiceScope = new TestingServiceScope();
-                    var search = new string('a', {{e}}ParametersDto.SearchMaxLength + 1);
-
-                    // Act
-                    var act = () => SearchAsync(testingServiceScope, search);
-
-                    // Assert
-                    (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("search");
-                }
-
-                private static async Task<List<string>> SearchAsync(TestingServiceScope scope, string search)
-                {
-                    var page = await scope.SendAsync(new Get{{e}}List.Query({{e}}ParametersDto.From(null, null, null, null, search)));
+                    var filters = $"{{json}} @=* {QueryKitText.Quote(text)}";
+                    var page = await scope.SendAsync(new Get{{e}}List.Query({{e}}ParametersDto.From(null, null, filters, null)));
                     return page.Select(x => x.{{t}}).ToList();
                 }
             }
@@ -2994,7 +2964,7 @@ internal static class Templates
 
                     // Act
                     var read = await client.Get{{e}}Async(new Get{{e}}Request { Id = added.Id });
-                    var list = await client.List{{n.Plural}}Async(new List{{n.Plural}}Request { Search = added.{{t}} });
+                    var list = await client.List{{n.Plural}}Async(new List{{n.Plural}}Request { Filters = $"id == \"{added.Id}\"" });
                     var updated = await client.Update{{e}}Async(UpdateRequest(added, "Changed"));
                     await client.Delete{{e}}Async(new Delete{{e}}Request { Id = added.Id });
 

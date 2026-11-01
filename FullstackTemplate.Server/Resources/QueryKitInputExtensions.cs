@@ -2,7 +2,6 @@ namespace FullstackTemplate.Server.Resources;
 
 using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Text.RegularExpressions;
 using Databases;
 using Domain;
 using Exceptions;
@@ -15,7 +14,7 @@ using Sprache;
 /// Applies the <c>filters</c> and <c>sortOrder</c> values of a list request with QueryKit.
 /// A value that QueryKit cannot apply, or that uses the version or the allowed actions, throws a <see cref="QueryInputException"/> with the name of its parameter.
 /// </summary>
-public static partial class QueryKitInputExtensions
+public static class QueryKitInputExtensions
 {
     public const string FiltersParameter = "filters";
     public const string SortOrderParameter = "sortOrder";
@@ -83,8 +82,9 @@ public static partial class QueryKitInputExtensions
     }
 
     // QueryKit parses these filters, and the query fails with 500 when it runs:
-    // - A case-insensitive operator with null, such as ==* null, calls ToLower on the null.
-    // - == null or != null on a list field compares the whole list, and EF cannot translate it.
+    // - ^$* null and !^$* null on a list field call ToLower on the null. https://github.com/pdevito3/QueryKit/issues/212
+    // - == null or != null on a list field compares the whole list, and EF cannot translate the compare of a projected
+    //   list. https://github.com/pdevito3/QueryKit/issues/211
     private static void RefuseNullThatTheQueryCannotRun(Expression predicate)
     {
         var reader = new NullReader();
@@ -135,22 +135,23 @@ public static partial class QueryKitInputExtensions
         });
     }
 
-    // QueryKit 1.16 exceptions carry the field name only in their message text.
     private static string MessageFor<T>(string parameter, QueryKitException exception) => exception switch
     {
         QueryKitInputLengthExceededException => FilterTooLongMessage,
         QueryKitNestingDepthExceededException => FilterTooDeepMessage,
         QueryKitDbContextTypeException or SoundsLikeNotImplementedException => SoundsLikeMessage,
-        UnknownFilterPropertyException when UnknownFilterField().Match(exception.Message) is { Success: true } match =>
-            $"The filter names the field {match.Groups[1].Value}, which this list does not have. Use one of these fields: {FieldsOf<T>()}.",
-        SortParsingException when UnknownSortField().Match(exception.Message) is { Success: true } match =>
-            $"The sort order names the field {match.Groups[1].Value}, which this list does not have. Use one of these fields: {FieldsOf<T>()}.",
-        _ when OperatorRefusal(exception) is { } refusal && InOperatorNeedsList().IsMatch(refusal.Message) => InOperatorListMessage,
-        _ when OperatorRefusal(exception) is { } refusal && OperatorRefusesNull().IsMatch(refusal.Message) => NullValueMessage,
+        UnknownFilterPropertyException unknown =>
+            $"The filter names the field {unknown.PropertyName}, which this list does not have. Use one of these fields: {FieldsOf<T>()}.",
+        // QueryKit also throws it for an empty clause and for a sort on a list field, so an empty name or a name that the list
+        // has is another fault. https://github.com/pdevito3/QueryKit/issues/213
+        SortParsingException sort when sort.PropertyName.Length > 0 && !HasField<T>(sort.PropertyName) =>
+            $"The sort order names the field {sort.PropertyName}, which this list does not have. Use one of these fields: {FieldsOf<T>()}.",
+        _ when OperatorRefusal(exception)?.Reason == QueryKitParsingReason.NeedsList => InOperatorListMessage,
+        _ when OperatorRefusal(exception)?.Reason == QueryKitParsingReason.RefusesNull => NullValueMessage,
         { InnerException: ParseException parse } =>
             $"The {Words(parameter)} could not be read at character {parse.Position.Pos + 1}. Check the operator and the quotes there, then try again.",
-        ParsingException when ValueDoesNotFit().Match(exception.Message) is { Success: true } match =>
-            $"A value in the filter does not fit the field {match.Groups[1].Value}. Change the value, then try again.",
+        ParsingException { PropertyName: { } property } =>
+            $"A value in the filter does not fit the field {property}. Change the value, then try again.",
         _ => NotReadMessage(parameter),
     };
 
@@ -158,25 +159,14 @@ public static partial class QueryKitInputExtensions
     private static QueryKitParsingException? OperatorRefusal(QueryKitException exception) =>
         exception as QueryKitParsingException ?? exception.InnerException as QueryKitParsingException;
 
+    private static bool HasField<T>(string name) => RequestRules.For(typeof(T))
+        .Any(rule => string.Equals(rule.JsonName, name, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(rule.Property.Name, name, StringComparison.OrdinalIgnoreCase));
+
     private static string FieldsOf<T>() => string.Join(", ", RequestRules.For(typeof(T))
         .Where(rule => rule.Holds == PropertyHolds.Value
             && rule.Property.Name is not (nameof(BaseEntity.Version) or AllowedActionsMember))
         .Select(rule => rule.JsonName));
-
-    [GeneratedRegex(@"^The filter property '(.+)' was not recognized\.$")]
-    private static partial Regex UnknownFilterField();
-
-    [GeneratedRegex(@"^Parsing failed during sorting\. '(.+)' was not recognized\.$")]
-    private static partial Regex UnknownSortField();
-
-    [GeneratedRegex(@"^The value '.*' is not a valid \S+ for the filter property '([^']+)'\.$")]
-    private static partial Regex ValueDoesNotFit();
-
-    [GeneratedRegex(@"^The \S+ operator needs a list value, for example \[""a"", ""b""\]\.$")]
-    private static partial Regex InOperatorNeedsList();
-
-    [GeneratedRegex(@"^The '\S+' operator does not accept a null value\. Use '==' or '!=' to compare with null\.$")]
-    private static partial Regex OperatorRefusesNull();
 
     private static string NotReadMessage(string parameter) =>
         parameter == SortOrderParameter ? SortOrderNotReadMessage : FilterNotReadMessage;

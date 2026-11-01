@@ -1,5 +1,7 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Users;
 
+using Domain.Agents;
+using Domain.Tenants;
 using Microsoft.Extensions.Options;
 
 public interface ICallerIdentityResolver

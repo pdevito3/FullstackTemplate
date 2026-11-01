@@ -1,9 +1,9 @@
-namespace FullstackTemplate.UnitTests.Services;
+namespace FullstackTemplate.UnitTests.Domain.Users;
 
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
-using static FullstackTemplate.Server.Services.TenantLookupChange;
+using static FullstackTemplate.Server.Domain.Users.TenantLookupChange;
 
 public class TenantLookupChangeTests
 {

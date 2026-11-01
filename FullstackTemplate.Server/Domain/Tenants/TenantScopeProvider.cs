@@ -1,5 +1,6 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Tenants;
 
+using Domain.Users;
 /// <summary>
 /// Finds the tenants that the current caller sees. It does not tell what the caller can do. For an access decision, ask
 /// <see cref="Domain.Users.Caller"/> through <see cref="Domain.Users.IPermissionGuard"/>.

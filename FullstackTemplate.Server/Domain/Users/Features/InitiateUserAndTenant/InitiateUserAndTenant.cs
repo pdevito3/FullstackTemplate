@@ -9,7 +9,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
 using Serilog;
-using Services;
 using Tenants;
 using Tenants.Mappings;
 using Tenants.Models;

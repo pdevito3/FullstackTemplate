@@ -1,7 +1,7 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Agents;
 
 using Databases;
-using Domain.Agents;
+using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Resources;
 using Resources.Extensions;

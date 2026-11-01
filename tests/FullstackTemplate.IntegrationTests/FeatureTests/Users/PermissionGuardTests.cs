@@ -1,9 +1,9 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Users;
 
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using MediatR;

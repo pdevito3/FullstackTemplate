@@ -5,7 +5,6 @@ using Bogus;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using MediatR;

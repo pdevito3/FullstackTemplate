@@ -88,7 +88,7 @@ public class EntrypointBoundaryTests
         var core = Server.Value.CoreNames();
         core.ShouldContain("FullstackTemplate.Server.Databases.AppDbContext");
         core.ShouldContain("FullstackTemplate.Server.Domain.Tenants.Features.AddTenant");
-        core.ShouldContain("FullstackTemplate.Server.Services.CurrentUserService");
+        core.ShouldContain("FullstackTemplate.Server.Domain.Users.CurrentUserService");
         core.ShouldNotContain("FullstackTemplate.Server.Domain.Tenants.Grpc.V1.TenantsReflection");
     }
 

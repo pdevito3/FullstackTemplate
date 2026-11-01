@@ -685,7 +685,7 @@ These tests come from the tickets. Each one is in addition to the tests of secti
 | `.agents/skills/**` | No change. The skills name only the Duende demo IdP. |
 | `frontend/src/routes/index.tsx` | The subtitle ".NET Aspire + React with Duende BFF" becomes ".NET Aspire + React with a BFF". |
 | `frontend/src/routes/about.tsx` | "Duende BFF" becomes "BFF (YARP and OIDC)". |
-| `FullstackTemplate.Server/Services/CurrentUserService.cs` | No change. Its comments name the Duende Demo IdP, not Duende BFF. |
+| `FullstackTemplate.Server/Domain/Users/CurrentUserService.cs` | No change. Its comments name the Duende Demo IdP, not Duende BFF. |
 
 ## 9. Phase 2: DPoP
 

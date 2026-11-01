@@ -1,8 +1,8 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 
 using FullstackTemplate.Server.Domain.Tenants.Features;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;

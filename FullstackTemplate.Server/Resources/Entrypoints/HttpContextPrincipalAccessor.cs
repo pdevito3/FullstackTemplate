@@ -1,7 +1,7 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints;
 
 using System.Security.Claims;
-using Services;
+using Domain.Users;
 
 /// <summary>
 /// Gives the core the principal of the current HTTP request. HTTP, gRPC, and MCP each run in an HTTP request, and

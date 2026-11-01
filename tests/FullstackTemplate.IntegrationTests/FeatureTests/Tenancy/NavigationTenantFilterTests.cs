@@ -4,7 +4,6 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using FullstackTemplate.SharedTestHelpers.Utilities;

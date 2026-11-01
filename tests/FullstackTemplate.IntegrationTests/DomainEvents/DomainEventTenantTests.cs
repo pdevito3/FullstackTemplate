@@ -1,10 +1,10 @@
 namespace FullstackTemplate.IntegrationTests.DomainEvents;
 
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users.Features;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

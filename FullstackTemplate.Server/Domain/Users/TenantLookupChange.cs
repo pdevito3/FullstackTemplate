@@ -1,8 +1,7 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Users;
 
 using Databases;
 using Domain.Tenants;
-using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Resources;

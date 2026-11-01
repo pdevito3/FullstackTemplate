@@ -1,5 +1,6 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Users;
 
+using Domain.Tenants;
 /// <summary>
 /// Who sent the current request, before permissions. The tenant scope, the permission guard, and the start-a-tenant
 /// check read this one answer. <see cref="ICallerIdentityResolver"/> makes it once for each DI scope.

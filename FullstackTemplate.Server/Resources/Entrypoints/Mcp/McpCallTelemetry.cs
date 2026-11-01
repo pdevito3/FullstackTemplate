@@ -1,10 +1,10 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 
 using System.Text.Json;
+using Domain.Users;
 using Microsoft.AspNetCore.Http.Features;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Services;
 
 /// <summary>
 /// Puts the tool name, the caller, and the error of a tool call on the span of its HTTP request. A call that fails

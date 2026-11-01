@@ -4,7 +4,6 @@ using System.Diagnostics;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Domain.Tenants;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using Grpc.Net.Client;

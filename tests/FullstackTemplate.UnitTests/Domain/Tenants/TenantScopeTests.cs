@@ -1,8 +1,7 @@
-namespace FullstackTemplate.UnitTests.Services;
+namespace FullstackTemplate.UnitTests.Domain.Tenants;
 
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
-using FullstackTemplate.Server.Services;
 using Shouldly;
 
 public class TenantScopeTests

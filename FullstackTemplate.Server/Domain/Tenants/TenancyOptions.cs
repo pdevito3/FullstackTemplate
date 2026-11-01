@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Tenants;
 
 /// <summary>
 /// The "Tenancy" configuration section.

@@ -2,9 +2,10 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
 using Databases;
+using Domain.Tenants;
+using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Services;
 using ZiggyCreatures.Caching.Fusion;
 
 public static class WebAppServiceConfiguration

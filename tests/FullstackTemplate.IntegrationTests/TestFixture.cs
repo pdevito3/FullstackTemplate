@@ -5,7 +5,6 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Extensions;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Utilities;

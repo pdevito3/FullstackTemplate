@@ -1,9 +1,9 @@
-namespace FullstackTemplate.UnitTests.Services;
+namespace FullstackTemplate.UnitTests.Domain.Users;
 
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using Shouldly;
 
 public sealed class CallerIdentityTests

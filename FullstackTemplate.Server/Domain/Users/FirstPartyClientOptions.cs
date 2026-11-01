@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Users;
 
 /// <summary>
 /// The client IDs of the first-party apps: <c>Auth:ClientId</c> (the BFF) and <c>Swagger:ClientId</c> when it is set.

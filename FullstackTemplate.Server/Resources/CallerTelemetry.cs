@@ -1,7 +1,7 @@
 namespace FullstackTemplate.Server.Resources;
 
 using System.Diagnostics;
-using Services;
+using Domain.Users;
 
 /// <summary>
 /// The span tags and the log properties of a caller. The values are ids only (see the privacy rule in

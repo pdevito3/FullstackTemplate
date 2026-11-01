@@ -1,11 +1,11 @@
 namespace FullstackTemplate.Server.Resources;
 
 using System.Diagnostics;
+using Domain.Users;
 using MediatR;
 using Serilog.Context;
 using Serilog.Core;
 using Serilog.Core.Enrichers;
-using Services;
 
 /// <summary>
 /// Resolves the caller before the handler runs. The tenant query filter reads

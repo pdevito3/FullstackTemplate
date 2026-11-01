@@ -1,11 +1,10 @@
-namespace FullstackTemplate.UnitTests.Services;
+namespace FullstackTemplate.UnitTests.Domain.Users;
 
 using System.Security.Claims;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;

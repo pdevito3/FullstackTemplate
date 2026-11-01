@@ -1,6 +1,6 @@
-namespace FullstackTemplate.UnitTests.Services;
+namespace FullstackTemplate.UnitTests.Domain.Users;
 
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using Microsoft.Extensions.Configuration;
 using Shouldly;
 

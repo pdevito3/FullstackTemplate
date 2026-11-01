@@ -5,7 +5,6 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

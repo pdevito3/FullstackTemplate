@@ -1,9 +1,10 @@
 namespace FullstackTemplate.Server.Databases;
 
 using System.Security.Claims;
+using Domain.Tenants;
+using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Services;
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {

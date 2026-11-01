@@ -1,11 +1,11 @@
 namespace FullstackTemplate.UnitTests.Domain.Tenants;
 
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;

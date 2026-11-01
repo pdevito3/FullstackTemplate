@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Resources;
-using Services;
 
 public static class TenantQueryFilterExtension
 {

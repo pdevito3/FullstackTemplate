@@ -6,7 +6,7 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;

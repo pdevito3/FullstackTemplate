@@ -1,7 +1,7 @@
-namespace FullstackTemplate.UnitTests.Services;
+namespace FullstackTemplate.UnitTests.Domain.Users;
 
 using System.Security.Claims;
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using NSubstitute;
 using Shouldly;
 

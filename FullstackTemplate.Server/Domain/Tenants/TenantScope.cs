@@ -1,7 +1,6 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Tenants;
 
 using Domain;
-using Domain.Tenants;
 
 /// <summary>
 /// The tenants whose rows the current request can see. The tenant query filter reads it.

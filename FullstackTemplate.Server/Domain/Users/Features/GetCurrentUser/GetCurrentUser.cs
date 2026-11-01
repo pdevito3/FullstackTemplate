@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 using Dtos;
 using Exceptions;
 using MediatR;
-using Services;
 
 public static class GetCurrentUser
 {

@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Users;
 
 using Databases;
 using Microsoft.EntityFrameworkCore;

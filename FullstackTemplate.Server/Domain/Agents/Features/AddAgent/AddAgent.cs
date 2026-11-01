@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Domain.Agents.Features;
 
 using System.Diagnostics;
 using Databases;
+using Domain.Tenants;
 using Dtos;
 using Exceptions;
 using Mappings;
@@ -10,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Resources;
 using Serilog;
-using Services;
 using Users;
 
 public static class AddAgent

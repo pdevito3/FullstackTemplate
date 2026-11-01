@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Resources.Entrypoints;
 
 using Domain.Tenants.Grpc.V1;
 // new-feature:grpc-usings
+using Domain.Users;
 using Exceptions;
 using Grpc;
 using Http;
@@ -10,7 +11,6 @@ using Mcp;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using Serilog.Core;
-using Services;
 
 /// <summary>
 /// Adds and maps the external entrypoints: the HTTP API, gRPC, and MCP. All three use the same JWT bearer

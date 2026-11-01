@@ -5,7 +5,6 @@ using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Tenants.Models;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

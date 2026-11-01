@@ -2,7 +2,7 @@ namespace FullstackTemplate.UnitTests.Databases.Auditing;
 
 using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain.AuditEntries;
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using Shouldly;
 
 public class AuditDiffTests

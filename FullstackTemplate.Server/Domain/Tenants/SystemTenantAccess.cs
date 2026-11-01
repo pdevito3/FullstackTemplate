@@ -1,4 +1,4 @@
-namespace FullstackTemplate.Server.Services;
+namespace FullstackTemplate.Server.Domain.Tenants;
 
 /// <summary>
 /// Marks one DI scope as system work. In a system scope, <see cref="TenantScopeProvider"/> gives

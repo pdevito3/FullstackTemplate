@@ -12,7 +12,6 @@ using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.Server.Domain.Users.Features;
-using FullstackTemplate.Server.Services;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;

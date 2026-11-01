@@ -2,12 +2,12 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 
 using System.Diagnostics;
 using Databases;
+using Domain.Tenants;
 using Dtos;
 using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Services;
 
 public static class GetUserByIdentifier
 {

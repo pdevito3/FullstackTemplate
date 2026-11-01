@@ -3,7 +3,7 @@ namespace FullstackTemplate.IntegrationTests.Databases;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
-using FullstackTemplate.Server.Services;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

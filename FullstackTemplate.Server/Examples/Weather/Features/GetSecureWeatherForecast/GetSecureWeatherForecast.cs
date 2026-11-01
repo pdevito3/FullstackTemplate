@@ -1,8 +1,8 @@
 namespace FullstackTemplate.Server.Examples.Weather.Features;
 
+using Domain.Users;
 using Dtos;
 using MediatR;
-using Services;
 
 public static class GetSecureWeatherForecast
 {

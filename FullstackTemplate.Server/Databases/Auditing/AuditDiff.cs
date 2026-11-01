@@ -1,7 +1,7 @@
 namespace FullstackTemplate.Server.Databases.Auditing;
 
 using Domain.AuditEntries;
-using Services;
+using Domain.Users;
 
 /// <summary>
 /// One audited entity of the tracker after the stamps, as plain values. <see cref="AuditSnapshots"/> makes it.

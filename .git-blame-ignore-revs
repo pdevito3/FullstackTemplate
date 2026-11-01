@@ -1,4 +1,4 @@
 # git blame skips these commits. Run: git config blame.ignoreRevsFile .git-blame-ignore-revs
 
-# chore(repo): convert each CRLF text file to LF
-45871d134ffc0f52cefac41bcddc1e94808ee19e
+# chore(repo): store each text file with LF line endings and fail CI on a CR (#287)
+06943aa1a1cfa4ae51941c6d112be25f3439fd82

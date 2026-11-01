@@ -11,8 +11,6 @@ export const getVenueListQueryFiltersSchema = z.string().max(2000).optional()
 
 export const getVenueListQuerySortOrderSchema = z.string().optional()
 
-export const getVenueListQuerySearchSchema = z.string().max(200).optional()
-
 export const getVenueListQueryPageNumberSchema = z.int32().min(1).max(4294967).optional()
 
 export const getVenueListQueryPageSizeSchema = z.int32().min(1).max(2147483647).optional()

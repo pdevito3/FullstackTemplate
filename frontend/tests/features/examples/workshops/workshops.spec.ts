@@ -201,7 +201,7 @@ test.describe('the workshops', () => {
     await workshops.searchFor('Kubb')
 
     await expect(page).toHaveURL('/workshops?search=Kubb')
-    expect(api.last('get', workshopPaths.list)?.query.get('search')).toBe('Kubb')
+    expect(api.last('get', workshopPaths.list)?.query.get('filters')).toBe('title @=* "Kubb"')
     expect(api.last('get', workshopPaths.list)?.query.get('pageNumber')).toBe('1')
     await expect(workshops.at.row('Kubb basics')).toBeVisible()
   })

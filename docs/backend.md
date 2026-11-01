@@ -255,7 +255,7 @@ A test never takes today from the UTC date. Take it from the zone of the place i
 
 TUnit runs all tests in parallel, also the tests of one class. The integration and functional tests share one fixture for each assembly, which `AssemblyHooks.cs` starts and stops. Each test must create its own data and must not depend on rows from other tests. If a test reads state of the whole process, such as all exported spans, put `[NotInParallel]` on its class.
 
-A list with a search has an integration test that searches for `50%`, `a_b`, and `c\d`, and finds only the row with that text. See `tests/FullstackTemplate.IntegrationTests/Databases/LikePatternTests.cs`.
+A list has an integration test that filters its text field with `@=*` for `50%`, `a_b`, `c\d`, and text with a quote at an end, and finds only the row with that text. Build each filter value with `QueryKitText.Quote`. A raw `ILike` with `LikePattern` has the same test. See `tests/FullstackTemplate.IntegrationTests/Databases/LikePatternTests.cs`.
 
 To run the tests in a web UI, open the **Labcoat UI** link of the `tests` resource in the Aspire dashboard. [Labcoat](https://github.com/eriklieben/labcoat) builds and runs the test projects, and shows each failure with its source.
 

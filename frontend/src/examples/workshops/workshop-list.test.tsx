@@ -5,7 +5,7 @@ import { commands, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
-import { getWorkshopListQuerySearchSchema } from '@/api/generated/workshops/zod/get-workshop-list'
+import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/workshop-for-creation-dto'
 import { maxLengthOf } from '@/lib/api-contract'
 import { routeTree } from '@/routeTree.gen'
 
@@ -40,7 +40,7 @@ async function renderListAt(path: string) {
     { method: 'GET', path: '/bff/user', status: 204 },
     { method: 'GET', path: '/api/v1/workshops', headers: pagination(1, 3), body: [workshop('Page one')] },
     { method: 'GET', path: '/api/v1/workshops', query: { pageNumber: '2' }, headers: pagination(2, 3), body: [workshop('Page two')] },
-    { method: 'GET', path: '/api/v1/workshops', query: { search: 'Kubb' }, headers: pagination(1, 1), body: [workshop('Kubb basics')] },
+    { method: 'GET', path: '/api/v1/workshops', query: { filters: 'title @=* "Kubb"' }, headers: pagination(1, 1), body: [workshop('Kubb basics')] },
   ])
   const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [path] }) })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -82,8 +82,16 @@ test('falls back to the first page for a page that the contract refuses', async 
   expect(router.state.location.search).toEqual({})
 })
 
-test('takes no more search text than the contract allows', async () => {
+test('falls back to the whole list for a search in the URL that is longer than a title can hold', async () => {
+  const tooLong = 'a'.repeat(maxLengthOf(workshopForCreationDtoSchema.shape.title) + 1)
+  const { screen, router } = await renderListAt(`/workshops?search=${tooLong}`)
+
+  await expect.element(screen.getByRole('link', { name: 'Page one' })).toBeVisible()
+  expect(router.state.location.search).toEqual({})
+})
+
+test('takes no more search text than a title can hold', async () => {
   const { search } = await renderListAt('/workshops')
 
-  await expect.element(search).toHaveAttribute('maxlength', String(maxLengthOf(getWorkshopListQuerySearchSchema.unwrap())))
+  await expect.element(search).toHaveAttribute('maxlength', String(maxLengthOf(workshopForCreationDtoSchema.shape.title)))
 })

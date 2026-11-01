@@ -16,7 +16,7 @@ Use the first item in this list that fits:
 The app has no global store library. Before you add one, make sure that items 1 to 6 do not fit.
 
 <!-- example:start -->
-The workshop list keeps its search and its page in the search params. The contract schemas validate them, and a value that the contract refuses falls back to the default: [`listSearchSchema`](<../../frontend/src/routes/(examples)/workshops/index.tsx>). A search that arrives after a link or Back changed the URL does not overwrite the URL: [`handleSearch`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
+The workshop list keeps its search and its page in the search params. A zod schema validates them, and a value that it refuses falls back to the default. The page comes from the contract schema. The search is plain text, because the list hook turns it into a filter: [`listSearchSchema`](<../../frontend/src/routes/(examples)/workshops/index.tsx>). A search that arrives after a link or Back changed the URL does not overwrite the URL: [`handleSearch`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
 <!-- example:end -->
 
 ## Calculate, do not store

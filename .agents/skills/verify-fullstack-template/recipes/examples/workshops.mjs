@@ -191,11 +191,11 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       expect(sent).toBe(0)
     })
 
-    await step('search: the URL and the request have the search, and the row shows', async () => {
+    await step('search: the URL has the search, the request has its title filter, and the row shows', async () => {
       await page.goto('/workshops')
       await settle()
       const searched = page.waitForResponse(
-        (r) => new URL(r.url()).pathname === '/api/v1/workshops' && new URL(r.url()).searchParams.get('search') === stamp,
+        (r) => new URL(r.url()).pathname === '/api/v1/workshops' && new URL(r.url()).searchParams.get('filters') === `title @=* "${stamp}"`,
       )
       await page.getByRole('searchbox', { name: 'Search workshops' }).fill(stamp)
       expect((await searched).status()).toBe(200)

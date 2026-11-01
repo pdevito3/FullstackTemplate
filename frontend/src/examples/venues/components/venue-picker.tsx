@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Collection, Text, type Key } from 'react-aria-components'
 
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
-import { getVenueListQuerySearchSchema } from '@/api/generated/venues/zod/get-venue-list'
+import { venueForCreationDtoSchema } from '@/api/generated/models/zod/venue-for-creation-dto'
 import {
   Combobox,
   ComboboxContent,
@@ -21,7 +21,7 @@ import { useVenue } from '../apis/get-venue'
 import { useVenueSearch } from '../apis/get-venue-list'
 import { VenueKeys } from '../apis/venue.keys'
 
-const searchMaxLength = maxLengthOf(getVenueListQuerySearchSchema.unwrap())
+const searchMaxLength = maxLengthOf(venueForCreationDtoSchema.shape.name)
 
 /**
  * The options are the pages of the search, with the picked venue from its detail query. React Aria shows the name of

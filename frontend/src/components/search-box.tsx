@@ -9,7 +9,7 @@ interface SearchBoxProps {
   placeholder?: string
   /** The search in the URL. */
   search: string
-  /** The limit of the search parameter in the contract, from `maxLengthOf`. */
+  /** The max length of the field that the search matches, from `maxLengthOf`. */
   maxLength: number
   /** After the debounce. `base` is the search of the URL when the user typed, so the page can drop a search that a later navigation replaced. */
   onSearch: (text: string, base: string) => void

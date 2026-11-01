@@ -5,6 +5,7 @@ using FullstackTemplate.Server.Examples.Workshops.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Utilities;
 using Shouldly;
 
 public class WorkshopListQueryTests : TestBase
@@ -17,16 +18,16 @@ public class WorkshopListQueryTests : TestBase
     [Arguments("50%", "Yard 50% full")]
     [Arguments("a_b", "a_b")]
     [Arguments(@"c\d", @"c\d")]
-    [Arguments("  A_B ", "a_b")]
-    public async Task a_search_matches_a_percent_an_underscore_or_a_backslash_as_plain_text(string search, string match)
+    [Arguments("A_B", "a_b")]
+    public async Task a_title_filter_matches_a_percent_an_underscore_or_a_backslash_as_plain_text(string text, string match)
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
         var venueId = await AddWorkshopsAsync(testingServiceScope);
 
         // Act
-        var found = await testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, $"venueId == \"{venueId}\"", null, search)));
+        var found = await testingServiceScope.SendAsync(new GetWorkshopList.Query(WorkshopParametersDto.From(
+            null, null, $"venueId == \"{venueId}\" && title @=* {QueryKitText.Quote(text)}", null)));
 
         // Assert
         found.Select(w => w.Title).ShouldBe([match]);
@@ -41,7 +42,7 @@ public class WorkshopListQueryTests : TestBase
 
         // Act
         var page = await testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(1, 4, $"venueId == \"{venueId}\"", null, null)));
+            WorkshopParametersDto.From(1, 4, $"venueId == \"{venueId}\"", null)));
 
         // Assert
         page.TotalCount.ShouldBe(Titles.Length);
@@ -52,32 +53,17 @@ public class WorkshopListQueryTests : TestBase
     [Test]
     [Arguments("a\0b")]
     [Arguments("\uD800")]
-    public async Task a_search_with_a_character_that_postgres_cannot_store_gives_a_query_input_error(string search)
+    public async Task a_title_filter_with_a_character_that_postgres_cannot_store_gives_a_query_input_error(string text)
     {
         // Arrange
         var testingServiceScope = new TestingServiceScope();
 
         // Act
         var act = () => testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, null, null, search)));
+            WorkshopParametersDto.From(null, null, $"title @=* {QueryKitText.Quote(text)}", null)));
 
         // Assert
-        (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("search");
-    }
-
-    [Test]
-    public async Task a_search_longer_than_its_maximum_gives_a_query_input_error()
-    {
-        // Arrange
-        var testingServiceScope = new TestingServiceScope();
-        var search = new string('a', WorkshopParametersDto.SearchMaxLength + 1);
-
-        // Act
-        var act = () => testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, null, null, search)));
-
-        // Assert
-        (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("search");
+        (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("filters");
     }
 
     public static IEnumerable<(string, string[])> FiltersThatTheFilterBuilderWrites =>
@@ -110,7 +96,7 @@ public class WorkshopListQueryTests : TestBase
 
         // Act
         var found = await testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, $"venueId == \"{venueId}\" && {filter}", null, null)));
+            WorkshopParametersDto.From(null, null, $"venueId == \"{venueId}\" && {filter}", null)));
 
         // Assert
         found.Select(w => w.Title).ShouldBe(matches, ignoreOrder: true);

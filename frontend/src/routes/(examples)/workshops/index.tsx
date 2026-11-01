@@ -1,10 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as z from 'zod'
 
-import {
-  getWorkshopListQueryPageNumberSchema,
-  getWorkshopListQuerySearchSchema,
-} from '@/api/generated/workshops/zod/get-workshop-list'
+import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/workshop-for-creation-dto'
+import { getWorkshopListQueryPageNumberSchema } from '@/api/generated/workshops/zod/get-workshop-list'
 import { QueryError } from '@/components/query-error'
 import { SearchBox } from '@/components/search-box'
 import { buttonVariants } from '@/components/ui/button-variants'
@@ -19,12 +17,12 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { maxLengthOf } from '@/lib/api-contract'
 import { PageHeading } from '@/components/page-heading'
 
+const searchMaxLength = maxLengthOf(workshopForCreationDtoSchema.shape.title)
+
 const listSearchSchema = z.object({
-  search: getWorkshopListQuerySearchSchema.catch(undefined),
+  search: z.string().max(searchMaxLength).optional().catch(undefined),
   page: getWorkshopListQueryPageNumberSchema.catch(undefined),
 })
-
-const searchMaxLength = maxLengthOf(getWorkshopListQuerySearchSchema.unwrap())
 
 export const Route = createFileRoute('/(examples)/workshops/')({
   validateSearch: listSearchSchema,
@@ -122,7 +120,7 @@ function WorkshopRows({ list, search, page, onPageChange }: WorkshopRowsProps) {
   if (workshops.length === 0) {
     return (
       <p className="text-muted-foreground">
-        {search ? `No workshop has "${search.trim()}" in its title.` : 'No workshops yet. Add one with New workshop.'}
+        {search.trim() ? `No workshop has "${search.trim()}" in its title.` : 'No workshops yet. Add one with New workshop.'}
       </p>
     )
   }

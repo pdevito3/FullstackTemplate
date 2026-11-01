@@ -19,7 +19,7 @@ public class ExampleListFilterSweepTests : TestBase
 
         // Act
         var faults = await ListFilterSweep.FaultsAsync(typeof(WorkshopDto), (filters, sort) =>
-            testingServiceScope.SendAsync(new GetWorkshopList.Query(WorkshopParametersDto.From(null, null, filters, sort, null))));
+            testingServiceScope.SendAsync(new GetWorkshopList.Query(WorkshopParametersDto.From(null, null, filters, sort))));
 
         // Assert
         faults.ShouldBeEmpty();
@@ -33,7 +33,7 @@ public class ExampleListFilterSweepTests : TestBase
 
         // Act
         var faults = await ListFilterSweep.FaultsAsync(typeof(VenueDto), (filters, sort) =>
-            testingServiceScope.SendAsync(new GetVenueList.Query(VenueParametersDto.From(null, null, filters, sort, null))));
+            testingServiceScope.SendAsync(new GetVenueList.Query(VenueParametersDto.From(null, null, filters, sort))));
 
         // Assert
         faults.ShouldBeEmpty();
@@ -56,7 +56,7 @@ public class ExampleListFilterSweepTests : TestBase
 
         // Act
         var act = () => testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, filters, sortOrder, null)));
+            WorkshopParametersDto.From(null, null, filters, sortOrder)));
 
         // Assert
         (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe(filters is null ? "sortOrder" : "filters");

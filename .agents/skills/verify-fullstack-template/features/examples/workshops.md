@@ -13,7 +13,7 @@ A user with the `manage_workshops` permission adds a venue and a workshop in it,
 - `workshop-edit` saves a new title with the loaded version. The detail page shows the title.
 - `workshop-stale` refuses a save after another tab saved: the alert `This workshop changed after you opened it.` shows, and `Load the latest` loads the saved workshop into the form on the same URL.
 - `workshop-actions` shows one button for each entry of `allowedActions`. `Schedule` moves the workshop to `Scheduled`. `Cancel workshop` opens the dialog `Cancel this workshop?` first.
-- `workshop-search` puts the search in the URL (`?search=`) and lists the workshops whose title contains it.
+- `workshop-search` puts the search in the URL (`?search=`), sends it as the filter `title @=* "<text>"`, and lists the workshops whose title contains it.
 
 ## How to get to it (user POV)
 
@@ -38,7 +38,7 @@ Preconditions:
 - **Edit.** Click `Edit` in the group `Actions for <title>`. Fill `Title`, click `Save`. `PUT /api/v1/workshops/{id}` gives 200 with a `version` that is larger than the loaded one. The detail page shows the new title.
 - **Stale save.** Open the edit page in this tab and in a second tab. Save a title in the second tab. Save another title in the first tab. `PUT` gives 409 with the type `urn:fullstacktemplate:problem:stale-version`. The alert shows, and `Title` keeps the text of the first tab. Click `Load the latest`. The URL stays `/workshops/<id>/edit`, and `Title` has the title of the second tab.
 - **Actions.** On the detail page, the buttons equal `allowedActions` of the last `GET` (`Update` is the `Edit` link). Click `Schedule`. `POST /api/v1/workshops/{id}/schedule` sends the loaded `version` and gives 200 with the status `Scheduled`. The page shows `Scheduled`, `Cancel workshop`, and `Mark completed`. `Schedule` and `Edit` are gone. Click `Cancel workshop`. The dialog `Cancel this workshop?` shows. Click `Keep workshop`. The dialog closes, no `POST .../cancel` goes out, and `Cancel workshop` has the focus.
-- **Search.** Open `/workshops`, type a word of the title into the searchbox `Search workshops`. The URL gets `?search=<word>`, and `GET /api/v1/workshops` has the same `search`. The row of the workshop shows, with the start in the zone of the venue.
+- **Search.** Open `/workshops`, type a word of the title into the searchbox `Search workshops`. The URL gets `?search=<word>`, and `GET /api/v1/workshops` has `filters=title @=* "<word>"`. Text with a `"` goes in a padded raw string, as `docs/backend/features-and-cqrs.md`, "Search text", says. The row of the workshop shows, with the start in the zone of the venue.
 - **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/workshops.mjs`. The captures `no-tenant-list`, `empty-list`, `venue-picked`, `detail-draft`, `stale-alert`, `latest-loaded`, `scheduled`, `cancel-dialog`, and `search` show the states.
 
 ## Gotchas

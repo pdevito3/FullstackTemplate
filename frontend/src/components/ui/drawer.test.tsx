@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -36,8 +36,31 @@ function DrawerExample({ preventDismissal }: { preventDismissal?: boolean }) {
 
 const overlay = () => document.querySelector('[data-slot="drawer-overlay"]')
 
+// The React Aria `Sheet` ends its slide-in on the `scrollend` of its scroller, and its slide-out on a
+// `react-aria-sheet-close` event of its overlay. Both come about 500 ms after the slide starts, so on a slow
+// runner a test can reach its Escape after the slide ended. Hold both events until the test lets the slides end.
+function holdSlides() {
+  const held: { target: EventTarget; type: string }[] = []
+  const hold = (event: Event) => {
+    if (!(event.target instanceof Element)) return
+    if (event.type === 'scrollend' && !event.target.hasAttribute('data-sheet-scroll')) return
+    event.stopImmediatePropagation()
+    held.push({ target: event.target, type: event.type })
+  }
+  window.addEventListener('scrollend', hold, true)
+  window.addEventListener('react-aria-sheet-close', hold, true)
+  const endSlides = () => {
+    window.removeEventListener('scrollend', hold, true)
+    window.removeEventListener('react-aria-sheet-close', hold, true)
+    for (const { target, type } of held.splice(0)) target.dispatchEvent(new Event(type))
+  }
+  onTestFinished(endSlides)
+  return endSlides
+}
+
 test('Escape closes the drawer while it slides in, and the focus goes back to the trigger', async () => {
   // Arrange
+  const endSlides = holdSlides()
   await render(<DrawerExample />)
   const trigger = page.getByRole('button', { name: 'Open Drawer' })
   await trigger.click()
@@ -46,6 +69,7 @@ test('Escape closes the drawer while it slides in, and the focus goes back to th
 
   // Act
   await userEvent.keyboard('{Escape}')
+  endSlides()
 
   // Assert
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
@@ -69,6 +93,7 @@ test('Escape closes the drawer after it slides in, and the focus goes back to th
 
 test('Escape does not close a drawer that prevents dismissal, also while it slides in', async () => {
   // Arrange
+  const endSlides = holdSlides()
   await render(<DrawerExample preventDismissal />)
   await page.getByRole('button', { name: 'Open Drawer' }).click()
   await expect.element(page.getByRole('dialog', { name: 'Drawer Title' })).toBeInTheDocument()
@@ -76,6 +101,7 @@ test('Escape does not close a drawer that prevents dismissal, also while it slid
 
   // Act
   await userEvent.keyboard('{Escape}')
+  endSlides()
   await expect.element(page.getByRole('dialog', { name: 'Drawer Title' })).toHaveFocus()
   await userEvent.keyboard('{Escape}')
 
@@ -86,6 +112,7 @@ test('Escape does not close a drawer that prevents dismissal, also while it slid
 
 test('Escape while a drawer slides in over a dialog closes only the drawer', async () => {
   // Arrange
+  const endSlides = holdSlides()
   await render(
     <DialogTrigger>
       <Button>Open Dialog</Button>
@@ -104,6 +131,7 @@ test('Escape while a drawer slides in over a dialog closes only the drawer', asy
 
   // Act
   await userEvent.keyboard('{Escape}')
+  endSlides()
 
   // Assert
   await expect.element(page.getByRole('dialog', { name: 'Drawer Title' })).not.toBeInTheDocument()
@@ -114,6 +142,7 @@ test('Escape while a drawer slides in over a dialog closes only the drawer', asy
 
 test('Escape while a drawer slides in over a dialog, twice fast, closes the drawer and then the dialog', async () => {
   // Arrange
+  const endSlides = holdSlides()
   await render(
     <DialogTrigger>
       <Button>Open Dialog</Button>
@@ -133,6 +162,7 @@ test('Escape while a drawer slides in over a dialog, twice fast, closes the draw
   await userEvent.keyboard('{Escape}')
   await expect.poll(() => overlay()?.hasAttribute('data-exiting')).toBe(true)
   await userEvent.keyboard('{Escape}')
+  endSlides()
 
   // Assert
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
@@ -160,6 +190,7 @@ function MenuDrawerExample() {
 
 test('Escape closes a drawer that a menu item opened, after the menu closed while the drawer slides in', async () => {
   // Arrange
+  const endSlides = holdSlides()
   await render(<MenuDrawerExample />)
   const menuTrigger = page.getByRole('button', { name: 'Actions' })
   await menuTrigger.click()
@@ -171,6 +202,7 @@ test('Escape closes a drawer that a menu item opened, after the menu closed whil
 
   // Act
   await userEvent.keyboard('{Escape}')
+  endSlides()
 
   // Assert
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
@@ -178,6 +210,7 @@ test('Escape closes a drawer that a menu item opened, after the menu closed whil
 
 test('Escape on a Select that opened while the drawer slides in closes only the Select', async () => {
   // Arrange
+  const endSlides = holdSlides()
   await render(
     <DrawerTrigger>
       <Button>Open Drawer</Button>
@@ -204,6 +237,7 @@ test('Escape on a Select that opened while the drawer slides in closes only the 
 
   // Act
   await userEvent.keyboard('{Escape}')
+  endSlides()
 
   // Assert
   await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()

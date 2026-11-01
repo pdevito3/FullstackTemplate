@@ -81,14 +81,14 @@ describe('a text filter', () => {
     expect(textQuery(value)).toBe(query)
   })
 
-  it.each(['"Paul"', '"Quoted', 'quote"', '"', '""', '[DRAFT]', '[]'])(
+  it.each(['"Paul"', '"Quoted', 'quote"', '"', '""'])(
     'with %s leaves the filter out, because QueryKit cannot hold the value and would match other text',
     (value) => {
       expect(textQuery(value)).toBe('')
     },
   )
 
-  it.each(['[DRAFT] plan', '[', ']', 'a]b[c'])('with %s, which QueryKit does not read as a list', (value) => {
+  it.each(['[DRAFT]', '[]', '[DRAFT] plan', '[', ']', 'a]b[c'])('with %s, which QueryKit does not read as a list', (value) => {
     expect(textQuery(value)).toBe(`title @=* "${value}"`)
   })
 })
@@ -110,7 +110,7 @@ describe('a filter that QueryKit cannot hold', () => {
     const query = toQueryKitString({
       rootLogicalOperator: 'AND',
       filters: [
-        { id: 'g1', type: 'group', logicalOperator: 'OR', filters: [firstName('1', 'Jane'), firstName('2', '[DRAFT]')] },
+        { id: 'g1', type: 'group', logicalOperator: 'OR', filters: [firstName('1', 'Jane'), firstName('2', 'Paul"')] },
         { id: 'g2', type: 'group', logicalOperator: 'OR', filters: [firstName('3', '"John"')] },
         firstName('4', 'Ann'),
       ],

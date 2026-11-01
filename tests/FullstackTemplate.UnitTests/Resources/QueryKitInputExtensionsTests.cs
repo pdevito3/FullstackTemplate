@@ -10,6 +10,8 @@ public class QueryKitInputExtensionsTests : IDisposable
 {
     private sealed record Row(string Name, int Seats = 0, uint Version = 0);
 
+    private sealed record Tagged(string Name, IReadOnlyList<string> Tags);
+
     private static readonly IQueryable<Row> Rows = new[] { new Row("a") }.AsQueryable();
 
     private readonly ActivitySource _source = new("FullstackTemplate.UnitTests.QueryKitInput");
@@ -30,6 +32,34 @@ public class QueryKitInputExtensionsTests : IDisposable
         _listener.Dispose();
         _source.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [Test]
+    public void a_sort_on_a_list_field_gets_the_sort_order_message()
+    {
+        // Arrange
+        var rows = new[] { new Tagged("a", ["x"]) }.AsQueryable();
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => rows.ApplySortOrder("Tags", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("sortOrder");
+        exception.Message.ShouldBe("The sort order could not be read. Change the sort, then try again.");
+        exception.InnerException.ShouldBeOfType<SortParsingException>();
+    }
+
+    [Test]
+    [Arguments("Name,")]
+    [Arguments("-")]
+    public void a_sort_with_an_empty_field_gets_the_sort_order_message(string sortOrder)
+    {
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplySortOrder(sortOrder, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("sortOrder");
+        exception.Message.ShouldBe("The sort order could not be read. Change the sort, then try again.");
     }
 
     [Test]

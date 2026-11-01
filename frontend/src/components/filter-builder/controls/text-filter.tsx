@@ -53,7 +53,7 @@ export function TextFilter({
 
   const text = value.trim()
   const fault = textValueFault(text)
-  // A quote or a bracket at the end can start one inside the text, so the message waits until the user asks to add the
+  // A quote at the end can start one inside the text, so the message waits until the user asks to add the
   // filter. On a blur it would move the buttons under a press, and the click would miss them.
   const [checked, setChecked] = useState(fault !== undefined)
   const showFault = fault !== undefined && (checked || text.startsWith('"'))

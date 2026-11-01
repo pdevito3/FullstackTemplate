@@ -92,26 +92,10 @@ public class WorkshopListQueryTests : TestBase
         ("title ^^ [\"in-progress\", \"\"\"Say \"hi\" now\"\"\"]", ["Say \"hi\" now", "in-progress"]),
         ("title ^^ [\"[DRAFT]\"]", ["[DRAFT]"]),
         ("title @=* \"[DRAFT\"", ["[DRAFT]"]),
+        ("title @=* \"[DRAFT]\"", ["[DRAFT]"]),
+        ("title @=* \"\"\"[DRAFT]\"\"\"", ["[DRAFT]"]),
+        ("title == \"[DRAFT]\"", ["[DRAFT]"]),
     ];
-
-    // QueryKit reads a value that starts with [ and ends with ] as a list, also in quotes, so the filter builder refuses
-    // it. If this test fails, QueryKit can hold the value, and the filter builder can take it.
-    [Test]
-    [Arguments("title @=* \"[DRAFT]\"")]
-    [Arguments("title @=* \"\"\"[DRAFT]\"\"\"")]
-    [Arguments("title == \"[DRAFT]\"")]
-    public async Task a_whole_text_value_in_brackets_is_a_list_to_querykit(string filter)
-    {
-        // Arrange
-        var testingServiceScope = new TestingServiceScope();
-
-        // Act
-        var act = () => testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, filter, null, null)));
-
-        // Assert
-        (await act.ShouldThrowAsync<QueryInputException>()).Parameter.ShouldBe("filters");
-    }
 
     [Test]
     [MethodDataSource(nameof(FiltersThatTheFilterBuilderWrites))]

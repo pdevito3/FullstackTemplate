@@ -9,7 +9,6 @@ import { TextFilter } from './text-filter'
 const firstName: FilterConfig = { propertyKey: 'firstName', propertyLabel: 'First Name', controlType: 'text' }
 const endQuoteMessage =
   'A filter value cannot start or end with a quote. Remove the quote at the start or the end.'
-const bracketsMessage = 'A filter value cannot start with [ and end with ]. Remove the [ at the start or the ] at the end.'
 
 function filterWith(operator: Filter['operator']): Filter {
   return { id: '1', ...firstName, operator, value: 'x' }
@@ -23,8 +22,6 @@ test.each([
   { operator: Operators.CONTAINS, value: 'quote"', message: endQuoteMessage },
   { operator: Operators.CONTAINS, value: '""', message: endQuoteMessage },
   { operator: Operators.CONTAINS, value: '  "Paul"  ', message: endQuoteMessage },
-  { operator: Operators.CONTAINS, value: '[DRAFT]', message: bracketsMessage },
-  { operator: Operators.EQUALS, value: '[]', message: bracketsMessage },
 ])('refuses $operator $value and tells the user why', async ({ operator, value, message }) => {
   // Arrange
   const onSubmit = vi.fn()

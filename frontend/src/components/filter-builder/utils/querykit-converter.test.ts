@@ -75,59 +75,17 @@ describe('a text filter', () => {
     ['a backslash, which QueryKit keeps as it is', 'a\\b', 'title @=* "a\\b"'],
     ['an apostrophe', "it's", 'title @=* "it\'s"'],
     ['operators and brackets', 'a && b || (c) [d]', 'title @=* "a && b || (c) [d]"'],
-    ['a quote, in a raw literal', 'a"b', 'title @=* """a"b"""'],
-    ['three quotes, in a raw literal with longer delimiters', 'a"""b', 'title @=* """"a"""b""""'],
+    ['a quote, in a padded raw literal', 'a"b', 'title @=* """ a"b """'],
+    ['three quotes, in a padded raw literal with longer delimiters', 'a"""b', 'title @=* """" a"""b """"'],
+    ['a quote at each end, in a padded raw literal', '"Paul"', 'title @=* """ "Paul" """'],
+    ['a quote at the end, in a padded raw literal', 'quote"', 'title @=* """ quote" """'],
+    ['only quotes, in a padded raw literal', '""', 'title @=* """ "" """'],
   ])('with %s', (_, value, query) => {
     expect(textQuery(value)).toBe(query)
   })
 
-  it.each(['"Paul"', '"Quoted', 'quote"', '"', '""'])(
-    'with %s leaves the filter out, because QueryKit cannot hold the value and would match other text',
-    (value) => {
-      expect(textQuery(value)).toBe('')
-    },
-  )
-
   it.each(['[DRAFT]', '[]', '[DRAFT] plan', '[', ']', 'a]b[c'])('with %s, which QueryKit does not read as a list', (value) => {
     expect(textQuery(value)).toBe(`title @=* "${value}"`)
-  })
-})
-
-describe('a filter that QueryKit cannot hold', () => {
-  const firstName = (id: string, value: string) =>
-    ({ id, propertyKey: 'firstName', propertyLabel: 'First Name', controlType: 'text', operator: '==', value }) as const
-
-  it('is left out of the root, and the other filters are sent', () => {
-    const query = toQueryKitString({
-      rootLogicalOperator: 'OR',
-      filters: [firstName('1', 'Jane'), firstName('2', '"John"'), firstName('3', 'Ann')],
-    })
-
-    expect(query).toBe('firstName == "Jane" || firstName == "Ann"')
-  })
-
-  it('is left out of its group, and a group with no other filter is left out', () => {
-    const query = toQueryKitString({
-      rootLogicalOperator: 'AND',
-      filters: [
-        { id: 'g1', type: 'group', logicalOperator: 'OR', filters: [firstName('1', 'Jane'), firstName('2', 'Paul"')] },
-        { id: 'g2', type: 'group', logicalOperator: 'OR', filters: [firstName('3', '"John"')] },
-        firstName('4', 'Ann'),
-      ],
-    })
-
-    expect(query).toBe('(firstName == "Jane") && firstName == "Ann"')
-  })
-
-  it('in a multiselect, is left out with the whole filter', () => {
-    const query = toQueryKitString({
-      rootLogicalOperator: 'AND',
-      filters: [
-        { id: '1', propertyKey: 'status', propertyLabel: 'Status', controlType: 'multiselect', operator: '^^', value: ['open', '"Paul"'] },
-      ],
-    })
-
-    expect(query).toBe('')
   })
 })
 
@@ -142,11 +100,11 @@ describe('a multiselect filter', () => {
           propertyLabel: 'Status',
           controlType: 'multiselect',
           operator: '^^',
-          value: ['open', 'in-progress', 'a"b', '[DRAFT]'],
+          value: ['open', 'in-progress', 'a"b', '"Paul"', '[DRAFT]'],
         },
       ],
     })
 
-    expect(query).toBe('status ^^ ["open", "in-progress", """a"b""", "[DRAFT]"]')
+    expect(query).toBe('status ^^ ["open", "in-progress", """ a"b """, """ "Paul" """, "[DRAFT]"]')
   })
 })

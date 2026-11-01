@@ -37,8 +37,9 @@ public class NewFeatureTextTests
             "add tool: Adds a unit load to the caller's tenant. The caller needs the manage_unit_loads permission in the tenant.",
             "get tool: Gets one unit load of the caller's tenant by its ID.",
             "list tool: Gets one page of the unit loads of the caller's tenant, with the page data.",
-            "list search: A text that the \"Status\" value contains, with no regard to case.",
-            "list filters: A QueryKit filter on the fields of a unit load, for example: status @=* \"text\"",
+            "list filters: A QueryKit filter on the fields of a unit load, for example: status @=* \"text\". Put text with a \" in a raw string "
+                + "with one space on each side, for example: status @=* \"\"\" say \"hi\" \"\"\". Its delimiter is one quote more than the longest "
+                + "run of quotes in the text, and at least three quotes.",
             "update tool: Updates a unit load of the caller's tenant. The caller needs the manage_unit_loads permission in the tenant.",
         ]);
     }

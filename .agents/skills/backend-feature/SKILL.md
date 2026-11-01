@@ -33,7 +33,7 @@ Read the rule doc of each area in `docs/backend/` before you change it.
      --fields "Title:text, SupplyItem:ref, DueOn:zoned-date"
    ```
 
-   Run it with no arguments to see the options. The first property must be required text: the list searches and sorts by it. A text, date, zoned date, or instant value is `[Sensitive]`. Add `:public` when the value cannot hold personal data. Protobuf has no date type, so the script refuses `date` and `zoned-date` with `grpc`.
+   Run it with no arguments to see the options. The first property must be required text: the list sorts by it. A text, date, zoned date, or instant value is `[Sensitive]`. Add `:public` when the value cannot hold personal data. Protobuf has no date type, so the script refuses `date` and `zoned-date` with `grpc`.
 
    - `zoned-date` is a day at the place of the entity, such as a due date. The script adds the property `TimeZone`, an IANA ID that the add sets. To get the current day at the place, use `ZonedDate.TodayAt(TimeZone, now)`, not the date of the server.
    - `SupplyItem:ref` is the property `SupplyItemId`: the ID of a `SupplyItem` of the same tenant. Add the parent with the script first. The add loads the parent and refuses an ID that the caller cannot see. An update does not change the reference. An entity has at most one `ref`.

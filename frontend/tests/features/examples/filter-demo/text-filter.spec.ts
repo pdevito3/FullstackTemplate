@@ -62,18 +62,13 @@ test.describe('a text filter with a quote', () => {
 })
 
 test.describe('a text filter in brackets', () => {
-  test('refuses a whole value in brackets, because QueryKit reads it as a list', async ({ page }) => {
+  test('takes a whole value in brackets', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()
-    await demo.chooseProperty('First Name')
 
-    await demo.at.textValue('First Name').fill('[DRAFT]')
-    await demo.at.addFilter('First Name').click()
+    await demo.addTextFilter('First Name', '[DRAFT]')
 
-    await expect(demo.at.textValue('First Name')).toHaveAccessibleDescription(
-      'A filter value cannot start with [ and end with ]. Remove the [ at the start or the ] at the end.',
-    )
-    await expect(demo.at.queryKit).toBeHidden()
+    await expect(demo.at.queryKit).toHaveText('firstName @=* "[DRAFT]"')
   })
 
   test('takes brackets inside the value', async ({ page }) => {

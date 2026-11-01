@@ -13,7 +13,7 @@ function firstNameEquals(id: string, value: string): Filter {
 
 test.each([
   ['"John"', 'A filter value cannot start or end with a quote.'],
-  ['[DRAFT]', 'A filter value cannot start with [ and end with ].'],
+  ['Paul"', 'A filter value cannot start or end with a quote.'],
 ])('marks a filter that it gets with the value %s as not used, and tells the user why', async (value, rule) => {
   // Arrange
   const initialState = { rootLogicalOperator: 'AND' as const, filters: [firstNameEquals('1', value), firstNameEquals('2', 'Jane')] }

@@ -1,22 +1,17 @@
 import type { Filter } from '../types'
 
 /**
- * A text value that QueryKit cannot hold:
- * - `endQuote`: its raw literal takes each quote at the start as part of the delimiter, and it trims the quotes at the
- *   ends of a text value. So the filter matches other text.
- * - `brackets`: it reads a value that starts with `[` and ends with `]` as a list, also in quotes. So it refuses the
- *   filter.
+ * A text value that QueryKit cannot hold. Its raw literal takes each quote at the start or the end as part of the
+ * delimiter, so the filter matches other text.
  */
-export type TextValueFault = 'endQuote' | 'brackets'
+export type TextValueFault = 'endQuote'
 
 const RULES: Record<TextValueFault, string> = {
   endQuote: 'A filter value cannot start or end with a quote.',
-  brackets: 'A filter value cannot start with [ and end with ].',
 }
 
 const TEXT_FIXES: Record<TextValueFault, string> = {
   endQuote: 'Remove the quote at the start or the end.',
-  brackets: 'Remove the [ at the start or the ] at the end.',
 }
 
 export function hasEndQuote(value: string): boolean {
@@ -24,15 +19,9 @@ export function hasEndQuote(value: string): boolean {
 }
 
 export function textValueFault(value: string): TextValueFault | undefined {
-  if (hasEndQuote(value)) return 'endQuote'
-  if (value.startsWith('[') && value.endsWith(']')) return 'brackets'
-  return undefined
+  return hasEndQuote(value) ? 'endQuote' : undefined
 }
 
-/**
- * A list item can start with `[` and end with `]`, because QueryKit splits the list before it reads an item. So only an
- * end quote is a fault there.
- */
 export function filterValueFault(filter: Filter): TextValueFault | undefined {
   switch (filter.controlType) {
     case 'text':

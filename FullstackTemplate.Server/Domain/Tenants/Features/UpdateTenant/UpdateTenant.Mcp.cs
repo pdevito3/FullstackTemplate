@@ -1,9 +1,8 @@
-namespace FullstackTemplate.Server.Examples.Tenants.Features;
+namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
 using System.ComponentModel;
-using Domain.Tenants.Dtos;
-using Domain.Tenants.Features;
 using Domain.Users;
+using Dtos;
 using MediatR;
 using ModelContextProtocol.Server;
 using Resources.Entrypoints.Mcp;

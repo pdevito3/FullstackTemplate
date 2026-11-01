@@ -508,9 +508,8 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
         }
         if (spec.Has(Entrypoints.Mcp))
         {
-            list.Add(new($"tests/{n.App}.FunctionalTests/Examples/Tenants/TenantExampleMcpToolTests.cs", "mcp-tools",
-                $"\"get_{n.Snake}\",", [$"\"add_{n.Snake}\", \"get_{n.Snake}\", \"list_{n.SnakePlural}\", \"update_{n.Snake}\","],
-                WhenFileExists: true));
+            list.Add(new($"tests/{n.App}.FunctionalTests/FunctionalTests/Tenants/TenantMcpToolTests.cs", "mcp-tools",
+                $"\"get_{n.Snake}\",", [$"\"add_{n.Snake}\", \"get_{n.Snake}\", \"list_{n.SnakePlural}\", \"update_{n.Snake}\","]));
             open.Add($"[\"get_{n.Snake}\"] = new(\"ToolAccessKind.Read. Each member reads the {n.WordsPlural} of the own tenant, and the tenant filter hides the others.\"),");
             open.Add($"[\"list_{n.SnakePlural}\"] = new(\"ToolAccessKind.Read. Each member lists the {n.WordsPlural} of the own tenant, and the tenant filter hides the others.\"),");
         }

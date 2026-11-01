@@ -40,14 +40,14 @@ public class EndpointAccessSweepTests : TestBase
         ["/fullstacktemplate.tenants.v1.TenantsService/GetTenant"] = new("The gRPC method of GetTenant."),
         ["/fullstacktemplate.tenants.v1.TenantsService/ListTenants"] = new("The gRPC method of GetTenantList."),
         ["GetCurrentUser"] = new("Each signed-in caller reads the own identity. It takes no ID and reads no tenant rows."),
+        ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
+        ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
         // example:start
         ["GetVenue"] = new("Each member reads the venues of the own tenant. The tenant filter hides each other tenant."),
         ["GetVenueList"] = new("Each member lists the venues of the own tenant. The tenant filter hides each other tenant."),
         ["GetWorkshop"] = new("Each member reads the workshops of the own tenant. The allowed actions show what the caller can do."),
         ["GetWorkshopList"] = new("Each member lists the workshops of the own tenant. The tenant filter hides each other tenant."),
         ["list_workshops"] = new("ToolAccessKind.Read. Each member lists the workshops of the own tenant, and the tenant filter hides the others."),
-        ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
-        ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
         ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
         ["GetWeatherForecast"] = new("Demo of a public endpoint. It has no tenant rows.", Anonymous: true),
         // example:end
@@ -387,7 +387,7 @@ public class EndpointAccessSweepTests : TestBase
         return new TenantRecords(member, admin, new RecordIds(idsByKind, otherUser.Identifier));
     }
 
-    // ...Domain.AuditEntries.Features gives audit-entries, and ...Examples.Tenants.Features gives tenants
+    // ...Domain.AuditEntries.Features gives audit-entries, and ...Domain.Tenants.Features gives tenants
     private static string KindOfNamespace(string? ns)
     {
         var segments = (ns ?? "").Split('.');

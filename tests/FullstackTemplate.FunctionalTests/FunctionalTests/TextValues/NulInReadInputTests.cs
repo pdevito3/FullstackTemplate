@@ -95,7 +95,6 @@ public class NulInReadInputTests : TestBase
             .FieldViolations.ShouldHaveSingleItem().Field.ShouldBe(field);
     }
 
-    // example:start
     [Test]
     [Arguments("get_tenant")]
     [Arguments("update_tenant")]
@@ -136,7 +135,6 @@ public class NulInReadInputTests : TestBase
         result.StructuredContent.ShouldNotBeNull().GetProperty("errors").EnumerateObject()
             .ShouldHaveSingleItem().Name.ShouldBe(field);
     }
-    // example:end
 
     private async Task SignInAsAdminAsync()
     {

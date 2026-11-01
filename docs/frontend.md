@@ -191,6 +191,8 @@ The router moves the `component` of each route to a chunk that loads when the pa
   })
   ```
 
+  A param that the contract does not have, such as the search text of a list that the hook turns into a filter, gets its own schema with the max length of the field that it matches: `z.string().max(searchMaxLength).optional().catch(undefined)`.
+
   zod has its own vendor chunk (`vendorChunks` in `frontend/vite.config.ts`), so it is not in the entry chunk. When a route checks its search with zod, the zod chunk loads on each first page. It is 67 kB, 18 kB with gzip.
 - Import a type with a top-level `import type`. Do not write `import { Thing, type Option }`. The router keeps the import of a type that the component uses as `import { type Option }`, and TypeScript keeps that line as an import of the module. So the module and each module that it imports load with the entry chunk. `pnpm lint` fails on an inline type import in `routes/`.
 - Do not import a component or a large library in `validateSearch`, `loader`, or `beforeLoad`.
@@ -299,5 +301,5 @@ const schema = z.object({ firstName: stringWithMaxLengthOf(firstName).min(1, 'Re
 ```
 
 <!-- example:start -->
-The workshop forms read the max length of the title and the maximum of the capacity from the contract: [`limitsOf`](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts>) and [`workshopFieldsSchema`](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts>). The search boxes read the max length of the `search` query parameter: [`searchMaxLength`](<../frontend/src/routes/(examples)/workshops/index.tsx>) and [`searchMaxLength`](<../frontend/src/examples/venues/components/venue-picker.tsx>). The venue picker keeps a pick that no loaded page has, by loading it by its ID: [`optionsWithPick`](<../frontend/src/examples/venues/components/venue-picker.tsx>).
+The workshop forms read the max length of the title and the maximum of the capacity from the contract: [`limitsOf`](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts>) and [`workshopFieldsSchema`](<../frontend/src/examples/workshops/components/workshop-fields-schema.ts>). The search boxes read the max length of the field that their filter matches, the title and the venue name: [`searchMaxLength`](<../frontend/src/routes/(examples)/workshops/index.tsx>) and [`searchMaxLength`](<../frontend/src/examples/venues/components/venue-picker.tsx>). The list hooks turn the text into a filter with [`containsText`](../frontend/src/lib/querykit-text.ts). The venue picker keeps a pick that no loaded page has, by loading it by its ID: [`optionsWithPick`](<../frontend/src/examples/venues/components/venue-picker.tsx>).
 <!-- example:end -->

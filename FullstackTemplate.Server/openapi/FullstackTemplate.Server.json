@@ -1759,7 +1759,7 @@
         "tags": [
           "Venues"
         ],
-        "summary": "Gets a paginated list of Venues. The search finds the venues whose name contains the text.",
+        "summary": "Gets a paginated list of Venues.",
         "operationId": "GetVenueList",
         "parameters": [
           {
@@ -1774,14 +1774,6 @@
             "name": "sortOrder",
             "in": "query",
             "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "schema": {
-              "maxLength": 200,
               "type": "string"
             }
           },
@@ -2011,7 +2003,7 @@
         "tags": [
           "Workshops"
         ],
-        "summary": "Gets a paginated list of Workshops. The search finds the workshops whose title contains the text.",
+        "summary": "Gets a paginated list of Workshops.",
         "operationId": "GetWorkshopList",
         "parameters": [
           {
@@ -2026,14 +2018,6 @@
             "name": "sortOrder",
             "in": "query",
             "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "schema": {
-              "maxLength": 200,
               "type": "string"
             }
           },

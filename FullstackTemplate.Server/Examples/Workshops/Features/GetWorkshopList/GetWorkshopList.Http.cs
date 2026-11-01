@@ -18,18 +18,17 @@ public sealed class GetWorkshopListEndpoint : IEndpoint
         .ProducesValidationProblem();
 
     /// <summary>
-    /// Gets a paginated list of Workshops. The search finds the workshops whose title contains the text.
+    /// Gets a paginated list of Workshops.
     /// </summary>
     public static async Task<Ok<PagedList<WorkshopDto>>> Handle(
         [MaxLength(CustomQueryKitConfiguration.FilterMaxLength)] string? filters,
         string? sortOrder,
-        [MaxLength(WorkshopParametersDto.SearchMaxLength)] string? search,
         [Range(1, BasePaginationParameters.MaxPageNumber)] int? pageNumber,
         [Range(1, int.MaxValue)] int? pageSize,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var parameters = WorkshopParametersDto.From(pageNumber, pageSize, filters, sortOrder, search);
+        var parameters = WorkshopParametersDto.From(pageNumber, pageSize, filters, sortOrder);
 
         var result = await mediator.Send(new GetWorkshopList.Query(parameters), cancellationToken);
         return TypedResults.Ok(result);

@@ -64,7 +64,7 @@ Give the `signal` to the client, so that TanStack Query can cancel the request.
 When more than one place uses the same query, put the key, the function, and the options in one `queryOptions` object. Then `useQuery`, `useSuspenseQuery`, and `queryClient.prefetchQuery` can share it.
 
 <!-- example:start -->
-The workshop example has one `queryOptions` for the detail: [`workshopQueryOptions`](<../../frontend/src/examples/workshops/apis/get-workshop.ts>). The list keeps the last page on the screen while the next one loads: [`useWorkshopList`](<../../frontend/src/examples/workshops/apis/get-workshop-list.ts>). The venue picker loads its search one page at a time with `useInfiniteQuery`: [`useVenueSearch`](<../../frontend/src/examples/venues/apis/get-venue-list.ts>).
+The workshop example has one `queryOptions` for the detail: [`workshopQueryOptions`](<../../frontend/src/examples/workshops/apis/get-workshop.ts>). The list keeps the last page on the screen while the next one loads, and it turns the search into a `filters` value with `containsText`: [`useWorkshopList`](<../../frontend/src/examples/workshops/apis/get-workshop-list.ts>). The venue picker loads its search one page at a time with `useInfiniteQuery`: [`useVenueSearch`](<../../frontend/src/examples/venues/apis/get-venue-list.ts>).
 <!-- example:end -->
 
 ## Mutation

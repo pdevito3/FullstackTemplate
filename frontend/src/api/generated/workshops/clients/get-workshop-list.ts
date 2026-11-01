@@ -8,7 +8,7 @@ import type { GetWorkshopListOptions, GetWorkshopListResponses } from '../types/
 import { client, withUnwrap } from '../../.kubb/client'
 
 /**
- * @summary Gets a paginated list of Workshops. The search finds the workshops whose title contains the text.
+ * @summary Gets a paginated list of Workshops.
  * {@link /api/v1/workshops}
  */
 export function getWorkshopList<ThrowOnError extends boolean = true>(options: Options<GetWorkshopListOptions, ThrowOnError> = {}): Unwrappable<RequestResult<GetWorkshopListResponses, ThrowOnError>> {

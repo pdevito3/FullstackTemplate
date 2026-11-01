@@ -14,11 +14,6 @@ export type GetWorkshopListQuery = {
     filters?: string;
     sortOrder?: string;
     /**
-     * @maxLength 200
-     * @type string | undefined
-    */
-    search?: string;
-    /**
      * @description
      * Format: `int32`
      * @minLength 1

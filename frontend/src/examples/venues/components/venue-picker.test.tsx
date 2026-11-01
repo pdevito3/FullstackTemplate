@@ -6,7 +6,7 @@ import { render } from 'vitest-browser-react'
 
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import type { Answer } from '@/test/answer'
-import { getVenueListQuerySearchSchema } from '@/api/generated/venues/zod/get-venue-list'
+import { venueForCreationDtoSchema } from '@/api/generated/models/zod/venue-for-creation-dto'
 import { maxLengthOf } from '@/lib/api-contract'
 
 import { VenueKeys } from '../apis/venue.keys'
@@ -43,7 +43,7 @@ async function renderPicker(initial = '', ...more: Answer[]) {
     { method: 'GET', path: `/api/v1/venues/${firstPage[0].id}`, body: firstPage[0] },
     { method: 'GET', path: '/api/v1/venues', query: { pageNumber: '2' }, headers: pagination(2, 2), body: [venue(11)] },
     { method: 'GET', path: `/api/v1/venues/${offPage.id}`, body: offPage },
-    { method: 'GET', path: '/api/v1/venues', query: { search: 'Zeta' }, headers: pagination(1, 1), body: [offPage] },
+    { method: 'GET', path: '/api/v1/venues', query: { filters: 'name @=* "Zeta"' }, headers: pagination(1, 1), body: [offPage] },
     ...more,
   ])
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -84,10 +84,10 @@ test('finds a venue by a search on the Server, and keeps the pick when the searc
   await expect.element(screen.getByRole('option', { name: 'Venue 1', exact: true })).toBeVisible()
 })
 
-test('takes no more search text than the contract allows', async () => {
+test('takes no more search text than a venue name can hold', async () => {
   const { input } = await renderPicker()
 
-  await expect.element(input).toHaveAttribute('maxlength', String(maxLengthOf(getVenueListQuerySearchSchema.unwrap())))
+  await expect.element(input).toHaveAttribute('maxlength', String(maxLengthOf(venueForCreationDtoSchema.shape.name)))
 })
 
 test('says that the venues did not load when the search fails, and searches again when the list opens again', async () => {

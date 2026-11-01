@@ -1,5 +1,6 @@
 import { toCalendarDate } from '@internationalized/date'
 
+import { quoteText } from '@/lib/querykit-text'
 import { offsetAt, wallClockAt } from '@/lib/zoned-time'
 
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
@@ -59,21 +60,6 @@ function convertFilter(filter: Filter): string {
  */
 function convertTextFilter(propertyKey: string, operator: string, value: string): string {
   return `${propertyKey} ${operator} ${quoteText(value)}`
-}
-
-/**
- * QueryKit reads an unquoted value as a name, a number, or `null`, and it has no escape in `"..."`. So a value with a
- * quote goes in a raw literal: the value between runs of quotes that are longer than each run in the value, and at
- * least three long. One space pads each side, and QueryKit removes it, so a quote at the start or the end of the value
- * stays part of the value.
- */
-function quoteText(value: string): string {
-  if (!value.includes('"')) {
-    return `"${value}"`
-  }
-  const longestRun = Math.max(...(value.match(/"+/g) ?? []).map((run) => run.length))
-  const delimiter = '"'.repeat(Math.max(3, longestRun + 1))
-  return `${delimiter} ${value} ${delimiter}`
 }
 
 /**

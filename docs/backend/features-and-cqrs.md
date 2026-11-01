@@ -281,17 +281,17 @@ public static class GetUserList
 
 ### Search text
 
-A free-text search of a list uses `EF.Functions.ILike(column, LikePattern.Containing(search), LikePattern.EscapeCharacter)`. A name check that ignores case uses `LikePattern.Exactly`, and a prefix match uses `LikePattern.StartingWith`. `LikePattern` escapes `%`, `_`, and `\`, so a search for `50%` or `a_b` finds only the rows with that text. A name check gives a clear error, but only a unique index on the name stops two requests that save the same name at one time.
+A list has no `search` parameter. A caller finds text through `filters`, with the QueryKit operator `@=*` (contains, ignore case), for example `title @=* "text"`. EF Core escapes the pattern of the QueryKit contains, starts-with, and ends-with operators, so a filter for `50%` or `a_b` finds only the rows with that text. `ApplyFilters` refuses a filter that fails `PostgresText.CanStore`, with the `filters` parameter. See [Validation](#validation).
 
-`BannedSymbols.txt` bans the two-argument `ILike` and `Like` (RS0030). They send `ESCAPE ''`, so the backslash of an escaped pattern escapes nothing.
-
-Trim the search, and give it a max length on the parameters DTO. If the search is empty after the trim, do not apply it. If the search fails `PostgresText.CanStore`, throw a `QueryInputException` with the name of the parameter. See [Validation](#validation). Apply the search before `ApplyFilters`, on the entity or on the DTO projection. The query keeps its fixed sort.
+QueryKit has no escape in a quoted value. Text with a `"` goes in a raw string with one space of padding on each side, for example `title @=* """ say "hi" """`. The delimiter is one quote longer than the longest run of quotes in the text, and at least three quotes long. QueryKit removes the padding, so a quote at the start or the end of the text stays in the text. Give the MCP description of `filters` this rule, as the lists that `scripts/new-feature.cs` writes do. `QueryKitText.Quote` in the shared test helpers and `quoteText` in `frontend/src/lib/querykit-text.ts` write it.
 
 <!-- example:start -->
-The workshop list searches the title: [`GetWorkshopList.Handler.Handle`](../../FullstackTemplate.Server/Examples/Workshops/Features/GetWorkshopList/GetWorkshopList.cs).
+The workshop list test finds titles with `%`, `_`, `\`, and quotes through a filter: [`WorkshopListQueryTests`](../../tests/FullstackTemplate.IntegrationTests/Examples/Workshops/WorkshopListQueryTests.cs).
 <!-- example:end -->
 
-A QueryKit filter needs no `LikePattern`. EF Core escapes the pattern of its contains, starts-with, and ends-with operators.
+A raw `EF.Functions.ILike` outside QueryKit, such as a name check that ignores case or a prefix match, uses `LikePattern`: `LikePattern.Exactly` for a name check, `LikePattern.StartingWith` for a prefix, and `LikePattern.Containing` for a contains, each with `LikePattern.EscapeCharacter` as the third argument. `LikePattern` escapes `%`, `_`, and `\`. A name check gives a clear error, but only a unique index on the name stops two requests that save the same name at one time.
+
+`BannedSymbols.txt` bans the two-argument `ILike` and `Like` (RS0030). They send `ESCAPE ''`, so the backslash of an escaped pattern escapes nothing.
 
 ## Permission checks
 

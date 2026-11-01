@@ -21,51 +21,16 @@ async function choose(label: string): Promise<void> {
   await page.getByText(label, { exact: true }).click()
 }
 
-test('refuses an option that starts or ends with a quote and names it', async () => {
+test('adds options that start or end with a quote', async () => {
   // Arrange
   const onSubmit = vi.fn()
   await render(<MultiSelectFilter config={names} surface="dialog" onSubmit={onSubmit} />)
-  const quotedPaul = page.getByRole('checkbox', { name: 'Quoted Paul' })
-
-  // Act
-  await choose('Quoted Paul')
-  await choose('Paul')
-
-  // Assert
-  const message = 'A filter value cannot start or end with a quote. Clear the option Quoted Paul.'
-  await expect.element(page.getByRole('alert')).toHaveTextContent(message)
-  await expect.element(quotedPaul).toHaveAccessibleDescription(message)
-  await expect.element(page.getByRole('checkbox', { name: 'Paul', exact: true })).not.toHaveAccessibleDescription(message)
-  await expect.element(page.getByRole('button', { name: 'Add (2)' })).toBeDisabled()
-  expect(onSubmit).not.toHaveBeenCalled()
-})
-
-test('names each option with a quote at an end', async () => {
-  // Arrange
-  await render(<MultiSelectFilter config={names} surface="dialog" onSubmit={() => {}} />)
 
   // Act
   await choose('Quoted Paul')
   await choose('Ann with a quote')
+  await page.getByRole('button', { name: 'Add (2)' }).click()
 
   // Assert
-  await expect
-    .element(page.getByRole('alert'))
-    .toHaveTextContent('A filter value cannot start or end with a quote. Clear the options Quoted Paul, Ann with a quote.')
-})
-
-test('adds the filter when the user clears the option with the quote', async () => {
-  // Arrange
-  const onSubmit = vi.fn()
-  await render(<MultiSelectFilter config={names} surface="dialog" onSubmit={onSubmit} />)
-  await choose('Quoted Paul')
-  await choose('Paul')
-
-  // Act
-  await choose('Quoted Paul')
-  await page.getByRole('button', { name: 'Add (1)' }).click()
-
-  // Assert
-  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
-  expect(onSubmit.mock.lastCall?.[0].value).toEqual(['Paul'])
+  expect(onSubmit.mock.lastCall?.[0].value).toEqual(['"Paul"', 'Ann"'])
 })

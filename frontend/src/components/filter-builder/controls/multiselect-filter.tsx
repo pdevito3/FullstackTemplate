@@ -1,10 +1,9 @@
-import { useId, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { OperatorType, Filter, FilterControlProps, FilterOption } from '../types'
 import { getDefaultOperator, Operators, pickOperator } from '../utils/operators'
-import { hasEndQuote, optionsEndQuoteMessage } from '../utils/querykit-text'
 import { FilterControlFooter } from './filter-control-footer'
 import { OperatorSelect } from './operator-select'
 
@@ -49,9 +48,7 @@ export function MultiSelectFilter({
   const allRootSelected = rootOptions.length > 0 && rootOptions.every(opt => selected.includes(opt.value))
 
   const labelOf = (value: string) => options.find((opt) => opt.value === value)?.label ?? value
-  const endQuoteValues = selected.filter(hasEndQuote)
-  const canSubmit = selected.length > 0 && endQuoteValues.length === 0
-  const errorId = useId()
+  const canSubmit = selected.length > 0
 
   const toggleOption = (value: string) => {
     setSelected((prev) =>
@@ -142,8 +139,6 @@ export function MultiSelectFilter({
               >
                 <Checkbox
                   isSelected={selected.includes(option.value)}
-                  isInvalid={endQuoteValues.includes(option.value)}
-                  aria-describedby={endQuoteValues.includes(option.value) ? errorId : undefined}
                   onChange={() => toggleOption(option.value)}
                   className="flex-1"
                 >
@@ -163,12 +158,6 @@ export function MultiSelectFilter({
             ))
           )}
         </div>
-
-        {endQuoteValues.length > 0 && (
-          <p id={errorId} role="alert" className="text-destructive text-sm">
-            {optionsEndQuoteMessage(endQuoteValues.map(labelOf))}
-          </p>
-        )}
       </div>
 
       <FilterControlFooter surface={surface}>

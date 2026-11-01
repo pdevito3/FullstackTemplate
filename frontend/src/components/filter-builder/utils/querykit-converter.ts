@@ -5,12 +5,10 @@ import { offsetAt, wallClockAt } from '@/lib/zoned-time'
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
 import { wallClockZone } from './date-zone'
-import { filterValueFault } from './querykit-text'
 import { LogicalOperators } from './operators'
 
 /**
- * Convert filter state to QueryKit filter string. A filter with a value that QueryKit cannot hold is left out, and its
- * badge says so.
+ * Convert filter state to QueryKit filter string
  */
 export function toQueryKitString(state: FilterState): string {
   return joinFilters(state.filters, state.rootLogicalOperator)
@@ -23,7 +21,7 @@ function joinFilters(items: (Filter | FilterGroup)[], logicalOperator: FilterGro
 
 function convertFilterOrGroup(item: Filter | FilterGroup): string {
   if (isFilter(item)) {
-    return filterValueFault(item) ? '' : convertFilter(item)
+    return convertFilter(item)
   }
   const filters = joinFilters(item.filters, item.logicalOperator)
   return filters ? `(${filters})` : ''
@@ -66,7 +64,8 @@ function convertTextFilter(propertyKey: string, operator: string, value: string)
 /**
  * QueryKit reads an unquoted value as a name, a number, or `null`, and it has no escape in `"..."`. So a value with a
  * quote goes in a raw literal: the value between runs of quotes that are longer than each run in the value, and at
- * least three long.
+ * least three long. One space pads each side, and QueryKit removes it, so a quote at the start or the end of the value
+ * stays part of the value.
  */
 function quoteText(value: string): string {
   if (!value.includes('"')) {
@@ -74,7 +73,7 @@ function quoteText(value: string): string {
   }
   const longestRun = Math.max(...(value.match(/"+/g) ?? []).map((run) => run.length))
   const delimiter = '"'.repeat(Math.max(3, longestRun + 1))
-  return `${delimiter}${value}${delimiter}`
+  return `${delimiter} ${value} ${delimiter}`
 }
 
 /**

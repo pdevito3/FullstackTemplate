@@ -5,7 +5,6 @@ import { ResponsiveDialogFooter } from '@/components/ui/responsive-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Filter, FilterControlProps, OperatorType } from '../types'
-import { textValueFault, textValueMessage } from '../utils/querykit-text'
 import {
   getDefaultOperator,
   getOperatorsForControlType,
@@ -49,18 +48,11 @@ export function TextFilter({
   )
   const supportsCaseSensitivity = operatorSupportsCaseSensitivity(operator)
   const valueId = useId()
-  const errorId = useId()
 
   const text = value.trim()
-  const fault = textValueFault(text)
-  // A quote at the end can start one inside the text, so the message waits until the user asks to add the
-  // filter. On a blur it would move the buttons under a press, and the click would miss them.
-  const [checked, setChecked] = useState(fault !== undefined)
-  const showFault = fault !== undefined && (checked || text.startsWith('"'))
 
   const handleSubmit = () => {
-    setChecked(true)
-    if (text === '' || fault) {
+    if (text === '') {
       return
     }
 
@@ -94,13 +86,8 @@ export function TextFilter({
           <Input
             autoFocus={autoFocus}
             id={valueId}
-            aria-invalid={showFault || undefined}
-            aria-describedby={showFault ? errorId : undefined}
             value={value}
-            onChange={(e) => {
-              setValue(e.target.value)
-              setChecked(false)
-            }}
+            onChange={(e) => setValue(e.target.value)}
             placeholder={`Enter ${propertyLabel.toLowerCase()}...`}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -108,11 +95,6 @@ export function TextFilter({
               }
             }}
           />
-          {showFault && (
-            <p id={errorId} role="alert" className="text-destructive text-sm">
-              {textValueMessage(fault)}
-            </p>
-          )}
         </div>
 
         {supportsCaseSensitivity && (

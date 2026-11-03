@@ -128,6 +128,18 @@ The same rule applies to the names of spans, events, and queries. Each new name 
 | Metric | `app.[entities].[past-tense verb]` | `app.users.role_changed` |
 | Log property | PascalCase | `{UserId}`, `{Count}` |
 
+The build refuses a constant name that breaks this table (FSTTEL004) in these call sites:
+
+- The span name of `Telemetry.Trace` and `Telemetry.TraceRoot`, and the event name of `Telemetry.AddEvent` and `new ActivityEvent(...)`.
+- The tag keys in a `tags` array that a `Telemetry` call writes inline, as a collection expression or an array creation, and the key of `Activity.SetTag`.
+- The query name of `TagWithOperationCallSite`.
+- The metric name of a `Meter.Create...` method, except the platform metrics `app.errors` and `app.request.duration` of `Telemetry`.
+- The property names of a Serilog message template.
+
+A tag key can also start with a namespace in `SemanticConventionNamespaces` of `FullstackTemplate.SourceGenerators/TelemetryNameAnalyzer.cs`, such as `error.type` or `server.address`. The list is a selection: the OpenTelemetry semantic-convention namespaces and the .NET, gRPC, and MCP namespaces that the packages of the Server emit. A key in another namespace gets FSTTEL004. The list leaves out `user`, `enduser`, and `session`, because this app names those tags `app.user_id` and `app.user.role`.
+
+The build does not check a name in `ActivitySource.StartActivity`, in `Activity.AddTag`, in a metric tag in a `KeyValuePair` or a `TagList`, in a property from `PropertyEnricher`, `LogContext.PushProperty`, or `ForContext`, or in a Microsoft.Extensions.Logging template. Obey the table there yourself.
+
 Before you add a tag name, search the code for a tag with the same meaning. Use one name for one concept in all features.
 
 ## Log levels

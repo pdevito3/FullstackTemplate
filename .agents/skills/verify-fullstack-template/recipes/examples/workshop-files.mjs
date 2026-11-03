@@ -6,7 +6,8 @@ const pdf = Buffer.from(
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\n' +
     'trailer<</Root 1 0 R>>\n%%EOF\n',
 )
-const tooLarge = Buffer.alloc(11 * 1024 * 1024, 'a')
+// The bytes of a text file, which no upload rule of a workshop takes
+const text = Buffer.from('Bring an apron.\n')
 // Over the 30 MB request limit of Kestrel, so the BFF refuses it before the Server reads the file
 const overTheBodyLimit = Buffer.alloc(31 * 1024 * 1024, 'a')
 
@@ -28,13 +29,18 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
     )
   const files = page.getByRole('region', { name: 'Files' })
   const row = (fileName) => files.getByRole('list', { name: 'Files' }).getByRole('listitem', { name: fileName, exact: true })
+  const uploadButton = files.getByRole('button', { name: 'Upload file' })
   const upload = async (file) => {
     const chooser = page.waitForEvent('filechooser')
     const posted = answered('POST', /^\/api\/v1\/workshops\/[^/]+\/attachments$/)
-    await files.getByRole('button', { name: 'Upload file' }).click()
+    await uploadButton.click()
     await (await chooser).setFiles(file)
     return posted
   }
+  // The hint of the SPA names the types and the size of the rules in the answer, so the recipe copies no limit
+  const hintOf = (rules) =>
+    `${new Intl.ListFormat('en-US', { type: 'disjunction' }).format(rules.fileTypes.map((t) => t.name))}. ` +
+    `Up to ${rules.maxSizeBytes / (1024 * 1024)} MB.`
   const naturalWidth = (image) =>
     image.evaluate(async (node) => {
       await node.decode()
@@ -71,19 +77,32 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
       return added.body
     })
 
-    await step('the detail page shows the Files section with no files', async () => {
+    const rules = await step('the detail page shows the Files section with no files and the upload rules', async () => {
       const listed = answered('GET', new RegExp(`^/api/v1/workshops/${workshop.id}/attachments$`))
       await page.goto(`/workshops/${workshop.id}`)
-      expect((await listed).status()).toBe(200)
+      const res = await listed
+      expect(res.status()).toBe(200)
+      const body = await res.json()
+      expect(body.attachments).toEqual([])
       await expect(files.getByText('This workshop has no files.', { exact: true })).toBeVisible()
+      await expect(files.getByText(hintOf(body.uploadRules), { exact: true })).toBeVisible()
+      await expect(uploadButton).toHaveAccessibleDescription(hintOf(body.uploadRules))
+      return body.uploadRules
     })
     await capture('files-empty')
+
+    await step('the file chooser offers only the types of the rules', async () => {
+      const chooser = page.waitForEvent('filechooser')
+      await uploadButton.click()
+      const accept = await (await chooser).element().getAttribute('accept')
+      expect(accept).toBe(rules.fileTypes.flatMap((t) => [...t.extensions, t.mediaType]).join(','))
+    })
 
     const image = await step('upload a PNG: the row shows a thumbnail that the browser loads from storage', async () => {
       const res = await upload({ name: 'kiln.png', mimeType: 'image/png', buffer: png })
       expect(res.status()).toBe(201)
       const body = await res.json()
-      expect(body.contentType).toBe('image/png')
+      expect(body.mediaType).toBe('image/png')
       expect(body.sizeBytes).toBe(png.length)
       await expect(page.getByRole('alertdialog').filter({ hasText: 'File uploaded' })).toBeVisible()
       const thumbnail = row(body.fileName).getByRole('button', { name: `View ${body.fileName}` }).getByRole('img')
@@ -112,15 +131,37 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
     })
     await capture('two-files')
 
-    await step('a file over 10 MB is refused with the message of the Server', async () => {
-      const res = await upload({ name: 'kiln-video.mp4', mimeType: 'video/mp4', buffer: tooLarge })
+    await step('a file over the largest size of the rules is refused with the message of the Server', async () => {
+      const res = await upload({ name: 'handout-scan.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(rules.maxSizeBytes + 1, 'a') })
       expect(res.status()).toBe(422)
       const body = await res.json()
-      expect(body.detail).toBe('A file can be no larger than 10 MB. Choose a smaller file.')
+      expect(body.errors.sizeBytes).toEqual([body.detail])
       await expect(page.getByRole('alertdialog').filter({ hasText: body.detail })).toBeVisible()
       await expect(files.getByRole('list', { name: 'Files' }).getByRole('listitem')).toHaveCount(2)
     })
     await capture('too-large')
+
+    await step('a text file is refused with the types of the rules, though the chooser had it as a PNG', async () => {
+      const res = await upload({ name: 'notes.png', mimeType: 'image/png', buffer: text })
+      expect(res.status()).toBe(422)
+      const body = await res.json()
+      expect(body.errors.mediaType).toEqual([body.detail])
+      for (const type of rules.fileTypes) expect(body.detail).toContain(type.name)
+      await expect(page.getByRole('alertdialog').filter({ hasText: body.detail })).toBeVisible()
+      await expect(files.getByRole('list', { name: 'Files' }).getByRole('listitem')).toHaveCount(2)
+    })
+    await capture('refused-type')
+
+    await step('a PNG renamed to .pdf is refused with the extension of a PNG', async () => {
+      const res = await upload({ name: 'kiln.pdf', mimeType: 'application/pdf', buffer: png })
+      expect(res.status()).toBe(422)
+      const body = await res.json()
+      expect(body.errors.fileName).toEqual([body.detail])
+      expect(body.detail).toContain('.png')
+      await expect(page.getByRole('alertdialog').filter({ hasText: body.detail })).toBeVisible()
+      await expect(files.getByRole('list', { name: 'Files' }).getByRole('listitem')).toHaveCount(2)
+    })
+    await capture('renamed-file')
 
     // The BFF closes the connection after its 413. In the dev build, the Vite proxy then answers about 1 upload in 6
     // with its own 500, so only the production build, where the browser talks to the BFF, proves this step.
@@ -184,7 +225,7 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
       await page.reload()
       const res = await listed
       const body = await res.json()
-      expect(body.map((a) => a.id)).toEqual([image.id])
+      expect(body.attachments.map((a) => a.id)).toEqual([image.id])
       const thumbnail = row(image.fileName).getByRole('button', { name: `View ${image.fileName}` }).getByRole('img')
       expect(await naturalWidth(thumbnail)).toBeGreaterThan(0)
       await expect(row(handout.fileName)).toHaveCount(0)

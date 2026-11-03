@@ -56,7 +56,7 @@ The example pages have their feature files in `examples/`. `scripts/remove-examp
 - [Filter builder](./examples/filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
 - [Components showcase](./examples/components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
 - [Workshops](./examples/workshops.md) covers `/workshops` and `/venues/new`: a venue, a workshop in it, the edit form with the stale-version reload, the action buttons from `allowedActions`, and the search in the URL.
-- [Workshop files](./examples/workshop-files.md) covers the Files section of a workshop: an upload to object storage, the thumbnail and the full image, a download, a refused large file, and a delete.
+- [Workshop files](./examples/workshop-files.md) covers the Files section of a workshop: an upload to object storage, the hint of the upload rules, the thumbnail and the full image, a download, a refused large file, a refused type, and a delete.
 <!-- example:end -->
 
 ## Not mapped yet

@@ -5,13 +5,13 @@
 
 import * as z from 'zod'
 
-export const workshopAttachmentDtoSchema = z.object({
+export const attachmentDtoSchema = z.object({
   id: z.string(),
   fileName: z.string(),
-  contentType: z.string().describe('The type of the file, for example image/png. The type is application/octet-stream when the client sent no valid type.'),
+  mediaType: z.string().describe('The media type that the first bytes of the file named, for example image/png.'),
   sizeBytes: z.int32(),
   uploadedAt: z.iso.datetime(),
   downloadUrl: z.string().describe('A presigned URL of object storage. The browser saves the file under its name.'),
-  previewUrl: z.string().nullish().describe('A presigned URL that an img element can show. Null for each type that is not a PNG, JPEG, GIF, or WebP image.'),
+  previewUrl: z.string().nullish().describe('A presigned URL that an img element can show. Null when the type of the file cannot show in the page.'),
   urlsExpireAt: z.iso.datetime().describe('The time after which the URLs stop working. Load the list again before it.'),
 })

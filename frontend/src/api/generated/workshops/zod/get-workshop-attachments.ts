@@ -4,12 +4,12 @@
 */
 
 import * as z from 'zod'
+import { attachmentListDtoSchema } from '../../models/zod/attachment-list-dto'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
-import { workshopAttachmentDtoSchema } from '../../models/zod/workshop-attachment-dto'
 
 export const getWorkshopAttachmentsPathIdSchema = z.string()
 
-export const getWorkshopAttachmentsStatus200Schema = z.array(workshopAttachmentDtoSchema)
+export const getWorkshopAttachmentsStatus200Schema = attachmentListDtoSchema
 
 export const getWorkshopAttachmentsStatus401Schema = z.unknown()
 

@@ -8,7 +8,7 @@ import type { GetWorkshopAttachmentsOptions, GetWorkshopAttachmentsResponses } f
 import { client, unwrapResult } from '../../.kubb/client'
 
 /**
- * @summary Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt.
+ * @summary Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt, and the upload rules of a workshop.
  * {@link /api/v1/workshops/:id/attachments}
  */
 export function getWorkshopAttachments<ThrowOnError extends boolean = true>(options: Options<GetWorkshopAttachmentsOptions, ThrowOnError>): Promise<UnwrappedResult<GetWorkshopAttachmentsResponses, ThrowOnError>> {

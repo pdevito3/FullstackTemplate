@@ -11,7 +11,7 @@ public class StoredFileTests
 
     private static readonly DateTimeOffset Now = new(2026, 11, 3, 9, 0, 0, TimeSpan.Zero);
 
-    private static readonly UploadRules ImagesAndPdf = new(10, FileType.Png, FileType.Jpeg, FileType.Gif, FileType.WebP, FileType.Pdf);
+    private static readonly UploadRules ImagesAndPdf = new(8, FileType.Png, FileType.Jpeg, FileType.Gif, FileType.WebP, FileType.Pdf);
 
     [Test]
     public void an_accepted_file_keeps_the_name_the_size_and_the_key_and_the_type_of_its_bytes()

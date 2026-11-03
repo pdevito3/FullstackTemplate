@@ -602,18 +602,6 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("content_type");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("file_name");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -621,10 +609,6 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_on");
-
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("size_bytes");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -649,6 +633,33 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("workshop_id")
                         .UseCollation("C");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "File", "FullstackTemplate.Server.Examples.Workshops.WorkshopAttachment.File#StoredFile", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("MediaType")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("media_type");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("file_name");
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("bigint")
+                                .HasColumnName("size_bytes");
+
+                            b1.Property<string>("StorageKey")
+                                .IsRequired()
+                                .HasMaxLength(1024)
+                                .HasColumnType("character varying(1024)")
+                                .HasColumnName("storage_key");
+                        });
 
                     b.HasKey("Id")
                         .HasName("pk_workshop_attachments");

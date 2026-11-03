@@ -7,7 +7,7 @@ using Shouldly;
 
 public class UploadRulesTests
 {
-    private static readonly UploadRules ImagesAndPdf = new(10, FileType.Png, FileType.Jpeg, FileType.Gif, FileType.WebP, FileType.Pdf);
+    private static readonly UploadRules ImagesAndPdf = new(8, FileType.Png, FileType.Jpeg, FileType.Gif, FileType.WebP, FileType.Pdf);
 
     private static readonly UploadRules SmallPdf = new(2, FileType.Pdf);
 
@@ -36,8 +36,8 @@ public class UploadRulesTests
         var message = ImagesAndPdf.FileTooLargeMessage;
 
         // Assert
-        message.ShouldBe("A file can be no larger than 10 MB. Choose a smaller file.");
-        ImagesAndPdf.MaxSizeBytes.ShouldBe(10 * 1024 * 1024);
+        message.ShouldBe("A file can be no larger than 8 MB. Choose a smaller file.");
+        ImagesAndPdf.MaxSizeBytes.ShouldBe(8 * 1024 * 1024);
     }
 
     [Test]
@@ -179,7 +179,7 @@ public class UploadRulesTests
     public void a_large_file_gets_the_size_message_before_its_type_is_checked()
     {
         // Arrange
-        var upload = SampleFiles.Upload("video.mp4", SampleFiles.Text, "video/mp4", sizeBytes: 11 * 1024 * 1024);
+        var upload = SampleFiles.Upload("video.mp4", SampleFiles.Text, "video/mp4", sizeBytes: ImagesAndPdf.MaxSizeBytes + 1);
 
         // Act
         var refuse = () => ImagesAndPdf.TypeOf(upload);

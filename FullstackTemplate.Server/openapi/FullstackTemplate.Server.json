@@ -1941,7 +1941,7 @@
         "tags": [
           "Workshops"
         ],
-        "summary": "Uploads one file to a Workshop as a multipart form with the field file. A file can be no larger than 10 MB.",
+        "summary": "Uploads one file to a Workshop as a multipart form with the field file. The uploadRules of the list give the allowed types and the largest size.",
         "operationId": "AddWorkshopAttachment",
         "parameters": [
           {
@@ -1977,7 +1977,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkshopAttachmentDto"
+                  "$ref": "#/components/schemas/AttachmentDto"
                 }
               }
             }
@@ -2031,7 +2031,7 @@
         "tags": [
           "Workshops"
         ],
-        "summary": "Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt.",
+        "summary": "Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt, and the upload rules of a workshop.",
         "operationId": "GetWorkshopAttachments",
         "parameters": [
           {
@@ -2049,10 +2049,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WorkshopAttachmentDto"
-                  }
+                  "$ref": "#/components/schemas/AttachmentListDto"
                 }
               }
             }
@@ -2832,6 +2829,73 @@
           }
         }
       },
+      "AttachmentDto": {
+        "required": [
+          "id",
+          "fileName",
+          "mediaType",
+          "sizeBytes",
+          "uploadedAt",
+          "downloadUrl",
+          "urlsExpireAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string",
+            "description": "The media type that the first bytes of the file named, for example image/png."
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "description": "A presigned URL of object storage. The browser saves the file under its name."
+          },
+          "previewUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A presigned URL that an img element can show. Null when the type of the file cannot show in the page."
+          },
+          "urlsExpireAt": {
+            "type": "string",
+            "description": "The time after which the URLs stop working. Load the list again before it.",
+            "format": "date-time"
+          }
+        }
+      },
+      "AttachmentListDto": {
+        "required": [
+          "uploadRules",
+          "attachments"
+        ],
+        "type": "object",
+        "properties": {
+          "uploadRules": {
+            "description": "The files that an upload to this record can have.",
+            "$ref": "#/components/schemas/UploadRulesDto"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentDto"
+            }
+          }
+        }
+      },
       "AuditEntryDto": {
         "required": [
           "occurredAt",
@@ -3008,6 +3072,30 @@
           }
         },
         "description": "The signed-in caller as the Server sees it in the access token."
+      },
+      "FileTypeDto": {
+        "required": [
+          "name",
+          "mediaType",
+          "extensions"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name that the screen shows, for example PNG."
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The extensions of a file name of this type, with the dot, for example .jpg."
+          }
+        }
       },
       "IFormFile": {
         "type": "string",
@@ -3257,6 +3345,26 @@
               "User"
             ],
             "type": "string"
+          }
+        }
+      },
+      "UploadRulesDto": {
+        "required": [
+          "fileTypes",
+          "maxSizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "fileTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileTypeDto"
+            }
+          },
+          "maxSizeBytes": {
+            "type": "integer",
+            "description": "The largest file that an upload can have.",
+            "format": "int32"
           }
         }
       },
@@ -3567,54 +3675,6 @@
           "temperatureF": {
             "type": "integer",
             "format": "int32"
-          }
-        }
-      },
-      "WorkshopAttachmentDto": {
-        "required": [
-          "id",
-          "fileName",
-          "contentType",
-          "sizeBytes",
-          "uploadedAt",
-          "downloadUrl",
-          "urlsExpireAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "fileName": {
-            "type": "string"
-          },
-          "contentType": {
-            "type": "string",
-            "description": "The type of the file, for example image/png. The type is application/octet-stream when the client sent no valid type."
-          },
-          "sizeBytes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "uploadedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "downloadUrl": {
-            "type": "string",
-            "description": "A presigned URL of object storage. The browser saves the file under its name."
-          },
-          "previewUrl": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "A presigned URL that an img element can show. Null for each type that is not a PNG, JPEG, GIF, or WebP image."
-          },
-          "urlsExpireAt": {
-            "type": "string",
-            "description": "The time after which the URLs stop working. Load the list again before it.",
-            "format": "date-time"
           }
         }
       },

@@ -3,14 +3,14 @@
 * Do not edit manually.
 */
 
-export type WorkshopAttachmentDto = {
+export type AttachmentDto = {
     id: string;
     fileName: string;
     /**
-     * @description The type of the file, for example image/png. The type is application/octet-stream when the client sent no valid type.
+     * @description The media type that the first bytes of the file named, for example image/png.
      * @type string
     */
-    contentType: string;
+    mediaType: string;
     /**
      * @description
      * Format: `int32`
@@ -29,7 +29,7 @@ export type WorkshopAttachmentDto = {
     */
     downloadUrl: string;
     /**
-     * @description A presigned URL that an img element can show. Null for each type that is not a PNG, JPEG, GIF, or WebP image.
+     * @description A presigned URL that an img element can show. Null when the type of the file cannot show in the page.
      * @type string | undefined
     */
     previewUrl?: string | null;

@@ -3,16 +3,16 @@
 * Do not edit manually.
 */
 
+import type { AttachmentDto } from '../../models/types/attachment-dto'
 import type { IFormFile } from '../../models/types/i-form-file'
 import type { ProblemDetails } from '../../models/types/problem-details'
 import type { ValidationProblemDetails } from '../../models/types/validation-problem-details'
-import type { WorkshopAttachmentDto } from '../../models/types/workshop-attachment-dto'
 
 export type AddWorkshopAttachmentPath = {
     id: string;
 };
 
-export type AddWorkshopAttachmentStatus201 = WorkshopAttachmentDto;
+export type AddWorkshopAttachmentStatus201 = AttachmentDto;
 
 export type AddWorkshopAttachmentStatus400 = ValidationProblemDetails;
 

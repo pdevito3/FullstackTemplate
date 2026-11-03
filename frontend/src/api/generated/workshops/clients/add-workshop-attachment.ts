@@ -8,7 +8,7 @@ import type { AddWorkshopAttachmentOptions, AddWorkshopAttachmentResponses } fro
 import { client, unwrapResult } from '../../.kubb/client'
 
 /**
- * @summary Uploads one file to a Workshop as a multipart form with the field file. A file can be no larger than 10 MB.
+ * @summary Uploads one file to a Workshop as a multipart form with the field file. The uploadRules of the list give the allowed types and the largest size.
  * {@link /api/v1/workshops/:id/attachments}
  */
 export function addWorkshopAttachment<ThrowOnError extends boolean = true>(options: Options<AddWorkshopAttachmentOptions, ThrowOnError>): Promise<UnwrappedResult<AddWorkshopAttachmentResponses, ThrowOnError>> {

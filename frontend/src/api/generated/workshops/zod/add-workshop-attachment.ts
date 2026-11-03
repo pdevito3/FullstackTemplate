@@ -4,14 +4,14 @@
 */
 
 import * as z from 'zod'
+import { attachmentDtoSchema } from '../../models/zod/attachment-dto'
 import { iFormFileSchema } from '../../models/zod/i-form-file'
 import { problemDetailsSchema } from '../../models/zod/problem-details'
 import { validationProblemDetailsSchema } from '../../models/zod/validation-problem-details'
-import { workshopAttachmentDtoSchema } from '../../models/zod/workshop-attachment-dto'
 
 export const addWorkshopAttachmentPathIdSchema = z.string()
 
-export const addWorkshopAttachmentStatus201Schema = workshopAttachmentDtoSchema
+export const addWorkshopAttachmentStatus201Schema = attachmentDtoSchema
 
 export const addWorkshopAttachmentStatus400Schema = validationProblemDetailsSchema
 

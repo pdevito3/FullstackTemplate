@@ -3,14 +3,14 @@
 * Do not edit manually.
 */
 
+import type { AttachmentListDto } from '../../models/types/attachment-list-dto'
 import type { ProblemDetails } from '../../models/types/problem-details'
-import type { WorkshopAttachmentDto } from '../../models/types/workshop-attachment-dto'
 
 export type GetWorkshopAttachmentsPath = {
     id: string;
 };
 
-export type GetWorkshopAttachmentsStatus200 = WorkshopAttachmentDto[];
+export type GetWorkshopAttachmentsStatus200 = AttachmentListDto;
 
 export type GetWorkshopAttachmentsStatus401 = unknown;
 

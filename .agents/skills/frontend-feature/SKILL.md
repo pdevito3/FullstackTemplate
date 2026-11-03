@@ -1,6 +1,6 @@
 ---
 name: frontend-feature
-description: Builds the SPA pages of a feature on a Server API. Use when you add a list page with search and a pager, a detail page with actions, a create or edit form, or a search picker over a server list, or when a page shows stale data after a save.
+description: Builds the SPA pages of a feature on a Server API. Use when you add a list page with search and a pager, a detail page with actions, a create or edit form, a search picker over a server list, or the Files section of a record, or when a page shows stale data after a save.
 ---
 
 # Frontend feature
@@ -46,6 +46,7 @@ The shared parts of a page below are in the app, also after the removal. Use the
 | The cache and the next page after a delete | `leaveDeletedRecord` in [`lib/leave-deleted-record.ts`](../../../frontend/src/lib/leave-deleted-record.ts) |
 | A button for each action in `allowedActions`, with a label from a `Record` of the generated union | `UserActions` in [`domain/users/components/user-actions.tsx`](../../../frontend/src/domain/users/components/user-actions.tsx) |
 | The header of a list answer in a mock | `paginationHeaders` in [`tests/support/api/pagination.ts`](../../../frontend/tests/support/api/pagination.ts) |
+| The Files section of a record: the list, the upload with the hint of the upload rules, the delete, and the reload before the URLs expire | `AttachmentsSection` in [`components/attachments/attachments-section.tsx`](../../../frontend/src/components/attachments/attachments-section.tsx) and `refreshBeforeUrlsExpire` in [`lib/attachment-list-refresh.ts`](../../../frontend/src/lib/attachment-list-refresh.ts). Follow "In the SPA" of [attachments.md](../../../docs/backend/attachments.md#in-the-spa) |
 
 ## Steps
 

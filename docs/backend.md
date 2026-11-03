@@ -37,6 +37,7 @@ Keep each C# file at 1000 lines or less. This rule covers all C# files in the so
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
 - **Domain events** queue in the entity. `SaveChangesAsync` runs their handlers in the save transaction. See [domain-events.md](backend/domain-events.md).
 - **Audit log**: each save writes an audit entry for each data change and each recorded action, in the save transaction. See [audit-log.md](backend/audit-log.md).
+- **Attachments**: an entity keeps each file as a `StoredFile` in object storage, and declares the types and the size that it takes in its `UploadRules`. See [attachments.md](backend/attachments.md).
 - **Prefixed string IDs**: each entity has a `public const string IdPrefix`, for example `usr`. `EntityId.New` makes IDs like `usr_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f` (the prefix and a UUIDv7). The build gives an error when an entity has no prefix, an invalid prefix, or a prefix that another entity uses. It also gives an error when a constructor does not call `base(IdPrefix)` with the prefix of its own type, or when an entity derives from another entity. A UUIDv7 ID shows the creation time to the millisecond, so the creation time of a record is not secret.
 
 ## Add a new feature
@@ -246,26 +247,9 @@ The Server keeps the bytes of files in one S3 bucket. The database keeps the met
 | The integration and functional tests | `FlociTestStorage` in `tests/FullstackTemplate.SharedTestHelpers/Utilities/` starts a Floci container with the same image, and makes a new bucket for each run |
 | Production | S3 of AWS, or a service with the S3 API. A publish of the AppHost has no `storage` resource. Set `ObjectStorage__BucketName`: the Server does not start without it. With no `AWS_ENDPOINT_URL`, the SDK reads the region and the credentials from its default chain. Block all public access to the bucket |
 
-Obey these rules:
-
-1. Read a file in the browser through a presigned GET URL. The Server has no endpoint that sends the bytes of a stored file. Anyone who has the URL can read the object until the URL expires, so sign a URL only after the handler loads the record through the tenant filter and passes its access check. Give the URL a short life and the time it expires, so that the SPA can load it again.
-2. Make the key from IDs only, and start it with `tenants/{tenantId}/`. Do not put a file name in a key, because the user types it.
-3. Put the type and the disposition in the signed URL. Use `PresignedGet.Attachment` for a download. Use `PresignedGet.Inline` only for a type that a browser shows and does not run, such as PNG, JPEG, GIF, and WebP. Do not show SVG or HTML inline, because a browser runs their scripts.
-4. Put the object before the save of its row. If the save throws, delete the object only when no row with its ID exists, because a save can commit and still throw, for example after a lost reply of the commit. If that check fails, keep the object: an object with no row costs only its storage, but a row with no object is a file that no one can download. Delete the object after the delete of its row commits. A failure after the commit leaves an object that no row names, and the handler writes an error log for it.
-5. Check the size of a file in a domain rule. Kestrel refuses a request body over 30 MB before the rule runs. The BFF then gives the 413 the problem detail `RequestTooLargeProblem.Detail`, so the SPA shows a message.
-
 Floci checks the signature of a signed request (`FLOCI_AUTH_VALIDATE_SIGNATURES`). It does not refuse a request with no signature, so a local bucket is open to each caller that can get to its port. S3 of AWS refuses such a request when the bucket blocks public access.
 
-A presigned URL works only while the credentials that signed it are valid. When they expire, S3 refuses the URL with `ExpiredToken`, also before `urlsExpireAt`. The credentials of a role are temporary: an ECS task, an EC2 instance profile, IRSA on EKS, and AWS SSO all give credentials that last from about one hour to some hours, and the SDK then gets new ones. So a URL that the Server signs shortly before the old credentials expire stops early. See [the S3 docs on presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html). In production, do these things:
-
-- Keep the life of a URL much shorter than the life of the credentials. The 15 minutes of `WorkshopAttachment.UrlLifetime` are short next to a role session of an hour or more. Then few URLs stop early, and the next load of the list signs new URLs with the new credentials.
-- If a URL must not stop early, do not sign it with session credentials. Serve the bucket through CloudFront, and sign CloudFront URLs with the key pair of a key group. Do not give the Server long-lived access keys only to make URLs last longer.
-
-A tenant delete soft-deletes the rows of the files, and keeps their objects.
-
-<!-- example:start -->
-The workshop example stores the files of a workshop: [`WorkshopAttachment`](<../FullstackTemplate.Server/Examples/Workshops/WorkshopAttachment.cs>), [`AddWorkshopAttachment`](<../FullstackTemplate.Server/Examples/Workshops/Features/AddWorkshopAttachment/AddWorkshopAttachment.cs>), and [`DeleteWorkshopAttachment`](<../FullstackTemplate.Server/Examples/Workshops/Features/DeleteWorkshopAttachment/DeleteWorkshopAttachment.cs>). The SPA loads the list again before its URLs expire: [`useWorkshopAttachments`](<../frontend/src/examples/workshops/apis/get-workshop-attachments.ts>).
-<!-- example:end -->
+To keep the files of an entity in storage, follow [attachments.md](backend/attachments.md). It gives the upload rules, the presigned URLs, the order of the writes, and the steps to add attachments to an entity.
 
 ## Tests
 

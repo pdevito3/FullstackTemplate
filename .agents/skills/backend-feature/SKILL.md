@@ -1,16 +1,17 @@
 ---
 name: backend-feature
-description: Scaffolds backend features including new domain entities, new properties on existing entities, and new business operations. Use when creating a new domain entity, extending an existing entity with new properties, or adding new business features/commands.
+description: Scaffolds backend features including new domain entities, new properties on existing entities, new business operations, and file attachments. Use when creating a new domain entity, extending an existing entity with new properties, adding new business features/commands, or letting users upload files to an entity.
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash(dotnet:*, ls:*, mkdir:*, pnpm:*)
 ---
 
 # Backend Feature
 
-Three tasks:
+Four tasks:
 
 1. A new entity: run `scripts/new-feature.cs`, then write the domain rules.
 2. A new property on an entity that exists.
 3. A new business operation on an entity that exists.
+4. Files on an entity that exists: an attachment entity with its upload rules.
 
 The files that the script writes are the reference for each pattern of a CRUD feature.
 <!-- example:start -->
@@ -102,6 +103,10 @@ Rules:
 9. Regenerate and commit the API contract with the `api-contract` skill.
 
 A new permission needs a `Permission.Names` constant, a `PermissionEnum` entry, a factory method, its name in `PermissionTests`, and a migration that gives it to the admins. The script writes these lines for a new entity. Use them as the pattern.
+
+## 4. Attachments
+
+Follow "Add attachments to an entity" in [attachments.md](../../../docs/backend/attachments.md#add-attachments-to-an-entity), on the Server and then in the SPA. The steps build on the parts in `Domain/Attachments/`: the entity declares only its rules, its key, and its owner. Done when the functional tests of an upload, a refused type, a file whose bytes do not match its name, and a file over the largest size pass, and the list gives the upload rules.
 
 ## Build rules
 

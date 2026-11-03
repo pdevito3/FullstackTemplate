@@ -5,7 +5,7 @@ These rules apply to the TypeScript and React code in `frontend/src/`. `pnpm lin
 ## TypeScript
 
 1. Do not use `any`. Use `unknown` and a type guard.
-2. Use the generated types for API data, for example `UserDto` from `@/api/generated/models/types/user-dto`. Do not write a DTO type by hand.
+2. Use the generated types for API data, for example `UserDto` from `@/api/generated/models/types/user-dto`. Do not write a DTO type by hand. The one exception is a shared component for a DTO that no core endpoint returns, such as `components/attachments/`. Kubb writes the type only when an endpoint returns it, so the component declares the fields that it reads in an interface. The generated DTO of each use must fit that interface, so the build checks the two.
 3. Use `interface` for an object shape. Use `type` for a union, a function type, or a computed type.
 4. Use a string union, not an `enum`. Make a list of options with `as const`.
 5. Give an explicit return type to each exported function, except a hook or a short arrow function.

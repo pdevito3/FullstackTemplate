@@ -17,8 +17,9 @@ using Microsoft.Extensions.Logging;
 /// <c>Authorization: DPoP</c> get <c>401 use_dpop_nonce</c> until its proof has that nonce (RFC 9449 section 9). With
 /// <see cref="RejectNonceParameter"/> as well, the API never accepts the proof.
 /// <para>
-/// Two paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away, and
-/// <c>/api/test/drop/{id}</c> counts the request and then drops the connection with no response.
+/// Three paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away,
+/// <c>/api/test/drop/{id}</c> counts the request and then drops the connection with no response, and
+/// <c>/api/test/too-large</c> answers 413 with the text <see cref="TooLargeText"/>.
 /// </para>
 /// </summary>
 public sealed class EchoApi : IAsyncDisposable
@@ -26,6 +27,7 @@ public sealed class EchoApi : IAsyncDisposable
     public const string SetCookieParameter = "test_set_cookie";
     public const string RequireNonceParameter = "test_require_nonce";
     public const string RejectNonceParameter = "test_reject_nonce";
+    public const string TooLargeText = "The API refused the body.";
 
     private readonly WebApplication _app;
     private readonly ConcurrentDictionary<string, int> _drops = new();
@@ -71,6 +73,8 @@ public sealed class EchoApi : IAsyncDisposable
             context.Abort();
             return Results.Empty;
         });
+
+        app.Map("/api/test/too-large", () => Results.Text(TooLargeText, statusCode: StatusCodes.Status413PayloadTooLarge));
 
         app.Map("/{**path}", (HttpRequest request, HttpResponse response) =>
         {

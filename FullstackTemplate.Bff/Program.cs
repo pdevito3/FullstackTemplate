@@ -66,6 +66,7 @@ try
     });
 
     app.UseExceptionHandler();
+    app.UseRequestTooLargeProblem();
 
     // In development the Vite dev server serves the SPA. Otherwise the SPA build is in wwwroot.
     var spaOrigin = app.Services.GetRequiredService<SpaOrigin>();

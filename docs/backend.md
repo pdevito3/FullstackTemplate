@@ -252,7 +252,7 @@ Obey these rules:
 2. Make the key from IDs only, and start it with `tenants/{tenantId}/`. Do not put a file name in a key, because the user types it.
 3. Put the type and the disposition in the signed URL. Use `PresignedGet.Attachment` for a download. Use `PresignedGet.Inline` only for a type that a browser shows and does not run, such as PNG, JPEG, GIF, and WebP. Do not show SVG or HTML inline, because a browser runs their scripts.
 4. Put the object before the save of its row. If the save fails, delete the object. Delete the object after the delete of its row commits. A failure after the commit leaves an object that no row names, and the handler writes an error log for it.
-5. Check the size of a file in a domain rule. Kestrel refuses a request body over 30 MB before the rule runs.
+5. Check the size of a file in a domain rule. Kestrel refuses a request body over 30 MB before the rule runs. The BFF then gives the 413 the problem detail `RequestTooLargeProblem.Detail`, so the SPA shows a message.
 
 Floci checks the signature of a signed request (`FLOCI_AUTH_VALIDATE_SIGNATURES`). It does not refuse a request with no signature, so a local bucket is open to each caller that can get to its port. S3 of AWS refuses such a request when the bucket blocks public access.
 

@@ -69,6 +69,48 @@ public class StoredFileTests
     }
 
     [Test]
+    [Arguments('\u061C')]
+    [Arguments('\u200E')]
+    [Arguments('\u200F')]
+    [Arguments('\u202A')]
+    [Arguments('\u202B')]
+    [Arguments('\u202C')]
+    [Arguments('\u202D')]
+    [Arguments('\u202E')]
+    [Arguments('\u2066')]
+    [Arguments('\u2067')]
+    [Arguments('\u2068')]
+    [Arguments('\u2069')]
+    public void a_name_with_a_control_that_changes_the_direction_of_the_text_is_refused(char control)
+    {
+        // Arrange
+        var upload = SampleFiles.Upload($"report{control}gnp.pdf", SampleFiles.Pdf, "application/pdf");
+
+        // Act
+        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, Key);
+
+        // Assert
+        var refusal = accept.ShouldThrow<ValidationException>();
+        refusal.Property.ShouldBe("fileName");
+        refusal.Message.ShouldBe("The file name has a character that changes the direction of the text, so the name can show another extension. Rename the file, then upload it again.");
+    }
+
+    [Test]
+    [Arguments("\u05E7\u05D5\u05D1\u05E5.png")]
+    [Arguments("\u0645\u0644\u0641.png")]
+    public void a_name_in_a_right_to_left_script_is_taken(string fileName)
+    {
+        // Arrange
+        var upload = SampleFiles.Upload(fileName, SampleFiles.Png, "image/png");
+
+        // Act
+        var file = StoredFile.Accept(upload, ImagesAndPdf, Key);
+
+        // Assert
+        file.Name.ShouldBe(fileName);
+    }
+
+    [Test]
     public void a_name_of_exactly_the_longest_length_is_taken()
     {
         // Arrange

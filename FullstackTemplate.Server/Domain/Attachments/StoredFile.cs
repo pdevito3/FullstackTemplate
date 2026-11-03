@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Domain.Attachments;
 
+using System.Buffers;
 using Exceptions;
 using Resources.Storage;
 
@@ -15,6 +16,10 @@ public sealed partial class StoredFile : ValueObject
 
     /// <summary>The time that a presigned URL works. The SPA loads the list again before the URLs expire.</summary>
     public static readonly TimeSpan UrlLifetime = TimeSpan.FromMinutes(15);
+
+    // The Unicode controls that turn the order of the text after them, so "report\u202Egnp.pdf" shows as "reportfdp.png"
+    private static readonly SearchValues<char> BidiControls = SearchValues.Create(
+        "\u061C\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069");
 
     public string Name { get; private set; } = default!;
     public string MediaType { get; private set; } = default!;
@@ -62,6 +67,8 @@ public sealed partial class StoredFile : ValueObject
             "The file name has a character that is not allowed. Rename the file, then upload it again.");
         ValidationException.MustNot(name.IndexOfAny(['/', '\\']) >= 0, "fileName",
             "A file name cannot have a slash or a backslash. Rename the file, then upload it again.");
+        ValidationException.MustNot(name.AsSpan().ContainsAny(BidiControls), "fileName",
+            "The file name has a character that changes the direction of the text, so the name can show another extension. Rename the file, then upload it again.");
     }
 
     private StoredFile() { } // EF Core

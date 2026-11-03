@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
-import { login } from '@/domain/auth/apis/auth-actions'
+import { login, returnUrlOf } from '@/domain/auth/apis/auth-actions'
 import { authClaimsQuery } from '@/domain/auth/apis/get-user'
 import { NoTenantNotice } from '@/domain/membership/components/no-tenant-notice'
 import { HrefRouterProvider } from '@/components/ui/link'
@@ -49,8 +49,7 @@ function RootComponent() {
 
 function GoToLogin() {
   useEffect(() => {
-    const { pathname, search, hash } = window.location
-    login(pathname + search + hash)
+    login(returnUrlOf(window.location))
   }, [])
   return null
 }

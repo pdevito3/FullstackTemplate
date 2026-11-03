@@ -60,8 +60,7 @@ test.describe('the toasts that a bottom sheet hides on a phone on its side', () 
 
   test('show one after the other, each for its full time', async ({ page }) => {
     const demo = toastDemoPage(page)
-    await demo.controlTheClock()
-    await demo.open()
+    await demo.openWithTheClockStopped()
     await demo.showToastsByKeyboard('Success', 'Error', 'Info')
 
     await demo.openBottomSheet()
@@ -77,8 +76,7 @@ test.describe('the toasts that a bottom sheet hides on a phone on its side', () 
 
   test('keep waiting after the focus leaves the toasts', async ({ page }) => {
     const demo = toastDemoPage(page)
-    await demo.controlTheClock()
-    await demo.open()
+    await demo.openWithTheClockStopped()
     await demo.showToastsByKeyboard('Success', 'Error', 'Info')
 
     await demo.openBottomSheet()
@@ -96,8 +94,7 @@ test.describe('the toasts that a bottom sheet hides on a phone on its side', () 
 
   test('all show again when the sheet closes, so an error that waited still shows', async ({ page }) => {
     const demo = toastDemoPage(page)
-    await demo.controlTheClock()
-    await demo.open()
+    await demo.openWithTheClockStopped()
     await demo.showToastsByKeyboard('Error', 'Success')
 
     await demo.openBottomSheet()

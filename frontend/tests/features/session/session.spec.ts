@@ -1,0 +1,43 @@
+import { bffApi, bffPaths } from '@tests/support/api/bff-api'
+import { as } from '@tests/support/auth/actors'
+import { aProblem } from '@tests/support/builders/problem-details-builder'
+import { expect, test } from '@tests/support/fixtures'
+import { sessionPage } from './session.tasks'
+
+test.describe('a visitor with no session', () => {
+  test.use({ actor: as.anonymous() })
+
+  test('goes to the login at once, with the deep link, its query, and its hash as the return URL', async ({ page, api }) => {
+    api.mock(bffApi.loginOpens())
+
+    const { rendered } = await sessionPage(page).openAndGoToLogin('/about?tab=team&x=1#people')
+
+    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/about?tab=team&x=1#people')
+    expect(rendered, 'the app rendered a page before it went to the login').toBe(false)
+  })
+})
+
+test.describe('a failed check of the session', () => {
+  test('shows an alert and no page, and does not go to the login', async ({ page, api }) => {
+    api.mock(bffApi.userFails(aProblem().saying('The session store is down.')))
+
+    const session = sessionPage(page)
+    await session.openWhileTheCheckFails('/about')
+
+    await expect(session.at.navigation).toHaveCount(0)
+    await expect(session.at.aboutHeading).toHaveCount(0)
+    expect(api.all('get', bffPaths.login)).toHaveLength(0)
+  })
+
+  test('shows the page after Try Again', async ({ page, api }) => {
+    api.mock(bffApi.userFails(aProblem().saying('The session store is down.')))
+    const session = sessionPage(page)
+    await session.openWhileTheCheckFails('/about')
+
+    api.mock(bffApi.userIs(as.user()))
+    await session.tryAgain()
+
+    await expect(session.at.aboutHeading).toBeVisible()
+    await expect(session.at.checkFailed).toHaveCount(0)
+  })
+})

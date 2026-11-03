@@ -1,5 +1,4 @@
 import { expect, type Page } from '@playwright/test'
-import { bffPaths } from '@tests/support/api/bff-api'
 import { membershipPaths } from '@tests/support/api/membership-api'
 import { actorSubject } from '@tests/support/auth/actors'
 import { startTenant } from './start-tenant.locators'
@@ -16,13 +15,6 @@ export function startTenantPage(page: Page) {
     async openAsSignedIn(path: '/' | '/start-tenant') {
       const settled = answered('GET', membershipPaths.userOf(actorSubject))
       await page.goto(path)
-      await settled
-    },
-
-    async openAnonymous() {
-      const settled = answered('GET', bffPaths.user)
-      await page.goto('/start-tenant')
-      await expect(at.heading).toBeVisible()
       await settled
     },
 

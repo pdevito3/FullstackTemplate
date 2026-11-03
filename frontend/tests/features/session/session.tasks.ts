@@ -1,0 +1,47 @@
+import { expect, type Page } from '@playwright/test'
+import { bffPaths } from '@tests/support/api/bff-api'
+import { session } from './session.locators'
+
+export function sessionPage(page: Page) {
+  const at = session(page)
+  const answered = (path: string) =>
+    page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === path)
+
+  return {
+    at,
+
+    /**
+     * Opens a page, and waits for the SPA to send the browser to the login of the BFF. Returns whether the app rendered
+     * anything before it left. The page is gone when the login opens, so a script in the page reports each render at once.
+     */
+    async openAndGoToLogin(path: string) {
+      let rendered = false
+      await page.exposeFunction('reportRender', () => {
+        rendered = true
+      })
+      await page.addInitScript(() => {
+        const report = (window as unknown as { reportRender: () => void }).reportRender
+        new MutationObserver(() => {
+          if (document.getElementById('root')?.hasChildNodes()) report()
+        }).observe(document, { childList: true, subtree: true })
+      })
+
+      const login = answered(bffPaths.login)
+      // The SPA leaves the page as it loads, so the wait is for the commit and not for the load.
+      await page.goto(path, { waitUntil: 'commit' })
+      await login
+      return { rendered }
+    },
+
+    async openWhileTheCheckFails(path: string) {
+      await page.goto(path)
+      await expect(at.checkFailed).toBeVisible()
+    },
+
+    async tryAgain() {
+      const settled = answered(bffPaths.user)
+      await at.tryAgain.click()
+      await settled
+    },
+  }
+}

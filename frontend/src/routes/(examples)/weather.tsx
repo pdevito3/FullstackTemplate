@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { parseDate } from '@internationalized/date'
-import { Refresh01Icon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Login01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+import { Refresh01Icon, CloudIcon, CloudFastWindIcon, CloudSnowIcon, FireIcon, SnowIcon, Sun01Icon, Sun03Icon, SunCloud02Icon, SquareLock02Icon, SquareUnlock02Icon, Logout01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
 import type { SecureWeatherForecast } from '@/api/generated/models/types/secure-weather-forecast'
@@ -31,7 +31,7 @@ function Index() {
   const [showSecure, setShowSecure] = useState(false)
   const queryClient = useQueryClient()
   const auth = useAuth()
-  const { login, logout } = useAuthActions()
+  const { logout } = useAuthActions()
 
   const {
     data: weatherData = [],
@@ -60,7 +60,6 @@ function Index() {
   const formatDate = (dateString: string) =>
     formatDay(parseDate(dateString), { weekday: 'short', month: 'short', day: 'numeric' })
 
-  const handleLogin = () => login('/weather')
   const handleLogout = () => auth.logoutUrl && logout(auth.logoutUrl)
 
   return (
@@ -77,9 +76,7 @@ function Index() {
 
           {/* Auth Section */}
           <div className="flex min-w-0 items-center gap-3">
-            {auth.isLoading ? (
-              <span className="text-sm text-muted-foreground">Loading...</span>
-            ) : auth.isLoggedIn ? (
+            {auth.isLoggedIn && (
               <>
                 <span className="min-w-0 text-sm wrap-anywhere">
                   Welcome, <span className="font-medium">{auth.username}</span>
@@ -89,11 +86,6 @@ function Index() {
                   Logout
                 </Button>
               </>
-            ) : (
-              <Button onPress={handleLogin}>
-                <HugeiconsIcon icon={Login01Icon} className="size-4" />
-                Login
-              </Button>
             )}
           </div>
         </div>

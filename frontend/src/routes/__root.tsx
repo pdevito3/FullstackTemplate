@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   createRootRoute,
   Outlet,
@@ -11,6 +12,9 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { Button } from '@/components/ui/button'
+import { login } from '@/domain/auth/apis/auth-actions'
+import { authClaimsQuery } from '@/domain/auth/apis/get-user'
 import { NoTenantNotice } from '@/domain/membership/components/no-tenant-notice'
 import { HrefRouterProvider } from '@/components/ui/link'
 import { Separator } from '@/components/ui/separator'
@@ -32,7 +36,37 @@ export const Route = createRootRoute({
   component: RootComponent,
 })
 
+/** Each page needs a session. A visitor with no session goes to the login, and sees no page of the app. */
 function RootComponent() {
+  const claims = useQuery(authClaimsQuery)
+
+  // A failed refetch keeps the data of the last answer, and that answer still decides.
+  if (claims.data === null) return <GoToLogin />
+  if (claims.data) return <Layout />
+  if (claims.isError) return <SessionCheckFailed onRetry={() => void claims.refetch()} />
+  return null
+}
+
+function GoToLogin() {
+  useEffect(() => {
+    const { pathname, search, hash } = window.location
+    login(pathname + search + hash)
+  }, [])
+  return null
+}
+
+function SessionCheckFailed({ onRetry }: { onRetry: () => void }) {
+  return (
+    <main className="flex min-h-svh items-center justify-center p-4">
+      <div role="alert" className="flex max-w-md flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
+        <p>We could not check whether you are signed in. Try again in a moment.</p>
+        <Button variant="outline" onPress={onRetry}>Try Again</Button>
+      </div>
+    </main>
+  )
+}
+
+function Layout() {
   const routerState = useRouterState()
   const page = routerState.matches[routerState.matches.length - 1]
   const isNotFound = routerState.matches.some((match) => match.globalNotFound)

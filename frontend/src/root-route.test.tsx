@@ -10,12 +10,14 @@ import {
 import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { userEvent } from 'vitest/browser'
+import { commands, userEvent } from 'vitest/browser'
 
 import { Link } from '@/components/ui/link'
 import { AuthKeys } from '@/domain/auth/apis/auth.keys'
+import { MembershipKeys } from '@/domain/membership/apis/membership.keys'
 import { Route as RootRoute } from '@/routes/__root'
 import { routeTree } from '@/routeTree.gen'
+import { member, memberClaims } from '@/test/session'
 
 let showLateHeading = () => {}
 
@@ -82,9 +84,10 @@ async function renderLayoutAt(path: string) {
     routeTree: rootRoute.addChildren([userRoute, linksRoute, headingRoute, noHeadingRoute, lateHeadingRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
-  // Seed an anonymous session, so that the session and membership queries of the layout send no request.
-  const queryClient = new QueryClient()
-  queryClient.setQueryData(AuthKeys.user(), null)
+  // Seed a signed-in member, so that the layout renders at once and its session and membership queries send no request.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+  queryClient.setQueryData(AuthKeys.user(), memberClaims)
+  queryClient.setQueryData(MembershipKeys.of(member.identifier), member)
   const screen = await render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -223,4 +226,28 @@ test('each page of the app declares the name that its breadcrumb shows', () => {
 
   expect(Object.keys(router.routesById).length).toBeGreaterThan(1)
   expect(pagesWithoutBreadcrumb).toEqual([])
+})
+
+test('a session answer that is not a list of claims shows that the session check failed, and no page', async () => {
+  await commands.answerRequests([
+    {
+      method: 'GET',
+      path: '/bff/user',
+      contentType: 'text/html',
+      body: '<!doctype html><html><body><div id="root"></div></body></html>',
+    },
+  ])
+  const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/'] }) })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+
+  const alert = screen.getByRole('alert')
+  await expect.element(alert.getByText('We could not check whether you are signed in. Try again in a moment.')).toBeVisible()
+  await expect.element(alert.getByRole('button', { name: 'Try Again' })).toBeVisible()
+  expect(screen.getByRole('navigation', { name: 'Main' }).elements()).toHaveLength(0)
 })

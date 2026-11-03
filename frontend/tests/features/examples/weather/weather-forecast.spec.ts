@@ -92,52 +92,6 @@ test.describe('the weather forecast', () => {
   })
 })
 
-test.describe('an anonymous visitor', () => {
-  test.use({ actor: as.anonymous() })
-
-  test('sees the login and no secure API', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
-
-    const weather = weatherForecastPage(page)
-    await weather.open()
-
-    await expect(weather.at.login).toBeVisible()
-    await expect(weather.at.secureToggle).toHaveCount(0)
-    expect(api.all('get', weatherPaths.secureList)).toHaveLength(0)
-  })
-
-  test('is a normal state: no error in the console and no toast', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()))
-
-    const weather = weatherForecastPage(page)
-    await weather.open()
-
-    await expect(weather.at.login).toBeVisible()
-    expect(weather.consoleErrors).toEqual([])
-    expect(await weather.at.toasts.count()).toBe(0)
-  })
-
-  test('still sees an error when the BFF fails to read the session', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()), bffApi.userFails(aProblem().saying('The session store is down.')))
-
-    const weather = weatherForecastPage(page)
-    await weather.open()
-
-    await expect(weather.at.login).toBeVisible()
-    expect(await weather.at.toast('The session store is down.').count()).toBe(1)
-  })
-
-  test('goes to the BFF login with the page to come back to', async ({ page, api }) => {
-    api.mock(weatherApi.listReturns(aForecast()), bffApi.loginOpens())
-    const weather = weatherForecastPage(page)
-    await weather.open()
-
-    await weather.logIn()
-
-    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/weather')
-  })
-})
-
 test.describe('a signed-in user', () => {
   test.use({ actor: as.user('Bob Smith') })
 
@@ -148,7 +102,6 @@ test.describe('a signed-in user', () => {
     await weather.open()
 
     await expect(weather.at.welcome('Bob Smith')).toBeVisible()
-    await expect(weather.at.login).toHaveCount(0)
   })
 
   test('sees the secure forecast with the name of the caller', async ({ page, api }) => {

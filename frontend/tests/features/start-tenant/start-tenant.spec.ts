@@ -148,16 +148,3 @@ test.describe('a member of a tenant', () => {
     await expect(start.at.checkFailure).toHaveCount(0)
   })
 })
-
-test.describe('an anonymous visitor', () => {
-  test.use({ actor: as.anonymous() })
-
-  test('is asked to log in, and the page does not look up a user record', async ({ page, api }) => {
-    const start = startTenantPage(page)
-    await start.openAnonymous()
-
-    await expect(start.at.logInPrompt).toBeVisible()
-    await expect(start.at.login).toBeVisible()
-    expect(api.all('get', membershipPaths.userOf('1'))).toHaveLength(0)
-  })
-})

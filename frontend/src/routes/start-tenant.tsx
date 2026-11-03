@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 import { useMembership } from '@/domain/membership/apis/get-membership'
 import { useStartTenant } from '@/domain/membership/apis/start-tenant'
 import { StartTenantForm } from '@/domain/membership/components/start-tenant-form'
@@ -29,7 +28,6 @@ function StartTenantPage() {
 function StartTenantContent() {
   const membership = useMembership()
   const startTenant = useStartTenant()
-  const { login } = useAuthActions()
 
   // Check this before 'loading': a start invalidates the membership, and the load must not replace the success message.
   if (startTenant.data) {
@@ -46,15 +44,6 @@ function StartTenantContent() {
 
   if (membership.status === 'loading') {
     return <Skeleton role="status" aria-label="Loading your account" className="h-64 max-w-lg" />
-  }
-
-  if (membership.status === 'signed-out') {
-    return (
-      <div className="flex flex-col items-start gap-4">
-        <p className="text-muted-foreground">Log in to start a tenant.</p>
-        <Button onPress={() => login('/start-tenant')}>Login</Button>
-      </div>
-    )
   }
 
   if (membership.status === 'error') {

@@ -15,7 +15,6 @@ export type StartTenantProfile = Pick<InitiateUserAndTenantDto, 'identifier' | '
 /** The state of the signed-in person's user record on the Server. A user record means a tenant. */
 export type Membership =
   | { status: 'loading' }
-  | { status: 'signed-out' }
   | { status: 'error'; message: string; retry?: () => void }
   | { status: 'member'; user: UserDto }
   | { status: 'no-tenant'; profile: StartTenantProfile }
@@ -70,7 +69,8 @@ export function useMembership(): Membership {
       ? { status: 'error', message: CHECK_FAILED, retry: () => void claims.refetch() }
       : { status: 'loading' }
   }
-  if (!claims.data || !identifier) return { status: 'signed-out' }
+  // The root route shows no page to an anonymous visitor, so only a session with no subject gets here.
+  if (!claims.data || !identifier) return { status: 'error', message: CHECK_FAILED }
   if (user.data === undefined) {
     if (!user.isError) return { status: 'loading' }
     return isRefusal(user.error)

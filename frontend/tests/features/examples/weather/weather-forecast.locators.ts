@@ -20,7 +20,6 @@ export const weatherForecast = (page: Page) => {
     error: page.getByRole('alert').filter({ hasText: 'Error loading weather data' }),
     toast: (text: string) => page.getByRole('alertdialog').filter({ hasText: text }),
     toasts: page.getByRole('alertdialog'),
-    login: page.getByRole('button', { name: 'Login', exact: true }),
     logout: page.getByRole('button', { name: 'Logout', exact: true }),
     welcome: (name: string) => page.getByText(`Welcome, ${name}`, { exact: true }),
     secureToggle: page.getByRole('button', { name: /^(Public|Secure) API$/ }),

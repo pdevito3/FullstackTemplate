@@ -14,8 +14,6 @@ export const startTenant = (page: Page) => {
     submit: form.getByRole('button', { name: 'Start a tenant' }),
     formErrors: form.getByRole('alert'),
     alreadyMember: page.getByText(/^You are already a member of a tenant\./),
-    logInPrompt: page.getByText('Log in to start a tenant.'),
-    login: page.getByRole('button', { name: 'Login', exact: true }),
     started: (tenantName: string) => page.getByText(`You started ${tenantName}. You are its admin`, { exact: false }),
     homeLink: page.getByRole('main').getByRole('link', { name: 'Go to the home page' }),
     homeHeading: page.getByRole('heading', { name: 'Fullstack Template', level: 1 }),

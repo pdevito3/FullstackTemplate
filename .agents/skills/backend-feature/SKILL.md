@@ -118,3 +118,4 @@ The build fails on these rules:
 - A set-based write, raw SQL, or a bulk import uses the paths of `docs/backend/audit-log.md` (RS0030).
 - Each query on a `DbSet` of `AppDbContext` has `TagWithOperationCallSite` (FSTTEL001 and FSTTEL003).
 - A query lambda in a handler compares a text or a list of texts of the request only after `EntityId.IsValid` or `PostgresText.CanStore` checks it, or checks each item of the list (FSTQRY001).
+- A request handler that calls `SaveChangesAsync` or `SaveChanges` has a `_logger.Here().Information` log and an `Activity.Current?.SetTag("app.*_id", ...)` tag (FSTTEL002).

@@ -172,6 +172,8 @@ Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaim
 
 A refetch that gives `null`, for example after the BFF session ends, also goes to the login. A failed refetch keeps the last answer.
 
+The session check shows no error toast. The alert is the only message for a failed check. A failed refetch shows no message, because the page still works with the last answer.
+
 Thus a page always has a session. Do not add a Login button or a signed-out state to a page.
 
 ## Routes

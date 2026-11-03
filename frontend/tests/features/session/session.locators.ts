@@ -5,4 +5,5 @@ export const session = (page: Page) => ({
   tryAgain: page.getByRole('button', { name: 'Try Again', exact: true }),
   navigation: page.getByRole('navigation', { name: 'Main' }),
   aboutHeading: page.getByRole('heading', { level: 1, name: 'About' }),
+  toasts: page.getByRole('alertdialog'),
 })

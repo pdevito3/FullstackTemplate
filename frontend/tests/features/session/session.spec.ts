@@ -18,7 +18,7 @@ test.describe('a visitor with no session', () => {
 })
 
 test.describe('a failed check of the session', () => {
-  test('shows an alert and no page, and does not go to the login', async ({ page, api }) => {
+  test('shows an alert and no page or toast, and does not go to the login', async ({ page, api }) => {
     api.mock(bffApi.userFails(aProblem().saying('The session store is down.')))
 
     const session = sessionPage(page)
@@ -26,6 +26,8 @@ test.describe('a failed check of the session', () => {
 
     await expect(session.at.navigation).toHaveCount(0)
     await expect(session.at.aboutHeading).toHaveCount(0)
+    // The toast shows with the failed request, before the alert. A toast closes after 6 seconds, so read the count once.
+    expect(await session.at.toasts.count()).toBe(0)
     expect(api.all('get', bffPaths.login)).toHaveLength(0)
   })
 

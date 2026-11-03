@@ -178,7 +178,7 @@ public sealed class GraphSession<TSeed>
 
     private SequenceState<T> State<T>(Sequence<T> sequence, GraphContext<TSeed> context)
     {
-        object scope = sequence.Scope switch
+        var scope = sequence.Scope switch
         {
             null => this,
             var type when type == typeof(ParentScope) => context.ParentEntity

@@ -12,7 +12,7 @@ public static class TokenEndpointDecorator
         Func<IServiceProvider, IOpenIdConnectUserTokenEndpoint, IOpenIdConnectUserTokenEndpoint> wrap)
     {
         var registered = services.Single(d => d.ServiceType == typeof(IOpenIdConnectUserTokenEndpoint));
-        Func<IServiceProvider, object> inner = registered.ImplementationFactory
+        var inner = registered.ImplementationFactory
             ?? (provider => ActivatorUtilities.CreateInstance(provider, registered.ImplementationType
                 ?? throw new InvalidOperationException("Token management registered its token endpoint with no implementation type.")));
         services.Remove(registered);

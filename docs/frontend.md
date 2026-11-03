@@ -167,7 +167,7 @@ Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaim
 |---|---|
 | Loading | Nothing |
 | No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. |
-| Error, and no earlier answer | An alert and Try Again. It does not go to the login. |
+| Error, and no earlier answer | An alert and Try Again. It does not go to the login. While the check runs again, Try Again is pending and takes no press. |
 | Claims | The layout and the page |
 
 The app does not poll the session. It finds an ended BFF session, for example after a back-channel logout, at the next API call: the BFF answers 401. `apiClient` then shows no toast and refetches the session (`onSessionEnd` in `main.tsx`). The refetch gives `null`, and the root route goes to the login. A failed refetch keeps the last answer.

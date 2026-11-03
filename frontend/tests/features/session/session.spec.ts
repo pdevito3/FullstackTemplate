@@ -57,4 +57,19 @@ test.describe('a failed check of the session', () => {
     await expect(session.at.aboutHeading).toBeVisible()
     await expect(session.at.checkFailed).toHaveCount(0)
   })
+
+  test('shows Try Again as pending while the check runs again, and sends one check for two presses', async ({ page, api }) => {
+    api.mock(bffApi.userFails(aProblem().saying('The session store is down.')))
+    const session = sessionPage(page)
+    await session.openWhileTheCheckFails('/about')
+    const checksBefore = api.all('get', bffPaths.user).length
+
+    api.mock({ ...bffApi.userIs(as.user()), delayMs: 1000 })
+    await session.pressTryAgain()
+    await expect(session.at.tryAgain).toBeDisabled()
+    await session.pressTryAgain()
+
+    await expect(session.at.aboutHeading).toBeVisible()
+    expect(api.all('get', bffPaths.user)).toHaveLength(checksBefore + 1)
+  })
 })

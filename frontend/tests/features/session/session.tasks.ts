@@ -59,6 +59,11 @@ export function sessionPage(page: Page) {
       await expect(at.checkFailed).toBeVisible()
     },
 
+    async pressTryAgain() {
+      await at.tryAgain.focus()
+      await page.keyboard.press('Enter')
+    },
+
     async tryAgain() {
       const settled = answered(bffPaths.user)
       await at.tryAgain.click()

@@ -10,7 +10,6 @@ A new database has no user records. A user who signs in with no user record sees
 - `start` sends `POST /api/v1/users/initiate` with the `sub` of the session and the role `Admin`. The page shows `You started <name>. You are its admin, ...`, and the link `Go to the home page` has the focus. The notice does not show again.
 - `refused` shows the refusal of the Server next to its field, for example a tenant name in use.
 - `member` tells a user with a user record that they already have a tenant.
-- `signed-out` asks an anonymous visitor to log in.
 
 ## How to get to it (user POV)
 
@@ -24,7 +23,7 @@ Preconditions:
 - `doctor.sh` exits with 0.
 - The user of `login()` has no user record. This is true on a new stack.
 
-- **Notice.** Run `page.goto('/')`, then `login()`. `page.getByRole('region', { name: 'No tenant' })` contains `You are not a member of a tenant.`.
+- **Notice.** Run `login()`. `page.getByRole('region', { name: 'No tenant' })` contains `You are not a member of a tenant.`.
 - **Form.** Run `notice.getByRole('link', { name: 'Start a tenant' }).click()`. The heading `Start a tenant` is visible. `First name`, `Last name`, and `Email` have the values of the `given_name`, `family_name`, and `email` claims of `GET /bff/user`.
 - **Start.** Fill `Tenant name` with a unique name, then click `Start a tenant` after `waitForResponse` on `POST /api/v1/users/initiate`. The response is 201. `user.role` is `Admin` and `user.identifier` is the `sub` claim. The page names the tenant of the response, and `Go to the home page` has the focus. Choose it. The level 1 heading of the home page has the focus, and the notice has count 0.
 - **Permissions.** `fetch('/api/v1/users')` in the page gives 200 with the new admin.

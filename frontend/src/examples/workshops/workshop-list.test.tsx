@@ -8,6 +8,7 @@ import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import { workshopForCreationDtoSchema } from '@/api/generated/models/zod/workshop-for-creation-dto'
 import { maxLengthOf } from '@/lib/api-contract'
 import { routeTree } from '@/routeTree.gen'
+import { signedInMember } from '@/test/session'
 
 const workshop = (title: string): WorkshopDto => ({
   id: title,
@@ -37,7 +38,7 @@ const pagination = (pageNumber: number, totalPages: number) => ({
 
 async function renderListAt(path: string) {
   await commands.answerRequests([
-    { method: 'GET', path: '/bff/user', status: 204 },
+    ...signedInMember,
     { method: 'GET', path: '/api/v1/workshops', headers: pagination(1, 3), body: [workshop('Page one')] },
     { method: 'GET', path: '/api/v1/workshops', query: { pageNumber: '2' }, headers: pagination(2, 3), body: [workshop('Page two')] },
     { method: 'GET', path: '/api/v1/workshops', query: { filters: 'title @=* "Kubb"' }, headers: pagination(1, 1), body: [workshop('Kubb basics')] },

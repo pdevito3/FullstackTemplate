@@ -26,10 +26,18 @@ export function toastDemoPage(page: Page) {
 
     // The clock stands still from the start, so only letTimePass moves the timers of the toasts. Real time that a slow
     // browser takes does not count. The animations wait too, so a sheet that opens stays transparent until time passes.
-    async controlTheClock() {
+    // The page shows after the answer of the session, and the query reports that answer in a timer.
+    async openWithTheClockStopped() {
       const start = new Date('2026-01-05T09:00:00Z')
       await page.clock.install({ time: start })
       await page.clock.pauseAt(start.getTime() + 60_000)
+      await page.goto(sharedComponentsPage)
+      await expect
+        .poll(async () => {
+          await page.clock.runFor(16)
+          return at.heading.count()
+        })
+        .toBe(1)
     },
 
     async open() {

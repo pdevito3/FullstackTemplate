@@ -5,7 +5,7 @@ import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
 import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
 import { Notification } from '@/components/notification'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, onUnauthorized } from '@/lib/api-client'
 import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 
@@ -44,10 +44,13 @@ function respond(
 // The stub adapter replaces the network, so each request still goes through the apiClient interceptors.
 let adapter: ReturnType<typeof vi.fn<AxiosAdapter>>
 const originalAdapter = apiClient.defaults.adapter
+let checkSession: ReturnType<typeof vi.fn<() => Promise<boolean>>>
 
 beforeEach(() => {
   adapter = vi.fn<AxiosAdapter>()
   apiClient.defaults.adapter = adapter
+  checkSession = vi.fn<() => Promise<boolean>>()
+  onUnauthorized(checkSession)
 })
 
 afterEach(() => {
@@ -74,6 +77,7 @@ describe('apiClient with a generated client', () => {
     expect(error).toBeInstanceOf(ProblemDetailsError)
     expect((error as ProblemDetailsError).status).toBe(422)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith('Please provide a name.')
+    expect(checkSession).not.toHaveBeenCalled()
   })
 
   it('does not show a toast when suppressErrorToast is true', async () => {
@@ -149,14 +153,39 @@ describe('apiClient with a response that is not problem details', () => {
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(message)
   })
 
-  it('rejects with the axios message for a 401 with an empty body', async () => {
-    // The Server sends a 401 with no body, and the BFF passes it on
+  // The Server answers 401 with no body to a call that needs a user, and the BFF passes it on.
+  it('checks the session for a 401, and shows no toast when the session ended', async () => {
+    checkSession.mockResolvedValue(true)
     adapter.mockImplementation((config) => respond(config, 401, ''))
 
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
     expect((error as Error).message).toBe('Request failed with status code 401')
+    expect(checkSession).toHaveBeenCalledOnce()
+    expect(Notification.error).not.toHaveBeenCalled()
+  })
+
+  it('checks the session for a 401, and shows a toast when the session lives', async () => {
+    checkSession.mockResolvedValue(false)
+    adapter.mockImplementation((config) => respond(config, 401, ''))
+
+    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+
+    expect((error as Error).message).toBe('Request failed with status code 401')
+    expect(checkSession).toHaveBeenCalledOnce()
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(
+      'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.',
+    )
+  })
+
+  it('does not check the session for a 401 of the session check itself', async () => {
+    adapter.mockImplementation((config) => respond(config, 401, ''))
+
+    const error = await apiClient.get('/bff/user', { suppressErrorToast: true }).catch((e: unknown) => e)
+
+    expect((error as Error).message).toBe('Request failed with status code 401')
+    expect(checkSession).not.toHaveBeenCalled()
   })
 
   it('rejects with the axios message for a network error', async () => {

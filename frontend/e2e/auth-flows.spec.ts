@@ -100,16 +100,7 @@ function dpopSpansOfCurrentUserSince(startedAt: number): number {
 test.describe(`Auth Flows - ${currentIdp.name}`, () => {
   test.describe('React UI Authentication', () => {
     test('should login, call the Server as the signed-in user, and logout', async ({ page }) => {
-      // Step 1: Navigate to the home page
       await page.goto('/')
-      await expect(page).toHaveURL('/')
-
-      // Step 2: Click the Login button
-      const loginButton = page.getByRole('button', { name: /login/i })
-      await expect(loginButton).toBeVisible()
-      await loginButton.click()
-
-      // Step 3: Wait for the login form of the IDP. The page can show the form before all of its resources load
       await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
 
       // Step 4: Login at the IDP
@@ -125,8 +116,10 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       // Step 6: The home page shows the name that the Server read from the access token, which the BFF sent
       await expect(page.getByText(/^Signed in as /)).toBeVisible({ timeout: 10000 })
 
-      // Step 7: Click Logout
+      // Step 7: Click Logout. The 200 before the logout proves that the 204 after it comes from the logout
       const appOrigin = new URL(page.url()).origin
+      const bffUser = () => page.request.get(new URL('/bff/user', appOrigin).toString(), { headers: { 'X-CSRF': '1' } })
+      expect((await bffUser()).status(), 'the BFF session before the logout').toBe(200)
       await logoutButton.click()
 
       // Step 8: Wait for logout to complete
@@ -137,27 +130,19 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const backToAppLink = page.getByRole('link', { name: /log back into/i })
       const duendeReturnLink = page.locator('a[href*="signout-callback-oidc"]')
 
-      // Wait for the app or for a return link, because some IDPs redirect to the app by themselves.
-      // The IDP login page also has a Login button, so count that button only on the app.
+      // An IDP that redirects to the app by itself goes through the app, and the app sends the browser with no session
+      // to the login form.
       const returnLink = backToAppLink.or(duendeReturnLink).first()
-      const appLoginButton = page.getByRole('button', { name: /login/i })
+      const idpLoginForm = page.locator(currentIdp.usernameSelector)
       await expect
-        .poll(
-          async () =>
-            (await returnLink.isVisible()) ||
-            (new URL(page.url()).origin === appOrigin && (await appLoginButton.isVisible())),
-          { timeout: 30000 }
-        )
+        .poll(async () => (await returnLink.isVisible()) || (await idpLoginForm.isVisible()), { timeout: 30000 })
         .toBe(true)
       if (await returnLink.isVisible()) {
         await returnLink.click()
       }
 
-      // Wait for redirect back to app
-      await page.waitForURL('/', { timeout: 30000 })
-
-      // Verify login button is visible again (indicates logged out)
-      await expect(page.getByRole('button', { name: /login/i })).toBeVisible({ timeout: 10000 })
+      await expect(idpLoginForm).toBeVisible({ timeout: 30000 })
+      expect((await bffUser()).status(), 'the BFF session after the logout').toBe(204)
     })
 
     // The stack runs with DPoP when the BFF has Auth:Features:DPoP=Require (DPoP=true when the stack starts). The
@@ -167,7 +152,6 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const startedAt = Date.now()
 
       await page.goto('/')
-      await page.getByRole('button', { name: /login/i }).click()
       await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
       await loginAtIdp(page, currentIdp)
       await page.waitForURL('/', { timeout: 30000 })
@@ -181,9 +165,8 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
     })
 
     test('should use PAR when the provider offers it, and the plain authorize URL when not', async ({ page }) => {
-      await page.goto('/')
       const loginResponse = page.waitForResponse((response) => new URL(response.url()).pathname === '/bff/login')
-      await page.getByRole('button', { name: /login/i }).click()
+      await page.goto('/')
 
       // The 302 of /bff/login holds the authorize URL
       const location = (await loginResponse).headers()['location']
@@ -204,10 +187,10 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
 
     test('should return to a deep link on the SPA origin, with its query, after a login from that link', async ({ page, baseURL }) => {
       const deepLink = '/about?tab=team&x=1'
-      await page.goto(deepLink)
-      await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toHaveText('About')
+      const loginRequest = page.waitForRequest((request) => new URL(request.url()).pathname === '/bff/login')
 
-      await page.goto(`/bff/login?returnUrl=${encodeURIComponent(deepLink)}`)
+      await page.goto(deepLink)
+      expect(new URL((await loginRequest).url()).searchParams.get('returnUrl')).toBe(deepLink)
       await loginAtIdp(page, currentIdp)
 
       await page.waitForURL(new URL(deepLink, baseURL).toString(), { timeout: 30000 })
@@ -225,7 +208,6 @@ const sessionCookieName = '__Host-bff'
  */
 async function signInThroughSpa(page: Page) {
   await page.goto('/')
-  await page.getByRole('button', { name: /login/i }).click()
   await loginAtIdp(page, currentIdp)
   await page.waitForURL('/', { timeout: 30000 })
   await expect(page.getByRole('button', { name: /logout/i })).toBeVisible({ timeout: 10000 })
@@ -258,7 +240,6 @@ test.describe(`Session cookie - ${currentIdp.name}`, () => {
     context,
   }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: /login/i }).click()
     await page.locator(currentIdp.usernameSelector).waitFor({ state: 'visible', timeout: 30000 })
 
     // The browser must send these two cookies on the cross-site GET from the identity provider to /signin-oidc

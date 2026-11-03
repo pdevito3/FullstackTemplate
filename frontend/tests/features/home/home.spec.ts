@@ -1,31 +1,9 @@
 import { bffApi, bffPaths } from '@tests/support/api/bff-api'
-import { usersApi, usersPaths } from '@tests/support/api/users-api'
+import { usersApi } from '@tests/support/api/users-api'
 import { as } from '@tests/support/auth/actors'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { expect, test } from '@tests/support/fixtures'
 import { homePage } from './home.tasks'
-
-test.describe('an anonymous visitor on the home page', () => {
-  test('sees the login and does not call the Server', async ({ page, api }) => {
-    const home = homePage(page)
-
-    await home.open()
-
-    await expect(home.at.notSignedIn).toBeVisible()
-    await expect(home.at.login).toBeVisible()
-    expect(api.all('get', usersPaths.current)).toHaveLength(0)
-  })
-
-  test('goes to the BFF login and comes back to the home page', async ({ page, api }) => {
-    api.mock(bffApi.loginOpens())
-    const home = homePage(page)
-    await home.open()
-
-    await home.logIn()
-
-    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/')
-  })
-})
 
 test.describe('a signed-in user on the home page', () => {
   test.use({ actor: as.user('Bob Smith') })
@@ -37,7 +15,6 @@ test.describe('a signed-in user on the home page', () => {
     await home.open()
 
     await expect(home.at.signedInAs('Robert Smith')).toBeVisible()
-    await expect(home.at.login).toHaveCount(0)
   })
 
   test('sees the identifier when the token has no name', async ({ page, api }) => {

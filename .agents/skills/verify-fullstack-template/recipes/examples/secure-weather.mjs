@@ -1,14 +1,12 @@
 // Feature: secure-weather. The JWT that the BFF holds reaches the server. See features/examples/secure-weather.md.
 export default async ({ page, step, capture, expect, login }) => {
-  await step('anonymous: no API mode button, GET /api/v1/weather/secure is 401', async () => {
-    await page.goto('/weather')
-    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Public API' })).toHaveCount(0)
-    const status = await page.evaluate(async () => (await fetch('/api/v1/weather/secure', { headers: { 'X-CSRF': '1' } })).status)
+  await step('anonymous: GET /api/v1/weather/secure is 401', async () => {
+    const status = (await page.request.get('/api/v1/weather/secure', { headers: { 'X-CSRF': '1' } })).status()
     expect(status).toBe(401)
   })
 
-  const { name } = await step('log in', () => login())
+  await page.goto('/weather', { waitUntil: 'commit' })
+  const { name } = await step('log in from /weather, and come back to it', () => login())
   // The greeting also shows the name, so count only the badges on the cards.
   const userBadges = page.locator('[data-slot="badge"]').filter({ hasText: name })
   await capture('public-mode')

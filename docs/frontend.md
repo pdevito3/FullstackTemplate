@@ -154,10 +154,35 @@ import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 
 const { data, isLoading, error } = useCurrentUser()
 const { isLoggedIn, username, logoutUrl } = useAuth()
-const { login, logout } = useAuthActions()
+const { logout } = useAuthActions()
 ```
 
 Never copy server state into local state. See [server-state.md](frontend/server-state.md).
+
+## Session
+
+Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaimsQuery` before it shows a page:
+
+| State of the session query | The root route shows |
+|---|---|
+| Loading | Nothing |
+| No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. |
+| Error, and no earlier answer | An alert and Try Again. It does not go to the login. While the check runs again, Try Again is pending and takes no press. |
+| Claims | The layout and the page |
+
+The app does not poll the session. It finds an ended BFF session, for example after a back-channel logout, at the next call to an endpoint that needs a user: the Server answers 401, and the BFF passes it on. A call to an endpoint that allows anonymous callers still answers 200. The Server also answers 401 while the BFF session lives, for example when a token refresh fails for a short time. So on a 401, `apiClient` checks the session again and waits for the answer (`onUnauthorized` in `main.tsx`):
+
+| The check gives | `apiClient` |
+|---|---|
+| `null` | Shows no toast. The root route goes to the login. |
+| Claims | Shows "The Server did not accept your sign-in for this request." unless the call sets `suppressErrorToast`. The page stays. |
+| An error | Shows the same toast as for claims. The root route keeps the last answer. |
+
+A 401 of `/bff/user` is a failed check. It does not start a check again.
+
+The session check shows no error toast. The alert is the only message for a failed check. A failed refetch shows no message of its own, because the page still works with the last answer.
+
+Thus a page always has a session. Do not add a Login button or a signed-out state to a page.
 
 ## Routes
 

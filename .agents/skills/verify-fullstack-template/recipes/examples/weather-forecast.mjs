@@ -1,6 +1,8 @@
-// Feature: weather-forecast. Anonymous visitor. See features/examples/weather-forecast.md.
-export default async ({ page, step, capture, expect }) => {
-  const forecast = await step('open / and receive GET /api/v1/weather', async () => {
+// Feature: weather-forecast. See features/examples/weather-forecast.md.
+export default async ({ page, step, capture, expect, login }) => {
+  await step('log in', () => login())
+
+  const forecast = await step('open /weather and receive GET /api/v1/weather', async () => {
     const res = page.waitForResponse((r) => r.url().endsWith('/api/v1/weather') && r.request().method() === 'GET')
     await page.goto('/weather')
     const r = await res
@@ -10,7 +12,6 @@ export default async ({ page, step, capture, expect }) => {
 
   await step('page shows the heading and 5 cards in Fahrenheit', async () => {
     await expect(page.getByRole('heading', { name: 'Weather Forecast', level: 1 })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
     expect(forecast).toHaveLength(5)
     await expect(page.getByText('Fahrenheit', { exact: true })).toHaveCount(5)
   })

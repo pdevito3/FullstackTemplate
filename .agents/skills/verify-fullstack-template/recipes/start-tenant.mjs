@@ -6,7 +6,6 @@ const api = (page, method, path) =>
   }, [method, path])
 
 export default async ({ page, step, capture, expect, login }) => {
-  await page.goto('/')
   await step('log in', () => login())
   const claims = await step('the Server has no user record for the new user', async () => {
     const body = (await api(page, 'GET', '/bff/user')).body

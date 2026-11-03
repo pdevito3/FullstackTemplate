@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Login01Icon, Logout01Icon } from '@hugeicons/core-free-icons'
+import { Logout01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 
 import { useAuth } from '@/domain/auth/apis/get-user'
@@ -17,7 +17,7 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const auth = useAuth()
-  const { login, logout } = useAuthActions()
+  const { logout } = useAuthActions()
 
   return (
     <div className="bg-background">
@@ -32,25 +32,11 @@ function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center justify-between gap-4">
-            {auth.isLoading ? (
-              <Skeleton className="h-5 w-48" aria-label="Loading your session" />
-            ) : auth.isLoggedIn ? (
-              <>
-                <SignedInUser />
-                <Button variant="outline" onPress={() => auth.logoutUrl && logout(auth.logoutUrl)}>
-                  <HugeiconsIcon icon={Logout01Icon} className="size-4" />
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">You are not signed in.</p>
-                <Button onPress={() => login('/')}>
-                  <HugeiconsIcon icon={Login01Icon} className="size-4" />
-                  Login
-                </Button>
-              </>
-            )}
+            <SignedInUser />
+            <Button variant="outline" onPress={() => auth.logoutUrl && logout(auth.logoutUrl)}>
+              <HugeiconsIcon icon={Logout01Icon} className="size-4" />
+              Logout
+            </Button>
           </CardContent>
         </Card>
       </div>

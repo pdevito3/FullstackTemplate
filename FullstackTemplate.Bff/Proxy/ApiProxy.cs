@@ -89,7 +89,7 @@ public static class ApiProxy
     /// <list type="bullet">
     ///   <item><c>invalid_grant</c>, or a BFF session that ended during the refresh lock: the refresh lock deleted
     ///   the row. The transform signs out the cookie and forwards with no token, so the next <c>/bff/user</c>
-    ///   gives a 401.</item>
+    ///   gives a 204.</item>
     ///   <item>Any other failure, such as a network error, a 5xx, a token request timeout, or a lock timeout, is
     ///   temporary: the BFF session stays. The transform sends the current access token while it is valid, and no
     ///   token after that. The next request tries the refresh again.</item>

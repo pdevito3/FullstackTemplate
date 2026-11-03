@@ -12,11 +12,6 @@ export function homePage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
-    async logIn() {
-      await at.login.click()
-      await page.waitForURL('**/bff/login**')
-    },
-
     async logOut() {
       await at.logout.click()
       await page.waitForURL('**/bff/logout**')

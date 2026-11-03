@@ -80,11 +80,13 @@ An error body must have the shape that ASP.NET sends. Make it with `aProblem()`.
 
 ### Identity
 
-The SPA knows the user only from `GET /bff/user`. The `actor` fixture gives the claims of that answer, so a test never drives a login form. The default actor is anonymous, and `/bff/user` answers 204. To act as a signed-in user, add this line to a `describe` block:
+The SPA knows the user only from `GET /bff/user`. The `actor` fixture gives the claims of that answer, so a test never drives a login form. The fixture also answers the lookup of the user record of the actor and `GET /api/v1/users/me`. The default actor is `as.user()`, a signed-in user with a tenant. To act as another user, add this line to a `describe` block:
 
 ```ts
-test.use({ actor: as.user('Bob Smith') })
+test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 ```
+
+For an anonymous visitor, use `as.anonymous()`. Then `/bff/user` answers 204, and the SPA goes to the login before it shows a page. Thus a spec of a page needs a signed-in actor. The session spec (`tests/features/session/session.spec.ts`) covers the anonymous visitor and a failed check of the session.
 
 Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back.
 
@@ -133,6 +135,7 @@ Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of
 - The queue of toasts renders in a view transition. The suite sets `reducedMotion: 'reduce'`, so each toast renders at once.
 - An error toast closes after 6 seconds. `toHaveCount` retries for 5 seconds, so `toHaveCount(1)` can pass when an extra toast closes. To prove that only one toast shows, read `count()` once.
 - The queries retry once (`main.tsx`). A failed load sends two requests, and the page shows the error after the second.
+- The page shows after the answer of `/bff/user`, and TanStack Query reports that answer in a timer. If a spec stops the clock before the page opens, the page does not show until the clock moves. See `openWithTheClockStopped` in `tests/features/toasts/toasts.tasks.ts`.
 - The suite sets the locale `en-US`. For the zone, see [Time zones](#time-zones).
 
 ### Time zones

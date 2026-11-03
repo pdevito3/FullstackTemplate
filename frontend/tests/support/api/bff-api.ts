@@ -22,6 +22,19 @@ export const bffApi = {
     return { method: 'get', path: bffPaths.user, status: body.status ?? 500, body }
   },
 
+  /** The BFF session ended: `/bff/user` answers 204, and the Server answers 401 with no body to each call of the API that needs a user. */
+  sessionEnded(...apiPaths: string[]): MockRoute[] {
+    return [
+      { method: 'get', path: bffPaths.user, status: 204 },
+      ...apiPaths.map((path): MockRoute => ({ method: 'get', path, status: 401 })),
+    ]
+  },
+
+  /** The BFF session lives, and `/bff/user` keeps its answer, but the Server answers 401 with no body to each call of the API, for example when a token refresh fails for a short time. */
+  apiRejectsTheToken(...apiPaths: string[]): MockRoute[] {
+    return apiPaths.map((path): MockRoute => ({ method: 'get', path, status: 401 }))
+  },
+
   /** The SPA navigates to the login of the BFF. The mock answers with an empty page, not with the redirect to the IdP. */
   loginOpens(): MockRoute {
     return { method: 'get', path: bffPaths.login, status: 200 }

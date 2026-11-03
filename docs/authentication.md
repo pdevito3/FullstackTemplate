@@ -19,8 +19,8 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 
 ## Login flow
 
-1. The user clicks Login in the React app.
-2. The frontend goes to `/bff/login`. A `returnUrl` must be a local URL, for example `/about`. The BFF rejects an absolute URL and a URL that starts with `//`. The BFF percent-encodes each non-ASCII character as UTF-8, so `/café` becomes `/caf%C3%A9`. The return URL travels in the `state` of the authorize URL. Thus, if the encoded `returnUrl` has more than 2048 characters, the BFF uses the default return URL (`PathBase`, or `/`), and the provider does not refuse the long URL with a 414.
+1. The React app calls `/bff/user` before it shows a page. Each page needs a session. If the answer is 204, the app shows no page and goes to the login.
+2. The frontend goes to `/bff/login`, with the path, the query, and the hash of the page as `returnUrl`. If they have more than 2048 characters, the `returnUrl` is the path alone, or `/` if the path is also too long. If the path starts with `//` or `/\`, the `returnUrl` is `/`. The frontend replaces the page in the history, so Back from the provider does not open a page that goes to the login again. A `returnUrl` must be a local URL, for example `/about`. The BFF rejects an absolute URL and a URL that starts with `//`. The BFF percent-encodes each non-ASCII character as UTF-8, so `/café` becomes `/caf%C3%A9`. The return URL travels in the `state` of the authorize URL. Thus, if the encoded `returnUrl` has more than 2048 characters, the BFF uses the default return URL (`PathBase`, or `/`), and the provider does not refuse the long URL with a 414.
 3. The BFF sends the browser to the provider with the authorization code flow, PKCE (`S256`), and `response_mode=query`. If the provider has PAR, the BFF first pushes the request, and the authorize URL has only `client_id` and `request_uri`.
 4. The provider sends the browser back to `/signin-oidc`. The BFF accepts only a GET there.
 5. The BFF checks the callback. The `iss` parameter must equal the issuer of the provider (RFC 9207). The ID token `aud` must hold only the client id. A failed check gives a 400, and the BFF creates no BFF session.
@@ -87,12 +87,13 @@ When the access token expires, the BFF refreshes it before it sends the API call
 4. The BFF deletes the `__Host-bff` cookie.
 5. If the provider has an `end_session_endpoint`, the BFF sends the browser there with `id_token_hint` and `post_logout_redirect_uri`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`.
 6. If the provider has no `end_session_endpoint`, the BFF sends the browser to `returnUrl`.
+7. The React app at `returnUrl` has no session, so it goes to the login again. If the provider ended its session, the provider shows its login page. If the provider session stays, the provider signs in the same user again with no prompt.
 
 If no user is signed in, the BFF sends the browser to `returnUrl` at once. It does not go to the provider, because it has no ID token for `id_token_hint`, and a provider can refuse a logout without one.
 
 The BFF session can end before the provider session, for example at its absolute limit. The browser then still has the `__Host-bff` cookie, but the BFF has no ID token for it. If `Auth:EndSessionWithoutIdTokenHint` is `true`, a logout with this cookie goes to the `end_session_endpoint` with `client_id`, `post_logout_redirect_uri`, and `state`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`. Keycloak first asks the user to confirm the logout. A logout with no cookie still goes to `returnUrl` at once. Thus an anonymous visit or a link from another site does not show the logout page of the provider.
 
-This logout is possible only from a page that still shows the user as signed in. After a reload, `/bff/user` gives 204, and the SPA shows only Login. If the setting is `false`, or if the user does not log out, the provider session stays. The next login then signs in the same user again with no prompt. On a shared computer, the next person can thus sign in as the previous user. Only Keycloak sets this setting in the local stack. ZeroFactor refuses a logout with no `id_token_hint`. The other providers are not tested.
+This logout is possible only from a page that still shows the user as signed in. After a reload, `/bff/user` gives 204, and the SPA goes to the login. The live provider session then signs in the same user again with no prompt. If the setting is `false`, or if the user does not log out, the provider session stays. The next login then signs in the same user again with no prompt. On a shared computer, the next person can thus sign in as the previous user. Only Keycloak sets this setting in the local stack. ZeroFactor refuses a logout with no `id_token_hint`. The other providers are not tested.
 
 ## Back-channel logout
 
@@ -118,7 +119,7 @@ The BFF reads the discovery document of the provider one time at startup. It use
 | `Auth:Features:Revocation` | `revocation_endpoint` | The BFF does not revoke tokens. |
 | `Auth:Features:IssuerParameter` | `authorization_response_iss_parameter_supported` | The BFF accepts a callback with no `iss`. A present `iss` must still match. |
 | `Auth:Features:BackChannelLogout` | `backchannel_logout_supported` | The endpoint stays mapped, and it validates each token. |
-| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to `returnUrl` at once. |
+| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to `returnUrl` at once. The provider session stays, so the SPA there goes to the login, and the provider signs in the same user again with no prompt. |
 | `Auth:Features:PushedAuthorization` | `pushed_authorization_request_endpoint` | The BFF uses the plain authorize URL. |
 | `Auth:Features:DPoP` | `dpop_signing_alg_values_supported` | The BFF uses Bearer tokens. See [DPoP](#dpop). |
 

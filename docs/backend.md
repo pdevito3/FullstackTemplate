@@ -236,6 +236,32 @@ The server applies migrations at startup, with a Postgres advisory lock.
 
 `ModelSnapshotTests` fails when the committed model snapshot is not the snapshot that the next migration writes. This includes a model change with no DDL, such as a new navigation, which `dotnet ef migrations has-pending-model-changes` does not find. The test ignores the `using` lines and the `ProductVersion` annotation. To correct the failure, add a migration in the change that changed the model. For a change with no DDL, the `Up` and `Down` of the migration are empty. An update of EF Core or Npgsql that changes the generated code also fails the test. Correct it the same way.
 
+## Object storage
+
+The Server keeps the bytes of files in one S3 bucket. The database keeps the metadata of each file and the key of its object. `Resources/Storage/ObjectStorage.cs` puts an object, deletes an object, and signs a URL that reads an object. `Resources/Storage/ObjectStorageRegistration.cs` adds the S3 client.
+
+| Where | Storage |
+|-------|---------|
+| `dotnet aspire start` | The `storage` resource of the AppHost. It is Floci, an S3 emulator, on port 24780. When Floci is ready, `FullstackTemplate.AppHost/Storage/seed/01-create-bucket.sh` makes the bucket `files`. The AppHost gives the Server `AWS_ENDPOINT_URL`, the region, test credentials, and `ObjectStorage__BucketName` |
+| The integration and functional tests | `FlociTestStorage` in `tests/FullstackTemplate.SharedTestHelpers/Utilities/` starts a Floci container with the same image, and makes a new bucket for each run |
+| Production | S3 of AWS, or a service with the S3 API. Set `ObjectStorage__BucketName`. With no `AWS_ENDPOINT_URL`, the SDK reads the region and the credentials from its default chain. Block all public access to the bucket |
+
+Obey these rules:
+
+1. Read a file in the browser through a presigned GET URL. The Server has no endpoint that sends the bytes of a stored file. Anyone who has the URL can read the object until the URL expires, so sign a URL only after the handler loads the record through the tenant filter and passes its access check. Give the URL a short life and the time it expires, so that the SPA can load it again.
+2. Make the key from IDs only, and start it with `tenants/{tenantId}/`. Do not put a file name in a key, because the user types it.
+3. Put the type and the disposition in the signed URL. Use `PresignedGet.Attachment` for a download. Use `PresignedGet.Inline` only for a type that a browser shows and does not run, such as PNG, JPEG, GIF, and WebP. Do not show SVG or HTML inline, because a browser runs their scripts.
+4. Put the object before the save of its row. If the save fails, delete the object. Delete the object after the delete of its row commits. A failure after the commit leaves an object that no row names, and the handler writes an error log for it.
+5. Check the size of a file in a domain rule. Kestrel refuses a request body over 30 MB before the rule runs.
+
+Floci checks the signature of a signed request (`FLOCI_AUTH_VALIDATE_SIGNATURES`). It does not refuse a request with no signature, so a local bucket is open to each caller that can get to its port. S3 of AWS refuses such a request when the bucket blocks public access.
+
+A tenant delete soft-deletes the rows of the files, and keeps their objects.
+
+<!-- example:start -->
+The workshop example stores the files of a workshop: [`WorkshopAttachment`](<../FullstackTemplate.Server/Examples/Workshops/WorkshopAttachment.cs>), [`AddWorkshopAttachment`](<../FullstackTemplate.Server/Examples/Workshops/Features/AddWorkshopAttachment/AddWorkshopAttachment.cs>), and [`DeleteWorkshopAttachment`](<../FullstackTemplate.Server/Examples/Workshops/Features/DeleteWorkshopAttachment/DeleteWorkshopAttachment.cs>). The SPA loads the list again before its URLs expire: [`useWorkshopAttachments`](<../frontend/src/examples/workshops/apis/get-workshop-attachments.ts>).
+<!-- example:end -->
+
 ## Tests
 
 | Project | Scope |

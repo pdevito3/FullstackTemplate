@@ -426,7 +426,7 @@ public class EndpointAccessSweepTests : TestBase
     {
         // The upload rules of a route are in its handler, not in the OpenAPI document. So a route that takes a file
         // gets a file of each type of the registry until its rules take the type.
-        IReadOnlyList<FileType> fileTypes = endpoint.TakesFile ? FileType.All : [FileType.All[0]];
+        var fileTypes = endpoint.TakesFile ? FileType.All : [FileType.All[0]];
         Outcome? outcome = null;
         foreach (var fileType in fileTypes)
         {

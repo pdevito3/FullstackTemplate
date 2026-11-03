@@ -170,7 +170,7 @@ Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaim
 | Error, and no earlier answer | An alert and Try Again. It does not go to the login. While the check runs again, Try Again is pending and takes no press. |
 | Claims | The layout and the page |
 
-The app does not poll the session. It finds an ended BFF session, for example after a back-channel logout, at the next call to an endpoint that needs a user: the Server answers 401, and the BFF passes it on. A call to an anonymous endpoint, such as the weather forecast, still answers 200. The Server also answers 401 while the BFF session lives, for example when a token refresh fails for a short time. So on a 401, `apiClient` checks the session again and waits for the answer (`onUnauthorized` in `main.tsx`):
+The app does not poll the session. It finds an ended BFF session, for example after a back-channel logout, at the next call to an endpoint that needs a user: the Server answers 401, and the BFF passes it on. A call to an endpoint that allows anonymous callers still answers 200. The Server also answers 401 while the BFF session lives, for example when a token refresh fails for a short time. So on a 401, `apiClient` checks the session again and waits for the answer (`onUnauthorized` in `main.tsx`):
 
 | The check gives | `apiClient` |
 |---|---|

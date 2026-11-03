@@ -12,7 +12,7 @@ Each page of the SPA needs a session. A visitor with no session goes to the logi
 ## How to get to it (user POV)
 
 - Open any page of the app with no session. The login page of the IdP shows.
-- Choose `Logout` in the `Your session` card of the home page `/`. The weather example page also has `Logout`.
+- Choose `Logout` in the `Your session` card of the home page `/`.
 
 ## Driving it with browse.mjs
 

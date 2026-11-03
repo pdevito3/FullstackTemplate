@@ -1,6 +1,6 @@
 namespace FullstackTemplate.Server.Examples.Workshops.Features;
 
-using Dtos;
+using Domain.Attachments.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Resources.Entrypoints.Http;
@@ -22,9 +22,9 @@ public sealed class AddWorkshopAttachmentEndpoint : IEndpoint
         .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
     /// <summary>
-    /// Uploads one file to a Workshop as a multipart form with the field file. A file can be no larger than 10 MB.
+    /// Uploads one file to a Workshop as a multipart form with the field file. The uploadRules of the list give the allowed types and the largest size.
     /// </summary>
-    public static async Task<CreatedAtRoute<WorkshopAttachmentDto>> Handle(
+    public static async Task<CreatedAtRoute<AttachmentDto>> Handle(
         string id,
         IFormFile file,
         IMediator mediator,

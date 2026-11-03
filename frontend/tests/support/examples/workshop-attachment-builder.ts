@@ -1,16 +1,15 @@
-import type { WorkshopAttachmentDto } from '@/api/generated/models/types/workshop-attachment-dto'
+import type { AttachmentDto } from '@/api/generated/models/types/attachment-dto'
 
 let seed = 0
 const next = () => ++seed
 
 // The Vite dev server serves this image, so a thumbnail loads with no storage behind it
 const IMAGE_URL = '/Aspire.png'
-const PREVIEW_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
 class WorkshopAttachmentBuilder {
-  private readonly attachment: WorkshopAttachmentDto
+  private readonly attachment: AttachmentDto
 
-  private constructor(attachment: WorkshopAttachmentDto) {
+  private constructor(attachment: AttachmentDto) {
     this.attachment = attachment
   }
 
@@ -20,7 +19,7 @@ class WorkshopAttachmentBuilder {
       signed({
         id: `00000000-0000-4000-a000-${String(n).padStart(12, '0')}`,
         fileName: `notes-${n}.pdf`,
-        contentType: 'application/pdf',
+        mediaType: 'application/pdf',
         sizeBytes: 24_576,
         uploadedAt: '2026-05-20T15:00:00+00:00',
         urlsExpireAt: '2099-01-01T00:00:00+00:00',
@@ -28,8 +27,12 @@ class WorkshopAttachmentBuilder {
     )
   }
 
-  named(fileName: string, contentType: string) {
-    return new WorkshopAttachmentBuilder(signed({ ...this.attachment, fileName, contentType }))
+  named(fileName: string, mediaType: string) {
+    return new WorkshopAttachmentBuilder(signed({ ...this.attachment, fileName, mediaType }))
+  }
+  // The Server decides which types show in the page, so the builder copies no list of them
+  withPreview() {
+    return new WorkshopAttachmentBuilder(signed(this.attachment, { preview: true }))
   }
   signedUntil(urlsExpireAt: string) {
     return new WorkshopAttachmentBuilder(signed({ ...this.attachment, urlsExpireAt }))
@@ -38,17 +41,20 @@ class WorkshopAttachmentBuilder {
     return new WorkshopAttachmentBuilder({ ...this.attachment, sizeBytes })
   }
 
-  build(): WorkshopAttachmentDto {
+  build(): AttachmentDto {
     return this.attachment
   }
 }
 
-function signed(attachment: Omit<WorkshopAttachmentDto, 'downloadUrl' | 'previewUrl'>): WorkshopAttachmentDto {
+function signed(
+  attachment: Omit<AttachmentDto, 'downloadUrl' | 'previewUrl'> & Partial<Pick<AttachmentDto, 'previewUrl'>>,
+  { preview = attachment.previewUrl != null } = {},
+): AttachmentDto {
   const signature = `expires=${encodeURIComponent(attachment.urlsExpireAt)}`
   return {
     ...attachment,
     downloadUrl: `https://storage.test/files/${attachment.id}?download&${signature}`,
-    previewUrl: PREVIEW_TYPES.includes(attachment.contentType) ? `${IMAGE_URL}?${signature}` : null,
+    previewUrl: preview ? `${IMAGE_URL}?${signature}` : null,
   }
 }
 

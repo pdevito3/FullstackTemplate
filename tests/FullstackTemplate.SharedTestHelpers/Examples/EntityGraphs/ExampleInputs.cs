@@ -28,7 +28,10 @@ public sealed class WorkshopAttachmentInput
 
     public string? FileName { get; set; }
 
-    public string? ContentType { get; set; }
+    public string? ClaimedMediaType { get; set; }
+
+    /// <summary>The first bytes of the file, such as a sample of <c>SampleFiles</c>. They decide its type.</summary>
+    public byte[]? Head { get; set; }
 
     public long? SizeBytes { get; set; }
 

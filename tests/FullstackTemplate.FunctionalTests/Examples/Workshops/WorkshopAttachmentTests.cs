@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Amazon.S3.Model;
+using FullstackTemplate.Server.Domain.Attachments;
+using FullstackTemplate.Server.Domain.Attachments.Dtos;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Examples.Workshops;
@@ -11,6 +13,7 @@ using FullstackTemplate.Server.Examples.Workshops.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.Fakes;
+using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
 using Microsoft.AspNetCore.Mvc;
 using Shouldly;
 using TestUtilities;
@@ -27,7 +30,7 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
-        var bytes = RandomBytes(4096);
+        var bytes = SampleFiles.OfLength(SampleFiles.Pdf, 4096);
 
         // Act
         var result = await UploadAsync(workshop.Id, bytes, "résumé (final).pdf", "application/pdf");
@@ -35,9 +38,9 @@ public class WorkshopAttachmentTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Created);
         result.Headers.Location.ShouldNotBeNull().ToString().ShouldEndWith($"/workshops/{workshop.Id}/attachments");
-        var attachment = (await result.Content.ReadFromJsonAsync<WorkshopAttachmentDto>()).ShouldNotBeNull();
+        var attachment = (await result.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
         attachment.FileName.ShouldBe("résumé (final).pdf");
-        attachment.ContentType.ShouldBe("application/pdf");
+        attachment.MediaType.ShouldBe("application/pdf");
         attachment.SizeBytes.ShouldBe(bytes.Length);
         attachment.PreviewUrl.ShouldBeNull();
 
@@ -54,14 +57,14 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
-        var bytes = RandomBytes(512);
+        var bytes = SampleFiles.OfLength(SampleFiles.Png, 512);
 
         // Act
         var result = await UploadAsync(workshop.Id, bytes, "kiln.png", "image/png");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var attachment = (await result.Content.ReadFromJsonAsync<WorkshopAttachmentDto>()).ShouldNotBeNull();
+        var attachment = (await result.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
         var preview = await Storage.GetAsync(attachment.PreviewUrl.ShouldNotBeNull());
         preview.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await preview.Content.ReadAsByteArrayAsync()).ShouldBe(bytes);
@@ -74,15 +77,15 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (workshop, other) = await AddTwoWorkshopsAndSignInAsync();
-        await UploadAsync(workshop.Id, RandomBytes(10), "first.txt", "text/plain");
-        await UploadAsync(workshop.Id, RandomBytes(10), "second.txt", "text/plain");
-        await UploadAsync(other.Id, RandomBytes(10), "elsewhere.txt", "text/plain");
+        await UploadAsync(workshop.Id, PdfOf(10), "first.pdf", "application/pdf");
+        await UploadAsync(workshop.Id, PdfOf(10), "second.pdf", "application/pdf");
+        await UploadAsync(other.Id, PdfOf(10), "elsewhere.pdf", "application/pdf");
 
         // Act
         var result = await ListAsync(workshop.Id);
 
         // Assert
-        result.Select(a => a.FileName).ShouldBe(["first.txt", "second.txt"]);
+        result.Attachments.Select(a => a.FileName).ShouldBe(["first.pdf", "second.pdf"]);
     }
 
     [Test]
@@ -90,15 +93,15 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
-        var upload = await UploadAsync(workshop.Id, RandomBytes(100), "notes.txt", "text/plain");
-        var attachment = (await upload.Content.ReadFromJsonAsync<WorkshopAttachmentDto>()).ShouldNotBeNull();
+        var upload = await UploadAsync(workshop.Id, PdfOf(100), "notes.pdf", "application/pdf");
+        var attachment = (await upload.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
 
         // Act
         var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Workshops.Attachment(workshop.Id, attachment.Id));
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        (await ListAsync(workshop.Id)).ShouldBeEmpty();
+        (await ListAsync(workshop.Id)).Attachments.ShouldBeEmpty();
         (await Storage.GetAsync(attachment.DownloadUrl)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
@@ -107,13 +110,13 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
-        var upload = await UploadAsync(workshop.Id, RandomBytes(100), "notes.txt", "text/plain");
-        var attachment = (await upload.Content.ReadFromJsonAsync<WorkshopAttachmentDto>()).ShouldNotBeNull();
+        var upload = await UploadAsync(workshop.Id, PdfOf(100), "notes.pdf", "application/pdf");
+        var attachment = (await upload.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
         await AddWorkshopAndSignInAsync("Admin");
 
         // Act
         var list = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.Attachments(workshop.Id));
-        var add = await UploadAsync(workshop.Id, RandomBytes(10), "intruder.txt", "text/plain");
+        var add = await UploadAsync(workshop.Id, PdfOf(10), "intruder.pdf", "application/pdf");
         var delete = await FactoryClient.DeleteRequestAsync(ApiRoutes.Workshops.Attachment(workshop.Id, attachment.Id));
 
         // Assert
@@ -128,15 +131,15 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (workshop, other) = await AddTwoWorkshopsAndSignInAsync();
-        var upload = await UploadAsync(other.Id, RandomBytes(10), "elsewhere.txt", "text/plain");
-        var attachment = (await upload.Content.ReadFromJsonAsync<WorkshopAttachmentDto>()).ShouldNotBeNull();
+        var upload = await UploadAsync(other.Id, PdfOf(10), "elsewhere.pdf", "application/pdf");
+        var attachment = (await upload.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
 
         // Act
         var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Workshops.Attachment(workshop.Id, attachment.Id));
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        (await ListAsync(other.Id)).ShouldHaveSingleItem().Id.ShouldBe(attachment.Id);
+        (await ListAsync(other.Id)).Attachments.ShouldHaveSingleItem().Id.ShouldBe(attachment.Id);
     }
 
     [Test]
@@ -144,12 +147,12 @@ public class WorkshopAttachmentTests : TestBase
     {
         // Arrange
         var (_, otherManager, workshop) = await AddOrganizedWorkshopAsync();
-        var upload = await UploadAsync(workshop.Id, RandomBytes(10), "notes.txt", "text/plain");
-        var attachment = (await upload.Content.ReadFromJsonAsync<WorkshopAttachmentDto>()).ShouldNotBeNull();
+        var upload = await UploadAsync(workshop.Id, PdfOf(10), "notes.pdf", "application/pdf");
+        var attachment = (await upload.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
         FactoryClient.SignInAsAppUser(otherManager.Identifier);
 
         // Act
-        var add = await UploadAsync(workshop.Id, RandomBytes(10), "other.txt", "text/plain");
+        var add = await UploadAsync(workshop.Id, PdfOf(10), "other.pdf", "application/pdf");
         var delete = await FactoryClient.DeleteRequestAsync(ApiRoutes.Workshops.Attachment(workshop.Id, attachment.Id));
 
         // Assert
@@ -157,7 +160,7 @@ public class WorkshopAttachmentTests : TestBase
         (await add.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail.ShouldBe(RowRefusal);
         delete.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await delete.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail.ShouldBe(RowRefusal);
-        (await ListAsync(workshop.Id)).ShouldHaveSingleItem().Id.ShouldBe(attachment.Id);
+        (await ListAsync(workshop.Id)).Attachments.ShouldHaveSingleItem().Id.ShouldBe(attachment.Id);
     }
 
     [Test]
@@ -168,7 +171,7 @@ public class WorkshopAttachmentTests : TestBase
 
         // Act
         var list = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.Attachments(workshop.Id));
-        var add = await UploadAsync(workshop.Id, RandomBytes(10), "notes.txt", "text/plain");
+        var add = await UploadAsync(workshop.Id, PdfOf(10), "notes.pdf", "application/pdf");
 
         // Assert
         list.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -176,19 +179,70 @@ public class WorkshopAttachmentTests : TestBase
     }
 
     [Test]
-    public async Task a_file_larger_than_10_mb_is_refused_and_does_not_get_to_storage()
+    public async Task a_file_larger_than_the_rules_of_a_workshop_allow_is_refused_and_does_not_get_to_storage()
+    {
+        // Arrange
+        var (tenant, workshop) = await AddWorkshopAndSignInAsync("Admin");
+        var rules = WorkshopAttachment.UploadRules;
+
+        // Act
+        var result = await UploadAsync(workshop.Id, PdfOf(checked((int)rules.MaxSizeBytes + 1)), "handout.pdf", "application/pdf");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors["sizeBytes"].ShouldBe([rules.FileTooLargeMessage]);
+        (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_file_whose_bytes_do_not_match_its_name_is_refused_and_does_not_get_to_storage()
     {
         // Arrange
         var (tenant, workshop) = await AddWorkshopAndSignInAsync("Admin");
 
         // Act
-        var result = await UploadAsync(workshop.Id, RandomBytes(11 * 1024 * 1024), "kiln-video.mp4", "video/mp4");
+        var result = await UploadAsync(workshop.Id, SampleFiles.OfLength(SampleFiles.Png, 512), "handout.pdf", "application/pdf");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
-        problem.Errors["sizeBytes"].ShouldBe(["A file can be no larger than 10 MB. Choose a smaller file."]);
+        problem.Errors["fileName"].ShouldBe([FileType.Png.ExtensionMismatchMessage]);
         (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_file_of_a_type_that_a_workshop_does_not_take_is_refused()
+    {
+        // Arrange
+        var (tenant, workshop) = await AddWorkshopAndSignInAsync("Admin");
+
+        // Act
+        var result = await UploadAsync(workshop.Id, SampleFiles.Html, "kiln.png", "image/png");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var problem = (await result.Content.ReadFromJsonAsync<ValidationProblemDetails>()).ShouldNotBeNull();
+        problem.Errors["mediaType"].ShouldBe([WorkshopAttachment.UploadRules.TypeNotAllowedMessage]);
+        (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task the_list_gives_the_upload_rules_of_a_workshop()
+    {
+        // Arrange
+        var (_, workshop) = await AddWorkshopAndSignInAsync("User");
+        var rules = WorkshopAttachment.UploadRules;
+
+        // Act
+        var result = await ListAsync(workshop.Id);
+
+        // Assert
+        ((long)result.UploadRules.MaxSizeBytes).ShouldBe(rules.MaxSizeBytes);
+        result.UploadRules.FileTypes.Select(t => t.Name).ShouldBe(rules.FileTypes.Select(t => t.Name));
+        result.UploadRules.FileTypes.Select(t => t.MediaType).ShouldBe(rules.FileTypes.Select(t => t.MediaType));
+        result.UploadRules.FileTypes.Select(t => string.Join(" ", t.Extensions))
+            .ShouldBe(rules.FileTypes.Select(t => string.Join(" ", t.Extensions)));
     }
 
     [Test]
@@ -198,7 +252,7 @@ public class WorkshopAttachmentTests : TestBase
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
 
         // Act
-        var result = await UploadAsync(workshop.Id, [], "empty.txt", "text/plain");
+        var result = await UploadAsync(workshop.Id, [], "empty.pdf", "application/pdf");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
@@ -215,12 +269,12 @@ public class WorkshopAttachmentTests : TestBase
             .ArmWhere(e => e is WorkshopAttachment a && a.WorkshopId == workshop.Id);
 
         // Act
-        var result = await UploadAsync(workshop.Id, RandomBytes(100), "notes.txt", "text/plain");
+        var result = await UploadAsync(workshop.Id, PdfOf(100), "notes.pdf", "application/pdf");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
         (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
-        (await ListAsync(workshop.Id)).ShouldBeEmpty();
+        (await ListAsync(workshop.Id)).Attachments.ShouldBeEmpty();
     }
 
     [Test]
@@ -230,14 +284,14 @@ public class WorkshopAttachmentTests : TestBase
         var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
         TestingWebApplicationFactory.Instance.FailingSaves
             .ArmAfterCommitWhere(e => e is WorkshopAttachment a && a.WorkshopId == workshop.Id);
-        var bytes = RandomBytes(100);
+        var bytes = PdfOf(100);
 
         // Act
-        var result = await UploadAsync(workshop.Id, bytes, "notes.txt", "text/plain");
+        var result = await UploadAsync(workshop.Id, bytes, "notes.pdf", "application/pdf");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        var saved = (await ListAsync(workshop.Id)).ShouldHaveSingleItem();
+        var saved = (await ListAsync(workshop.Id)).Attachments.ShouldHaveSingleItem();
         var download = await Storage.GetAsync(saved.DownloadUrl);
         download.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await download.Content.ReadAsByteArrayAsync()).ShouldBe(bytes);
@@ -252,11 +306,11 @@ public class WorkshopAttachmentTests : TestBase
         return await FactoryClient.PostAsync(ApiRoutes.Workshops.Attachments(workshopId), form);
     }
 
-    private async Task<List<WorkshopAttachmentDto>> ListAsync(string workshopId)
+    private async Task<AttachmentListDto> ListAsync(string workshopId)
     {
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Workshops.Attachments(workshopId));
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
-        return (await result.Content.ReadFromJsonAsync<List<WorkshopAttachmentDto>>()).ShouldNotBeNull();
+        return (await result.Content.ReadFromJsonAsync<AttachmentListDto>()).ShouldNotBeNull();
     }
 
     private static async Task<List<string>> ObjectKeysOfAsync(Tenant tenant, Workshop workshop)
@@ -271,12 +325,7 @@ public class WorkshopAttachmentTests : TestBase
         return page.S3Objects?.Select(o => o.Key).ToList() ?? [];
     }
 
-    private static byte[] RandomBytes(int length)
-    {
-        var bytes = new byte[length];
-        Random.Shared.NextBytes(bytes);
-        return bytes;
-    }
+    private static byte[] PdfOf(int length) => SampleFiles.OfLength(SampleFiles.Pdf, length);
 
     private async Task<(Tenant Tenant, Workshop Workshop)> AddWorkshopAndSignInAsync(string role)
     {

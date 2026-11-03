@@ -277,6 +277,13 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    // The chooser only shows the files that it accepts. The test reads the list and picks no file.
+    async typesTheChooserAccepts() {
+      const chooser = page.waitForEvent('filechooser')
+      await at.uploadFile.click()
+      return (await chooser).element().getAttribute('accept')
+    },
+
     async uploadRefused(id: string, file: { name: string; mimeType: string; buffer: Buffer }) {
       const chooser = page.waitForEvent('filechooser')
       const settled = answered('POST', workshopPaths.attachments(id))

@@ -1,6 +1,6 @@
 namespace FullstackTemplate.Server.Examples.Workshops.Features;
 
-using Dtos;
+using Domain.Attachments.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Resources.Entrypoints.Http;
@@ -16,9 +16,9 @@ public sealed class GetWorkshopAttachmentsEndpoint : IEndpoint
         .ProducesProblem(StatusCodes.Status404NotFound);
 
     /// <summary>
-    /// Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt.
+    /// Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt, and the upload rules of a workshop.
     /// </summary>
-    public static async Task<Ok<List<WorkshopAttachmentDto>>> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
+    public static async Task<Ok<AttachmentListDto>> Handle(string id, IMediator mediator, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new GetWorkshopAttachments.Query(id), cancellationToken);
         return TypedResults.Ok(result);

@@ -12,7 +12,7 @@ describe('formatFileSize', () => {
     [999.96 * 1024, '1 MB'],
     [1000 * 1024, '1 MB'],
     [1024 * 1024 - 1, '1 MB'],
-    [10 * 1024 * 1024, '10 MB'],
+    [12 * 1024 * 1024, '12 MB'],
   ])('formats %i bytes as %s', (bytes, text) => {
     expect(formatFileSize(bytes, 'en-US')).toBe(text)
   })

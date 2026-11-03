@@ -2,18 +2,18 @@ namespace FullstackTemplate.Server.Examples.Workshops.Features;
 
 using System.Diagnostics;
 using Databases;
+using Domain.Attachments;
 using Domain.Users;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
-using Resources.Storage;
 using Serilog;
 
 public static class DeleteWorkshopAttachment
 {
     public sealed record Command(string WorkshopId, string AttachmentId) : IRequest;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, ObjectStorage storage)
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, AttachmentStorage attachments)
         : IRequestHandler<Command>
     {
         private readonly ILogger _logger = Log.ForContext<Handler>();
@@ -38,23 +38,9 @@ public static class DeleteWorkshopAttachment
                 .Where(a => a.WorkshopId == workshop.Id)
                 .GetById(request.AttachmentId, cancellationToken);
 
-            dbContext.WorkshopAttachments.Remove(attachment);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await attachments.DeleteAsync(attachment, cancellationToken);
 
             _logger.Here().Information("Deleted attachment {AttachmentId} of workshop {WorkshopId}", attachment.Id, workshop.Id);
-            WorkshopMetrics.RecordAttachmentDeleted();
-
-            // After the commit, so a failed save keeps the file. A failure here leaves an object that no row names.
-            try
-            {
-                // Not the request token: a caller that left must not stop the delete of the bytes
-                await storage.DeleteAsync(attachment.StorageKey, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Telemetry.RecordError(Activity.Current, ex);
-                _logger.Here().Error(ex, "Could not delete the object of deleted attachment {AttachmentId}", attachment.Id);
-            }
         }
     }
 }

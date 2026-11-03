@@ -11,6 +11,7 @@ using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
 // example:start
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
@@ -510,9 +511,11 @@ public class EndpointAccessSweepTests : TestBase
                 var property = schema["properties"]![name]!;
                 if (SchemaSample.IsFile(property, Document))
                 {
-                    var file = new ByteArrayContent("sweep"u8.ToArray());
-                    file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain");
-                    form.Add(file, name, "sweep.txt");
+                    // The upload rules of each use check the first bytes, so the sample is a real PDF. Change it
+                    // when a use of the app does not take PDF documents.
+                    var file = new ByteArrayContent(SampleFiles.Pdf);
+                    file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+                    form.Add(file, name, "sweep.pdf");
                 }
                 else
                 {

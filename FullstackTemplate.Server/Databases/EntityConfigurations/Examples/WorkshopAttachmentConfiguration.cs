@@ -36,16 +36,7 @@ public sealed class WorkshopAttachmentConfiguration : IEntityTypeConfiguration<W
             .HasForeignKey(e => e.WorkshopId)
             .OnDelete(DeleteBehavior.ClientNoAction);
 
-        builder.Property(e => e.FileName)
-            .IsRequired()
-            .HasMaxLength(WorkshopAttachment.FileNameMaxLength);
-
-        builder.Property(e => e.ContentType)
-            .IsRequired()
-            .HasMaxLength(WorkshopAttachment.ContentTypeMaxLength);
-
-        builder.Ignore(e => e.StorageKey);
-        builder.Ignore(e => e.HasPreview);
+        builder.ComplexProperty(e => e.File, file => file.MapStoredFile());
 
         builder.HasIndex(e => new { e.WorkshopId, e.UploadedAt, e.Id });
     }

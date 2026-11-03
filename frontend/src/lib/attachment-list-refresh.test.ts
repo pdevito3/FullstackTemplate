@@ -1,20 +1,9 @@
-import { QueryClient, QueryObserver } from '@tanstack/react-query'
+import { QueryClient, QueryObserver, queryOptions } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { WorkshopAttachmentDto } from '@/api/generated/models/types/workshop-attachment-dto'
+import { refreshBeforeUrlsExpire, untilRefresh } from './attachment-list-refresh'
 
-import { untilRefresh, workshopAttachmentsQueryOptions } from './get-workshop-attachments'
-
-const expiringAt = (urlsExpireAt: string): WorkshopAttachmentDto => ({
-  id: urlsExpireAt,
-  fileName: 'notes.txt',
-  contentType: 'text/plain',
-  sizeBytes: 10,
-  uploadedAt: '2026-05-20T15:00:00Z',
-  downloadUrl: 'https://storage.test/notes',
-  previewUrl: null,
-  urlsExpireAt,
-})
+const expiringAt = (urlsExpireAt: string) => ({ urlsExpireAt })
 
 const loadedAt = Date.parse('2026-05-20T15:00:00Z')
 
@@ -35,7 +24,7 @@ describe('untilRefresh', () => {
   })
 })
 
-describe('workshopAttachmentsQueryOptions', () => {
+describe('refreshBeforeUrlsExpire', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
@@ -43,8 +32,12 @@ describe('workshopAttachmentsQueryOptions', () => {
   const isStaleAt = (now: number) => {
     vi.useFakeTimers({ now })
     const client = new QueryClient()
-    const options = workshopAttachmentsQueryOptions('w_1')
-    client.setQueryData(options.queryKey, [expiringAt('2026-05-20T15:15:00Z')], { updatedAt: loadedAt })
+    const options = queryOptions({
+      queryKey: ['files'],
+      queryFn: () => Promise.resolve({ attachments: [expiringAt('2026-05-20T15:30:00Z')] }),
+      ...refreshBeforeUrlsExpire,
+    })
+    client.setQueryData(options.queryKey, { attachments: [expiringAt('2026-05-20T15:15:00Z')] }, { updatedAt: loadedAt })
     return new QueryObserver(client, options).getCurrentResult().isStale
   }
 

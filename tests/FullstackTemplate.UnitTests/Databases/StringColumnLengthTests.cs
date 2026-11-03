@@ -40,7 +40,8 @@ public class StringColumnLengthTests
         // example:start
         ["venues.name"] = new("name", Text, v => TestGraph.Start(out _).AddVenue(out _, x => x.Name = v)),
         ["workshops.title"] = new("title", Text, v => TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out _, x => x.Title = v)),
-        ["workshop_attachments.file_name"] = new("fileName", Text,
+        // The name of the sample file must end in its extension
+        ["workshop_attachments.file_name"] = new("fileName", (c, length) => Text(c, length - ".pdf".Length) + ".pdf",
             v => TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out _, x => x.FileName = v)),
         // example:end
         // new-feature:caller-columns
@@ -74,8 +75,9 @@ public class StringColumnLengthTests
         "audit_entries.trace_id",
         // example:start
         "workshops.organizer_id",
-        // The entity keeps the type of the client only when it is a valid media type that fits, else plain bytes
-        "workshop_attachments.content_type",
+        // The type comes from the file type registry, and the entity builds the key
+        "workshop_attachments.media_type",
+        "workshop_attachments.storage_key",
         // example:end
     ];
 

@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.Server.Examples.Workshops.Models;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
+using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
 using Fakes;
 
 [GraphGraft]
@@ -49,13 +50,12 @@ public static class ExampleBlueprints
             (workshop, input, _) => Server.Examples.Workshops.WorkshopAttachment.Create(workshop, new WorkshopAttachmentForCreation
             {
                 Id = input.Id,
-                FileName = input.FileName!,
-                ContentType = input.ContentType,
-                SizeBytes = input.SizeBytes!.Value,
+                File = SampleFiles.Upload(input.FileName!, input.Head!, input.ClaimedMediaType, input.SizeBytes!.Value),
                 UploadedAt = input.UploadedAt!.Value,
             }))
         .Derive(i => i.FileName, (_, _) => WorkshopAttachmentRules.FileName(Faker))
-        .Derive(i => i.ContentType, (_, _) => WorkshopAttachmentRules.ContentType())
+        .Derive(i => i.ClaimedMediaType, (_, _) => WorkshopAttachmentRules.ClaimedMediaType())
+        .Derive(i => i.Head, (_, _) => WorkshopAttachmentRules.Head())
         .Derive(i => i.SizeBytes, (_, _) => WorkshopAttachmentRules.SizeBytes(Faker))
         .Derive(i => i.UploadedAt, (_, ctx) => ctx.Now);
 }

@@ -1,9 +1,11 @@
+import type { AttachmentDto } from '@/api/generated/models/types/attachment-dto'
+import type { UploadRulesDto } from '@/api/generated/models/types/upload-rules-dto'
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
-import type { WorkshopAttachmentDto } from '@/api/generated/models/types/workshop-attachment-dto'
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { ProblemDetails } from '@/lib/problem-details'
 import type { MockRoute } from '@tests/support/api/mock-route'
 import { paginationHeaders } from '@tests/support/api/pagination'
+import { anUploadRules } from '@tests/support/examples/upload-rules-builder'
 
 interface Buildable<T> {
   build(): T
@@ -59,12 +61,21 @@ export const workshopsApi = {
     return { method: 'post', path: workshopPaths.action(id, action), status: body.status ?? 500, body }
   },
 
-  attachmentsReturn(workshop: Buildable<WorkshopDto>, attachments: Buildable<WorkshopAttachmentDto>[] = []): MockRoute {
+  attachmentsReturn(
+    workshop: Buildable<WorkshopDto>,
+    attachments: Buildable<AttachmentDto>[] = [],
+    uploadRules: Buildable<UploadRulesDto> = anUploadRules(),
+  ): MockRoute {
     const { id } = workshop.build()
-    return { method: 'get', path: workshopPaths.attachments(id), status: 200, body: attachments.map((a) => a.build()) }
+    return {
+      method: 'get',
+      path: workshopPaths.attachments(id),
+      status: 200,
+      body: { uploadRules: uploadRules.build(), attachments: attachments.map((a) => a.build()) },
+    }
   },
 
-  attachmentUploads(workshop: Buildable<WorkshopDto>, attachment: Buildable<WorkshopAttachmentDto>): MockRoute {
+  attachmentUploads(workshop: Buildable<WorkshopDto>, attachment: Buildable<AttachmentDto>): MockRoute {
     const { id } = workshop.build()
     return { method: 'post', path: workshopPaths.attachments(id), status: 201, body: attachment.build() }
   },
@@ -75,7 +86,7 @@ export const workshopsApi = {
     return { method: 'post', path: workshopPaths.attachments(id), status: body.status ?? 500, body }
   },
 
-  attachmentDeletes(workshop: Buildable<WorkshopDto>, attachment: Buildable<WorkshopAttachmentDto>): MockRoute {
+  attachmentDeletes(workshop: Buildable<WorkshopDto>, attachment: Buildable<AttachmentDto>): MockRoute {
     return {
       method: 'delete',
       path: workshopPaths.attachment(workshop.build().id, attachment.build().id),

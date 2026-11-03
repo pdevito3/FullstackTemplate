@@ -2,20 +2,20 @@ namespace FullstackTemplate.Server.Examples.Workshops.Features;
 
 using System.Diagnostics;
 using Databases;
-using Dtos;
-using Mappings;
+using Domain.Attachments.Dtos;
+using Domain.Attachments.Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources.Storage;
 
 public static class GetWorkshopAttachments
 {
-    public sealed record Query(string WorkshopId) : IRequest<List<WorkshopAttachmentDto>>;
+    public sealed record Query(string WorkshopId) : IRequest<AttachmentListDto>;
 
     public sealed class Handler(AppDbContext dbContext, ObjectStorage storage, TimeProvider timeProvider)
-        : IRequestHandler<Query, List<WorkshopAttachmentDto>>
+        : IRequestHandler<Query, AttachmentListDto>
     {
-        public async Task<List<WorkshopAttachmentDto>> Handle(Query request, CancellationToken cancellationToken)
+        public async Task<AttachmentListDto> Handle(Query request, CancellationToken cancellationToken)
         {
             Activity.Current?.SetTag("app.workshop_id", request.WorkshopId);
 
@@ -34,11 +34,8 @@ public static class GetWorkshopAttachments
                 .ToListAsync(cancellationToken);
             Activity.Current?.SetTag("app.attachment_count", attachments.Count);
 
-            var now = timeProvider.GetUtcNow();
-            var dtos = new List<WorkshopAttachmentDto>(attachments.Count);
-            foreach (var attachment in attachments)
-                dtos.Add(await attachment.ToWorkshopAttachmentDtoAsync(storage, now));
-            return dtos;
+            return await attachments.ToAttachmentListDtoAsync(WorkshopAttachment.UploadRules, storage,
+                timeProvider.GetUtcNow());
         }
     }
 }

@@ -16,14 +16,14 @@ test.describe('the workshops', () => {
   test('opens a workshop from the list, and keeps the user on the form after a stale save', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = workshop.build()
-    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openList()
     await workshops.openWorkshop('Intro to Kubb', id, venueId)
     await workshops.edit('Intro to Kubb')
     await workshops.renameTo('Kubb in depth')
     const savedByOther = workshop.savedAgain({ title: 'Kubb for teams' })
-    api.mock(workshopsApi.updateFails(id, aProblem().staleVersion()), workshopsApi.oneIs(savedByOther))
+    api.mock(workshopsApi.updateFails(id, aProblem().staleVersion()), workshopsApi.oneIs(savedByOther), workshopsApi.attachmentsReturn(savedByOther))
 
     await workshops.saveRefused(id)
 
@@ -39,7 +39,7 @@ test.describe('the workshops', () => {
 
     await workshops.renameTo('Kubb for teams, part 2')
     const saved = savedByOther.savedAgain({ title: 'Kubb for teams, part 2' })
-    api.mock(workshopsApi.updateSaves(saved), workshopsApi.oneIs(saved))
+    api.mock(workshopsApi.updateSaves(saved), workshopsApi.oneIs(saved), workshopsApi.attachmentsReturn(saved))
     await workshops.saveAndOpenDetail(id, venueId)
 
     await expect(workshops.at.detailHeading('Kubb for teams, part 2')).toBeVisible()
@@ -49,7 +49,7 @@ test.describe('the workshops', () => {
   test('the sidebar marks Workshops as the page on the list, and as the current item on a workshop', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = workshop.build()
-    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
 
     await workshops.openList()
@@ -73,7 +73,7 @@ test.describe('the workshops', () => {
       workshopsApi.venueIs(venue),
       workshopsApi.venueIs(harbor),
       workshopsApi.createSaves(workshop),
-      workshopsApi.oneIs(workshop),
+      workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop),
     )
     const workshops = workshopsPage(page)
     await workshops.openNewForm(venue.build().id)
@@ -107,7 +107,7 @@ test.describe('the workshops', () => {
   test('shows the start in the time zone of the venue, in the list and on the detail', async ({ page, api }) => {
     await page.clock.setFixedTime(now)
     const workshop = aWorkshop().titled('Intro to Kubb').at(harbor).startingAt('2026-08-16T07:00:00+00:00').withCapacity(12)
-    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(harbor))
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(harbor))
     const workshops = workshopsPage(page)
     await workshops.openList()
 
@@ -124,7 +124,7 @@ test.describe('the workshops', () => {
     await page.clock.setFixedTime(now)
     const workshop = aWorkshop().titled('Intro to Kubb').at(harbor).startingAt('2026-08-16T07:00:00+00:00')
     const { id } = workshop.build()
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(harbor), workshopsApi.updateSaves(workshop.savedAgain()))
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(harbor), workshopsApi.updateSaves(workshop.savedAgain()))
     const workshops = workshopsPage(page)
     await workshops.openEditForm(id)
     await expect(workshops.at.editStartZone('American Samoa Time')).toBeVisible()
@@ -139,7 +139,7 @@ test.describe('the workshops', () => {
   test('schedules a draft, and then shows only the actions that the API allows', async ({ page, api }) => {
     const draft = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = draft.build()
-    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.attachmentsReturn(draft), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openDetail(id, venueId)
     api.mock(workshopsApi.actionMoves('schedule', draft.inStatus('Scheduled')))
@@ -156,7 +156,7 @@ test.describe('the workshops', () => {
   test('asks before it cancels a workshop, and Keep workshop sends nothing', async ({ page, api }) => {
     const draft = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = draft.build()
-    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.attachmentsReturn(draft), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openDetail(id, venueId)
 
@@ -177,7 +177,7 @@ test.describe('the workshops', () => {
 
   test('shows no actions to a caller that the API allows none', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue).seenByReader()
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
 
     const workshops = workshopsPage(page)
     await workshops.openDetail(workshop.build().id, workshop.build().venueId)
@@ -240,7 +240,7 @@ test.describe('the workshops', () => {
 
   test('tells a caller who cannot manage workshops why a draft has no edit form', async ({ page, api }) => {
     const draft = aWorkshop().titled('Intro to Kubb').at(venue).seenByReader()
-    api.mock(workshopsApi.oneIs(draft))
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.attachmentsReturn(draft))
     const workshops = workshopsPage(page)
 
     await workshops.openEditPage(draft.build().id)
@@ -251,7 +251,7 @@ test.describe('the workshops', () => {
 
   test('tells the caller that a scheduled workshop cannot be changed', async ({ page, api }) => {
     const scheduled = aWorkshop().titled('Intro to Kubb').at(venue).inStatus('Scheduled')
-    api.mock(workshopsApi.oneIs(scheduled))
+    api.mock(workshopsApi.oneIs(scheduled), workshopsApi.attachmentsReturn(scheduled))
     const workshops = workshopsPage(page)
 
     await workshops.openEditPage(scheduled.build().id)
@@ -300,7 +300,7 @@ test.describe('the focus after a link in a workshop page', () => {
   test('a workshop title moves the focus to the heading that shows after the workshop loads, and says nothing', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = workshop.build()
-    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.controlTheClock()
     await workshops.openList()
@@ -335,7 +335,7 @@ test.describe('the focus after an action that removes the focused button', () =>
       workshopsApi.venueListReturns([venue]),
       workshopsApi.venueIs(venue),
       workshopsApi.createSaves(workshop),
-      workshopsApi.oneIs(workshop),
+      workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop),
     )
     const workshops = workshopsPage(page)
     await workshops.openNewForm(venue.build().id)
@@ -350,11 +350,11 @@ test.describe('the focus after an action that removes the focused button', () =>
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const saved = workshop.savedAgain({ title: 'Kubb in depth' })
     const { id, venueId } = workshop.build()
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openEditForm(id)
     await workshops.renameTo('Kubb in depth')
-    api.mock(workshopsApi.updateSaves(saved), workshopsApi.oneIs(saved))
+    api.mock(workshopsApi.updateSaves(saved), workshopsApi.oneIs(saved), workshopsApi.attachmentsReturn(saved))
 
     await workshops.saveAndOpenDetail(id, venueId)
 
@@ -389,7 +389,7 @@ test.describe('the focus after an action that removes the focused button', () =>
   test('Load the latest puts the focus on the first field that the latest save changed', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id } = workshop.build()
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openEditForm(id)
     await workshops.renameTo('Kubb in depth')
@@ -406,7 +406,7 @@ test.describe('the focus after an action that removes the focused button', () =>
   test('a refused action puts the focus on the heading when the reload takes its button away', async ({ page, api }) => {
     const draft = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = draft.build()
-    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.attachmentsReturn(draft), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openDetail(id, venueId)
     api.mock(
@@ -424,7 +424,7 @@ test.describe('the focus after an action that removes the focused button', () =>
   test('Schedule puts the focus on the heading, so a second Enter sends no other action', async ({ page, api }) => {
     const draft = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = draft.build()
-    api.mock(workshopsApi.oneIs(draft), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(draft), workshopsApi.attachmentsReturn(draft), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await workshops.openDetail(id, venueId)
     api.mock(workshopsApi.actionMoves('schedule', draft.inStatus('Scheduled')))
@@ -450,7 +450,7 @@ test.describe('a workshop with a long title at a venue with a long name, on a 32
   test('the detail wraps the title and each value in the window', async ({ page, api }) => {
     const venue = aVenue().named(longName)
     const workshop = aWorkshop().titled(longName).at(venue)
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
 
     await workshops.openDetail(workshop.build().id, venue.build().id)
@@ -504,7 +504,7 @@ test.describe('the start field on a 390 px phone with a 24 px default font', () 
 
   test('the edit form shows each segment of the start inside the field', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
-    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue))
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
     const workshops = workshopsPage(page)
     await useDefaultFontSize(page, 24)
 

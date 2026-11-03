@@ -9,7 +9,7 @@ The frontend is a React 19 SPA in `frontend/`. It uses TanStack Router, TanStack
 
 The text of each toast, alert, label, and message follows [messages.md](messages.md).
 
-To add the pages of a feature (a list, a detail page, a create or edit form, or a search picker), follow the [frontend-feature skill](../.agents/skills/frontend-feature/SKILL.md).
+To add the pages of a feature (a list, a detail page, a create or edit form, or a search picker), follow the [frontend-feature skill](../.agents/skills/frontend-feature/SKILL.md). To show the files of a record, follow "In the SPA" of [attachments.md](backend/attachments.md#in-the-spa).
 
 ## Commands
 
@@ -38,6 +38,7 @@ frontend/src/
 │       └── types/         # Types for this area
 ├── components/
 │   ├── ui/                # Shared UI components (shadcn/ui, React Aria, and Animate UI)
+│   ├── attachments/       # The Files section of a record: the list, the upload, and the hint
 │   ├── filter-builder/    # QueryKit filter component
 │   ├── app-sidebar.tsx    # Main navigation
 │   ├── theme-context.ts   # Theme context and useTheme

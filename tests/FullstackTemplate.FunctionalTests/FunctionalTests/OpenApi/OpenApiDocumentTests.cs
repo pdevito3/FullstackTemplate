@@ -82,8 +82,13 @@ public class OpenApiDocumentTests
         // Assert
         contents.ShouldNotBeEmpty();
         foreach (var (name, content) in contents)
-            content.Select(c => c.Key).ShouldBe(["application/json"], name);
+            content.Select(c => c.Key).ShouldBe([UploadsAFile(content) ? "multipart/form-data" : "application/json"], name);
     }
+
+    // A file upload is the one body that is not JSON, so the bytes go as they are and not as base64 in a JSON string
+    private static bool UploadsAFile(JsonObject content)
+        => content["multipart/form-data"]?["schema"]?["properties"]?.AsObject()
+            .Any(p => p.Value?["$ref"]?.GetValue<string>() == "#/components/schemas/IFormFile") == true;
 
     // The keys of the errors of the problem are camelCase, so the parameter names must be camelCase too
     [Test]

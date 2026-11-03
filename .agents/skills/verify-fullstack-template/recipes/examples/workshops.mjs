@@ -100,7 +100,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       await expect(details).toContainText(await shownStart())
       await expect(details).toContainText(String(workshop.capacity))
       await expect(details).toContainText(venue.name)
-      expect(workshop.allowedActions).toEqual(['Update', 'Schedule', 'Cancel'])
+      expect(workshop.allowedActions).toEqual(['Update', 'Schedule', 'Cancel', 'ManageAttachments'])
     })
     await capture('detail-draft')
 
@@ -165,7 +165,7 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
       expect(res.status()).toBe(200)
       const body = await res.json()
       expect(body.status).toBe('Scheduled')
-      expect(body.allowedActions).toEqual(['Cancel', 'Complete'])
+      expect(body.allowedActions).toEqual(['Cancel', 'Complete', 'ManageAttachments'])
       await expect(page.getByText('Scheduled', { exact: true })).toBeVisible()
       await expect(actions(otherTab.title).getByRole('button', { name: 'Cancel workshop' })).toBeVisible()
       await expect(actions(otherTab.title).getByRole('button', { name: 'Mark completed' })).toBeVisible()

@@ -39,7 +39,7 @@ public class WorkshopActionTests
     public void an_action_is_allowed_only_when_its_command_goes_through(string status, Caller caller)
     {
         // Arrange
-        string[] actions = ["Update", "Schedule", "Cancel", "Complete"];
+        string[] actions = ["Update", "Schedule", "Cancel", "Complete", "ManageAttachments"];
 
         // Act
         var allowed = Arrange(status).AllowedActions(caller).Select(a => a.Value).ToList();
@@ -132,6 +132,9 @@ public class WorkshopActionTests
                 case "Complete":
                     workshop.Complete();
                     break;
+                case "ManageAttachments":
+                    // An upload and a delete check only the caller and the row, in each status
+                    return true;
             }
             return workshop.Status != before;
         }
@@ -147,6 +150,7 @@ public class WorkshopActionTests
         "Schedule" => WorkshopAction.Schedule(),
         "Cancel" => WorkshopAction.Cancel(),
         "Complete" => WorkshopAction.Complete(),
+        "ManageAttachments" => WorkshopAction.ManageAttachments(),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
     };
 

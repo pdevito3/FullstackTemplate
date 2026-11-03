@@ -37,8 +37,13 @@ public partial class UnauthorizedResponseTests : TestBase
         {
             var path = name[(method.Length + 1)..];
             using var request = new HttpRequestMessage(new HttpMethod(method), RouteParameter().Replace(path, Guid.NewGuid().ToString()));
-            if (operation["requestBody"] is not null)
-                request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            // The body has the media type of the contract, or routing refuses it with a 415 before the auth check
+            request.Content = operation["requestBody"]?["content"]?.AsObject().Single().Key switch
+            {
+                null => null,
+                "multipart/form-data" => new MultipartFormDataContent(),
+                var mediaType => new StringContent("{}", Encoding.UTF8, mediaType),
+            };
 
             // Act
             using var result = await FactoryClient.SendAsync(request);

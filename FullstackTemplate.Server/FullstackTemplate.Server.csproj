@@ -43,6 +43,7 @@
 
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Grpc.AspNetCore" />
     <PackageReference Include="Grpc.StatusProto" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />

@@ -66,10 +66,12 @@ internal sealed partial class AppRepo(string root)
     private const string SnapshotMigration = "RemoveExamplesSnapshot";
 
     public const string DatabaseNote =
-        "The script deleted the migration of the example tables. A database that ran it still has the venues and " +
-        "workshops tables and the manage_workshops permission. If the database of your app ran that migration, add a " +
-        "migration that drops the two tables and calls migrationBuilder.DeletePermission(\"manage_workshops\"). A row " +
-        "of a permission that Permission does not know stops each load of its user.";
+        "The script deleted the migrations of the example tables. A database that ran them still has the venues, " +
+        "workshops, and workshop_attachments tables and the manage_workshops permission. If the database of your app " +
+        "ran those migrations, add a migration that drops the three tables and calls " +
+        "migrationBuilder.DeletePermission(\"manage_workshops\"). A row of a permission that Permission does not know " +
+        "stops each load of its user. The object storage of the app still has the files of the workshops under " +
+        "tenants/<tenant>/workshops/. Delete them.";
 
     private const string RecordFile = "scripts/examples-removed.txt";
 

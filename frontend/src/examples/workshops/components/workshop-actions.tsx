@@ -14,7 +14,10 @@ import {
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog'
 
-export type WorkshopCommand = Exclude<WorkshopDtoAllowedActionsEnumKey, 'Update'>
+// Edit opens a page, and the attachments section shows its own buttons, so these actions are not buttons here
+const NOT_COMMANDS = ['Update', 'ManageAttachments'] as const satisfies WorkshopDtoAllowedActionsEnumKey[]
+
+export type WorkshopCommand = Exclude<WorkshopDtoAllowedActionsEnumKey, (typeof NOT_COMMANDS)[number]>
 
 const LABELS: Record<WorkshopCommand, string> = {
   Schedule: 'Schedule',
@@ -22,7 +25,8 @@ const LABELS: Record<WorkshopCommand, string> = {
   Complete: 'Mark completed',
 }
 
-const isCommand = (action: WorkshopDtoAllowedActionsEnumKey): action is WorkshopCommand => action !== 'Update'
+const isCommand = (action: WorkshopDtoAllowedActionsEnumKey): action is WorkshopCommand =>
+  !(NOT_COMMANDS as readonly WorkshopDtoAllowedActionsEnumKey[]).includes(action)
 
 interface WorkshopActionsProps {
   workshop: WorkshopDto
@@ -31,7 +35,7 @@ interface WorkshopActionsProps {
 }
 
 export function WorkshopActions({ workshop, pendingAction, onAction }: WorkshopActionsProps) {
-  if (workshop.allowedActions.length === 0) {
+  if (!workshop.allowedActions.some((action) => action === 'Update' || isCommand(action))) {
     return null
   }
 

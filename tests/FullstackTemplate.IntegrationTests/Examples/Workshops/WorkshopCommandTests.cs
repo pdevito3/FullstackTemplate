@@ -50,7 +50,7 @@ public class WorkshopCommandTests : TestBase
         // Assert
         added.Status.ShouldBe("Draft");
         added.VenueId.ShouldBe(venue.Id);
-        added.AllowedActions.ShouldBe(["Update", "Schedule", "Cancel"]);
+        added.AllowedActions.ShouldBe(["Update", "Schedule", "Cancel", "ManageAttachments"]);
         var saved = await testingServiceScope.ExecuteDbContextAsync(db => db.Workshops.GetById(added.Id));
         saved.TenantId.ShouldBe(venue.TenantId);
     }

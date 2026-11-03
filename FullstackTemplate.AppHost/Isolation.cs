@@ -26,6 +26,13 @@ public static class Isolation
         => postgres.ApplicationBuilder.IsIsolated() ? postgres : postgres.WithDataVolume();
 
     /// <inheritdoc cref="WithDataVolumeUnlessIsolated(IResourceBuilder{PostgresServerResource})"/>
+    public static IResourceBuilder<FlociAwsContainerResource> WithDataVolumeUnlessIsolated(
+        this IResourceBuilder<FlociAwsContainerResource> floci)
+        => floci.ApplicationBuilder.IsIsolated()
+            ? floci
+            : floci.WithDataVolume(VolumeNameGenerator.Generate(floci, "data"));
+
+    /// <inheritdoc cref="WithDataVolumeUnlessIsolated(IResourceBuilder{PostgresServerResource})"/>
     public static IResourceBuilder<ContainerResource> WithDataVolumeUnlessIsolated(
         this IResourceBuilder<ContainerResource> container, string target)
         => container.ApplicationBuilder.IsIsolated()

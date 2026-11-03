@@ -66,6 +66,8 @@ public static class ApiRoutes
         public static string Schedule(string id) => $"{Base}/workshops/{id}/schedule";
         public static string Cancel(string id) => $"{Base}/workshops/{id}/cancel";
         public static string Complete(string id) => $"{Base}/workshops/{id}/complete";
+        public static string Attachments(string id) => $"{Base}/workshops/{id}/attachments";
+        public static string Attachment(string id, string attachmentId) => $"{Base}/workshops/{id}/attachments/{attachmentId}";
     }
     // example:end
 }

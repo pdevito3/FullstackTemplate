@@ -20,7 +20,7 @@ function postBody(request: Request): unknown {
   try {
     return request.postDataJSON()
   } catch {
-    return undefined
+    return request.postData() ?? undefined
   }
 }
 

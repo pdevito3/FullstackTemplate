@@ -9,6 +9,7 @@
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.4" />
     <PackageVersion Include="Labcoat.Aspire.Hosting" Version="1.1.2" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Floci" Version="13.6.2-beta.959" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
     <!-- Entity Framework -->
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
@@ -26,6 +27,8 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.13" />
+    <!-- Object storage -->
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.8" />
     <!-- Reverse proxy -->
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
     <!-- Dependency Injection -->

@@ -21,6 +21,7 @@ public partial class WorkshopAction : ValueObject, IFixedNames
     public static WorkshopAction Schedule() => new(WorkshopActionEnum.Schedule);
     public static WorkshopAction Cancel() => new(WorkshopActionEnum.Cancel);
     public static WorkshopAction Complete() => new(WorkshopActionEnum.Complete);
+    public static WorkshopAction ManageAttachments() => new(WorkshopActionEnum.ManageAttachments);
 
     public void GuardCaller(Caller caller) => caller.Require(_action.Permission);
 
@@ -39,6 +40,7 @@ public partial class WorkshopAction : ValueObject, IFixedNames
         public static readonly WorkshopActionEnum Schedule = new MoveType(nameof(Schedule), 1, WorkshopStatus.Scheduled());
         public static readonly WorkshopActionEnum Cancel = new MoveType(nameof(Cancel), 2, WorkshopStatus.Cancelled());
         public static readonly WorkshopActionEnum Complete = new MoveType(nameof(Complete), 3, WorkshopStatus.Completed());
+        public static readonly WorkshopActionEnum ManageAttachments = new AnyStatusType(nameof(ManageAttachments), 4);
 
         public Permission Permission { get; } = Permission.ManageWorkshops();
 
@@ -47,6 +49,12 @@ public partial class WorkshopAction : ValueObject, IFixedNames
         private sealed class UpdateType() : WorkshopActionEnum(nameof(Update), 0)
         {
             public override bool AppliesTo(WorkshopStatus status) => status.CanBeEdited;
+        }
+
+        // The files of a workshop stay useful after it ends, such as the slides of a completed workshop
+        private sealed class AnyStatusType(string name, int value) : WorkshopActionEnum(name, value)
+        {
+            public override bool AppliesTo(WorkshopStatus status) => true;
         }
 
         private sealed class MoveType(string name, int value, WorkshopStatus target) : WorkshopActionEnum(name, value)

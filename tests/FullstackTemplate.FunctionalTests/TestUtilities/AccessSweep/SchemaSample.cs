@@ -30,6 +30,13 @@ public static class SchemaSample
         };
     }
 
+    /// <summary>True for a file of a multipart form, which the OpenAPI document gives as a binary string.</summary>
+    public static bool IsFile(JsonNode schema, JsonNode root)
+    {
+        var resolved = schema["$ref"]?.GetValue<string>() is { } reference ? Resolve(root, reference) : schema;
+        return TypeOf(resolved) == "string" && resolved["format"]?.GetValue<string>() == "binary";
+    }
+
     public static IReadOnlyList<string> RequiredOf(JsonNode schema, JsonNode root)
     {
         var resolved = schema["$ref"]?.GetValue<string>() is { } reference ? Resolve(root, reference) : schema;

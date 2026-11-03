@@ -6,11 +6,13 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Attachments;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
 // example:start
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
@@ -47,6 +49,7 @@ public class EndpointAccessSweepTests : TestBase
         ["GetVenueList"] = new("Each member lists the venues of the own tenant. The tenant filter hides each other tenant."),
         ["GetWorkshop"] = new("Each member reads the workshops of the own tenant. The allowed actions show what the caller can do."),
         ["GetWorkshopList"] = new("Each member lists the workshops of the own tenant. The tenant filter hides each other tenant."),
+        ["GetWorkshopAttachments"] = new("Each member reads the files of the workshops of the own tenant. The tenant filter on the workshop hides each other tenant."),
         ["list_workshops"] = new("ToolAccessKind.Read. Each member lists the workshops of the own tenant, and the tenant filter hides the others."),
         ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
         ["GetWeatherForecast"] = new("Demo of a public endpoint. It has no tenant rows.", Anonymous: true),
@@ -328,7 +331,15 @@ public class EndpointAccessSweepTests : TestBase
             IdsByKind.ToDictionary(kind => kind.Key, kind => EntityId.New(kind.Value[..kind.Value.IndexOf('_')])),
             $"unknown-{Guid.NewGuid():N}");
 
-        public static bool NamesARecord(string name) => name is "id" or "identifier";
+        // A route value that names a record under the record of {id}. Its value is under "<kind>/<name>" in IdsByKind.
+        private static readonly HashSet<string> ChildRecordNames =
+        [
+            // example:start
+            "attachmentId",
+            // example:end
+        ];
+
+        public static bool NamesARecord(string name) => name is "id" or "identifier" || ChildRecordNames.Contains(name);
 
         public string? ValueFor(string name, string kind) => name switch
         {
@@ -337,6 +348,10 @@ public class EndpointAccessSweepTests : TestBase
                 : throw new SweepSetupException($"It has an id of the kind '{kind}', which the sweep does not know. "
                     + $"Make a record of this kind in {nameof(AddTenantAsync)} and add its ID under '{kind}'."),
             "identifier" => Identifier,
+            _ when ChildRecordNames.Contains(name) => IdsByKind.TryGetValue($"{kind}/{name}", out var childId)
+                ? childId
+                : throw new SweepSetupException($"It has the route value {{{name}}} under '{kind}', which the sweep does not know. "
+                    + $"Make a record of this kind in {nameof(AddTenantAsync)} and add its ID under '{kind}/{name}'."),
             "permission" => PermissionName,
             _ => null,
         };
@@ -351,6 +366,7 @@ public class EndpointAccessSweepTests : TestBase
             // example:start
             .AddVenue(out var venue)
             .AddWorkshop(out var workshop)
+            .AddWorkshopAttachment(out var attachment)
             .Under(tenant)
             // example:end
             // new-feature:sweep-graph
@@ -370,6 +386,7 @@ public class EndpointAccessSweepTests : TestBase
         // example:start
         await InsertAsync(venue);
         await InsertAsync(workshop);
+        await InsertAsync(attachment);
         // example:end
         // new-feature:sweep-inserts
 
@@ -381,6 +398,7 @@ public class EndpointAccessSweepTests : TestBase
             // example:start
             ["venues"] = venue.Id,
             ["workshops"] = workshop.Id,
+            ["workshops/attachmentId"] = attachment.Id,
             // example:end
             // new-feature:sweep-ids
         };
@@ -406,11 +424,25 @@ public class EndpointAccessSweepTests : TestBase
 
     private async Task<Outcome> SendHttpAsync(HttpEntrypoint endpoint, RecordIds ids)
     {
-        using var request = endpoint.RequestFor(ids);
-        using var response = await FactoryClient.SendAsync(request);
-        var body = await response.Content.ReadAsStringAsync();
-        return new Outcome(((int)response.StatusCode).ToString(CultureInfo.InvariantCulture), body.Length > 300 ? body[..300] : body);
+        // The upload rules of a route are in its handler, not in the OpenAPI document. So a route that takes a file
+        // gets a file of each type of the registry until its rules take the type.
+        IReadOnlyList<FileType> fileTypes = endpoint.TakesFile ? FileType.All : [FileType.All[0]];
+        Outcome? outcome = null;
+        foreach (var fileType in fileTypes)
+        {
+            using var request = endpoint.RequestFor(ids, fileType);
+            using var response = await FactoryClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            outcome = new Outcome(((int)response.StatusCode).ToString(CultureInfo.InvariantCulture), body.Length > 300 ? body[..300] : body);
+            if (!RefusesTheFileType(response, body))
+                break;
+        }
+        return outcome!;
     }
+
+    private static bool RefusesTheFileType(HttpResponseMessage response, string body)
+        => response.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity
+            && JsonNode.Parse(body)?["errors"]?["mediaType"] is not null;
 
     private sealed record HttpParameter(string Name, string In, bool Required, JsonNode? Schema);
 
@@ -421,9 +453,13 @@ public class EndpointAccessSweepTests : TestBase
         string Kind,
         IReadOnlyList<HttpParameter> Parameters,
         JsonNode? Body,
+        JsonNode? FormBody,
         JsonNode Document)
     {
         public bool IsDelete => Method == HttpMethods.Delete;
+
+        public bool TakesFile => FormBody is not null && SchemaSample.RequiredOf(FormBody, Document)
+            .Any(name => SchemaSample.IsFile(FormBody["properties"]![name]!, Document));
 
         public static HttpEntrypoint From(RouteEndpoint endpoint, JsonNode document)
         {
@@ -438,7 +474,7 @@ public class EndpointAccessSweepTests : TestBase
                 .Select(o => (Path: o.Name[(o.Method.Length + 1)..], o.Operation))
                 .FirstOrDefault(o => o.Operation["operationId"]?.GetValue<string>() == name);
             if (operation.Operation is null)
-                return new HttpEntrypoint(target, method, "", kind, [], null, document);
+                return new HttpEntrypoint(target, method, "", kind, [], null, null, document);
 
             var parameters = (operation.Operation["parameters"]?.AsArray() ?? [])
                 .Select(p => new HttpParameter(
@@ -447,12 +483,15 @@ public class EndpointAccessSweepTests : TestBase
                     p["required"]?.GetValue<bool>() == true,
                     p["schema"]))
                 .ToList();
-            var body = operation.Operation["requestBody"]?["content"]?["application/json"]?["schema"];
+            var content = operation.Operation["requestBody"]?["content"];
             return new HttpEntrypoint(target with { Label = $"{method} {operation.Path}" },
-                method, operation.Path, kind, parameters, body, document);
+                method, operation.Path, kind, parameters, content?["application/json"]?["schema"],
+                content?["multipart/form-data"]?["schema"], document);
         }
 
-        public HttpRequestMessage RequestFor(RecordIds ids)
+        /// <param name="ids">The records that the route values name.</param>
+        /// <param name="fileType">The type of the file of a form. A route with no file does not read it.</param>
+        public HttpRequestMessage RequestFor(RecordIds ids, FileType fileType)
         {
             if (Method.Contains(',', StringComparison.Ordinal))
                 throw new SweepSetupException($"It maps the methods {Method}, and the sweep sends one method. Map one method on each endpoint.");
@@ -479,7 +518,30 @@ public class EndpointAccessSweepTests : TestBase
             if (Body is not null)
                 request.Content = new StringContent(
                     SchemaSample.Of(Body, Document)?.ToJsonString() ?? "null", Encoding.UTF8, "application/json");
+            if (FormBody is not null)
+                request.Content = FormFor(FormBody, fileType);
             return request;
+        }
+
+        private MultipartFormDataContent FormFor(JsonNode schema, FileType fileType)
+        {
+            var form = new MultipartFormDataContent();
+            foreach (var name in SchemaSample.RequiredOf(schema, Document))
+            {
+                var property = schema["properties"]![name]!;
+                if (SchemaSample.IsFile(property, Document))
+                {
+                    // The upload rules check the first bytes, so the file starts as a real file of its type
+                    var file = new ByteArrayContent(SampleFiles.Of(fileType));
+                    file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(fileType.MediaType);
+                    form.Add(file, name, $"sweep{fileType.Extensions[0]}");
+                }
+                else
+                {
+                    form.Add(new StringContent(SchemaSample.Of(property, Document)?.ToString() ?? ""), name);
+                }
+            }
+            return form;
         }
 
         private string QueryValueOf(HttpParameter parameter)

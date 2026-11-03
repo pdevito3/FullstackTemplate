@@ -25,6 +25,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 {
     private readonly PostgresTestDatabase _database = new();
 
+    public FlociTestStorage Storage { get; } = new();
+
     // WebApplicationFactory adds each client to a List with no lock, and the tests create their clients in parallel.
     // Two adds at the same time can lose a client or leave a null in the list, and DisposeAsync then throws.
     private readonly Lock _clientLock = new();
@@ -116,7 +118,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         // Tests never reload configuration. A file watcher on appsettings can hang on macOS when the system is busy.
         Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
 
-        await _database.StartAsync();
+        await Task.WhenAll(_database.StartAsync(), Storage.StartAsync());
+        Storage.SetEnvironmentVariables();
 
         Environment.SetEnvironmentVariable(
             $"ConnectionStrings__{DatabaseConsts.DatabaseName}",
@@ -160,6 +163,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     {
         await base.DisposeAsync();
         await _database.DisposeAsync();
+        await Storage.DisposeAsync();
     }
 }
 

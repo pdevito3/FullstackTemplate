@@ -12,7 +12,7 @@ public class WorkshopListQueryTests : TestBase
 {
     private static readonly string[] Titles = ["Yard 50% full", "Yard 500 full", "a_b", "acb", @"c\d", "cd"];
     private static readonly string[] TextTitles = ["Say \"hi\" now", "a\"\"\"b", @"c\d", "in-progress", "a.b", "null", "[DRAFT]", "\"Paul\"", "Paul", "quote\""];
-    private static readonly string[] DraftActions = ["Update", "Schedule", "Cancel"];
+    private static readonly string[] DraftActions = ["Update", "Schedule", "Cancel", "ManageAttachments"];
 
     [Test]
     [Arguments("50%", "Yard 50% full")]

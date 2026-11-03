@@ -1,7 +1,11 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
+using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shouldly;
@@ -266,6 +270,39 @@ public class ApiProxyTests
         app.Api.DropCount(id).ShouldBe(1);
     }
 
+    [Test]
+    public async Task a_body_over_the_limit_of_kestrel_gives_413_with_a_problem_detail()
+    {
+        // Arrange
+        await using var app = BffApp.StartAnotherInstance(services: services =>
+            services.AddSingleton<IStartupFilter>(new BodyLimitStartupFilter(limit: 1_000)));
+        using var browser = app.CreateBrowser();
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/items") { Content = new ByteArrayContent(new byte[5_000]) };
+        request.Headers.Add("X-CSRF", "1");
+
+        // Act
+        var response = await browser.SendAsync(request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (response.Content.Headers.ContentType?.MediaType).ShouldBe("application/problem+json");
+        (await response.ReadJsonAsync()).GetProperty("detail").GetString().ShouldBe(RequestTooLargeProblem.Detail);
+    }
+
+    [Test]
+    public async Task a_413_of_the_api_keeps_its_own_body()
+    {
+        // Arrange
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        // Act
+        var response = await browser.SendApiAsync(HttpMethod.Post, "/api/test/too-large");
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (await response.Content.ReadAsStringAsync()).ShouldBe(EchoApi.TooLargeText);
+    }
+
     /// <summary>
     /// The forwarder client with a timeout of 300 ms on each request, in place of the activity timeout of 100 s, so
     /// that a test of a hung server does not wait 100 s. The forwarder sees the same cancellation as from its own
@@ -285,5 +322,50 @@ public class ApiProxyTests
                 return await base.SendAsync(request, timeout.Token);
             }
         }
+    }
+
+    /// <summary>
+    /// TestServer has no request body limit, so this filter makes the body of each request throw as Kestrel does
+    /// when a body is larger than <c>MaxRequestBodySize</c>.
+    /// </summary>
+    private sealed class BodyLimitStartupFilter(long limit) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, nextMiddleware) =>
+            {
+                context.Request.Body = new LimitedBody(context.Request.Body, limit);
+                return nextMiddleware(context);
+            });
+            next(app);
+        };
+    }
+
+    private sealed class LimitedBody(Stream inner, long limit) : Stream
+    {
+        private long _read;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => _read; set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var count = await inner.ReadAsync(buffer, cancellationToken);
+            _read += count;
+            return _read > limit
+                ? throw new BadHttpRequestException($"Request body too large. The max request body size is {limit} bytes.", StatusCodes.Status413PayloadTooLarge)
+                : count;
+        }
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

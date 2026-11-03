@@ -84,3 +84,25 @@ _Avoid_: Error code, failure reason
 **Proof type**:
 A type that only the decision makes, which the write method takes, so the write cannot run without the check.
 _Avoid_: Token, ticket, witness
+
+### Attachments
+
+**Attachment**:
+A file that one record of one tenant keeps. Its row holds a stored file, and its bytes are in object storage. Each entity that takes files has its own attachment entity.
+_Avoid_: Upload, document, asset
+
+**Stored file**:
+The value object of an attachment: the name, the media type of the bytes, the size, and the storage key.
+_Avoid_: File metadata, blob
+
+**Upload rules**:
+The file types and the largest size that one use of attachments takes. The Server checks each upload with them, and the list response gives them to the SPA.
+_Avoid_: File policy, upload limits
+
+**File type**:
+A type of the registry that the first bytes of a file name, such as PNG or PDF. The extension of the name and the type that the client claims must agree with it.
+_Avoid_: Content type, MIME type, extension
+
+**Presigned URL**:
+A URL that lets the browser read one object of storage until it expires, with no call to the Server. The Server signs it only after the access check of the record.
+_Avoid_: Download link, public URL

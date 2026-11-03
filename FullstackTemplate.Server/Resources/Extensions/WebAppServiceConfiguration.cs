@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
 using Databases;
+using Domain.Attachments;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ public static class WebAppServiceConfiguration
         builder.Services.AddApplicationServices();
         builder.Services.AddScoped<SystemTenantAccess>();
         builder.AddObjectStorage();
+        builder.Services.AddScoped<AttachmentStorage>();
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);

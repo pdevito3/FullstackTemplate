@@ -186,18 +186,11 @@ public sealed class ValueObjectGenerator : IIncrementalGenerator
 		: $"Equals({member.Name}, other.{member.Name})";
 }
 
-internal readonly struct ValueObjectInfo : System.IEquatable<ValueObjectInfo>
+internal readonly struct ValueObjectInfo(string ns, string className, ImmutableArray<MemberEntry> members) : System.IEquatable<ValueObjectInfo>
 {
-	public string Namespace { get; }
-	public string ClassName { get; }
-	public ImmutableArray<MemberEntry> Members { get; }
-
-	public ValueObjectInfo(string ns, string className, ImmutableArray<MemberEntry> members)
-	{
-		Namespace = ns;
-		ClassName = className;
-		Members = members;
-	}
+	public string Namespace { get; } = ns;
+	public string ClassName { get; } = className;
+	public ImmutableArray<MemberEntry> Members { get; } = members;
 
 	public bool Equals(ValueObjectInfo other) =>
 		Namespace == other.Namespace
@@ -225,16 +218,10 @@ internal enum MemberKind
 	Sequence,
 }
 
-internal readonly struct MemberEntry : System.IEquatable<MemberEntry>
+internal readonly struct MemberEntry(string name, MemberKind kind) : System.IEquatable<MemberEntry>
 {
-	public string Name { get; }
-	public MemberKind Kind { get; }
-
-	public MemberEntry(string name, MemberKind kind)
-	{
-		Name = name;
-		Kind = kind;
-	}
+	public string Name { get; } = name;
+	public MemberKind Kind { get; } = kind;
 
 	public bool Equals(MemberEntry other) =>
 		Name == other.Name && Kind == other.Kind;

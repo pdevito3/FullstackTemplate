@@ -301,7 +301,7 @@ public sealed class GraphGraftGenerator : IIncrementalGenerator
                         Diagnostic.Create(
                             DuplicateMethod,
                             left.Location.ToLocation(compilation),
-                            new[] { right.Location.ToLocation(compilation) },
+                            [right.Location.ToLocation(compilation)],
                             properties: null,
                             left.SourceName,
                             right.SourceName,
@@ -318,15 +318,15 @@ public sealed class GraphGraftGenerator : IIncrementalGenerator
         var customizer = member.InputType ?? member.OutputType;
         yield return new MethodModel(
             $"Add{member.Name}",
-            new[] { $"out {member.OutputType}", $"global::System.Action<{customizer}>?" }
+            [$"out {member.OutputType}", $"global::System.Action<{customizer}>?"]
         );
         yield return new MethodModel(
             $"Add{member.Plural}",
-            new[] { $"out {member.OutputType}[]", "int" }
+            [$"out {member.OutputType}[]", "int"]
         );
         yield return new MethodModel(
             $"Add{member.Plural}",
-            new[] { $"out {member.OutputType}[]", $"params global::System.Action<{customizer}>[]" }
+            [$"out {member.OutputType}[]", $"params global::System.Action<{customizer}>[]"]
         );
     }
 

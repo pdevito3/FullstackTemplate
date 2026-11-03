@@ -64,7 +64,7 @@ public class TestingServiceScope
         currentUserService.LastName.Returns(lastName ?? faker.Person.LastName);
         currentUserService.Username.Returns(faker.Internet.UserName());
         currentUserService.IsAuthenticated.Returns(true);
-        currentUserService.Roles.Returns(new List<string>());
+        currentUserService.Roles.Returns([]);
         RefreshTenantScope();
     }
 

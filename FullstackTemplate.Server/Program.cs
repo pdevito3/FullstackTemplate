@@ -1,6 +1,4 @@
 using System.Globalization;
-using Microsoft.EntityFrameworkCore;
-using FullstackTemplate.Server;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints;

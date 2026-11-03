@@ -10,7 +10,6 @@
 
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -2834,7 +2833,6 @@ internal static class Templates
 
             using {{n.Server}}.Domain.{{n.Plural}};
             using {{n.App}}.SharedTestHelpers.EntityGraphs;{{ParentGraphUsing(s)}}
-            using ModelContextProtocol.Client;
             using Shouldly;
             using TestUtilities;
 

@@ -2,7 +2,6 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Tenants;
 
 using System.Net;
 using System.Text;
-using System.Text.Json;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
@@ -11,7 +10,6 @@ using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.AspNetCore;
-using ModelContextProtocol.Client;
 using Shouldly;
 using TestUtilities;
 

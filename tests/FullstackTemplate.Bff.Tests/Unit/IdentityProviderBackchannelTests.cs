@@ -60,7 +60,7 @@ public class IdentityProviderBackchannelTests
         var refresh = options.RefreshInterval;
 
         // Act
-        IdentityProviderBackchannel.Configure(options, Configuration(new()));
+        IdentityProviderBackchannel.Configure(options, Configuration([]));
 
         // Assert
         options.RefreshInterval.ShouldBe(refresh);

@@ -1,6 +1,5 @@
 namespace FullstackTemplate.UnitTests.Domain.Users;
 
-using FullstackTemplate.Server.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using static FullstackTemplate.Server.Domain.Users.TenantLookupChange;

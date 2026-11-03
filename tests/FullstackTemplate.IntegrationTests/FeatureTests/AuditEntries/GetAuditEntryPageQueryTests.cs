@@ -1,6 +1,5 @@
 namespace FullstackTemplate.IntegrationTests.FeatureTests.AuditEntries;
 
-using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.AuditEntries.Dtos;
 using FullstackTemplate.Server.Domain.AuditEntries.Features;
 using FullstackTemplate.Server.Domain.Users;

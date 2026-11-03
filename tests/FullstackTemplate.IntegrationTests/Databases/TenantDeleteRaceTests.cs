@@ -1,6 +1,5 @@
 namespace FullstackTemplate.IntegrationTests.Databases;
 
-using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Agents.Features;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users.Features;

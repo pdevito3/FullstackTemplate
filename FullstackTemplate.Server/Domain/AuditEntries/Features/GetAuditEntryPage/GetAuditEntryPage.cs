@@ -7,7 +7,6 @@ using Dtos;
 using Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Resources;
 using Users;
 
 public static class GetAuditEntryPage

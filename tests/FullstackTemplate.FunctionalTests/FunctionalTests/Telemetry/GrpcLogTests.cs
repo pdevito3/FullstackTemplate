@@ -7,7 +7,6 @@ using FullstackTemplate.Server.Domain.Tenants.Grpc.V1;
 using global::Google.Protobuf;
 using Serilog.Events;
 using Shouldly;
-using TestUtilities;
 
 /// <summary>
 /// Grpc.AspNetCore.Server logs a fault of a call at Information: an error status, a message that it cannot read, a

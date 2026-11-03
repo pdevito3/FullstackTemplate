@@ -26,7 +26,15 @@ using Mono.Cecil.Cil;
 /// <item>Each other type under the root namespace is core.</item>
 /// </list>
 /// </summary>
-public sealed partial class BoundaryScanner
+/// <param name="assembly">The assembly to scan.</param>
+/// <param name="rootNamespace">The root namespace of the assembly. A type outside it is not core.</param>
+/// <param name="compositionRoot">The full names of the types that wire the host, outside the global namespace.</param>
+/// <param name="allowedTransportTypes">The full names of the transport types that core can use.</param>
+public sealed partial class BoundaryScanner(
+    Assembly assembly,
+    string rootNamespace,
+    IEnumerable<string>? compositionRoot = null,
+    IEnumerable<string>? allowedTransportTypes = null)
 {
     /// <summary>The namespaces of the transport libraries. Only an adapter or the shared plumbing can use them.</summary>
     public static readonly string[] TransportNamespaces =
@@ -44,31 +52,13 @@ public sealed partial class BoundaryScanner
         "ModelContextProtocol",
     ];
 
-    private readonly Assembly _assembly;
-    private readonly string _rootNamespace;
-    private readonly string _sharedPlumbing;
-    private readonly HashSet<string> _compositionRoot;
-    private readonly HashSet<string> _allowedTransportTypes;
-    private readonly ModuleDefinition _module;
-
-    /// <param name="assembly">The assembly to scan.</param>
-    /// <param name="rootNamespace">The root namespace of the assembly. A type outside it is not core.</param>
-    /// <param name="compositionRoot">The full names of the types that wire the host, outside the global namespace.</param>
-    /// <param name="allowedTransportTypes">The full names of the transport types that core can use.</param>
-    public BoundaryScanner(
-        Assembly assembly,
-        string rootNamespace,
-        IEnumerable<string>? compositionRoot = null,
-        IEnumerable<string>? allowedTransportTypes = null)
-    {
-        _assembly = assembly;
-        _rootNamespace = rootNamespace;
-        _sharedPlumbing = rootNamespace + ".Resources.Entrypoints";
-        _compositionRoot = (compositionRoot ?? []).ToHashSet(StringComparer.Ordinal);
-        _allowedTransportTypes = (allowedTransportTypes ?? []).ToHashSet(StringComparer.Ordinal);
-        // Cecil reads the method bodies on demand, so the module stays open. It reads from memory, so no file stays open.
-        _module = ModuleDefinition.ReadModule(new MemoryStream(File.ReadAllBytes(assembly.Location)));
-    }
+    private readonly Assembly _assembly = assembly;
+    private readonly string _rootNamespace = rootNamespace;
+    private readonly string _sharedPlumbing = rootNamespace + ".Resources.Entrypoints";
+    private readonly HashSet<string> _compositionRoot = (compositionRoot ?? []).ToHashSet(StringComparer.Ordinal);
+    private readonly HashSet<string> _allowedTransportTypes = (allowedTransportTypes ?? []).ToHashSet(StringComparer.Ordinal);
+    // Cecil reads the method bodies on demand, so the module stays open. It reads from memory, so no file stays open.
+    private readonly ModuleDefinition _module = ModuleDefinition.ReadModule(new MemoryStream(File.ReadAllBytes(assembly.Location)));
 
     /// <summary>The database. Only a handler or a service can use it, so an adapter must send a MediatR request.</summary>
     public string[] DatabaseNamespaces =>

@@ -27,7 +27,7 @@ public sealed class UnauthorizedResponseTransformer : IOpenApiOperationTransform
         if (!requiresAuthentication)
             return Task.CompletedTask;
 
-        operation.Responses ??= new OpenApiResponses();
+        operation.Responses ??= [];
         operation.Responses.TryAdd(StatusCode, new OpenApiResponse
         {
             Description = "The request has no valid access token.",

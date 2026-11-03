@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Examples.Workshops;
 using Ardalis.SmartEnum;
 using Domain;
 using Domain.Users;
-using Exceptions;
 
 public partial class WorkshopAction : ValueObject, IFixedNames
 {

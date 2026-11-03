@@ -2,7 +2,6 @@ namespace FullstackTemplate.Bff;
 
 using System.Runtime.CompilerServices;
 using Serilog;
-using Serilog.Core;
 using Serilog.Core.Enrichers;
 
 public static class LoggerExtensions
@@ -26,12 +25,12 @@ public static class LoggerExtensions
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0)
     {
-        return logger.ForContext(new ILogEventEnricher[]
-        {
+        return logger.ForContext(
+        [
             new PropertyEnricher("CallSite", $"{Path.GetFileName(filePath)}:{memberName}@{lineNumber}"),
             new PropertyEnricher("code.function", memberName),
             new PropertyEnricher("code.file.path", filePath),
             new PropertyEnricher("code.line.number", lineNumber),
-        });
+        ]);
     }
 }

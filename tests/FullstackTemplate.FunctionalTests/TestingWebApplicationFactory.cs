@@ -8,7 +8,6 @@ using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;

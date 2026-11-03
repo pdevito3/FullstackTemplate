@@ -2,7 +2,6 @@ namespace FullstackTemplate.IntegrationTests.Databases;
 
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.SharedTestHelpers.Utilities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 internal static class PauseAtQueryServices

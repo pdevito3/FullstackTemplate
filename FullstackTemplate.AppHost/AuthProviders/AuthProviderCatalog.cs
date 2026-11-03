@@ -1,4 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.Configuration;
 
 namespace FullstackTemplate.AppHost.AuthProviders;

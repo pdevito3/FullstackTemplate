@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http.Json;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.AspNetCore.Http;

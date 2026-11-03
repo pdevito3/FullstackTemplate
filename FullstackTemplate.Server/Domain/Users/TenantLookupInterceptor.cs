@@ -14,7 +14,7 @@ public sealed class TenantLookupInterceptor(ITenantIdProvider tenantIdProvider) 
 {
     private static readonly ILogger Logger = Log.ForContext<TenantLookupInterceptor>();
 
-    private readonly ConditionalWeakTable<DbContext, TenantLookupChange> _changes = new();
+    private readonly ConditionalWeakTable<DbContext, TenantLookupChange> _changes = [];
 
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)

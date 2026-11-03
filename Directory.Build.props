@@ -5,6 +5,11 @@
     <!-- A new security advisory must not break a build that has no code change. The audit still shows it as a warning. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
     <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- IDE0005 reports an unused using in the build only when the project writes a documentation file. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 asks for a doc comment on each public member. Only the names that need a reason get a comment. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <!-- CA1707 forbids underscores in names. The test names use underscores to separate the parts of a scenario. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
     <!-- CS8524 asks for a discard arm in a switch over an enum that names each member. A discard hides a member that a

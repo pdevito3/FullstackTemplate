@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Resources;
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using System.Runtime.CompilerServices;
 
@@ -93,6 +94,7 @@ public static class Telemetry
     /// <param name="memberName">Filled by the compiler. Do not pass a value.</param>
     /// <param name="filePath">Filled by the compiler. Do not pass a value.</param>
     /// <param name="lineNumber">Filled by the compiler. Do not pass a value.</param>
+    [SuppressMessage("Style", "IDE0028", Justification = "The constructor keeps the last value of a repeated key. A collection expression calls Add, which throws on a repeated key.")]
     public static void AddEvent(
         (string Key, object? Value)[] tags,
         string eventName,

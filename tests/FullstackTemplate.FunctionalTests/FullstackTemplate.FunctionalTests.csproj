@@ -6,6 +6,9 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <OutputType>Exe</OutputType>
+        <!-- CS1573 asks for a param tag on each parameter once one parameter has a tag. A test record documents only
+             the parameters whose name does not tell their meaning. -->
+        <NoWarn>$(NoWarn);CS1573</NoWarn>
         <!-- CS0436: the client stub below also generates the messages, with the same names as the messages of the
              Server. The compiler uses the types of this project, which is correct for a client. -->
         <NoWarn>$(NoWarn);CS0436</NoWarn>

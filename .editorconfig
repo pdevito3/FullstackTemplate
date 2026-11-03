@@ -7,6 +7,24 @@ end_of_line = lf
 # CA1711 reserves the Permission suffix for System.Security permission types. Here Permission is a domain name.
 dotnet_code_quality.CA1711.allowed_suffixes = Permission
 
+csharp_style_namespace_declarations = file_scoped
+dotnet_diagnostic.IDE0161.severity = warning
+dotnet_diagnostic.IDE0290.severity = warning
+dotnet_diagnostic.IDE0028.severity = warning
+dotnet_diagnostic.IDE0300.severity = warning
+dotnet_diagnostic.IDE0301.severity = warning
+dotnet_diagnostic.IDE0302.severity = warning
+dotnet_diagnostic.IDE0303.severity = warning
+dotnet_diagnostic.IDE0304.severity = warning
+# IDE0305 stays off. It turns the ToList() at the end of a LINQ query into [.. query], which is harder to read.
+dotnet_diagnostic.IDE0090.severity = warning
+dotnet_diagnostic.IDE0063.severity = warning
+dotnet_diagnostic.IDE0066.severity = warning
+dotnet_diagnostic.IDE0078.severity = warning
+dotnet_diagnostic.IDE0083.severity = warning
+dotnet_diagnostic.IDE0330.severity = warning
+dotnet_diagnostic.IDE0005.severity = warning
+
 # EF Core writes the migrations. Analyzers do not report on generated code.
 [{**/Databases/Migrations/**.cs,**/Sessions/Migrations/*.cs}]
 generated_code = true

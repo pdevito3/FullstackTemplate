@@ -6,6 +6,9 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <OutputType>Exe</OutputType>
+        <!-- CS1573 asks for a param tag on each parameter once one parameter has a tag. A test record documents only
+             the parameters whose name does not tell their meaning. -->
+        <NoWarn>$(NoWarn);CS1573</NoWarn>
         <!-- The bff-tests job of CI runs this project only on a BFF change. The test job passes SkipBffTests=true. -->
         <IsTestProject Condition="'$(SkipBffTests)' == 'true'">false</IsTestProject>
         <IsTestingPlatformApplication Condition="'$(SkipBffTests)' == 'true'">false</IsTestingPlatformApplication>

@@ -154,10 +154,25 @@ import { useAuthActions } from '@/domain/auth/apis/auth-actions'
 
 const { data, isLoading, error } = useCurrentUser()
 const { isLoggedIn, username, logoutUrl } = useAuth()
-const { login, logout } = useAuthActions()
+const { logout } = useAuthActions()
 ```
 
 Never copy server state into local state. See [server-state.md](frontend/server-state.md).
+
+## Session
+
+Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaimsQuery` before it shows a page:
+
+| State of the session query | The root route shows |
+|---|---|
+| Loading | Nothing |
+| No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. |
+| Error, and no earlier answer | An alert and Try Again. It does not go to the login. |
+| Claims | The layout and the page |
+
+A refetch that gives `null`, for example after the BFF session ends, also goes to the login. A failed refetch keeps the last answer.
+
+Thus a page always has a session. Do not add a Login button or a signed-out state to a page.
 
 ## Routes
 

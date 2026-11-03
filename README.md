@@ -151,7 +151,7 @@ To select the auth provider, add a provider, or find the test users, see [docs/a
                 └─────────┘
 ```
 
-1. User clicks Login → navigates to `/bff/login`
+1. The React app has no session, so it navigates to `/bff/login`
 2. BFF redirects to identity provider
 3. User authenticates with provider
 4. Provider redirects back to `/signin-oidc`

@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StartTenantRouteImport } from './routes/start-tenant'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersIndexRouteImport } from './routes/users/index'
 import { Route as examplesWeatherRouteImport } from './routes/(examples)/weather'
 import { Route as examplesFilterDemoRouteImport } from './routes/(examples)/filter-demo'
 import { Route as examplesComponentsRouteImport } from './routes/(examples)/components'
+import { Route as UsersIdIndexRouteImport } from './routes/users/$id/index'
 import { Route as examplesWorkshopsIndexRouteImport } from './routes/(examples)/workshops/index'
 import { Route as examplesWorkshopsNewRouteImport } from './routes/(examples)/workshops/new'
 import { Route as examplesVenuesNewRouteImport } from './routes/(examples)/venues/new'
@@ -36,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsersIndexRoute = UsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const examplesWeatherRoute = examplesWeatherRouteImport.update({
   id: '/(examples)/weather',
   path: '/weather',
@@ -49,6 +56,11 @@ const examplesFilterDemoRoute = examplesFilterDemoRouteImport.update({
 const examplesComponentsRoute = examplesComponentsRouteImport.update({
   id: '/(examples)/components',
   path: '/components',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersIdIndexRoute = UsersIdIndexRouteImport.update({
+  id: '/users/$id/',
+  path: '/users/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const examplesWorkshopsIndexRoute = examplesWorkshopsIndexRouteImport.update({
@@ -85,9 +97,11 @@ export interface FileRoutesByFullPath {
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
   '/weather': typeof examplesWeatherRoute
+  '/users': typeof UsersIndexRoute
   '/venues/new': typeof examplesVenuesNewRoute
   '/workshops/new': typeof examplesWorkshopsNewRoute
   '/workshops': typeof examplesWorkshopsIndexRoute
+  '/users/$id': typeof UsersIdIndexRoute
   '/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
   '/workshops/$id': typeof examplesWorkshopsIdIndexRoute
 }
@@ -98,9 +112,11 @@ export interface FileRoutesByTo {
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
   '/weather': typeof examplesWeatherRoute
+  '/users': typeof UsersIndexRoute
   '/venues/new': typeof examplesVenuesNewRoute
   '/workshops/new': typeof examplesWorkshopsNewRoute
   '/workshops': typeof examplesWorkshopsIndexRoute
+  '/users/$id': typeof UsersIdIndexRoute
   '/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
   '/workshops/$id': typeof examplesWorkshopsIdIndexRoute
 }
@@ -112,9 +128,11 @@ export interface FileRoutesById {
   '/(examples)/components': typeof examplesComponentsRoute
   '/(examples)/filter-demo': typeof examplesFilterDemoRoute
   '/(examples)/weather': typeof examplesWeatherRoute
+  '/users/': typeof UsersIndexRoute
   '/(examples)/venues/new': typeof examplesVenuesNewRoute
   '/(examples)/workshops/new': typeof examplesWorkshopsNewRoute
   '/(examples)/workshops/': typeof examplesWorkshopsIndexRoute
+  '/users/$id/': typeof UsersIdIndexRoute
   '/(examples)/workshops/$id/edit': typeof examplesWorkshopsIdEditRoute
   '/(examples)/workshops/$id/': typeof examplesWorkshopsIdIndexRoute
 }
@@ -127,9 +145,11 @@ export interface FileRouteTypes {
     | '/components'
     | '/filter-demo'
     | '/weather'
+    | '/users'
     | '/venues/new'
     | '/workshops/new'
     | '/workshops'
+    | '/users/$id'
     | '/workshops/$id/edit'
     | '/workshops/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -140,9 +160,11 @@ export interface FileRouteTypes {
     | '/components'
     | '/filter-demo'
     | '/weather'
+    | '/users'
     | '/venues/new'
     | '/workshops/new'
     | '/workshops'
+    | '/users/$id'
     | '/workshops/$id/edit'
     | '/workshops/$id'
   id:
@@ -153,9 +175,11 @@ export interface FileRouteTypes {
     | '/(examples)/components'
     | '/(examples)/filter-demo'
     | '/(examples)/weather'
+    | '/users/'
     | '/(examples)/venues/new'
     | '/(examples)/workshops/new'
     | '/(examples)/workshops/'
+    | '/users/$id/'
     | '/(examples)/workshops/$id/edit'
     | '/(examples)/workshops/$id/'
   fileRoutesById: FileRoutesById
@@ -167,9 +191,11 @@ export interface RootRouteChildren {
   examplesComponentsRoute: typeof examplesComponentsRoute
   examplesFilterDemoRoute: typeof examplesFilterDemoRoute
   examplesWeatherRoute: typeof examplesWeatherRoute
+  UsersIndexRoute: typeof UsersIndexRoute
   examplesVenuesNewRoute: typeof examplesVenuesNewRoute
   examplesWorkshopsNewRoute: typeof examplesWorkshopsNewRoute
   examplesWorkshopsIndexRoute: typeof examplesWorkshopsIndexRoute
+  UsersIdIndexRoute: typeof UsersIdIndexRoute
   examplesWorkshopsIdEditRoute: typeof examplesWorkshopsIdEditRoute
   examplesWorkshopsIdIndexRoute: typeof examplesWorkshopsIdIndexRoute
 }
@@ -197,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/users/': {
+      id: '/users/'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(examples)/weather': {
       id: '/(examples)/weather'
       path: '/weather'
@@ -216,6 +249,13 @@ declare module '@tanstack/react-router' {
       path: '/components'
       fullPath: '/components'
       preLoaderRoute: typeof examplesComponentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users/$id/': {
+      id: '/users/$id/'
+      path: '/users/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof UsersIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(examples)/workshops/': {
@@ -263,9 +303,11 @@ const rootRouteChildren: RootRouteChildren = {
   examplesComponentsRoute: examplesComponentsRoute,
   examplesFilterDemoRoute: examplesFilterDemoRoute,
   examplesWeatherRoute: examplesWeatherRoute,
+  UsersIndexRoute: UsersIndexRoute,
   examplesVenuesNewRoute: examplesVenuesNewRoute,
   examplesWorkshopsNewRoute: examplesWorkshopsNewRoute,
   examplesWorkshopsIndexRoute: examplesWorkshopsIndexRoute,
+  UsersIdIndexRoute: UsersIdIndexRoute,
   examplesWorkshopsIdEditRoute: examplesWorkshopsIdEditRoute,
   examplesWorkshopsIdIndexRoute: examplesWorkshopsIdIndexRoute,
 }

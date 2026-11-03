@@ -35,31 +35,37 @@ try
     // The BFF sessions and the Data Protection keys of the BFF
     var bffDb = postgres.AddDatabase("bffdb");
 
-    // S3 object storage. Floci emulates S3 in a local run. The browser loads the presigned URLs of the server from
-    // this endpoint, so it must be reachable from the browser. The bucket hook in Storage/seed creates the bucket.
-    const string storageBucket = "files";
-    var storage = builder.AddFlociAws("storage", port: 24780)
-        .WithImageTag(Config.FlociImageTag)
-        .WithEnvironment(Config.FlociValidateSignaturesVariable, "true")
-        .WithEnvironment("STORAGE_BUCKET", storageBucket)
-        .WithBindMount("./Storage/seed", "/etc/floci/init/ready.d", isReadOnly: true)
-        .WithDataVolumeUnlessIsolated();
-    // A path-style GET of the bucket gives 404 until the hook created it
-    storage.WithHttpHealthCheck($"/{storageBucket}", endpointName: storage.Resource.PrimaryEndpoint.EndpointName);
-
     var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
         .WithReference(appDb)
         .WaitFor(appDb)
-        .WithReference(storage)
-        .WaitFor(storage)
-        .WithEnvironment("ObjectStorage__BucketName", storageBucket)
         .WithHttpHealthCheck("/health")
         .WithExternalHttpEndpoints()
         // The endpoints come from Kestrel:Endpoints in the appsettings of the Server, with the HTTP/2-only "grpc"
         // endpoint. Aspire makes one endpoint for each name and sets its Url.
         .WithCSharpRepl();
     postgres.WithParentRelationship(server);
-    storage.WithParentRelationship(server);
+
+    // S3 object storage. Floci emulates S3 in a local run only. A published server gets the S3 of its cloud and its
+    // bucket from the deploy, not an emulator with test credentials. The browser loads the presigned URLs of the
+    // server from this endpoint, so it must be reachable from the browser. The bucket hook in Storage/seed creates
+    // the bucket.
+    if (builder.ExecutionContext.IsRunMode)
+    {
+        const string storageBucket = "files";
+        var storage = builder.AddFlociAws("storage", port: 24780)
+            .WithImageTag(Config.FlociImageTag)
+            .WithEnvironment(Config.FlociValidateSignaturesVariable, "true")
+            .WithEnvironment("STORAGE_BUCKET", storageBucket)
+            .WithBindMount("./Storage/seed", "/etc/floci/init/ready.d", isReadOnly: true)
+            .WithDataVolumeUnlessIsolated();
+        // A path-style GET of the bucket gives 404 until the hook created it
+        storage.WithHttpHealthCheck($"/{storageBucket}", endpointName: storage.Resource.PrimaryEndpoint.EndpointName);
+        server.WithReference(storage)
+            .WaitFor(storage)
+            .WithEnvironment("ObjectStorage__BucketName", storageBucket);
+        storage.WithParentRelationship(server);
+    }
+
     // MCP clients call the server directly, so the resource of its protected resource metadata is the URL they call.
     server.WithEnvironment("Mcp__PublicOrigin", server.GetEndpoint("https"));
 

@@ -1,4 +1,5 @@
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
+import type { WorkshopAttachmentDto } from '@/api/generated/models/types/workshop-attachment-dto'
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { ProblemDetails } from '@/lib/problem-details'
 import type { MockRoute } from '@tests/support/api/mock-route'
@@ -12,6 +13,8 @@ export const workshopPaths = {
   list: '/api/v1/workshops',
   one: (id: string) => `/api/v1/workshops/${id}`,
   action: (id: string, action: 'schedule' | 'cancel' | 'complete') => `/api/v1/workshops/${id}/${action}`,
+  attachments: (id: string) => `/api/v1/workshops/${id}/attachments`,
+  attachment: (id: string, attachmentId: string) => `/api/v1/workshops/${id}/attachments/${attachmentId}`,
   venues: '/api/v1/venues',
   venue: (id: string) => `/api/v1/venues/${id}`,
 }
@@ -54,6 +57,30 @@ export const workshopsApi = {
   actionFails(id: string, action: 'schedule' | 'cancel' | 'complete', problem: Buildable<ProblemDetails>): MockRoute {
     const body = problem.build()
     return { method: 'post', path: workshopPaths.action(id, action), status: body.status ?? 500, body }
+  },
+
+  attachmentsReturn(workshop: Buildable<WorkshopDto>, attachments: Buildable<WorkshopAttachmentDto>[] = []): MockRoute {
+    const { id } = workshop.build()
+    return { method: 'get', path: workshopPaths.attachments(id), status: 200, body: attachments.map((a) => a.build()) }
+  },
+
+  attachmentUploads(workshop: Buildable<WorkshopDto>, attachment: Buildable<WorkshopAttachmentDto>): MockRoute {
+    const { id } = workshop.build()
+    return { method: 'post', path: workshopPaths.attachments(id), status: 201, body: attachment.build() }
+  },
+
+  attachmentUploadFails(workshop: Buildable<WorkshopDto>, problem: Buildable<ProblemDetails>): MockRoute {
+    const { id } = workshop.build()
+    const body = problem.build()
+    return { method: 'post', path: workshopPaths.attachments(id), status: body.status ?? 500, body }
+  },
+
+  attachmentDeletes(workshop: Buildable<WorkshopDto>, attachment: Buildable<WorkshopAttachmentDto>): MockRoute {
+    return {
+      method: 'delete',
+      path: workshopPaths.attachment(workshop.build().id, attachment.build().id),
+      status: 204,
+    }
   },
 
   venueCreateSaves(venue: Buildable<VenueDto>): MockRoute {

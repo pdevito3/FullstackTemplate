@@ -4,9 +4,10 @@ public sealed record WorkshopAttachmentDto
 {
     public string Id { get; init; } = default!;
     public string FileName { get; init; } = default!;
-    /// <summary>The type that the client sent with the file, for example image/png.</summary>
+    /// <summary>The type of the file, for example image/png. The type is application/octet-stream when the client sent no valid type.</summary>
     public string ContentType { get; init; } = default!;
-    public long SizeBytes { get; init; }
+    // Not a long: Kubb types an int64 as a bigint, but the SPA reads a JSON number
+    public int SizeBytes { get; init; }
     public DateTimeOffset UploadedAt { get; init; }
     /// <summary>A presigned URL of object storage. The browser saves the file under its name.</summary>
     public string DownloadUrl { get; init; } = default!;

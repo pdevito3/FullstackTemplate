@@ -16,7 +16,8 @@ export const workshopDtoAllowedActionsEnum = {
     Update: "Update",
     Schedule: "Schedule",
     Cancel: "Cancel",
-    Complete: "Complete"
+    Complete: "Complete",
+    ManageAttachments: "ManageAttachments"
 } as const;
 
 export type WorkshopDtoAllowedActionsEnumKey = (typeof workshopDtoAllowedActionsEnum)[keyof typeof workshopDtoAllowedActionsEnum];

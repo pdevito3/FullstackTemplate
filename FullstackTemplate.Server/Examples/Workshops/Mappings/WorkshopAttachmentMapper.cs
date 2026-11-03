@@ -16,7 +16,8 @@ public static class WorkshopAttachmentMapper
             Id = attachment.Id,
             FileName = attachment.FileName,
             ContentType = attachment.ContentType,
-            SizeBytes = attachment.SizeBytes,
+            // The rules of the entity keep a file at 10 MB or less, so the size fits
+            SizeBytes = checked((int)attachment.SizeBytes),
             UploadedAt = attachment.UploadedAt,
             DownloadUrl = await storage.GetPresignedUrlAsync(download),
             PreviewUrl = preview is null ? null : await storage.GetPresignedUrlAsync(preview),

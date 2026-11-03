@@ -3590,11 +3590,11 @@
           },
           "contentType": {
             "type": "string",
-            "description": "The type that the client sent with the file, for example image/png."
+            "description": "The type of the file, for example image/png. The type is application/octet-stream when the client sent no valid type."
           },
           "sizeBytes": {
             "type": "integer",
-            "format": "int64"
+            "format": "int32"
           },
           "uploadedAt": {
             "type": "string",

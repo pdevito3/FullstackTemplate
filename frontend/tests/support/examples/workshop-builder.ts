@@ -6,10 +6,10 @@ let seed = 0
 const next = () => ++seed
 
 const MANAGER_ACTIONS: Record<WorkshopDtoStatusEnumKey, WorkshopDtoAllowedActionsEnumKey[]> = {
-  Draft: ['Update', 'Schedule', 'Cancel'],
-  Scheduled: ['Cancel', 'Complete'],
-  Cancelled: [],
-  Completed: [],
+  Draft: ['Update', 'Schedule', 'Cancel', 'ManageAttachments'],
+  Scheduled: ['Cancel', 'Complete', 'ManageAttachments'],
+  Cancelled: ['ManageAttachments'],
+  Completed: ['ManageAttachments'],
 }
 
 class WorkshopBuilder {

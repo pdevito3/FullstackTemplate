@@ -9,6 +9,7 @@ import { useWorkshop } from '@/examples/workshops/apis/get-workshop'
 import { useSendWorkshopAction } from '@/examples/workshops/apis/send-workshop-action'
 import { formatStart } from '@/examples/workshops/components/format-start'
 import { WorkshopActions } from '@/examples/workshops/components/workshop-actions'
+import { WorkshopAttachments } from '@/examples/workshops/components/workshop-attachments'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
 
 export const Route = createFileRoute('/(examples)/workshops/$id/')({
@@ -65,6 +66,7 @@ function WorkshopPage() {
           action.mutate({ command, version: workshop.data.version }, { onSettled: () => headingRef.current?.focus() })
         }
       />
+      <WorkshopAttachments workshop={workshop.data} />
     </div>
   )
 }

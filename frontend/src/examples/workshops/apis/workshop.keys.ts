@@ -6,4 +6,5 @@ export const WorkshopKeys = {
   list: (params: WorkshopListParams) => [...WorkshopKeys.lists(), params] as const,
   details: () => [...WorkshopKeys.all, 'detail'] as const,
   detail: (id: string) => [...WorkshopKeys.details(), id] as const,
+  attachments: (id: string) => [...WorkshopKeys.details(), id, 'attachments'] as const,
 }

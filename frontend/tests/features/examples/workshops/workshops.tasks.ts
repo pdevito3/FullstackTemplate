@@ -236,6 +236,56 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    async openDetailWithFiles(id: string, venueId: string) {
+      const settled = Promise.all([
+        answered('GET', workshopPaths.one(id)),
+        answered('GET', workshopPaths.venue(venueId)),
+        answered('GET', workshopPaths.attachments(id)),
+      ])
+      await page.goto(`/workshops/${id}`)
+      await settled
+      await expect(at.filesHeading).toBeVisible()
+    },
+
+    async imageLoaded(fileName: string) {
+      const image = at.thumbnail(fileName)
+      await expect(image).toBeVisible()
+      await image.evaluate((node: HTMLImageElement) => node.decode())
+      return image.evaluate((node: HTMLImageElement) => node.naturalWidth)
+    },
+
+    async viewImage(fileName: string) {
+      await at.viewImage(fileName).click()
+      await expect(at.fullImage(fileName)).toBeVisible()
+    },
+
+    async upload(id: string, file: { name: string; mimeType: string; buffer: Buffer }) {
+      const chooser = page.waitForEvent('filechooser')
+      const settled = Promise.all([answered('POST', workshopPaths.attachments(id)), answered('GET', workshopPaths.attachments(id))])
+      await at.uploadFile.click()
+      await (await chooser).setFiles(file)
+      await settled
+    },
+
+    async uploadRefused(id: string, file: { name: string; mimeType: string; buffer: Buffer }) {
+      const chooser = page.waitForEvent('filechooser')
+      const settled = answered('POST', workshopPaths.attachments(id))
+      await at.uploadFile.click()
+      await (await chooser).setFiles(file)
+      await settled
+    },
+
+    async deleteFile(id: string, attachmentId: string, fileName: string) {
+      await at.deleteFile(fileName).click()
+      await expect(at.deleteDialog(fileName)).toBeVisible()
+      const settled = Promise.all([
+        answered('DELETE', workshopPaths.attachment(id, attachmentId)),
+        answered('GET', workshopPaths.attachments(id)),
+      ])
+      await at.confirmDelete(fileName).click()
+      await settled
+    },
+
     async pressEnter() {
       await page.keyboard.press('Enter')
     },

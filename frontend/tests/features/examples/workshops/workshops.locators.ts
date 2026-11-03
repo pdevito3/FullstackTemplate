@@ -7,9 +7,27 @@ export const workshops = (page: Page) => {
   const newStart = newForm.getByRole('group', { name: 'Starts at' })
   const editStart = editForm.getByRole('group', { name: 'Starts at' })
   const cancelDialog = page.getByRole('dialog', { name: 'Cancel this workshop?' })
+  const files = page.getByRole('region', { name: 'Files' })
+  const fileList = files.getByRole('list', { name: 'Files' })
+  const imageDialog = (fileName: string) => page.getByRole('dialog', { name: fileName })
+  const deleteDialog = (fileName: string) => page.getByRole('dialog', { name: `Delete ${fileName}?` })
   const staleAlert = editForm.getByRole('alert').filter({ hasText: 'This workshop changed after you opened it.' })
 
   return {
+    files,
+    filesHeading: files.getByRole('heading', { name: 'Files', exact: true }),
+    fileList,
+    fileRow: (fileName: string) => fileList.getByRole('listitem', { name: fileName, exact: true }),
+    noFiles: files.getByText('This workshop has no files.', { exact: true }),
+    uploadFile: files.getByRole('button', { name: 'Upload file' }),
+    viewImage: (fileName: string) => files.getByRole('button', { name: `View ${fileName}`, exact: true }),
+    thumbnail: (fileName: string) => files.getByRole('button', { name: `View ${fileName}`, exact: true }).getByRole('img'),
+    imageDialog,
+    fullImage: (fileName: string) => imageDialog(fileName).getByRole('img', { name: fileName, exact: true }),
+    downloadLink: (fileName: string) => files.getByRole('link', { name: `Download ${fileName}`, exact: true }),
+    deleteFile: (fileName: string) => files.getByRole('button', { name: `Delete ${fileName}`, exact: true }),
+    deleteDialog,
+    confirmDelete: (fileName: string) => deleteDialog(fileName).getByRole('button', { name: 'Delete file', exact: true }),
     listHeading: page.getByRole('heading', { name: 'Workshops', exact: true }),
     workshopsNavLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Workshops', exact: true }),
     search: page.getByRole('searchbox', { name: 'Search workshops' }),

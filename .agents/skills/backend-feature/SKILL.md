@@ -116,3 +116,4 @@ The build fails on these rules:
 - An entity derives from `BaseEntity`, or from an abstract base class with no IdPrefix. The constructor of the abstract class takes the parameter `idPrefix` and gives it to `BaseEntity`.
 - The text of a user message obeys `docs/messages.md` (the user message analyzer).
 - A set-based write, raw SQL, or a bulk import uses the paths of `docs/backend/audit-log.md` (RS0030).
+- Each query on a `DbSet` of `AppDbContext` has `TagWithOperationCallSite` (FSTTEL001 and FSTTEL003).

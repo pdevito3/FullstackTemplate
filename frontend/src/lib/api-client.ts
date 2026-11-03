@@ -84,6 +84,16 @@ function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
   return new Error(error.message || 'An unexpected error occurred')
 }
 
+let endSession = () => {}
+
+/**
+ * Sets what the app does when the BFF answers 401: the BFF session ended, for example after a back-channel logout.
+ * `main.tsx` sets it to refetch the session, so that the root route goes to the login.
+ */
+export function onSessionEnd(handler: () => void) {
+  endSession = handler
+}
+
 // Response interceptor to handle errors with Problem Details support
 apiClient.interceptors.response.use(
   (response) => response,
@@ -99,6 +109,11 @@ apiClient.interceptors.response.use(
 
     // Convert to appropriate error type
     const processedError = handleErrorResponse(error)
+
+    if (error.response?.status === 401) {
+      endSession()
+      return Promise.reject(processedError)
+    }
 
     // Show toast notification unless suppressed
     if (!suppressToast) {

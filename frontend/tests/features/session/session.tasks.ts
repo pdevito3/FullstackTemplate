@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
@@ -10,10 +10,7 @@ export function sessionPage(page: Page) {
   return {
     at,
 
-    /**
-     * Opens a page, and waits for the SPA to send the browser to the login of the BFF. Returns whether the app rendered
-     * anything before it left. The page is gone when the login opens, so a script in the page reports each render at once.
-     */
+    /** The page is gone when the login opens, so a script in the page reports each render at once. */
     async openAndGoToLogin(path: string) {
       let rendered = false
       await page.exposeFunction('reportRender', () => {
@@ -31,6 +28,30 @@ export function sessionPage(page: Page) {
       await page.goto(path, { waitUntil: 'commit' })
       await login
       return { rendered }
+    },
+
+    async open(path: string) {
+      await page.goto(path)
+      await expect(at.navigation).toBeVisible()
+    },
+
+    /** The page is gone when the login opens, so a script in the page reports each toast at once. */
+    async followAndGoToLogin(link: Locator) {
+      let toasted = false
+      await page.exposeFunction('reportToast', () => {
+        toasted = true
+      })
+      await page.evaluate(() => {
+        const report = (window as unknown as { reportToast: () => void }).reportToast
+        new MutationObserver(() => {
+          if (document.querySelector('[role="alertdialog"]')) report()
+        }).observe(document.body, { childList: true, subtree: true })
+      })
+
+      const login = answered(bffPaths.login)
+      await link.click()
+      await login
+      return { toasted }
     },
 
     async openWhileTheCheckFails(path: string) {

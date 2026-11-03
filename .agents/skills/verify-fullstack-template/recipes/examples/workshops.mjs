@@ -26,7 +26,6 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
     )
 
   await step('with no tenant, the list shows the way to start one and no New workshop or New venue', async () => {
-    await page.goto('/')
     await login()
     await page.goto('/workshops')
     await expect(page.getByText('Start a tenant to add workshops.', { exact: true })).toBeVisible()

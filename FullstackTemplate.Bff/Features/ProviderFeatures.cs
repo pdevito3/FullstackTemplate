@@ -110,7 +110,7 @@ public static class ProviderFeatureDecision
         var endSession = Decide(options.EndSession,
             !string.IsNullOrEmpty(discovery.EndSessionEndpoint) || !string.IsNullOrEmpty(logoutEndpoint), warnings,
             new FeatureWarning(nameof(options.EndSession), "end_session_endpoint",
-                "Logout ends the BFF session and sends the browser to the local returnUrl."));
+                "Logout ends only the BFF session. The next visit signs the user in again, unless the provider session ends."));
 
         var pushedAuthorization = Decide(options.PushedAuthorization, !string.IsNullOrEmpty(discovery.PushedAuthorizationRequestEndpoint),
             warnings, new FeatureWarning(nameof(options.PushedAuthorization), "pushed_authorization_request_endpoint",

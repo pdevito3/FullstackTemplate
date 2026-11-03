@@ -119,7 +119,7 @@ The BFF reads the discovery document of the provider one time at startup. It use
 | `Auth:Features:Revocation` | `revocation_endpoint` | The BFF does not revoke tokens. |
 | `Auth:Features:IssuerParameter` | `authorization_response_iss_parameter_supported` | The BFF accepts a callback with no `iss`. A present `iss` must still match. |
 | `Auth:Features:BackChannelLogout` | `backchannel_logout_supported` | The endpoint stays mapped, and it validates each token. |
-| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to `returnUrl` at once. |
+| `Auth:Features:EndSession` | `end_session_endpoint` | Logout sends the browser to `returnUrl` at once. The provider session stays, so the SPA there goes to the login, and the provider signs in the same user again with no prompt. |
 | `Auth:Features:PushedAuthorization` | `pushed_authorization_request_endpoint` | The BFF uses the plain authorize URL. |
 | `Auth:Features:DPoP` | `dpop_signing_alg_values_supported` | The BFF uses Bearer tokens. See [DPoP](#dpop). |
 

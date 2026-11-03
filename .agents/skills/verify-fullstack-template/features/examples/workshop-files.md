@@ -10,6 +10,7 @@ The detail page of a workshop has a Files section. A user who can change the wor
 - `files-view` opens the full image in the dialog named for the file. Escape closes it and puts the focus back on `View <file name>`.
 - `files-download` saves the file under its name with the bytes that were uploaded.
 - `files-too-large` refuses a file over 10 MB with the 422 toast `A file can be no larger than 10 MB. Choose a smaller file.`
+- `files-over-the-body-limit` refuses a file over 30 MB, the request limit of Kestrel, with the 413 toast `The file is too large to send. Choose a smaller file.` The BFF writes that problem.
 - `files-delete` asks `Delete <file name>?`, sends `DELETE /api/v1/workshops/{id}/attachments/{attachmentId}`, shows the toast `File deleted`, and moves the focus to the heading `Files`. Storage then gives 404 for the old download URL.
 - `files-reader` shows the files and their `Download` links to a member who cannot change the workshop, with no `Upload file` and no `Delete`.
 
@@ -30,6 +31,7 @@ Preconditions:
 - **Upload an image.** Click `Upload file`, and give the file chooser a PNG with `fileChooser.setFiles({ name, mimeType: 'image/png', buffer })`. The `POST` gives 201 with `contentType` `image/png` and the size of the file. The thumbnail in `View <file name>` has a `naturalWidth` above 0, and its `src` is on another origin than the app.
 - **Upload another file.** Upload a PDF. The `POST` gives 201 with `previewUrl` null. The row has no `View` button, and `Download <file name>` has the `downloadUrl` of the answer as its `href`.
 - **Too large.** Upload a file of 11 MB. The `POST` gives 422, and the toast shows its `detail`.
+- **Over the body limit.** Upload a file of 31 MB. The `POST` gives 413, and the toast shows `The file is too large to send. Choose a smaller file.` Do not read the body of that response in the recipe: Chromium does not keep it.
 - **View.** Click `View <file name>`. The dialog shows the image with a `naturalWidth` above 0. Press Escape.
 - **Download.** Click `Download <file name>` and wait for the `download` event. `suggestedFilename()` is the uploaded name, and the bytes at `download.path()` are the uploaded bytes.
 - **Delete.** Click `Delete <file name>`, then `Delete file` in the dialog. The `DELETE` gives 204, the row goes, and `page.request.get(downloadUrl)` gives 404.

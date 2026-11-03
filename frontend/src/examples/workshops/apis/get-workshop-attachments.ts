@@ -8,10 +8,7 @@ import { WorkshopKeys } from './workshop.keys'
 // The list loads again this long before its URLs expire, so a link on the screen still works when the user clicks it
 const REFRESH_MARGIN_MS = 60_000
 
-/**
- * The milliseconds after `loadedAt` until the list must load again, or `false` when the list has no URL that can
- * expire. TanStack Query adds the stale time to the time of the load, so the count starts at the load, not now.
- */
+// TanStack Query adds the stale time to the time of the load, so the count starts at the load, not now.
 export function untilRefresh(attachments: WorkshopAttachmentDto[] | undefined, loadedAt: number): number | false {
   if (!attachments?.length) {
     return false

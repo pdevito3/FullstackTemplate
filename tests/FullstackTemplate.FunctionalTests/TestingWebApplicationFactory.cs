@@ -25,7 +25,6 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
 {
     private readonly PostgresTestDatabase _database = new();
 
-    /// <summary>The S3 emulator of the run, with an empty bucket that the server uses.</summary>
     public FlociTestStorage Storage { get; } = new();
 
     // WebApplicationFactory adds each client to a List with no lock, and the tests create their clients in parallel.

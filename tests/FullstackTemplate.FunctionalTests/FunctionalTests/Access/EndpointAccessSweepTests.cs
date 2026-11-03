@@ -502,7 +502,6 @@ public class EndpointAccessSweepTests : TestBase
             return request;
         }
 
-        // A form with each required field, and a small text file for each file field
         private MultipartFormDataContent FormFor(JsonNode schema)
         {
             var form = new MultipartFormDataContent();

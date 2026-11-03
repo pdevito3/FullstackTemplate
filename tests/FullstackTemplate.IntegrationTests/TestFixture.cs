@@ -38,7 +38,6 @@ public sealed class TestFixture : IAsyncDisposable
     public static User DefaultUser => Seed.User;
     private readonly PostgresTestDatabase _database = new();
 
-    /// <summary>The S3 emulator of the run, with an empty bucket that the server uses.</summary>
     public static FlociTestStorage Storage { get; } = new();
 
     public async Task InitializeAsync()

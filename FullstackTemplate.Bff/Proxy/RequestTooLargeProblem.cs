@@ -4,8 +4,7 @@ namespace FullstackTemplate.Bff.Proxy;
 
 /// <summary>
 /// Gives a problem body to the 413 of the proxy. When the body of a request is larger than the limit of Kestrel,
-/// YARP stops the forward and sends a 413 with no body, so the SPA has no <c>detail</c> to show. In practice only a
-/// file upload gets that large.
+/// YARP stops the forward and sends a 413 with no body, so the SPA has no <c>detail</c> to show.
 /// </summary>
 public static class RequestTooLargeProblem
 {

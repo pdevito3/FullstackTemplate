@@ -14,7 +14,7 @@ export interface Api {
 }
 
 // `postDataJSON` throws on a body that is not JSON. That leaves the route unfulfilled and the test
-// times out, so a recorder must not let it throw. A body that is not JSON, such as a multipart upload, is its text.
+// times out, so a recorder must not let it throw.
 function postBody(request: Request): unknown {
   try {
     return request.postDataJSON()

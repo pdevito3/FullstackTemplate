@@ -43,7 +43,6 @@ class WorkshopAttachmentBuilder {
   }
 }
 
-// Like the Server, each signing gives new URLs, and only an image of a preview type gets a preview URL
 function signed(attachment: Omit<WorkshopAttachmentDto, 'downloadUrl' | 'previewUrl'>): WorkshopAttachmentDto {
   const signature = `expires=${encodeURIComponent(attachment.urlsExpireAt)}`
   return {

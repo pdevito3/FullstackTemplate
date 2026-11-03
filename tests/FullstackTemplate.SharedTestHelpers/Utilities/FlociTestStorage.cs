@@ -34,7 +34,6 @@ public sealed class FlociTestStorage : IAsyncDisposable
             .ForPath("/_floci/health")))
         .Build();
 
-    /// <summary>The bucket of this run.</summary>
     public string BucketName { get; } = $"test-{Guid.NewGuid():N}";
 
     /// <summary>The URL of the emulator, as the browser and the server see it.</summary>
@@ -65,7 +64,6 @@ public sealed class FlociTestStorage : IAsyncDisposable
         Environment.SetEnvironmentVariable("ObjectStorage__BucketName", BucketName);
     }
 
-    /// <summary>A client of the emulator, for a test that reads or writes the bucket directly.</summary>
     public AmazonS3Client CreateClient()
         => new(new BasicAWSCredentials(AccessKey, SecretKey), new AmazonS3Config
         {

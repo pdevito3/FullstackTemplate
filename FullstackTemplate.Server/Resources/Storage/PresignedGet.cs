@@ -11,7 +11,6 @@ public sealed record PresignedGet
     public required string ContentDisposition { get; init; }
     public required DateTimeOffset ExpiresAt { get; init; }
 
-    /// <summary>A GET that the browser saves as a file with the name <paramref name="fileName"/>.</summary>
     public static PresignedGet Attachment(string key, string fileName, string contentType, DateTimeOffset expiresAt)
         => new()
         {
@@ -21,7 +20,6 @@ public sealed record PresignedGet
             ExpiresAt = expiresAt,
         };
 
-    /// <summary>A GET that the browser shows in the page, for example in an <c>img</c> element.</summary>
     public static PresignedGet Inline(string key, string fileName, string contentType, DateTimeOffset expiresAt)
         => new()
         {

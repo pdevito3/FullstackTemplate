@@ -8,10 +8,6 @@ using Exceptions;
 using Models;
 using Resources.Storage;
 
-/// <summary>
-/// A file of a workshop. The bytes are in object storage under <see cref="StorageKey"/>, and this row holds the
-/// metadata. A reader of the workshop gets presigned URLs, so the browser reads the bytes from storage directly.
-/// </summary>
 public class WorkshopAttachment : BaseEntity, ITenantable
 {
     public const string IdPrefix = "wkatt";
@@ -44,7 +40,6 @@ public class WorkshopAttachment : BaseEntity, ITenantable
     /// <summary>The key of the bytes in object storage. The tenant prefix keeps the files of each tenant apart.</summary>
     public string StorageKey => $"tenants/{TenantId}/workshops/{WorkshopId}/attachments/{Id}";
 
-    /// <summary>True when the browser can show the file in the page, so it gets a preview URL.</summary>
     public bool HasPreview => MediaTypeOf(ContentType) is { } mediaType && PreviewContentTypes.Contains(mediaType);
 
     public static WorkshopAttachment Create(Workshop workshop, WorkshopAttachmentForCreation attachmentForCreation)
@@ -67,11 +62,9 @@ public class WorkshopAttachment : BaseEntity, ITenantable
         return attachment;
     }
 
-    /// <summary>The GET of the bytes as a download, which each attachment has.</summary>
     public PresignedGet DownloadAt(DateTimeOffset now)
         => PresignedGet.Attachment(StorageKey, FileName, ContentType, now + UrlLifetime);
 
-    /// <summary>The GET of the bytes for an <c>img</c> element, or null when the type is not in the preview list.</summary>
     public PresignedGet? PreviewAt(DateTimeOffset now)
         => HasPreview ? PresignedGet.Inline(StorageKey, FileName, ContentType, now + UrlLifetime) : null;
 

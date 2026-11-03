@@ -47,7 +47,6 @@ public sealed class WorkshopAttachmentConfiguration : IEntityTypeConfiguration<W
         builder.Ignore(e => e.StorageKey);
         builder.Ignore(e => e.HasPreview);
 
-        // The list of a workshop, oldest first
         builder.HasIndex(e => new { e.WorkshopId, e.UploadedAt, e.Id });
     }
 }

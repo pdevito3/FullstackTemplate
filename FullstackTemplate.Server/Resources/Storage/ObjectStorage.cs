@@ -5,10 +5,6 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 
-/// <summary>
-/// The bytes of files, in one S3 bucket. The database holds the metadata of each file and its key. The browser
-/// reads a file from S3 with a presigned URL, so no file bytes go through the server on a read.
-/// </summary>
 public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> options)
 {
     private string BucketName => options.Value.BucketName;

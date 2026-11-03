@@ -148,8 +148,9 @@ function formatUploadedAt(uploadedAt: string): string {
   return formatInstant(new Date(uploadedAt), browserTimeZone(), { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// The muted background gives a transparent image the same tile as the file icon
-const TILE = 'size-12 shrink-0 rounded-md bg-muted'
+// The thumbnail and the file icon share one tile. The color of the border replaces the transparent border of the
+// button, and the muted background shows behind a transparent image.
+const TILE = 'size-12 shrink-0 rounded-md border border-border bg-muted'
 
 function Thumbnail({ attachment }: { attachment: WorkshopAttachmentDto }) {
   // A reload of the list signs new URLs, so an image that failed to load gets a new try with the new URL

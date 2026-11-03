@@ -1,7 +1,7 @@
 import type { BffClaim } from '@/domain/auth/types'
 
 // The SPA knows the user only from GET /bff/user. The api fixture mocks that endpoint with the claims of the actor,
-// so a test never drives a login form. It also answers the lookup of the user record of the actor and the current user on the Server.
+// so a test never drives a login form.
 export type Identity = { signedIn: false } | { signedIn: true; claims: BffClaim[]; hasTenant: boolean }
 
 export const actorSubject = '1'

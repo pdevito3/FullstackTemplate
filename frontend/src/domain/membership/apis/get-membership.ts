@@ -69,7 +69,6 @@ export function useMembership(): Membership {
       ? { status: 'error', message: CHECK_FAILED, retry: () => void claims.refetch() }
       : { status: 'loading' }
   }
-  // The root route shows no page to an anonymous visitor, so only a session with no subject gets here.
   if (!claims.data || !identifier) return { status: 'error', message: CHECK_FAILED }
   if (user.data === undefined) {
     if (!user.isError) return { status: 'loading' }

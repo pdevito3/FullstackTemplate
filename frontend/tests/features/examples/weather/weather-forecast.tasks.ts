@@ -71,7 +71,6 @@ export function weatherForecastPage(page: Page) {
       await settled
     },
 
-    // Logout leaves the SPA: the browser navigates to the BFF.
     async logOut() {
       await at.logout.click()
       await page.waitForURL((url) => url.pathname === bffPaths.logout)

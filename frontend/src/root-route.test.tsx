@@ -84,7 +84,7 @@ async function renderLayoutAt(path: string) {
     routeTree: rootRoute.addChildren([userRoute, linksRoute, headingRoute, noHeadingRoute, lateHeadingRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
-  // Seed a signed-in member, so that the layout renders at once and its session and membership queries send no request.
+  // With staleTime Infinity, the seeded session and membership send no request.
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
   queryClient.setQueryData(AuthKeys.user(), memberClaims)
   queryClient.setQueryData(MembershipKeys.of(member.identifier), member)

@@ -8,7 +8,6 @@ export const usersPaths = {
 }
 
 export const usersApi = {
-  /** The caller that the Server reads from the access token of the actor. No route for an anonymous actor. */
   currentOf(identity: Identity): MockRoute[] {
     if (!identity.signedIn) return []
     const name = identity.claims.find((claim) => claim.type === 'name')?.value ?? null

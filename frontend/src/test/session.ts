@@ -18,10 +18,8 @@ export const member: UserDto = {
   version: 1,
 }
 
-/** The claims of the BFF session of `member`. */
 export const memberClaims: BffClaim[] = [{ type: 'sub', value: member.identifier }]
 
-/** The answers for a signed-in member of a tenant: the session of the BFF, and the user record that the layout looks up. */
 export const signedInMember: Answer[] = [
   { method: 'GET', path: '/bff/user', body: memberClaims },
   { method: 'GET', path: `/api/v1/users/by-identifier/${member.identifier}`, body: member },

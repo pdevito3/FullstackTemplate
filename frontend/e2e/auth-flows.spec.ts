@@ -9,7 +9,7 @@ import { refreshesOnEachCall, refreshMarginHint } from './stack-features.ts'
  *
  * These tests verify:
  * 1. Swagger OAuth authorization and secure API access
- * 2. The login from the redirect of the React app, a signed-in API call through the BFF, and logout
+ * 2. React UI login, a signed-in API call through the BFF, and logout
  *
  * Test users (from docs/authentication.md):
  * - Keycloak/FusionAuth/Authentik/Cognito: admin@example.com / password123!
@@ -100,8 +100,6 @@ function dpopSpansOfCurrentUserSince(startedAt: number): number {
 test.describe(`Auth Flows - ${currentIdp.name}`, () => {
   test.describe('React UI Authentication', () => {
     test('should login, call the Server as the signed-in user, and logout', async ({ page }) => {
-      // Steps 1 to 3: The SPA sends a visitor with no session to the login form of the IDP. The page can show the form
-      // before all of its resources load
       await page.goto('/')
       await expect(page.locator(currentIdp.usernameSelector)).toBeVisible({ timeout: 30000 })
 
@@ -118,8 +116,7 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       // Step 6: The home page shows the name that the Server read from the access token, which the BFF sent
       await expect(page.getByText(/^Signed in as /)).toBeVisible({ timeout: 10000 })
 
-      // Step 7: Click Logout. The context sends the session cookie of the app with its own requests, so a call that
-      // sees the session now proves that the same call sees no session after the logout.
+      // Step 7: Click Logout. The 200 before the logout proves that the 204 after it comes from the logout
       const appOrigin = new URL(page.url()).origin
       const bffUser = () => page.request.get(new URL('/bff/user', appOrigin).toString(), { headers: { 'X-CSRF': '1' } })
       expect((await bffUser()).status(), 'the BFF session before the logout').toBe(200)
@@ -133,8 +130,8 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const backToAppLink = page.getByRole('link', { name: /log back into/i })
       const duendeReturnLink = page.locator('a[href*="signout-callback-oidc"]')
 
-      // Wait for the login form or for a return link. An IDP that redirects to the app by itself goes through the app,
-      // and the app sends the browser with no session to the login form.
+      // An IDP that redirects to the app by itself goes through the app, and the app sends the browser with no session
+      // to the login form.
       const returnLink = backToAppLink.or(duendeReturnLink).first()
       const idpLoginForm = page.locator(currentIdp.usernameSelector)
       await expect
@@ -144,7 +141,6 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
         await returnLink.click()
       }
 
-      // Step 9: The app has no session, so it sends the browser to the login form again
       await expect(idpLoginForm).toBeVisible({ timeout: 30000 })
       expect((await bffUser()).status(), 'the BFF session after the logout').toBe(204)
     })
@@ -193,7 +189,6 @@ test.describe(`Auth Flows - ${currentIdp.name}`, () => {
       const deepLink = '/about?tab=team&x=1'
       const loginRequest = page.waitForRequest((request) => new URL(request.url()).pathname === '/bff/login')
 
-      // The SPA sends a visitor with no session to the login, with the deep link as the return URL
       await page.goto(deepLink)
       expect(new URL((await loginRequest).url()).searchParams.get('returnUrl')).toBe(deepLink)
       await loginAtIdp(page, currentIdp)

@@ -26,8 +26,7 @@ export function toastDemoPage(page: Page) {
 
     // The clock stands still from the start, so only letTimePass moves the timers of the toasts. Real time that a slow
     // browser takes does not count. The animations wait too, so a sheet that opens stays transparent until time passes.
-    // The page shows after the answer of the session, and the query reports that answer in a timer. So the task moves
-    // the clock in small steps until the page shows.
+    // The page shows after the answer of the session, and the query reports that answer in a timer.
     async openWithTheClockStopped() {
       const start = new Date('2026-01-05T09:00:00Z')
       await page.clock.install({ time: start })

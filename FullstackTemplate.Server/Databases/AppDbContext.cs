@@ -42,6 +42,7 @@ public class AppDbContext(
     // example:start
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<Workshop> Workshops => Set<Workshop>();
+    public DbSet<WorkshopAttachment> WorkshopAttachments => Set<WorkshopAttachment>();
     // example:end
     // new-feature:db-sets
     #endregion

@@ -1936,6 +1936,143 @@
         }
       }
     },
+    "/api/v1/workshops/{id}/attachments": {
+      "post": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Uploads one file to a Workshop as a multipart form with the field file. A file can be no larger than 10 MB.",
+        "operationId": "AddWorkshopAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopAttachmentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Gets the attachments of a Workshop, oldest first, with presigned URLs that expire at urlsExpireAt.",
+        "operationId": "GetWorkshopAttachments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkshopAttachmentDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
     "/api/v1/workshops": {
       "post": {
         "tags": [
@@ -2233,6 +2370,71 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/workshops/{id}/attachments/{attachmentId}": {
+      "delete": {
+        "tags": [
+          "Workshops"
+        ],
+        "summary": "Deletes an attachment of a Workshop and its file.",
+        "operationId": "DeleteWorkshopAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -2797,6 +2999,10 @@
         },
         "description": "The signed-in caller as the Server sees it in the access token."
       },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
       "InitiateUserAndTenantDto": {
         "required": [
           "tenantName",
@@ -3354,6 +3560,54 @@
           }
         }
       },
+      "WorkshopAttachmentDto": {
+        "required": [
+          "id",
+          "fileName",
+          "contentType",
+          "sizeBytes",
+          "uploadedAt",
+          "downloadUrl",
+          "urlsExpireAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The type that the client sent with the file, for example image/png."
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "description": "A presigned URL of object storage. The browser saves the file under its name."
+          },
+          "previewUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "A presigned URL that an img element can show. Null for each type that is not a PNG, JPEG, GIF, or WebP image."
+          },
+          "urlsExpireAt": {
+            "type": "string",
+            "description": "The time after which the URLs stop working. Load the list again before it.",
+            "format": "date-time"
+          }
+        }
+      },
       "WorkshopDto": {
         "required": [
           "id",
@@ -3405,7 +3659,8 @@
                 "Update",
                 "Schedule",
                 "Cancel",
-                "Complete"
+                "Complete",
+                "ManageAttachments"
               ],
               "type": "string"
             },

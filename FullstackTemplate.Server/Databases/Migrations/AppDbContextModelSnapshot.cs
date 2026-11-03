@@ -594,6 +594,74 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.ToTable("workshops", (string)null);
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Examples.Workshops.WorkshopAttachment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("WorkshopId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("workshop_id")
+                        .UseCollation("C");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workshop_attachments");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_workshop_attachments_tenant_id");
+
+                    b.HasIndex("WorkshopId", "UploadedAt", "Id")
+                        .HasDatabaseName("ix_workshop_attachments_workshop_id_uploaded_at_id");
+
+                    b.ToTable("workshop_attachments", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>
                 {
                     b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
@@ -663,6 +731,23 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired()
                         .HasConstraintName("fk_workshops_venues_venue_id");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Examples.Workshops.WorkshopAttachment", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_workshop_attachments_tenants_tenant_id");
+
+                    b.HasOne("FullstackTemplate.Server.Examples.Workshops.Workshop", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_workshop_attachments_workshops_workshop_id");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Agents.Agent", b =>

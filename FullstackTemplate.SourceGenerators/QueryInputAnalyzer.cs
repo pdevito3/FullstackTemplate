@@ -48,7 +48,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 			_ => [],
 		};
 
-		foreach (var operand in operands)
+		foreach (var operand in operands.SelectMany(o => TextsIn(o, types)))
 		{
 			if (PathFromFirstParameter(operand, types) is not { } path || !types.IsHandle(path[0].ContainingSymbol) || !types.InQueryLambda(ctx.Operation))
 				continue;
@@ -56,6 +56,21 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 			if (!IsCheckedBefore(ctx.Operation, path, types))
 				ctx.ReportDiagnostic(Diagnostic.Create(RawRequestText, operand.Syntax.GetLocation(), operand.Syntax.ToString()));
 		}
+	}
+
+	private static IEnumerable<IOperation> TextsIn(IOperation operand, InputTypes types)
+	{
+		yield return operand;
+		var parts = Unwrap(operand) switch
+		{
+			IInterpolatedStringOperation interpolated => interpolated.Parts.OfType<IInterpolationOperation>().Select(static p => p.Expression),
+			IBinaryOperation { OperatorKind: BinaryOperatorKind.Add, Type.SpecialType: SpecialType.System_String } concat => [concat.LeftOperand, concat.RightOperand],
+			IInvocationOperation call when types.IsLikePattern(call.TargetMethod) => call.Arguments.Select(static a => a.Value),
+			_ => [],
+		};
+
+		foreach (var text in parts.SelectMany(p => TextsIn(p, types)))
+			yield return text;
 	}
 
 	// EF evaluates a compare of a request value with null on the client, so the text does not go to Postgres
@@ -245,6 +260,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		INamedTypeSymbol genericEnumerable,
 		INamedTypeSymbol queryable,
 		INamedTypeSymbol lambdaExpression,
+		INamedTypeSymbol? likePattern,
 		ImmutableArray<INamedTypeSymbol> requestHandlers)
 	{
 		public static InputTypes? From(Compilation compilation)
@@ -255,6 +271,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 			var genericEnumerable = compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T);
 			var queryable = compilation.GetTypeByMetadataName("System.Linq.IQueryable");
 			var lambdaExpression = compilation.GetTypeByMetadataName("System.Linq.Expressions.LambdaExpression");
+			var likePattern = compilation.GetTypeByMetadataName("FullstackTemplate.Server.Databases.LikePattern");
 			var requestHandlers = new[] { "MediatR.IRequestHandler`1", "MediatR.IRequestHandler`2" }
 				.Select(compilation.GetTypeByMetadataName)
 				.OfType<INamedTypeSymbol>()
@@ -262,12 +279,15 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 			return entityId is null || postgresText is null || dbFunctions is null || queryable is null || lambdaExpression is null || requestHandlers.IsEmpty
 				? null
-				: new InputTypes(entityId, postgresText, dbFunctions, genericEnumerable, queryable, lambdaExpression, requestHandlers);
+				: new InputTypes(entityId, postgresText, dbFunctions, genericEnumerable, queryable, lambdaExpression, likePattern, requestHandlers);
 		}
 
 		public bool IsCheck(IMethodSymbol method)
 			=> (method.Name == "IsValid" && SymbolEqualityComparer.Default.Equals(method.ContainingType, entityId))
 				|| (method.Name == "CanStore" && SymbolEqualityComparer.Default.Equals(method.ContainingType, postgresText));
+
+		public bool IsLikePattern(IMethodSymbol method)
+			=> likePattern is not null && SymbolEqualityComparer.Default.Equals(method.ContainingType, likePattern);
 
 		public bool SendsArguments(IMethodSymbol method)
 			=> method.Name switch

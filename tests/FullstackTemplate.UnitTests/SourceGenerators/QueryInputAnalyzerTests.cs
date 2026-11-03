@@ -142,6 +142,11 @@ public class QueryInputAnalyzerTests
     [Arguments("u => EF.Functions.Like(u.Identifier, request.Identifier)", "request.Identifier")]
     [Arguments("u => EF.Functions.ILike(u.Identifier, request.Identifier)", "request.Identifier")]
     [Arguments("u => request.Ids.Contains(u.Id)", "request.Ids")]
+    [Arguments("u => EF.Functions.ILike(u.Identifier, $\"%{request.Identifier}%\")", "request.Identifier")]
+    [Arguments("u => EF.Functions.ILike(u.Identifier, LikePattern.Containing(request.Identifier), LikePattern.EscapeCharacter)", "request.Identifier")]
+    [Arguments("u => EF.Functions.Like(u.Identifier, LikePattern.StartingWith(request.Identifier.Trim()), LikePattern.EscapeCharacter)", "request.Identifier.Trim()")]
+    [Arguments("u => u.Identifier == request.Identifier + \"-1\"", "request.Identifier")]
+    [Arguments("u => u.Identifier.StartsWith(\"a\" + request.Identifier + \"b\")", "request.Identifier")]
     public async Task each_query_operator_that_sends_a_request_text_gets_fstqry001(string predicate, string text)
     {
         // Act
@@ -155,12 +160,28 @@ public class QueryInputAnalyzerTests
     [Arguments("u => u.Identifier == request.Identifier.Trim()")]
     [Arguments("u => u.Identifier.StartsWith(request.Identifier)")]
     [Arguments("u => EF.Functions.ILike(u.Identifier, request.Identifier)")]
+    [Arguments("u => EF.Functions.ILike(u.Identifier, $\"%{request.Identifier}%\")")]
+    [Arguments("u => EF.Functions.ILike(u.Identifier, LikePattern.Containing(request.Identifier), LikePattern.EscapeCharacter)")]
+    [Arguments("u => u.Identifier == request.Identifier + \"-1\"")]
     public async Task a_request_text_that_postgres_text_can_store_checks_first_has_no_diagnostics_in_each_operator(string predicate)
     {
         // Act
         var diagnostics = await RunInHandler($"""
             return PostgresText.CanStore(request.Identifier)
                 && await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_like_pattern_of_the_entity_value_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            var tenant = Create(request.Dto.Name);
+            return await dbContext.Users.AnyAsync(u => EF.Functions.ILike(u.Identifier, LikePattern.Containing(tenant.Name) + $"{tenant.Id}%", LikePattern.EscapeCharacter), cancellationToken);
             """);
 
         // Assert

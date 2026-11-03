@@ -110,6 +110,36 @@ public class QueryTagAnalyzerTests
     }
 
     [Test]
+    [Arguments("RemoveRange")]
+    [Arguments("AddRange")]
+    [Arguments("UpdateRange")]
+    [Arguments("AttachRange")]
+    public async Task an_untagged_query_passed_to_a_range_method_of_the_dbset_gets_fsttel001(string method)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            dbContext.Users.{method}(dbContext.Users.Where(u => u.Identifier == identifier));
+            """);
+
+        // Assert
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.Id.ShouldBe("FSTTEL001");
+        diagnostic.Location.SourceSpan.Start.ShouldBeGreaterThan(diagnostic.Location.SourceTree!.GetText().ToString().IndexOf(method, StringComparison.Ordinal));
+    }
+
+    [Test]
+    public async Task a_tagged_query_passed_to_a_range_method_of_the_dbset_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            dbContext.Users.RemoveRange(dbContext.Users.TagWithOperationCallSite("users.remove_batch").Where(u => u.Identifier == identifier));
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task a_query_in_a_local_that_is_tagged_on_the_first_line_has_no_diagnostics()
     {
         // Act
@@ -345,6 +375,28 @@ public class QueryTagAnalyzerTests
 
         // Assert
         Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("dbContext.Users");
+    }
+
+    [Test]
+    [Arguments("private IEnumerable<User> LiveUsers() => dbContext.Users.Where(u => u.Id != \"\");")]
+    [Arguments("private IEnumerable<User> LiveUsers() { var query = dbContext.Users.AsNoTracking(); return query; }")]
+    [Arguments("private object LiveUsers() => dbContext.Users.Where(u => u.Id != \"\");")]
+    public async Task a_helper_that_returns_an_untagged_query_as_a_type_that_is_not_iqueryable_gets_fsttel001(string helper)
+    {
+        // Act
+        var diagnostics = await Run($$"""
+            public sealed class Directory(AppDbContext dbContext)
+            {
+                public object Live() => LiveUsers();
+
+                {{helper}}
+            }
+            """);
+
+        // Assert
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.Id.ShouldBe("FSTTEL001");
+        Text(diagnostic).ShouldBe("dbContext.Users");
     }
 
     [Test]

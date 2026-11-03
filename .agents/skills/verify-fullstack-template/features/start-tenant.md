@@ -10,7 +10,6 @@ A new database has no user records. A user who signs in with no user record sees
 - `start` sends `POST /api/v1/users/initiate` with the `sub` of the session and the role `Admin`. The page shows `You started <name>. You are its admin, ...`, and the link `Go to the home page` has the focus. The notice does not show again.
 - `refused` shows the refusal of the Server next to its field, for example a tenant name in use.
 - `member` tells a user with a user record that they already have a tenant.
-- `signed-out` asks an anonymous visitor to log in.
 
 ## How to get to it (user POV)
 

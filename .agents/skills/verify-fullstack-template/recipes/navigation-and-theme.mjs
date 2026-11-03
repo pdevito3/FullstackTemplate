@@ -1,9 +1,11 @@
 // Feature: navigation-and-theme. Sidebar links, breadcrumb, collapse, theme. See features/navigation-and-theme.md.
-export default async ({ page, step, capture, settle, expect }) => {
+export default async ({ page, step, capture, settle, expect, login }) => {
   const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb', exact: true })
   // The layout has a Toggle Sidebar button in the header and a rail with the same name. Use the header one.
   const toggleSidebar = page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' }).first()
   const announcement = page.getByTestId('page-announcement')
+
+  await step('log in', () => login())
 
   await step('a link in the page: Go to the home page on a missing page gives the focus to the h1 of Home', async () => {
     await page.goto('/no-such-page')

@@ -1,5 +1,7 @@
 // Feature: components-showcase. The /components page shows each shared UI component. See features/examples/components-showcase.md.
-export default async ({ page, step, capture, settle, expect }) => {
+export default async ({ page, step, capture, settle, expect, login }) => {
+  await step('log in', () => login())
+
   await step('open /components: all sections show', async () => {
     await page.goto('/components')
     await expect(page.getByRole('heading', { name: 'Component Library' })).toBeVisible()

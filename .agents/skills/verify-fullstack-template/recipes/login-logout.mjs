@@ -1,12 +1,17 @@
 // Feature: login-logout. BFF login through the IdP of the stack. See features/login-logout.md.
-export default async ({ page, context, step, capture, expect, login, logout }) => {
-  await step('anonymous: /bff/user is 204, the page shows Login, and the Server answers 401', async () => {
+// The page is on the IdP when the visitor has no session, so a check of the app sends its own request. The context
+// sends the cookies of the app with it.
+const appStatus = async (page, path) => (await page.request.get(path, { headers: { 'X-CSRF': '1' } })).status()
+
+export default async ({ page, context, stack, step, capture, expect, login, logout }) => {
+  await step('anonymous: /bff/user is 204, the SPA goes to the login at once with / as the return URL, and the Server answers 401', async () => {
     const res = page.waitForResponse((r) => r.url().endsWith('/bff/user'))
-    await page.goto('/')
+    const loginRequest = page.waitForRequest((r) => new URL(r.url()).pathname === '/bff/login')
+    await page.goto('/', { waitUntil: 'commit' })
     expect((await res).status()).toBe(204)
-    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
-    const status = await page.evaluate(async () => (await fetch('/api/v1/users/me', { headers: { 'X-CSRF': '1' } })).status)
-    expect(status).toBe(401)
+    expect(new URL((await loginRequest).url()).searchParams.get('returnUrl')).toBe('/')
+    await page.waitForURL((u) => u.origin !== new URL(stack.urls.web).origin, { waitUntil: 'domcontentloaded' })
+    expect(await appStatus(page, '/api/v1/users/me')).toBe(401)
   })
   await capture('anonymous')
 
@@ -32,9 +37,8 @@ export default async ({ page, context, step, capture, expect, login, logout }) =
 
   await step('log out', () => logout())
 
-  await step('logged out: /bff/user is 204 again', async () => {
-    const status = await page.evaluate(async () => (await fetch('/bff/user', { headers: { 'X-CSRF': '1' } })).status)
-    expect(status).toBe(204)
+  await step('logged out: /bff/user is 204 again, and the page is the login of the IdP', async () => {
+    expect(await appStatus(page, '/bff/user')).toBe(204)
     await expect(page.getByText(`Signed in as ${name}`)).toHaveCount(0)
   })
   await capture('logged-out')

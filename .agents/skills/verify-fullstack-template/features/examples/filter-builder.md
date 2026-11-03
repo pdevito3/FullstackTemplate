@@ -32,6 +32,7 @@ Preconditions:
 
 The QueryKit output is `page.locator('[data-slot="card"]').filter({ hasText: 'QueryKit String' }).locator('.font-mono')`. Below, it is called `queryKit`. A filter badge is `page.locator('[data-slot="badge"]').filter({ hasText: /First Name\s*\|\s*Contains\s*\|\s*Paul/ })`. The property menu is `page.getByRole('menu', { name: 'Add Filter' })`.
 
+- **Log in.** Run `await login()`. Each page of the app needs a session.
 - **Empty state.** Open `/filter-demo`. Run `page.goto('/filter-demo')`. The `QueryKit String` card contains `No filters applied yet`.
 - **No mount animation.** Before the load, `page.addInitScript` records the `[data-slot="collapsible-content"]` panel in each of the first 20 frames after it mounts. In each frame, the computed `opacity` is 1 and the height is equal to `scrollHeight`.
 - **Open the property menu.** Choose `Add Filter`. Run `page.getByRole('button', { name: 'Add Filter' }).click()`. The menu `Add Filter` opens, with the searchbox `Search properties`.

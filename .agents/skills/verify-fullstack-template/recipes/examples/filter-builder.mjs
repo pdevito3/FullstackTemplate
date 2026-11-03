@@ -1,5 +1,5 @@
 // Feature: filter-builder. The demo at /filter-demo turns filters into a QueryKit string. See features/examples/filter-builder.md.
-export default async ({ page, step, capture, settle, expect }) => {
+export default async ({ page, step, capture, settle, expect, login }) => {
   // The card titled QueryKit String shows the generated string in a monospace block.
   const queryKitCard = page.locator('[data-slot="card"]').filter({ hasText: 'QueryKit String' })
   const queryKit = queryKitCard.locator('.font-mono')
@@ -8,6 +8,8 @@ export default async ({ page, step, capture, settle, expect }) => {
   const paulBadge = badge(/First Name\s*\|\s*Contains\s*\|\s*Paul/)
   const statusBadge = badge(/^Status/)
   const propertyMenu = page.getByRole('menu', { name: 'Add Filter' })
+
+  await step('log in', () => login())
 
   // Record the Examples panel of the sidebar in each of the first 20 frames after it mounts.
   // Motion animates the height in JavaScript, so getAnimations() does not see it. Read the computed style.

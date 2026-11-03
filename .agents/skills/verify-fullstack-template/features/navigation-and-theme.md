@@ -33,6 +33,7 @@ Preconditions:
 - `doctor.sh` exits with 0.
 - The browser context is new, so `localStorage` has no `ui-theme` value.
 
+- **Log in.** Run `await login()`. Each page of the app needs a session.
 - **Link in the page.** Open `/no-such-page` and choose `Go to the home page`. The URL ends with `/`, and the level 1 heading has the focus.
 - **Home.** Open `/`. Run `page.goto('/')`. `getByRole('navigation', { name: 'breadcrumb', exact: true })` has the text `Home`. Use `exact: true`, because a page can have a breadcrumb of its own. `page.locator('[data-slot="sidebar"] [data-active]')` has 1 element, `Home`. No element has `data-active="false"`.
 - **About.** Choose `About`. Run `page.getByRole('link', { name: 'About' }).click()`. The URL ends with `/about`, the breadcrumb is `About`, and the heading `About` (level 1) shows. The link `About` keeps the focus, and `getByTestId('page-announcement')` has the text `About`. The capture `about` shows it.

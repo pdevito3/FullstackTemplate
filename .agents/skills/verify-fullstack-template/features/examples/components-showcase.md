@@ -35,6 +35,7 @@ Preconditions:
 - `doctor.sh` exits with 0.
 - The viewport is 1280x800 for all steps except the mobile dialog.
 
+- **Log in.** Run `await login()`. Each page of the app needs a session.
 - **Page.** Run `page.goto('/components')`. The heading `Component Library` is visible. `page.getByRole('grid', { name: 'Users' }).getByRole('row')` has 4 rows.
 - **Focus on load.** Right after the page load, `page.getByRole('searchbox').first()` does not have the focus. `document.activeElement` is `BODY`.
 - **Sidebar active items.** `page.locator('[data-slot="sidebar"] [data-active]')` has 2 elements: `Examples` and `Components`. No element on the page has `data-active="false"` or `data-inset="false"`.

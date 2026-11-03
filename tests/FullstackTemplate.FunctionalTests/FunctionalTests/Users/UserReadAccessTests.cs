@@ -133,8 +133,11 @@ public class UserReadAccessTests : TestBase
             .ShouldBe("User was not found.");
     }
 
-    // The delete skips the save, as a delete on another server instance does, so the tenant of the user stays cached
+    // The delete skips the save, as a delete on another server instance does, so the tenant of the user stays cached.
+    // The test runs alone: a user save of another test can invalidate an identifier in the same generation bucket of
+    // TenantIdProvider, and the cached tenant is then gone.
     [Test]
+    [NotInParallel]
     public async Task deleted_user_with_a_cached_tenant_is_forbidden_for_an_unknown_identifier()
     {
         // Arrange

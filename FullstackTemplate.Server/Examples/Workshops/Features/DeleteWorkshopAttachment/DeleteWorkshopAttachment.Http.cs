@@ -14,7 +14,8 @@ public sealed class DeleteWorkshopAttachmentEndpoint : IEndpoint
         .RequireAuthorization()
         .ProducesProblem(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status404NotFound)
-        .ProducesValidationProblem(StatusCodes.Status409Conflict);
+        .ProducesValidationProblem(StatusCodes.Status409Conflict)
+        .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
     /// <summary>
     /// Deletes an attachment of a Workshop and its file.

@@ -121,9 +121,10 @@ public class WorkshopCheckOrderTests : TestBase
         var byTenantAdmin = await ActionsAsync(members.TenantAdmin, workshop.Id);
 
         // Assert
-        byOrganizer.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
+        const string changer = "Update, Schedule, Cancel, ManageAttachments";
+        byOrganizer.ShouldBe([$"detail: {changer}", $"row: {changer}"]);
         byOtherWorkshopManager.ShouldBe(["detail: ", "row: "]);
-        byTenantAdmin.ShouldBe(["detail: Update, Schedule, Cancel", "row: Update, Schedule, Cancel"]);
+        byTenantAdmin.ShouldBe([$"detail: {changer}", $"row: {changer}"]);
     }
 
     [Test]

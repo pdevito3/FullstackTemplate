@@ -33,7 +33,7 @@ public class TenantDeleteOwnedRowsTests : TestBase
             .Under(tenant)
             .AddAgent(out _, a => a.Permissions = [Permission.Names.ReadAgents])
             // example:start
-            .Under(tenant).AddVenue(out _).AddWorkshop(out _)
+            .Under(tenant).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out _)
             // example:end
             // new-feature:tenant-owned-rows
             .BuildAsync();

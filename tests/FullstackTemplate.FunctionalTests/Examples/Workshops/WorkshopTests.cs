@@ -39,7 +39,7 @@ public class WorkshopTests : TestBase
         var workshop = (await result.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
         result.Headers.Location.ShouldNotBeNull().ToString().ShouldEndWith($"/workshops/{workshop.Id}");
         workshop.Status.ShouldBe("Draft");
-        workshop.AllowedActions.ShouldBe(["Update", "Schedule", "Cancel"]);
+        workshop.AllowedActions.ShouldBe(["Update", "Schedule", "Cancel", "ManageAttachments"]);
     }
 
     [Test]
@@ -172,7 +172,7 @@ public class WorkshopTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.OK);
         var dto = (await result.Content.ReadFromJsonAsync<WorkshopDto>()).ShouldNotBeNull();
         dto.Status.ShouldBe("Scheduled");
-        dto.AllowedActions.ShouldBe(["Cancel", "Complete"]);
+        dto.AllowedActions.ShouldBe(["Cancel", "Complete", "ManageAttachments"]);
         dto.Version.ShouldBe(scheduled.Version);
     }
 

@@ -7,4 +7,5 @@ export const session = (page: Page) => ({
   homeLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home', exact: true }),
   aboutHeading: page.getByRole('heading', { level: 1, name: 'About' }),
   toasts: page.getByRole('alertdialog'),
+  rejectedSignInToast: page.getByRole('alertdialog').filter({ hasText: 'The Server did not accept your sign-in for this request.' }),
 })

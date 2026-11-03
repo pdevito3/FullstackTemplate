@@ -66,6 +66,13 @@ export function sessionPage(page: Page) {
       return { toasted }
     },
 
+    /** A 401 of the API makes the app check the session again. */
+    async followAndWaitForTheSessionCheck(link: Locator) {
+      const checked = answered(bffPaths.user)
+      await link.click()
+      await checked
+    },
+
     async openWhileTheCheckFails(path: string) {
       await page.goto(path)
       await expect(at.checkFailed).toBeVisible()

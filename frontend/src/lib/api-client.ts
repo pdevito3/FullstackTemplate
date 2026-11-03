@@ -84,20 +84,24 @@ function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
   return new Error(error.message || 'An unexpected error occurred')
 }
 
-let endSession = () => {}
+const signInRejectedMessage =
+  'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
+let isSessionEnded = () => Promise.resolve(false)
 
 /**
- * Sets what the app does when the BFF answers 401: the BFF session ended, for example after a back-channel logout.
- * `main.tsx` sets it to refetch the session, so that the root route goes to the login.
+ * Sets the check that tells whether the BFF session ended. The Server answers 401 to a call that needs a user, and the
+ * BFF passes it on. That 401 can also come while the session lives, for example when a token refresh fails for a
+ * short time. `main.tsx` checks the session again, so that the root route goes to the login when the session ended.
  */
-export function onSessionEnd(handler: () => void) {
-  endSession = handler
+export function onUnauthorized(handler: () => Promise<boolean>) {
+  isSessionEnded = handler
 }
 
 // Response interceptor to handle errors with Problem Details support
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     // Get custom config options
     const config = error.config as AxiosRequestConfig | undefined
     const suppressToast = config?.suppressErrorToast ?? false
@@ -110,8 +114,9 @@ apiClient.interceptors.response.use(
     // Convert to appropriate error type
     const processedError = handleErrorResponse(error)
 
-    if (error.response?.status === 401) {
-      endSession()
+    // The check of the session cannot wait for itself, so its own 401 is a failed check.
+    if (error.response?.status === 401 && config?.url !== '/bff/user') {
+      if (!(await isSessionEnded()) && !suppressToast) Notification.error(signInRejectedMessage)
       return Promise.reject(processedError)
     }
 

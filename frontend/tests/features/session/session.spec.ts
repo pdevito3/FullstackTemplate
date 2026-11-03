@@ -43,6 +43,20 @@ test.describe('a session that ends while the page is open', () => {
   })
 })
 
+test.describe('a call of the API that answers 401 while the session lives', () => {
+  test('keeps the page, does not go to the login, and shows a toast', async ({ page, api }) => {
+    const session = sessionPage(page)
+    await session.open('/about')
+
+    api.mock(...bffApi.apiRejectsTheToken(usersPaths.current))
+    await session.followAndWaitForTheSessionCheck(session.at.homeLink)
+
+    await expect(session.at.rejectedSignInToast).toBeVisible()
+    await expect(session.at.navigation).toBeVisible()
+    expect(api.all('get', bffPaths.login)).toHaveLength(0)
+  })
+})
+
 test.describe('a failed check of the session', () => {
   test('shows an alert and no page or toast, and does not go to the login', async ({ page, api }) => {
     api.mock(bffApi.userFails(aProblem().saying('The session store is down.')))
@@ -54,6 +68,15 @@ test.describe('a failed check of the session', () => {
     await expect(session.at.aboutHeading).toHaveCount(0)
     // The toast shows with the failed request, before the alert. A toast closes after 6 seconds, so read the count once.
     expect(await session.at.toasts.count()).toBe(0)
+    expect(api.all('get', bffPaths.login)).toHaveLength(0)
+  })
+
+  test('shows the alert when the check answers 401', async ({ page, api }) => {
+    api.mock({ method: 'get', path: bffPaths.user, status: 401 })
+
+    const session = sessionPage(page)
+    await session.openWhileTheCheckFails('/about')
+
     expect(api.all('get', bffPaths.login)).toHaveLength(0)
   })
 

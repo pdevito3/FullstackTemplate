@@ -47,6 +47,7 @@ public class EndpointAccessSweepTests : TestBase
         ["GetVenueList"] = new("Each member lists the venues of the own tenant. The tenant filter hides each other tenant."),
         ["GetWorkshop"] = new("Each member reads the workshops of the own tenant. The allowed actions show what the caller can do."),
         ["GetWorkshopList"] = new("Each member lists the workshops of the own tenant. The tenant filter hides each other tenant."),
+        ["GetWorkshopAttachments"] = new("Each member reads the files of the workshops of the own tenant. The tenant filter on the workshop hides each other tenant."),
         ["list_workshops"] = new("ToolAccessKind.Read. Each member lists the workshops of the own tenant, and the tenant filter hides the others."),
         ["GetSecureWeatherForecast"] = new("Demo data with no tenant rows. Each signed-in caller gets the same forecast."),
         ["GetWeatherForecast"] = new("Demo of a public endpoint. It has no tenant rows.", Anonymous: true),
@@ -328,7 +329,15 @@ public class EndpointAccessSweepTests : TestBase
             IdsByKind.ToDictionary(kind => kind.Key, kind => EntityId.New(kind.Value[..kind.Value.IndexOf('_')])),
             $"unknown-{Guid.NewGuid():N}");
 
-        public static bool NamesARecord(string name) => name is "id" or "identifier";
+        // A route value that names a record under the record of {id}. Its value is under "<kind>/<name>" in IdsByKind.
+        private static readonly HashSet<string> ChildRecordNames =
+        [
+            // example:start
+            "attachmentId",
+            // example:end
+        ];
+
+        public static bool NamesARecord(string name) => name is "id" or "identifier" || ChildRecordNames.Contains(name);
 
         public string? ValueFor(string name, string kind) => name switch
         {
@@ -337,6 +346,10 @@ public class EndpointAccessSweepTests : TestBase
                 : throw new SweepSetupException($"It has an id of the kind '{kind}', which the sweep does not know. "
                     + $"Make a record of this kind in {nameof(AddTenantAsync)} and add its ID under '{kind}'."),
             "identifier" => Identifier,
+            _ when ChildRecordNames.Contains(name) => IdsByKind.TryGetValue($"{kind}/{name}", out var childId)
+                ? childId
+                : throw new SweepSetupException($"It has the route value {{{name}}} under '{kind}', which the sweep does not know. "
+                    + $"Make a record of this kind in {nameof(AddTenantAsync)} and add its ID under '{kind}/{name}'."),
             "permission" => PermissionName,
             _ => null,
         };
@@ -351,6 +364,7 @@ public class EndpointAccessSweepTests : TestBase
             // example:start
             .AddVenue(out var venue)
             .AddWorkshop(out var workshop)
+            .AddWorkshopAttachment(out var attachment)
             .Under(tenant)
             // example:end
             // new-feature:sweep-graph
@@ -370,6 +384,7 @@ public class EndpointAccessSweepTests : TestBase
         // example:start
         await InsertAsync(venue);
         await InsertAsync(workshop);
+        await InsertAsync(attachment);
         // example:end
         // new-feature:sweep-inserts
 
@@ -381,6 +396,7 @@ public class EndpointAccessSweepTests : TestBase
             // example:start
             ["venues"] = venue.Id,
             ["workshops"] = workshop.Id,
+            ["workshops/attachmentId"] = attachment.Id,
             // example:end
             // new-feature:sweep-ids
         };
@@ -421,6 +437,7 @@ public class EndpointAccessSweepTests : TestBase
         string Kind,
         IReadOnlyList<HttpParameter> Parameters,
         JsonNode? Body,
+        JsonNode? FormBody,
         JsonNode Document)
     {
         public bool IsDelete => Method == HttpMethods.Delete;
@@ -438,7 +455,7 @@ public class EndpointAccessSweepTests : TestBase
                 .Select(o => (Path: o.Name[(o.Method.Length + 1)..], o.Operation))
                 .FirstOrDefault(o => o.Operation["operationId"]?.GetValue<string>() == name);
             if (operation.Operation is null)
-                return new HttpEntrypoint(target, method, "", kind, [], null, document);
+                return new HttpEntrypoint(target, method, "", kind, [], null, null, document);
 
             var parameters = (operation.Operation["parameters"]?.AsArray() ?? [])
                 .Select(p => new HttpParameter(
@@ -447,9 +464,10 @@ public class EndpointAccessSweepTests : TestBase
                     p["required"]?.GetValue<bool>() == true,
                     p["schema"]))
                 .ToList();
-            var body = operation.Operation["requestBody"]?["content"]?["application/json"]?["schema"];
+            var content = operation.Operation["requestBody"]?["content"];
             return new HttpEntrypoint(target with { Label = $"{method} {operation.Path}" },
-                method, operation.Path, kind, parameters, body, document);
+                method, operation.Path, kind, parameters, content?["application/json"]?["schema"],
+                content?["multipart/form-data"]?["schema"], document);
         }
 
         public HttpRequestMessage RequestFor(RecordIds ids)
@@ -479,7 +497,30 @@ public class EndpointAccessSweepTests : TestBase
             if (Body is not null)
                 request.Content = new StringContent(
                     SchemaSample.Of(Body, Document)?.ToJsonString() ?? "null", Encoding.UTF8, "application/json");
+            if (FormBody is not null)
+                request.Content = FormFor(FormBody);
             return request;
+        }
+
+        // A form with each required field, and a small text file for each file field
+        private MultipartFormDataContent FormFor(JsonNode schema)
+        {
+            var form = new MultipartFormDataContent();
+            foreach (var name in SchemaSample.RequiredOf(schema, Document))
+            {
+                var property = schema["properties"]![name]!;
+                if (SchemaSample.IsFile(property, Document))
+                {
+                    var file = new ByteArrayContent("sweep"u8.ToArray());
+                    file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain");
+                    form.Add(file, name, "sweep.txt");
+                }
+                else
+                {
+                    form.Add(new StringContent(SchemaSample.Of(property, Document)?.ToString() ?? ""), name);
+                }
+            }
+            return form;
         }
 
         private string QueryValueOf(HttpParameter parameter)

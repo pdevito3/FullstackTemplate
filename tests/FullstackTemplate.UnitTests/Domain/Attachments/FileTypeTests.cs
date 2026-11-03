@@ -27,6 +27,19 @@ public class FileTypeTests
         types.ShouldBe([type]);
     }
 
+    public static IEnumerable<Func<FileType>> EachType() => FileType.All.Select(type => (Func<FileType>)(() => type));
+
+    [Test]
+    [MethodDataSource(nameof(EachType))]
+    public void each_type_of_the_registry_has_a_sample_that_only_it_starts(FileType type)
+    {
+        // Act
+        var types = FileType.All.Where(t => t.StartsFile(SampleFiles.Of(type))).ToList();
+
+        // Assert
+        types.ShouldBe([type]);
+    }
+
     public static IEnumerable<Func<byte[]>> FilesOfNoType()
     {
         yield return () => SampleFiles.Text;

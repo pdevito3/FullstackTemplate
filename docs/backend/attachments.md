@@ -148,7 +148,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    await attachments.DeleteAsync(photo, cancellationToken);
    ```
 
-7. **The tests.** Give the entity graph a blueprint that makes the upload with `SampleFiles` of `SharedTestHelpers/Fakes/Attachments/`. Add the entity to `TenantDeleteOwnedRowsTests`, each endpoint to `EndpointAccessSweepTests`, and the columns to `StringColumnLengthTests`: `file_name` goes in `CallerColumns`, and `media_type` and `storage_key` go in `ServerWrittenColumns`. Write functional tests for an upload, a type that the rules refuse, a file whose bytes do not match its name, a file over the largest size, and the rules in the list. Done when `dotnet test --solution FullstackTemplate.slnx` passes.
+7. **The tests.** Give the entity graph a blueprint that makes the upload with `SampleFiles` of `SharedTestHelpers/Fakes/Attachments/`. Add the entity to `TenantDeleteOwnedRowsTests`, each endpoint to `EndpointAccessSweepTests`, and the columns to `StringColumnLengthTests`: `file_name` goes in `CallerColumns`, and `media_type` and `storage_key` go in `ServerWrittenColumns`. The sweep sends a file of each type of the registry until the rules of the route take one, so it needs no copy of the rules. Write functional tests for an upload, a type that the rules refuse, a file whose bytes do not match its name, a file over the largest size, and the rules in the list. Done when `dotnet test --solution FullstackTemplate.slnx` passes.
 8. **The contract.** Regenerate it with the `api-contract` skill.
 
 ### In the SPA
@@ -200,7 +200,7 @@ The messages come from the rules: `FileTooLargeMessage` and `TypeNotAllowedMessa
 
 Kestrel of the BFF and of the Server refuses a request body over 30,000,000 bytes before the rules run. The BFF then gives the 413 the problem detail `RequestTooLargeProblem.Detail`. So the constructor of `UploadRules` refuses a largest size over `UploadRules.LargestMaxSizeMegabytes`. A file of that size and its form fit in the limit, so the user gets the message of the rules. `UploadRequestLimitTests` fails when the constant grows past the request limit of the Server or the BFF.
 
-To add a type to the registry, give it the fixed first bytes that each of its files starts with. Do not add a type that has no such bytes, such as CSV or SVG. Do not add a type whose bytes another type also starts with: a DOCX and an XLSX file both start with the bytes of a ZIP file. Set `canPreview` only for a raster image. `FileTypeTests` checks each signature with the samples of `SampleFiles`, so add a sample from the specification of the format.
+To add a type to the registry, give it the fixed first bytes that each of its files starts with. Do not add a type that has no such bytes, such as CSV or SVG. Do not add a type whose bytes another type also starts with: a DOCX and an XLSX file both start with the bytes of a ZIP file. Set `canPreview` only for a raster image. `FileTypeTests` checks each signature with the samples of `SampleFiles`, so add a sample from the specification of the format, and give it to `SampleFiles.Of`.
 
 ## Presigned URLs
 

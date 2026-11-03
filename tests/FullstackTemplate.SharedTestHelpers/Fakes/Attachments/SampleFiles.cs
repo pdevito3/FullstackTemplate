@@ -33,6 +33,21 @@ public static class SampleFiles
     // A ZIP file, as a DOCX or an XLSX file starts
     public static readonly byte[] Zip = [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00];
 
+    private static readonly Dictionary<FileType, byte[]> OfEachType = new()
+    {
+        [FileType.Png] = Png,
+        [FileType.Jpeg] = Jpeg,
+        [FileType.Gif] = Gif89,
+        [FileType.WebP] = WebP,
+        [FileType.Pdf] = Pdf,
+    };
+
+    /// <summary>The sample of a type of the registry. <c>FileTypeTests</c> fails when a type has no sample.</summary>
+    public static byte[] Of(FileType type)
+        => OfEachType.TryGetValue(type, out var head)
+            ? head
+            : throw new ArgumentException($"SampleFiles has no sample of {type}. Add one from the specification of the format.", nameof(type));
+
     /// <summary>A file of the length that starts with the first bytes of a sample.</summary>
     public static byte[] OfLength(byte[] head, int length)
     {

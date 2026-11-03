@@ -190,8 +190,8 @@ public class UploadRulesTests
 
     [Test]
     [Arguments(0)]
-    [Arguments(2048)]
-    public void rules_refuse_a_largest_size_that_the_client_cannot_read_as_an_int(int maxSizeMegabytes)
+    [Arguments(UploadRules.LargestMaxSizeMegabytes + 1)]
+    public void rules_refuse_a_largest_size_under_1_mb_or_over_the_size_that_the_request_limit_takes(int maxSizeMegabytes)
     {
         // Act
         var make = () => new UploadRules(maxSizeMegabytes, FileType.Pdf);

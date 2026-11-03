@@ -11,15 +11,20 @@ public sealed class UploadRules
 {
     public const string FileEmptyMessage = "The file is empty. Choose a file that has content.";
 
-    private const long BytesPerMegabyte = 1024 * 1024;
+    /// <summary>
+    /// The largest size that a use can allow. Kestrel of the BFF and of the Server refuses a request body over
+    /// 30,000,000 bytes before the rules run, and the multipart form adds its boundaries and part headers to the file.
+    /// A file of this size and its form fit in that limit, so the user gets the message of the rules, not a 413.
+    /// <c>UploadRequestLimitTests</c> checks it against the request limits of the Server and the BFF.
+    /// </summary>
+    public const int LargestMaxSizeMegabytes = 28;
 
-    // The SPA reads the size as a JSON number, and the DTO gives it as an int
-    private const int MaxSizeMegabytesLimit = (int)(int.MaxValue / BytesPerMegabyte);
+    private const long BytesPerMegabyte = 1024 * 1024;
 
     public UploadRules(int maxSizeMegabytes, params FileType[] fileTypes)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(maxSizeMegabytes, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxSizeMegabytes, MaxSizeMegabytesLimit);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxSizeMegabytes, LargestMaxSizeMegabytes);
         if (fileTypes.Length == 0)
             throw new ArgumentException("Allow at least one file type.", nameof(fileTypes));
 

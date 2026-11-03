@@ -198,7 +198,7 @@ The stored media type is the type of the bytes, not the claim of the client. A d
 
 The messages come from the rules: `FileTooLargeMessage` and `TypeNotAllowedMessage` name the limits of the use. Keep each limit of a use only in its rules. A test reads the limit and the message from the rules, such as `UploadRules.MaxSizeBytes + 1`. The SPA builds its hint and its `accept` list from the rules of the list response ([server-state.md](../frontend/server-state.md#rules), rule 8). The `accept` list only helps the user. The Server decides.
 
-Kestrel of the BFF and of the Server refuses a request body over 30,000,000 bytes before the rules run. The BFF then gives the 413 the problem detail `RequestTooLargeProblem.Detail`. So keep the largest size of a use at 28 MB or less, and the user gets the message of the rules.
+Kestrel of the BFF and of the Server refuses a request body over 30,000,000 bytes before the rules run. The BFF then gives the 413 the problem detail `RequestTooLargeProblem.Detail`. So the constructor of `UploadRules` refuses a largest size over `UploadRules.LargestMaxSizeMegabytes`. A file of that size and its form fit in the limit, so the user gets the message of the rules. `UploadRequestLimitTests` fails when the constant grows past the request limit of the Server or the BFF.
 
 To add a type to the registry, give it the fixed first bytes that each of its files starts with. Do not add a type that has no such bytes, such as CSV or SVG. Do not add a type whose bytes another type also starts with: a DOCX and an XLSX file both start with the bytes of a ZIP file. Set `canPreview` only for a raster image. `FileTypeTests` checks each signature with the samples of `SampleFiles`, so add a sample from the specification of the format.
 

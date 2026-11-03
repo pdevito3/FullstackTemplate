@@ -184,6 +184,11 @@ public class QueryInputAnalyzerTests
     [Arguments("if (!request.Ids.All(id => EntityId.IsValid(id, Tenant.IdPrefix))) return false;")]
     [Arguments("if (!request.Ids.All(PostgresText.CanStore)) return false;")]
     [Arguments("foreach (var id in request.Ids) { if (!EntityId.IsValid(id, Tenant.IdPrefix)) return false; }")]
+    [Arguments("foreach (var id in request.Ids ?? []) { if (!EntityId.IsValid(id, Tenant.IdPrefix)) return false; }")]
+    [Arguments("foreach (var raw in request.Ids) { var id = raw.Trim(); if (!EntityId.IsValid(id, Tenant.IdPrefix)) return false; }")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++) { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
+    [Arguments("if (request.Ids?.All(id => EntityId.IsValid(id, Tenant.IdPrefix)) == false) return false;")]
+    [Arguments("if (request.Ids?.All(PostgresText.CanStore) == false) return false;")]
     public async Task a_request_list_that_a_check_of_each_item_checks_first_has_no_diagnostics(string check)
     {
         // Act
@@ -194,6 +199,64 @@ public class QueryInputAnalyzerTests
 
         // Assert
         diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("if (!EntityId.IsValid(request.Ids[0], Tenant.IdPrefix)) return false;")]
+    [Arguments("var first = request.Ids[0]; if (!EntityId.IsValid(first, Tenant.IdPrefix)) return false;")]
+    public async Task a_check_of_one_item_of_a_request_list_gets_fstqry001(string check)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            {check}
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Ids");
+    }
+
+    [Test]
+    [Arguments("var t = id; t = \"x\";")]
+    [Arguments("var t = id; t += \"x\";")]
+    [Arguments("var t = id; (t, _) = (\"x\", 1);")]
+    public async Task a_check_of_a_copy_of_each_item_that_the_code_assigns_again_gets_fstqry001(string copy)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            foreach (var id in request.Ids) { {{copy}} if (!PostgresText.CanStore(t)) return false; }
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Ids");
+    }
+
+    [Test]
+    [Arguments("u => request.Filter == null || u.Identifier == \"a\"")]
+    [Arguments("u => request.Filter != null && u.Identifier == \"a\"")]
+    [Arguments("u => null == request.Filter || u.Identifier == \"a\"")]
+    public async Task a_null_check_of_a_request_text_in_a_query_has_no_diagnostics(string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_compare_of_a_request_text_next_to_a_null_check_gets_fstqry001()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            return await dbContext.Users.AnyAsync(u => request.Filter == null || u.Identifier == request.Filter, cancellationToken);
+            """);
+
+        // Assert
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.Location.SourceSpan.Start.ShouldBeGreaterThan(diagnostic.Location.SourceTree!.GetText().ToString().IndexOf("u.Identifier ==", StringComparison.Ordinal));
+        Text(diagnostic).ShouldBe("request.Filter");
     }
 
     [Test]
@@ -265,7 +328,7 @@ public class QueryInputAnalyzerTests
         => Run($$"""
             public sealed record NameDto(string Name);
 
-            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids) : IRequest<bool>;
+            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids, string? Filter) : IRequest<bool>;
 
             public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, bool>
             {

@@ -1,5 +1,6 @@
 namespace FullstackTemplate.SourceGenerators;
 
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
@@ -75,9 +76,9 @@ internal sealed class QueryChains(
 	}
 
 	public (QueryUse Use, ISymbol? Owner) Classify(IOperation start, ISymbol containingSymbol)
-		=> Classify(start, containingSymbol, reassignedLocal: null);
+		=> Classify(start, containingSymbol, ImmutableHashSet<ILocalSymbol>.Empty.WithComparer(SymbolEqualityComparer.Default));
 
-	private (QueryUse Use, ISymbol? Owner) Classify(IOperation start, ISymbol containingSymbol, ILocalSymbol? reassignedLocal)
+	private (QueryUse Use, ISymbol? Owner) Classify(IOperation start, ISymbol containingSymbol, ImmutableHashSet<ILocalSymbol> followedLocals)
 	{
 		var current = start;
 		var isQuery = !IsDbSet(start.Type);
@@ -116,11 +117,13 @@ internal sealed class QueryChains(
 					break;
 				case IArgumentOperation { Parent: IInvocationOperation call } argument when isQuery && ReadsAnotherQuery(call, argument):
 					return (QueryUse.NotQuery, null);
-				case ISimpleAssignmentOperation { Target: ILocalReferenceOperation target } assignment
-					when isQuery && ReferenceEquals(assignment.Value, current) && SymbolEqualityComparer.Default.Equals(target.Local, reassignedLocal):
-					return (QueryUse.NotQuery, null);
+				case ISimpleAssignmentOperation { Target: ILocalReferenceOperation target, Parent: IExpressionStatementOperation } assignment
+					when isQuery && ReferenceEquals(assignment.Value, current):
+					return followedLocals.Contains(target.Local)
+						? (QueryUse.NotQuery, null)
+						: ClassifyLocal(target.Local, assignment, containingSymbol, followedLocals);
 				case IVariableInitializerOperation { Parent: IVariableDeclaratorOperation declarator } when isQuery:
-					return ClassifyLocal(declarator, containingSymbol);
+					return ClassifyLocal(declarator.Symbol, declarator, containingSymbol, followedLocals);
 				case IReturnOperation when isQuery:
 					return NamedOwnerOf(parent, containingSymbol) is { } owner ? (QueryUse.Returned, owner) : (QueryUse.Untagged, null);
 				default:
@@ -129,13 +132,13 @@ internal sealed class QueryChains(
 		}
 	}
 
-	private (QueryUse Use, ISymbol? Owner) ClassifyLocal(IVariableDeclaratorOperation declarator, ISymbol containingSymbol)
+	private (QueryUse Use, ISymbol? Owner) ClassifyLocal(ILocalSymbol local, IOperation store, ISymbol containingSymbol, ImmutableHashSet<ILocalSymbol> followedLocals)
 	{
-		var root = (IOperation)declarator;
+		var root = store;
 		while (root.Parent is not null)
 			root = root.Parent;
 
-		var local = declarator.Symbol;
+		followedLocals = followedLocals.Add(local);
 		var reads = root.Descendants()
 			.OfType<ILocalReferenceOperation>()
 			.Where(r => SymbolEqualityComparer.Default.Equals(r.Local, local)
@@ -145,7 +148,7 @@ internal sealed class QueryChains(
 		ISymbol? returnedFrom = null;
 		foreach (var read in reads.Where(r => !InExpressionTree(r)))
 		{
-			var (use, owner) = Classify(read, containingSymbol, local);
+			var (use, owner) = Classify(read, containingSymbol, followedLocals);
 			if (use == QueryUse.Returned)
 				returnedFrom = owner;
 			else if (use != QueryUse.NotQuery)

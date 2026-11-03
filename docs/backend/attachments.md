@@ -158,7 +158,11 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
    RepairAction.ManagePhotos().GuardCaller(caller);
-   // ...
+
+   var repair = await dbContext.Set<Repair>()
+       .TagWithOperationCallSite("repairs.photos.delete.load_repair")
+       .AsNoTracking()
+       .GetById(request.RepairId, cancellationToken);
    repair.GuardChangeBy(caller);
 
    // A photo of another repair is not found here, so the route cannot delete it

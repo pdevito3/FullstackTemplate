@@ -42,4 +42,20 @@ public static class ExampleBlueprints
         .Derive(i => i.Title, (_, _) => WorkshopRules.Title(Faker))
         .Derive(i => i.StartsAt, (_, ctx) => WorkshopRules.StartsAt(ctx.Parent.TimeZone, ctx.Now))
         .Derive(i => i.Capacity, (_, _) => WorkshopRules.Capacity(Faker));
+
+    public static readonly ChildInputBlueprint<TestSeed, Workshop, WorkshopAttachmentInput, WorkshopAttachment> WorkshopAttachment = Blueprint
+        .ChildFromInput<TestSeed, Workshop, WorkshopAttachmentInput, WorkshopAttachment>(
+            () => new(),
+            (workshop, input, _) => Server.Examples.Workshops.WorkshopAttachment.Create(workshop, new WorkshopAttachmentForCreation
+            {
+                Id = input.Id,
+                FileName = input.FileName!,
+                ContentType = input.ContentType,
+                SizeBytes = input.SizeBytes!.Value,
+                UploadedAt = input.UploadedAt!.Value,
+            }))
+        .Derive(i => i.FileName, (_, _) => WorkshopAttachmentRules.FileName(Faker))
+        .Derive(i => i.ContentType, (_, _) => WorkshopAttachmentRules.ContentType())
+        .Derive(i => i.SizeBytes, (_, _) => WorkshopAttachmentRules.SizeBytes(Faker))
+        .Derive(i => i.UploadedAt, (_, ctx) => ctx.Now);
 }

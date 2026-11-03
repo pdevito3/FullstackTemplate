@@ -38,6 +38,9 @@ public sealed class TestFixture : IAsyncDisposable
     public static User DefaultUser => Seed.User;
     private readonly PostgresTestDatabase _database = new();
 
+    /// <summary>The S3 emulator of the run, with an empty bucket that the server uses.</summary>
+    public static FlociTestStorage Storage { get; } = new();
+
     public async Task InitializeAsync()
     {
         ConfigureAutoFaker();
@@ -45,8 +48,9 @@ public sealed class TestFixture : IAsyncDisposable
         // Tests never reload configuration. A file watcher on appsettings can hang on macOS when the system is busy.
         Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
 
-        await _database.StartAsync();
+        await Task.WhenAll(_database.StartAsync(), Storage.StartAsync());
         _connectionString = _database.ConnectionString;
+        Storage.SetEnvironmentVariables();
 
         var provider = AddServices().BuildServiceProvider();
         BaseScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
@@ -116,6 +120,7 @@ public sealed class TestFixture : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _database.DisposeAsync();
+        await Storage.DisposeAsync();
     }
 
     private static void ConfigureAutoFaker()

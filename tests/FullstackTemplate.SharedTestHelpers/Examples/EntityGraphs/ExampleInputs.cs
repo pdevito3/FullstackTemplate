@@ -21,3 +21,16 @@ public sealed class WorkshopInput
 
     public string? OrganizerId { get; set; }
 }
+
+public sealed class WorkshopAttachmentInput
+{
+    public string? Id { get; set; }
+
+    public string? FileName { get; set; }
+
+    public string? ContentType { get; set; }
+
+    public long? SizeBytes { get; set; }
+
+    public DateTimeOffset? UploadedAt { get; set; }
+}

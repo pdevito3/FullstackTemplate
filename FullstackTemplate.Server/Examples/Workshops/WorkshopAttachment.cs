@@ -54,9 +54,7 @@ public class WorkshopAttachment : BaseEntity, ITenantable
             TenantId = workshop.TenantId,
             WorkshopId = workshop.Id,
             FileName = attachmentForCreation.FileName,
-            ContentType = string.IsNullOrWhiteSpace(attachmentForCreation.ContentType)
-                ? DefaultContentType
-                : attachmentForCreation.ContentType.Trim(),
+            ContentType = ContentTypeOf(attachmentForCreation.ContentType),
             SizeBytes = attachmentForCreation.SizeBytes,
             UploadedAt = attachmentForCreation.UploadedAt.ToUniversalTime(),
         };
@@ -77,6 +75,16 @@ public class WorkshopAttachment : BaseEntity, ITenantable
     public PresignedGet? PreviewAt(DateTimeOffset now)
         => HasPreview ? PresignedGet.Inline(StorageKey, FileName, ContentType, now + UrlLifetime) : null;
 
+    // The browser names the type from the file extension, so the type is a hint. A type that is not a valid media
+    // type of printable ASCII, or that does not fit the column, gives the type of plain bytes, which the browser
+    // only downloads. S3 sends the type back in a header, so a control character must not get to it.
+    private static string ContentTypeOf(string? contentType)
+        => contentType?.Trim() is { Length: > 0 and <= ContentTypeMaxLength } trimmed
+           && trimmed.All(c => c is >= ' ' and <= '~')
+           && MediaTypeOf(trimmed) is not null
+            ? trimmed
+            : DefaultContentType;
+
     private static string? MediaTypeOf(string contentType)
         => MediaTypeHeaderValue.TryParse(contentType, out var parsed) ? parsed.MediaType : null;
 
@@ -89,11 +97,6 @@ public class WorkshopAttachment : BaseEntity, ITenantable
             "The file name has a character that is not allowed. Rename the file, then upload it again.");
         ValidationException.MustNot(attachment.FileName.IndexOfAny(['/', '\\']) >= 0, "fileName",
             "A file name cannot have a slash or a backslash. Rename the file, then upload it again.");
-
-        ValidationException.ThrowWhenLongerThan(attachment.ContentType, ContentTypeMaxLength, "contentType",
-            $"A file type can have no more than {ContentTypeMaxLength} characters.");
-        ValidationException.Must(MediaTypeOf(attachment.ContentType) is not null, "contentType",
-            "The type of the file is not valid. Upload the file again.");
 
         ValidationException.Must(attachment.SizeBytes > 0, "sizeBytes", "The file is empty. Choose a file that has content.");
         ValidationException.Must(attachment.SizeBytes <= SizeBytesMaximum, "sizeBytes", FileTooLargeMessage);

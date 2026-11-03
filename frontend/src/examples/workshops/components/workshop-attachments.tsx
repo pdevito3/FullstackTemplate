@@ -106,16 +106,19 @@ function AttachmentList({ attachments, canManage, deletingId, onDelete }: Attach
   return (
     <ul aria-label="Files" className="flex flex-col divide-y rounded-lg border">
       {attachments.data.map((attachment) => (
-        <li key={attachment.id} aria-label={attachment.fileName} className="flex items-center gap-3 p-3">
-          {/* A new URL after a reload gives a new image, so an image that failed can load again */}
-          <Thumbnail key={attachment.previewUrl ?? attachment.id} attachment={attachment} />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span className="text-sm font-medium wrap-anywhere">{attachment.fileName}</span>
-            <span className="text-xs text-muted-foreground">
-              {formatFileSize(attachment.sizeBytes)} · {formatUploadedAt(attachment.uploadedAt)}
-            </span>
+        <li key={attachment.id} aria-label={attachment.fileName} className="flex flex-wrap items-center gap-3 p-3">
+          {/* In a narrow row, the buttons go to a second line, so the name keeps its width */}
+          <div className="flex min-w-0 flex-1 basis-48 items-center gap-3">
+            {/* A new URL after a reload gives a new image, so an image that failed can load again */}
+            <Thumbnail key={attachment.previewUrl ?? attachment.id} attachment={attachment} />
+            <div className="flex min-w-0 flex-col">
+              <span className="text-sm font-medium wrap-anywhere">{attachment.fileName}</span>
+              <span className="text-xs text-muted-foreground">
+                {formatFileSize(attachment.sizeBytes)} · {formatUploadedAt(attachment.uploadedAt)}
+              </span>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <div className="ml-auto flex shrink-0 gap-2">
             <a
               href={attachment.downloadUrl}
               aria-label={`Download ${attachment.fileName}`}
@@ -146,14 +149,15 @@ function formatUploadedAt(uploadedAt: string): string {
   return formatInstant(new Date(uploadedAt), browserTimeZone(), { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const TILE = 'size-12 shrink-0 rounded-md'
+// The muted background gives a transparent image the same tile as the file icon
+const TILE = 'size-12 shrink-0 rounded-md bg-muted'
 
 function Thumbnail({ attachment }: { attachment: WorkshopAttachmentDto }) {
   const [failed, setFailed] = useState(false)
 
   if (!attachment.previewUrl || failed) {
     return (
-      <span className={cn(TILE, 'flex items-center justify-center bg-muted text-muted-foreground')}>
+      <span className={cn(TILE, 'flex items-center justify-center text-muted-foreground')}>
         <HugeiconsIcon icon={File02Icon} aria-hidden className="size-6" />
       </span>
     )

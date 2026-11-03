@@ -9,7 +9,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 - The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) writes app data. A login writes a BFF session row, and the restore deletes it.
 <!-- example:start -->
 - The weather endpoints of the example page make random data at each request.
-- Only the workshops example writes app data. Its recipe first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
+- Only the workshops examples write app data, and only the workshop files example writes to object storage. Each of their recipes first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
 <!-- example:end -->
 - The IdP is ZeroFactor, unless `launch.sh` got `--auth-provider`. The ZeroFactor users are `admin@example.com` (name `Admin User`) and `user@example.com` (name `Test User`).
 - Never drive a stack that the current verification run did not start.
@@ -56,6 +56,7 @@ The example pages have their feature files in `examples/`. `scripts/remove-examp
 - [Filter builder](./examples/filter-builder.md) covers the demo at `/filter-demo`: add, edit, and remove filters, the number filter, multiselect filters with more than one value, grouping, presets, AND/OR, and Clear.
 - [Components showcase](./examples/components-showcase.md) covers the Component Library at `/components`: form controls and their layout, the focus on load, the active sidebar items, overlays, toasts, and the collapsible.
 - [Workshops](./examples/workshops.md) covers `/workshops` and `/venues/new`: a venue, a workshop in it, the edit form with the stale-version reload, the action buttons from `allowedActions`, and the search in the URL.
+- [Workshop files](./examples/workshop-files.md) covers the Files section of a workshop: an upload to object storage, the thumbnail and the full image, a download, a refused large file, and a delete.
 <!-- example:end -->
 
 ## Not mapped yet

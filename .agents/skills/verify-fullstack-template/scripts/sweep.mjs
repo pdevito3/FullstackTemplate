@@ -21,7 +21,7 @@ const overlayConfigs = ({ width, height }) => [
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughesson'
 const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdomain.example-company-name.com'
 const nameKeys = new Set(['name', 'title', 'summary', 'description', 'label', 'firstName', 'lastName', 'fullName', 'tenantName',
-  'requestedBy', 'given_name', 'family_name'])
+  'requestedBy', 'given_name', 'family_name', 'fileName'])
 const emailKeys = new Set(['email'])
 
 function longValues() {

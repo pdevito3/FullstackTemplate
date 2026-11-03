@@ -1,6 +1,5 @@
 namespace FullstackTemplate.SourceGenerators;
 
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -16,8 +15,6 @@ using Microsoft.CodeAnalysis.Operations;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 {
-	private const string BaseEntityName = "FullstackTemplate.Server.Domain.BaseEntity";
-	private const string PrefixName = "IdPrefix";
 	private const string PrefixParameterName = "idPrefix";
 
 	// EntityId.MaxLength is 50: the prefix, "_", and 32 hex characters. A unit test links the two values.
@@ -39,16 +36,6 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 		defaultSeverity: DiagnosticSeverity.Error,
 		isEnabledByDefault: true);
 
-	// The check needs all entities, so it runs at the end of the compilation.
-	internal static readonly DiagnosticDescriptor DuplicatePrefix = new(
-		id: "FSTID003",
-		title: "Entity IdPrefix is not unique",
-		messageFormat: "Entity '{0}' has IdPrefix '{1}', which entity '{2}' also uses",
-		category: "EntityId",
-		defaultSeverity: DiagnosticSeverity.Error,
-		isEnabledByDefault: true,
-		customTags: WellKnownDiagnosticTags.CompilationEnd);
-
 	internal static readonly DiagnosticDescriptor ConstructorPrefix = new(
 		id: "FSTID004",
 		title: "Entity constructor does not pass the IdPrefix",
@@ -69,7 +56,7 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 	private const string PrefixParameterText = "its own idPrefix parameter";
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-		[MissingPrefix, InvalidPrefix, DuplicatePrefix, ConstructorPrefix, EntityInheritance];
+		[MissingPrefix, InvalidPrefix, ConstructorPrefix, EntityInheritance];
 
 	public override void Initialize(AnalysisContext context)
 	{
@@ -78,32 +65,27 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 
 		context.RegisterCompilationStartAction(static start =>
 		{
-			var baseEntity = start.Compilation.GetTypeByMetadataName(BaseEntityName);
-			if (baseEntity is null)
+			if (EntityTypes.From(start.Compilation) is not { } entities)
 				return;
 
-			var prefixes = new ConcurrentBag<EntityPrefix>();
-
 			// A symbol action runs once for each type, also for a partial class that is declared in more than one file.
-			start.RegisterSymbolAction(ctx => AnalyzeType(ctx, baseEntity, prefixes), SymbolKind.NamedType);
+			start.RegisterSymbolAction(ctx => AnalyzeType(ctx, entities), SymbolKind.NamedType);
 
 			// A constructor is declared once, so a syntax action checks each constructor once.
-			start.RegisterSyntaxNodeAction(ctx => AnalyzeConstructor(ctx, baseEntity), SyntaxKind.ConstructorDeclaration);
-			start.RegisterSyntaxNodeAction(ctx => AnalyzePrimaryConstructor(ctx, baseEntity), SyntaxKind.ClassDeclaration);
-
-			start.RegisterCompilationEndAction(end => ReportDuplicates(end, prefixes));
+			start.RegisterSyntaxNodeAction(ctx => AnalyzeConstructor(ctx, entities), SyntaxKind.ConstructorDeclaration);
+			start.RegisterSyntaxNodeAction(ctx => AnalyzePrimaryConstructor(ctx, entities), SyntaxKind.ClassDeclaration);
 		});
 	}
 
-	private static void AnalyzeType(SymbolAnalysisContext ctx, INamedTypeSymbol baseEntity, ConcurrentBag<EntityPrefix> prefixes)
+	private static void AnalyzeType(SymbolAnalysisContext ctx, EntityTypes entities)
 	{
 		var symbol = (INamedTypeSymbol)ctx.Symbol;
-		if (symbol.TypeKind != TypeKind.Class || !InheritsFrom(symbol, baseEntity))
+		if (!entities.IsEntity(symbol))
 			return;
 
 		var typeName = symbol.ToDisplayString();
 		var classLocation = symbol.Locations.FirstOrDefault() ?? Location.None;
-		var prefixField = symbol.IsAbstract ? null : FindPrefixField(symbol);
+		var prefixField = symbol.IsAbstract ? null : EntityTypes.FindPrefixField(symbol);
 
 		// An implicit constructor calls base() with no prefix. Without a prefix, FSTID001 is the only useful error.
 		if ((symbol.IsAbstract || prefixField is not null) && symbol.InstanceConstructors.Any(static c => c.IsImplicitlyDeclared))
@@ -112,7 +94,7 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 		if (symbol.IsAbstract)
 			return;
 
-		var entityBase = FindEntityBase(symbol, baseEntity);
+		var entityBase = entities.FindEntityBase(symbol);
 		if (entityBase is not null)
 			ctx.ReportDiagnostic(Diagnostic.Create(EntityInheritance, classLocation, typeName, entityBase));
 
@@ -126,8 +108,6 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 		var location = prefixField.Locations.FirstOrDefault() ?? classLocation;
 		if (!IsValidPrefix(prefix))
 			ctx.ReportDiagnostic(Diagnostic.Create(InvalidPrefix, location, typeName, prefix));
-
-		prefixes.Add(new EntityPrefix(typeName, prefix, location));
 	}
 
 	/// <summary>
@@ -135,14 +115,14 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 	/// An abstract base class must pass a parameter of the same constructor that is named idPrefix.
 	/// A constructor that calls this(...) is not checked, because the target constructor is checked.
 	/// </summary>
-	private static void AnalyzeConstructor(SyntaxNodeAnalysisContext ctx, INamedTypeSymbol baseEntity)
+	private static void AnalyzeConstructor(SyntaxNodeAnalysisContext ctx, EntityTypes entities)
 	{
 		var decl = (ConstructorDeclarationSyntax)ctx.Node;
 		if (decl.Modifiers.Any(SyntaxKind.StaticKeyword))
 			return;
 
 		if (ctx.SemanticModel.GetDeclaredSymbol(decl, ctx.CancellationToken) is not { } ctor
-			|| !TryGetExpectedPrefix(ctor.ContainingType, baseEntity, out var prefixField))
+			|| !TryGetExpectedPrefix(ctor.ContainingType, entities, out var prefixField))
 			return;
 
 		var initializer = decl.Initializer;
@@ -162,14 +142,14 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 	/// <summary>
 	/// Checks a primary constructor, which passes its arguments in the base list, as in "class User() : BaseEntity(IdPrefix)".
 	/// </summary>
-	private static void AnalyzePrimaryConstructor(SyntaxNodeAnalysisContext ctx, INamedTypeSymbol baseEntity)
+	private static void AnalyzePrimaryConstructor(SyntaxNodeAnalysisContext ctx, EntityTypes entities)
 	{
 		var decl = (ClassDeclarationSyntax)ctx.Node;
 		if (decl.ParameterList is null)
 			return;
 
 		if (ctx.SemanticModel.GetDeclaredSymbol(decl, ctx.CancellationToken) is not { } symbol
-			|| !TryGetExpectedPrefix(symbol, baseEntity, out var prefixField))
+			|| !TryGetExpectedPrefix(symbol, entities, out var prefixField))
 			return;
 
 		var ctor = symbol.InstanceConstructors.FirstOrDefault(c =>
@@ -188,15 +168,15 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 	/// Returns false when the constructors of the type are not checked: the type is not an entity, or it is a concrete
 	/// entity without an IdPrefix (FSTID001 is then the only useful error). For an abstract type, the field is null.
 	/// </summary>
-	private static bool TryGetExpectedPrefix(INamedTypeSymbol symbol, INamedTypeSymbol baseEntity, out IFieldSymbol? prefixField)
+	private static bool TryGetExpectedPrefix(INamedTypeSymbol symbol, EntityTypes entities, out IFieldSymbol? prefixField)
 	{
 		prefixField = null;
-		if (!InheritsFrom(symbol, baseEntity))
+		if (!entities.IsEntity(symbol))
 			return false;
 		if (symbol.IsAbstract)
 			return true;
 
-		prefixField = FindPrefixField(symbol);
+		prefixField = EntityTypes.FindPrefixField(symbol);
 		return prefixField is not null;
 	}
 
@@ -229,59 +209,6 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 			: value is IFieldReferenceOperation reference && SymbolEqualityComparer.Default.Equals(reference.Field, prefixField);
 	}
 
-	private static IFieldSymbol? FindPrefixField(INamedTypeSymbol symbol)
-		=> symbol.GetMembers(PrefixName)
-			.OfType<IFieldSymbol>()
-			.FirstOrDefault(static f => f is { IsConst: true, DeclaredAccessibility: Accessibility.Public, Type.SpecialType: SpecialType.System_String });
-
-	/// <summary>
-	/// Returns the first base type between the entity and BaseEntity that is concrete or declares an IdPrefix, or null.
-	/// </summary>
-	private static string? FindEntityBase(INamedTypeSymbol symbol, INamedTypeSymbol baseEntity)
-	{
-		var current = symbol.BaseType;
-		while (current is not null && !SymbolEqualityComparer.Default.Equals(current, baseEntity))
-		{
-			if (!current.IsAbstract || current.GetMembers(PrefixName).Length > 0)
-				return current.ToDisplayString();
-			current = current.BaseType;
-		}
-
-		return null;
-	}
-
-	private static void ReportDuplicates(CompilationAnalysisContext ctx, ConcurrentBag<EntityPrefix> prefixes)
-	{
-		var groups = prefixes
-			.GroupBy(static e => e.Prefix)
-			.Where(static g => g.Count() > 1);
-
-		foreach (var group in groups)
-		{
-			var entities = group.OrderBy(static e => e.TypeName, System.StringComparer.Ordinal).ToArray();
-			foreach (var entity in entities)
-			{
-				var others = string.Join("', '", entities.Where(e => e.TypeName != entity.TypeName).Select(static e => e.TypeName));
-				ctx.ReportDiagnostic(Diagnostic.Create(DuplicatePrefix, entity.Location, entity.TypeName, entity.Prefix, others));
-			}
-		}
-	}
-
 	internal static bool IsValidPrefix(string prefix)
 		=> prefix.Length is > 0 and <= MaxPrefixLength && prefix.All(static c => c is >= 'a' and <= 'z');
-
-	private static bool InheritsFrom(INamedTypeSymbol symbol, INamedTypeSymbol baseType)
-	{
-		var current = symbol.BaseType;
-		while (current is not null)
-		{
-			if (SymbolEqualityComparer.Default.Equals(current, baseType))
-				return true;
-			current = current.BaseType;
-		}
-
-		return false;
-	}
-
-	private sealed record EntityPrefix(string TypeName, string Prefix, Location Location);
 }

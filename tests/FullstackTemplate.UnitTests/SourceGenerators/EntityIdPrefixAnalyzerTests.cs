@@ -31,6 +31,19 @@ public class EntityIdPrefixAnalyzerTests
     }
 
     [Test]
+    public void only_the_duplicate_prefix_rule_waits_for_the_whole_compilation()
+    {
+        // Act
+        var compilationEnd = new DiagnosticAnalyzer[] { new EntityIdPrefixAnalyzer(), new DuplicateEntityIdPrefixAnalyzer() }
+            .SelectMany(a => a.SupportedDiagnostics)
+            .Where(d => d.CustomTags.Contains(WellKnownDiagnosticTags.CompilationEnd))
+            .Select(d => d.Id);
+
+        // Assert
+        compilationEnd.ShouldBe(["FSTID003"]);
+    }
+
+    [Test]
     public async Task valid_entities_have_no_diagnostics()
     {
         // Act
@@ -641,7 +654,7 @@ public class EntityIdPrefixAnalyzerTests
             concurrentAnalysis: true,
             logAnalyzerExecutionTime: false);
         var diagnostics = await compilation
-            .WithAnalyzers([new EntityIdPrefixAnalyzer()], options)
+            .WithAnalyzers([new EntityIdPrefixAnalyzer(), new DuplicateEntityIdPrefixAnalyzer()], options)
             .GetAnalyzerDiagnosticsAsync(TestContext.Current!.Execution.CancellationToken);
 
         exceptions.ShouldBeEmpty();

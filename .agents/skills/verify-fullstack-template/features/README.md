@@ -6,7 +6,7 @@ This directory is the maintained source for the proof of user-facing behavior in
 
 - `scripts/launch.sh` started an isolated stack for this checkout, and `scripts/doctor.sh` exits with 0.
 - The browser is a new Chromium context from `scripts/browse.mjs`. Nobody is logged in. `localStorage` is empty, so the theme is `system`.
-- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) writes app data. A login writes a BFF session row, and the restore deletes it.
+- The database has the rows of a new stack. `browse.mjs` puts back each row that a recipe writes, so each recipe starts from the same rows. Only [Start a tenant](./start-tenant.md) and [Users](./users.md) write app data. A login writes a BFF session row, and the restore deletes it.
 <!-- example:start -->
 - The weather endpoints of the example page make random data at each request.
 - Only the workshops examples write app data, and only the workshop files example writes to object storage. Each of their recipes first makes the signed-in user an `Admin` of a new tenant, because the database has no user. See [Workshops](./examples/workshops.md).
@@ -47,6 +47,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Login and logout](./login-logout.md) covers the BFF login through the IdP of the stack, the session, the name that the Server reads from the token, and logout.
 - [Navigation and theme](./navigation-and-theme.md) covers the sidebar links, the breadcrumb, sidebar collapse, and the light/dark/system theme.
 - [Start a tenant](./start-tenant.md) covers the notice for a signed-in user with no user record, the form at `/start-tenant`, and the start of a tenant with the user as its admin.
+- [Users](./users.md) covers `/users` and `/users/<id>`: the list of the users of the tenant, the actions from `allowedActions`, the role change, the delete, and the refusal for a member.
 
 <!-- example:start -->
 The example pages have their feature files in `examples/`. `scripts/remove-examples.cs` deletes them with the pages.

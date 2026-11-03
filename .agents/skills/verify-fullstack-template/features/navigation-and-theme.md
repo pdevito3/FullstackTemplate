@@ -1,6 +1,6 @@
 # Navigation and theme
 
-The sidebar is on every page. It has links to Home and About, and a theme toggle with light, dark, and system modes. The header has a button that collapses the sidebar to an icon rail, and a breadcrumb with the name of the current page.
+The sidebar is on every page. It has links to Home, Users, and About, and a theme toggle with light, dark, and system modes. The header has a button that collapses the sidebar to an icon rail, and a breadcrumb with the name of the current page.
 
 <!-- example:start -->
 The sidebar also has an `Examples` submenu with the example pages.

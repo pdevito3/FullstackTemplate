@@ -81,10 +81,28 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    builder.HasIndex(e => new { e.RepairId, e.UploadedAt, e.Id });
    ```
 
-3. **The add.** The command takes a stream, not an `IFormFile`. After the permission check and the access check of the owner, read the first bytes and make the entity. Then give the save of the row to `AttachmentStorage.AddAsync`. The save takes the shared lock of the tenant, as each add of a tenant-owned root does ([concurrency.md](concurrency.md#lock)).
+3. **The action.** Add a `Manage<Noun>s` action, such as `ManagePhotos`, to the action type of the owner ([domain-entities.md](domain-entities.md#allowed-actions)). Make it apply in each status of the owner, because a file stays useful after the record closes. The table of actions fills `allowedActions` of the read DTO of the owner, so the SPA shows the upload and the delete only to a caller who can send them. Done when a unit test shows the action in the last status of the owner, and none for a caller with no permission.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
+   // The photos of a repair stay useful after it closes, so the action applies in each status
+   public static readonly RepairActionEnum ManagePhotos = new AnyStatusType(nameof(ManagePhotos), 1);
+   // ...
+   private sealed class AnyStatusType(string name, int value) : RepairActionEnum(name, value)
+   {
+       public override bool AppliesTo(Repair repair) => true;
+   }
+   ```
+
+4. **The add.** The command takes a stream, not an `IFormFile`. Call `GuardCaller` of the action before the load of the owner, and the access check of the owner, such as `GuardChangeBy`, after it. Then read the first bytes and make the entity. Give the save of the row to `AttachmentStorage.AddAsync`. The save takes the shared lock of the tenant, as each add of a tenant-owned root does ([concurrency.md](concurrency.md#lock)).
+
+   <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
+   ```csharp
+   var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+   RepairAction.ManagePhotos().GuardCaller(caller);
+   // ...
+   repair.GuardChangeBy(caller);
+
    // The rules run before the upload, so a file that they refuse never gets to storage
    var upload = await FileUpload.ReadAsync(request.Content, request.FileName, request.MediaType,
        request.SizeBytes, cancellationToken);
@@ -107,7 +125,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    return await photo.ToAttachmentDtoAsync(storage, timeProvider.GetUtcNow());
    ```
 
-4. **The upload endpoint.** Only the endpoint knows `IFormFile` (`EntrypointBoundaryTests`). It opens the stream and owns it. Kubb then writes a client that takes `body: { file }`.
+5. **The upload endpoint.** Only the endpoint knows `IFormFile` (`EntrypointBoundaryTests`). It opens the stream and owns it. Kubb then writes a client that takes `body: { file }`.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
@@ -128,28 +146,32 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    }
    ```
 
-5. **The list.** Load the owner through the tenant filter, then its attachments. The list response gives the upload rules of the entity, so the SPA copies no limit.
+6. **The list.** Load the owner through the tenant filter, then its attachments. The list response gives the upload rules of the entity, so the SPA copies no limit.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
    return await photos.ToAttachmentListDtoAsync(RepairPhoto.UploadRules, storage, timeProvider.GetUtcNow());
    ```
 
-6. **The delete.** Load the attachment under its owner, so that a route with another owner finds nothing. Then call `DeleteAsync`.
+7. **The delete.** Guard the action and the owner as the add does. Load the attachment under its owner, so that a route with another owner finds nothing. Then call `DeleteAsync`.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
+   RepairAction.ManagePhotos().GuardCaller(caller);
+   // ...
+   repair.GuardChangeBy(caller);
+
    // A photo of another repair is not found here, so the route cannot delete it
    var photo = await dbContext.Set<RepairPhoto>()
        .TagWithOperationCallSite("repairs.photos.delete.load")
-       .Where(p => p.RepairId == request.RepairId)
+       .Where(p => p.RepairId == repair.Id)
        .GetById(request.PhotoId, cancellationToken);
 
    await attachments.DeleteAsync(photo, cancellationToken);
    ```
 
-7. **The tests.** Give the entity graph a blueprint that makes the upload with `SampleFiles` of `SharedTestHelpers/Fakes/Attachments/`. Add the entity to `TenantDeleteOwnedRowsTests`, each endpoint to `EndpointAccessSweepTests`, and the columns to `StringColumnLengthTests`: `file_name` goes in `CallerColumns`, and `media_type` and `storage_key` go in `ServerWrittenColumns`. The sweep sends a file of each type of the registry until the rules of the route take one, so it needs no copy of the rules. Write functional tests for an upload, a type that the rules refuse, a file whose bytes do not match its name, a file over the largest size, and the rules in the list. Done when `dotnet test --solution FullstackTemplate.slnx` passes.
-8. **The contract.** Regenerate it with the `api-contract` skill.
+8. **The tests.** Give the entity graph a blueprint that makes the upload with `SampleFiles` of `SharedTestHelpers/Fakes/Attachments/`. Add the entity to `TenantDeleteOwnedRowsTests`, each endpoint to `EndpointAccessSweepTests`, and the columns to `StringColumnLengthTests`: `file_name` goes in `CallerColumns`, and `media_type` and `storage_key` go in `ServerWrittenColumns`. The sweep sends a file of each type of the registry until the rules of the route take one, so it needs no copy of the rules. Write functional tests for an upload, a type that the rules refuse, a file whose bytes do not match its name, a file over the largest size, and the rules in the list. Done when `dotnet test --solution FullstackTemplate.slnx` passes.
+9. **The contract.** Regenerate it with the `api-contract` skill.
 
 ### In the SPA
 

@@ -106,7 +106,7 @@ A new permission needs a `Permission.Names` constant, a `PermissionEnum` entry, 
 
 ## 4. Attachments
 
-Follow "Add attachments to an entity" in [attachments.md](../../../docs/backend/attachments.md#add-attachments-to-an-entity), on the Server and then in the SPA. The steps build on the parts in `Domain/Attachments/`: the entity declares only its rules, its key, and its owner. Done when the functional tests of an upload, a refused type, a file whose bytes do not match its name, and a file over the largest size pass, and the list gives the upload rules.
+Follow "Add attachments to an entity" in [attachments.md](../../../docs/backend/attachments.md#add-attachments-to-an-entity), on the Server and then in the SPA. The steps build on the parts in `Domain/Attachments/`: the entity declares only its rules, its key, and its owner, and the owner gets a `Manage<Noun>s` action that the add and the delete guard. Done when the functional tests of an upload, a refused type, a file whose bytes do not match its name, and a file over the largest size pass, and the list gives the upload rules.
 
 ## Build rules
 

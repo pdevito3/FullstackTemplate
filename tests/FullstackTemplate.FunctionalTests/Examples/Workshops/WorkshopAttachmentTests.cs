@@ -223,6 +223,26 @@ public class WorkshopAttachmentTests : TestBase
         (await ListAsync(workshop.Id)).ShouldBeEmpty();
     }
 
+    [Test]
+    public async Task a_save_that_fails_after_its_commit_keeps_the_object_of_the_saved_row()
+    {
+        // Arrange
+        var (_, workshop) = await AddWorkshopAndSignInAsync("Admin");
+        TestingWebApplicationFactory.Instance.FailingSaves
+            .ArmAfterCommitWhere(e => e is WorkshopAttachment a && a.WorkshopId == workshop.Id);
+        var bytes = RandomBytes(100);
+
+        // Act
+        var result = await UploadAsync(workshop.Id, bytes, "notes.txt", "text/plain");
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        var saved = (await ListAsync(workshop.Id)).ShouldHaveSingleItem();
+        var download = await Storage.GetAsync(saved.DownloadUrl);
+        download.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await download.Content.ReadAsByteArrayAsync()).ShouldBe(bytes);
+    }
+
     private async Task<HttpResponseMessage> UploadAsync(string workshopId, byte[] bytes, string fileName, string contentType)
     {
         using var form = new MultipartFormDataContent();

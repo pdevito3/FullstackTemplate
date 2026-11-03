@@ -78,7 +78,7 @@ public static class AddWorkshopAttachment
             }
             catch
             {
-                await DeleteUnsavedObjectAsync(attachment);
+                await DeleteObjectWithNoRowAsync(attachment);
                 throw;
             }
 
@@ -89,13 +89,38 @@ public static class AddWorkshopAttachment
             return await attachment.ToWorkshopAttachmentDtoAsync(storage, timeProvider.GetUtcNow());
         }
 
-        // Best effort: the save failed, so no row points at the object. A failure here leaves an object that no row
-        // names, and the caller still gets the error of the save.
-        private async Task DeleteUnsavedObjectAsync(WorkshopAttachment attachment)
+        // A save can commit and still throw, for example when the reply of the commit is lost and the run again finds
+        // the row. So the object goes only when no row names it. An object with no row costs only its storage, but a
+        // row with no object is a file that no one can download, so a failed check keeps the object.
+        private async Task DeleteObjectWithNoRowAsync(WorkshopAttachment attachment)
         {
+            bool saved;
             try
             {
-                // Not the request token: a caller that left must not stop the cleanup
+                // Not the request token: a caller that left must not stop the cleanup. No filter applies, so a row
+                // that a tenant delete soft-deleted also keeps its object.
+                saved = await dbContext.WorkshopAttachments
+                    .TagWithOperationCallSite("workshops.attachments.add.check_saved")
+                    .IgnoreQueryFilters()
+                    .AnyAsync(a => a.Id == attachment.Id, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Telemetry.RecordError(Activity.Current, ex);
+                _logger.Here().Error(ex, "Kept the object of attachment {AttachmentId}, because the check for its row failed",
+                    attachment.Id);
+                return;
+            }
+
+            if (saved)
+            {
+                _logger.Here().Warning("The save of attachment {AttachmentId} failed after its commit, so its object stays",
+                    attachment.Id);
+                return;
+            }
+
+            try
+            {
                 await storage.DeleteAsync(attachment.StorageKey, CancellationToken.None);
             }
             catch (Exception ex)

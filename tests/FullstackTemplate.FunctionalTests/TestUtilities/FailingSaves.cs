@@ -13,6 +13,8 @@ public sealed class FailingSaves : SaveChangesInterceptor
 {
     private readonly ConcurrentDictionary<string, byte> _armedIds = new();
     private readonly ConcurrentBag<Func<BaseEntity, bool>> _armedMatches = [];
+    private readonly ConcurrentBag<Func<BaseEntity, bool>> _armedAfterCommit = [];
+    private readonly ConcurrentDictionary<DbContext, byte> _committing = new();
 
     public void Arm(string entityId) => _armedIds.TryAdd(entityId, 0);
 
@@ -21,6 +23,12 @@ public sealed class FailingSaves : SaveChangesInterceptor
     /// the test knows.
     /// </summary>
     public void ArmWhere(Func<BaseEntity, bool> matches) => _armedMatches.Add(matches);
+
+    /// <summary>
+    /// Fails each save that writes a matching entity after the save commits, as a lost reply of the commit does. The
+    /// row is in the database, and the handler gets an error.
+    /// </summary>
+    public void ArmAfterCommitWhere(Func<BaseEntity, bool> matches) => _armedAfterCommit.Add(matches);
 
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -35,12 +43,34 @@ public sealed class FailingSaves : SaveChangesInterceptor
         return ValueTask.FromResult(result);
     }
 
+    public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context && _committing.TryRemove(context, out _))
+            throw new InvalidOperationException("The test failed this save after its commit.");
+        return ValueTask.FromResult(result);
+    }
+
+    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context)
+            _committing.TryRemove(context, out _);
+        return Task.CompletedTask;
+    }
+
     private void FailWhenArmed(DbContext? context)
     {
-        var writesArmedEntity = context?.ChangeTracker.Entries<BaseEntity>()
-            .Any(e => e.State is not (EntityState.Unchanged or EntityState.Detached) && IsArmed(e.Entity));
-        if (writesArmedEntity == true)
+        if (context is null)
+            return;
+        var written = context.ChangeTracker.Entries<BaseEntity>()
+            .Where(e => e.State is not (EntityState.Unchanged or EntityState.Detached))
+            .Select(e => e.Entity)
+            .ToList();
+        if (written.Any(IsArmed))
             throw new InvalidOperationException("The test failed this save.");
+        if (written.Any(entity => _armedAfterCommit.Any(matches => matches(entity))))
+            _committing.TryAdd(context, 0);
     }
 
     private bool IsArmed(BaseEntity entity)

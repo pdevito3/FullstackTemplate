@@ -254,6 +254,16 @@ export function workshopsPage(page: Page) {
       return image.evaluate((node: HTMLImageElement) => node.naturalWidth)
     },
 
+    async startTheClockAt(time: Date) {
+      await page.clock.install({ time })
+    },
+
+    async letTimePassUntilTheFilesLoadAgain(id: string, ms: number) {
+      const reloaded = answered('GET', workshopPaths.attachments(id))
+      await page.clock.fastForward(ms)
+      await reloaded
+    },
+
     async viewImage(fileName: string) {
       await at.viewImage(fileName).click()
       await expect(at.fullImage(fileName)).toBeVisible()

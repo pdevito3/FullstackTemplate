@@ -33,6 +33,22 @@ test.describe('the files of a workshop', () => {
     await expect(workshops.at.fullImage('kiln.png')).toHaveAttribute('src', photo.build().previewUrl!)
   })
 
+  test('keeps the full image open when the list loads again with new URLs before the old ones expire', async ({ page, api }) => {
+    const firstSigning = photo.signedUntil('2026-05-20T15:15:00Z')
+    const secondSigning = photo.signedUntil('2026-05-20T15:30:00Z')
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue), workshopsApi.attachmentsReturn(workshop, [firstSigning]))
+    const workshops = workshopsPage(page)
+    await workshops.startTheClockAt(new Date('2026-05-20T15:00:00Z'))
+    await workshops.openDetailWithFiles(id, venueId)
+    await workshops.viewImage('kiln.png')
+    api.mock(workshopsApi.attachmentsReturn(workshop, [secondSigning]))
+
+    await workshops.letTimePassUntilTheFilesLoadAgain(id, 14 * 60_000)
+
+    await expect(workshops.at.imageDialog('kiln.png')).toBeVisible()
+    await expect(workshops.at.fullImage('kiln.png')).toHaveAttribute('src', secondSigning.build().previewUrl!)
+  })
+
   test('uploads a file as a multipart form and shows it in the list', async ({ page, api }) => {
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue), workshopsApi.attachmentsReturn(workshop))
     const workshops = workshopsPage(page)

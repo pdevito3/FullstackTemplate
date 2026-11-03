@@ -16,22 +16,23 @@ class WorkshopAttachmentBuilder {
 
   static create() {
     const n = next()
-    return new WorkshopAttachmentBuilder({
-      id: `00000000-0000-4000-a000-${String(n).padStart(12, '0')}`,
-      fileName: `notes-${n}.pdf`,
-      contentType: 'application/pdf',
-      sizeBytes: 24_576,
-      uploadedAt: '2026-05-20T15:00:00+00:00',
-      downloadUrl: `https://storage.test/files/${n}?download`,
-      previewUrl: null,
-      urlsExpireAt: '2099-01-01T00:00:00+00:00',
-    })
+    return new WorkshopAttachmentBuilder(
+      signed({
+        id: `00000000-0000-4000-a000-${String(n).padStart(12, '0')}`,
+        fileName: `notes-${n}.pdf`,
+        contentType: 'application/pdf',
+        sizeBytes: 24_576,
+        uploadedAt: '2026-05-20T15:00:00+00:00',
+        urlsExpireAt: '2099-01-01T00:00:00+00:00',
+      }),
+    )
   }
 
-  // Like the Server, only an image of a preview type gets a preview URL
   named(fileName: string, contentType: string) {
-    const previewUrl = PREVIEW_TYPES.includes(contentType) ? IMAGE_URL : null
-    return new WorkshopAttachmentBuilder({ ...this.attachment, fileName, contentType, previewUrl })
+    return new WorkshopAttachmentBuilder(signed({ ...this.attachment, fileName, contentType }))
+  }
+  signedUntil(urlsExpireAt: string) {
+    return new WorkshopAttachmentBuilder(signed({ ...this.attachment, urlsExpireAt }))
   }
   ofSize(sizeBytes: number) {
     return new WorkshopAttachmentBuilder({ ...this.attachment, sizeBytes })
@@ -39,6 +40,16 @@ class WorkshopAttachmentBuilder {
 
   build(): WorkshopAttachmentDto {
     return this.attachment
+  }
+}
+
+// Like the Server, each signing gives new URLs, and only an image of a preview type gets a preview URL
+function signed(attachment: Omit<WorkshopAttachmentDto, 'downloadUrl' | 'previewUrl'>): WorkshopAttachmentDto {
+  const signature = `expires=${encodeURIComponent(attachment.urlsExpireAt)}`
+  return {
+    ...attachment,
+    downloadUrl: `https://storage.test/files/${attachment.id}?download&${signature}`,
+    previewUrl: PREVIEW_TYPES.includes(attachment.contentType) ? `${IMAGE_URL}?${signature}` : null,
   }
 }
 

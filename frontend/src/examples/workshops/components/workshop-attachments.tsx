@@ -109,8 +109,7 @@ function AttachmentList({ attachments, canManage, deletingId, onDelete }: Attach
         <li key={attachment.id} aria-label={attachment.fileName} className="flex flex-wrap items-center gap-3 p-3">
           {/* In a narrow row, the buttons go to a second line, so the name keeps its width */}
           <div className="flex min-w-0 flex-1 basis-48 items-center gap-3">
-            {/* A new URL after a reload gives a new image, so an image that failed can load again */}
-            <Thumbnail key={attachment.previewUrl ?? attachment.id} attachment={attachment} />
+            <Thumbnail attachment={attachment} />
             <div className="flex min-w-0 flex-col">
               <span className="text-sm font-medium wrap-anywhere">{attachment.fileName}</span>
               <span className="text-xs text-muted-foreground">
@@ -153,9 +152,11 @@ function formatUploadedAt(uploadedAt: string): string {
 const TILE = 'size-12 shrink-0 rounded-md bg-muted'
 
 function Thumbnail({ attachment }: { attachment: WorkshopAttachmentDto }) {
-  const [failed, setFailed] = useState(false)
+  // A reload of the list signs new URLs, so an image that failed to load gets a new try with the new URL
+  const [failedUrl, setFailedUrl] = useState<string>()
+  const { previewUrl } = attachment
 
-  if (!attachment.previewUrl || failed) {
+  if (!previewUrl || previewUrl === failedUrl) {
     return (
       <span className={cn(TILE, 'flex items-center justify-center text-muted-foreground')}>
         <HugeiconsIcon icon={File02Icon} aria-hidden className="size-6" />
@@ -167,9 +168,9 @@ function Thumbnail({ attachment }: { attachment: WorkshopAttachmentDto }) {
     <DialogTrigger>
       <Button variant="ghost" aria-label={`View ${attachment.fileName}`} className={cn(TILE, 'overflow-hidden p-0')}>
         <img
-          src={attachment.previewUrl}
+          src={previewUrl}
           alt={attachment.fileName}
-          onError={() => setFailed(true)}
+          onError={() => setFailedUrl(previewUrl)}
           className="size-full object-cover"
         />
       </Button>
@@ -178,7 +179,7 @@ function Thumbnail({ attachment }: { attachment: WorkshopAttachmentDto }) {
           <DialogTitle>{attachment.fileName}</DialogTitle>
         </DialogHeader>
         <img
-          src={attachment.previewUrl}
+          src={previewUrl}
           alt={attachment.fileName}
           className="max-h-[70vh] w-full rounded-md object-contain"
         />

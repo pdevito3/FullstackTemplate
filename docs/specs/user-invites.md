@@ -29,9 +29,9 @@ An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID
 
 | ID | Rule | Enforced by | Backstop |
 |---|---|---|---|
-| UM-1 (later) | The users page lists the users of the tenant of the caller, with a pager. | `GetUserList` and its tenant filter | |
-| UM-2 (later) | The users page changes the role of a user. The page shows the control only to a caller who can change the role. | `UpdateUserRole` handler check | |
-| UM-3 (later) | The users page removes a user after the caller confirms. The page shows the control only to a caller who can remove the user. | `DeleteUser` handler check | |
+| UM-1 | The users page lists the users of the tenant of the caller, with a pager. | `GetUserList` and its tenant filter | |
+| UM-2 | The users page changes the role of a user. The page shows the control only to a caller who can change the role. | `UpdateUserRole` handler check | |
+| UM-3 | The users page removes a user after the caller confirms. The page shows the control only to a caller who can remove the user. | `DeleteUser` handler check | |
 | INV-1 (later) | Only a caller with `manage_users` and each default permission of the role can create an invite. A caller cannot invite with a role that has more permissions than the caller has. | `AddInvite` handler check | |
 | INV-2 (later) | The server stores only a hash of the token. The create response gives the link one time only. A list or a get of an invite never gives the token. | `Invite.Create` | |
 | INV-3 (later) | The link puts the token in the URL fragment (`/join#token=...`), so the token is not in a server log, a BFF log, or a `Referer` header. | SPA `join` route | |

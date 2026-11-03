@@ -6,6 +6,7 @@ using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Storage;
 using ZiggyCreatures.Caching.Fusion;
 
 public static class WebAppServiceConfiguration
@@ -29,6 +30,7 @@ public static class WebAppServiceConfiguration
         builder.Services.AddSingleton(Options.Create(FirstPartyClientOptions.FromConfiguration(builder.Configuration)));
         builder.Services.AddApplicationServices();
         builder.Services.AddScoped<SystemTenantAccess>();
+        builder.AddObjectStorage();
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);

@@ -82,7 +82,7 @@ public class WorkshopAttachmentTests
     }
 
     [Test]
-    public void an_image_of_a_workshop_gets_a_preview_for_15_minutes()
+    public void an_image_of_a_workshop_gets_a_preview_for_the_life_of_a_url()
     {
         // Arrange
         TestGraph.Start(out _, Clock.Fixed).AddVenue(out _).AddWorkshop(out _)
@@ -99,6 +99,6 @@ public class WorkshopAttachmentTests
         // Assert
         preview.Key.ShouldBe(attachment.File.StorageKey);
         preview.ContentDisposition.ShouldBe("inline; filename*=UTF-8''kiln.webp");
-        preview.ExpiresAt.ShouldBe(Clock.Now + TimeSpan.FromMinutes(15));
+        preview.ExpiresAt.ShouldBe(Clock.Now + StoredFile.UrlLifetime);
     }
 }

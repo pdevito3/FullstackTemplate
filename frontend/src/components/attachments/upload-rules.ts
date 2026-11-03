@@ -2,7 +2,7 @@ import { formatFileSize } from '@/lib/format-file-size'
 
 import type { UploadRules } from './types'
 
-/** The limits of the Server for the user, for example `PNG, JPEG, or PDF. Up to 10 MB.` */
+/** The limits of the Server for the user, for example `PNG, JPEG, or PDF. Up to 25 MB.` */
 export function uploadHint(rules: UploadRules, locale?: string): string {
   const types = new Intl.ListFormat(locale, { type: 'disjunction' }).format(rules.fileTypes.map((t) => t.name))
   return `${types}. Up to ${formatFileSize(rules.maxSizeBytes, locale)}.`

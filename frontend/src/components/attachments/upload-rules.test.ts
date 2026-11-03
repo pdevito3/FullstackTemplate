@@ -11,7 +11,7 @@ describe('uploadHint', () => {
   it.each<[UploadRules, string]>([
     [{ fileTypes: [pdf], maxSizeBytes: 2 * 1024 * 1024 }, 'PDF. Up to 2 MB.'],
     [{ fileTypes: [png, pdf], maxSizeBytes: 512 * 1024 }, 'PNG or PDF. Up to 512 kB.'],
-    [{ fileTypes: [png, jpeg, pdf], maxSizeBytes: 10 * 1024 * 1024 }, 'PNG, JPEG, or PDF. Up to 10 MB.'],
+    [{ fileTypes: [png, jpeg, pdf], maxSizeBytes: 25 * 1024 * 1024 }, 'PNG, JPEG, or PDF. Up to 25 MB.'],
   ])('names the types and the size of the rules', (rules, hint) => {
     expect(uploadHint(rules, 'en-US')).toBe(hint)
   })

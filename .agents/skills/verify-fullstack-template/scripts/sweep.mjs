@@ -46,10 +46,16 @@ function longValues() {
   return walk
 }
 
+// The request body limit of Kestrel in the BFF. The BFF answers a larger body with a 413 and closes the connection
+// while the body still comes. Chromium reads that early answer, but route.fetch sends the body from Node, and Node
+// often fails with no answer. So the browser itself sends such a request, and the sweep does not change its answer.
+const BFF_BODY_LIMIT_BYTES = 30_000_000
+
 export async function routeLongValues(context, webUrl) {
   const rewrite = longValues()
   await context.route((url) => url.origin === new URL(webUrl).origin && (url.pathname.startsWith('/api/') || url.pathname === '/bff/user'),
     async (route) => {
+      if ((route.request().postDataBuffer()?.length ?? 0) > BFF_BODY_LIMIT_BYTES) return route.continue()
       const response = await route.fetch().catch(() => null)
       if (!response) return route.abort().catch(() => {})
       const { 'content-length': _, ...headers } = response.headers()

@@ -10,7 +10,7 @@ const tooLarge = Buffer.alloc(11 * 1024 * 1024, 'a')
 // Over the 30 MB request limit of Kestrel, so the BFF refuses it before the Server reads the file
 const overTheBodyLimit = Buffer.alloc(31 * 1024 * 1024, 'a')
 
-export default async ({ page, step, capture, settle, expect, login }) => {
+export default async ({ page, step, capture, settle, expect, login, stack }) => {
   const stamp = Date.now().toString(36)
   const answered = (method, pattern) =>
     page.waitForResponse((r) => r.request().method() === method && pattern.test(new URL(r.url()).pathname))
@@ -122,14 +122,17 @@ export default async ({ page, step, capture, settle, expect, login }) => {
     })
     await capture('too-large')
 
-    await step('a file over the request limit of 30 MB is refused with the problem of the BFF', async () => {
-      const res = await upload({ name: 'kiln-film.mp4', mimeType: 'video/mp4', buffer: overTheBodyLimit })
-      expect(res.status()).toBe(413)
-      // Chromium does not keep the body of this response, so the toast proves the detail. The sweep rewrites the
-      // headers of each API answer, so the recipe does not check the content type.
-      await expect(page.getByRole('alertdialog').filter({ hasText: 'The file is too large to send. Choose a smaller file.' })).toBeVisible()
-      await expect(files.getByRole('list', { name: 'Files' }).getByRole('listitem')).toHaveCount(2)
-    })
+    // The BFF closes the connection after its 413. In the dev build, the Vite proxy then answers about 1 upload in 6
+    // with its own 500, so only the production build, where the browser talks to the BFF, proves this step.
+    if (stack.build === 'production')
+      await step('a file over the request limit of 30 MB is refused with the problem of the BFF', async () => {
+        const res = await upload({ name: 'kiln-film.mp4', mimeType: 'video/mp4', buffer: overTheBodyLimit })
+        expect(res.status()).toBe(413)
+        // Chromium does not keep the body of this response, so the toast proves the detail. The sweep rewrites the
+        // headers of each API answer, so the recipe does not check the content type.
+        await expect(page.getByRole('alertdialog').filter({ hasText: 'The file is too large to send. Choose a smaller file.' })).toBeVisible()
+        await expect(files.getByRole('list', { name: 'Files' }).getByRole('listitem')).toHaveCount(2)
+      })
 
     await step('View opens the full image in a dialog', async () => {
       await row(image.fileName).getByRole('button', { name: `View ${image.fileName}` }).click()
@@ -161,8 +164,11 @@ export default async ({ page, step, capture, settle, expect, login }) => {
       await settle()
       await capture('delete-dialog', { fullPage: false })
       const deleted = answered('DELETE', new RegExp(`^/api/v1/workshops/${workshop.id}/attachments/${handout.id}$`))
+      // The page loads the list again after the delete. Wait for that answer, not for a time, on a slow machine
+      const listed = answered('GET', new RegExp(`^/api/v1/workshops/${workshop.id}/attachments$`))
       await dialog.getByRole('button', { name: 'Delete file' }).click()
       expect((await deleted).status()).toBe(204)
+      expect((await listed).status()).toBe(200)
       await expect(row(handout.fileName)).toHaveCount(0)
       await expect(page.getByRole('alertdialog').filter({ hasText: 'File deleted' })).toBeVisible()
       await expect(files.getByRole('heading', { name: 'Files' })).toBeFocused()

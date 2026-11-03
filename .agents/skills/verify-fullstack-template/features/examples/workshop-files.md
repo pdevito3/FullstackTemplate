@@ -31,7 +31,7 @@ Preconditions:
 - **Upload an image.** Click `Upload file`, and give the file chooser a PNG with `fileChooser.setFiles({ name, mimeType: 'image/png', buffer })`. The `POST` gives 201 with `contentType` `image/png` and the size of the file. The thumbnail in `View <file name>` has a `naturalWidth` above 0, and its `src` is on another origin than the app.
 - **Upload another file.** Upload a PDF. The `POST` gives 201 with `previewUrl` null. The row has no `View` button, and `Download <file name>` has the `downloadUrl` of the answer as its `href`.
 - **Too large.** Upload a file of 11 MB. The `POST` gives 422, and the toast shows its `detail`.
-- **Over the body limit.** Upload a file of 31 MB. The `POST` gives 413, and the toast shows `The file is too large to send. Choose a smaller file.` Do not read the body of that response in the recipe: Chromium does not keep it.
+- **Over the body limit.** Upload a file of 31 MB. The `POST` gives 413, and the toast shows `The file is too large to send. Choose a smaller file.` Do not read the body of that response in the recipe: Chromium does not keep it. Only a `--preview` stack proves this step. See the gotchas.
 - **View.** Click `View <file name>`. The dialog shows the image with a `naturalWidth` above 0. Press Escape.
 - **Download.** Click `Download <file name>` and wait for the `download` event. `suggestedFilename()` is the uploaded name, and the bytes at `download.path()` are the uploaded bytes.
 - **Delete.** Click `Delete <file name>`, then `Delete file` in the dialog. The `DELETE` gives 204, the row goes, and `page.request.get(downloadUrl)` gives 404.
@@ -45,3 +45,4 @@ Preconditions:
 - The `Download` link goes to the storage origin. The `Content-Disposition` of the signed URL makes the browser save the file, so the page does not change.
 - Floci does not refuse a request with no signature. Do not take a 200 for an unsigned URL as a fault of the app.
 - With `--sweep`, the file names on the screen are long values, but storage still saves a download under the uploaded name.
+- In the dev build, the Vite proxy answers about 1 upload in 6 over 30 MB with its own 500 (`text/plain`), because the BFF closes the connection after its 413 while Vite still sends the body. In a `--preview` stack, the browser talks to the BFF and gets the 413 each time. The recipe runs the over-the-body-limit step only when `stack.build` is `production`.

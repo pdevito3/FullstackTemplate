@@ -26,6 +26,7 @@ public static class OpenApiBuildTime
             "--Auth:Audience=openapi-build",
             "--Auth:ClientId=openapi-build",
             "--Mcp:PublicOrigin=https://openapi-build.invalid",
+            "--ObjectStorage:BucketName=openapi-build",
         ]
         : args;
 

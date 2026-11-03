@@ -1,6 +1,5 @@
 namespace FullstackTemplate.Server.Resources.Storage;
 
-using System.Reflection;
 using Amazon.S3;
 
 public static class ObjectStorageRegistration
@@ -8,7 +7,6 @@ public static class ObjectStorageRegistration
     // The variable that the AWS SDKs read for a custom endpoint. The Floci integration of the AppHost sets it.
     private const string EndpointKey = "AWS_ENDPOINT_URL";
     private const string RegionKey = "AWS_DEFAULT_REGION";
-    private const string OpenApiDocumentWriter = "GetDocument.Insider";
 
     /// <summary>
     /// Adds <see cref="ObjectStorage"/>. With no endpoint, the client calls S3 of AWS, and the SDK finds the region
@@ -17,14 +15,11 @@ public static class ObjectStorageRegistration
     /// </summary>
     public static void AddObjectStorage(this WebApplicationBuilder builder)
     {
-        var options = builder.Services.AddOptions<ObjectStorageOptions>()
+        builder.Services.AddOptions<ObjectStorageOptions>()
             .BindConfiguration(ObjectStorageOptions.SectionName)
             .Validate(o => !string.IsNullOrWhiteSpace(o.BucketName),
-                $"{ObjectStorageOptions.SectionName}:BucketName is not set. Set the variable {ObjectStorageOptions.SectionName}__BucketName to the S3 bucket that holds the files.");
-        // A deploy with no bucket fails at startup, not on the first upload. The Debug build also starts the app, in
-        // GetDocument.Insider with no configuration, to write the OpenAPI document, and that start needs no bucket.
-        if (Assembly.GetEntryAssembly()?.GetName().Name != OpenApiDocumentWriter)
-            options.ValidateOnStart();
+                $"{ObjectStorageOptions.SectionName}:BucketName is not set. Set the variable {ObjectStorageOptions.SectionName}__BucketName to the S3 bucket that holds the files.")
+            .ValidateOnStart();
         builder.Services.AddSingleton<IAmazonS3>(_ =>
         {
             var config = new AmazonS3Config();

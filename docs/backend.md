@@ -244,7 +244,7 @@ The Server keeps the bytes of files in one S3 bucket. The database keeps the met
 |-------|---------|
 | `dotnet aspire start` | The `storage` resource of the AppHost. It is Floci, an S3 emulator, on port 24780. When Floci is ready, `FullstackTemplate.AppHost/Storage/seed/01-create-bucket.sh` makes the bucket `files`. The AppHost gives the Server `AWS_ENDPOINT_URL`, the region, test credentials, and `ObjectStorage__BucketName` |
 | The integration and functional tests | `FlociTestStorage` in `tests/FullstackTemplate.SharedTestHelpers/Utilities/` starts a Floci container with the same image, and makes a new bucket for each run |
-| Production | S3 of AWS, or a service with the S3 API. Set `ObjectStorage__BucketName`. With no `AWS_ENDPOINT_URL`, the SDK reads the region and the credentials from its default chain. Block all public access to the bucket |
+| Production | S3 of AWS, or a service with the S3 API. A publish of the AppHost has no `storage` resource. Set `ObjectStorage__BucketName`: the Server does not start without it. With no `AWS_ENDPOINT_URL`, the SDK reads the region and the credentials from its default chain. Block all public access to the bucket |
 
 Obey these rules:
 

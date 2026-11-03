@@ -93,6 +93,8 @@ test.describe('the weather forecast', () => {
 })
 
 test.describe('an anonymous visitor', () => {
+  test.use({ actor: as.anonymous() })
+
   test('sees the login and no secure API', async ({ page, api }) => {
     api.mock(weatherApi.listReturns(aForecast()))
 

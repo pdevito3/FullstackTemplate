@@ -150,6 +150,8 @@ test.describe('a member of a tenant', () => {
 })
 
 test.describe('an anonymous visitor', () => {
+  test.use({ actor: as.anonymous() })
+
   test('is asked to log in, and the page does not look up a user record', async ({ page, api }) => {
     const start = startTenantPage(page)
     await start.openAnonymous()

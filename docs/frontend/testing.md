@@ -80,11 +80,13 @@ An error body must have the shape that ASP.NET sends. Make it with `aProblem()`.
 
 ### Identity
 
-The SPA knows the user only from `GET /bff/user`. The `actor` fixture gives the claims of that answer, so a test never drives a login form. The default actor is anonymous, and `/bff/user` answers 204. To act as a signed-in user, add this line to a `describe` block:
+The SPA knows the user only from `GET /bff/user`. The `actor` fixture gives the claims of that answer, so a test never drives a login form. The fixture also answers the lookup of the user record of the actor and `GET /api/v1/users/me`. The default actor is `as.user()`, a signed-in user with a tenant. To act as another user, add this line to a `describe` block:
 
 ```ts
-test.use({ actor: as.user('Bob Smith') })
+test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 ```
+
+For an anonymous visitor, use `as.anonymous()`. Then `/bff/user` answers 204.
 
 Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back.
 

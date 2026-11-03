@@ -6,6 +6,8 @@ import { expect, test } from '@tests/support/fixtures'
 import { homePage } from './home.tasks'
 
 test.describe('an anonymous visitor on the home page', () => {
+  test.use({ actor: as.anonymous() })
+
   test('sees the login and does not call the Server', async ({ page, api }) => {
     const home = homePage(page)
 

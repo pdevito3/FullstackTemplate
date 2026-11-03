@@ -1,6 +1,7 @@
 import { test as base, expect, type Request } from '@playwright/test'
 import { bffApi } from './api/bff-api'
 import { membershipApi } from './api/membership-api'
+import { usersApi } from './api/users-api'
 import { isMockedPath, requestRecorder, type HttpMethod, type MockRoute, type ServedRequest } from './api/mock-route'
 import { as, type Identity } from './auth/actors'
 
@@ -24,14 +25,14 @@ function postBody(request: Request): unknown {
 }
 
 export const test = base.extend<{ actor: Identity; api: Api }>({
-  actor: [as.anonymous(), { option: true }],
+  actor: [as.user(), { option: true }],
 
   // `provide`, not `use`: a bare `use(...)` reads as a React hook to the lint rule.
   api: [
     async ({ page, actor, baseURL }, provide) => {
       const origin = new URL(baseURL!).origin
       // The actor is the first mock, so a test can still answer /bff/user and the user record in another way.
-      const routes: MockRoute[] = [bffApi.userIs(actor), ...membershipApi.userIs(actor)]
+      const routes: MockRoute[] = [bffApi.userIs(actor), ...membershipApi.userIs(actor), ...usersApi.currentOf(actor)]
       const served = requestRecorder()
       const missed: string[] = []
 

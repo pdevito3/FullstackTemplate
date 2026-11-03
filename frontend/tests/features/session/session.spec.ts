@@ -3,7 +3,7 @@ import { as } from '@tests/support/auth/actors'
 import { usersPaths } from '@tests/support/api/users-api'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { expect, test } from '@tests/support/fixtures'
-import { sessionPage } from './session.tasks'
+import { blankPage, sessionPage } from './session.tasks'
 
 test.describe('a visitor with no session', () => {
   test.use({ actor: as.anonymous() })
@@ -15,6 +15,17 @@ test.describe('a visitor with no session', () => {
 
     expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/about?tab=team&x=1#people')
     expect(rendered, 'the app rendered a page before it went to the login').toBe(false)
+  })
+
+  test('replaces the deep link in the history, so Back from the login opens the page before it', async ({ page, api }) => {
+    api.mock(bffApi.loginOpens())
+    const session = sessionPage(page)
+    await session.openBlankPage()
+
+    await session.openDeepLinkAndWaitForLogin('/about')
+    await page.goBack()
+
+    expect(page.url()).toBe(blankPage)
   })
 })
 

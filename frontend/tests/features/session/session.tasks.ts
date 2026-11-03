@@ -2,6 +2,8 @@ import { expect, type Locator, type Page } from '@playwright/test'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { session } from './session.locators'
 
+export const blankPage = 'data:text/html,blank'
+
 export function sessionPage(page: Page) {
   const at = session(page)
   const answered = (path: string) =>
@@ -28,6 +30,16 @@ export function sessionPage(page: Page) {
       await page.goto(path, { waitUntil: 'commit' })
       await login
       return { rendered }
+    },
+
+    async openBlankPage() {
+      await page.goto(blankPage)
+    },
+
+    async openDeepLinkAndWaitForLogin(path: string) {
+      await page.goto(path, { waitUntil: 'commit' })
+      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
+      await page.waitForLoadState()
     },
 
     async open(path: string) {

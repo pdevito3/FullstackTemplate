@@ -256,6 +256,11 @@ Obey these rules:
 
 Floci checks the signature of a signed request (`FLOCI_AUTH_VALIDATE_SIGNATURES`). It does not refuse a request with no signature, so a local bucket is open to each caller that can get to its port. S3 of AWS refuses such a request when the bucket blocks public access.
 
+A presigned URL works only while the credentials that signed it are valid. When they expire, S3 refuses the URL with `ExpiredToken`, also before `urlsExpireAt`. The credentials of a role are temporary: an ECS task, an EC2 instance profile, IRSA on EKS, and AWS SSO all give credentials that last from about one hour to some hours, and the SDK then gets new ones. So a URL that the Server signs shortly before the old credentials expire stops early. See [the S3 docs on presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html). In production, do these things:
+
+- Keep the life of a URL much shorter than the life of the credentials. The 15 minutes of `WorkshopAttachment.UrlLifetime` are short next to a role session of an hour or more. Then few URLs stop early, and the next load of the list signs new URLs with the new credentials.
+- If a URL must not stop early, do not sign it with session credentials. Serve the bucket through CloudFront, and sign CloudFront URLs with the key pair of a key group. Do not give the Server long-lived access keys only to make URLs last longer.
+
 A tenant delete soft-deletes the rows of the files, and keeps their objects.
 
 <!-- example:start -->

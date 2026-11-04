@@ -32,6 +32,8 @@ public class TenantDeleteOwnedRowsTests : TestBase
             .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
             .Under(tenant)
             .AddAgent(out _, a => a.Permissions = [Permission.Names.ReadAgents])
+            .Under(tenant)
+            .AddInvite(out _)
             // example:start
             .Under(tenant).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out _)
             // example:end

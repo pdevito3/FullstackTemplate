@@ -4,6 +4,7 @@ using System.Globalization;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.AuditEntries;
+using FullstackTemplate.Server.Domain.Invites;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
@@ -36,6 +37,7 @@ public class StringColumnLengthTests
         ["users.email"] = new("email", Email, v => TestGraph.Start(out _).AddTenant(out _).AddUser(out _, u => u.Email = v)),
         ["tenants.name"] = new("name", Text, v => TestGraph.Start(out _).AddTenant(out _, t => t.Name = v)),
         ["agents.name"] = new("name", Text, v => TestGraph.Start(out _).AddTenant(out _).AddAgent(out _, a => a.Name = v)),
+        ["invites.email"] = new("email", Email, v => TestGraph.Start(out _).AddTenant(out _).AddInvite(out _, i => i.Email = v)),
         ["agents.client_id"] = new("clientId", Text, v => TestGraph.Start(out _).AddTenant(out _).AddAgent(out _, a => a.ClientId = v)),
         // example:start
         ["venues.name"] = new("name", Text, v => TestGraph.Start(out _).AddVenue(out _, x => x.Name = v)),
@@ -50,6 +52,8 @@ public class StringColumnLengthTests
     private static readonly Dictionary<string, IReadOnlyList<string>> FixedOptionColumns = new()
     {
         ["users.role"] = UserRole.ListNames(),
+        ["invites.role"] = UserRole.ListNames(),
+        ["invites.status"] = InviteStatus.ListNames(),
         ["agents.mode"] = [AgentMode.Delegated().Value, AgentMode.Machine().Value],
         ["audit_entries.kind"] = Enum.GetNames<AuditEntryKind>(),
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
@@ -73,6 +77,8 @@ public class StringColumnLengthTests
         "audit_entries.root_type",
         "audit_entries.tenant_id",
         "audit_entries.trace_id",
+        // The hex of the SHA-256 hash of the token
+        "invites.token_hash",
         // example:start
         "workshops.organizer_id",
         // The type comes from the file type registry, and the entity builds the key

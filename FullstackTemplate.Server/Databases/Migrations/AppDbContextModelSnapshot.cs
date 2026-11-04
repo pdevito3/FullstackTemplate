@@ -281,6 +281,101 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.ToTable("used_dpop_proofs", (string)null);
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Invites.Invite", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ClaimedByUserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("claimed_by_user_id")
+                        .UseCollation("C");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_on");
+
+                    b.Property<bool>("RequireEmailMatch")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_email_match");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Email", "FullstackTemplate.Server.Domain.Invites.Invite.Email#EmailAddress", b1 =>
+                        {
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(320)
+                                .HasColumnType("character varying(320)")
+                                .HasColumnName("email");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Role", "FullstackTemplate.Server.Domain.Invites.Invite.Role#UserRole", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("role");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Status", "FullstackTemplate.Server.Domain.Invites.Invite.Status#InviteStatus", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("status");
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pk_invites");
+
+                    b.HasIndex("ClaimedByUserId")
+                        .HasDatabaseName("ix_invites_claimed_by_user_id");
+
+                    b.HasIndex("TokenHash")
+                        .HasDatabaseName("ix_invites_token_hash");
+
+                    b.HasIndex("TenantId", "ExpiresAt", "Id")
+                        .HasDatabaseName("ix_invites_tenant_id_expires_at_id");
+
+                    b.ToTable("invites", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Tenants.Tenant", b =>
                 {
                     b.Property<string>("Id")
@@ -693,6 +788,22 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasConstraintName("fk_agent_permissions_agents_agent_id");
 
                     b.Navigation("Agent");
+                });
+
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.Invites.Invite", b =>
+                {
+                    b.HasOne("FullstackTemplate.Server.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("ClaimedByUserId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .HasConstraintName("fk_invites_users_claimed_by_user_id");
+
+                    b.HasOne("FullstackTemplate.Server.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired()
+                        .HasConstraintName("fk_invites_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Users.User", b =>

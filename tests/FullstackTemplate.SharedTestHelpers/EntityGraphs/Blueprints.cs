@@ -3,12 +3,15 @@ namespace FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Bogus;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Agents.Models;
+using FullstackTemplate.Server.Domain.Invites;
+using FullstackTemplate.Server.Domain.Invites.Models;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Models;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using FullstackTemplate.SharedTestHelpers.Fakes.Agent;
+using FullstackTemplate.SharedTestHelpers.Fakes.Invite;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 
@@ -18,7 +21,7 @@ using FullstackTemplate.SharedTestHelpers.Fakes.User;
 /// </summary>
 /// <remarks>
 /// <see cref="GraphGraftAttribute"/> generates <c>AddTenant</c>, <c>AddTenants</c>, <c>AddUser</c>, <c>AddUsers</c>,
-/// <c>AddAgent</c>, and <c>AddAgents</c> in <c>BlueprintsGrafts</c>. Child methods compile only after their parent type.
+/// <c>AddAgent</c>, <c>AddAgents</c>, <c>AddInvite</c>, and <c>AddInvites</c> in <c>BlueprintsGrafts</c>. Child methods compile only after their parent type.
 /// Each factory passes the input <c>Id</c> to the creation model. The input <c>Id</c> is null by default, so the entity
 /// makes the ID. Set it to give a fixed ID. The domain factory rejects an ID with the wrong prefix.
 /// </remarks>
@@ -79,4 +82,25 @@ public static class Blueprints
         .Derive(i => i.ClientId, (_, _) => AgentRules.ClientId(Faker))
         .Derive(i => i.Mode, (_, _) => AgentRules.Mode(Faker))
         .Derive(i => i.Permissions, (_, _) => []);
+
+    /// <summary>
+    /// An invite is a child of a tenant. The invite keeps only the hash of its token, so a test that previews or
+    /// claims the invite sets <see cref="InviteInput.Token"/> to know the token of the link.
+    /// </summary>
+    public static readonly ChildInputBlueprint<TestSeed, Tenant, InviteInput, Invite> Invite = Blueprint
+        .ChildFromInput<TestSeed, Tenant, InviteInput, Invite>(
+            () => new(),
+            (tenant, input, _) => Server.Domain.Invites.Invite.Create(new InviteForCreation
+            {
+                Id = input.Id,
+                TenantId = tenant.Id,
+                Role = input.Role!,
+                Email = input.Email,
+                RequireEmailMatch = input.RequireEmailMatch!.Value,
+            }, InviteToken.Of(input.Token!), input.CreatedAt!.Value))
+        .Derive(i => i.Role, (_, _) => InviteRules.Role(Faker))
+        .Derive(i => i.Email, (_, _) => InviteRules.Email(Faker))
+        .Derive(i => i.RequireEmailMatch, (_, _) => InviteRules.RequireEmailMatch(Faker))
+        .Derive(i => i.Token, (_, _) => InviteToken.New().Value)
+        .Derive(i => i.CreatedAt, (_, ctx) => ctx.Now);
 }

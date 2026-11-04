@@ -10,6 +10,10 @@ async function pageOverflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
 }
 
+/** Two frames, so that the page has rendered each answer that it got. */
+const nextFrames = (page: Page) =>
+  page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
 export function usersWithInvites(page: Page) {
   const at = invites(page)
   const answered = answeredBy(page)
@@ -72,6 +76,50 @@ export function usersWithInvites(page: Page) {
       await expect(at.linkField).toBeVisible()
     },
 
+    /** Presses Enter in the email field, and again while the first request of the create runs. */
+    async pressEnterTwiceInTheEmailField() {
+      const sent = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === invitesPaths.list)
+      await at.emailField.press('Enter')
+      await sent
+      await at.emailField.press('Enter')
+    },
+
+    /** Leaves the page with a link, so that the caches of the SPA stay. */
+    async openUserFromTheList(name: string) {
+      await at.userLink(name).click()
+      await expect(page).toHaveURL(/\/users\/[^/]+$/)
+    },
+
+    /** The menu keeps the caches of the SPA. The count is the buttons that the page shows from them. */
+    async goToUsersAndCountTheButtonsBeforeTheTenantAnswers(tenantId = 'tnt_1') {
+      const settled = answered('GET', tenantsPaths.one(tenantId))
+      await at.usersNavLink.click()
+      await expect(at.usersHeading).toBeVisible()
+      const buttons = await at.inviteButton.count()
+      await settled
+      return buttons
+    },
+
+    /** The network comes back, and TanStack Query reads the tenant again. A failure retries one time. */
+    async readTheTenantAgainAfterAReconnect() {
+      const settled = (async () => {
+        await answered('GET', tenantsPaths.one('tnt_1'))
+        await answered('GET', tenantsPaths.one('tnt_1'))
+      })()
+      await page.context().setOffline(true)
+      await page.context().setOffline(false)
+      await settled
+      await nextFrames(page)
+    },
+
+    /** The list reads for longer than the timeout of this wait, so the link does not wait for the list. */
+    async createInviteAndSeeTheLinkBeforeTheList() {
+      const settled = answered('GET', invitesPaths.list)
+      await at.createLink.click()
+      await expect(at.linkField).toBeVisible({ timeout: 2000 })
+      await settled
+    },
+
     async copyTheLink() {
       await at.copyLink.click()
       await expect(at.linkCopied).toBeVisible()
@@ -106,10 +154,6 @@ export function usersWithInvites(page: Page) {
     },
   }
 }
-
-/** Two frames, so that the page has rendered each answer that it got. */
-const nextFrames = (page: Page) =>
-  page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
 
 export function joinPage(page: Page) {
   const at = join(page)

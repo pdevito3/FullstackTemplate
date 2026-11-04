@@ -32,26 +32,21 @@ import { formatExpiry } from './invite-state'
 import { INVITE_USER_FIELDS, inviteUserSchema } from './invite-user-schema'
 
 export function InviteUserButton() {
-  const [holdsLink, setHoldsLink] = useState(false)
+  const add = useAddInvite()
+  // The link shows one time only, so a stray press outside the dialog or on Escape must not lose it or its create.
+  const holdsDialog = add.isPending || !!add.data
 
   return (
-    <ResponsiveDialogTrigger onOpenChange={(isOpen) => { if (!isOpen) setHoldsLink(false) }}>
+    <ResponsiveDialogTrigger onOpenChange={(isOpen) => { if (!isOpen) add.reset() }}>
       <Button>Invite a user</Button>
-      {/* The link shows one time only, so a stray press outside the dialog or on Escape must not lose it. */}
-      <ResponsiveDialog isDismissable={!holdsLink} isKeyboardDismissDisabled={holdsLink}>
-        <InviteDialogContent onLink={() => setHoldsLink(true)} />
+      <ResponsiveDialog isDismissable={!holdsDialog} isKeyboardDismissDisabled={holdsDialog} showCloseButton={!add.isPending}>
+        {add.data ? <InviteLink created={add.data} /> : <InviteForm add={add} />}
       </ResponsiveDialog>
     </ResponsiveDialogTrigger>
   )
 }
 
-/** The dialog unmounts this on a close, so the answer with the token goes with it. */
-function InviteDialogContent({ onLink }: { onLink: () => void }) {
-  const add = useAddInvite()
-  return add.data ? <InviteLink created={add.data} /> : <InviteForm add={add} onLink={onLink} />
-}
-
-function InviteForm({ add, onLink }: { add: ReturnType<typeof useAddInvite>; onLink: () => void }) {
+function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
   const form = useForm({
     resolver: zodResolver(inviteUserSchema),
     defaultValues: { role: 'User' as const, email: '', requireEmailMatch: false },
@@ -65,7 +60,6 @@ function InviteForm({ add, onLink }: { add: ReturnType<typeof useAddInvite>; onL
     serverErrors.clear()
     try {
       await add.mutateAsync({ ...values, email: email.trim() || null })
-      onLink()
     } catch (error) {
       serverErrors.show(
         isProblemDetailsError(error) ? error : new Error('The invite was not created. Check your connection, then try again.'),
@@ -136,7 +130,7 @@ function InviteForm({ add, onLink }: { add: ReturnType<typeof useAddInvite>; onL
           <RefusedSaveAlert problem={serverErrors.problem} />
         </div>
         <ResponsiveDialogFooter>
-          <ResponsiveDialogClose>Cancel</ResponsiveDialogClose>
+          <ResponsiveDialogClose isDisabled={add.isPending}>Cancel</ResponsiveDialogClose>
           <Button type="submit" isPending={add.isPending}>
             Create link
           </Button>

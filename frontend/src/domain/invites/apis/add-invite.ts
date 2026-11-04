@@ -11,8 +11,9 @@ export function useAddInvite() {
   return useMutation({
     // The form shows each refusal, so a toast would say it twice.
     mutationFn: (body: InviteForCreationDto) => addInvite({ body, options: { suppressErrorToast: true } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: InviteKeys.lists() }),
-    // The answer has the token, so the cache drops it when the dialog closes (INV-2).
+    // The promise does not go back to the mutation, because the link must not wait for the list.
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: InviteKeys.lists() }),
+    // The answer has the token, so the cache drops it when the `reset` of a close removes the observer (INV-2).
     gcTime: 0,
   })
 }

@@ -6,7 +6,7 @@ Server state is the data that the API returns. TanStack Query owns it. It caches
 
 1. Use TanStack Query for all API data.
 2. Never copy server state into `useState`, a context, or a store. Read it from the query each time.
-3. Put all the values that the query function uses in the query key.
+3. Put all the values that the query function uses in the query key. The exception is a secret, because the cache and the devtools show a key. The key leaves out the secret only when one mount of the page cannot have two values of it. `InviteKeys.preview` leaves out the token of the tab, because a new link reloads the page.
 4. Make the query keys with a key factory in `[area].keys.ts`.
 5. Call the generated client in a hand-written hook in `domain/[area]/apis/`. Do not write an API function or a DTO type by hand. Kubb generates them. See [frontend.md](../frontend.md#api-contract).
 6. After a mutation, invalidate each query that the mutation changes.

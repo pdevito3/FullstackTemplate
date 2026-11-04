@@ -74,11 +74,13 @@ Write telemetry to answer a question that a person asks during an incident. If n
    - Set the tags before you start a child span. Inside a child span, `Activity.Current` is the child.
    - Tag the id as soon as the handler knows it. Then a later failure also has the id.
    - Also tag a value from a fixed set that changes the path of the code, for example `app.user.role`.
+   - The build refuses a request handler that calls `SaveChangesAsync` or `SaveChanges` and has no `Activity.Current?.SetTag` with a constant name of the form `app.*_id` (FSTTEL002). A local that holds `Activity.Current` also counts.
 3. Write an `Information` log for each state change or business decision that a person can need later.
    - Write one log for each outcome, not one log for each step.
    - Put the ids in named properties: `_logger.Here().Information("Changed the role of user {UserId} to {Role}", user.Id, role)`.
    - Use a message template. Do not use string interpolation.
    - Do not write a log that only repeats a span, such as "Handling UpdateUser" or "Query done".
+   - The build refuses a request handler that calls `SaveChangesAsync` or `SaveChanges` and has no `_logger.Here().Information` call with a constant message template (FSTTEL002). The build checks only that the handler has the log, not that each outcome has one. The build does not see a save in another service that the handler calls.
 4. Write a `Warning` log for each degraded path. Examples are a fallback, a skipped item, a partial result, and a retry that gave up.
    - For a normal branch inside a span, such as a cache miss or a lock that was acquired, add a span event with `Telemetry.AddEvent`. Do not write a log.
 5. Do not log a client error. A client error is a domain exception for which `DomainError.IsClientError` is true, such as `NotFoundException` or `ValidationException`. The feature slice span already tags `error.type`, and the request log has the status code.

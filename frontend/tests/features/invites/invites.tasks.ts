@@ -1,5 +1,4 @@
 import { expect, type Page } from '@playwright/test'
-import { bffPaths } from '@tests/support/api/bff-api'
 import { invitesPaths } from '@tests/support/api/invites-api'
 import { tenantsPaths } from '@tests/support/api/tenants-api'
 import { invites, join } from './invites.locators'
@@ -127,9 +126,9 @@ export function joinPage(page: Page) {
     historyLength: () => page.evaluate(() => window.history.length),
 
     /** Opens the link as a signed-in user, and waits for the preview. */
-    async openLink(token: string) {
+    async openLink(token: string, path = '/join') {
       const settled = answered('POST', invitesPaths.preview)
-      await page.goto(`/join#token=${token}`)
+      await page.goto(`${path}#token=${token}`)
       await settled
     },
 
@@ -140,10 +139,10 @@ export function joinPage(page: Page) {
     },
 
     async openLinkAndGoToLogin(token: string) {
-      const opensLogin = answered('GET', bffPaths.login)
-      // The SPA leaves the page as it loads, so the wait is for the commit and not for the load.
+      // The SPA leaves the page as it loads, so the wait is for the commit and not for the load. React StrictMode starts
+      // the login twice in development, so wait for the address and not for the first answer, which an abort can follow.
       await page.goto(`/join#token=${token}`, { waitUntil: 'commit' })
-      await opensLogin
+      await expect(page).toHaveURL(/\/bff\/login/)
     },
 
     /** The IdP sends the browser back to the return URL, in the same tab. */

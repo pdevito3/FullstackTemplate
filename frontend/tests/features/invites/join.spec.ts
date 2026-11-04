@@ -2,6 +2,7 @@ import { bffApi, bffPaths } from '@tests/support/api/bff-api'
 import { invitesApi, invitesPaths } from '@tests/support/api/invites-api'
 import { membershipApi, membershipPaths } from '@tests/support/api/membership-api'
 import { tenantsApi } from '@tests/support/api/tenants-api'
+import { usersApi } from '@tests/support/api/users-api'
 import { actorSubject, as } from '@tests/support/auth/actors'
 import { aPreview } from '@tests/support/builders/invite-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
@@ -9,6 +10,7 @@ import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
 import { browserZone } from '@tests/support/clock'
 import { expect, test } from '@tests/support/fixtures'
+import { homePage } from '../home/home.tasks'
 import { joinPage } from './invites.tasks'
 
 const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v'
@@ -73,6 +75,17 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     await expect(page).toHaveURL('/join')
   })
 
+  test('takes a link with a slash after the path', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()))
+    const join = joinPage(page)
+
+    await join.openLink(token, '/join/')
+
+    await expect(join.at.form).toBeVisible()
+    await expect(join.at.startTenantNotice).toHaveCount(0)
+    expect(api.last('post', invitesPaths.preview)?.body).toEqual({ token })
+  })
+
   test('takes the token out of the address bar with no new history entry', { tag: '@INV-3' }, async ({ page, api }) => {
     api.mock(invitesApi.previewIs(aPreview()))
     const join = joinPage(page)
@@ -129,6 +142,19 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     await expect(join.at.detail('Globex')).toBeVisible()
     await expect(page).toHaveURL('/join')
     expect(api.last('post', invitesPaths.preview)?.body).toEqual({ token: secondToken })
+  })
+
+  test('forgets the token at a logout, so that the next person in the tab does not get the invite', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()), usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), bffApi.logoutOpens())
+    const join = joinPage(page)
+    await join.openLink(token)
+    expect(await join.storedToken()).toBe(token)
+    const home = homePage(page)
+    await home.open()
+
+    await home.logOut()
+
+    expect(await join.storedToken()).toBeNull()
   })
 
   test('shows the message of the Server and no form when the link is not valid', { tag: '@INV-3' }, async ({ page, api }) => {

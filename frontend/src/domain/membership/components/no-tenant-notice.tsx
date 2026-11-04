@@ -14,7 +14,7 @@ export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
-  if (PAGES_WITH_NO_NOTICE.includes(pathname)) return null
+  if (PAGES_WITH_NO_NOTICE.includes(pathname.replace(/\/$/, ''))) return null
 
   if (membership.status === 'error') {
     return (

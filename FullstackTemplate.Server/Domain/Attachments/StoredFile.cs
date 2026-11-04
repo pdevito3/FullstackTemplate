@@ -29,15 +29,23 @@ public sealed partial class StoredFile : ValueObject
     /// <summary>True when the browser can show the file in the page. A type that the registry no longer has is false.</summary>
     public bool CanPreview => FileType.OfMediaType(MediaType)?.CanPreview == true;
 
+    /// <summary>The start of the key of each object of the tenant. A tenant delete deletes each object under it.</summary>
+    public static string TenantPrefix(string tenantId) => $"tenants/{tenantId}/";
+
     /// <summary>Checks the upload with the rules of its use, and gives the file that storage keeps under the key.</summary>
     /// <param name="upload">What the client sent with the file.</param>
     /// <param name="rules">The upload rules of the use, such as the rules of one entity.</param>
-    /// <param name="storageKey">The key of the bytes. Start it with <c>tenants/{tenantId}/</c>, so that the files of
-    /// each tenant stay apart.</param>
-    public static StoredFile Accept(FileUpload upload, UploadRules rules, string storageKey)
+    /// <param name="tenantId">The tenant of the file. The key starts with <see cref="TenantPrefix"/>.</param>
+    /// <param name="path">The rest of the key, made from IDs only.</param>
+    public static StoredFile Accept(FileUpload upload, UploadRules rules, string tenantId, string path)
     {
-        if (string.IsNullOrWhiteSpace(storageKey) || storageKey.Length > StorageKeyMaxLength)
-            throw new ArgumentException($"A storage key has 1 to {StorageKeyMaxLength} characters.", nameof(storageKey));
+        if (string.IsNullOrWhiteSpace(tenantId))
+            throw new ArgumentException("A stored file needs its tenant.", nameof(tenantId));
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("A stored file needs a path under its tenant.", nameof(path));
+        var storageKey = TenantPrefix(tenantId) + path;
+        if (storageKey.Length > StorageKeyMaxLength)
+            throw new ArgumentException($"A storage key has no more than {StorageKeyMaxLength} characters.", nameof(path));
 
         ValidateName(upload.FileName);
         var type = rules.TypeOf(upload);

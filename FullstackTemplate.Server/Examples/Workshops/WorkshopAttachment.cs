@@ -30,9 +30,8 @@ public class WorkshopAttachment : BaseEntity, ITenantable, IAttachment
         if (attachmentForCreation.Id is not null)
             attachment.SetId(attachmentForCreation.Id);
 
-        // The key starts with the tenant, so that the files of each tenant stay apart
-        attachment.File = StoredFile.Accept(attachmentForCreation.File, UploadRules,
-            $"tenants/{attachment.TenantId}/workshops/{attachment.WorkshopId}/attachments/{attachment.Id}");
+        attachment.File = StoredFile.Accept(attachmentForCreation.File, UploadRules, attachment.TenantId,
+            $"workshops/{attachment.WorkshopId}/attachments/{attachment.Id}");
         attachment.QueueDomainEvent(new WorkshopAttachmentAdded(attachment.Id, attachment.WorkshopId));
 
         return attachment;

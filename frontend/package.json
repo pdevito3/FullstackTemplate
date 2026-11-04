@@ -2,6 +2,9 @@
   "name": "FullstackTemplate-frontend",
   "private": true,
   "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "pnpm": ">=10"
+  },
   "version": "0.0.0",
   "type": "module",
   "scripts": {

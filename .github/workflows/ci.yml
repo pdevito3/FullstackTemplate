@@ -142,7 +142,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      # uses: ./.github/actions/install-chromium reads the Playwright version from the installed packages
+      # The install-chromium action reads the Playwright version from the installed packages
       - name: Install the frontend packages
         working-directory: frontend
         run: pnpm install --frozen-lockfile

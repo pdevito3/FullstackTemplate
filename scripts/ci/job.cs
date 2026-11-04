@@ -122,8 +122,10 @@ internal sealed class JobCopy(string root)
                 source.CopyTo(target);
         }
 
+        // --force: the copy holds only the checkout's files, and a global ignore of the machine must not drop one of them
         Run("git", "init", "--quiet");
-        CommitAll("The checkout");
+        Run("git", "add", "--all", "--force");
+        Commit("The checkout");
     }
 
     public void Run(string command, params string[] arguments) => RunIn(".", command, arguments);
@@ -166,13 +168,16 @@ internal sealed class JobCopy(string root)
             throw new StepFailure($"'{tool} {argument}' did not work. {help}");
     }
 
-    // The bot name and the flags keep the commit the same on a machine with a signing key or a global hook
     public void CommitAll(string message)
     {
-        Run("git", "add", "--all", "--force");
-        Run("git", "-c", "user.name=ci", "-c", "user.email=ci@localhost", "commit",
-            "--quiet", "--no-gpg-sign", "--no-verify", "--allow-empty", "--message", message);
+        Run("git", "add", "--all");
+        Commit(message);
     }
+
+    // The flags keep the commit the same on a machine with a signing key or a global hook
+    private void Commit(string message) =>
+        Run("git", "-c", "user.name=ci", "-c", "user.email=ci@localhost", "commit",
+            "--quiet", "--no-gpg-sign", "--no-verify", "--message", message);
 
     public void FailOnChanges(string reason)
     {

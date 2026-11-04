@@ -328,6 +328,30 @@ public class ClaimInviteCommandTests : TestBase
         (await LiveUserCountAsync(tenant.Id)).ShouldBe(0);
     }
 
+    [Test, Property("Rule", "INV-9")]
+    public async Task a_claim_with_an_email_match_refuses_the_email_of_the_token_when_the_provider_did_not_verify_it()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        var token = InviteToken.New().Value;
+        await scope.StartGraph(out _).AddTenant(out var tenant).AddInvite(out var invite, i =>
+        {
+            i.Token = token;
+            i.Email = "ada@example.com";
+            i.RequireEmailMatch = true;
+        }).BuildAsync();
+        // A self-registered account with the email of the invitee, as a holder of a forwarded link makes it
+        scope.SignInAsNewUser(email: "ada@example.com", emailVerified: false);
+
+        // Act
+        var act = () => scope.SendAsync(ClaimOf(token));
+
+        // Assert
+        (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message.ShouldBe(Invite.EmailNotVerifiedMessage);
+        (await InviteAsync(invite.Id)).Status.ShouldBe(InviteStatus.Pending());
+        (await LiveUserCountAsync(tenant.Id)).ShouldBe(0);
+    }
+
     private static Task<Invite> InviteAsync(string id)
         => new TestingServiceScope().ExecuteDbContextAsync(db => db.Invites
             .IgnoreQueryFilters([QueryFilterNames.Tenant]).SingleAsync(i => i.Id == id));

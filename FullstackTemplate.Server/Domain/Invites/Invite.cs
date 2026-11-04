@@ -20,6 +20,8 @@ public class Invite : BaseEntity, ITenantable
     public const string UsedOrRevokedMessage = "This invite was used or revoked. Ask a tenant admin for a new invite.";
     public const string EmailMismatchMessage =
         "This invite is for another email address. Sign in with the account of that email.";
+    public const string EmailNotVerifiedMessage =
+        "The email address of your account is not verified. Verify it, then open the invite link again.";
     public const string CallerHasTenantMessage = "Your account already belongs to a tenant.";
 
     /// <summary>The time from the creation to the expiry. It is not a setting (spec section 8).</summary>
@@ -76,12 +78,13 @@ public class Invite : BaseEntity, ITenantable
     /// invite in one save, so the version check of the invite stops a second claim that raced this one.
     /// </summary>
     /// <exception cref="GoneException">The invite was claimed or revoked, or it expired.</exception>
-    /// <exception cref="ForbiddenAccessException">The invite requires an email match, and the token email differs.</exception>
+    /// <exception cref="ForbiddenAccessException">
+    /// The invite requires an email match, and the token email differs or the provider did not verify it.
+    /// </exception>
     public User Claim(InviteClaim claim, DateTimeOffset now)
     {
         GuardClaimable(now);
-        if (RequireEmailMatch && !string.Equals(Email?.Value, claim.TokenEmail?.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new ForbiddenAccessException(EmailMismatchMessage);
+        GuardEmailMatch(claim);
 
         var user = User.Create(new UserForCreation
         {
@@ -97,6 +100,20 @@ public class Invite : BaseEntity, ITenantable
         MoveTo(InviteStatus.Claimed());
 
         return user;
+    }
+
+    /// <summary>
+    /// The email match of INV-9. A provider that sends no <c>email_verified</c> fails the match, because an email that
+    /// the provider did not verify can be the email of anyone.
+    /// </summary>
+    private void GuardEmailMatch(InviteClaim claim)
+    {
+        if (!RequireEmailMatch)
+            return;
+        if (!string.Equals(Email?.Value, claim.TokenEmail?.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw new ForbiddenAccessException(EmailMismatchMessage);
+        if (!claim.TokenEmailVerified)
+            throw new ForbiddenAccessException(EmailNotVerifiedMessage);
     }
 
     /// <summary>A revoke of a revoked invite changes nothing, so a run again after its own commit succeeds.</summary>

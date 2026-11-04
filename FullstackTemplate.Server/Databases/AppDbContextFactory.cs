@@ -28,6 +28,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         public ClaimsPrincipal? User => null;
         public string? UserIdentifier => null;
         public string? Email => null;
+        public bool EmailVerified => false;
         public string? FirstName => null;
         public string? LastName => null;
         public string? Name => null;

@@ -24,6 +24,12 @@ public interface ICurrentUserService
     string? Email { get; }
 
     /// <summary>
+    /// True only when the token has an <c>email_verified</c> claim of true. A provider that sends no such claim gives
+    /// false, so a check that needs a verified email fails closed.
+    /// </summary>
+    bool EmailVerified { get; }
+
+    /// <summary>
     /// The user's first/given name.
     /// </summary>
     string? FirstName { get; }
@@ -97,6 +103,8 @@ public sealed class CurrentUserService(
 
     public string? Email => User?.FindFirstValue(ClaimTypes.Email)
         ?? User?.FindFirstValue("email");
+
+    public bool EmailVerified => bool.TryParse(User?.FindFirstValue("email_verified"), out var verified) && verified;
 
     public string? FirstName => User?.FindFirstValue(ClaimTypes.GivenName)
         ?? User?.FindFirstValue("given_name");

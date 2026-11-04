@@ -22,10 +22,11 @@ public class InviteTests
         return invite;
     }
 
-    private static InviteClaim ClaimBy(string identifier, string? tokenEmail = null) => new()
+    private static InviteClaim ClaimBy(string identifier, string? tokenEmail = null, bool tokenEmailVerified = true) => new()
     {
         Identifier = identifier,
         TokenEmail = tokenEmail,
+        TokenEmailVerified = tokenEmailVerified,
         FirstName = "Ada",
         LastName = "Lovelace",
         Email = "ada@example.com",
@@ -204,6 +205,37 @@ public class InviteTests
         // Assert
         claim.ShouldThrow<ForbiddenAccessException>().Message.ShouldBe(Invite.EmailMismatchMessage);
         invite.Status.ShouldBe(InviteStatus.Pending());
+    }
+
+    [Test, Property("Rule", "INV-9")]
+    public void claim_with_an_email_match_refuses_the_same_email_when_the_provider_did_not_verify_it()
+    {
+        // Arrange
+        var invite = PendingInvite(i =>
+        {
+            i.Email = "ada@example.com";
+            i.RequireEmailMatch = true;
+        });
+
+        // Act
+        var claim = () => invite.Claim(ClaimBy("sub-of-mallory", "ada@example.com", tokenEmailVerified: false), CreatedAt);
+
+        // Assert
+        claim.ShouldThrow<ForbiddenAccessException>().Message.ShouldBe(Invite.EmailNotVerifiedMessage);
+        invite.Status.ShouldBe(InviteStatus.Pending());
+    }
+
+    [Test, Property("Rule", "INV-9")]
+    public void claim_with_no_email_match_takes_an_email_that_the_provider_did_not_verify()
+    {
+        // Arrange
+        var invite = PendingInvite(i => i.Email = "ada@example.com");
+
+        // Act
+        var user = invite.Claim(ClaimBy("sub-of-ada", "ada@example.com", tokenEmailVerified: false), CreatedAt);
+
+        // Assert
+        user.ShouldNotBeNull();
     }
 
     [Test, Property("Rule", "INV-9")]

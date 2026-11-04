@@ -139,6 +139,61 @@ public class InviteLinkTests : TestBase
             "This invite is for another email address. Sign in with the account of that email.");
     }
 
+    [Test, Property("Rule", "INV-9")]
+    public async Task a_claim_with_the_verified_email_of_the_invite_in_the_token_adds_the_user()
+    {
+        // Arrange
+        var token = await AddEmailMatchInviteAsync("ada@example.com");
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = $"sub-{Guid.NewGuid():N}",
+            ["azp"] = TestingWebApplicationFactory.FirstPartyClientId,
+            ["email"] = "Ada@example.com",
+            // The fake bearer handler takes no boolean. CurrentUserServiceTests reads the boolean of a real JWT.
+            ["email_verified"] = "true",
+        });
+
+        // Act
+        var claim = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Invites.Claim, new FakeClaimInviteDto(token).Generate());
+
+        // Assert
+        claim.StatusCode.ShouldBe(HttpStatusCode.Created, await claim.Content.ReadAsStringAsync());
+    }
+
+    [Test, Property("Rule", "INV-9")]
+    public async Task a_claim_with_the_email_of_the_invite_and_no_email_verified_in_the_token_gets_403()
+    {
+        // Arrange
+        var token = await AddEmailMatchInviteAsync("ada@example.com");
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = $"sub-{Guid.NewGuid():N}",
+            ["azp"] = TestingWebApplicationFactory.FirstPartyClientId,
+            ["email"] = "ada@example.com",
+        });
+
+        // Act
+        var claim = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Invites.Claim, new FakeClaimInviteDto(token).Generate());
+
+        // Assert
+        (await ProblemAsync(claim, HttpStatusCode.Forbidden)).Detail.ShouldBe(
+            "The email address of your account is not verified. Verify it, then open the invite link again.");
+    }
+
+    private static async Task<string> AddEmailMatchInviteAsync(string email)
+    {
+        var token = InviteToken.New().Value;
+        TestGraph.Start(out _).AddTenant(out var tenant).AddInvite(out var invite, i =>
+        {
+            i.Token = token;
+            i.Email = email;
+            i.RequireEmailMatch = true;
+        });
+        await InsertAsync(tenant);
+        await InsertAsync(invite);
+        return token;
+    }
+
     private static async Task<User> AddAdminOfNewTenantAsync()
     {
         TestGraph.Start(out _).AddTenant(out var tenant).AddUser(out var admin, u => u.Role = UserRole.Admin().Value);

@@ -61,6 +61,7 @@ public static class ClaimInvite
                 {
                     Identifier = caller.Subject,
                     TokenEmail = currentUserService.Email,
+                    TokenEmailVerified = currentUserService.EmailVerified,
                     FirstName = request.Dto.FirstName,
                     LastName = request.Dto.LastName,
                     Email = request.Dto.Email,

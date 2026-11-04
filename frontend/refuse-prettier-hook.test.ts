@@ -46,6 +46,7 @@ describe('the agent hook that refuses Prettier', () => {
     'time (pnpm exec prettier --check "src/**/*.ts" 2>&1 | tail -2)',
     'npx \\\n  prettier --write src/a.ts',
     "cat <<'EOF' | npx prettier --stdin-filepath a.ts\nconst a = 1\nEOF",
+    "# don't format by hand\nnpx prettier --write src/a.ts\n# it's done",
   ])('refuses %s', (command) => {
     const result = runHook(command)
 
@@ -72,6 +73,12 @@ describe('the agent hook that refuses Prettier', () => {
     'gh issue list --search prettier',
     'git commit -m "do not run prettier --write; use pnpm lint"',
     "echo 'a && npx prettier --write b'",
+    '# run lint (prettier is not used in this repo)\npnpm lint',
+    'pnpm lint # (prettier is not configured)',
+    "# Don't touch the lockfile\ngit commit -m 'chore: drop npx prettier; prettier --write is gone'",
+    'git commit -m "first line \\\nnpx prettier --write was wrong; prettier is gone"',
+    'cat > notes.md <<\\EOF\nnpx prettier --write src\nEOF',
+    'grep -n eslint\\|prettier frontend/package.json',
     "git commit -F - <<'EOF'\nnpx prettier --write rewrote the file. It's gone.\nEOF",
     `gh pr create --body "$(cat <<'EOF'\n## Why\n\npnpm exec prettier --write\nnpx prettier --write\nEOF\n)"`,
   ])('allows %s', (command) => {

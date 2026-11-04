@@ -926,18 +926,34 @@ internal static class Templates
 
     private static string Mark(Field f) => f.NeedsMark ? (f.Sensitive ? "[Sensitive] " : "[NotSensitive] ") : "";
 
-    private static string EscapeForCs(string text) => text.Replace("\\", "\\\\").Replace("\"", """
-        \"
-        """);
+    /// <summary>
+    /// The text as a C# string literal. A text with a quote gets a raw string literal, because FSTSTR001 refuses \" in
+    /// the code that the script writes. The delimiter has one quote more than the longest run of quotes in the text.
+    /// </summary>
+    private static string Literal(string text)
+    {
+        if (!text.Contains('"'))
+            return '"' + text.Replace(@"\", @"\\") + '"';
+        if (text.StartsWith('"') || text.EndsWith('"') || text.Contains('\n'))
+            throw new FeatureException($"A raw string on one line cannot hold the text: {text}");
+        int longest = 0, run = 0;
+        foreach (var c in text)
+        {
+            run = c == '"' ? run + 1 : 0;
+            longest = Math.Max(longest, run);
+        }
+        var quotes = new string('"', Math.Max(3, longest + 1));
+        return quotes + text + quotes;
+    }
 
-    private static string Missing(Spec s, Field f) => EscapeForCs(Texts.Missing(s, f));
+    private static string Missing(Spec s, Field f) => Literal(Texts.Missing(s, f));
 
-    private static string TooLong(Spec s, Field f, string owner) => EscapeForCs(Texts.TooLong(s, f, $"{{{owner}{f.Name}MaxLength}}"));
+    private static string TooLong(Spec s, Field f, string owner) => "$" + Literal(Texts.TooLong(s, f, $"{{{owner}{f.Name}MaxLength}}"));
 
-    private static string BadCharacter(Spec s, Field f) => EscapeForCs(Texts.BadCharacter(s, f));
+    private static string BadCharacter(Spec s, Field f) => Literal(Texts.BadCharacter(s, f));
 
     private static string OutOfRange(Spec s, Field f, string owner)
-        => EscapeForCs(Texts.OutOfRange(s, f, $"{{{owner}{f.Name}Minimum}}", $"{{{owner}{f.Name}Maximum}}"));
+        => "$" + Literal(Texts.OutOfRange(s, f, $"{{{owner}{f.Name}Minimum}}", $"{{{owner}{f.Name}Maximum}}"));
 
     private static bool IsRequiredString(Field f) => f.Kind is Kind.TimeZone or Kind.ParentId || f is { Kind: Kind.Text, Optional: false };
 
@@ -1047,11 +1063,11 @@ internal static class Templates
         var value = $"{target}.{f.Name}";
         var longer = $"""
             ValidationException.ThrowWhenLongerThan({value}, {f.Name}MaxLength, "{f.Json}",
-                $"{TooLong(s, f, "")}");
+                {TooLong(s, f, "")});
             """;
         var character = $"""
             ValidationException.ThrowWhenHasCharacterPostgresCannotStore({value}, "{f.Json}",
-                "{BadCharacter(s, f)}");
+                {BadCharacter(s, f)});
             """;
         return f.Kind switch
         {
@@ -1062,15 +1078,15 @@ internal static class Templates
                 Block([longer, character], 4),
                 "}",
             ],
-            Kind.Text => [$"""ValidationException.ThrowWhenNullOrWhitespace({value}, "{f.Json}", "{Missing(s, f)}");""", longer, character],
+            Kind.Text => [$"""ValidationException.ThrowWhenNullOrWhitespace({value}, "{f.Json}", {Missing(s, f)});""", longer, character],
             Kind.Int =>
             [
                 $"""
                 ValidationException.Must({value} is >= {f.Name}Minimum and <= {f.Name}Maximum, "{f.Json}",
-                    $"{OutOfRange(s, f, "")}");
+                    {OutOfRange(s, f, "")});
                 """,
             ],
-            Kind.Date or Kind.ZonedDate or Kind.Instant => [$"""ValidationException.MustNot({value} == default, "{f.Json}", "{Missing(s, f)}");"""],
+            Kind.Date or Kind.ZonedDate or Kind.Instant => [$"""ValidationException.MustNot({value} == default, "{f.Json}", {Missing(s, f)});"""],
             Kind.Bool or Kind.TimeZone or Kind.ParentId => [],
         };
     }
@@ -1336,7 +1352,7 @@ internal static class Templates
                         .FirstOrDefaultAsync(x => x.Id == request.Dto.{{r.Name}}, ct)
                     : null;
                 if ({{p.Var}} is null)
-                    throw new ValidationException("{{r.Json}}", "{{EscapeForCs(Texts.ParentMissing(r))}}");
+                    throw new ValidationException("{{r.Json}}", {{Literal(Texts.ParentMissing(r))}});
                 """,
                 "",
                 $"var {v} = {n.Entity}.Create({p.Var}, request.Dto.To{n.Entity}ForCreation());",
@@ -1375,7 +1391,7 @@ internal static class Templates
             {{Block(start, 12)}}
 
                         var tenantId = dbContext.CurrentTenantScope.TenantId
-                            ?? throw new ForbiddenAccessException("{{EscapeForCs(Texts.AddToOtherTenant(s))}}");
+                            ?? throw new ForbiddenAccessException({{Literal(Texts.AddToOtherTenant(s))}});
                         Activity.Current?.SetTag("app.tenant_id", tenantId);
 
                         // The shared lock keeps a tenant delete out until the save, so the {{n.Words}} does not land in a deleted tenant.
@@ -1751,7 +1767,7 @@ internal static class Templates
 
     private static string ToolParameter(Spec s, Field f)
     {
-        var description = $"""[Description("{EscapeForCs(Texts.ToolParameter(s, f))}")]""";
+        var description = $"""[Description({Literal(Texts.ToolParameter(s, f))})]""";
         return f.Optional ? $"{description} string? {f.Camel} = null," : $"{description} {f.Type} {f.Camel},";
     }
 
@@ -1793,7 +1809,7 @@ internal static class Templates
             {
                 [McpServerTool(Name = "add_{{n.Snake}}", Destructive = false, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
-                [Description("{{EscapeForCs(Texts.AddTool(s))}}")]
+                [Description({{Literal(Texts.AddTool(s))}})]
                 public static Task<{{n.Entity}}Dto> Handle(
             {{Block(ToolParameters(s, forUpdate: false), 8)}})
                     => mediator.Send(new Add{{n.Entity}}.Command(
@@ -1813,7 +1829,7 @@ internal static class Templates
             {
                 [McpServerTool(Name = "get_{{n.Snake}}", ReadOnly = true, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
-                [Description("{{EscapeForCs(Texts.GetTool(s))}}")]
+                [Description({{Literal(Texts.GetTool(s))}})]
                 public static Task<{{n.Entity}}Dto> Handle(
                     IMediator mediator,
                     [Description("The {{n.Words}} ID, for example {{n.Prefix}}_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f.")] string id,
@@ -1833,13 +1849,13 @@ internal static class Templates
             {
                 [McpServerTool(Name = "list_{{n.SnakePlural}}", ReadOnly = true, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
-                [Description("{{EscapeForCs(Texts.ListTool(s))}}")]
+                [Description({{Literal(Texts.ListTool(s))}})]
                 public static async Task<McpPage<{{n.Entity}}Dto>> Handle(
                     IMediator mediator,
                     CancellationToken cancellationToken,
                     [Description("The page number. The first page is 1. Leave it out for the first page.")] int? pageNumber = null,
                     [Description("The number of {{n.WordsPlural}} on a page, at least 1. Leave it out for the default size. A value more than the maximum gives the maximum. The result gives the size that was used.")] int? pageSize = null,
-                    [Description("{{EscapeForCs(Texts.Filters(s))}}")] string? filters = null,
+                    [Description({{Literal(Texts.Filters(s))}})] string? filters = null,
                     [Description("A QueryKit sort order, for example: -{{s.Title.Json}}")] string? sortOrder = null)
                 {
                     var parameters = {{n.Entity}}ParametersDto.From(pageNumber, pageSize, filters, sortOrder);
@@ -1861,7 +1877,7 @@ internal static class Templates
                 // An update overwrites the values, so the tool is not additive: the MCP spec says destructive.
                 [McpServerTool(Name = "update_{{n.Snake}}", Destructive = true, Idempotent = true, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
-                [Description("{{EscapeForCs(Texts.UpdateTool(s))}}")]
+                [Description({{Literal(Texts.UpdateTool(s))}})]
                 public static Task<{{n.Entity}}Dto> Handle(
             {{Block(ToolParameters(s, forUpdate: true), 8)}})
                     => mediator.Send(new Update{{n.Entity}}.Command(id,
@@ -2321,25 +2337,25 @@ internal static class Templates
             {
                 case Kind.Text:
                     if (!f.Optional)
-                        yield return $"""yield return () => ({set} "", "{f.Json}", "{Missing(s, f)}");""";
+                        yield return $"""yield return () => ({set} "", "{f.Json}", {Missing(s, f)});""";
                     yield return $"""
                         yield return () => ({set} new string('a', {e}.{f.Name}MaxLength + 1), "{f.Json}",
-                            $"{TooLong(s, f, e + ".")}");
+                            {TooLong(s, f, e + ".")});
                         """;
-                    yield return $"""yield return () => ({set} "a\0b", "{f.Json}", "{BadCharacter(s, f)}");""";
+                    yield return $"""yield return () => ({set} "a\0b", "{f.Json}", {BadCharacter(s, f)});""";
                     break;
                 case Kind.Int:
                     yield return $"""
                         yield return () => ({set} {e}.{f.Name}Minimum - 1, "{f.Json}",
-                            $"{OutOfRange(s, f, e + ".")}");
+                            {OutOfRange(s, f, e + ".")});
                         """;
                     yield return $"""
                         yield return () => ({set} {e}.{f.Name}Maximum + 1, "{f.Json}",
-                            $"{OutOfRange(s, f, e + ".")}");
+                            {OutOfRange(s, f, e + ".")});
                         """;
                     break;
                 case Kind.Date or Kind.ZonedDate or Kind.Instant:
-                    yield return $"""yield return () => ({set} default({f.Type}), "{f.Json}", "{Missing(s, f)}");""";
+                    yield return $"""yield return () => ({set} default({f.Type}), "{f.Json}", {Missing(s, f)});""";
                     break;
             }
         }
@@ -2520,7 +2536,7 @@ internal static class Templates
                     // Assert
                     var refusal = await act.ShouldThrowAsync<ValidationException>();
                     refusal.Property.ShouldBe("{{r.Json}}");
-                    refusal.Message.ShouldBe("{{EscapeForCs(Texts.ParentMissing(r))}}");
+                    refusal.Message.ShouldBe({{Literal(Texts.ParentMissing(r))}});
                 }
 
                 [Test]
@@ -2695,7 +2711,7 @@ internal static class Templates
         var (e, t, json) = (n.Entity, s.Title.Name, s.Title.Json);
         var usings = Usings([$"{n.Ns}.Dtos", $"{n.Ns}.Features", $"{n.App}.SharedTestHelpers.EntityGraphs",
             $"{n.App}.SharedTestHelpers.Utilities", s.Parent?.BlueprintNamespace, "Shouldly"]);
-        return $$"""
+        return $$"""""
             namespace {{n.App}}.IntegrationTests.FeatureTests.{{n.Plural}};
 
             {{usings}}
@@ -2717,10 +2733,16 @@ internal static class Templates
                             x => x.{{t}} = $"{marker} axb",
                             x => x.{{t}} = $"{marker} c\\d",
                             x => x.{{t}} = $"{marker} cd",
-                            x => x.{{t}} = $"\"{marker} quoted",
-                            x => x.{{t}} = $"{marker} quoted\"",
+                            x => x.{{t}} = $"""
+                                "{marker} quoted
+                                """,
+                            x => x.{{t}} = $"""
+                                {marker} quoted"
+                                """,
                             x => x.{{t}} = $"{marker} quoted",
-                            x => x.{{t}} = $"{marker} say \"\"\"hi\"\"\"")
+                            x => x.{{t}} = $""""
+                                {marker} say """hi"""
+                                """")
                         .BuildAsync();
 
                     // Act
@@ -2728,18 +2750,30 @@ internal static class Templates
                     var percent = await ContainingAsync(testingServiceScope, $"{marker} 50%");
                     var underscore = await ContainingAsync(testingServiceScope, $"{marker} a_b");
                     var backslash = await ContainingAsync(testingServiceScope, $"{marker} c\\d");
-                    var quoteAtStart = await ContainingAsync(testingServiceScope, $"\"{marker} quoted");
-                    var quoteAtEnd = await ContainingAsync(testingServiceScope, $"{marker} quoted\"");
-                    var quoteRun = await ContainingAsync(testingServiceScope, $"{marker} say \"\"\"hi\"\"\"");
+                    var quoteAtStart = await ContainingAsync(testingServiceScope, $"""
+                        "{marker} quoted
+                        """);
+                    var quoteAtEnd = await ContainingAsync(testingServiceScope, $"""
+                        {marker} quoted"
+                        """);
+                    var quoteRun = await ContainingAsync(testingServiceScope, $""""
+                        {marker} say """hi"""
+                        """");
 
                     // Assert
                     byCase.ShouldBe([$"North {marker}"]);
                     percent.ShouldBe([$"{marker} 50% full"]);
                     underscore.ShouldBe([$"{marker} a_b"]);
                     backslash.ShouldBe([$"{marker} c\\d"]);
-                    quoteAtStart.ShouldBe([$"\"{marker} quoted"]);
-                    quoteAtEnd.ShouldBe([$"{marker} quoted\""]);
-                    quoteRun.ShouldBe([$"{marker} say \"\"\"hi\"\"\""]);
+                    quoteAtStart.ShouldBe([$"""
+                        "{marker} quoted
+                        """]);
+                    quoteAtEnd.ShouldBe([$"""
+                        {marker} quoted"
+                        """]);
+                    quoteRun.ShouldBe([$""""
+                        {marker} say """hi"""
+                        """"]);
                 }
 
                 private static async Task<List<string>> ContainingAsync(TestingServiceScope scope, string text)
@@ -2749,7 +2783,7 @@ internal static class Templates
                     return page.Select(x => x.{{t}}).ToList();
                 }
             }
-            """;
+            """"";
     }
 
     public static string TenantDeleteRaceTests(Spec s)
@@ -3101,7 +3135,7 @@ internal static class Templates
             usings.Add("global::Google.Protobuf.WellKnownTypes");
         usings.AddRange(["global::Grpc.Core", "Shouldly", "TestUtilities"]);
         var usesDomain = s.Fields.Any(f => f.Kind == Kind.Int);
-        return $$"""
+        return $$""""
             namespace {{n.App}}.FunctionalTests.FunctionalTests.{{n.Plural}};
 
             {{string.Join("\n", usings.Select(u => $"using {u};"))}}{{(usesDomain ? $"""
@@ -3122,7 +3156,9 @@ internal static class Templates
 
                     // Act
                     var read = await client.Get{{e}}Async(new Get{{e}}Request { Id = added.Id });
-                    var list = await client.List{{n.Plural}}Async(new List{{n.Plural}}Request { Filters = $"id == \"{added.Id}\"" });
+                    var list = await client.List{{n.Plural}}Async(new List{{n.Plural}}Request { Filters = $"""
+                        id == "{added.Id}"
+                        """ });
                     var updated = await client.Update{{e}}Async(UpdateRequest(added, "Changed"));
                     await client.Delete{{e}}Async(new Delete{{e}}Request { Id = added.Id });
 
@@ -3198,6 +3234,6 @@ internal static class Templates
                     FactoryClient.SignInAsAppUser(user.Identifier);{{returnParent}}
                 }
             }
-            """;
+            """";
     }
 }

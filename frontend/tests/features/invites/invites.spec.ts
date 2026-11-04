@@ -1,13 +1,15 @@
 import { invitesApi, invitesPaths } from '@tests/support/api/invites-api'
+import { membershipApi } from '@tests/support/api/membership-api'
 import { tenantsApi } from '@tests/support/api/tenants-api'
 import { usersApi } from '@tests/support/api/users-api'
-import { as } from '@tests/support/auth/actors'
+import { actorSubject, as } from '@tests/support/auth/actors'
 import { anInvite } from '@tests/support/builders/invite-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
 import { browserZone } from '@tests/support/clock'
 import { expect, test } from '@tests/support/fixtures'
+import { usersPage } from '../users/users.tasks'
 import { usersWithInvites } from './invites.tasks'
 
 const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v'
@@ -204,6 +206,36 @@ test.describe('the invites of a tenant admin', () => {
 
     await expect(users.at.linkField).toBeVisible()
   })
+  test('shows no button and asks for no invites after the admin demotes themselves and comes back', async ({ page, api }) => {
+    const ana = aUser().identifiedBy(actorSubject).named('Ana Admin').inRole('Admin').seenByAdmin()
+    const { id } = ana.build()
+    api.mock(usersApi.listReturns([ana]), usersApi.oneIs(ana), membershipApi.userIsNow(ana), invitesApi.listReturns([]))
+    const users = usersWithInvites(page)
+    const people = usersPage(page)
+    await users.openWithList()
+    await users.openUserFromTheList('Ana Admin')
+    await people.pickRole('Ana Admin', 'User')
+
+    const demoted = ana.inRole('User').allowing()
+    api.mock(
+      usersApi.roleChanges(demoted),
+      usersApi.oneIs(demoted),
+      membershipApi.userIsNow(demoted),
+      { ...tenantsApi.oneIs(aTenant()), delayMs: 300 },
+      invitesApi.listFails(aProblem().forbidden('You cannot manage users.')),
+    )
+    await people.confirmRole(id)
+    const invitesReads = api.all('get', invitesPaths.list).length
+
+    expect(await users.goToUsersAndCountTheButtonsBeforeTheTenantAnswers()).toBe(0)
+
+    await expect(users.at.usersGrid).toBeVisible()
+    await expect(users.at.inviteButton).toHaveCount(0)
+    await expect(users.at.invitesHeading).toHaveCount(0)
+    await expect(users.at.toasts).toHaveCount(0)
+    expect(api.all('get', invitesPaths.list)).toHaveLength(invitesReads)
+  })
+
   test('sends no email when the field is empty', async ({ page, api }) => {
     api.mock(invitesApi.listReturns([]), invitesApi.creates(anInvite(), token))
     const users = usersWithInvites(page)

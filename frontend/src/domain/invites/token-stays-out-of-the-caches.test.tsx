@@ -19,6 +19,7 @@ const invite: InviteDto = {
   requireEmailMatch: false,
   expiresAt: '2099-01-15T12:00:00Z',
   status: 'Pending',
+  isExpired: false,
   claimedByUserId: null,
   allowedActions: ['Revoke'],
   version: 1,

@@ -12,7 +12,7 @@ public static class GetInviteList
 {
     public sealed record Query(InviteParametersDto Parameters) : IRequest<PagedList<InviteDto>>;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, TimeProvider timeProvider)
         : IRequestHandler<Query, PagedList<InviteDto>>
     {
         public async Task<PagedList<InviteDto>> Handle(Query request, CancellationToken cancellationToken)
@@ -41,7 +41,7 @@ public static class GetInviteList
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
-            invites.AddAllowedActions(caller);
+            invites.AddAllowedActionsAndExpiry(caller, timeProvider.GetUtcNow());
             return invites;
         }
     }

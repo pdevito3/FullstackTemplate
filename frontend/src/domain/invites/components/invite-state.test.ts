@@ -1,17 +1,27 @@
 import { describe, expect, it } from 'vitest'
 
+import type { InviteDto } from '@/api/generated/models/types/invite-dto'
+
 import { formatExpiry, inviteStateOf } from './invite-state'
 
 const expiresAt = '2026-08-16T07:00:00Z'
 
 describe('the state of an invite', () => {
   it.each([
-    ['Pending', '2026-08-16T06:59:59Z', 'Pending'],
-    ['Pending', '2026-08-16T07:00:00Z', 'Expired'],
-    ['Claimed', '2026-08-17T00:00:00Z', 'Claimed'],
-    ['Revoked', '2026-08-17T00:00:00Z', 'Revoked'],
-  ] as const)('%s at %s shows as %s', (status, now, state) => {
-    expect(inviteStateOf({ status, expiresAt }, new Date(now))).toBe(state)
+    ['Pending', false, 'Pending'],
+    ['Pending', true, 'Expired'],
+    ['Claimed', false, 'Claimed'],
+    ['Revoked', false, 'Revoked'],
+  ] as const)('%s with the expired flag %s shows as %s', (status, isExpired, state) => {
+    expect(inviteStateOf({ status, isExpired })).toBe(state)
+  })
+
+  it('reads the flag of the Server and not the clock of the browser', () => {
+    const longAgo = '2020-01-15T12:00:00Z'
+    const farAhead = '2099-01-15T12:00:00Z'
+
+    expect(inviteStateOf({ status: 'Pending', isExpired: false, expiresAt: longAgo } as InviteDto)).toBe('Pending')
+    expect(inviteStateOf({ status: 'Pending', isExpired: true, expiresAt: farAhead } as InviteDto)).toBe('Expired')
   })
 })
 

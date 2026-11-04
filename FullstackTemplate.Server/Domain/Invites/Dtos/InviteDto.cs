@@ -16,6 +16,8 @@ public sealed record InviteDto
     /// <summary>The stored state. A pending invite after <see cref="ExpiresAt"/> is expired.</summary>
     [NamesOf<InviteStatus>]
     public string Status { get; init; } = default!;
+    /// <summary>True when a pending invite is past <see cref="ExpiresAt"/>. The state on the screen reads this flag.</summary>
+    public bool IsExpired { get; init; }
     /// <summary>The user that the claim added. Null until a claim.</summary>
     public string? ClaimedByUserId { get; init; }
     /// <summary>The actions that the caller can send for this invite now. A button in the SPA reads this list.</summary>

@@ -60,6 +60,69 @@ public class GetInviteListQueryTests : TestBase
         listed.AllowedActions.ShouldBeEmpty();
     }
 
+    [Test, Property("Rule", "INV-4")]
+    public async Task the_list_flags_only_a_pending_invite_after_its_expiry_as_expired()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        var longAgo = DateTimeOffset.UtcNow - Invite.Lifetime - TimeSpan.FromMinutes(1);
+        var graph = scope.StartGraph(out _)
+            .AddTenant(out var tenant).AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant).AddInvite(out var current)
+            .Under(tenant).AddInvite(out var expired, i => i.CreatedAt = longAgo)
+            .Under(tenant).AddInvite(out var revoked, i => i.CreatedAt = longAgo);
+        revoked.Revoke();
+        await graph.BuildAsync();
+        scope.SetUserWithDefaults(identifier: admin.Identifier);
+
+        // Act
+        var invites = await scope.SendAsync(AllInvites());
+
+        // Assert
+        invites.Single(i => i.Id == current.Id).IsExpired.ShouldBeFalse();
+        invites.Single(i => i.Id == expired.Id).IsExpired.ShouldBeTrue();
+        invites.Single(i => i.Id == revoked.Id).IsExpired.ShouldBeFalse();
+    }
+
+    [Test]
+    [Arguments("IsExpired == true", null)]
+    [Arguments(null, "-IsExpired")]
+    public async Task a_filter_or_a_sort_on_the_expired_flag_is_refused_because_the_flag_depends_on_the_time(string? filters, string? sortOrder)
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _)
+            .AddTenant(out var tenant).AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant).AddInvite(out _)
+            .BuildAsync();
+        scope.SetUserWithDefaults(identifier: admin.Identifier);
+
+        // Act
+        var act = () => scope.SendAsync(new GetInviteList.Query(InviteParametersDto.From(1, 100, filters, sortOrder)));
+
+        // Assert
+        (await act.ShouldThrowAsync<QueryInputException>()).Message.ShouldContain("cannot use the expired state");
+    }
+
+    [Test]
+    public async Task the_refusal_of_an_unknown_field_does_not_offer_the_expired_flag()
+    {
+        // Arrange
+        var scope = new TestingServiceScope();
+        await scope.StartGraph(out _)
+            .AddTenant(out _).AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .BuildAsync();
+        scope.SetUserWithDefaults(identifier: admin.Identifier);
+
+        // Act
+        var act = () => scope.SendAsync(new GetInviteList.Query(InviteParametersDto.From(1, 100, "noSuchField == 1", null)));
+
+        // Assert
+        var refusal = await act.ShouldThrowAsync<QueryInputException>();
+        refusal.Message.ShouldContain("expiresAt");
+        refusal.Message.ShouldNotContain("isExpired");
+    }
+
     [Test]
     public async Task a_member_without_manage_users_cannot_list_invites()
     {

@@ -44,6 +44,11 @@ export type InviteDto = {
     */
     status: InviteDtoStatusEnumKey;
     /**
+     * @description True when a pending invite is past DateTimeOffset InviteDto.ExpiresAt. The state on the screen reads this flag.
+     * @type boolean
+    */
+    isExpired: boolean;
+    /**
      * @description The user that the claim added. Null until a claim.
      * @type string | undefined
     */

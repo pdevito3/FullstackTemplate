@@ -18,7 +18,7 @@ This spec leaves out:
 |---|---|---|---|
 | `Invite` | None | role, email (optional), require email match | Pending, Claimed, Revoked |
 
-An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID of the user that claimed it. A pending invite after its expiry is expired. Expired is not a stored state. The entity computes it from the expiry and the current time.
+An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID of the user that claimed it. A pending invite after its expiry is expired. Expired is not a stored state. The entity computes it from the expiry and the current time. The response DTO gives the answer as `IsExpired`, and the SPA reads that flag.
 
 | From | To | Method | Who |
 |---|---|---|---|

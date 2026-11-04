@@ -10,9 +10,9 @@ export const INVITE_STATE_LABELS: Record<InviteState, string> = {
   Expired: 'Expired',
 }
 
-/** The Server stores no expired state. A pending invite is expired from its expiry on (`Invite.IsExpiredAt`). */
-export const inviteStateOf = ({ status, expiresAt }: Pick<InviteDto, 'status' | 'expiresAt'>, now: Date): InviteState =>
-  status === 'Pending' && now.getTime() >= new Date(expiresAt).getTime() ? 'Expired' : status
+/** The Server stores no expired state. It computes the flag, so the clock of the browser cannot change the state. */
+export const inviteStateOf = ({ status, isExpired }: Pick<InviteDto, 'status' | 'isExpired'>): InviteState =>
+  isExpired ? 'Expired' : status
 
 /** The expiry in the zone of the browser (section 7 of docs/specs/user-invites.md). */
 export const formatExpiry = (expiresAt: string): string =>

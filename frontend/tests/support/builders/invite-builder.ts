@@ -22,6 +22,7 @@ class InviteBuilder {
       requireEmailMatch: false,
       expiresAt: inviteExpiry,
       status: 'Pending',
+      isExpired: false,
       claimedByUserId: null,
       allowedActions: ['Revoke'],
       version: 1,
@@ -44,9 +45,12 @@ class InviteBuilder {
     return this.with({ role })
   }
 
-  /** The Server stores no expired state. The status stays Pending, and the Server still allows a revoke. */
+  /**
+   * The status stays Pending, and the Server still allows a revoke. The expiry stays in the future, so a test fails if
+   * the SPA reads the clock of the browser and not the flag of the Server.
+   */
   expired() {
-    return this.with({ expiresAt: '2020-01-15T12:00:00Z' })
+    return this.with({ isExpired: true })
   }
 
   claimed() {

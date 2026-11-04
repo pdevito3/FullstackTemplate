@@ -70,7 +70,6 @@ function InviteRows({ page, onPageChange, onRevokeSettled }: InviteListProps & {
     return <p className="text-muted-foreground">There are no invites. Choose Invite a user to make a link.</p>
   }
 
-  const now = new Date()
   const handleRevoke = (invite: InviteDto) =>
     revoke.mutate(invite.id, {
       onSuccess: () => Notification.success('Invite revoked'),
@@ -90,7 +89,7 @@ function InviteRows({ page, onPageChange, onRevokeSettled }: InviteListProps & {
           </TableHeader>
           <TableBody>
             {invites.map((invite) => {
-              const state = inviteStateOf(invite, now)
+              const state = inviteStateOf(invite)
               return (
                 <TableRow key={invite.id} id={invite.id}>
                   <TableCell className="whitespace-normal wrap-anywhere">

@@ -3653,6 +3653,7 @@
           "requireEmailMatch",
           "expiresAt",
           "status",
+          "isExpired",
           "allowedActions",
           "version"
         ],
@@ -3693,6 +3694,10 @@
             ],
             "type": "string",
             "description": "The stored state. A pending invite after DateTimeOffset InviteDto.ExpiresAt is expired."
+          },
+          "isExpired": {
+            "type": "boolean",
+            "description": "True when a pending invite is past DateTimeOffset InviteDto.ExpiresAt. The state on the screen reads this flag."
           },
           "claimedByUserId": {
             "type": [

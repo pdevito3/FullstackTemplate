@@ -133,13 +133,14 @@ A 422 comes from a domain rule or a FluentValidation rule. Its body also has the
 
 A 409 comes from a duplicate unique value, an overlap that an exclusion constraint stops, or a record that changed after the caller loaded it. Its body also has the `ValidationProblemDetails` shape. The `type` tells the cases apart. The type `urn:fullstacktemplate:problem:stale-version` (`DomainProblemDetails.StaleVersionType`) means that the caller must load the record again and repeat the change. The type `urn:fullstacktemplate:problem:concurrent-change` (`DomainProblemDetails.ConcurrentChangeType`) means that the caller can send the same request again. Any other type means that the caller must change the value of the field in `errors`.
 
-Each entrypoint shows the three kinds differently:
+Each entrypoint shows the three kinds of 409, and the 410, differently:
 
 | Kind | HTTP | gRPC | MCP `code` |
 |------|------|------|------------|
 | Conflict with a record that exists | 409 with the default `type` | `AlreadyExists` | `already_exists` |
 | Stale version | 409 with the stale version `type` | `Aborted` | `aborted` |
 | Concurrent change | 409 with the concurrent change `type` | `Aborted` | `aborted` |
+| Record that can no longer be used | 410 | `FailedPrecondition` | `failed_precondition` |
 
 Declare `.ProducesValidationProblem(StatusCodes.Status409Conflict)` on each write endpoint that changes an existing record, because each one can lose a race with another save. Also declare it on each write endpoint that can add or change a unique value.
 

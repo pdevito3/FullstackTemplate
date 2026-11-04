@@ -5,10 +5,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Shouldly;
 
-/// <summary>
-/// The build does not compile the CSharpRepl prelude (see docs/csharp-repl.md). This test compiles all of it against
-/// the Server, so a namespace move or a moved type fails here and not in the next REPL session.
-/// </summary>
 public class CSharpReplPreludeTests
 {
     private const string PreludePath = ".agents/skills/csharprepl/prelude.csx";
@@ -20,7 +16,7 @@ public class CSharpReplPreludeTests
         const string prelude = """
             // Run once for each server process.
             using System.Threading;
-            using FullstackTemplate.Server.Services;
+            using FullstackTemplate.Server.NoSuchNamespace;
             using FullstackTemplate.Server.Databases;
 
             "prelude loaded"
@@ -31,7 +27,7 @@ public class CSharpReplPreludeTests
 
         // Assert
         faults.ShouldHaveSingleItem().ShouldStartWith(
-            $"{PreludePath} line 3: 'using FullstackTemplate.Server.Services;' does not compile (CS0234)");
+            $"{PreludePath} line 3: 'using FullstackTemplate.Server.NoSuchNamespace;' does not compile (CS0234)");
     }
 
     [Test]
@@ -93,8 +89,7 @@ public class CSharpReplPreludeTests
     }
 
     /// <summary>
-    /// Stands in for ConnectorGlobals of the csharprepl tool. It and the usings of the compilation options give the
-    /// prelude what the REPL host gives it.
+    /// Stands in for ConnectorGlobals of the csharprepl tool. Only Get is here, because the prelude uses only Get.
     /// </summary>
     public sealed class ReplHostGlobals
     {

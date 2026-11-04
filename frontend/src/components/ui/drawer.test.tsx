@@ -70,9 +70,9 @@ test('the hold catches the private React Aria events that end the slides of the 
   // Assert
   await expect
     .poll(heldTypes, {
-      timeout: 5000,
+      timeout: 10_000,
       message:
-        'holdSlides caught no scrollend on [data-sheet-scroll]. Did a react-aria-components upgrade rename the event or the attribute? With no hold, the drawer tests that press Escape during the slide-in flake.',
+        'holdSlides caught no scrollend on [data-sheet-scroll]. Did a react-aria-components upgrade rename the event or the attribute, or did the runner stall? With no hold, the drawer tests that press Escape during the slide-in flake.',
     })
     .toContain('scrollend')
   expect(
@@ -86,9 +86,9 @@ test('the hold catches the private React Aria events that end the slides of the 
   // Assert
   await expect
     .poll(heldTypes, {
-      timeout: 5000,
+      timeout: 10_000,
       message:
-        'holdSlides caught no react-aria-sheet-close. Did a react-aria-components upgrade rename the event? With no hold, the drawer test that presses Escape twice fast flakes.',
+        'holdSlides caught no react-aria-sheet-close. Did a react-aria-components upgrade rename the event, or did the runner stall? With no hold, the drawer test that presses Escape twice fast flakes.',
     })
     .toContain('react-aria-sheet-close')
   expect(

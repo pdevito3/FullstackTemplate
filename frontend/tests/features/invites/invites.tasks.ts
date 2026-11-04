@@ -143,10 +143,10 @@ export function joinPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
-    async openLinkAndGoToLogin(token: string) {
+    async openLinkAndGoToLogin(token: string, path = '/join') {
       // The SPA leaves the page as it loads, so the wait is for the commit and not for the load. React StrictMode starts
       // the login twice in development, so wait for the address and not for the first answer, which an abort can follow.
-      await page.goto(`/join#token=${token}`, { waitUntil: 'commit' })
+      await page.goto(`${path}#token=${token}`, { waitUntil: 'commit' })
       await expect(page).toHaveURL(/\/bff\/login/)
     },
 

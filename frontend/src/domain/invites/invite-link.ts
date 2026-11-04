@@ -6,14 +6,17 @@ export const inviteLinkOf = (origin: string, token: string): string => `${origin
 /** The value of `token` in a URL fragment such as `#token=abc`, or null when the fragment has no `token`. */
 export const tokenOfFragment = (hash: string): string | null => new URLSearchParams(hash.slice(1)).get('token')
 
-const isJoinPath = (pathname: string) => pathname.replace(/\/$/, '') === '/join'
-
-function moveTokenToTheTab(): boolean {
-  const token = isJoinPath(window.location.pathname) ? tokenOfFragment(window.location.hash) : null
+/**
+ * A fragment with a token is an invite link on each path, so the token goes to no server if an edit changed the path.
+ * The address becomes the path of the join page, so a token never waits on another page, and this code does not have
+ * to know which paths the router matches.
+ */
+function moveLinkToTheTab(): boolean {
+  const token = tokenOfFragment(window.location.hash)
   if (token === null) return false
   if (token) sessionStorage.setItem(STORAGE_KEY, token)
   else sessionStorage.removeItem(STORAGE_KEY)
-  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
+  window.history.replaceState(window.history.state, '', '/join')
   return true
 }
 
@@ -26,9 +29,9 @@ function moveTokenToTheTab(): boolean {
  * shows the page of the new link.
  */
 export function keepInviteTokenOutOfTheUrl(): void {
-  moveTokenToTheTab()
+  moveLinkToTheTab()
   window.addEventListener('hashchange', () => {
-    if (moveTokenToTheTab()) window.location.reload()
+    if (moveLinkToTheTab()) window.location.reload()
   })
 }
 

@@ -47,6 +47,19 @@ test.describe('a visitor with no session opens an invite link', () => {
     expect(api.last('post', invitesPaths.preview)?.body).toEqual({ token })
     expect(join.urlsWith(token)).toEqual([])
   })
+
+  for (const path of ['/JOIN', '/Join/', '/join//', '/about', '/no/such/page']) {
+    test(`sends no token to the BFF from the changed link ${path}, and comes back to the join page`, { tag: '@INV-3' }, async ({ page, api }) => {
+      api.mock(bffApi.loginOpens())
+      const join = joinPage(page)
+
+      await join.openLinkAndGoToLogin(token, path)
+
+      expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/join')
+      expect(join.urlsWith(token)).toEqual([])
+      expect(await join.storedToken()).toBe(token)
+    })
+  }
 })
 
 test.describe('a signed-in user with no tenant opens an invite link', () => {
@@ -85,6 +98,20 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     await expect(join.at.startTenantNotice).toHaveCount(0)
     expect(api.last('post', invitesPaths.preview)?.body).toEqual({ token })
   })
+
+  for (const path of ['/JOIN', '/join//', '/about', '/no/such/page']) {
+    test(`shows the join page for the changed link ${path}`, { tag: '@INV-3' }, async ({ page, api }) => {
+      api.mock(invitesApi.previewIs(aPreview()))
+      const join = joinPage(page)
+
+      await join.openLink(token, path)
+
+      await expect(join.at.form).toBeVisible()
+      await expect(page).toHaveURL('/join')
+      await expect(join.at.startTenantNotice).toHaveCount(0)
+      expect(api.last('post', invitesPaths.preview)?.body).toEqual({ token })
+    })
+  }
 
   test('takes the token out of the address bar with no new history entry', { tag: '@INV-3' }, async ({ page, api }) => {
     api.mock(invitesApi.previewIs(aPreview()))

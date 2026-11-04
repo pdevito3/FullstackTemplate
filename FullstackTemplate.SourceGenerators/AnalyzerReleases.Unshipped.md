@@ -15,3 +15,4 @@ FSTMSG001 | UserMessage | Error | A user message shows a code name: a snake_case
 FSTMSG002 | UserMessage | Error | A user message shows an ID.
 FSTTEL001 | Telemetry | Error | An EF query on a DbSet of AppDbContext has no TagWithOperationCallSite.
 FSTTEL003 | Telemetry | Error | A caller of a method that returns an untagged query does not tag it.
+FSTQRY001 | QueryInput | Error | A query lambda in a request handler compares a text or a list of texts of the request that EntityId.IsValid or PostgresText.CanStore did not check first.

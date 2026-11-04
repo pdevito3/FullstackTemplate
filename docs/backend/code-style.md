@@ -25,3 +25,5 @@ The build does not refuse these strings:
 `Directory.Build.props` gives the analyzer to each C# project. The other rules of `FullstackTemplate.SourceGenerators` check only the Server, so `ServerRulesOff.globalconfig` turns them off in each other project. If you add a Server rule, add its ID to that file. `ServerRulesOffTests` fails when an ID is not in it. A global config cannot turn off a generator, so `ValueObjectGenerator` runs in each project. It writes code only for a class that derives from `ValueObject`.
 
 The build does not run the analyzer on the file-based scripts of `scripts/` or on `FullstackTemplate.SourceGenerators`, so `ScriptRawStringTests` runs the rule on them. `scripts/new-feature.cs` writes a text with a quote as a raw string literal, so the code that it writes obeys the rule.
+
+`scripts/raw-strings.cs` rewrites each string that the rule refuses, and makes sure that each string keeps its value. Use it when you merge code that has many of these strings. See [Take updates from the template](../template-updates.md#the-update-that-adds-fststr001).

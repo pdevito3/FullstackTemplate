@@ -120,6 +120,26 @@ Each side of a conflict has a label. `HEAD` is the app, and `template <commit>` 
    ```
 4. Merge the pull request with a merge commit. A squash merge or a rebase merge removes the template commit from the history of the app, and then the next update starts from the old base again.
 
+## Steps for a specific update
+
+### The update that adds FSTSTR001
+
+The build now refuses a string where an escape hides the text (see [Strings](backend/code-style.md#strings)). After the merge, the build can fail with FSTSTR001 in the code of the app. `ScriptRawStringTests` can also fail on `scripts/init.cs`, because the merge does not change that file. Resolve each conflict, then run this command in the root of the app:
+
+```bash
+dotnet run scripts/raw-strings.cs
+```
+
+The script writes each of these strings as a raw string literal. If a rewrite changes the code, the script stops and changes no file. A second run changes nothing.
+
+The script does not change a string that it cannot rewrite, and it lists each of these strings. It also does not read the code that an `#if` turns off. Build again, and correct by hand each string that the build still refuses.
+
+If you commit the rewrite alone, you can check it again. This command compares each changed C# file with the commit before the rewrite:
+
+```bash
+dotnet run scripts/raw-strings.cs -- --check HEAD~1
+```
+
 ## Keep the next update small
 
 - When you find a fault in the template, report it as an issue of the template, and get the fix with the next update. A fix that you copy by hand gives a conflict when the fix of the template comes.

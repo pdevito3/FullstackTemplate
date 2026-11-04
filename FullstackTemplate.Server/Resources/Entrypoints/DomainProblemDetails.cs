@@ -36,6 +36,7 @@ public static class DomainProblemDetails
             DomainErrorKind.InvalidInput => StatusCodes.Status400BadRequest,
             DomainErrorKind.NotFound => StatusCodes.Status404NotFound,
             DomainErrorKind.Forbidden => StatusCodes.Status403Forbidden,
+            DomainErrorKind.Gone => StatusCodes.Status410Gone,
             DomainErrorKind.Conflict or DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange
                 => StatusCodes.Status409Conflict,
             DomainErrorKind.Unexpected => StatusCodes.Status500InternalServerError,

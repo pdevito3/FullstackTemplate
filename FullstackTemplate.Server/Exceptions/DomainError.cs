@@ -18,6 +18,9 @@ public enum DomainErrorKind
     /// <summary>The caller cannot do this action.</summary>
     Forbidden,
 
+    /// <summary>The record exists, but it can no longer be used, for example an invite that expired.</summary>
+    Gone,
+
     /// <summary>
     /// The request conflicts with a record that exists, for example a duplicate unique value or an overlap. The
     /// caller must change the value.
@@ -83,6 +86,7 @@ public sealed record DomainError(
             new() { [ex.Parameter] = [ex.Message] }),
         NotFoundException ex => new(DomainErrorKind.NotFound, "The resource was not found.", ex.Message, null),
         ForbiddenAccessException ex => new(DomainErrorKind.Forbidden, "You do not have access to do this.", ex.Message, null),
+        GoneException ex => new(DomainErrorKind.Gone, "The resource is no longer available.", ex.Message, null),
         StaleVersionException ex => new(
             DomainErrorKind.StaleVersion,
             StaleVersionTitle,

@@ -136,6 +136,7 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
       await expect(inviteRow(claimed, invites)).toContainText('Pending')
       await expect(inviteRow(toRevoke, invites)).toContainText('Pending')
       await expect(inviteRow(matching, invites)).toContainText('Email must match')
+      expect(invites.find((i) => i.id === claimed.id).isExpired).toBe(false)
       return invites
     })
     await capture('invites-pending')
@@ -159,7 +160,31 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
     })
     await capture('invite-revoked')
 
-    await step('the admin logs out', signOut)
+    await step('the admin opens a good link in the tab, and the tab keeps the token for the admin', async () => {
+      await page.goto(claimed.link)
+      await expect(page.getByText('Your account already belongs to a tenant.', { exact: true })).toBeVisible()
+      await expect(page).toHaveURL(/\/join$/)
+      expect(await page.evaluate(() => sessionStorage.getItem('invite-token'))).toBe(claimed.token)
+    })
+
+    await step('the session of the admin ends with no logout in this tab, and user@example.com signs in there', async () => {
+      await context.clearCookies()
+      const toLogin = page.waitForRequest((r) => new URL(r.url()).pathname === '/bff/login')
+      await page.goto('/join')
+      await toLogin
+      await login('user@example.com')
+    })
+
+    await step('the link of the admin is gone: the user sees no form, and the page needs a link', async () => {
+      await expect(page).toHaveURL(/\/join$/)
+      await expect(page.getByRole('alert')).toHaveText('This page needs an invite link. Open the invite link again.')
+      await expect(page.getByRole('form', { name: 'Join the tenant' })).toHaveCount(0)
+      expect(await page.evaluate(() => sessionStorage.getItem('invite-token'))).toBeNull()
+      expectNoTokenInAUrl(...tokens)
+    })
+    await capture('join-no-link')
+
+    await step('the user logs out', signOut)
 
     await step('user@example.com opens the revoked link with no session, and signs in', async () => {
       const toLogin = page.waitForRequest((r) => new URL(r.url()).pathname === '/bff/login')

@@ -5,12 +5,15 @@ using System.Net.Http.Json;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.Agents.Dtos;
 using FullstackTemplate.Server.Domain.Agents.Features;
+using FullstackTemplate.Server.Domain.Invites;
+using FullstackTemplate.Server.Domain.Invites.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 using FullstackTemplate.SharedTestHelpers.Fakes.Agent;
+using FullstackTemplate.SharedTestHelpers.Fakes.Invite;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +87,13 @@ public class PermissionsInResponseTests : TestBase
             var initiated = await ReadAsync<InitiateUserAndTenantResponseDto>(
                 await a.Client.PostJsonRequestAsync(ApiRoutes.Users.Initiate, dto), HttpStatusCode.Created);
             return Returned.OfUser(initiated.User);
+        },
+        [Name(typeof(ClaimInvite.Command))] = async a =>
+        {
+            var token = await a.AddInviteAsync(UserRole.Admin());
+            a.Client.SignInAsAppUser(Guid.NewGuid().ToString());
+            return Returned.OfUser(await ReadAsync<UserDto>(await a.Client.PostJsonRequestAsync(
+                ApiRoutes.Invites.Claim, new FakeClaimInviteDto(token).Generate()), HttpStatusCode.Created));
         },
         [Name(typeof(AddAgent.Command))] = async a =>
         {
@@ -201,6 +211,19 @@ public class PermissionsInResponseTests : TestBase
             user.AddPermissions(permissions);
             await InsertAsync(user);
             return user;
+        }
+
+        /// <returns>The token of the invite link.</returns>
+        public async Task<string> AddInviteAsync(UserRole role)
+        {
+            var token = InviteToken.New().Value;
+            TestGraph.Start(Seed, NullStore.Instance).AddInvite(out var invite, i =>
+            {
+                i.Role = role.Value;
+                i.Token = token;
+            });
+            await InsertAsync(invite);
+            return token;
         }
 
         public async Task<Agent> AddAgentAsync(params string[] grant)

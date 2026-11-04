@@ -6,15 +6,19 @@ using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
+using Users;
 
 public static class GetTenantList
 {
     public sealed record Query(TenantParametersDto Parameters) : IRequest<PagedList<TenantDto>>;
 
-    public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Query, PagedList<TenantDto>>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+        : IRequestHandler<Query, PagedList<TenantDto>>
     {
         public async Task<PagedList<TenantDto>> Handle(Query request, CancellationToken cancellationToken)
         {
+            // Each caller can list the tenants that the tenant filter shows. The caller decides only the actions.
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
             var queryKitConfig = new CustomQueryKitConfiguration();
 
             // The filter and the sort run on the DTO, so a caller can query only the fields that the contract shows
@@ -31,11 +35,13 @@ public static class GetTenantList
                 ? query.OrderBy(t => t.Name).ThenBy(t => t.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(t => t.Id);
 
-            return await PagedList.CreateAsync(
+            var tenants = await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
+            tenants.AddAllowedActions(caller);
+            return tenants;
         }
     }
 }

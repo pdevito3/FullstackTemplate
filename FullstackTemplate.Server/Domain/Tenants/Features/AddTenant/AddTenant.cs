@@ -47,7 +47,7 @@ public static class AddTenant
 
             _logger.Here().Information("Added tenant {TenantId}", tenant.Id);
 
-            return tenant.ToTenantDto();
+            return tenant.ToTenantDto(caller);
         }
     }
 }

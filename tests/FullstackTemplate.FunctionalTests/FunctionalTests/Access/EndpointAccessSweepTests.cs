@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Attachments;
+using FullstackTemplate.Server.Domain.Invites;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http;
@@ -42,6 +43,8 @@ public class EndpointAccessSweepTests : TestBase
         ["/fullstacktemplate.tenants.v1.TenantsService/GetTenant"] = new("The gRPC method of GetTenant."),
         ["/fullstacktemplate.tenants.v1.TenantsService/ListTenants"] = new("The gRPC method of GetTenantList."),
         ["GetCurrentUser"] = new("Each signed-in caller reads the own identity. It takes no ID and reads no tenant rows."),
+        ["GetInvitePreview"] = new("The token in the body is the access, so each signed-in caller with the token of a pending invite reads the preview. An unknown token gives 404."),
+        ["ClaimInvite"] = new("The token in the body is the access, and only a caller with no user record can claim (INV-6).", OnlyWithNoUser: true),
         ["get_tenant"] = new("ToolAccessKind.Read. Each member reads the own tenant, and the tenant filter hides the others."),
         ["list_tenants"] = new("ToolAccessKind.Read. Each member lists the own tenant, and the tenant filter hides the others."),
         // example:start
@@ -66,11 +69,11 @@ public class EndpointAccessSweepTests : TestBase
     };
 
     // The sample body of an update sends version 0, so the control call of an update gets the stale-version code
-    private static readonly SurfaceCodes HttpCodes = new("403", "404", "409", "401", code => code[0] == '2');
+    private static readonly SurfaceCodes HttpCodes = new("403", "404", "409", "409", "401", code => code[0] == '2');
     // /mcp refuses a call with no token before a tool runs. TenantMcpToolTests checks that 401.
-    private static readonly SurfaceCodes McpCodes = new("permission_denied", "not_found", "aborted", null, code => code == "ok");
+    private static readonly SurfaceCodes McpCodes = new("permission_denied", "not_found", "aborted", "already_exists", null, code => code == "ok");
     private static readonly SurfaceCodes GrpcCodes = new(
-        nameof(StatusCode.PermissionDenied), nameof(StatusCode.NotFound), nameof(StatusCode.Aborted),
+        nameof(StatusCode.PermissionDenied), nameof(StatusCode.NotFound), nameof(StatusCode.Aborted), nameof(StatusCode.AlreadyExists),
         nameof(StatusCode.Unauthenticated), code => code == nameof(StatusCode.OK));
 
     private static Assembly ServerAssembly => typeof(EndpointDiscovery).Assembly;
@@ -323,13 +326,18 @@ public class EndpointAccessSweepTests : TestBase
     /// One record ID for each kind. The kind is the first route segment, or the domain folder of a tool or a gRPC
     /// service, for example <c>users</c>.
     /// </param>
-    private sealed record RecordIds(IReadOnlyDictionary<string, string> IdsByKind, string Identifier)
+    /// <param name="InviteToken">The token of a pending invite. The sweep puts it in a body property named <c>token</c>.</param>
+    private sealed record RecordIds(IReadOnlyDictionary<string, string> IdsByKind, string Identifier, string InviteToken)
     {
         private static readonly string PermissionName = Permission.ListNames()[0];
 
         public RecordIds Unknown() => new(
             IdsByKind.ToDictionary(kind => kind.Key, kind => EntityId.New(kind.Value[..kind.Value.IndexOf('_')])),
-            $"unknown-{Guid.NewGuid():N}");
+            $"unknown-{Guid.NewGuid():N}",
+            Server.Domain.Invites.InviteToken.New().Value);
+
+        /// <summary>The body properties that name a record. A token names no record of a tenant, so it is not in <see cref="NamesARecord"/>.</summary>
+        public IReadOnlyDictionary<string, string> BodyValues => new Dictionary<string, string> { ["token"] = InviteToken };
 
         // A route value that names a record under the record of {id}. Its value is under "<kind>/<name>" in IdsByKind.
         private static readonly HashSet<string> ChildRecordNames =
@@ -359,6 +367,7 @@ public class EndpointAccessSweepTests : TestBase
 
     private static async Task<TenantRecords> AddTenantAsync()
     {
+        var inviteToken = InviteToken.New().Value;
         TestGraph.Start(out _)
             .AddTenant(out var tenant)
             .AddUsers(out var users, u => u.Role = "User", u => u.Role = "Admin", u => u.Role = "User")
@@ -369,6 +378,8 @@ public class EndpointAccessSweepTests : TestBase
             .AddWorkshopAttachment(out var attachment)
             .Under(tenant)
             // example:end
+            .AddInvite(out var invite, i => i.Token = inviteToken)
+            .Under(tenant)
             // new-feature:sweep-graph
             .AddAgent(out var agent);
         var (member, admin, otherUser) = (users[0], users[1], users[2]);
@@ -383,6 +394,7 @@ public class EndpointAccessSweepTests : TestBase
         await InsertAsync(tenant);
         await InsertAsync(users);
         await InsertAsync(agent);
+        await InsertAsync(invite);
         // example:start
         await InsertAsync(venue);
         await InsertAsync(workshop);
@@ -395,6 +407,7 @@ public class EndpointAccessSweepTests : TestBase
             ["users"] = otherUser.Id,
             ["agents"] = agent.Id,
             ["tenants"] = tenant.Id,
+            ["invites"] = invite.Id,
             // example:start
             ["venues"] = venue.Id,
             ["workshops"] = workshop.Id,
@@ -402,7 +415,7 @@ public class EndpointAccessSweepTests : TestBase
             // example:end
             // new-feature:sweep-ids
         };
-        return new TenantRecords(member, admin, new RecordIds(idsByKind, otherUser.Identifier));
+        return new TenantRecords(member, admin, new RecordIds(idsByKind, otherUser.Identifier, inviteToken));
     }
 
     // ...Domain.AuditEntries.Features gives audit-entries, and ...Domain.Tenants.Features gives tenants
@@ -516,11 +529,19 @@ public class EndpointAccessSweepTests : TestBase
             var request = new HttpRequestMessage(new HttpMethod(Method),
                 path.TrimStart('/') + (query.Count > 0 ? $"?{string.Join('&', query)}" : ""));
             if (Body is not null)
-                request.Content = new StringContent(
-                    SchemaSample.Of(Body, Document)?.ToJsonString() ?? "null", Encoding.UTF8, "application/json");
+                request.Content = new StringContent(BodyFor(ids)?.ToJsonString() ?? "null", Encoding.UTF8, "application/json");
             if (FormBody is not null)
                 request.Content = FormFor(FormBody, fileType);
             return request;
+        }
+
+        private JsonNode? BodyFor(RecordIds ids)
+        {
+            var body = SchemaSample.Of(Body!, Document);
+            if (body is JsonObject properties)
+                foreach (var (name, value) in ids.BodyValues.Where(v => properties.ContainsKey(v.Key)))
+                    properties[name] = value;
+            return body;
         }
 
         private MultipartFormDataContent FormFor(JsonNode schema, FileType fileType)

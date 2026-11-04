@@ -39,6 +39,15 @@ public static class ApiRoutes
         public static string RemovePermission(string id, string permission) => $"{Base}/agents/{id}/permissions/{permission}";
     }
 
+    public static class Invites
+    {
+        public static string GetList => $"{Base}/invites";
+        public static string Create => $"{Base}/invites";
+        public static string Preview => $"{Base}/invites/preview";
+        public static string Claim => $"{Base}/invites/claim";
+        public static string Revoke(string id) => $"{Base}/invites/{id}/revoke";
+    }
+
     public static class AuditEntries
     {
         public static string GetPage(string entityId) => $"{Base}/audit-entries?entityId={Uri.EscapeDataString(entityId)}";

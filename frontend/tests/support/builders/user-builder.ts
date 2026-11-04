@@ -74,5 +74,5 @@ export const aUser = () => UserBuilder.create()
 
 export const aStartedTenant = (name: string, user = aUser()): InitiateUserAndTenantResponseDto => {
   const admin = { ...user.build(), role: 'Admin' as const }
-  return { tenant: { id: admin.tenantId, name, version: 1 }, user: admin }
+  return { tenant: { id: admin.tenantId, name, allowedActions: ['InviteUser'], version: 1 }, user: admin }
 }

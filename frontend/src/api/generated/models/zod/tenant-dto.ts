@@ -8,5 +8,6 @@ import * as z from 'zod'
 export const tenantDtoSchema = z.object({
   id: z.string(),
   name: z.string(),
+  allowedActions: z.array(z.enum(['InviteUser'])).describe('The actions that the caller can send for this tenant now. A button in the SPA reads this list.'),
   version: z.int().min(0).max(4294967295),
 })

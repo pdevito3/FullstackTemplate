@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useServerErrors } from '@/hooks/use-server-errors'
 import { focusFirstError } from '@/lib/focus-first-error'
 import { isProblemDetailsError } from '@/lib/problem-details'
@@ -60,12 +61,12 @@ export function ClaimInviteForm({ profile, requireEmailMatch, onClaim }: ClaimIn
         {requireEmailMatch ? (
           <Field>
             <FieldLabel htmlFor={`${id}-email`}>Email</FieldLabel>
-            <Input
+            <Textarea
               id={`${id}-email`}
-              type="email"
               readOnly
+              rows={1}
               aria-describedby={`${id}-email-note`}
-              className="bg-muted text-muted-foreground dark:bg-muted"
+              className="min-h-8 resize-none bg-muted py-1 wrap-anywhere text-muted-foreground dark:bg-muted"
               {...form.register('email')}
             />
             <FieldDescription id={`${id}-email-note`}>

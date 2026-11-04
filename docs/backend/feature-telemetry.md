@@ -64,6 +64,10 @@ Write telemetry to answer a question that a person asks during an incident. If n
    - The tag must be on the `IQueryable`, before `ToListAsync` or `FirstOrDefaultAsync`.
    - Use a constant name in the form `area.operation`, for example `users.update_role.load`. Never put an id or a value in the name.
    - Before you add a name, search the code for it. Each name identifies one query.
+   - The build refuses a query on a `DbSet` of `AppDbContext` that has no `TagWithOperationCallSite` (FSTTEL001). The build follows the query through `?:`, `??`, and a `switch` expression.
+   - If a method returns an untagged query, also through an `IQueryable` local that the method returns, the build checks each caller of the method and refuses a caller that does not tag the query (FSTTEL003). This check needs the whole project, so the IDE shows it only after a build.
+   - Tag a query before you pass it to a method or return it from a lambda. The build refuses an untagged query that you pass to a method or return from a lambda (FSTTEL001), also when the code that gets the query tags it.
+   - The build does not see a query that starts from a `DbSet` in a local, a query from a method behind an interface, or a load through `Entry(...).Collection(...)`. Tag those queries yourself.
 2. Tag the feature span with the ids of the entities that the feature reads or changes.
    - Do not tag the caller. `CallerIdentityBehavior` already adds the `app.caller.*` tags and the `Caller*` log properties.
    - Call `Activity.Current?.SetTag("app.user_id", user.Id)` in the handler. In a handler, `Activity.Current` is the feature slice span.

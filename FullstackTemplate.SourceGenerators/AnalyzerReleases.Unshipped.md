@@ -13,3 +13,5 @@ FSTID004 | EntityId | Error | An entity constructor does not pass the IdPrefix o
 FSTID005 | EntityId | Error | An entity derives from a concrete entity, or from an abstract base class that has an IdPrefix.
 FSTMSG001 | UserMessage | Error | A user message shows a code name: a snake_case or PascalCase word, an enum value, the stored name of a fixed-names value object, or a type name.
 FSTMSG002 | UserMessage | Error | A user message shows an ID.
+FSTTEL001 | Telemetry | Error | An EF query on a DbSet of AppDbContext has no TagWithOperationCallSite.
+FSTTEL003 | Telemetry | Error | A caller of a method that returns an untagged query does not tag it.

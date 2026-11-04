@@ -239,13 +239,13 @@ The server applies migrations at startup, with a Postgres advisory lock.
 
 ## Object storage
 
-The Server keeps the bytes of files in one S3 bucket. The database keeps the metadata of each file and the key of its object. `Resources/Storage/ObjectStorage.cs` puts an object, deletes an object, and signs a URL that reads an object. `Resources/Storage/ObjectStorageRegistration.cs` adds the S3 client.
+The Server keeps the bytes of files in one S3 bucket. The database keeps the metadata of each file and the key of its object. `Resources/Storage/ObjectStorage.cs` puts an object, deletes an object or each object under a prefix, and signs a URL that reads an object. `Resources/Storage/ObjectStorageRegistration.cs` adds the S3 client.
 
 | Where | Storage |
 |-------|---------|
 | `dotnet aspire start` | The `storage` resource of the AppHost. It is Floci, an S3 emulator, on port 24780. When Floci is ready, `FullstackTemplate.AppHost/Storage/seed/01-create-bucket.sh` makes the bucket `files`. The AppHost gives the Server `AWS_ENDPOINT_URL`, the region, test credentials, and `ObjectStorage__BucketName` |
 | The integration and functional tests | `FlociTestStorage` in `tests/FullstackTemplate.SharedTestHelpers/Utilities/` starts a Floci container with the same image, and makes a new bucket for each run |
-| Production | S3 of AWS, or a service with the S3 API. A publish of the AppHost has no `storage` resource. Set `ObjectStorage__BucketName`: the Server does not start without it. With no `AWS_ENDPOINT_URL`, the SDK reads the region and the credentials from its default chain. Block all public access to the bucket |
+| Production | S3 of AWS, or a service with the S3 API. A publish of the AppHost has no `storage` resource. Set `ObjectStorage__BucketName`: the Server does not start without it. With no `AWS_ENDPOINT_URL`, the SDK reads the region and the credentials from its default chain. Give the credentials `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` on the objects, and `s3:ListBucket` on the bucket for the delete of a tenant. Block all public access to the bucket |
 
 Floci checks the signature of a signed request (`FLOCI_AUTH_VALIDATE_SIGNATURES`). It does not refuse a request with no signature, so a local bucket is open to each caller that can get to its port. S3 of AWS refuses such a request when the bucket blocks public access.
 

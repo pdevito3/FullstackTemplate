@@ -114,9 +114,8 @@ public sealed class RepairPhoto : BaseEntity, ITenantable, IAttachment
             RepairId = repair.Id,
             UploadedAt = uploadedAt.ToUniversalTime(),
         };
-        // The key starts with the tenant, so that the files of each tenant stay apart
-        photo.File = StoredFile.Accept(upload, UploadRules,
-            $"tenants/{photo.TenantId}/repairs/{photo.RepairId}/photos/{photo.Id}");
+        photo.File = StoredFile.Accept(upload, UploadRules, photo.TenantId,
+            $"repairs/{photo.RepairId}/photos/{photo.Id}");
         return photo;
     }
 

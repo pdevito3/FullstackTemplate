@@ -106,6 +106,27 @@ public class WorkshopAttachmentTests : TestBase
     }
 
     [Test]
+    public async Task a_tenant_delete_deletes_the_files_of_the_tenant_from_storage_and_keeps_the_files_of_another_tenant()
+    {
+        // Arrange
+        var (_, otherWorkshop) = await AddWorkshopAndSignInAsync("Admin");
+        var otherUpload = await UploadAsync(otherWorkshop.Id, PdfOf(100), "other.pdf", "application/pdf");
+        var otherAttachment = (await otherUpload.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
+        var (tenant, workshop) = await AddWorkshopAndSignInAsync("Admin");
+        var upload = await UploadAsync(workshop.Id, PdfOf(100), "notes.pdf", "application/pdf");
+        var attachment = (await upload.Content.ReadFromJsonAsync<AttachmentDto>()).ShouldNotBeNull();
+
+        // Act
+        var result = await FactoryClient.DeleteRequestAsync(ApiRoutes.Tenants.Delete(tenant.Id));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
+        (await Storage.GetAsync(attachment.DownloadUrl)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await Storage.GetAsync(otherAttachment.DownloadUrl)).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
     public async Task a_member_of_another_tenant_cannot_find_the_files_of_a_workshop()
     {
         // Arrange

@@ -7,6 +7,8 @@ using Shouldly;
 
 public class StoredFileTests
 {
+    private const string TenantId = "t1";
+    private const string Path = "things/a1/attachments/f1";
     private const string Key = "tenants/t1/things/a1/attachments/f1";
 
     private static readonly DateTimeOffset Now = new(2026, 11, 3, 9, 0, 0, TimeSpan.Zero);
@@ -20,7 +22,7 @@ public class StoredFileTests
         var upload = SampleFiles.Upload("kiln.png", SampleFiles.Png, "image/x-png", sizeBytes: 2048);
 
         // Act
-        var file = StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var file = StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         file.Name.ShouldBe("kiln.png");
@@ -36,7 +38,7 @@ public class StoredFileTests
         var upload = SampleFiles.Upload("handout.pdf", SampleFiles.Pdf, "application/octet-stream");
 
         // Act
-        var file = StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var file = StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         file.MediaType.ShouldBe("application/pdf");
@@ -60,7 +62,7 @@ public class StoredFileTests
         var upload = SampleFiles.Upload(fileName, SampleFiles.Png, "image/png");
 
         // Act
-        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         var refusal = accept.ShouldThrow<ValidationException>();
@@ -87,7 +89,7 @@ public class StoredFileTests
         var upload = SampleFiles.Upload($"report{control}gnp.pdf", SampleFiles.Pdf, "application/pdf");
 
         // Act
-        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         var refusal = accept.ShouldThrow<ValidationException>();
@@ -104,7 +106,7 @@ public class StoredFileTests
         var upload = SampleFiles.Upload(fileName, SampleFiles.Png, "image/png");
 
         // Act
-        var file = StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var file = StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         file.Name.ShouldBe(fileName);
@@ -117,22 +119,24 @@ public class StoredFileTests
         var upload = SampleFiles.Upload(new string('a', StoredFile.NameMaxLength - 4) + ".png", SampleFiles.Png);
 
         // Act
-        var file = StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var file = StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         file.Name.Length.ShouldBe(StoredFile.NameMaxLength);
     }
 
     [Test]
-    [Arguments("")]
-    [Arguments(" ")]
-    public void a_file_needs_a_key(string storageKey)
+    [Arguments("", Path)]
+    [Arguments(" ", Path)]
+    [Arguments(TenantId, "")]
+    [Arguments(TenantId, " ")]
+    public void a_file_needs_a_tenant_and_a_path(string tenantId, string path)
     {
         // Arrange
         var upload = SampleFiles.Upload("kiln.png", SampleFiles.Png);
 
         // Act
-        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, storageKey);
+        var accept = () => StoredFile.Accept(upload, ImagesAndPdf, tenantId, path);
 
         // Assert
         accept.ShouldThrow<ArgumentException>();
@@ -162,7 +166,7 @@ public class StoredFileTests
     public void only_an_image_that_the_registry_can_preview_gets_a_preview(string fileName, byte[] head, bool canPreview)
     {
         // Arrange
-        var file = StoredFile.Accept(SampleFiles.Upload(fileName, head), ImagesAndPdf, Key);
+        var file = StoredFile.Accept(SampleFiles.Upload(fileName, head), ImagesAndPdf, TenantId, Path);
 
         // Act
         var preview = file.PreviewAt(Now);
@@ -176,7 +180,7 @@ public class StoredFileTests
     public void the_download_is_an_attachment_with_the_encoded_name_and_the_stored_type_for_15_minutes()
     {
         // Arrange
-        var file = StoredFile.Accept(SampleFiles.Upload("résumé \"final\"; v2.png", SampleFiles.Png), ImagesAndPdf, Key);
+        var file = StoredFile.Accept(SampleFiles.Upload("résumé \"final\"; v2.png", SampleFiles.Png), ImagesAndPdf, TenantId, Path);
 
         // Act
         var download = file.DownloadAt(Now);
@@ -192,7 +196,7 @@ public class StoredFileTests
     public void the_preview_is_inline_with_the_stored_type_and_the_same_expiry()
     {
         // Arrange
-        var file = StoredFile.Accept(SampleFiles.Upload("kiln.webp", SampleFiles.WebP, "image/webp"), ImagesAndPdf, Key);
+        var file = StoredFile.Accept(SampleFiles.Upload("kiln.webp", SampleFiles.WebP, "image/webp"), ImagesAndPdf, TenantId, Path);
 
         // Act
         var preview = file.PreviewAt(Now).ShouldNotBeNull();
@@ -211,11 +215,11 @@ public class StoredFileTests
         var upload = SampleFiles.Upload("kiln.png", SampleFiles.Png);
 
         // Act
-        var first = StoredFile.Accept(upload, ImagesAndPdf, Key);
-        var second = StoredFile.Accept(upload, ImagesAndPdf, Key);
+        var first = StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
+        var second = StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path);
 
         // Assert
         first.ShouldBe(second);
-        first.ShouldNotBe(StoredFile.Accept(upload, ImagesAndPdf, Key + "-other"));
+        first.ShouldNotBe(StoredFile.Accept(upload, ImagesAndPdf, TenantId, Path + "-other"));
     }
 }

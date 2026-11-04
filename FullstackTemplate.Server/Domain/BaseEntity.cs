@@ -2,9 +2,10 @@ namespace FullstackTemplate.Server.Domain;
 
 using System.ComponentModel.DataAnnotations.Schema;
 
-public abstract class BaseEntity
+/// <param name="idPrefix">The short type prefix of the ID, for example "usr". Each entity gives it as a constant.</param>
+public abstract class BaseEntity(string idPrefix)
 {
-    private readonly string _idPrefix;
+    private readonly string _idPrefix = idPrefix;
 
     // The ID is lazy, because EF uses the constructor when it loads a row and then writes this field.
     // A new ID made in the constructor would be thrown away for each loaded row.
@@ -12,12 +13,6 @@ public abstract class BaseEntity
 
     /// <summary>The name of the backing field of <see cref="Id"/>. EF writes this field when it loads a row.</summary>
     internal const string IdField = nameof(_id);
-
-    /// <param name="idPrefix">The short type prefix of the ID, for example "usr". Each entity gives it as a constant.</param>
-    protected BaseEntity(string idPrefix)
-    {
-        _idPrefix = idPrefix;
-    }
 
     /// <summary>A new entity makes its ID the first time that code reads it, so the ID is known before the save.</summary>
     public string Id => _id ??= EntityId.New(_idPrefix);

@@ -19,7 +19,7 @@ public sealed partial class EmailAddress : ValueObject
         Value = value;
     }
 
-    public static EmailAddress Of(string value) => new EmailAddress(value);
+    public static EmailAddress Of(string value) => new(value);
     public static implicit operator string(EmailAddress value) => value.Value;
 
     private EmailAddress() { } // EF Core

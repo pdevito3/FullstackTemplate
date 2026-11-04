@@ -5,7 +5,6 @@ using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;

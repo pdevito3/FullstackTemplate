@@ -46,7 +46,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 	// A name of one plain word, such as Monday
 	private static readonly Regex PlainWord = new(@"^[A-Z][a-z]+$", RegexOptions.CultureInvariant);
 
-	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(CodeName, Id);
+	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = [CodeName, Id];
 
 	public override void Initialize(AnalysisContext context)
 	{
@@ -69,7 +69,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 	/// </summary>
 	private sealed class StringFlow
 	{
-		private readonly ConcurrentBag<IOperation> _messages = new();
+		private readonly ConcurrentBag<IOperation> _messages = [];
 		private readonly ConcurrentDictionary<ISymbol, ConcurrentBag<IOperation>> _values = new(SymbolEqualityComparer.Default);
 
 		public void Record(OperationAnalysisContext ctx)
@@ -135,7 +135,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		private void Add(ISymbol symbol, IOperation value)
 		{
 			if (IsStrings(value.Type))
-				_values.GetOrAdd(symbol.OriginalDefinition, static _ => new ConcurrentBag<IOperation>()).Add(value);
+				_values.GetOrAdd(symbol.OriginalDefinition, static _ => []).Add(value);
 		}
 
 		// A return inside a lambda or a local function is a value of that function, not of the method around it
@@ -267,8 +267,8 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 	{
 		private const int MaxCallDepth = 8;
 
-		private readonly HashSet<(ISymbol, Call?)> _followed = new();
-		private readonly HashSet<(string, Location)> _reported = new();
+		private readonly HashSet<(ISymbol, Call?)> _followed = [];
+		private readonly HashSet<(string, Location)> _reported = [];
 
 		public void Visit(IOperation? operation, Call? call = null)
 		{
@@ -465,38 +465,24 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 		// A getter or a method of the project that returns a code shows that code too, as Value => _status.Name does
 		private string? CodeOf(IOperation? value, int depth = 0)
 		{
-			switch (value)
+			return value switch
 			{
-				case INameOfOperation:
-					return "the code name";
-				case { Type: { } type } when IsCodeEnum(type):
-					return "the enum value";
-				case { Type: { } type } when IsFixedName(type):
-					return "the stored name";
-				case IInvocationOperation { TargetMethod.Name: "ToString", Instance.Type: { } type } when IsCodeEnum(type) || IsFixedName(type):
-					return "the stored name";
-				case IPropertyReferenceOperation { Property.Name: "Value" or "Name" } property when IsFixedName(property.Instance?.Type ?? property.Property.ContainingType):
-					return "the stored name";
-				case IPropertyReferenceOperation { Property.Name: "Name" or "FullName" } property when IsReflectionType(property.Instance?.Type ?? property.Property.ContainingType):
-					return "the type name";
-				case IInvocationOperation { TargetMethod: { Name: "GetName" or "GetNames", ContainingType.SpecialType: SpecialType.System_Enum } } names
-					when EnumOf(names) is not { } type || IsCodeEnum(type):
-					return "the enum value";
-				case { Type: { } type } when ElementOf(type) is { } element && (IsCodeEnum(element) || IsFixedName(element)):
-					return element.TypeKind == TypeKind.Enum ? "the enum value" : "the stored name";
-				case IInvocationOperation { TargetMethod: { Name: "ListNames", ContainingType: { } type } } when IsFixedName(type):
-					return "the stored name";
-				case IInvocationOperation { TargetMethod: { Name: "Select" } method } select when IsIn(method.ContainingType, "System.Linq") && depth < 3:
-					return CodeOfSelected(select, depth);
-				case IInvocationOperation copy when depth < 3 && SourceOfStrings(copy) is { } source:
-					return CodeOf(Unwrap(source), depth + 1);
-				case IPropertyReferenceOperation { Property.GetMethod: { } getter } when depth < 3:
-					return CodeOfReturns(getter, depth);
-				case IInvocationOperation invocation when depth < 3:
-					return CodeOfReturns(invocation.TargetMethod, depth);
-				default:
-					return null;
-			}
+				INameOfOperation => "the code name",
+				{ Type: { } type } when IsCodeEnum(type) => "the enum value",
+				{ Type: { } type } when IsFixedName(type) => "the stored name",
+				IInvocationOperation { TargetMethod.Name: "ToString", Instance.Type: { } type } when IsCodeEnum(type) || IsFixedName(type) => "the stored name",
+				IPropertyReferenceOperation { Property.Name: "Value" or "Name" } property when IsFixedName(property.Instance?.Type ?? property.Property.ContainingType) => "the stored name",
+				IPropertyReferenceOperation { Property.Name: "Name" or "FullName" } property when IsReflectionType(property.Instance?.Type ?? property.Property.ContainingType) => "the type name",
+				IInvocationOperation { TargetMethod: { Name: "GetName" or "GetNames", ContainingType.SpecialType: SpecialType.System_Enum } } names
+					when EnumOf(names) is not { } type || IsCodeEnum(type) => "the enum value",
+				{ Type: { } type } when ElementOf(type) is { } element && (IsCodeEnum(element) || IsFixedName(element)) => element.TypeKind == TypeKind.Enum ? "the enum value" : "the stored name",
+				IInvocationOperation { TargetMethod: { Name: "ListNames", ContainingType: { } type } } when IsFixedName(type) => "the stored name",
+				IInvocationOperation { TargetMethod: { Name: "Select" } method } select when IsIn(method.ContainingType, "System.Linq") && depth < 3 => CodeOfSelected(select, depth),
+				IInvocationOperation copy when depth < 3 && SourceOfStrings(copy) is { } source => CodeOf(Unwrap(source), depth + 1),
+				IPropertyReferenceOperation { Property.GetMethod: { } getter } when depth < 3 => CodeOfReturns(getter, depth),
+				IInvocationOperation invocation when depth < 3 => CodeOfReturns(invocation.TargetMethod, depth),
+				_ => null,
+			};
 		}
 
 		// Select(x => x.Name) or Select(x => $"'{x.Name}'") over the items of a SmartEnum or an IFixedNames list gives the

@@ -390,7 +390,7 @@ internal sealed partial class App(string root)
         => Git(folder, out var output, arguments) == 0 ? output : throw new MergeException($"git {string.Join(' ', arguments)} failed in {folder}.");
 
     private static int Git(string folder, out string output, params string[] arguments)
-        => Git(folder, out output, new Dictionary<string, string>(), arguments);
+        => Git(folder, out output, [], arguments);
 
     private static int Git(string folder, out string output, Dictionary<string, string> environment, params string[] arguments)
     {

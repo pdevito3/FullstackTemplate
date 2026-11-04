@@ -143,7 +143,6 @@ public sealed class RepairPhotoConfiguration : IEntityTypeConfiguration<RepairPh
 
 public static class AddRepairPhoto
 {
-    /// <param name="Content">The bytes of the file, in a stream that can seek. The entrypoint owns the stream.</param>
     public sealed record Command(string RepairId, Stream Content, string FileName, string? MediaType, long SizeBytes)
         : IRequest<AttachmentDto>;
 

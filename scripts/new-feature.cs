@@ -8,9 +8,12 @@
 //
 // A second run with the same input changes nothing. A run that would change a file that exists stops before it writes.
 
+// CS1573 asks for a param tag on each parameter once one parameter has a tag. A record here documents only the
+// parameters whose name does not tell their meaning.
+#:property NoWarn=$(NoWarn);CS1573
+
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -2834,7 +2837,6 @@ internal static class Templates
 
             using {{n.Server}}.Domain.{{n.Plural}};
             using {{n.App}}.SharedTestHelpers.EntityGraphs;{{ParentGraphUsing(s)}}
-            using ModelContextProtocol.Client;
             using Shouldly;
             using TestUtilities;
 

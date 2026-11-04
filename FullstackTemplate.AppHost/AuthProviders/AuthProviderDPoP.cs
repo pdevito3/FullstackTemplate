@@ -1,7 +1,5 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
 
 namespace FullstackTemplate.AppHost.AuthProviders;
 

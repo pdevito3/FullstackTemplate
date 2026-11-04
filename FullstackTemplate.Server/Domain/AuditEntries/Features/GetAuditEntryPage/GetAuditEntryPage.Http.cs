@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Resources;
 using Resources.Entrypoints.Http;
 
 public sealed class GetAuditEntryPageEndpoint : IEndpoint

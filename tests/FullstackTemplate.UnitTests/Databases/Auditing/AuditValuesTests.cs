@@ -5,7 +5,6 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Databases.Auditing;
 using FullstackTemplate.Server.Domain.AuditEntries;
-using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 public class AuditValuesTests

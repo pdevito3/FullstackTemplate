@@ -6,7 +6,6 @@ using System.Text.Json;
 using FullstackTemplate.Server.Resources.Entrypoints.DPoP;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -134,7 +133,7 @@ public sealed class DPoPProofBuilder : IDisposable
     public ECDsa Key { get; } = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
     public Dictionary<string, object?> Header { get; }
-    public Dictionary<string, object?> Payload { get; } = new();
+    public Dictionary<string, object?> Payload { get; } = [];
 
     /// <summary>The key that signs the proof. The default is <see cref="Key"/>, the key of the jwk header.</summary>
     public ECDsa? SigningKey { get; set; }

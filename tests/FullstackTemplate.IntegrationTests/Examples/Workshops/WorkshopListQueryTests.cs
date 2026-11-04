@@ -3,7 +3,6 @@ namespace FullstackTemplate.IntegrationTests.Examples.Workshops;
 using FullstackTemplate.Server.Examples.Workshops.Dtos;
 using FullstackTemplate.Server.Examples.Workshops.Features;
 using FullstackTemplate.Server.Exceptions;
-using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Shouldly;

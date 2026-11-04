@@ -2,7 +2,6 @@ namespace FullstackTemplate.IntegrationTests.Examples.Venues;
 
 using FullstackTemplate.Server.Examples.Venues.Dtos;
 using FullstackTemplate.Server.Examples.Venues.Features;
-using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Shouldly;

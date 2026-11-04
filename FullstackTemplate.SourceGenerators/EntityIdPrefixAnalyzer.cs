@@ -69,7 +69,7 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 	private const string PrefixParameterText = "its own idPrefix parameter";
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
-		ImmutableArray.Create(MissingPrefix, InvalidPrefix, DuplicatePrefix, ConstructorPrefix, EntityInheritance);
+		[MissingPrefix, InvalidPrefix, DuplicatePrefix, ConstructorPrefix, EntityInheritance];
 
 	public override void Initialize(AnalysisContext context)
 	{
@@ -216,7 +216,7 @@ public sealed class EntityIdPrefixAnalyzer : DiagnosticAnalyzer
 			IInvocationOperation invocation => invocation.Arguments,
 			IObjectCreationOperation creation => creation.Arguments,
 			IExpressionStatementOperation { Operation: IInvocationOperation invocation } => invocation.Arguments,
-			_ => ImmutableArray<IArgumentOperation>.Empty,
+			_ => [],
 		};
 
 		var value = arguments.FirstOrDefault(static a => a.Parameter?.Name == PrefixParameterName)?.Value;

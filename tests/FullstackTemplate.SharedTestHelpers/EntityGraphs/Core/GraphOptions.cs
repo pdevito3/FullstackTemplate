@@ -5,7 +5,7 @@ namespace FullstackTemplate.SharedTestHelpers.EntityGraphs.Core;
 /// <summary>Configures defaults and persistence; frozen on first use and safe to share across sessions.</summary>
 public sealed class GraphOptions<TSeed>
 {
-    private readonly object gate = new();
+    private readonly Lock gate = new();
     private bool frozen;
     internal Func<TSeed, IEnumerable<object>> GetSeedEntities { get; private set; } = _ => [];
     internal List<Action<object, GraphContext<TSeed>>> Defaults { get; } = [];

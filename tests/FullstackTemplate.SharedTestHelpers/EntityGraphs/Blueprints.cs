@@ -78,5 +78,5 @@ public static class Blueprints
         .Derive(i => i.Name, (_, _) => AgentRules.Name(Faker))
         .Derive(i => i.ClientId, (_, _) => AgentRules.ClientId(Faker))
         .Derive(i => i.Mode, (_, _) => AgentRules.Mode(Faker))
-        .Derive(i => i.Permissions, (_, _) => Array.Empty<string>());
+        .Derive(i => i.Permissions, (_, _) => []);
 }

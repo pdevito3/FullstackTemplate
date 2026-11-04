@@ -2,15 +2,11 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using FullstackTemplate.Bff.Features;
 using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Tests.Fakes;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
 using Shouldly;
 
 /// <summary>

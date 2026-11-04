@@ -4,8 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);1591</NoWarn>
     <!-- AV0029 and AV0030 ask for Asp.Versioning.OpenApi. With that package, GetOrCreateSchemaAsync in a transformer throws
          (https://github.com/dotnet/aspnet-api-versioning/issues/1227), and PaginationHeaderTransformer calls it.
          So SwaggerExtension calls AddOpenApi once for each supported version. -->

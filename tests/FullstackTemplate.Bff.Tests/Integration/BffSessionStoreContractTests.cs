@@ -88,7 +88,7 @@ public class BffSessionStoreContractTests
         written.Version.ShouldNotBe(created.Version);
         var read = (await store.Store.GetAsync(created.Key, CancellationToken.None))!;
         read.Version.ShouldBe(written.Version);
-        read.Ticket.ShouldBe(new byte[] { 9, 9 });
+        read.Ticket.ShouldBe([9, 9]);
         read.Renewed.ShouldBe(renewed);
         read.Expires.ShouldBe(renewed.AddHours(2));
         read.Created.ShouldBe(created.Created);
@@ -113,9 +113,9 @@ public class BffSessionStoreContractTests
 
         // Assert
         late.ShouldBeOfType<BffSessionWrite.Conflict>().Current.Version.ShouldBe(first.Version);
-        lateExpiry.ShouldBeOfType<BffSessionWrite.Conflict>().Current.Ticket.ShouldBe(new byte[] { 1 });
+        lateExpiry.ShouldBeOfType<BffSessionWrite.Conflict>().Current.Ticket.ShouldBe([1]);
         var read = (await store.Store.GetAsync(created.Key, CancellationToken.None))!;
-        read.Ticket.ShouldBe(new byte[] { 1 });
+        read.Ticket.ShouldBe([1]);
         read.Expires.ShouldBe(clock.Now.AddHours(1));
     }
 

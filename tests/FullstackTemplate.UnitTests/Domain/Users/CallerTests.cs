@@ -22,7 +22,7 @@ public class CallerTests
         "This client is not a registered agent of your tenant. A tenant admin can register it.";
 
     private static Caller.Member MemberWith(params Permission[] permissions)
-        => new Caller.Member(SelfId, permissions);
+        => new(SelfId, permissions);
 
     private static Caller.DelegatedAgent DelegatedAgentOf(Permission[] userPermissions, Permission[] grant)
         => new(DelegatedClientId, userPermissions, grant);

@@ -18,7 +18,7 @@ public class UserActionTests
         UserAction.Delete(),
     ];
 
-    private static Caller.Member MemberWith(params Permission[] permissions) => new Caller.Member("usr_caller", permissions);
+    private static Caller.Member MemberWith(params Permission[] permissions) => new("usr_caller", permissions);
 
     private static readonly Func<User, Caller>[] Callers =
     [
@@ -186,7 +186,7 @@ public class UserActionTests
     }
 
     // A member holds the permission rows of their own user.
-    private static Caller.Member OwnRecord(User user) => new Caller.Member(user.Id, user.UserPermissions.Select(p => p.Permission));
+    private static Caller.Member OwnRecord(User user) => new(user.Id, user.UserPermissions.Select(p => p.Permission));
 
     private static User UserWithRole(string role)
     {

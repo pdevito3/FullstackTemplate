@@ -109,6 +109,8 @@ Each side of a conflict has a label. `HEAD` is the app, and `template <commit>` 
 ## Check and commit the merge
 
 1. Run the checks of [AGENTS.md](../AGENTS.md#build-and-test): the build with no warnings, all .NET tests, and the frontend install, lint, tests, e2e tests, and build.
+
+   The build runs the C# style rules of `.editorconfig` and checks the doc comments of each project, so code of the app that the template does not have can fail it. Correct each error that the build names. `dotnet format style` can correct most style errors, but it can remove a `using` that generated code needs, so build again after it.
 2. For each feature that the template commits changed, use the verify skill of the app to test the feature in the running app.
 3. Commit with `git commit`. The script prepared the message. Then delete the two refs of the renamed copies:
 

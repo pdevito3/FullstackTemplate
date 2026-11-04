@@ -2,6 +2,7 @@ namespace FullstackTemplate.FunctionalTests.TestUtilities;
 
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// The spans or metrics that an OpenTelemetry in-memory exporter collects. The exporter adds each item on the
@@ -12,6 +13,7 @@ public sealed class ExportedTelemetry<T>
 {
     private readonly ConcurrentQueue<T> _items = new();
 
+    [SuppressMessage("Style", "IDE0028", Justification = "The collection wraps the queue. A collection expression copies it into a new list.")]
     public ExportedTelemetry() => ExporterTarget = new AddOnlyCollection(_items);
 
     /// <summary>

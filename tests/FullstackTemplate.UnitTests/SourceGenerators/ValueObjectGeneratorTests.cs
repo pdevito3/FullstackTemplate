@@ -36,8 +36,8 @@ public class ValueObjectGeneratorTests
     {
         // Arrange
         var codes = Compile(Codes).GetType("App.Codes")!;
-        var first = New(codes, new List<string> { "a", "b" }, [1, 2], "x");
-        var second = New(codes, new List<string> { "a", "b" }, [1, 2], "x");
+        var first = New(codes, ["a", "b"], [1, 2], "x");
+        var second = New(codes, ["a", "b"], [1, 2], "x");
 
         // Act & Assert
         first.Equals(second).ShouldBeTrue();
@@ -49,14 +49,14 @@ public class ValueObjectGeneratorTests
     {
         // Arrange
         var codes = Compile(Codes).GetType("App.Codes")!;
-        var value = New(codes, new List<string> { "a", "b" }, [1, 2], "x");
+        var value = New(codes, ["a", "b"], [1, 2], "x");
 
         // Act & Assert
-        value.Equals(New(codes, new List<string> { "b", "a" }, [1, 2], "x")).ShouldBeFalse();
-        value.Equals(New(codes, new List<string> { "a", "b" }, [1, 3], "x")).ShouldBeFalse();
-        value.Equals(New(codes, new List<string> { "a" }, [1, 2], "x")).ShouldBeFalse();
+        value.Equals(New(codes, ["b", "a"], [1, 2], "x")).ShouldBeFalse();
+        value.Equals(New(codes, ["a", "b"], [1, 3], "x")).ShouldBeFalse();
+        value.Equals(New(codes, ["a"], [1, 2], "x")).ShouldBeFalse();
         value.Equals(New(codes, null, [1, 2], "x")).ShouldBeFalse();
-        value.Equals(New(codes, new List<string> { "a", "b" }, [1, 2], "y")).ShouldBeFalse();
+        value.Equals(New(codes, ["a", "b"], [1, 2], "y")).ShouldBeFalse();
     }
 
     [Test]

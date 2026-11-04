@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Resources.Entrypoints;
 using Domain.Tenants.Grpc.V1;
 // new-feature:grpc-usings
 using Domain.Users;
-using Exceptions;
 using Grpc;
 using Http;
 using Http.OpenApi;

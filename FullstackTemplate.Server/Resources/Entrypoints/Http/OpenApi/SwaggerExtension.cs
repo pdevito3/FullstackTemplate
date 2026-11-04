@@ -1,6 +1,5 @@
 namespace FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
 
-using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;

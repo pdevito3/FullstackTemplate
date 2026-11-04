@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http.Json;
 using FullstackTemplate.Server.Domain.Invites;
 using FullstackTemplate.Server.Domain.Invites.Dtos;
-using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
@@ -205,7 +204,7 @@ public class InviteLinkTests : TestBase
     private static async Task<string> AddInviteAsync(DateTimeOffset? createdAt = null)
     {
         var token = InviteToken.New().Value;
-        TestGraph.Start(out _).AddTenant(out Tenant tenant).AddInvite(out var invite, i =>
+        TestGraph.Start(out _).AddTenant(out var tenant).AddInvite(out var invite, i =>
         {
             i.Token = token;
             i.CreatedAt = createdAt;

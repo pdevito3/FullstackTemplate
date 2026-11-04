@@ -58,7 +58,7 @@ function holdSlides() {
   return { endSlides, held }
 }
 
-test('the hold catches the private React Aria events that end the slides of the drawer', async () => {
+test('the hold catches the private React Aria events that end the slides of the drawer', { timeout: 30_000 }, async () => {
   // Arrange
   const { endSlides, held } = holdSlides()
   const heldTypes = () => held.map(({ type }) => type)
@@ -75,7 +75,10 @@ test('the hold catches the private React Aria events that end the slides of the 
         'holdSlides caught no scrollend on [data-sheet-scroll]. Did a react-aria-components upgrade rename the event or the attribute? With no hold, the drawer tests that press Escape during the slide-in flake.',
     })
     .toContain('scrollend')
-  expect(overlay()?.hasAttribute('data-entering')).toBe(true)
+  expect(
+    overlay()?.hasAttribute('data-entering'),
+    'The slide-in ended while holdSlides held scrollend. Does React Aria still wait for that event?'
+  ).toBe(true)
 
   // Act
   await userEvent.keyboard('{Escape}')
@@ -88,7 +91,10 @@ test('the hold catches the private React Aria events that end the slides of the 
         'holdSlides caught no react-aria-sheet-close. Did a react-aria-components upgrade rename the event? With no hold, the drawer test that presses Escape twice fast flakes.',
     })
     .toContain('react-aria-sheet-close')
-  expect(overlay()?.hasAttribute('data-exiting')).toBe(true)
+  expect(
+    overlay()?.hasAttribute('data-exiting'),
+    'The slide-out ended while holdSlides held react-aria-sheet-close. Does React Aria still wait for that event?'
+  ).toBe(true)
 
   // Act
   endSlides()

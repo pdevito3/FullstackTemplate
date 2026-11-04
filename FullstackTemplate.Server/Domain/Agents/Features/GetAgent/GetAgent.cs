@@ -19,13 +19,14 @@ public static class GetAgent
         {
             Activity.Current?.SetTag("app.agent_id", request.Id);
 
-            await permissionGuard.RequireAsync(Permission.ReadAgents(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ReadAgents());
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.get_by_id")
                 .Include(a => a.Permissions)
                 .GetById(request.Id, cancellationToken);
-            return agent.ToAgentDto();
+            return agent.ToAgentDto(caller);
         }
     }
 }

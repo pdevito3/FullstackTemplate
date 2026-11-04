@@ -79,7 +79,7 @@ public static class AddAgent
 
             _logger.Here().Information("Added agent {AgentId} to tenant {TenantId} in mode {Mode}", added.Id, added.TenantId, added.Mode.Value);
 
-            return added.ToAgentDto();
+            return added.ToAgentDto(caller);
         }
 
         private string ResolveTenantId(string? requestedTenantId)

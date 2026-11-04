@@ -24,6 +24,14 @@ export const agentDtoPermissionsEnum = {
 
 export type AgentDtoPermissionsEnumKey = (typeof agentDtoPermissionsEnum)[keyof typeof agentDtoPermissionsEnum];
 
+export const agentDtoAllowedActionsEnum = {
+    AddPermission: "AddPermission",
+    RemovePermission: "RemovePermission",
+    Delete: "Delete"
+} as const;
+
+export type AgentDtoAllowedActionsEnumKey = (typeof agentDtoAllowedActionsEnum)[keyof typeof agentDtoAllowedActionsEnum];
+
 export type AgentDto = {
     id: string;
     /**
@@ -45,4 +53,9 @@ export type AgentDto = {
      * @type array
     */
     permissions: AgentDtoPermissionsEnumKey[];
+    /**
+     * @description The actions that the caller can send for this agent now. A button in the SPA reads this list.
+     * @type array
+    */
+    allowedActions: AgentDtoAllowedActionsEnumKey[];
 };

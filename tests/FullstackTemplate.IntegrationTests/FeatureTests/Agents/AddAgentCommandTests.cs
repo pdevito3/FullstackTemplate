@@ -37,8 +37,12 @@ public class AddAgentCommandTests : TestBase
         agentReturned.Permissions.ShouldBe([Permission.Names.ManageTenant]);
 
         var agentFromGet = await new TestingServiceScope().SendAsync(new GetAgent.Query(agentReturned.Id));
-        agentFromGet.ShouldBe(agentReturned with { Permissions = agentFromGet.Permissions });
+        agentFromGet.ShouldBe(agentReturned with
+        {
+            Permissions = agentFromGet.Permissions, AllowedActions = agentFromGet.AllowedActions,
+        });
         agentFromGet.Permissions.ShouldBe([Permission.Names.ManageTenant]);
+        agentFromGet.AllowedActions.ShouldBe(agentReturned.AllowedActions);
     }
 
     [Test]

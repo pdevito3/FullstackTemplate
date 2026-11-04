@@ -207,6 +207,7 @@ public class OpenApiDocumentTests
         [
             ("AgentDto.mode", Property("AgentDto", "mode"), AgentMode.ListNames()),
             ("AgentDto.permissions items", Property("AgentDto", "permissions")?["items"], Permission.ListNames()),
+            ("AgentDto.allowedActions items", Property("AgentDto", "allowedActions")?["items"], AgentAction.ListNames()),
             ("AgentForCreationDto.mode", Property("AgentForCreationDto", "mode"), AgentMode.ListNames()),
             ("AgentForCreationDto.permissions items", Property("AgentForCreationDto", "permissions")?["items"],
                 Permission.ListNames()),

@@ -152,6 +152,8 @@ When the SPA shows a button for an action on a record, the entity gives two meth
 
 The table is an action value object over a private SmartEnum, as `Domain/Users/UserAction.cs` is. Each option holds what the action needs, for example its permissions. The list keeps each action that the guard lets through, so the list and the guard cannot disagree. A list query that projects to the DTO has no entity, so `UserMapper.AddAllowedActions` reads the ID and the permissions of the DTO. It must call the same `UserAction.AllowedFor`, so that a row of the list and the record give the same actions. Load each part of the entity that the table reads, such as `UserPermissions`, before you map the DTO, or the list reads an empty collection. A check that reads the request, such as the permission that a request grants, stays in the command.
 
+When no rule of an action reads the record, the table reads only the caller, and the entity gets no methods. `Domain/Agents/AgentAction.cs` is the example. `AgentMapper` calls `AgentAction.AllowedFor(caller)`, and each command calls `GuardCaller` before the load.
+
 On their own record, a member holds the permissions of the user. `User` makes the caller again from the current permissions, so the response of a command that changes them lists the actions after the change. A delegated agent keeps the permissions that it loaded, so after it changes the permissions of its own user, the response can list an action that the next request refuses with 403.
 
 <!-- code: FullstackTemplate.Server/Domain/Users/User.cs -->

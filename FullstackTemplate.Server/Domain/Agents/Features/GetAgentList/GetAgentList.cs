@@ -17,7 +17,8 @@ public static class GetAgentList
     {
         public async Task<PagedList<AgentDto>> Handle(Query request, CancellationToken cancellationToken)
         {
-            await permissionGuard.RequireAsync(Permission.ReadAgents(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ReadAgents());
 
             var queryKitConfig = new CustomQueryKitConfiguration();
 
@@ -33,11 +34,13 @@ public static class GetAgentList
                 ? query.OrderBy(a => a.Name).ThenBy(a => a.Id)
                 : query.ApplySortOrder(request.Parameters.SortOrder, queryKitConfig).ThenBy(a => a.Id);
 
-            return await PagedList.CreateAsync(
+            var agents = await PagedList.CreateAsync(
                 query,
                 request.Parameters.PageNumber,
                 request.Parameters.PageSize,
                 cancellationToken);
+            agents.AddAllowedActions(caller);
+            return agents;
         }
     }
 }

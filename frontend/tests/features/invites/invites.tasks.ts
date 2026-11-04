@@ -163,6 +163,12 @@ export function joinPage(page: Page) {
       await settled
     },
 
+    /** A reload that sends no preview, because the tab has no token. */
+    async reloadWithNoPreview() {
+      await page.reload()
+      await expect(at.heading).toBeVisible()
+    },
+
     /** The network comes back, and TanStack Query reads the preview again. A failure retries one time. */
     async readPreviewAgainAfterAReconnect(requests: number) {
       const settled = (async () => {

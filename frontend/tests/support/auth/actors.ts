@@ -6,8 +6,8 @@ export type Identity = { signedIn: false } | { signedIn: true; claims: BffClaim[
 
 export const actorSubject = '1'
 
-const claimsOf = (name: string): BffClaim[] => [
-  { type: 'sub', value: actorSubject },
+const claimsOf = (name: string, subject: string): BffClaim[] => [
+  { type: 'sub', value: subject },
   { type: 'name', value: name },
   { type: 'bff:logout_url', value: '/bff/logout?sid=test-session' },
 ]
@@ -15,15 +15,15 @@ const claimsOf = (name: string): BffClaim[] => [
 export const as = {
   anonymous: (): Identity => ({ signedIn: false }),
   /** A user with a user record, and so a tenant, on the Server. */
-  user: (name = 'Bob Smith'): Identity => ({ signedIn: true, claims: claimsOf(name), hasTenant: true }),
+  user: (name = 'Bob Smith', subject = actorSubject): Identity => ({ signedIn: true, claims: claimsOf(name, subject), hasTenant: true }),
   /** A user that the identity provider knows and the Server does not, as each user of a new database. */
-  userWithNoTenant: (name = 'Ada Lovelace'): Identity => {
+  userWithNoTenant: (name = 'Ada Lovelace', subject = actorSubject): Identity => {
     const [givenName, familyName] = name.split(' ')
     return {
       signedIn: true,
       hasTenant: false,
       claims: [
-        ...claimsOf(name),
+        ...claimsOf(name, subject),
         { type: 'given_name', value: givenName },
         { type: 'family_name', value: familyName },
         { type: 'email', value: 'ada@example.com' },

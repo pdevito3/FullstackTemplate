@@ -19,6 +19,12 @@ export type Membership =
   | { status: 'member'; user: UserDto }
   | { status: 'no-tenant'; profile: StartTenantProfile }
 
+/** The `sub` of the signed-in person, once the membership is known. */
+export function subOf(membership: Membership): string | undefined {
+  if (membership.status === 'member') return membership.user.identifier
+  return membership.status === 'no-tenant' ? membership.profile.identifier : undefined
+}
+
 const claim = (claims: BffClaim[], type: string) => claims.find((c) => c.type === type)?.value
 
 function profileOf(identifier: string, claims: BffClaim[]): StartTenantProfile {

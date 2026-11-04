@@ -23,7 +23,8 @@ export function login(returnUrl: string = '/'): void {
 }
 
 export function logout(logoutUrl?: string): void {
-  // The next person in this tab must not get the invite of this person.
+  // The next person in this tab must not get the invite of this person. A session can also end with no logout in this
+  // tab, so `inviteTokenFor` forgets the token too when another `sub` appears.
   forgetInviteToken()
   window.location.href = logoutUrl || '/bff/logout'
 }

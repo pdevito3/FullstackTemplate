@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
+import type { RefObject } from 'react'
 
 import { inviteTokenDtoSchema } from '@/api/generated/models/zod/invite-token-dto'
 import { Notification } from '@/components/notification'
@@ -14,10 +15,11 @@ import type { ClaimValues } from '@/domain/invites/apis/claim-invite'
 import { useInvitePreview } from '@/domain/invites/apis/get-invite-preview'
 import { ClaimInviteForm } from '@/domain/invites/components/claim-invite-form'
 import { formatExpiry } from '@/domain/invites/components/invite-state'
-import { readInviteToken } from '@/domain/invites/invite-link'
+import { inviteTokenFor } from '@/domain/invites/invite-link'
 import { ALREADY_MEMBER, joinViewOf } from '@/domain/invites/join-view'
-import type { JoinView } from '@/domain/invites/join-view'
-import { useMembership } from '@/domain/membership/apis/get-membership'
+import type { JoinView, TabLink } from '@/domain/invites/join-view'
+import { subOf, useMembership } from '@/domain/membership/apis/get-membership'
+import type { Membership } from '@/domain/membership/apis/get-membership'
 import { ROLE_LABELS } from '@/domain/users/components/user-role'
 import { maxLengthOf } from '@/lib/api-contract'
 import { isProblemDetailsError } from '@/lib/problem-details'
@@ -29,20 +31,34 @@ export const Route = createFileRoute('/join')({
 
 const tokenLimit = maxLengthOf(inviteTokenDtoSchema.shape.token)
 
-function linkFitsTheContract() {
-  const token = readInviteToken()
-  return !!token && token.length <= tokenLimit
+function linkOfTheTab(sub: string | undefined): TabLink {
+  const token = sub ? inviteTokenFor(sub) : null
+  if (!token) return 'none'
+  return token.length <= tokenLimit ? 'fits' : 'too-long'
 }
 
 function JoinPage() {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const membership = useMembership()
-  const [linkFits] = useState(linkFitsTheContract)
+
+  return (
+    <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <PageHeading ref={headingRef}>Join a tenant</PageHeading>
+      <div className="mt-6">
+        {/* Each new `sub` reads the tab again, and the link of another person goes. */}
+        <Join key={subOf(membership)} membership={membership} headingRef={headingRef} />
+      </div>
+    </div>
+  )
+}
+
+function Join({ membership, headingRef }: { membership: Membership; headingRef: RefObject<HTMLHeadingElement | null> }) {
+  const [link] = useState(() => linkOfTheTab(subOf(membership)))
   const [refusedLink, setRefusedLink] = useState<string | null>(null)
-  const preview = useInvitePreview({ enabled: membership.status === 'no-tenant' && linkFits && !refusedLink })
+  const preview = useInvitePreview({ enabled: membership.status === 'no-tenant' && link === 'fits' && !refusedLink })
   const claim = useClaimInvite()
   const navigate = useNavigate()
-  const view = joinViewOf({ membership, linkFits, preview, refusedLink, claim: claim.status })
+  const view = joinViewOf({ membership, link, preview, refusedLink, claim: claim.status })
 
   const handleClaim = async (values: ClaimValues, identifier: string, tenantName: string) => {
     try {
@@ -58,14 +74,7 @@ function JoinPage() {
     await navigate({ to: '/' })
   }
 
-  return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8">
-      <PageHeading ref={headingRef}>Join a tenant</PageHeading>
-      <div className="mt-6">
-        <JoinContent view={view} onRetryPreview={() => void preview.refetch()} onClaim={handleClaim} />
-      </div>
-    </div>
-  )
+  return <JoinContent view={view} onRetryPreview={() => void preview.refetch()} onClaim={handleClaim} />
 }
 
 interface JoinContentProps {

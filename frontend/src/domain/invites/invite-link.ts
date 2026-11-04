@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'invite-token'
+const TOKEN_KEY = 'invite-token'
+const HOLDER_KEY = 'invite-token-holder'
 
 /** The link that an admin sends. The token is in the fragment, so the browser sends it to no server (INV-3). */
 export const inviteLinkOf = (origin: string, token: string): string => `${origin}/join#token=${token}`
@@ -14,8 +15,8 @@ export const tokenOfFragment = (hash: string): string | null => new URLSearchPar
 function moveLinkToTheTab(): boolean {
   const token = tokenOfFragment(window.location.hash)
   if (token === null) return false
-  if (token) sessionStorage.setItem(STORAGE_KEY, token)
-  else sessionStorage.removeItem(STORAGE_KEY)
+  forgetInviteToken()
+  if (token) sessionStorage.setItem(TOKEN_KEY, token)
   window.history.replaceState(window.history.state, '', '/join')
   return true
 }
@@ -35,6 +36,26 @@ export function keepInviteTokenOutOfTheUrl(): void {
   })
 }
 
-export const readInviteToken = (): string | null => sessionStorage.getItem(STORAGE_KEY)
+export const readInviteToken = (): string | null => sessionStorage.getItem(TOKEN_KEY)
 
-export const forgetInviteToken = (): void => sessionStorage.removeItem(STORAGE_KEY)
+export function forgetInviteToken(): void {
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(HOLDER_KEY)
+}
+
+/**
+ * The token of the tab, for the signed-in person with this `sub`. The first `sub` that asks holds the token. Another
+ * `sub` is another person in the tab, for example after a session that ended with no logout in this tab, so the token
+ * goes. A link that opens in the tab starts again with no holder, because that person has the link.
+ */
+export function inviteTokenFor(sub: string): string | null {
+  const token = readInviteToken()
+  if (token === null) return null
+  const holder = sessionStorage.getItem(HOLDER_KEY)
+  if (holder === null) sessionStorage.setItem(HOLDER_KEY, sub)
+  else if (holder !== sub) {
+    forgetInviteToken()
+    return null
+  }
+  return token
+}

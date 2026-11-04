@@ -16,6 +16,7 @@ import { joinPage } from './invites.tasks'
 const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v'
 const secondToken = 'Z1y2X3w4V5u6T7s8R9q0P1o2N3m4L5k6J7i8H9g0F1e'
 const notValid = 'This invite link is not valid. Ask a tenant admin for a new invite.'
+const linkNeeded = 'This page needs an invite link. Open the invite link again.'
 const expired = 'This invite expired. Ask a tenant admin for a new invite.'
 const usedOrRevoked = 'This invite was used or revoked. Ask a tenant admin for a new invite.'
 const alreadyMember = 'Your account already belongs to a tenant.'
@@ -184,6 +185,87 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     expect(await join.storedToken()).toBeNull()
   })
 
+  test('gives no invite to the next person in the tab after a session that ended with no logout here', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+    const previews = api.all('post', invitesPaths.preview).length
+
+    const bob = as.userWithNoTenant('Bob Smith', 'bob')
+    api.mock(bffApi.userIs(bob), ...membershipApi.userIs(bob))
+    await join.open('/join')
+
+    await expect(join.at.alert(linkNeeded)).toBeVisible()
+    await expect(join.at.form).toHaveCount(0)
+    await expect(join.at.details).toHaveCount(0)
+    expect(api.all('post', invitesPaths.preview)).toHaveLength(previews)
+    expect(await join.storedToken()).toBeNull()
+  })
+
+  test('keeps the invite for the first person who comes back to the tab', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+
+    await join.comeBackFromLogin('/join')
+
+    await expect(join.at.form).toBeVisible()
+    expect(api.last('post', invitesPaths.preview)?.body).toEqual({ token })
+  })
+
+  test('gives the invite to the second person who opens the link in the tab', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+
+    const bob = as.userWithNoTenant('Bob Smith', 'bob')
+    api.mock(bffApi.userIs(bob), ...membershipApi.userIs(bob))
+    await page.goto('/about')
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+    await join.reload()
+
+    await expect(join.at.form).toBeVisible()
+    expect(await join.storedToken()).toBe(token)
+  })
+
+  for (const [status, problem, message] of [
+    ['404', aProblem().notFound(notValid), notValid],
+    ['410', aProblem().gone(expired), expired],
+  ] as const) {
+    test(`forgets the token after a ${status} of the preview, and then shows what a tab with no token shows`, { tag: '@INV-3' }, async ({ page, api }) => {
+      api.mock(invitesApi.previewFails(problem))
+      const join = joinPage(page)
+
+      await join.openLink(token)
+
+      await expect(join.at.alert(message)).toBeVisible()
+      expect(await join.storedToken()).toBeNull()
+
+      await join.reloadWithNoPreview()
+
+      await expect(join.at.alert(linkNeeded)).toBeVisible()
+      await expect(join.at.form).toHaveCount(0)
+      expect(api.all('post', invitesPaths.preview)).toHaveLength(1)
+    })
+  }
+
+  test('sends no preview with no token on a reconnect after a dead link', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewFails(aProblem().gone(expired)))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.alert(expired)).toBeVisible()
+
+    await page.context().setOffline(true)
+    await page.context().setOffline(false)
+
+    await expect(join.at.alert(expired)).toBeVisible()
+    expect(api.all('post', invitesPaths.preview)).toHaveLength(1)
+  })
+
   test('keeps the form and the typed values when a background read of the preview fails', { tag: '@INV-3' }, async ({ page, api }) => {
     api.mock(invitesApi.previewIs(aPreview()))
     const join = joinPage(page)
@@ -209,6 +291,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
 
     await expect(join.at.alert(usedOrRevoked)).toBeVisible()
     await expect(join.at.form).toHaveCount(0)
+    expect(await join.storedToken()).toBeNull()
   })
 
   test('shows the message of the Server and no form when the link is not valid', { tag: '@INV-3' }, async ({ page, api }) => {
@@ -238,12 +321,14 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     })
   }
 
-  test('says that the link is not valid when it has no token, and asks the Server nothing', { tag: '@INV-3' }, async ({ page, api }) => {
+  test('says that the page needs an invite link in a tab with no token, and asks the Server nothing', { tag: '@INV-3' }, async ({ page, api }) => {
     const join = joinPage(page)
 
     await join.openLinkWithNoPreview('/join')
 
-    await expect(join.at.alert(notValid)).toBeVisible()
+    await expect(join.at.alert(linkNeeded)).toBeVisible()
+    await expect(join.at.alert(notValid)).toHaveCount(0)
+    await expect(join.at.homeLink).toBeVisible()
     expect(api.all('post', invitesPaths.preview)).toEqual([])
   })
 
@@ -442,5 +527,19 @@ test.describe('a member of a tenant opens an invite link', () => {
     await expect(join.at.form).toHaveCount(0)
     await expect(page).toHaveURL('/join')
     expect(api.all('post', invitesPaths.preview)).toEqual([])
+  })
+
+  test('holds the token for this member only, so that the next person in the tab gets no invite', { tag: '@INV-3' }, async ({ page, api }) => {
+    const join = joinPage(page)
+    await join.openLinkWithNoPreview(`/join#token=${token}`)
+    await expect(join.at.alreadyMember).toBeVisible()
+
+    const ada = as.userWithNoTenant('Ada Lovelace', 'ada')
+    api.mock(bffApi.userIs(ada), ...membershipApi.userIs(ada))
+    await join.open('/join')
+
+    await expect(join.at.alert(linkNeeded)).toBeVisible()
+    expect(api.all('post', invitesPaths.preview)).toEqual([])
+    expect(await join.storedToken()).toBeNull()
   })
 })

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Membership } from '@/domain/membership/apis/get-membership'
 import { ProblemDetailsError } from '@/lib/problem-details'
 
-import { joinViewOf, LINK_NOT_VALID } from './join-view'
+import { joinViewOf, LINK_NEEDED, LINK_NOT_VALID } from './join-view'
 
 const profile = { identifier: 'ada', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', username: 'ada' }
 const noTenant: Membership = { status: 'no-tenant', profile }
@@ -14,7 +14,7 @@ const refusal = (status: number, detail: string) =>
 
 const facts = {
   membership: noTenant,
-  linkFits: true,
+  link: 'fits',
   preview: { data, error: null },
   refusedLink: null,
   claim: 'idle',
@@ -26,13 +26,13 @@ describe('the view of the join page', () => {
   })
 
   it('shows the failure of the membership check before it says anything about the link', () => {
-    const view = joinViewOf({ ...facts, linkFits: false, membership: { status: 'error', message: 'Failed.' } })
+    const view = joinViewOf({ ...facts, link: 'none', membership: { status: 'error', message: 'Failed.' } })
 
     expect(view).toEqual({ kind: 'membership-failed', message: 'Failed.' })
   })
 
   it('@INV-6 tells a member that the account has a tenant, also with a link that is not good', () => {
-    expect(joinViewOf({ ...facts, membership: member, linkFits: false })).toEqual({ kind: 'member' })
+    expect(joinViewOf({ ...facts, membership: member, link: 'none' })).toEqual({ kind: 'member' })
   })
 
   it('shows a member who has this claim in progress as joining', () => {
@@ -43,8 +43,15 @@ describe('the view of the join page', () => {
     expect(joinViewOf({ ...facts, claim: 'success' })).toEqual({ kind: 'joining' })
   })
 
-  it('@INV-3 refuses a link with no token that fits, with no preview', () => {
-    expect(joinViewOf({ ...facts, linkFits: false, preview: { error: null } })).toEqual({
+  it('@INV-3 asks for the link in a tab with no token, with no preview', () => {
+    expect(joinViewOf({ ...facts, link: 'none', preview: { error: null } })).toEqual({
+      kind: 'link-refused',
+      message: LINK_NEEDED,
+    })
+  })
+
+  it('@INV-3 says that the link is not valid when its token does not fit the contract, with no preview', () => {
+    expect(joinViewOf({ ...facts, link: 'too-long', preview: { error: null } })).toEqual({
       kind: 'link-refused',
       message: LINK_NOT_VALID,
     })

@@ -9,8 +9,8 @@ A tenant admin invites a colleague from `/users` and gets a link to copy. The co
 - `link` shows the link `<origin>/join#token=<token>` in the dialog `Send this link to your colleague`, with `Copy link` and the sentence that this is the only time that the link shows. Escape does not close this dialog.
 - `list` shows the section `Invites` with the email, the role, the state, and the expiry in the zone of the browser. It has a pager with the search key `invitesPage`.
 - `revoke` asks for a confirmation in the dialog `Revoke the invite for <email>?`, sends `POST /api/v1/invites/{id}/revoke`, shows the toast `Invite revoked` one time, and moves the focus to the heading `Invites`.
-- `token` moves the token from the fragment to the `sessionStorage` of the tab before the session check reads the URL. The return URL of the login is `/join`.
-- `preview` shows the tenant, the role, and the expiry on `/join`. A dead link shows the message of the Server and no form. A member sees `Your account already belongs to a tenant.` and no form.
+- `token` moves the token from the fragment to the `sessionStorage` of the tab before the session check reads the URL, on each path. The return URL of the login is `/join`. The first `sub` that reads the token holds it, and the tab forgets it when another `sub` appears.
+- `preview` shows the tenant, the role, and the expiry on `/join`. A dead link shows the message of the Server and no form, and the tab forgets the token. A tab with no token shows `This page needs an invite link. Open the invite link again.` A member sees `Your account already belongs to a tenant.` and no form.
 - `claim` fills the form `Join the tenant` from the claims of the account, sends `POST /api/v1/invites/claim`, shows one toast that names the tenant, and goes to the home page. On an invite with an email match, the email is read-only.
 
 ## How to get to it (user POV)

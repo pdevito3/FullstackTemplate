@@ -283,7 +283,7 @@ public class ClaimInviteCommandTests : TestBase
     }
 
     [Test, Property("Rule", "INV-9")]
-    public async Task a_claim_with_an_email_match_takes_the_email_of_the_token_in_any_case()
+    public async Task a_claim_with_an_email_match_takes_the_email_of_the_token_in_any_case_and_gives_it_to_the_user()
     {
         // Arrange
         var scope = new TestingServiceScope();
@@ -295,12 +295,14 @@ public class ClaimInviteCommandTests : TestBase
             i.RequireEmailMatch = true;
         }).BuildAsync();
         scope.SignInAsNewUser(email: "ADA@example.com");
+        var command = new ClaimInvite.Command(new FakeClaimInviteDto(token).Generate() with { Email = "someone.else@example.com" });
 
         // Act
-        var user = await scope.SendAsync(ClaimOf(token));
+        var user = await scope.SendAsync(command);
 
         // Assert
-        user.ShouldNotBeNull();
+        user.Email.ShouldBe("ADA@example.com");
+        (await LiveUsersAsync(user.TenantId)).ShouldHaveSingleItem().Email.Value.ShouldBe("ADA@example.com");
     }
 
     [Test, Property("Rule", "INV-9")]

@@ -84,7 +84,7 @@ public class Invite : BaseEntity, ITenantable
     public User Claim(InviteClaim claim, DateTimeOffset now)
     {
         GuardClaimable(now);
-        GuardEmailMatch(claim);
+        var email = EmailOfUser(claim);
 
         var user = User.Create(new UserForCreation
         {
@@ -92,7 +92,7 @@ public class Invite : BaseEntity, ITenantable
             FirstName = claim.FirstName,
             LastName = claim.LastName,
             Identifier = claim.Identifier,
-            Email = claim.Email,
+            Email = email,
             Username = claim.Username,
             Role = Role.Value,
         });
@@ -103,17 +103,21 @@ public class Invite : BaseEntity, ITenantable
     }
 
     /// <summary>
-    /// The email match of INV-9. A provider that sends no <c>email_verified</c> fails the match, because an email that
-    /// the provider did not verify can be the email of anyone.
+    /// The email of the new user, after the email match of INV-9. An email-match invite gives the user the verified
+    /// email of the token, not the email of the body. A provider that sends no <c>email_verified</c> fails the match,
+    /// because an email that the provider did not verify can be the email of anyone.
     /// </summary>
-    private void GuardEmailMatch(InviteClaim claim)
+    private string EmailOfUser(InviteClaim claim)
     {
         if (!RequireEmailMatch)
-            return;
-        if (!string.Equals(Email?.Value, claim.TokenEmail?.Trim(), StringComparison.OrdinalIgnoreCase))
+            return claim.Email;
+        if (claim.TokenEmail?.Trim() is not { } tokenEmail
+            || !string.Equals(Email?.Value, tokenEmail, StringComparison.OrdinalIgnoreCase))
             throw new ForbiddenAccessException(EmailMismatchMessage);
         if (!claim.TokenEmailVerified)
             throw new ForbiddenAccessException(EmailNotVerifiedMessage);
+
+        return tokenEmail;
     }
 
     /// <summary>A revoke of a revoked invite changes nothing, so a run again after its own commit succeeds.</summary>

@@ -208,6 +208,38 @@ public class InviteTests
     }
 
     [Test, Property("Rule", "INV-9")]
+    public void claim_with_an_email_match_gives_the_user_the_email_of_the_token_and_not_the_email_of_the_body()
+    {
+        // Arrange
+        var invite = PendingInvite(i =>
+        {
+            i.Email = "ada@example.com";
+            i.RequireEmailMatch = true;
+        });
+        var claim = ClaimBy("sub-of-ada", " Ada@Example.com ") with { Email = "someone.else@example.com" };
+
+        // Act
+        var user = invite.Claim(claim, CreatedAt);
+
+        // Assert
+        user.Email.Value.ShouldBe("Ada@Example.com");
+    }
+
+    [Test, Property("Rule", "INV-9")]
+    public void claim_with_no_email_match_gives_the_user_the_email_of_the_body()
+    {
+        // Arrange
+        var invite = PendingInvite(i => i.Email = "ada@example.com");
+        var claim = ClaimBy("sub-of-ada", "ada@example.com") with { Email = "ada.work@example.com" };
+
+        // Act
+        var user = invite.Claim(claim, CreatedAt);
+
+        // Assert
+        user.Email.Value.ShouldBe("ada.work@example.com");
+    }
+
+    [Test, Property("Rule", "INV-9")]
     public void claim_with_an_email_match_refuses_the_same_email_when_the_provider_did_not_verify_it()
     {
         // Arrange

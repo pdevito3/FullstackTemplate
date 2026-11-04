@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Fails while a process that an agent left runs in this checkout. A leftover can hold ports that the isolated stacks of
-# other worktrees need.
+# Fails while a process runs in this checkout. A leftover can hold ports that the stacks of other worktrees need.
 # Usage: leftover-processes.sh [SECONDS]    (waits up to SECONDS for the processes to stop)
 # Exit code: 0 no leftover, 1 a leftover runs, 2 the script cannot read the cwd of the processes.
 set -uo pipefail
@@ -9,7 +8,7 @@ source "$(dirname "$0")/lib.sh"
 # The commands of this script must not have their cwd in the checkout, or they count themselves.
 cd /
 
-# Prints <pid> TAB <cwd> for each process. macOS has no /proc, and it always has lsof.
+# Prints <pid> TAB <cwd> for each process. macOS has no /proc, but it has lsof.
 process_cwds() {
   if [[ -e /proc/self/cwd ]]; then
     local link cwd pid
@@ -23,18 +22,20 @@ process_cwds() {
   fi
 }
 
-# A worktree in a folder of this checkout is another checkout, so its processes do not count.
-in_this_checkout() {
-  [[ "$1" == "$ROOT" || "$1" == "$ROOT"/* ]] || return 1
+in_nested_worktree() {
   local other
   while IFS= read -r other; do
-    [[ "$other" == "$ROOT"/* && ( "$1" == "$other" || "$1" == "$other"/* ) ]] && return 1
+    [[ "$other" == "$ROOT"/* && ( "$1" == "$other" || "$1" == "$other"/* ) ]] && return 0
   done <<<"$worktrees"
-  return 0
+  return 1
 }
 
-# These run for the session of a person or an agent, not for the work. The agent cannot stop them, so they do not count:
-# a terminal shell with no script, an agent CLI, the MCP servers of .mcp.json, and the caffeinate of the agent CLI.
+in_this_checkout() {
+  [[ "$1" == "$ROOT" || "$1" == "$ROOT"/* ]] && ! in_nested_worktree "$1"
+}
+
+# These run for the session of a person or an agent, not for the work: a terminal shell with no script, an agent CLI,
+# the MCP servers of .mcp.json, and the caffeinate of the agent CLI.
 is_session_process() {
   case "$1" in
     -*) ;;

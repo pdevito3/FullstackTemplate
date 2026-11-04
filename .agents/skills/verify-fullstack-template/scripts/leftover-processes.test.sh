@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Runs leftover-processes.sh against real processes in temporary worktrees. Runs on macOS and Linux.
-# Usage: leftover-processes.test.sh    (prints PASSED or FAILED, and needs no stack)
+# Runs leftover-processes.sh against real processes in temporary worktrees, on macOS and Linux. Needs no stack.
 set -uo pipefail
 
 helper="$(cd "$(dirname "$0")" && pwd)/leftover-processes.sh"
@@ -15,11 +14,10 @@ git -C "$base/foo" worktree add -q "$base/foo-bar"
 git -C "$base/foo" worktree add -q "$base/foo/nested"
 mkdir "$base/foo/sub"
 
-# start <dir> <argv0> [args...]: runs sleep with that name in that folder, and sets $pid.
+# start <dir> <argv0>: runs sleep with that name in that folder, and sets $pid.
 start() {
   local dir="$1" name="$2"
-  shift 2
-  (cd "$dir" && exec -a "$name" sleep 300 "$@") &
+  (cd "$dir" && exec -a "$name" sleep 300) &
   pid=$!
   started+=("$pid")
   while [[ "$(ps -o command= -p "$pid")" != "$name"* ]]; do sleep 0.1; done
@@ -27,12 +25,11 @@ start() {
 
 stop() { kill "$pid"; wait "$pid" 2>/dev/null; }
 
-# check <name> <expected exit> <expected text or ""> <dir> [helper args...]. The extra `true` keeps the parent shell
-# alive, in the folder, as the parent of the helper.
+# check <name> <expected exit> <expected text or ""> <dir> [helper args...]: runs the helper under a parent shell in <dir>.
 check() {
   local name="$1" want="$2" text="$3" dir="$4" out code
   shift 4
-  out="$(cd "$dir" && bash -c '"$@"; code=$?; true; exit $code' _ "$helper" "$@" 2>&1)"
+  out="$(cd "$dir" && bash -c '"$@"; code=$?; exit $code' _ "$helper" "$@" 2>&1)"
   code=$?
   if [[ "$code" == "$want" && "$out" == *"$text"* ]]; then
     echo "ok    $name"
@@ -65,7 +62,6 @@ start "$base/foo" python3; check "a script process counts" 1 "python3" "$base/fo
 (cd "$base/foo" && exec sleep 2) &
 check "the wait passes when the process stops in time" 0 "" "$base/foo" 10
 
-# check_failed_scan <tool>: replaces the tool with one that fails. A scan that cannot see the processes must not pass.
 check_failed_scan() {
   mkdir -p "$base/bin-$1"
   printf '#!/bin/sh\nexit 1\n' > "$base/bin-$1/$1"

@@ -14,8 +14,6 @@
 
 #:include job.cs
 
-var options = Job.ParseOptions(args, "--examples");
-
 Dictionary<string, Step[]> examples = new()
 {
     ["keep"] = [],
@@ -25,6 +23,7 @@ Dictionary<string, Step[]> examples = new()
     [
         new("Remove the examples", copy =>
         {
+            copy.RequireTool("pnpm", "--version", "Install pnpm: https://pnpm.io/installation");
             copy.Run("dotnet", "run", "scripts/remove-examples.cs");
             copy.CommitAll("Remove the examples");
         }),
@@ -32,7 +31,13 @@ Dictionary<string, Step[]> examples = new()
     // example:end
 };
 
-if (options is null || !examples.TryGetValue(options.GetValueOrDefault("--examples", "keep"), out var examplesSteps))
+var choice = args switch
+{
+    [] => "keep",
+    ["--examples", var value] => value,
+    _ => "",
+};
+if (!examples.TryGetValue(choice, out var examplesSteps))
 {
     Console.Error.WriteLine($"Usage: dotnet run scripts/ci/new-feature.cs -- [--examples {string.Join('|', examples.Keys)}]");
     return 1;
@@ -47,7 +52,7 @@ void GenerateSamples(JobCopy copy)
     copy.Run("dotnet", "run", "scripts/new-feature.cs", "--", "Shipment", "--entrypoints", "http,grpc,mcp", "--fields", ShipmentFields);
 }
 
-return Job.Run("new-feature", copyTo: null,
+return Job.Run("new-feature",
 [
     new("Check the tools", copy =>
     {
@@ -73,11 +78,11 @@ return Job.Run("new-feature", copyTo: null,
         foreach (var file in added)
             copy.DeleteFile(file);
 
-        var (exitCode, output) = copy.Capture("dotnet", "run", "scripts/new-feature.cs", "--", "Carrier", "--fields", "Name:text, Rating:int");
-        Console.WriteLine(output);
+        var (exitCode, output, error) = copy.Capture("dotnet", "run", "scripts/new-feature.cs", "--", "Carrier", "--fields", "Name:text, Rating:int");
+        Console.WriteLine(output + error);
         if (exitCode == 0)
             throw new StepFailure("The script ran again on a kept migration and exited 0.");
-        if (!output.Contains("AddCarriers", StringComparison.Ordinal))
+        if (!(output + error).Contains("AddCarriers", StringComparison.Ordinal))
             throw new StepFailure("The script stopped, but its message does not name the migration AddCarriers.");
 
         copy.Run("git", "reset", "--quiet", "--hard", "HEAD");

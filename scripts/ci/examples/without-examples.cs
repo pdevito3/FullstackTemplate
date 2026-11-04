@@ -10,20 +10,22 @@
 
 #:include ../job.cs
 
-var options = Job.ParseOptions(args, "--copy-to");
-if (options is null)
+if (args.Length > 0)
 {
-    Console.Error.WriteLine("Usage: dotnet run scripts/ci/examples/without-examples.cs -- [--copy-to <empty folder>]");
+    Console.Error.WriteLine("Usage: dotnet run scripts/ci/examples/without-examples.cs");
     return 1;
 }
 
 const string ExampleNames = "weather|forecast|filter-demo|components-showcase|workshop|wkatt|(^|[^e])venue|example:(start|end)";
 string[] exampleFolders = ["Examples", "examples", "(examples)"];
 
-return Job.Run("without-examples", options.GetValueOrDefault("--copy-to"),
+return Job.Run("without-examples",
 [
     new("Check the tools", copy =>
-        copy.RequireTool("docker", "info", "The .NET tests start Postgres with Testcontainers. Start Docker.")),
+    {
+        copy.RequireTool("pnpm", "--version", "Install pnpm: https://pnpm.io/installation");
+        copy.RequireTool("docker", "info", "The .NET tests start Postgres with Testcontainers. Start Docker.");
+    }),
     new("Remove the examples", copy => copy.Run("dotnet", "run", "scripts/remove-examples.cs")),
     // scripts/remove-examples.cs changes only a clean tree, so this step commits the first run
     new("Fail if a second run changes a file", copy =>
@@ -52,9 +54,9 @@ return Job.Run("without-examples", options.GetValueOrDefault("--copy-to"),
     // The CI script of the new-feature job runs from the checkout with its example sections, so no other step builds the form that an app gets
     new("Fail if scripts/ci/new-feature.cs does not build with no examples", copy =>
     {
-        var (exitCode, output) = copy.Capture("dotnet", "run", "scripts/ci/new-feature.cs", "--", "--help", "x");
-        if (exitCode != 1 || !output.Contains("Usage:", StringComparison.Ordinal))
-            throw new StepFailure($"Expected its usage message and exit code 1, and got exit code {exitCode}: {output}");
+        var (exitCode, output, error) = copy.Capture("dotnet", "run", "scripts/ci/new-feature.cs", "--", "--help");
+        if (exitCode != 1 || !error.Contains("Usage:", StringComparison.Ordinal))
+            throw new StepFailure($"Expected its usage message and exit code 1, and got exit code {exitCode}: {output}{error}");
     }),
     // The frontend tests run first, because after the .NET tests on the same runner the Vitest browser can hang at its start
     new("Lint the frontend", copy => copy.RunIn("frontend", "pnpm", "lint")),

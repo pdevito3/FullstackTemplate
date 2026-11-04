@@ -150,7 +150,7 @@ jobs:
       - uses: ./.github/actions/install-chromium
 
       - name: Run the steps of the job
-        run: dotnet run scripts/ci/examples/without-examples.cs -- --copy-to "$RUNNER_TEMP/without-examples"
+        run: dotnet run scripts/ci/examples/without-examples.cs
 
       # .vitest/attachments/ has the failure screenshot and the Playwright trace of each failed component test
       - name: Upload the test reports

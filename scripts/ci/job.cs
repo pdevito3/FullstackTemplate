@@ -14,25 +14,17 @@ internal sealed class StepFailure(string message) : Exception(message);
 
 internal static class Job
 {
-    public static int Run(string job, string? copyTo, IReadOnlyList<Step> steps)
+    public static int Run(string job, IReadOnlyList<Step> steps)
     {
         // GitHub sets CI on each runner. The frontend tools and the test containers read it: a test with test.only fails
         // the Playwright suite only with CI set.
         Environment.SetEnvironmentVariable("CI", "true");
         Environment.SetEnvironmentVariable("GIT_PAGER", "cat");
-        // A git hook exports these. A git command in the copy would then write to the repo of the checkout.
-        foreach (var variable in new[] { "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE" })
-            Environment.SetEnvironmentVariable(variable, null);
 
-        if (copyTo is not null && Directory.Exists(copyTo) && Directory.EnumerateFileSystemEntries(copyTo).Any())
-        {
-            Console.Error.WriteLine($"The folder {copyTo} has files. Give --copy-to an empty folder.");
-            return 1;
-        }
-
-        var folder = copyTo is null
-            ? Directory.CreateTempSubdirectory($"ci-{job}-").FullName
-            : Directory.CreateDirectory(copyTo).FullName;
+        // CI uploads the test reports of a failed job, so the job must know the folder
+        var folder = Environment.GetEnvironmentVariable("RUNNER_TEMP") is { } runnerTemp
+            ? Directory.CreateDirectory(Path.Combine(runnerTemp, job)).FullName
+            : Directory.CreateTempSubdirectory($"ci-{job}-").FullName;
         var copy = new JobCopy(folder);
         var total = Stopwatch.StartNew();
 
@@ -89,19 +81,6 @@ internal static class Job
             Console.Error.WriteLine($"Could not delete the copy at {folder}: {exception.Message}");
         }
     }
-
-    // Each option takes a value. Returns null when an argument is not one of the options.
-    public static Dictionary<string, string>? ParseOptions(string[] args, params string[] options)
-    {
-        var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        for (var i = 0; i < args.Length; i += 2)
-        {
-            if (!options.Contains(args[i]) || i + 1 == args.Length)
-                return null;
-            values[args[i]] = args[i + 1];
-        }
-        return values;
-    }
 }
 
 internal sealed class JobCopy(string root)
@@ -109,11 +88,13 @@ internal sealed class JobCopy(string root)
     public void FillFromCheckout()
     {
         var entryFolder = (string)AppContext.GetData("EntryPointFileDirectoryPath")!;
-        var checkout = Output(entryFolder, "git", "rev-parse", "--show-toplevel").Trim();
-        if (Path.GetFullPath(root).StartsWith(checkout + Path.DirectorySeparatorChar, StringComparison.Ordinal))
-            throw new StepFailure($"The copy at {root} is in the checkout, and it must not change the checkout. Give another folder.");
 
-        var files = Output(checkout, "git", "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+        // A git hook exports some of these. A git command in the copy would then write to the repo of the checkout.
+        foreach (var variable in OutputIn(entryFolder, "git", "rev-parse", "--local-env-vars").Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            Environment.SetEnvironmentVariable(variable, null);
+
+        var checkout = OutputIn(entryFolder, "git", "rev-parse", "--show-toplevel").Trim();
+        var files = OutputIn(checkout, "git", "ls-files", "-z", "--cached", "--others", "--exclude-standard")
             .Split('\0', StringSplitOptions.RemoveEmptyEntries)
             .Distinct();
 
@@ -132,8 +113,11 @@ internal sealed class JobCopy(string root)
         Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", "/dev/null");
         Environment.SetEnvironmentVariable("GIT_CONFIG_NOSYSTEM", "1");
 
-        // --force: a tracked file can match .gitignore, and the copy must have it
         Run("git", "init", "--quiet");
+        Run("git", "config", "core.excludesFile", "/dev/null");
+        Run("git", "config", "core.attributesFile", "/dev/null");
+
+        // --force: a tracked file can match .gitignore, and the copy must have it
         Run("git", "add", "--all", "--force");
         Commit("The checkout");
     }
@@ -150,10 +134,10 @@ internal sealed class JobCopy(string root)
             throw new StepFailure($"'{line}' exited with {process.ExitCode}.");
     }
 
-    public (int ExitCode, string Output) Capture(string command, params string[] arguments) =>
-        Capture(root, command, arguments);
+    public (int ExitCode, string Output, string Error) Capture(string command, params string[] arguments) =>
+        CaptureIn(root, command, arguments);
 
-    public string Output(string command, params string[] arguments) => Output(root, command, arguments);
+    public string Output(string command, params string[] arguments) => OutputIn(root, command, arguments);
 
     public int Status(string command, params string[] arguments)
     {
@@ -168,7 +152,7 @@ internal sealed class JobCopy(string root)
         int exitCode;
         try
         {
-            exitCode = Capture(root, tool, argument).ExitCode;
+            exitCode = Capture(tool, argument).ExitCode;
         }
         catch (StepFailure)
         {
@@ -196,15 +180,15 @@ internal sealed class JobCopy(string root)
 
     public void DeleteFile(string file) => File.Delete(Path.Combine(root, file));
 
-    private static string Output(string folder, string command, params string[] arguments)
+    private static string OutputIn(string folder, string command, params string[] arguments)
     {
-        var (exitCode, output) = Capture(folder, command, arguments);
+        var (exitCode, output, error) = CaptureIn(folder, command, arguments);
         return exitCode == 0
             ? output
-            : throw new StepFailure($"'{command} {string.Join(' ', arguments)}' exited with {exitCode} in {folder}: {output.Trim()}");
+            : throw new StepFailure($"'{command} {string.Join(' ', arguments)}' exited with {exitCode} in {folder}: {error.Trim()}");
     }
 
-    private static (int ExitCode, string Output) Capture(string folder, string command, params string[] arguments)
+    private static (int ExitCode, string Output, string Error) CaptureIn(string folder, string command, params string[] arguments)
     {
         var startInfo = StartInfo(folder, command, arguments);
         startInfo.RedirectStandardOutput = true;
@@ -213,7 +197,7 @@ internal sealed class JobCopy(string root)
         var error = process.StandardError.ReadToEndAsync();
         var output = process.StandardOutput.ReadToEnd();
         process.WaitForExit();
-        return (process.ExitCode, output + error.Result);
+        return (process.ExitCode, output, error.Result);
     }
 
     private static ProcessStartInfo StartInfo(string folder, string command, string[] arguments)

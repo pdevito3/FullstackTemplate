@@ -43,6 +43,16 @@ class ProblemDetailsBuilder {
     })
   }
 
+  forbidden(detail: string) {
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'https://tools.ietf.org/html/rfc9110#section-15.5.4',
+      title: 'You do not have access to do this.',
+      status: 403,
+      detail,
+    })
+  }
+
   invalid(errors: Record<string, string[]>) {
     return new ProblemDetailsBuilder({
       ...this.problem,

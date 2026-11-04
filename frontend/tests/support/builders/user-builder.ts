@@ -1,5 +1,14 @@
 import type { InitiateUserAndTenantResponseDto } from '@/api/generated/models/types/initiate-user-and-tenant-response-dto'
-import type { UserDto } from '@/api/generated/models/types/user-dto'
+import type {
+  UserDto,
+  UserDtoAllowedActionsEnumKey,
+  UserDtoRoleEnumKey,
+} from '@/api/generated/models/types/user-dto'
+
+let seed = 0
+const next = () => ++seed
+
+const ADMIN_ACTIONS: UserDtoAllowedActionsEnumKey[] = ['Update', 'UpdateRole', 'AddPermission', 'RemovePermission', 'Delete']
 
 class UserBuilder {
   private readonly user: UserDto
@@ -10,7 +19,7 @@ class UserBuilder {
 
   static create() {
     return new UserBuilder({
-      id: 'usr_1',
+      id: `usr_${next()}`,
       tenantId: 'tnt_1',
       firstName: 'Bob',
       lastName: 'Smith',
@@ -25,9 +34,35 @@ class UserBuilder {
     })
   }
 
+  private with(patch: Partial<UserDto>) {
+    return new UserBuilder({ ...this.user, ...patch })
+  }
+
   /** The `sub` claim of the user. */
   identifiedBy(identifier: string) {
-    return new UserBuilder({ ...this.user, identifier })
+    return this.with({ identifier })
+  }
+
+  named(fullName: string) {
+    const [firstName, ...rest] = fullName.split(' ')
+    const username = firstName.toLowerCase()
+    return this.with({ firstName, lastName: rest.join(' '), fullName, username, email: `${username}@example.com` })
+  }
+
+  inRole(role: UserDtoRoleEnumKey) {
+    return this.with({ role })
+  }
+
+  seenByAdmin() {
+    return this.with({ allowedActions: ADMIN_ACTIONS })
+  }
+
+  allowing(...allowedActions: UserDtoAllowedActionsEnumKey[]) {
+    return this.with({ allowedActions })
+  }
+
+  savedAgain() {
+    return this.with({ version: this.user.version + 1 })
   }
 
   build(): UserDto {

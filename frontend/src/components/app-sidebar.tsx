@@ -1,6 +1,7 @@
 import {
   Home01Icon,
   InformationCircleIcon,
+  UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -38,6 +39,11 @@ const navItems = [
     title: "Home",
     url: "/",
     icon: Home01Icon,
+  },
+  {
+    title: "Users",
+    url: "/users",
+    icon: UserGroupIcon,
   },
   {
     title: "About",

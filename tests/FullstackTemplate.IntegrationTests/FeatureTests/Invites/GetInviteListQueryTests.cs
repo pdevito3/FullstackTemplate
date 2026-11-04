@@ -31,6 +31,7 @@ public class GetInviteListQueryTests : TestBase
         // Assert
         var listed = invites.ShouldHaveSingleItem();
         listed.Id.ShouldBe(own.Id);
+        listed.TenantId.ShouldBe(tenant.Id);
         listed.Email.ShouldBe("ada@example.com");
         listed.AllowedActions.ShouldBe([InviteAction.Revoke().Value]);
         typeof(InviteDto).GetProperties().Select(p => p.Name).ShouldNotContain(n => n.Contains("Token"));

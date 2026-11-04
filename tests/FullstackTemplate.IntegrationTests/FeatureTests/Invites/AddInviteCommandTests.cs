@@ -25,6 +25,7 @@ public class AddInviteCommandTests : TestBase
         // Assert
         added.Token.Length.ShouldBe(InviteToken.Length);
         added.Invite.Status.ShouldBe(InviteStatus.Pending().Value);
+        added.Invite.TenantId.ShouldBe(TestFixture.DefaultTenant.Id);
         added.Invite.AllowedActions.ShouldBe([InviteAction.Revoke().Value]);
         var stored = await scope.ExecuteDbContextAsync(db => db.Invites.AsNoTracking().SingleAsync(i => i.Id == added.Invite.Id));
         stored.TenantId.ShouldBe(TestFixture.DefaultTenant.Id);

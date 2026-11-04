@@ -34,7 +34,6 @@ public static partial class InviteMapper
     [MapperIgnoreTarget(nameof(InviteForCreation.Id))]
     public static partial InviteForCreation ToInviteForCreation(this InviteForCreationDto dto, string tenantId);
 
-    [MapperIgnoreSource(nameof(Invite.TenantId))]
     [MapperIgnoreSource(nameof(Invite.TokenHash))]
     [MapperIgnoreSource(nameof(Invite.LastModifiedOn))]
     [MapperIgnoreSource(nameof(Invite.IsDeleted))]

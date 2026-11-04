@@ -24,6 +24,7 @@ export type InviteDtoStatusEnumKey = (typeof inviteDtoStatusEnum)[keyof typeof i
 */
 export type InviteDto = {
     id: string;
+    tenantId: string;
     role: InviteDtoRoleEnumKey;
     /**
      * @description The email that the invite is for. Null when the admin gave none.

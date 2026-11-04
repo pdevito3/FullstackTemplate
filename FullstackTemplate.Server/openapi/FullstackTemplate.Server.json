@@ -3648,6 +3648,7 @@
       "InviteDto": {
         "required": [
           "id",
+          "tenantId",
           "role",
           "requireEmailMatch",
           "expiresAt",
@@ -3658,6 +3659,9 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string"
+          },
+          "tenantId": {
             "type": "string"
           },
           "role": {

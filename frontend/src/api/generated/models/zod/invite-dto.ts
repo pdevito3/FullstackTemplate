@@ -7,6 +7,7 @@ import * as z from 'zod'
 
 export const inviteDtoSchema = z.object({
   id: z.string(),
+  tenantId: z.string(),
   role: z.enum(['Admin', 'User']),
   email: z.string().nullish().describe('The email that the invite is for. Null when the admin gave none.'),
   requireEmailMatch: z.boolean(),

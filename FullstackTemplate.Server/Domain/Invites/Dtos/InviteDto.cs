@@ -6,6 +6,7 @@ using Users;
 public sealed record InviteDto
 {
     public string Id { get; init; } = default!;
+    public string TenantId { get; init; } = default!;
     [NamesOf<UserRole>]
     public string Role { get; init; } = default!;
     /// <summary>The email that the invite is for. Null when the admin gave none.</summary>

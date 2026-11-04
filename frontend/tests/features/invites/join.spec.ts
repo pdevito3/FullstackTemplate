@@ -157,6 +157,33 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     expect(await join.storedToken()).toBeNull()
   })
 
+  test('keeps the form and the typed values when a background read of the preview fails', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await join.at.username.fill('augusta')
+
+    api.mock(invitesApi.previewFails(aProblem().saying('The server had a problem.')))
+    await join.readPreviewAgainAfterAReconnect(2)
+
+    await expect(join.at.form).toBeVisible()
+    await expect(join.at.username).toHaveValue('augusta')
+    await expect(join.at.alert('The invite did not load.')).toHaveCount(0)
+  })
+
+  test('replaces the form with the refusal when a background read of the preview finds a dead link', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+
+    api.mock(invitesApi.previewFails(aProblem().gone(usedOrRevoked)))
+    await join.readPreviewAgainAfterAReconnect(1)
+
+    await expect(join.at.alert(usedOrRevoked)).toBeVisible()
+    await expect(join.at.form).toHaveCount(0)
+  })
+
   test('shows the message of the Server and no form when the link is not valid', { tag: '@INV-3' }, async ({ page, api }) => {
     api.mock(invitesApi.previewFails(aProblem().notFound(notValid)))
     const join = joinPage(page)

@@ -37,7 +37,8 @@ export function joinViewOf({ membership, linkFits, preview, refusedLink, claim }
   if (membership.status === 'member') return { kind: claim === 'pending' ? 'joining' : 'member' }
   if (refusedLink) return { kind: 'link-refused', message: refusedLink }
   if (!linkFits) return { kind: 'link-refused', message: LINK_NOT_VALID }
-  if (preview.error) {
+  // A failed background read keeps the data of the last answer, and the form with the typed values. A refusal wins.
+  if (preview.error && (isRefusal(preview.error) || !preview.data)) {
     return isRefusal(preview.error)
       ? { kind: 'link-refused', message: preview.error.displayMessage }
       : { kind: 'preview-failed', error: preview.error }

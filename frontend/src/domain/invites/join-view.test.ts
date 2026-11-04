@@ -62,6 +62,18 @@ describe('the view of the join page', () => {
     expect(joinViewOf({ ...facts, preview: { error } })).toEqual({ kind: 'preview-failed', error })
   })
 
+  it('@INV-3 keeps the form when a background read of the preview fails', () => {
+    const preview = { data, error: new Error('Failed to fetch') }
+
+    expect(joinViewOf({ ...facts, preview })).toEqual({ kind: 'claimable', preview: data, profile })
+  })
+
+  it.each([404, 410])('@INV-3 lets a %i refusal of a background read win over the data of the preview', (status) => {
+    const preview = { data, error: refusal(status, 'Ask a tenant admin for a new invite.') }
+
+    expect(joinViewOf({ ...facts, preview })).toEqual({ kind: 'link-refused', message: 'Ask a tenant admin for a new invite.' })
+  })
+
   it('keeps the refusal of a claim over the data of the preview', () => {
     expect(joinViewOf({ ...facts, refusedLink: 'Gone.' })).toEqual({ kind: 'link-refused', message: 'Gone.' })
   })

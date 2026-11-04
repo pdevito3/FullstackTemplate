@@ -107,8 +107,13 @@ export function usersWithInvites(page: Page) {
   }
 }
 
+/** Two frames, so that the page has rendered each answer that it got. */
+const nextFrames = (page: Page) =>
+  page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
 export function joinPage(page: Page) {
   const at = join(page)
+  const context = page.context()
   const answered = answeredBy(page)
   const requestedUrls: string[] = []
   page.on('request', (request) => requestedUrls.push(request.url()))
@@ -156,6 +161,17 @@ export function joinPage(page: Page) {
       const settled = answered('POST', invitesPaths.preview)
       await page.reload()
       await settled
+    },
+
+    /** The network comes back, and TanStack Query reads the preview again. A failure retries one time. */
+    async readPreviewAgainAfterAReconnect(requests: number) {
+      const settled = (async () => {
+        for (let i = 0; i < requests; i++) await answered('POST', invitesPaths.preview)
+      })()
+      await context.setOffline(true)
+      await context.setOffline(false)
+      await settled
+      await nextFrames(page)
     },
 
     /** A second link in the same tab is a change of the fragment, as when the user pastes it in the address bar. */

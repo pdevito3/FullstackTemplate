@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Stops the stack that launch.sh started for this checkout. Keeps all evidence in artifacts/verify/<RUN_ID>/.
+# Stops the stack that launch.sh started for this checkout, then fails while a process still runs in the checkout.
+# Keeps all evidence in artifacts/verify/<RUN_ID>/.
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
 
-run_dir="$(current_run_dir)" || { echo "cleanup: no current run. Nothing to stop."; exit 0; }
+run_dir="$(current_run_dir)" || { echo "cleanup: no current run. Nothing to stop."; exec "$(dirname "$0")/leftover-processes.sh"; }
 want_pid="$(jq -r '.appHostPid // empty' "$run_dir/stack.json" 2>/dev/null || true)"
 [[ -n "$want_pid" ]] || want_pid="$(jq -r '.appHostPid // empty' "$run_dir/aspire-start.json" 2>/dev/null || true)"
 entry="$(ps_entry)"
@@ -22,3 +23,5 @@ fi
 rm -f "$CURRENT_FILE"
 [[ -z "$(ps_entry)" ]] && echo "cleanup: stopped." || { echo "cleanup: the AppHost still runs." >&2; exit 1; }
 echo "cleanup: evidence kept at $run_dir"
+# The processes of the stack can stop some seconds after `aspire stop` returns.
+exec "$(dirname "$0")/leftover-processes.sh" 30

@@ -84,4 +84,5 @@ None. The invite features use `manage_users`, which exists.
 |---|---|---|
 | The default of "require email match" is off. The link is the secret, and it has one use and a 7-day expiry. Providers handle `email_verified` differently, and the Duende Demo users have fixed emails. Change the default to on if a forwarded link is a risk. | The template owner | INV-9 |
 | The expiry is 7 days, and it is not a setting. | The template owner | INV-4 |
+| A pending invite stays valid after its creator loses `manage_users` or is deleted. The invite does not record its creator. The alternative is to record the creator, and to revoke the pending invites of a demoted or deleted creator in a domain event handler. | The template owner | INV-1, INV-10 |
 | The Server lets an admin remove their own user, or change the role of the last admin. Thus a tenant can lose its last admin. A guard for the last admin is a Server rule outside this spec. | The template owner | None |

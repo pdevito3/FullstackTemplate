@@ -9,15 +9,17 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
     invitesTable().getByRole('row').filter({ hasText: invites.find((i) => i.id === invite.id).email })
 
   const ADMIN = 'admin@example.com'
-  let signedIn = null
-  const signIn = async (email) => {
-    await login(email)
-    signedIn = email
-  }
   const signOut = async () => {
     await page.goto('/')
     await logout()
-    signedIn = null
+  }
+  // A failed step can leave the tab on the page of the IdP, so ask the BFF directly.
+  const appRequest = (method, path) =>
+    page.request[method](`${stack.urls.web}${path}`, { headers: { 'X-CSRF': '1' } })
+  const signedInEmail = async () => {
+    const session = await appRequest('get', '/bff/user')
+    if (session.status() !== 200) return null
+    return (await session.json()).find((claim) => claim.type === 'email')?.value ?? null
   }
 
   // A token must not reach a URL. The browser sends a fragment to no server, and Playwright reports a request without it.
@@ -71,7 +73,7 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
   }
 
   const tenant = await step('admin@example.com starts a tenant', async () => {
-    await signIn(ADMIN)
+    await login(ADMIN)
     await page.goto('/start-tenant')
     const form = page.getByRole('form', { name: 'Start a tenant' })
     await form.getByLabel('Tenant name', { exact: true }).fill(`Verify ${stamp}`)
@@ -165,7 +167,7 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
       const request = await toLogin
       expect(new URL(request.url()).searchParams.get('returnUrl')).toBe('/join')
       const preview = answered('POST', /^\/api\/v1\/invites\/preview$/)
-      await signIn('user@example.com')
+      await login('user@example.com')
       expect((await preview).status()).toBe(410)
     })
 
@@ -190,7 +192,7 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
       const request = await toLogin
       expect(new URL(request.url()).searchParams.get('returnUrl')).toBe('/join')
       const preview = answered('POST', /^\/api\/v1\/invites\/preview$/)
-      await signIn('user@example.com')
+      await login('user@example.com')
       expect((await preview).status()).toBe(200)
     })
 
@@ -286,7 +288,7 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
 
     await step('the user logs out, and the admin signs in', async () => {
       await signOut()
-      await signIn(ADMIN)
+      await login(ADMIN)
     })
 
     await step('the admin sees the first invite as claimed and the second as revoked', async () => {
@@ -303,16 +305,13 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
     await capture('invites-claimed')
   } finally {
     await step('delete the tenant of the run as its admin, so the cache of the Server has no stale tenant', async () => {
-      if (signedIn !== ADMIN) {
-        if (signedIn) await signOut()
-        else await page.goto('/')
-        await signIn(ADMIN)
+      const email = await signedInEmail()
+      if (email !== ADMIN) {
+        if (email) await signOut()
+        else await page.goto('/', { waitUntil: 'commit' })
+        await login(ADMIN)
       }
-      const status = await page.evaluate(
-        async (id) => (await fetch(`/api/v1/tenants/${id}`, { method: 'DELETE', headers: { 'X-CSRF': '1' } })).status,
-        tenant.id,
-      )
-      expect(status).toBe(204)
+      expect((await appRequest('delete', `/api/v1/tenants/${tenant.id}`)).status()).toBe(204)
     })
   }
 }

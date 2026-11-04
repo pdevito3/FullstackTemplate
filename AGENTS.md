@@ -89,6 +89,7 @@ pnpm test:e2e
 
 - Put each entrypoint (HTTP, gRPC, MCP) in the folder of its feature, not in a separate project. Each entrypoint is optional. Add only the entrypoints that the callers of the feature need. See [docs/backend/endpoints.md](docs/backend/endpoints.md).
 - Use pnpm for the frontend. Do not use npm.
+- Do not run Prettier. This repo has no Prettier config, so Prettier rewrites whole files. `.claude/settings.json` refuses the command in Claude Code. Keep the style of the file that you edit, and run `pnpm lint`.
 - Put all NuGet versions in `Directory.Packages.props`.
 - Warnings fail the build: `TreatWarningsAsErrors` in `Directory.Build.props` and `--max-warnings=0` in `pnpm lint`. Correct the cause of a warning. To accept a .NET warning, add its code to `NoWarn` with a comment that gives the reason. The C# style rules are in `.editorconfig`, and `EnforceCodeStyleInBuild` runs them in the build, so a style break also fails it.
 - Use `docker compose` with a space. Do not use `docker-compose`.

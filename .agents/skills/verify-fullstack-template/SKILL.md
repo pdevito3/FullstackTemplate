@@ -245,7 +245,7 @@ Then the script finds each process whose cwd is in this checkout, with `scripts/
 2. If you did not start a process in the list, do not stop it. Tell the user.
 3. Run `cleanup.sh` again. A second run with no stack does only this check.
 
-These processes do not count: the shell that runs the script and its parents, the processes of other worktrees, and the processes of a session (a terminal shell with no script, an agent CLI, its MCP servers from `.mcp.json`, and its `caffeinate`). A command in the same pipe as `cleanup.sh` counts, so run `cleanup.sh` with no pipe.
+These processes do not count: the shell that runs the script and its parents, the processes of other worktrees, and the processes of a session (a terminal shell with no script, an agent CLI, its MCP servers from `.mcp.json`, and its `caffeinate`). A command in the same pipe as `cleanup.sh` counts, so run `cleanup.sh` with no pipe. The commands of other agents in this checkout also count. Thus run this skill in a git worktree when other agents work in the main checkout.
 
 Cleanup is complete when the script exits with code 0 and prints `cleanup: no process is left in this checkout.`, and `dotnet aspire ps` does not show this checkout. If you change `leftover-processes.sh`, run `scripts/leftover-processes.test.sh`.
 

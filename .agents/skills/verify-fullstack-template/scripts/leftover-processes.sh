@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Fails while a process runs in this checkout. A leftover can hold ports that the stacks of other worktrees need.
 # Usage: leftover-processes.sh [SECONDS]    (waits up to SECONDS for the processes to stop)
-# Exit code: 0 no leftover, 1 a leftover runs, 2 the script cannot read the cwd of the processes.
+# Exit code: 0 no leftover, 1 a leftover runs, 2 the script cannot do the check.
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
+[[ -n "$ROOT" ]] || { echo "cleanup: run this script in a git checkout." >&2; exit 2; }
 
 # The commands of this script must not have their cwd in the checkout, or they count themselves.
 cd /
@@ -35,16 +36,11 @@ in_this_checkout() {
 }
 
 # These run for the session of a person or an agent, not for the work: a terminal shell with no script, an agent CLI,
-# the MCP servers of .mcp.json, and the caffeinate of the agent CLI.
+# the MCP servers of .mcp.json, and the caffeinate of the agent CLI. The whole command must match, so that a server with
+# one of these names in a path or an argument still counts.
 is_session_process() {
-  case "$1" in
-    -*) ;;
-    bash | */bash | zsh | */zsh | sh | */sh | fish | */fish) ;;
-    claude | "claude "* | */claude | */"claude "*) ;;
-    *"aspire agent mcp"* | *"@playwright/mcp"* | *"/playwright-mcp"*) ;;
-    "caffeinate "* | */"caffeinate "*) ;;
-    *) return 1 ;;
-  esac
+  local executable="${1%% *}" arguments="${1#"${1%% *}"}"
+  [[ "${executable##*/}$arguments" =~ ^(-?(bash|zsh|sh|fish)( -[-a-z]+)*|claude( .*)?|(dotnet\ )?aspire\ agent\ mcp|npm\ exec\ @playwright/mcp@latest|node\ [^\ ]*/\.bin/playwright-mcp|caffeinate\ -i\ -t\ [0-9]+)\ *$ ]]
 }
 
 # Prints <pid> TAB <cwd> TAB <command> for each leftover.

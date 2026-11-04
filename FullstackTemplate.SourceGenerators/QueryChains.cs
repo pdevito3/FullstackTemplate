@@ -125,7 +125,9 @@ internal sealed class QueryChains(
 				case IVariableInitializerOperation { Parent: IVariableDeclaratorOperation declarator } when isQuery:
 					return ClassifyLocal(declarator.Symbol, declarator, containingSymbol, followedLocals);
 				case IReturnOperation when isQuery:
-					return NamedOwnerOf(parent, containingSymbol) is { } owner ? (QueryUse.Returned, owner) : (QueryUse.Untagged, null);
+					return NamedOwnerOf(parent, containingSymbol) is { } owner && IsQueryable(owner.ReturnType)
+						? (QueryUse.Returned, owner)
+						: (QueryUse.Untagged, null);
 				default:
 					return (isQuery ? QueryUse.Untagged : QueryUse.NotQuery, null);
 			}
@@ -162,10 +164,13 @@ internal sealed class QueryChains(
 	}
 
 	private bool ReadsAnotherQuery(IInvocationOperation call, IArgumentOperation argument)
-		=> IsQueryable(call.Instance?.Type)
-			|| (call.Arguments.FirstOrDefault() is { } source && !ReferenceEquals(source, argument) && IsQueryable(source.Value.Type));
+		=> !RunsQueryArgument(call)
+			&& (IsQueryable(call.Instance?.Type)
+				|| (call.Arguments.FirstOrDefault() is { } source && !ReferenceEquals(source, argument) && IsQueryable(source.Value.Type)));
 
-	private static ISymbol? NamedOwnerOf(IOperation operation, ISymbol containingSymbol)
+	private bool RunsQueryArgument(IInvocationOperation call) => IsDbSet(call.TargetMethod.ContainingType);
+
+	private static IMethodSymbol? NamedOwnerOf(IOperation operation, ISymbol containingSymbol)
 	{
 		for (var parent = operation.Parent; parent is not null; parent = parent.Parent)
 		{

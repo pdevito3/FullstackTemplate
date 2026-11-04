@@ -41,7 +41,8 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	{
 		IEnumerable<IOperation> operands = ctx.Operation switch
 		{
-			IBinaryOperation { OperatorKind: BinaryOperatorKind.Equals or BinaryOperatorKind.NotEquals } binary => [binary.LeftOperand, binary.RightOperand],
+			IBinaryOperation { OperatorKind: BinaryOperatorKind.Equals or BinaryOperatorKind.NotEquals } binary
+				when !IsNull(binary.LeftOperand) && !IsNull(binary.RightOperand) => [binary.LeftOperand, binary.RightOperand],
 			IInvocationOperation call when types.SendsArguments(call.TargetMethod)
 				=> [.. call.Arguments.Select(static a => a.Value), .. call.Instance is null ? [] : new[] { call.Instance }],
 			_ => [],
@@ -56,6 +57,9 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 				ctx.ReportDiagnostic(Diagnostic.Create(RawRequestText, operand.Syntax.GetLocation(), operand.Syntax.ToString()));
 		}
 	}
+
+	// EF evaluates a compare of a request value with null on the client, so the text does not go to Postgres
+	private static bool IsNull(IOperation operand) => operand.ConstantValue is { HasValue: true, Value: null };
 
 	private static List<ISymbol>? PathFromFirstParameter(IOperation operand, InputTypes types)
 	{
@@ -114,11 +118,11 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 		return root.Descendants()
 			.Where(check => check.Syntax.SpanStart < compare.Syntax.SpanStart)
-			.SelectMany(check => CheckedValues(check, types))
+			.SelectMany(check => CheckedValues(check, root, types))
 			.Any(value => PathFromFirstParameter(value, types) is { } checkedPath && checkedPath.SequenceEqual(path, SymbolEqualityComparer.Default));
 	}
 
-	private static IEnumerable<IOperation> CheckedValues(IOperation operation, InputTypes types)
+	private static IEnumerable<IOperation> CheckedValues(IOperation operation, IOperation root, InputTypes types)
 	{
 		switch (operation)
 		{
@@ -126,7 +130,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 				foreach (var argument in call.Arguments)
 				{
 					yield return argument.Value;
-					if (ListThatHoldsItem(argument.Value) is { } list)
+					if (ListThatHoldsItem(argument.Value, root) is { } list)
 						yield return list;
 				}
 
@@ -137,32 +141,102 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		}
 	}
 
-	private static IOperation? ListThatHoldsItem(IOperation value)
+	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root)
 	{
-		var item = Unwrap(value) switch
+		ISymbol item;
+		switch (Unwrap(value))
 		{
-			IParameterReferenceOperation parameter => (ISymbol)parameter.Parameter,
-			ILocalReferenceOperation local => local.Local,
-			_ => null,
-		};
-		if (item is null)
-			return null;
+			case IArrayElementReferenceOperation { Indices.Length: 1 } element when InForLoopOf(element, element.Indices[0]):
+				return element.ArrayReference;
+			case IPropertyReferenceOperation { Property.IsIndexer: true, Instance: { } list, Arguments.Length: 1 } element
+				when InForLoopOf(element, element.Arguments[0].Value):
+				return list;
+			case ILocalReferenceOperation local when InitializerIfNeverReassigned(local.Local, root) is { } initializer:
+				return ListThatHoldsItem(initializer, root);
+			case IParameterReferenceOperation parameter:
+				item = parameter.Parameter;
+				break;
+			case ILocalReferenceOperation local:
+				item = local.Local;
+				break;
+			default:
+				return null;
+		}
 
 		for (var parent = value.Parent; parent is not null; parent = parent.Parent)
 		{
 			if (parent is IAnonymousFunctionOperation function && function.Symbol.Parameters.Contains(item, SymbolEqualityComparer.Default))
 				return SourceOf(function.Parent);
 			if (parent is IForEachLoopOperation loop && loop.Locals.Contains(item, SymbolEqualityComparer.Default))
-				return loop.Collection;
+				return ListOf(loop.Collection);
 		}
 
 		return null;
 	}
 
+	private static bool InForLoopOf(IOperation operation, IOperation index)
+	{
+		if (Unwrap(index) is not ILocalReferenceOperation { Local: var local })
+			return false;
+
+		for (var parent = operation.Parent; parent is not null; parent = parent.Parent)
+		{
+			if (parent is IForLoopOperation loop && loop.Locals.Contains(local, SymbolEqualityComparer.Default))
+				return true;
+		}
+
+		return false;
+	}
+
+	private static IOperation? InitializerIfNeverReassigned(ILocalSymbol local, IOperation root)
+	{
+		var descendants = root.Descendants().ToList();
+		return descendants.OfType<ILocalReferenceOperation>().Any(r => SymbolEqualityComparer.Default.Equals(r.Local, local) && IsWrite(r))
+			? null
+			: descendants
+				.OfType<IVariableDeclaratorOperation>()
+				.FirstOrDefault(d => SymbolEqualityComparer.Default.Equals(d.Symbol, local))
+				?.Initializer?.Value;
+	}
+
+	private static bool IsWrite(IOperation reference)
+	{
+		var target = reference;
+		while (target.Parent is ITupleOperation tuple)
+			target = tuple;
+
+		return target.Parent switch
+		{
+			IAssignmentOperation assignment => ReferenceEquals(assignment.Target, target),
+			IIncrementOrDecrementOperation => true,
+			IArgumentOperation { Parameter.RefKind: RefKind.Ref or RefKind.Out } => true,
+			_ => false,
+		};
+	}
+
 	private static IOperation? SourceOf(IOperation? @delegate)
 		=> @delegate is IDelegateCreationOperation { Parent: IArgumentOperation { Parent: IInvocationOperation call } argument }
-			? call.Instance ?? (call.TargetMethod.IsExtensionMethod && !ReferenceEquals(call.Arguments[0], argument) ? call.Arguments[0].Value : null)
-			: null;
+			&& (call.Instance ?? (call.TargetMethod.IsExtensionMethod && !ReferenceEquals(call.Arguments[0], argument) ? call.Arguments[0].Value : null)) is { } source
+				? ListOf(source)
+				: null;
+
+	private static IOperation ListOf(IOperation collection)
+	{
+		var list = Unwrap(collection);
+		if (list is IConditionalAccessInstanceOperation)
+		{
+			for (var parent = list.Parent; parent is not null; parent = parent.Parent)
+			{
+				if (parent is IConditionalAccessOperation access)
+				{
+					list = Unwrap(access.Operation);
+					break;
+				}
+			}
+		}
+
+		return list is ICoalesceOperation coalesce ? coalesce.Value : list;
+	}
 
 	private sealed class InputTypes(
 		INamedTypeSymbol entityId,

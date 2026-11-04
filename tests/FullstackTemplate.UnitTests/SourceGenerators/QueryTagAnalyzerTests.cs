@@ -277,6 +277,7 @@ public class QueryTagAnalyzerTests
     [Arguments("private IQueryable<User> LiveUsers(bool all) => (all ? null : dbContext.Users.AsNoTracking()) ?? dbContext.Users;")]
     [Arguments("private IQueryable<User> LiveUsers(bool all) { var query = dbContext.Users.AsQueryable(); if (all) query = query.IgnoreQueryFilters(); return query; }")]
     [Arguments("private IQueryable<User> LiveUsers(bool all) { IQueryable<User> query = dbContext.Users; return all ? query.IgnoreQueryFilters() : query; }")]
+    [Arguments("private IQueryable<User> LiveUsers(bool all) { IQueryable<User> query; if (all) query = dbContext.Users.IgnoreQueryFilters(); else query = dbContext.Users; return query; }")]
     public async Task a_helper_that_returns_a_query_through_a_branch_or_a_local_has_no_diagnostics_when_each_caller_tags(string helper)
     {
         // Act
@@ -297,6 +298,7 @@ public class QueryTagAnalyzerTests
     [Test]
     [Arguments("private IQueryable<User> LiveUsers(bool all) => all ? dbContext.Users.IgnoreQueryFilters() : dbContext.Users;")]
     [Arguments("private IQueryable<User> LiveUsers(bool all) { var query = dbContext.Users.AsQueryable(); if (all) query = query.IgnoreQueryFilters(); return query; }")]
+    [Arguments("private IQueryable<User> LiveUsers(bool all) { IQueryable<User> query; query = dbContext.Users; return query; }")]
     public async Task a_helper_that_returns_a_query_through_a_branch_or_a_local_gets_fsttel003_at_a_caller_that_does_not_tag(string helper)
     {
         // Act
@@ -313,6 +315,36 @@ public class QueryTagAnalyzerTests
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTTEL003");
         Text(diagnostic).ShouldBe("LiveUsers(true)");
+    }
+
+    [Test]
+    public async Task a_query_assigned_to_a_local_that_runs_gets_fsttel001()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            IQueryable<User> query;
+            query = dbContext.Users.Where(u => u.Identifier == identifier);
+            var users = await query.ToListAsync(cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("dbContext.Users");
+    }
+
+    [Test]
+    public async Task a_query_in_two_locals_that_assign_each_other_gets_fsttel001_when_it_runs()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            IQueryable<User> first = dbContext.Users;
+            IQueryable<User> second;
+            second = first;
+            first = second;
+            var users = await first.ToListAsync(cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("dbContext.Users");
     }
 
     [Test]

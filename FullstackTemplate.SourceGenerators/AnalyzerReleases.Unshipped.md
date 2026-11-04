@@ -18,3 +18,4 @@ FSTTEL003 | Telemetry | Error | A caller of a method that returns an untagged qu
 FSTQRY001 | QueryInput | Error | A query lambda in a request handler compares a text or a list of texts of the request that EntityId.IsValid or PostgresText.CanStore did not check first.
 FSTTEL002 | Telemetry | Error | A request handler calls SaveChangesAsync or SaveChanges with no _logger.Here().Information log or no Activity.Current?.SetTag("app.*_id") tag.
 FSTTEL004 | Telemetry | Error | A constant span, event, or query name, tag key, metric name, or log property name breaks the Names table of docs/backend/feature-telemetry.md.
+FSTSTR001 | Style | Error | A regular string has \" or a \n before its end, or a verbatim string spans lines. Write a raw string literal.

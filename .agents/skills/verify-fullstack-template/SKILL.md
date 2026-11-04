@@ -237,7 +237,17 @@ Stop the stack before you finish, also after a failed attempt:
 $S/scripts/cleanup.sh
 ```
 
-The script stops only the AppHost whose pid `launch.sh` recorded, and deletes `artifacts/verify/.current`. It never stops a stack that it did not start. It does not delete `artifacts/verify/<RUN_ID>/`. Cleanup is complete when the script prints `cleanup: stopped.` and `dotnet aspire ps` does not show this checkout.
+The script stops only the AppHost whose pid `launch.sh` recorded, and deletes `artifacts/verify/.current`. It never stops a stack that it did not start. It does not delete `artifacts/verify/<RUN_ID>/`.
+
+Then the script finds each process whose cwd is in this checkout, with `scripts/leftover-processes.sh`. A leftover can hold ports that the stacks of other worktrees need. While one runs, the script exits with a non-zero code and prints the pid, the folder, and the command of each one. To continue:
+
+1. Stop each process in the list that you started, by its pid.
+2. If you did not start a process in the list, do not stop it. Tell the user.
+3. Run `cleanup.sh` again. A second run with no stack does only this check.
+
+These processes do not count: the shell that runs the script and its parents, the processes of other worktrees, and the processes of a session (a terminal shell with no script, an agent CLI, its MCP servers from `.mcp.json`, and its `caffeinate`). A command in the same pipe as `cleanup.sh` counts, so run `cleanup.sh` with no pipe.
+
+Cleanup is complete when the script exits with code 0 and prints `cleanup: no process is left in this checkout.`, and `dotnet aspire ps` does not show this checkout. If you change `leftover-processes.sh`, run `scripts/leftover-processes.test.sh`.
 
 Do not kill processes by name (`dotnet`, `node`, `vite`). Other worktrees and the user run the same processes.
 

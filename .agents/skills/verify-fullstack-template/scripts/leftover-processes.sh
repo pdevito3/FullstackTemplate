@@ -50,7 +50,7 @@ is_session_process() {
 list_leftovers() {
   local rows pid cwd command
   rows="$(process_cwds)"
-  grep -q "^$$"$'\t' <<<"$rows" || return 2
+  grep -q "^$$"$'\t' <<<"$rows" && ps -p $$ >/dev/null || return 2
   while IFS=$'\t' read -r pid cwd; do
     in_this_checkout "$cwd" || continue
     [[ "$ancestors" == *" $pid "* ]] && continue
@@ -71,7 +71,7 @@ done
 deadline=$((SECONDS + ${1:-0}))
 while :; do
   leftovers="$(list_leftovers)" || {
-    echo "cleanup: cannot read the cwd of the processes, so cannot prove that none is left. This script needs /proc or lsof." >&2
+    echo "cleanup: cannot read the cwd of the processes, so cannot prove that none is left. This script needs ps, and /proc or lsof." >&2
     exit 2
   }
   [[ -z "$leftovers" ]] && { echo "cleanup: no process is left in this checkout."; exit 0; }

@@ -65,14 +65,23 @@ start "$base/foo" python3; check "a script process counts" 1 "python3" "$base/fo
 (cd "$base/foo" && exec sleep 2) &
 check "the wait passes when the process stops in time" 0 "" "$base/foo" 10
 
-if [[ ! -e /proc/self/cwd ]]; then
-  mkdir "$base/bin"
-  printf '#!/bin/sh\nexit 1\n' > "$base/bin/lsof"
-  chmod +x "$base/bin/lsof"
-  out="$(cd "$base/foo" && PATH="$base/bin:$PATH" "$helper" 2>&1)"
+# check_failed_scan <tool>: replaces the tool with one that fails. A scan that cannot see the processes must not pass.
+check_failed_scan() {
+  mkdir -p "$base/bin-$1"
+  printf '#!/bin/sh\nexit 1\n' > "$base/bin-$1/$1"
+  chmod +x "$base/bin-$1/$1"
+  local out code
+  out="$(cd "$base/foo" && PATH="$base/bin-$1:$PATH" "$helper" 2>&1)"
   code=$?
-  [[ "$code" == 2 ]] && echo "ok    a failed scan refuses" || { echo "FAIL  a failed scan: exit $code. $out"; failed=1; }
-fi
+  if [[ "$code" == 2 ]]; then
+    echo "ok    a failed $1 refuses"
+  else
+    echo "FAIL  a failed $1: exit $code, want 2. Output: $out"
+    failed=1
+  fi
+}
+check_failed_scan ps
+[[ -e /proc/self/cwd ]] || check_failed_scan lsof
 
 (( failed == 0 )) && echo "leftover-processes: PASSED" || echo "leftover-processes: FAILED"
 exit "$failed"

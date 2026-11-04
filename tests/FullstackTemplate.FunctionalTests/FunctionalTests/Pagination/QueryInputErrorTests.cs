@@ -16,14 +16,26 @@ public class QueryInputErrorTests : TestBase
     public static IEnumerable<(string, string)> QueryValuesThatCannotBeRead =>
     [
         ("filters", "Name @= "),
-        ("filters", "Unknown == \"x\""),
+        ("filters", """
+            Unknown == "x"
+            """),
         // TenantDto does not show LastModifiedOn, so the filter cannot use it
-        ("filters", "LastModifiedOn == \"x\""),
-        ("filters", $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\""),
-        ("filters", $"{new string('(', OverNestingLimit)}Name == \"x\"{new string(')', OverNestingLimit)}"),
-        ("filters", "Name ^^ \"x\""),
-        ("filters", "Name ~~ \"paul\""),
-        ("filters", "Name !~ \"paul\""),
+        ("filters", """
+            LastModifiedOn == "x"
+            """),
+        ("filters", $"""
+            Name == "{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}"
+            """),
+        ("filters", $"""{new string('(', OverNestingLimit)}Name == "x"{new string(')', OverNestingLimit)}"""),
+        ("filters", """
+            Name ^^ "x"
+            """),
+        ("filters", """
+            Name ~~ "paul"
+            """),
+        ("filters", """
+            Name !~ "paul"
+            """),
         ("sortOrder", "Unknown desc,,"),
         ("sortOrder", "Name foo"),
         // A version is opaque, so a list cannot filter or sort on it
@@ -66,9 +78,11 @@ public class QueryInputErrorTests : TestBase
     }
 
     [Test]
-    [Arguments("filters", "Name == a\"b",
+    [Arguments("filters", """Name == a"b""",
         "The filter could not be read at character 10. Check the operator and the quotes there, then try again.")]
-    [Arguments("filters", "Title == \"x\"",
+    [Arguments("filters", """
+        Title == "x"
+        """,
         "The filter names the field Title, which this list does not have. Use one of these fields: id, name.")]
     [Arguments("sortOrder", "Title desc",
         "The sort order names the field Title, which this list does not have. Use one of these fields: id, name.")]

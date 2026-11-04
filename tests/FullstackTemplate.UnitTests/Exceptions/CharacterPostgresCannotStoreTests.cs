@@ -9,7 +9,10 @@ public class CharacterPostgresCannotStoreTests
     [Arguments("")]
     [Arguments("a\u0001b")]
     [Arguments("a\tb")]
-    [Arguments("a\nb")]
+    [Arguments("""
+        a
+        b
+        """)]
     [Arguments("a\u007Fb")]
     [Arguments("a\u0085b")]
     [Arguments("a￿b")]

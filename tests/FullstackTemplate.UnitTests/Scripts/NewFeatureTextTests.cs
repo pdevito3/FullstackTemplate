@@ -20,25 +20,25 @@ public class NewFeatureTextTests
         // Assert
         lines.ShouldBe([
             "add to other tenant: You can add a unit load only to your own tenant.",
-            "Status missing: Please give the unit load a value for \"Status\".",
-            "Status too long: The \"Status\" value of a unit load can have no more than {StatusMaxLength} characters.",
-            "Status bad character: The \"Status\" value of a unit load has a character that is not allowed.",
-            "Status tool parameter: The \"Status\" value of the unit load.",
-            "Notes too long: The \"Notes\" value of a unit load can have no more than {NotesMaxLength} characters.",
-            "Notes bad character: The \"Notes\" value of a unit load has a character that is not allowed.",
-            "Notes tool parameter: The \"Notes\" value of the unit load. Leave it out for none.",
-            "IsFragile tool parameter: The \"Is fragile\" value of the unit load: true or false.",
-            "DueOn missing: Please give the unit load a value for \"Due on\".",
-            "DueOn tool parameter: The \"Due on\" value of the unit load, a date such as 2026-01-02.",
-            "CountedAt missing: Please give the unit load a value for \"Counted at\".",
-            "CountedAt tool parameter: The \"Counted at\" value of the unit load, an ISO 8601 instant such as 2026-01-02T10:00:00Z.",
-            "Items out of range: The \"Items\" value of a unit load is from {ItemsMinimum} to {ItemsMaximum}.",
-            "Items tool parameter: The \"Items\" value of the unit load, a whole number. A value out of range gives the invalid_argument error.",
+            """Status missing: Please give the unit load a value for "Status".""",
+            """Status too long: The "Status" value of a unit load can have no more than {StatusMaxLength} characters.""",
+            """Status bad character: The "Status" value of a unit load has a character that is not allowed.""",
+            """Status tool parameter: The "Status" value of the unit load.""",
+            """Notes too long: The "Notes" value of a unit load can have no more than {NotesMaxLength} characters.""",
+            """Notes bad character: The "Notes" value of a unit load has a character that is not allowed.""",
+            """Notes tool parameter: The "Notes" value of the unit load. Leave it out for none.""",
+            """IsFragile tool parameter: The "Is fragile" value of the unit load: true or false.""",
+            """DueOn missing: Please give the unit load a value for "Due on".""",
+            """DueOn tool parameter: The "Due on" value of the unit load, a date such as 2026-01-02.""",
+            """CountedAt missing: Please give the unit load a value for "Counted at".""",
+            """CountedAt tool parameter: The "Counted at" value of the unit load, an ISO 8601 instant such as 2026-01-02T10:00:00Z.""",
+            """Items out of range: The "Items" value of a unit load is from {ItemsMinimum} to {ItemsMaximum}.""",
+            """Items tool parameter: The "Items" value of the unit load, a whole number. A value out of range gives the invalid_argument error.""",
             "add tool: Adds a unit load to the caller's tenant. The caller needs the manage_unit_loads permission in the tenant.",
             "get tool: Gets one unit load of the caller's tenant by its ID.",
             "list tool: Gets one page of the unit loads of the caller's tenant, with the page data.",
-            "list filters: A QueryKit filter on the fields of a unit load, for example: status @=* \"text\". Put text with a \" in a raw string "
-                + "with one space on each side, for example: status @=* \"\"\" say \"hi\" \"\"\". Its delimiter is one quote more than the longest "
+            """list filters: A QueryKit filter on the fields of a unit load, for example: status @=* "text". Put text with a " in a raw string """
+                + """"with one space on each side, for example: status @=* """ say "hi" """. Its delimiter is one quote more than the longest """"
                 + "run of quotes in the text, and at least three quotes.",
             "update tool: Updates a unit load of the caller's tenant. The caller needs the manage_unit_loads permission in the tenant.",
         ]);
@@ -54,8 +54,8 @@ public class NewFeatureTextTests
         lines.ShouldContain("CarrierId not found: The carrier does not exist. Choose another carrier.");
         lines.ShouldContain("CarrierId tool parameter: The ID of the carrier of the shipment. An ID that the caller cannot see gives the invalid_argument error. An update does not change it.");
         lines.ShouldContain("TimeZone tool parameter: The time zone of the shipment, an IANA ID such as America/Chicago. An update does not change it.");
-        lines.ShouldContain("DueOn missing: Please give the shipment a value for \"Due on\".");
-        lines.ShouldContain("DueOn tool parameter: The \"Due on\" value of the shipment, a date such as 2026-01-02 in the time zone of the shipment.");
+        lines.ShouldContain("""DueOn missing: Please give the shipment a value for "Due on".""");
+        lines.ShouldContain("""DueOn tool parameter: The "Due on" value of the shipment, a date such as 2026-01-02 in the time zone of the shipment.""");
     }
 
     [Test]

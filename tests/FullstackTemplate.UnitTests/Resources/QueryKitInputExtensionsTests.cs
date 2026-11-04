@@ -75,7 +75,7 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
-    [Arguments("Name == a\"b", "The filter could not be read at character 10. Check the operator and the quotes there, then try again.")]
+    [Arguments("""Name == a"b""", "The filter could not be read at character 10. Check the operator and the quotes there, then try again.")]
     [Arguments("Name @= ", "The filter could not be read at character 9. Check the operator and the quotes there, then try again.")]
     public void parse_fault_gets_a_message_with_its_place(string filters, string message)
     {
@@ -92,7 +92,9 @@ public class QueryKitInputExtensionsTests : IDisposable
     public void unknown_filter_field_gets_a_message_with_the_field_and_the_fields_of_the_list()
     {
         // Act
-        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Title == \"x\"", new CustomQueryKitConfiguration()));
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("""
+            Title == "x"
+            """, new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Message.ShouldBe(
@@ -116,7 +118,9 @@ public class QueryKitInputExtensionsTests : IDisposable
     public void value_that_does_not_fit_its_field_gets_a_message_with_the_field_and_not_the_value()
     {
         // Act
-        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Seats == \"jane@example.com\"", new CustomQueryKitConfiguration()));
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters("""
+            Seats == "jane@example.com"
+            """, new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Message.ShouldBe("A value in the filter does not fit the field Seats. Change the value, then try again.");
@@ -128,7 +132,9 @@ public class QueryKitInputExtensionsTests : IDisposable
     {
         // Act
         var exception = Should.Throw<QueryInputException>(() =>
-            Rows.ApplyFilters("Seats == \"x for the filter property 'jane@example.com\"", new CustomQueryKitConfiguration()));
+            Rows.ApplyFilters("""
+                Seats == "x for the filter property 'jane@example.com"
+                """, new CustomQueryKitConfiguration()));
 
         // Assert
         exception.Message.ShouldBe("A value in the filter does not fit the field Seats. Change the value, then try again.");
@@ -142,7 +148,9 @@ public class QueryKitInputExtensionsTests : IDisposable
     {
         // Arrange
         var line = "The value 'b' is not a valid Int32 for the filter property 'jane@example.com'.";
-        var filters = $"Seats == \"a{lineBreak}{line}{lineBreak}\"";
+        var filters = $"""
+            Seats == "a{lineBreak}{line}{lineBreak}"
+            """;
 
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
@@ -159,7 +167,9 @@ public class QueryKitInputExtensionsTests : IDisposable
     public void value_that_ends_the_first_line_of_the_querykit_message_does_not_get_into_the_message(string lineBreak)
     {
         // Arrange
-        var filters = $"Seats == \"a' is not a valid Int32 for the filter property 'jane@example.com'.{lineBreak}z\"";
+        var filters = $"""
+            Seats == "a' is not a valid Int32 for the filter property 'jane@example.com'.{lineBreak}z"
+            """;
 
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
@@ -169,8 +179,12 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
-    [Arguments("Name ~~ \"paul\"")]
-    [Arguments("Name !~ \"paul\"")]
+    [Arguments("""
+        Name ~~ "paul"
+        """)]
+    [Arguments("""
+        Name !~ "paul"
+        """)]
     public void sounds_like_operator_gets_a_message_that_names_the_operators(string filters)
     {
         // Act
@@ -190,7 +204,9 @@ public class QueryKitInputExtensionsTests : IDisposable
         using var activity = _source.StartActivity("list").ShouldNotBeNull();
 
         // Act
-        Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Paul == \"x\"", new CustomQueryKitConfiguration()));
+        Should.Throw<QueryInputException>(() => Rows.ApplyFilters("""
+            Paul == "x"
+            """, new CustomQueryKitConfiguration()));
         Should.Throw<QueryInputException>(() => Rows.ApplySortOrder("jane@example.com", new CustomQueryKitConfiguration()));
 
         // Assert
@@ -206,7 +222,7 @@ public class QueryKitInputExtensionsTests : IDisposable
         using var activity = _source.StartActivity("list").ShouldNotBeNull();
 
         // Act
-        Should.Throw<QueryInputException>(() => Rows.ApplyFilters("Name == a\"b", new CustomQueryKitConfiguration()));
+        Should.Throw<QueryInputException>(() => Rows.ApplyFilters("""Name == a"b""", new CustomQueryKitConfiguration()));
 
         // Assert
         var recorded = activity.Events.ShouldHaveSingleItem();
@@ -216,8 +232,12 @@ public class QueryKitInputExtensionsTests : IDisposable
 
     // A value that does not convert gets a QueryKit message that holds the value
     [Test]
-    [Arguments("Version == \"jane@example.com\"")]
-    [Arguments("Name == \"jane@example.com\" && Version == \"jane@example.com\"")]
+    [Arguments("""
+        Version == "jane@example.com"
+        """)]
+    [Arguments("""
+        Name == "jane@example.com" && Version == "jane@example.com"
+        """)]
     public void the_span_does_not_get_the_text_of_the_filter(string filters)
     {
         // Arrange
@@ -250,7 +270,9 @@ public class QueryKitInputExtensionsTests : IDisposable
     public void filter_longer_than_its_maximum_gets_the_too_long_message()
     {
         // Arrange
-        var filters = $"Name == \"{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}\"";
+        var filters = $"""
+            Name == "{new string('a', CustomQueryKitConfiguration.FilterMaxLength)}"
+            """;
 
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
@@ -265,7 +287,7 @@ public class QueryKitInputExtensionsTests : IDisposable
     {
         // Arrange
         var depth = CustomQueryKitConfiguration.FilterMaxNestingDepth + 1;
-        var filters = $"{new string('(', depth)}Name == \"x\"{new string(')', depth)}";
+        var filters = $"""{new string('(', depth)}Name == "x"{new string(')', depth)}""";
 
         // Act
         var exception = Should.Throw<QueryInputException>(() => Rows.ApplyFilters(filters, new CustomQueryKitConfiguration()));
@@ -279,7 +301,7 @@ public class QueryKitInputExtensionsTests : IDisposable
     [Test]
     [Arguments("Name.Length > 3")]
     [Arguments("Seats.m_value > 3")]
-    [Arguments("Name == \"a\" || Name.Length == 1")]
+    [Arguments("""Name == "a" || Name.Length == 1""")]
     public void filter_on_a_part_of_a_field_gets_a_message_with_the_fields_of_the_list(string filters)
     {
         // Act
@@ -302,9 +324,15 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
-    [Arguments("Name ^^ \"x\"")]
-    [Arguments("Name ^^* \"x\"")]
-    [Arguments("Name !^^* \"x\"")]
+    [Arguments("""
+        Name ^^ "x"
+        """)]
+    [Arguments("""
+        Name ^^* "x"
+        """)]
+    [Arguments("""
+        Name !^^* "x"
+        """)]
     [Arguments("Seats %^^ 5")]
     public void in_operator_with_one_value_gets_a_message_that_asks_for_a_list(string filters)
     {
@@ -314,7 +342,7 @@ public class QueryKitInputExtensionsTests : IDisposable
         // Assert
         exception.Parameter.ShouldBe("filters");
         exception.Message.ShouldBe(
-            "The operators ^^ and !^^ need a list of values, for example [\"a\", \"b\"]. Put the values in brackets, then try again.");
+            """The operators ^^ and !^^ need a list of values, for example ["a", "b"]. Put the values in brackets, then try again.""");
     }
 
     // QueryKit builds a case-insensitive comparison with null as a call on null, so the query throws when it runs
@@ -336,7 +364,7 @@ public class QueryKitInputExtensionsTests : IDisposable
     [Test]
     [Arguments("version == 5")]
     [Arguments("VERSION > 5")]
-    [Arguments("Name == \"a\" || Version != 5")]
+    [Arguments("""Name == "a" || Version != 5""")]
     public void filter_on_the_version_is_refused(string filters)
     {
         // Act

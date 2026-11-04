@@ -180,7 +180,7 @@ public class StoredFileTests
     public void the_download_is_an_attachment_with_the_encoded_name_and_the_stored_type_for_15_minutes()
     {
         // Arrange
-        var file = StoredFile.Accept(SampleFiles.Upload("résumé \"final\"; v2.png", SampleFiles.Png), ImagesAndPdf, TenantId, Path);
+        var file = StoredFile.Accept(SampleFiles.Upload("""résumé "final"; v2.png""", SampleFiles.Png), ImagesAndPdf, TenantId, Path);
 
         // Act
         var download = file.DownloadAt(Now);

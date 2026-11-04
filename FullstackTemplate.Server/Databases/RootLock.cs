@@ -121,7 +121,10 @@ public sealed class RootLock
 
     // The tag names the SQL span, as TagWithOperationCallSite does for a LINQ query.
     private static string Tagged(string operationName, string call)
-        => $"-- {QueryTagging.QueryPrefix} {operationName}\nSELECT {call}";
+        => $"""
+            -- {QueryTagging.QueryPrefix} {operationName}
+            SELECT {call}
+            """;
 
     [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
         Justification = "The advisory lock functions write no table, so the command needs no audit entry.")]

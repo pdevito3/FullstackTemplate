@@ -61,7 +61,9 @@ public class PaginationHeaderTests : TestBase
         {
             ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
         });
-        var filters = Uri.EscapeDataString($"Name @= \"{marker}\"");
+        var filters = Uri.EscapeDataString($"""
+            Name @= "{marker}"
+            """);
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Tenants.GetList}?pageNumber=1&pageSize=1&filters={filters}");

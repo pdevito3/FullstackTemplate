@@ -142,11 +142,13 @@ public class QueryInputAnalyzerTests
     [Arguments("u => EF.Functions.Like(u.Identifier, request.Identifier)", "request.Identifier")]
     [Arguments("u => EF.Functions.ILike(u.Identifier, request.Identifier)", "request.Identifier")]
     [Arguments("u => request.Ids.Contains(u.Id)", "request.Ids")]
-    [Arguments("u => EF.Functions.ILike(u.Identifier, $\"%{request.Identifier}%\")", "request.Identifier")]
+    [Arguments("""u => EF.Functions.ILike(u.Identifier, $"%{request.Identifier}%")""", "request.Identifier")]
     [Arguments("u => EF.Functions.ILike(u.Identifier, LikePattern.Containing(request.Identifier), LikePattern.EscapeCharacter)", "request.Identifier")]
     [Arguments("u => EF.Functions.Like(u.Identifier, LikePattern.StartingWith(request.Identifier.Trim()), LikePattern.EscapeCharacter)", "request.Identifier.Trim()")]
-    [Arguments("u => u.Identifier == request.Identifier + \"-1\"", "request.Identifier")]
-    [Arguments("u => u.Identifier.StartsWith(\"a\" + request.Identifier + \"b\")", "request.Identifier")]
+    [Arguments("""
+        u => u.Identifier == request.Identifier + "-1"
+        """, "request.Identifier")]
+    [Arguments("""u => u.Identifier.StartsWith("a" + request.Identifier + "b")""", "request.Identifier")]
     public async Task each_query_operator_that_sends_a_request_text_gets_fstqry001(string predicate, string text)
     {
         // Act
@@ -160,9 +162,11 @@ public class QueryInputAnalyzerTests
     [Arguments("u => u.Identifier == request.Identifier.Trim()")]
     [Arguments("u => u.Identifier.StartsWith(request.Identifier)")]
     [Arguments("u => EF.Functions.ILike(u.Identifier, request.Identifier)")]
-    [Arguments("u => EF.Functions.ILike(u.Identifier, $\"%{request.Identifier}%\")")]
+    [Arguments("""u => EF.Functions.ILike(u.Identifier, $"%{request.Identifier}%")""")]
     [Arguments("u => EF.Functions.ILike(u.Identifier, LikePattern.Containing(request.Identifier), LikePattern.EscapeCharacter)")]
-    [Arguments("u => u.Identifier == request.Identifier + \"-1\"")]
+    [Arguments("""
+        u => u.Identifier == request.Identifier + "-1"
+        """)]
     public async Task a_request_text_that_postgres_text_can_store_checks_first_has_no_diagnostics_in_each_operator(string predicate)
     {
         // Act
@@ -238,9 +242,9 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("var t = id; t = \"x\";")]
-    [Arguments("var t = id; t += \"x\";")]
-    [Arguments("var t = id; (t, _) = (\"x\", 1);")]
+    [Arguments("""var t = id; t = "x";""")]
+    [Arguments("""var t = id; t += "x";""")]
+    [Arguments("""var t = id; (t, _) = ("x", 1);""")]
     public async Task a_check_of_a_copy_of_each_item_that_the_code_assigns_again_gets_fstqry001(string copy)
     {
         // Act
@@ -254,9 +258,15 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("u => request.Filter == null || u.Identifier == \"a\"")]
-    [Arguments("u => request.Filter != null && u.Identifier == \"a\"")]
-    [Arguments("u => null == request.Filter || u.Identifier == \"a\"")]
+    [Arguments("""
+        u => request.Filter == null || u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => request.Filter != null && u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => null == request.Filter || u.Identifier == "a"
+        """)]
     public async Task a_null_check_of_a_request_text_in_a_query_has_no_diagnostics(string predicate)
     {
         // Act

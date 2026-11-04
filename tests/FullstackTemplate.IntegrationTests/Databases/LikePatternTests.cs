@@ -67,7 +67,9 @@ public class LikePatternTests : TestBase
         var found = await testingServiceScope.ExecuteDbContextAsync(db => db.Users
             .Where(u => u.LastName == lastName)
             .ToUserDtoWithoutActionsQueryable()
-            .ApplyFilters($"firstName {op} \"{search}\"", new CustomQueryKitConfiguration())
+            .ApplyFilters($"""
+                firstName {op} "{search}"
+                """, new CustomQueryKitConfiguration())
             .Select(u => u.FirstName)
             .ToListAsync());
 

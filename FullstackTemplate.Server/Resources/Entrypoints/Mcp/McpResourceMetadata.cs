@@ -71,13 +71,21 @@ public static class McpResourceMetadata
 
     public static string Challenge(string metadataUrl, string? error, string? errorDescription, string? errorUri)
     {
-        var challenge = $"{JwtBearerDefaults.AuthenticationScheme} resource_metadata=\"{metadataUrl}\"";
+        var challenge = $"""
+            {JwtBearerDefaults.AuthenticationScheme} resource_metadata="{metadataUrl}"
+            """;
         if (!string.IsNullOrEmpty(error))
-            challenge += $", error=\"{error}\"";
+            challenge += $"""
+                , error="{error}"
+                """;
         if (!string.IsNullOrEmpty(errorDescription))
-            challenge += $", error_description=\"{errorDescription.Replace("\"", "'")}\"";
+            challenge += $"""
+                , error_description="{errorDescription.Replace("\"", "'")}"
+                """;
         if (!string.IsNullOrEmpty(errorUri))
-            challenge += $", error_uri=\"{errorUri}\"";
+            challenge += $"""
+                , error_uri="{errorUri}"
+                """;
         return challenge;
     }
 

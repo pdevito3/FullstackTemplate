@@ -34,10 +34,10 @@ internal static class Job
             if (failure is not null)
             {
                 Console.Error.WriteLine();
-                Console.Error.WriteLine($"{job} failed at the step \"{step.Name}\". {failure}");
+                Console.Error.WriteLine($"""{job} failed at the step "{step.Name}". {failure}""");
                 Console.Error.WriteLine($"The copy of the checkout, with its logs and test reports, stays at {folder}. Delete it when you are done.");
                 if (OnGitHub)
-                    Console.Error.WriteLine($"::error::{job} failed at the step \"{step.Name}\". {failure}");
+                    Console.Error.WriteLine($"""::error::{job} failed at the step "{step.Name}". {failure}""");
                 return 1;
             }
         }

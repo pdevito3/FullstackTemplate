@@ -26,7 +26,7 @@ public static class QueryKitInputExtensions
     public const string SoundsLikeMessage =
         "This list cannot filter with the sounds-like operators ~~ and !~. Choose another operator, then try again.";
     public const string InOperatorListMessage =
-        "The operators ^^ and !^^ need a list of values, for example [\"a\", \"b\"]. Put the values in brackets, then try again.";
+        """The operators ^^ and !^^ need a list of values, for example ["a", "b"]. Put the values in brackets, then try again.""";
     public const string NullValueMessage = "Only the operators == and != can compare with null. Change the operator, then try again.";
     public const string ListFieldNullMessage =
         "A field that holds a list cannot compare with null. To find an empty list, use #== 0, then try again.";

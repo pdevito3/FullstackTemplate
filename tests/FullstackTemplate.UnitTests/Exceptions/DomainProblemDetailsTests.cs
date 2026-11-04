@@ -208,6 +208,8 @@ public class DomainProblemDetailsTests
 
     private static DbUpdateException SaveFailure(string sqlState, string? constraintName = null)
         => new("An error occurred while saving the entity changes.",
-            new PostgresException("duplicate key value violates unique constraint \"ix_users_identifier\"",
+            new PostgresException("""
+                duplicate key value violates unique constraint "ix_users_identifier"
+                """,
                 "ERROR", "ERROR", sqlState, constraintName: constraintName));
 }

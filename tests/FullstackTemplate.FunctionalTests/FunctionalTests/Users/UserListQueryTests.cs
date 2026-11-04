@@ -16,16 +16,36 @@ public class UserListQueryTests : TestBase
 {
     // Each filter matches the user that the test makes, and no other user in its tenant.
     [Test]
-    [Arguments("FirstName == \"{firstName}\"")]
-    [Arguments("LastName == \"{lastName}\"")]
-    [Arguments("FullName == \"{firstName} {lastName}\"")]
-    [Arguments("Email == \"{email}\"")]
-    [Arguments("Username == \"{username}\"")]
-    [Arguments("Identifier == \"{identifier}\"")]
-    [Arguments("Id == \"{id}\"")]
-    [Arguments("Role == \"{role}\"")]
-    [Arguments("Permissions ^$ \"{permission}\"")]
-    [Arguments("Permissions == \"{permission}\"")]
+    [Arguments("""
+        FirstName == "{firstName}"
+        """)]
+    [Arguments("""
+        LastName == "{lastName}"
+        """)]
+    [Arguments("""
+        FullName == "{firstName} {lastName}"
+        """)]
+    [Arguments("""
+        Email == "{email}"
+        """)]
+    [Arguments("""
+        Username == "{username}"
+        """)]
+    [Arguments("""
+        Identifier == "{identifier}"
+        """)]
+    [Arguments("""
+        Id == "{id}"
+        """)]
+    [Arguments("""
+        Role == "{role}"
+        """)]
+    [Arguments("""
+        Permissions ^$ "{permission}"
+        """)]
+    [Arguments("""
+        Permissions == "{permission}"
+        """)]
     public async Task filter_on_a_dto_field_returns_the_matching_user(string filterTemplate)
     {
         // Arrange
@@ -152,7 +172,9 @@ public class UserListQueryTests : TestBase
         await ArrangeTwoUsersAsync();
 
         // Act
-        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?filters={Uri.EscapeDataString("Permissions #== \"abc\"")}");
+        var result = await FactoryClient.GetRequestAsync($"{ApiRoutes.Users.GetList}?filters={Uri.EscapeDataString("""
+            Permissions #== "abc"
+            """)}");
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -163,10 +185,14 @@ public class UserListQueryTests : TestBase
     // The DTO does not show these fields, so a caller must not filter or sort on them.
     // A 400 here also shows that the error message names only a field that the contract does not have.
     [Test]
-    [Arguments("filters", "LastModifiedOn == \"x\"")]
+    [Arguments("filters", """
+        LastModifiedOn == "x"
+        """)]
     [Arguments("filters", "IsDeleted == true")]
     [Arguments("filters", "UserPermissions.Count > 0")]
-    [Arguments("filters", "(LastModifiedOn, FirstName) @= \"x\"")]
+    [Arguments("filters", """
+        (LastModifiedOn, FirstName) @= "x"
+        """)]
     [Arguments("sortOrder", "LastModifiedOn desc")]
     public async Task query_on_a_field_that_the_dto_does_not_show_returns_bad_request(string parameter, string value)
     {
@@ -203,7 +229,9 @@ public class UserListQueryTests : TestBase
 
     // The handler adds the allowed actions after the page loads, so they are not a column of the query
     [Test]
-    [Arguments("filters", "allowedActions @=* \"Del\"")]
+    [Arguments("filters", """
+        allowedActions @=* "Del"
+        """)]
     [Arguments("filters", "AllowedActions.Count > 0")]
     [Arguments("sortOrder", "allowedActions")]
     public async Task query_on_the_allowed_actions_returns_bad_request(string parameter, string value)

@@ -28,7 +28,9 @@ public class WriteGuardTests : TestBase
         yield return () => ("raw SQL", (db, userId, ct) => db.Database.ExecuteSqlAsync(
             $"UPDATE users SET first_name = 'Changed' WHERE id = {userId}", ct));
         yield return () => ("SqlQuery with UPDATE RETURNING", async (db, userId, ct) => await db.Database.SqlQuery<int>(
-            $"UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING 1 AS \"Value\"").ToListAsync(ct));
+            $"""
+                UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING 1 AS "Value"
+                """).ToListAsync(ct));
         yield return () => ("FromSql with a writable CTE", async (db, userId, ct) => await db.Tenants.FromSql($"""
                 WITH changed AS (UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING tenant_id)
                 SELECT * FROM tenants WHERE id IN (SELECT tenant_id FROM changed)
@@ -57,7 +59,9 @@ public class WriteGuardTests : TestBase
         yield return () => ("raw SQL on the audit log", "audit_entries", (db, userId) => db.Database.ExecuteSqlAsync(
             $"DELETE FROM audit_entries WHERE root_id = {userId}"));
         yield return () => ("SqlQuery with UPDATE RETURNING", "users", async (db, userId) => await db.Database.SqlQuery<int>(
-            $"UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING 1 AS \"Value\"").ToListAsync());
+            $"""
+                UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING 1 AS "Value"
+                """).ToListAsync());
         yield return () => ("FromSql with a writable CTE", "users", async (db, userId) => await db.Tenants.FromSql($"""
                 WITH changed AS (UPDATE users SET first_name = 'Changed' WHERE id = {userId} RETURNING tenant_id)
                 SELECT * FROM tenants WHERE id IN (SELECT tenant_id FROM changed)
@@ -100,7 +104,9 @@ public class WriteGuardTests : TestBase
         });
         yield return () => ("CALL", (db, _) => db.Database.ExecuteSqlRawAsync("CALL rename_users()"));
         yield return () => ("SqlQuery with dollar-quoted text", async (db, _) => await db.Database.SqlQueryRaw<string>(
-            "SELECT $q$x$q$ AS \"Value\"").ToListAsync());
+            """
+                SELECT $q$x$q$ AS "Value"
+                """).ToListAsync());
     }
 
     [Test]
@@ -132,7 +138,7 @@ public class WriteGuardTests : TestBase
 
         // Act
         var firstNames = await db.Database.SqlQuery<string>(
-            $"SELECT first_name AS \"Value\" FROM users WHERE id = {scenario.FirstUser.Id}").ToListAsync();
+            $"""SELECT first_name AS "Value" FROM users WHERE id = {scenario.FirstUser.Id}""").ToListAsync();
         var inserted = await db.Database.ExecuteSqlAsync(
             $"INSERT INTO used_dpop_proofs (id, expires) VALUES ({proofId}, {DateTimeOffset.UtcNow}) ON CONFLICT (id) DO NOTHING");
         var deleted = await db.Set<UsedDPoPProof>().Where(p => p.Id == proofId).ExecuteDeleteAsync();

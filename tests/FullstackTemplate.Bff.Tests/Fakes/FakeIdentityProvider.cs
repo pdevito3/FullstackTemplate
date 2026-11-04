@@ -441,7 +441,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 UserInfoRequests.Enqueue(new UserInfoRequest(header.Scheme, grant.Subject, null));
                 if (!string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase))
                 {
-                    request.HttpContext.Response.Headers.WWWAuthenticate = "Bearer error=\"invalid_token\"";
+                    request.HttpContext.Response.Headers.WWWAuthenticate = """
+                        Bearer error="invalid_token"
+                        """;
                     return Results.StatusCode(StatusCodes.Status401Unauthorized);
                 }
             }
@@ -504,7 +506,9 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
 
     private static IResult DPoPError(HttpRequest request, string error)
     {
-        request.HttpContext.Response.Headers.WWWAuthenticate = $"DPoP error=\"{error}\", algs=\"ES256\"";
+        request.HttpContext.Response.Headers.WWWAuthenticate = $"""
+            DPoP error="{error}", algs="ES256"
+            """;
         return Results.StatusCode(StatusCodes.Status401Unauthorized);
     }
 

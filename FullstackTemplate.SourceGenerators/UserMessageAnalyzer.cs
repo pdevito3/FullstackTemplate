@@ -18,7 +18,7 @@ using Microsoft.CodeAnalysis.Operations;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 {
-	private const string Fix = "Name it as the screen names it, for example \"You cannot manage users.\" See docs/messages.md.";
+	private const string Fix = """Name it as the screen names it, for example "You cannot manage users." See docs/messages.md.""";
 
 	internal static readonly DiagnosticDescriptor CodeName = new(
 		id: "FSTMSG001",

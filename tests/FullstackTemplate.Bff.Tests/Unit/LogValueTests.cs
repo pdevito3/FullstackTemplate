@@ -6,7 +6,10 @@ public class LogValueTests
 {
     [Test]
     [Arguments("/a\r\nforged", "/aforged")]
-    [Arguments("/a\nb", "/ab")]
+    [Arguments("""
+        /a
+        b
+        """, "/ab")]
     [Arguments("/a\rb", "/ab")]
     [Arguments("\t/a\u0000b\u001b[31m", "/ab[31m")]
     [Arguments("/a\u007fb", "/ab")]

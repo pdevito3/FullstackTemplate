@@ -53,7 +53,10 @@ catch (RemovalException exception)
 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 {
     Console.Error.WriteLine(changing
-        ? $"The script stopped before the end: {exception.Message}\nTo undo the changes, run: git reset --hard && git clean -fd"
+        ? $"""
+            The script stopped before the end: {exception.Message}
+            To undo the changes, run: git reset --hard && git clean -fd
+            """
         : $"The script changed no files: {exception.Message}");
     return 1;
 }
@@ -72,13 +75,17 @@ internal sealed partial class AppRepo(string root)
         "The script deleted the migrations of the example tables. A database that ran them still has the venues, " +
         "workshops, and workshop_attachments tables and the manage_workshops permission. If the database of your app " +
         "ran those migrations, add a migration that drops the three tables and calls " +
-        "migrationBuilder.DeletePermission(\"manage_workshops\"). A row of a permission that Permission does not know " +
+        """migrationBuilder.DeletePermission("manage_workshops"). A row of a permission that Permission does not know """ +
         "stops each load of its user. The object storage of the app still has the files of the workshops under " +
         "tenants/<tenant>/workshops/. Delete them.";
 
     private const string RecordFile = "scripts/examples-removed.txt";
 
-    private const string RecordText = "scripts/remove-examples.cs deleted the example code of the template from this app. scripts/template-merge.cs\nof the template reads this file, and deletes the example code from each template update. See docs/template-updates.md.\n";
+    private const string RecordText = """
+        scripts/remove-examples.cs deleted the example code of the template from this app. scripts/template-merge.cs
+        of the template reads this file, and deletes the example code from each template update. See docs/template-updates.md.
+
+        """;
 
     private static readonly HashSet<string> ExampleFolderNames = new(StringComparer.Ordinal) { "Examples", "examples", "(examples)" };
 

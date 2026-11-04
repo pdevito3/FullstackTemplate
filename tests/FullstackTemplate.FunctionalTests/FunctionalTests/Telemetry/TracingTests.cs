@@ -78,9 +78,13 @@ public class TracingTests : TestBase
     }
 
     [Test]
-    [Arguments("name == \"VALUE\"")]
-    [Arguments("name @=* \"VALUE\"")]
-    [Arguments("name ^^ [\"VALUE\", \"other\"]")]
+    [Arguments("""
+        name == "VALUE"
+        """)]
+    [Arguments("""
+        name @=* "VALUE"
+        """)]
+    [Arguments("""name ^^ ["VALUE", "other"]""")]
     public async Task list_filter_value_is_not_in_the_sql_text_of_the_query_span(string filter)
     {
         // Arrange

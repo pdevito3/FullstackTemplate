@@ -14,7 +14,7 @@ using Shouldly;
 /// </summary>
 public class UserMessageAnalyzerTests
 {
-    private const string Fix = "Name it as the screen names it, for example \"You cannot manage users.\" See docs/messages.md.";
+    private const string Fix = """Name it as the screen names it, for example "You cannot manage users." See docs/messages.md.""";
 
     private const string Domain = """
         namespace Ardalis.SmartEnum
@@ -1173,9 +1173,9 @@ public class UserMessageAnalyzerTests
 
         // Assert
         diagnostics.Select(d => d.GetMessage(CultureInfo.InvariantCulture)).ShouldBe([
-            "A user message shows the stored name 'permissions.Select(p => $\"'{p.Value}'\")'. " + Fix,
-            "A user message shows the stored name 'options.Select(o => $\"the {o.Permission.Value} permission {o.Case}\")'. " + Fix,
-            "A user message shows the stored name 'permissions.Select(p => \"'\" + p.Value + \"'\")'. " + Fix,
+            """A user message shows the stored name 'permissions.Select(p => $"'{p.Value}'")'. """ + Fix,
+            """A user message shows the stored name 'options.Select(o => $"the {o.Permission.Value} permission {o.Case}")'. """ + Fix,
+            """A user message shows the stored name 'permissions.Select(p => "'" + p.Value + "'")'. """ + Fix,
         ]);
     }
 

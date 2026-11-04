@@ -176,7 +176,9 @@ public class AuditCaptureTests : TestBase
         (deletion.EntityType, deletion.EntityId, deletion.RootType, deletion.TenantId)
             .ShouldBe((nameof(UserPermission), removed.Id, nameof(User), user.TenantId));
         entries.Where(e => e.RecordId == deletion.RecordId).ShouldHaveSingleItem();
-        deletion.Data.ShouldContain($"\"{removed.Permission.Value}\"");
+        deletion.Data.ShouldContain($"""
+            "{removed.Permission.Value}"
+            """);
     }
 
     [Test]

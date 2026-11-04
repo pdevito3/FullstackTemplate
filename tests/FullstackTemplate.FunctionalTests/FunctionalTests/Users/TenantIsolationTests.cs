@@ -93,7 +93,9 @@ public class TenantIsolationTests : TestBase
 
         // Act
         var result = await FactoryClient.GetRequestAsync(
-            $"{ApiRoutes.Users.GetList}?pageSize=500&filters=id == \"{user.Id}\" || id == \"{otherUser.Id}\"");
+            $"""
+                {ApiRoutes.Users.GetList}?pageSize=500&filters=id == "{user.Id}" || id == "{otherUser.Id}"
+                """);
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.OK);

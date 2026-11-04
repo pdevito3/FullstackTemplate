@@ -88,7 +88,9 @@ public static class DPoPProxy
         nonce = parsed;
         return response.Headers.WwwAuthenticate.Any(c =>
             string.Equals(c.Scheme, "DPoP", StringComparison.OrdinalIgnoreCase)
-            && c.Parameter?.Contains("error=\"use_dpop_nonce\"", StringComparison.Ordinal) == true);
+            && c.Parameter?.Contains("""
+                error="use_dpop_nonce"
+                """, StringComparison.Ordinal) == true);
     }
 
     /// <summary>

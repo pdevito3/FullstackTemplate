@@ -46,7 +46,15 @@ public partial class DocCodeBlockTests
             """;
         var files = new Dictionary<string, string>
         {
-            ["Server/Entity.cs"] = "class Entity\n{\n    public int A { get; }\n    public int B { get; }\n    public int C { get; }\n}\n",
+            ["Server/Entity.cs"] = """
+                class Entity
+                {
+                    public int A { get; }
+                    public int B { get; }
+                    public int C { get; }
+                }
+
+                """,
         };
 
         // Act

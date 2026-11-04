@@ -57,7 +57,6 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
                RepairId = repair.Id,
                UploadedAt = uploadedAt.ToUniversalTime(),
            };
-           // The key starts with the tenant, so that a tenant delete deletes the files of the tenant
            photo.File = StoredFile.Accept(upload, UploadRules, photo.TenantId,
                $"repairs/{photo.RepairId}/photos/{photo.Id}");
            return photo;
@@ -245,19 +244,19 @@ A row with no object is a file that no one can download. An object with no row c
 
 - **Add.** It puts the object, then runs the save of the row. If the save throws, it deletes the object only when no row with its ID exists, because a save can commit and still throw, for example after a lost reply of the commit. If that check fails, it keeps the object.
 - **Delete.** It saves the delete of the row, then deletes the object. A failure after the commit leaves an object that no row names, and it writes an error log for it.
+- **Tenant delete.** `DeleteTenant` saves the delete of the rows, then `DeleteFilesOfTenantAsync` deletes each object under `StoredFile.TenantPrefix` of the tenant. This also deletes an object that an earlier failed delete left. A failure after the commit leaves the objects, and it writes an error log for them.
 
 Give the save to `AddAsync` as a function, so that the put runs one time, also when the lock runs its work again.
 
 ## Tenant isolation
 
-- Make the key from IDs only, and start it with `tenants/{tenantId}/`. Do not put a file name in a key, because the user types it.
+- Make the key from IDs only. Do not put a file name in a key, because the user types it. `StoredFile.Accept` starts the key with `tenants/{tenantId}/`, so a tenant delete finds each file of the tenant.
 - Load the owner through the tenant filter before a sign, an add, or a delete. A record of another tenant then gives 404.
 - The add takes the shared lock of the tenant, so that a row does not land in a tenant that a delete removes.
 
 ## Limits
 
-- A tenant delete soft-deletes the rows of the files, and keeps their objects ([#413](https://github.com/pdevito3/FullstackTemplate/issues/413)).
-- An object whose delete failed after its row delete stays. The Server logs it, and nothing deletes it later ([#413](https://github.com/pdevito3/FullstackTemplate/issues/413)).
+- An object whose delete failed after its row delete stays. The Server logs it, and nothing tries the delete again until the tenant delete ([#422](https://github.com/pdevito3/FullstackTemplate/issues/422)). The objects of a tenant whose prefix delete failed stay ([#422](https://github.com/pdevito3/FullstackTemplate/issues/422)).
 - A URL stops before `urlsExpireAt` when the credentials that signed it expire. See [Presigned URLs](#presigned-urls).
 
 <!-- example:start -->

@@ -65,6 +65,26 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
         }
     }
 
+    /// <summary>
+    /// Deletes each object of a deleted tenant. Call it after the delete of the tenant commits. A failure leaves the
+    /// objects, and the tenant delete still succeeds.
+    /// </summary>
+    public async Task DeleteFilesOfTenantAsync(string tenantId)
+    {
+        using var activity = Telemetry.Trace([("app.tenant_id", tenantId)], "attachments.delete_tenant_files");
+        try
+        {
+            var count = await storage.DeleteUnderAsync(StoredFile.TenantPrefix(tenantId), CancellationToken.None);
+            activity?.SetTag("app.attachment.deleted_object_count", count);
+            _logger.Here().Information("Deleted {ObjectCount} objects of deleted tenant {TenantId}", count, tenantId);
+        }
+        catch (Exception ex)
+        {
+            Telemetry.RecordError(activity, ex);
+            _logger.Here().Error(ex, "Could not delete the objects of deleted tenant {TenantId}", tenantId);
+        }
+    }
+
     // A save can commit and still throw, for example when the reply of the commit is lost and the run again finds the
     // row. So the object goes only when no row names it, and a failed check keeps the object.
     private async Task DeleteObjectWithNoRowAsync<TAttachment>(TAttachment attachment)

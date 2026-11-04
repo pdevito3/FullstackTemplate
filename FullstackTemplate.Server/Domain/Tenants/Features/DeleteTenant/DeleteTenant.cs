@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Domain.Tenants.Features;
 
 using System.Diagnostics;
+using Attachments;
 using Databases;
 using MediatR;
 using Resources;
@@ -11,7 +12,8 @@ public static class DeleteTenant
 {
     public sealed record Command(string Id) : IRequest, IRunsAgainWhenRaced;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, AttachmentStorage attachments)
+        : IRequestHandler<Command>
     {
         private readonly ILogger _logger = Log.ForContext<Handler>();
 
@@ -39,6 +41,8 @@ public static class DeleteTenant
             }, cancellationToken);
 
             _logger.Here().Information("Deleted tenant {TenantId} and its rows {@DeletedCounts}", request.Id, deletedCounts);
+
+            await attachments.DeleteFilesOfTenantAsync(request.Id);
         }
     }
 }

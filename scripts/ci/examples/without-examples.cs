@@ -49,6 +49,13 @@ return Job.Run("without-examples", options.GetValueOrDefault("--copy-to"),
         if (status != 1)
             throw new StepFailure($"git grep exited with {status}.");
     }),
+    // The CI script of the new-feature job runs from the checkout with its example sections, so no other step builds the form that an app gets
+    new("Fail if scripts/ci/new-feature.cs does not build with no examples", copy =>
+    {
+        var (exitCode, output) = copy.Capture("dotnet", "run", "scripts/ci/new-feature.cs", "--", "--help", "x");
+        if (exitCode != 1 || !output.Contains("Usage:", StringComparison.Ordinal))
+            throw new StepFailure($"Expected its usage message and exit code 1, and got exit code {exitCode}: {output}");
+    }),
     // The frontend tests run first, because after the .NET tests on the same runner the Vitest browser can hang at its start
     new("Lint the frontend", copy => copy.RunIn("frontend", "pnpm", "lint")),
     new("Install Chromium", copy => copy.RunIn("frontend", "pnpm", "exec", "playwright", "install", "chromium")),

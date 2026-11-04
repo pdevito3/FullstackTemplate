@@ -3,9 +3,14 @@
 // result, on a throwaway copy of the checkout. See job.cs.
 //
 //   dotnet run scripts/ci/new-feature.cs
+// example:start
 //   dotnet run scripts/ci/new-feature.cs -- --examples remove
+// example:end
 //
-// The tools: git, the .NET SDK, Docker, and buf. With --examples remove, also pnpm.
+// The tools: git, the .NET SDK, Docker, and buf.
+// example:start
+// With --examples remove, also pnpm.
+// example:end
 
 #:include job.cs
 
@@ -61,7 +66,10 @@ return Job.Run("new-feature", copyTo: null,
     {
         var added = copy.Output("git", "show", "--name-only", "--diff-filter=A", "--format=", "HEAD")
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Where(file => file.Contains("Carrier", StringComparison.Ordinal) && !file.Contains("/Migrations/", StringComparison.Ordinal));
+            .Where(file => file.Contains("Carrier", StringComparison.Ordinal) && !file.Contains("/Migrations/", StringComparison.Ordinal))
+            .ToList();
+        if (added.Count == 0)
+            throw new StepFailure("The last commit added no Carrier file to delete.");
         foreach (var file in added)
             copy.DeleteFile(file);
 

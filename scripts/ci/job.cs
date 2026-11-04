@@ -20,6 +20,9 @@ internal static class Job
         // the Playwright suite only with CI set.
         Environment.SetEnvironmentVariable("CI", "true");
         Environment.SetEnvironmentVariable("GIT_PAGER", "cat");
+        // A git hook exports these. A git command in the copy would then write to the repo of the checkout.
+        foreach (var variable in new[] { "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE" })
+            Environment.SetEnvironmentVariable(variable, null);
 
         if (copyTo is not null && Directory.Exists(copyTo) && Directory.EnumerateFileSystemEntries(copyTo).Any())
         {
@@ -107,6 +110,9 @@ internal sealed class JobCopy(string root)
     {
         var entryFolder = (string)AppContext.GetData("EntryPointFileDirectoryPath")!;
         var checkout = Output(entryFolder, "git", "rev-parse", "--show-toplevel").Trim();
+        if (Path.GetFullPath(root).StartsWith(checkout + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new StepFailure($"The copy at {root} is in the checkout, and it must not change the checkout. Give another folder.");
+
         var files = Output(checkout, "git", "ls-files", "-z", "--cached", "--others", "--exclude-standard")
             .Split('\0', StringSplitOptions.RemoveEmptyEntries)
             .Distinct();
@@ -122,7 +128,11 @@ internal sealed class JobCopy(string root)
                 source.CopyTo(target);
         }
 
-        // --force: the copy holds only the checkout's files, and a global ignore of the machine must not drop one of them
+        // The hooks, the ignores, and the signing of a machine must not change what the copy commits
+        Environment.SetEnvironmentVariable("GIT_CONFIG_GLOBAL", "/dev/null");
+        Environment.SetEnvironmentVariable("GIT_CONFIG_NOSYSTEM", "1");
+
+        // --force: a tracked file can match .gitignore, and the copy must have it
         Run("git", "init", "--quiet");
         Run("git", "add", "--all", "--force");
         Commit("The checkout");
@@ -174,10 +184,8 @@ internal sealed class JobCopy(string root)
         Commit(message);
     }
 
-    // The flags keep the commit the same on a machine with a signing key or a global hook
     private void Commit(string message) =>
-        Run("git", "-c", "user.name=ci", "-c", "user.email=ci@localhost", "commit",
-            "--quiet", "--no-gpg-sign", "--no-verify", "--message", message);
+        Run("git", "-c", "user.name=ci", "-c", "user.email=ci@localhost", "commit", "--quiet", "--message", message);
 
     public void FailOnChanges(string reason)
     {

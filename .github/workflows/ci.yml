@@ -9,7 +9,7 @@ name: CI
 # example:start
 # The without-examples job runs scripts/ci/examples/without-examples.cs, which runs scripts/remove-examples.cs, then builds and tests the app that is left. See docs/examples.md.
 # example:end
-# The steps of those two jobs are in their scripts, so that an agent can run them locally. Each script works on a throwaway copy of the checkout.
+# A job that calls a script under scripts/ci/ keeps its steps there, so that an agent can run them locally. The script works on a throwaway copy of the checkout.
 # The BFF jobs (bff-tests, e2e) run only when the changes job finds a BFF change, and on workflow_dispatch.
 # There is no nightly run. See section 7 of docs/specs/home-rolled-bff.md.
 # init:start - scripts/init.cs deletes these lines and conformance.yml when it renames the app

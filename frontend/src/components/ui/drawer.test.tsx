@@ -55,12 +55,57 @@ function holdSlides() {
     for (const { target, type } of held.splice(0)) target.dispatchEvent(new Event(type))
   }
   onTestFinished(endSlides)
-  return endSlides
+  return { endSlides, held }
 }
+
+test('the hold catches the private React Aria events that end the slides of the drawer', { timeout: 30_000 }, async () => {
+  // Arrange
+  const { endSlides, held } = holdSlides()
+  const heldTypes = () => held.map(({ type }) => type)
+  await render(<DrawerExample />)
+
+  // Act
+  await page.getByRole('button', { name: 'Open Drawer' }).click()
+
+  // Assert
+  await expect
+    .poll(heldTypes, {
+      timeout: 10_000,
+      message:
+        'holdSlides caught no scrollend on [data-sheet-scroll]. Did a react-aria-components upgrade rename the event or the attribute, or did the runner stall? With no hold, the drawer tests that press Escape during the slide-in flake.',
+    })
+    .toContain('scrollend')
+  expect(
+    overlay()?.hasAttribute('data-entering'),
+    'The slide-in ended while holdSlides held scrollend. Does React Aria still wait for that event?'
+  ).toBe(true)
+
+  // Act
+  await userEvent.keyboard('{Escape}')
+
+  // Assert
+  await expect
+    .poll(heldTypes, {
+      timeout: 10_000,
+      message:
+        'holdSlides caught no react-aria-sheet-close. Did a react-aria-components upgrade rename the event, or did the runner stall? With no hold, the drawer test that presses Escape twice fast flakes.',
+    })
+    .toContain('react-aria-sheet-close')
+  expect(
+    overlay()?.hasAttribute('data-exiting'),
+    'The slide-out ended while holdSlides held react-aria-sheet-close. Does React Aria still wait for that event?'
+  ).toBe(true)
+
+  // Act
+  endSlides()
+
+  // Assert
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+})
 
 test('Escape closes the drawer while it slides in, and the focus goes back to the trigger', async () => {
   // Arrange
-  const endSlides = holdSlides()
+  const { endSlides } = holdSlides()
   await render(<DrawerExample />)
   const trigger = page.getByRole('button', { name: 'Open Drawer' })
   await trigger.click()
@@ -93,7 +138,7 @@ test('Escape closes the drawer after it slides in, and the focus goes back to th
 
 test('Escape does not close a drawer that prevents dismissal, also while it slides in', async () => {
   // Arrange
-  const endSlides = holdSlides()
+  const { endSlides } = holdSlides()
   await render(<DrawerExample preventDismissal />)
   await page.getByRole('button', { name: 'Open Drawer' }).click()
   await expect.element(page.getByRole('dialog', { name: 'Drawer Title' })).toBeInTheDocument()
@@ -112,7 +157,7 @@ test('Escape does not close a drawer that prevents dismissal, also while it slid
 
 test('Escape while a drawer slides in over a dialog closes only the drawer', async () => {
   // Arrange
-  const endSlides = holdSlides()
+  const { endSlides } = holdSlides()
   await render(
     <DialogTrigger>
       <Button>Open Dialog</Button>
@@ -142,7 +187,7 @@ test('Escape while a drawer slides in over a dialog closes only the drawer', asy
 
 test('Escape while a drawer slides in over a dialog, twice fast, closes the drawer and then the dialog', async () => {
   // Arrange
-  const endSlides = holdSlides()
+  const { endSlides } = holdSlides()
   await render(
     <DialogTrigger>
       <Button>Open Dialog</Button>
@@ -190,7 +235,7 @@ function MenuDrawerExample() {
 
 test('Escape closes a drawer that a menu item opened, after the menu closed while the drawer slides in', async () => {
   // Arrange
-  const endSlides = holdSlides()
+  const { endSlides } = holdSlides()
   await render(<MenuDrawerExample />)
   const menuTrigger = page.getByRole('button', { name: 'Actions' })
   await menuTrigger.click()
@@ -210,7 +255,7 @@ test('Escape closes a drawer that a menu item opened, after the menu closed whil
 
 test('Escape on a Select that opened while the drawer slides in closes only the Select', async () => {
   // Arrange
-  const endSlides = holdSlides()
+  const { endSlides } = holdSlides()
   await render(
     <DrawerTrigger>
       <Button>Open Drawer</Button>

@@ -171,7 +171,7 @@ Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaim
 | State of the session query | The root route shows |
 |---|---|
 | Loading | Nothing |
-| No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. |
+| No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. The token of an invite link is not in that hash: `main.tsx` moves it to `sessionStorage` before the router starts, so `returnUrl` is `/join` (INV-3). |
 | Error, and no earlier answer | An alert and Try Again. It does not go to the login. While the check runs again, Try Again is pending and takes no press. |
 | Claims | The layout and the page |
 

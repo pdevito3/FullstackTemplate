@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 
 import { getUserByIdentifier } from '@/api/generated/users/clients/get-user-by-identifier'
 import type { InitiateUserAndTenantDto } from '@/api/generated/models/types/initiate-user-and-tenant-dto'
@@ -48,20 +48,23 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
 }
 
 /** A refusal of the Server, such as a 403 for a deleted user whose tenant is still cached, does not change on an immediate retry. */
-const isRefusal = (error: unknown): error is ProblemDetailsError =>
+export const isRefusal = (error: unknown): error is ProblemDetailsError =>
   isProblemDetailsError(error) && (error.status ?? 500) < 500
 
 const CHECK_FAILED = 'We could not check whether you are a member of a tenant.'
 
+/** The user record of a `sub`, or null when it has none. */
+export const callerRecordQuery = (identifier: string) =>
+  queryOptions({
+    queryKey: MembershipKeys.of(identifier),
+    queryFn: ({ signal }) => findUser(identifier, signal),
+    retry: (failureCount, error) => !isRefusal(error) && failureCount < 1,
+  })
+
 export function useMembership(): Membership {
   const claims = useQuery(authClaimsQuery)
   const identifier = claims.data ? claim(claims.data, 'sub') : undefined
-  const user = useQuery({
-    queryKey: MembershipKeys.of(identifier ?? ''),
-    queryFn: ({ signal }) => findUser(identifier!, signal),
-    enabled: !!identifier,
-    retry: (failureCount, error) => !isRefusal(error) && failureCount < 1,
-  })
+  const user = useQuery({ ...callerRecordQuery(identifier ?? ''), enabled: !!identifier })
 
   // A failed refetch keeps the data of the last answer, and that answer is still good to show.
   if (claims.data === undefined) {

@@ -34,12 +34,12 @@ An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID
 | UM-3 | The users page removes a user after the caller confirms. The page shows the control only to a caller who can remove the user. | `DeleteUser` handler check | |
 | INV-1 | Only a caller with `manage_users` and each default permission of the role can create an invite. A caller cannot invite with a role that has more permissions than the caller has. | `AddInvite` handler check | |
 | INV-2 | The server stores only a hash of the token. The create response gives the link one time only. A list or a get of an invite never gives the token. | `Invite.Create` | |
-| INV-3 (later) | The link puts the token in the URL fragment (`/join#token=...`), so the token is not in a server log, a BFF log, or a `Referer` header. | SPA `join` route | |
+| INV-3 | The link puts the token in the URL fragment (`/join#token=...`), so the token is not in a server log, a BFF log, or a `Referer` header. | SPA `join` route | |
 | INV-4 | An invite expires 7 days after its creation. A claim of an expired invite fails. | `Invite.Claim` | |
 | INV-5 | An invite has one use. A claim of an invite that is claimed or revoked fails. | `Invite.Claim` | Version check of `Invite` |
 | INV-6 | Only a signed-in user of a first-party client with no live user record can claim. If the `sub` has a live user in any tenant, the claim fails, because a user belongs to one tenant only. | `ClaimInvite` handler check, `ConflictException` (409) | Unique index on the live `users.identifier` |
 | INV-7 | A claim adds a user in the tenant of the invite, with the role of the invite and the `sub` of the caller. The claim and the user add are in one save, and the save takes the shared lock of the tenant. | `ClaimInvite` handler | Shared tenant lock |
-| INV-8 (later) | The join page fills the first name, the last name, the email, and the username from the token claims of the caller. The user can change each value before the claim. | SPA `join` route, `UserForCreationDto` validation | |
+| INV-8 | The join page fills the first name, the last name, the email, and the username from the token claims of the caller. The user can change each value before the claim. | SPA `join` route, `UserForCreationDto` validation | |
 | INV-9 | When an invite requires an email match, the claim fails unless the access token of the caller has the email of the invite in `email` and `true` in `email_verified`. The comparison of the emails is case-insensitive. A provider that sends no `email` or no `email_verified` fails the match. Section 8 gives the providers where the match works. After a match, the new user gets the email of the token, not the email of the request body. | `Invite.Claim` | |
 | INV-10 | A user with `manage_users` can revoke a pending invite of their tenant. | `Invite.Revoke` | |
 | INV-11 | A tenant delete deletes each invite of the tenant. | `TenantOwnedRows` | `TenantOwnedRowsTests` |

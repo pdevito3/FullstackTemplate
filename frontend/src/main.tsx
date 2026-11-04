@@ -6,6 +6,7 @@ import { NotFound } from '@/components/not-found'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/toaster'
 import { AuthKeys } from '@/domain/auth/apis/auth.keys'
+import { keepInviteTokenOutOfTheUrl } from '@/domain/invites/invite-link'
 // Connects the generated API clients to apiClient before the first request.
 import { onUnauthorized } from '@/lib/api-client'
 import { createQueryClient } from '@/lib/query-client'
@@ -13,6 +14,8 @@ import './index.css'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
+
+keepInviteTokenOutOfTheUrl()
 
 // Create a new router instance
 const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound })

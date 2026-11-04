@@ -2,6 +2,8 @@
  * Auth action functions (non-API, browser navigation)
  */
 
+import { forgetInviteToken } from '@/domain/invites/invite-link'
+
 /** The BFF ignores a longer return URL, and goes to `/` (`ReturnUrl.MaxLength`). */
 const maxReturnUrlLength = 2048
 
@@ -21,6 +23,8 @@ export function login(returnUrl: string = '/'): void {
 }
 
 export function logout(logoutUrl?: string): void {
+  // The next person in this tab must not get the invite of this person.
+  forgetInviteToken()
   window.location.href = logoutUrl || '/bff/logout'
 }
 

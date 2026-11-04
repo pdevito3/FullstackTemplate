@@ -380,7 +380,7 @@ public sealed class UserMessageAnalyzer : DiagnosticAnalyzer
 			while (thrown is not null and not IThrowOperation)
 				thrown = thrown.Parent;
 
-			IOperation? branch = thrown;
+			var branch = thrown;
 			for (var parent = thrown?.Parent; parent is not null; branch = parent, parent = parent.Parent)
 			{
 				if (parent is IAnonymousFunctionOperation or ILocalFunctionOperation)

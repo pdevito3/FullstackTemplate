@@ -120,7 +120,7 @@ public sealed class GraphGraftGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                ITypeSymbol? memberType = member switch
+                var memberType = member switch
                 {
                     IFieldSymbol field
                         when field.IsStatic

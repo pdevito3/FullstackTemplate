@@ -2703,7 +2703,8 @@
           "name",
           "clientId",
           "mode",
-          "permissions"
+          "permissions",
+          "allowedActions"
         ],
         "type": "object",
         "properties": {
@@ -2749,6 +2750,18 @@
               "type": "string"
             },
             "description": "The grant: the most that the agent can hold."
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "AddPermission",
+                "RemovePermission",
+                "Delete"
+              ],
+              "type": "string"
+            },
+            "description": "The actions that the caller can send for this agent now. A button in the SPA reads this list."
           }
         }
       },

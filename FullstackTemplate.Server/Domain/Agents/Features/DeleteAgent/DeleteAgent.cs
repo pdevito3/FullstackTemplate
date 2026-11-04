@@ -20,7 +20,8 @@ public static class DeleteAgent
         {
             Activity.Current?.SetTag("app.agent_id", request.Id);
 
-            await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            AgentAction.Delete().GuardCaller(caller);
 
             var agent = await dbContext.Agents
                 .TagWithOperationCallSite("agents.delete.load")

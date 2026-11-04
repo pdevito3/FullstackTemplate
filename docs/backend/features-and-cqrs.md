@@ -297,21 +297,20 @@ A raw `EF.Functions.ILike` outside QueryKit, such as a name check that ignores c
 
 A handler checks the permission of the caller with one call to `IPermissionGuard`. The call is the first check of `Handle`, so a reader of the handler sees the rule. There is no marker interface and no pipeline behavior for access.
 
-<!-- code: FullstackTemplate.Server/Domain/Agents/Features/DeleteAgent/DeleteAgent.cs -->
+<!-- code: FullstackTemplate.Server/Domain/Tenants/Features/UpdateTenant/UpdateTenant.cs -->
 ```csharp
-public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command>
+public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard) : IRequestHandler<Command, TenantDto>
 {
     private readonly ILogger _logger = Log.ForContext<Handler>();
 
-    public async Task Handle(Command request, CancellationToken cancellationToken)
+    public async Task<TenantDto> Handle(Command request, CancellationToken cancellationToken)
     {
-        Activity.Current?.SetTag("app.agent_id", request.Id);
+        Activity.Current?.SetTag("app.tenant_id", request.Id);
 
-        await permissionGuard.RequireAsync(Permission.ManageAgents(), cancellationToken);
+        await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
 
-        var agent = await dbContext.Agents
-            .TagWithOperationCallSite("agents.delete.load")
-            .Include(a => a.Permissions)
+        var tenant = await dbContext.Tenants
+            .TagWithOperationCallSite("tenants.update.load")
             .GetById(request.Id, cancellationToken);
         // ...
     }

@@ -23,9 +23,7 @@ public static class AddAgentPermission
             Activity.Current?.SetTag("app.agent_id", request.Id);
 
             var caller = await permissionGuard.GetCallerAsync(cancellationToken);
-            caller.Require(Permission.ManageAgents());
-            // The response carries the record of the agent, so it needs the read permission too (ADR 0009).
-            caller.Require(Permission.ReadAgents());
+            AgentAction.AddPermission().GuardCaller(caller);
             var permission = Permission.Of(request.Permission);
             Activity.Current?.SetTag("app.permission.name", permission.Value);
             caller.Require(permission);
@@ -52,7 +50,7 @@ public static class AddAgentPermission
             if (agent.Permissions.Count > existingPermissionIds.Count)
                 _logger.Here().Information("Added permission {Permission} to agent {AgentId}", permission.Value, agent.Id);
 
-            return agent.ToAgentDto();
+            return agent.ToAgentDto(caller);
         }
     }
 }

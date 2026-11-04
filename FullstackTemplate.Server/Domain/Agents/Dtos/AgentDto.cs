@@ -17,4 +17,8 @@ public sealed record AgentDto
     /// <summary>The grant: the most that the agent can hold.</summary>
     [NamesOf<Permission>]
     public IReadOnlyList<string> Permissions { get; init; } = [];
+
+    /// <summary>The actions that the caller can send for this agent now. A button in the SPA reads this list.</summary>
+    [NamesOf<AgentAction>]
+    public IReadOnlyList<string> AllowedActions { get; init; } = [];
 }

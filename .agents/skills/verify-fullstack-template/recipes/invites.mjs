@@ -276,7 +276,8 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
       expect(res.status()).toBe(200)
       expect((await res.json()).allowedActions).toEqual([])
       await expect(page.getByRole('heading', { name: 'Users', exact: true })).toBeVisible()
-      await settle()
+      // The list of the users gives a 403 to a role with no read_users. The queries retry one time before the alert shows.
+      await expect(page.getByRole('alert').filter({ hasText: 'The users did not load.' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Invite a user', exact: true })).toHaveCount(0)
       await expect(page.getByRole('heading', { name: 'Invites', exact: true })).toHaveCount(0)
       expect(invitesRequests).toEqual([])

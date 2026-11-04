@@ -60,7 +60,14 @@ export function ClaimInviteForm({ profile, requireEmailMatch, onClaim }: ClaimIn
         {requireEmailMatch ? (
           <Field>
             <FieldLabel htmlFor={`${id}-email`}>Email</FieldLabel>
-            <Input id={`${id}-email`} type="email" readOnly aria-describedby={`${id}-email-note`} {...form.register('email')} />
+            <Input
+              id={`${id}-email`}
+              type="email"
+              readOnly
+              aria-describedby={`${id}-email-note`}
+              className="bg-muted text-muted-foreground dark:bg-muted"
+              {...form.register('email')}
+            />
             <FieldDescription id={`${id}-email-note`}>
               This invite is for one email address, so the app uses the email of your account.
             </FieldDescription>

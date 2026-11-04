@@ -40,7 +40,7 @@ An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID
 | INV-6 | Only a signed-in user of a first-party client with no live user record can claim. If the `sub` has a live user in any tenant, the claim fails, because a user belongs to one tenant only. | `ClaimInvite` handler check, `ConflictException` (409) | Unique index on the live `users.identifier` |
 | INV-7 | A claim adds a user in the tenant of the invite, with the role of the invite and the `sub` of the caller. The claim and the user add are in one save, and the save takes the shared lock of the tenant. | `ClaimInvite` handler | Shared tenant lock |
 | INV-8 (later) | The join page fills the first name, the last name, the email, and the username from the token claims of the caller. The user can change each value before the claim. | SPA `join` route, `UserForCreationDto` validation | |
-| INV-9 | When an invite requires an email match, the claim fails unless the access token of the caller has the email of the invite in `email` and `true` in `email_verified`. The comparison of the emails is case-insensitive. A provider that sends no `email` or no `email_verified` fails the match. After a match, the new user gets the email of the token, not the email of the request body. | `Invite.Claim` | |
+| INV-9 | When an invite requires an email match, the claim fails unless the access token of the caller has the email of the invite in `email` and `true` in `email_verified`. The comparison of the emails is case-insensitive. A provider that sends no `email` or no `email_verified` fails the match. Section 8 gives the providers where the match works. After a match, the new user gets the email of the token, not the email of the request body. | `Invite.Claim` | |
 | INV-10 | A user with `manage_users` can revoke a pending invite of their tenant. | `Invite.Revoke` | |
 | INV-11 | A tenant delete deletes each invite of the tenant. | `TenantOwnedRows` | `TenantOwnedRowsTests` |
 | INV-12 | The audit log hides the token hash from each reader without `read_audit_log_sensitive`. The hash cannot claim an invite, because a claim hashes the token that it gets. | Audit sensitivity of `Invite` (see [audit-log.md](../backend/audit-log.md)) | `AuditSensitivityTests` |
@@ -86,3 +86,15 @@ None. The invite features use `manage_users`, which exists.
 | The expiry is 7 days, and it is not a setting. | The template owner | INV-4 |
 | A pending invite stays valid after its creator loses `manage_users` or is deleted. The invite does not record its creator. The alternative is to record the creator, and to revoke the pending invites of a demoted or deleted creator in a domain event handler. | The template owner | INV-1, INV-10 |
 | The Server lets an admin remove their own user, or change the role of the last admin. Thus a tenant can lose its last admin. A guard for the last admin is a Server rule outside this spec. | The template owner | None |
+
+The email match of INV-9 reads `email` and `email_verified` from the access token. This table gives the result on each local provider of `FullstackTemplate.AppHost/AuthProviders/`. "Measured" means that a run on an isolated stack read an access token of the provider and sent a claim through the BFF. The other rows come from the seed and from documents or source of the vendor, so a run can give another result.
+
+| Provider | `email_verified` in the access token | Self-registration | Result of the email match | Source |
+|---|---|---|---|---|
+| ZeroFactor | JSON `true` for each user, also for a user that registers on the login page | Yes | Each user with the email of the invite passes. Anyone can register with any email, so the match does not stop a forwarded link on ZeroFactor. | Measured |
+| Keycloak | JSON `true` for a seed user. JSON `false` for a self-registered user, because the realm does not verify an email. | Yes | A seed user passes. A self-registered user is refused. | Measured |
+| FusionAuth | Not known. The seed does not set the scope policy. The Strict policy leaves out `email` and `email_verified`. The Compatibility policy sends a JSON boolean. | Yes | Not known. With the Strict policy, each user is refused. | Seed and vendor documents |
+| Authentik | JSON `false` for each user, from the managed email scope mapping of version 2026.8.5 | Probably no. The seed adds no enrollment flow. | Each user is refused. | Seed and vendor source |
+| Cognito | Absent, with `email`. A Cognito access token has no email. | Probably yes, with the SignUp API. Not examined on the local emulator. | Each user is refused. | Provider class and AWS documents |
+| Duende Demo | Absent. The API resource of the demo has only `name` and `email`. | Yes, on `/Account/Create` | Each user is refused. | Source of the demo on GitHub |
+| Conformance | JSON `false`, from the userinfo response | No | Each user is refused. | Source of the suite on GitHub |

@@ -45,12 +45,30 @@ Put example code where the script finds it:
 - Do not let code outside the examples use example code. After the script runs, that code does not compile.
 - Keep each `// new-feature:<slot>` marker of `scripts/new-feature.cs` out of an example section. The new-feature script adds its lines above the marker, also in an app with no examples.
 
+## Run the CI jobs locally
+
+The `new-feature` job of CI is in [scripts/ci/new-feature.cs](../scripts/ci/new-feature.cs). CI runs this script, so a local run does the same steps:
+
+```bash
+dotnet run scripts/ci/new-feature.cs
+```
+
+The script works on a throwaway copy of the checkout, with your uncommitted changes in the copy. It does not change the checkout. A pass deletes the copy. A failure names the step and keeps the copy, for its logs and test reports. The script needs the .NET SDK band of CI (10.0.4xx), Docker, and buf.
+
 <!-- example:start -->
 The `without-examples` job of CI runs the script, runs it again to prove that the second run changes nothing, and fails if an example name stays in a tracked file. Then it builds the app and runs all of the tests. The other CI jobs test the app with the examples.
 
+The steps of the job are in [scripts/ci/examples/without-examples.cs](../scripts/ci/examples/without-examples.cs). Run it before you push a change to example code, to a marker, or to a line in a doc that can name an example. It works on a throwaway copy, as `scripts/ci/new-feature.cs` does, and it also needs pnpm:
+
+```bash
+dotnet run scripts/ci/examples/without-examples.cs
+```
+
+To run the `new-feature` job on an app with no examples, as its second matrix entry does, run `dotnet run scripts/ci/new-feature.cs -- --examples remove`. This also needs pnpm.
+
 The name check skips the `.Designer.cs` file of each migration. EF Core writes the full model into that file when it adds the migration, so each migration that you add while the examples are in the app names the example entities. This is harmless. The file names each entity in a string, so the app builds with no example code. EF Core reads the file only for the model at its own migration, and a new migration compares the model with the snapshot, which the script writes again.
 
-When you add an example, add each name that only the example uses to the `git grep` of the step `Fail on example code that the script left` in `.github/workflows/ci.yml`. Use a word that the app does not use for its own code, for example the name of the entity or of the route. The check cannot find the names by itself: a marker gives no name, and the files of an example also use shared names, such as `Route` and `Tenants`.
+When you add an example, add each name that only the example uses to `ExampleNames` in `scripts/ci/examples/without-examples.cs`. Use a word that the app does not use for its own code, for example the name of the entity or of the route. The check cannot find the names by itself: a marker gives no name, and the files of an example also use shared names, such as `Route` and `Tenants`.
 
 The `init` job of CI makes an app from the parent commit, deletes its examples, and merges the commit with `scripts/template-merge.cs`. It fails if the merge has a conflict or adds an example file again.
 <!-- example:end -->

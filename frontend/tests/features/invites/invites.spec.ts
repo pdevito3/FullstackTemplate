@@ -156,6 +156,20 @@ test.describe('the invites of a tenant admin', () => {
 
     await expect(users.at.emailField).toHaveValue('')
   })
+
+  test('creates one invite when the user presses Enter twice, and shows the link of that invite', { tag: '@INV-2' }, async ({ page, api }) => {
+    api.mock(invitesApi.listReturns([]), { ...invitesApi.creates(anInvite(), token), delayMs: 300 })
+    const users = usersWithInvites(page)
+    await users.openWithList()
+    await users.openDialog()
+    await users.at.emailField.fill('new@example.com')
+
+    await users.pressEnterTwiceInTheEmailField()
+
+    await expect(users.at.linkField).toBeVisible()
+    expect(api.all('post', invitesPaths.list)).toHaveLength(1)
+  })
+
   test('cannot close the dialog while the create runs, shows the link, and gives a new form the next time', { tag: '@INV-2' }, async ({ page, api, baseURL }) => {
     api.mock(invitesApi.listReturns([]), { ...invitesApi.creates(anInvite(), token), delayMs: 500 })
     const users = usersWithInvites(page)

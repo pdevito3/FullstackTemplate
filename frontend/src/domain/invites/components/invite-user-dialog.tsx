@@ -57,6 +57,8 @@ function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
   const { errors } = form.formState
 
   const handleSubmit = form.handleSubmit(async ({ email, ...values }) => {
+    // Enter submits again while the button waits, and a second create would replace the link of the first.
+    if (add.isPending) return
     serverErrors.clear()
     try {
       await add.mutateAsync({ ...values, email: email.trim() || null })

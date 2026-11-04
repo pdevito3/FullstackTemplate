@@ -5,10 +5,11 @@ name: CI
 # The job also builds, lints, and tests the frontend against the contract, and runs the functional suite of the frontend. The test job runs the .NET tests.
 # The line-endings job fails when a tracked text file has a CR. .gitattributes stores each text file with LF.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
-# The new-feature job runs scripts/new-feature.cs for two sample entities, then lints, builds, and tests the result.
+# The new-feature job runs scripts/ci/new-feature.cs, which runs scripts/new-feature.cs for two sample entities, then lints, builds, and tests the result.
 # example:start
-# The without-examples job runs scripts/remove-examples.cs, then builds and tests the app that is left. See docs/examples.md.
+# The without-examples job runs scripts/ci/examples/without-examples.cs, which runs scripts/remove-examples.cs, then builds and tests the app that is left. See docs/examples.md.
 # example:end
+# The steps of those two jobs are in their scripts, so that an agent can run them locally. Each script works on a throwaway copy of the checkout.
 # The BFF jobs (bff-tests, e2e) run only when the changes job finds a BFF change, and on workflow_dispatch.
 # There is no nightly run. See section 7 of docs/specs/home-rolled-bff.md.
 # init:start - scripts/init.cs deletes these lines and conformance.yml when it renames the app
@@ -141,47 +142,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Remove the examples
-        run: dotnet run scripts/remove-examples.cs
-
-      # The script changes only a clean tree, so the job commits the first run
-      - name: Fail if a second run changes a file
-        run: |
-          git add --all
-          git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Remove the examples"
-          dotnet run scripts/remove-examples.cs
-          git add --intent-to-add --all
-          git diff --exit-code --stat
-
-      - name: Fail on example code that the script left
-        run: |
-          if git ls-files | grep -E '(^|/)(Examples|examples|\(examples\))/'; then exit 1; fi
-          # git grep exits with 1 when it finds nothing, 0 on a match, and a higher code on an error
-          status=0
-          git grep -n -I -i -E 'weather|forecast|filter-demo|components-showcase|workshop|wkatt|(^|[^e])venue|example:(start|end)' \
-            -- ':!scripts/remove-examples.cs' ':!docs/examples.md' ':!**/Migrations/*.Designer.cs' || status=$?
-          [ "$status" -eq 1 ]
-
-      # The frontend tests run first, because after the .NET tests on the same runner the Vitest browser can hang at its start
-      - name: Lint the frontend
+      # uses: ./.github/actions/install-chromium reads the Playwright version from the installed packages
+      - name: Install the frontend packages
         working-directory: frontend
-        run: pnpm lint
+        run: pnpm install --frozen-lockfile
 
       - uses: ./.github/actions/install-chromium
 
-      - name: Test the frontend
-        working-directory: frontend
-        run: pnpm test
-
-      - name: Run the functional tests
-        working-directory: frontend
-        run: pnpm test:e2e
-
-      - name: Build the solution
-        run: dotnet build FullstackTemplate.slnx
-
-      - name: Run the .NET tests
-        run: dotnet test --solution FullstackTemplate.slnx --no-build
+      - name: Run the steps of the job
+        run: dotnet run scripts/ci/examples/without-examples.cs -- --copy-to "$RUNNER_TEMP/without-examples"
 
       # .vitest/attachments/ has the failure screenshot and the Playwright trace of each failed component test
       - name: Upload the test reports
@@ -190,9 +159,9 @@ jobs:
         with:
           name: without-examples-tests
           path: |
-            frontend/.vitest/attachments/
-            frontend/playwright-report/
-            frontend/test-results/
+            ${{ runner.temp }}/without-examples/frontend/.vitest/attachments/
+            ${{ runner.temp }}/without-examples/frontend/playwright-report/
+            ${{ runner.temp }}/without-examples/frontend/test-results/
           retention-days: 7
           if-no-files-found: ignore
   # example:end
@@ -310,54 +279,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Remove the examples
-        if: matrix.examples == 'remove'
-        run: |
-          dotnet run scripts/remove-examples.cs
-          git add --all
-          git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Remove the examples"
       # example:end
 
-      - name: Generate the sample features
-        run: |
-          dotnet run scripts/new-feature.cs -- Carrier --entrypoints http,mcp \
-            --fields "Name:text, Notes:text?, Code:text:public, MaxLoad:int, IsActive:bool, ReceivedOn:date, CountedAt:instant, ServiceDay:zoned-date"
-          dotnet run scripts/new-feature.cs -- Shipment --entrypoints http,grpc,mcp \
-            --fields "Label:text:public, Carrier:ref, Memo:text?, Count:int, Fragile:bool, SeenAt:instant"
-
-      - name: Fail if a second run changes a file
-        run: |
-          git add --all
-          git -c user.name=ci -c user.email=ci@localhost commit --quiet --message "Add the sample features"
-          dotnet run scripts/new-feature.cs -- Carrier --entrypoints http,mcp \
-            --fields "Name:text, Notes:text?, Code:text:public, MaxLoad:int, IsActive:bool, ReceivedOn:date, CountedAt:instant, ServiceDay:zoned-date"
-          dotnet run scripts/new-feature.cs -- Shipment --entrypoints http,grpc,mcp \
-            --fields "Label:text:public, Carrier:ref, Memo:text?, Count:int, Fragile:bool, SeenAt:instant"
-          git add --intent-to-add --all
-          git diff --exit-code --stat
-
-      - name: Fail if a run again after a delete keeps a migration that does not match
-        run: |
-          git show --name-only --diff-filter=A --format= HEAD | grep Carrier | grep -v /Migrations/ | xargs rm
-          if dotnet run scripts/new-feature.cs -- Carrier --fields "Name:text, Rating:int" > run-again.log 2>&1; then
-            cat run-again.log
-            echo "::error::The script ran again on a kept migration and exited 0."
-            exit 1
-          fi
-          cat run-again.log
-          grep --quiet "AddCarriers" run-again.log
-          rm run-again.log
-          git reset --quiet --hard HEAD
-          git clean --force -d --quiet
-
-      - name: Lint the gRPC contract
-        run: buf lint
-
-      - name: Build the solution
-        run: dotnet build FullstackTemplate.slnx -p:OpenApiGenerateDocuments=false
-
-      - name: Run the .NET tests
-        run: dotnet test --solution FullstackTemplate.slnx --no-build -p:OpenApiGenerateDocuments=false -p:SkipBffTests=true
+      - name: Run the steps of the job
+        run: dotnet run scripts/ci/new-feature.cs -- --examples ${{ matrix.examples }}
 
   # A path filter, not paths: on the trigger, so that a skipped BFF job still reports a status.
   changes:

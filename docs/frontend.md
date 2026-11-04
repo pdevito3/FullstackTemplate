@@ -24,6 +24,8 @@ pnpm test:e2e # Playwright: the functional suite (tests/), the SPA against a moc
 pnpm generate:api  # API contract from the OpenAPI document
 ```
 
+`packageManager` in `frontend/package.json` pins the pnpm version. pnpm 10 and later switch to that version automatically. `engines.pnpm` stops an older pnpm before it writes `pnpm-lock.yaml`. An older pnpm writes different patch hashes, and the next frozen install then fails with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. If `pnpm install` fails with `ERR_PNPM_UNSUPPORTED_ENGINE`, run `pnpm i -g pnpm`.
+
 The component tests use Vitest browser mode with the Playwright provider. Before the first `pnpm test`, install Chromium once with `pnpm exec playwright install chromium`. A component test renders with `render` from `vitest-browser-react`. Find an element in an overlay with `page` from `vitest/browser`, because an overlay renders outside the test container.
 
 ## Project structure

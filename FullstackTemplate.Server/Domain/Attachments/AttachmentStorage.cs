@@ -20,15 +20,16 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
     /// goes only when no row names it, and the exception goes on to the caller.
     /// </summary>
     /// <param name="attachment">The new attachment, which passed the upload rules of its use.</param>
-    /// <param name="content">All of the bytes of the file, from the start.</param>
+    /// <param name="file">The file that the attachment came from. The put sends all of its bytes.</param>
     /// <param name="saveRow">Adds the row and saves it. The put is already done, so the save can run in a lock that
     /// runs its work again.</param>
     /// <param name="cancellationToken">Stops the put and the save. The cleanup after a failed save does not stop.</param>
-    public async Task AddAsync<TAttachment>(TAttachment attachment, Stream content, Func<Task> saveRow,
+    public async Task AddAsync<TAttachment>(TAttachment attachment, ReceivedFile file, Func<Task> saveRow,
         CancellationToken cancellationToken)
         where TAttachment : BaseEntity, IAttachment
     {
-        await storage.PutAsync(attachment.File.StorageKey, content, attachment.File.MediaType, cancellationToken);
+        file.Content.Position = 0;
+        await storage.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, cancellationToken);
         try
         {
             await saveRow();

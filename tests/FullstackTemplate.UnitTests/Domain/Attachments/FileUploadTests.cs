@@ -11,12 +11,15 @@ public class FileUploadTests
     {
         // Arrange
         var bytes = SampleFiles.OfLength(SampleFiles.Png, 4096);
-        await using var content = new MemoryStream(bytes);
+        var content = new MemoryStream(bytes);
+        await using var file = new ReceivedFile(content, "kiln.png", "image/png");
 
         // Act
-        var upload = await FileUpload.ReadAsync(content, "kiln.png", "image/png", bytes.Length, CancellationToken.None);
+        var upload = await FileUpload.ReadAsync(file, CancellationToken.None);
 
         // Assert
+        upload.FileName.ShouldBe("kiln.png");
+        upload.ClaimedMediaType.ShouldBe("image/png");
         upload.Head.ToArray().ShouldBe(bytes[..FileType.HeadLength]);
         upload.SizeBytes.ShouldBe(4096);
         content.Position.ShouldBe(0);
@@ -24,35 +27,34 @@ public class FileUploadTests
     }
 
     [Test]
-    public async Task a_file_shorter_than_the_head_gives_all_of_its_bytes()
+    public async Task an_upload_reads_from_the_start_when_the_stream_is_not_at_its_start()
     {
         // Arrange
-        byte[] bytes = [0x25, 0x50, 0x44];
-        await using var content = new MemoryStream(bytes);
+        var bytes = SampleFiles.OfLength(SampleFiles.Png, 4096);
+        var content = new MemoryStream(bytes) { Position = 100 };
+        await using var file = new ReceivedFile(content, "kiln.png", "image/png");
 
         // Act
-        var upload = await FileUpload.ReadAsync(content, "a.pdf", null, bytes.Length, CancellationToken.None);
+        var upload = await FileUpload.ReadAsync(file, CancellationToken.None);
 
         // Assert
-        upload.Head.ToArray().ShouldBe(bytes);
+        upload.Head.ToArray().ShouldBe(bytes[..FileType.HeadLength]);
         content.Position.ShouldBe(0);
     }
 
     [Test]
-    public async Task an_upload_needs_a_stream_that_can_seek()
+    public async Task a_file_shorter_than_the_head_gives_all_of_its_bytes()
     {
         // Arrange
-        await using var content = new ForwardOnlyStream(SampleFiles.Png);
+        byte[] bytes = [0x25, 0x50, 0x44];
+        var content = new MemoryStream(bytes);
+        await using var file = new ReceivedFile(content, "a.pdf", null);
 
         // Act
-        var read = () => FileUpload.ReadAsync(content, "kiln.png", "image/png", SampleFiles.Png.Length, CancellationToken.None);
+        var upload = await FileUpload.ReadAsync(file, CancellationToken.None);
 
         // Assert
-        await read.ShouldThrowAsync<ArgumentException>();
-    }
-
-    private sealed class ForwardOnlyStream(byte[] bytes) : MemoryStream(bytes)
-    {
-        public override bool CanSeek => false;
+        upload.Head.ToArray().ShouldBe(bytes);
+        content.Position.ShouldBe(0);
     }
 }

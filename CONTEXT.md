@@ -95,6 +95,10 @@ _Avoid_: Upload, document, asset
 The value object of an attachment: the name, the media type of the bytes, the size, and the storage key.
 _Avoid_: File metadata, blob
 
+**Received file**:
+The file of one upload request, as the Server gets it: the bytes in a stream that can seek, the name, and the media type that the client claims. The size is the length of the stream. The entrypoint makes it and disposes it.
+_Avoid_: Form file, upload stream
+
 **Upload rules**:
 The file types and the largest size that one use of attachments takes. The Server checks each upload with them, and the list response gives them to the SPA.
 _Avoid_: File policy, upload limits

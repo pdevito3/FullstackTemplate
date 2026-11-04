@@ -5,6 +5,8 @@
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
 [[ -n "$ROOT" ]] || { echo "cleanup: run this script in a git checkout." >&2; exit 2; }
+# lsof prints these characters as escape codes, so its paths cannot match the path of this checkout.
+[[ "$ROOT" != *[\\[:cntrl:]]* ]] || { echo "cleanup: cannot check a checkout whose path has a backslash or a control character." >&2; exit 2; }
 
 # The commands of this script must not have their cwd in the checkout, or they count themselves.
 cd /
@@ -19,7 +21,7 @@ process_cwds() {
       printf '%s\t%s\n' "${pid%/cwd}" "$cwd"
     done
   else
-    lsof -a -d cwd -Fn 2>/dev/null | awk '/^p/ { pid = substr($0, 2) } /^n/ { print pid "\t" substr($0, 2) }'
+    LC_ALL=en_US.UTF-8 lsof -a -d cwd -Fn 2>/dev/null | awk '/^p/ { pid = substr($0, 2) } /^n/ { print pid "\t" substr($0, 2) }'
   fi
 }
 
@@ -40,7 +42,7 @@ in_this_checkout() {
 # one of these names in a path or an argument still counts.
 is_session_process() {
   local executable="${1%% *}" arguments="${1#"${1%% *}"}"
-  [[ "${executable##*/}$arguments" =~ ^(-?(bash|zsh|sh|fish)( -[-a-z]+)*|claude( .*)?|(dotnet\ )?aspire\ agent\ mcp|npm\ exec\ @playwright/mcp@latest|node\ [^\ ]*/\.bin/playwright-mcp|caffeinate\ -i\ -t\ [0-9]+)\ *$ ]]
+  [[ "${executable##*/}$arguments" =~ ^(-?(bash|zsh|sh|fish)( (-i|-l|-il|-li|--login))?|claude( .*)?|(dotnet\ )?aspire\ agent\ mcp|npm\ exec\ @playwright/mcp@latest|sh\ -c\ playwright-mcp|node\ [^\ ]*/\.bin/playwright-mcp|caffeinate\ -i\ -t\ [0-9]+)\ *$ ]]
 }
 
 # Prints <pid> TAB <cwd> TAB <command> for each leftover.
@@ -60,7 +62,7 @@ worktrees="$(git -C "$ROOT" worktree list --porcelain | sed -n 's/^worktree //p'
 
 ancestors=" "
 pid=$$
-while [[ -n "$pid" && "$pid" != 0 && "$pid" != 1 ]]; do
+while [[ -n "$pid" && "$pid" != 0 ]]; do
   ancestors+="$pid "
   pid="$(ps -o ppid= -p "$pid" | tr -d ' ')"
 done

@@ -70,6 +70,7 @@ claude --resume abc
 /x/dotnet aspire agent mcp
 /x/aspire agent mcp
 npm exec @playwright/mcp@latest
+sh -c playwright-mcp
 node /x/.npm/_npx/1/node_modules/.bin/playwright-mcp
 caffeinate -i -t 300
 COMMANDS
@@ -86,6 +87,8 @@ npm exec @playwright/mcp@latest --port 8931
 node /x/.bin/playwright-mcp --port 8931
 /x/bash script.sh
 zsh -c sleep
+bash -s
+sh -c python3
 caffeinate -i python3 squatter.py
 aspire run
 COMMANDS
@@ -117,6 +120,20 @@ else
   echo "FAIL  a folder that is not a git checkout: exit $code, want 2. Output: ${out:0:200}"
   failed=1
 fi
+
+git init -q "$base/back\\slash"
+check "a path that lsof escapes refuses" 2 "backslash" "$base/back\\slash"
+git init -q "$base/wörk"
+start "$base/wörk" sleep
+out="$(cd "$base/wörk" && LC_ALL=C "$helper" 2>&1)"
+code=$?
+if [[ "$code" == 1 && "$out" == *"pid $pid"* ]]; then
+  echo "ok    a leftover in a path with a non-ASCII name refuses in the C locale"
+else
+  echo "FAIL  a non-ASCII path in the C locale: exit $code, want 1. Output: $out"
+  failed=1
+fi
+stop
 
 check_failed_scan ps
 [[ -e /proc/self/cwd ]] || check_failed_scan lsof

@@ -35,6 +35,22 @@ test.describe('the users page of a plain member', () => {
     await expect(users.at.invitesHeading).toHaveCount(0)
     expect(api.all('get', invitesPaths.list)).toEqual([])
   })
+
+  test('names the failed read of the tenant, says nothing about invites, and can try again', async ({ page, api }) => {
+    api.mock(tenantsApi.oneFails('tnt_1', aProblem().saying('The server had a problem.')), usersApi.listReturns([aUser().named('Grace Hopper')]))
+    const users = usersWithInvites(page)
+    await users.open()
+
+    await expect(users.at.tenantFailure).toBeVisible()
+    await expect(users.at.loadFailure).toHaveCount(0)
+    await expect(users.at.usersGrid).toBeVisible()
+
+    api.mock(tenantsApi.oneIs(aTenant().seenByAdmin()), invitesApi.listReturns([]))
+    await users.at.tenantRetry.click()
+
+    await expect(users.at.inviteButton).toBeVisible()
+    await expect(users.at.tenantFailure).toHaveCount(0)
+  })
 })
 
 test.describe('the invites of a tenant admin', () => {
@@ -206,6 +222,19 @@ test.describe('the invites of a tenant admin', () => {
 
     await expect(users.at.linkField).toBeVisible()
   })
+
+  test('keeps the button and the list when a background read of the tenant fails', async ({ page, api }) => {
+    api.mock(invitesApi.listReturns([]))
+    const users = usersWithInvites(page)
+    await users.openWithList()
+
+    api.mock(tenantsApi.oneFails('tnt_1', aProblem().saying('The server had a problem.')))
+    await users.readTheTenantAgainAfterAReconnect()
+
+    await expect(users.at.inviteButton).toBeVisible()
+    await expect(users.at.tenantFailure).toHaveCount(0)
+  })
+
   test('shows no button and asks for no invites after the admin demotes themselves and comes back', async ({ page, api }) => {
     const ana = aUser().identifiedBy(actorSubject).named('Ana Admin').inRole('Admin').seenByAdmin()
     const { id } = ana.build()

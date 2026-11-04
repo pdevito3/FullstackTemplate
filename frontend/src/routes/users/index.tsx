@@ -57,7 +57,7 @@ function UsersPage() {
       ) : (
         <UserRows list={list} page={page} onPageChange={handlePageChange} />
       )}
-      {tenant.isError && <QueryError title="The invites did not load." error={tenant.error} onRetry={() => tenant.refetch()} />}
+      {tenant.isLoadingError && <QueryError title="The tenant did not load." error={tenant.error} onRetry={() => tenant.refetch()} />}
       {canInvite && <InviteList page={invitesPage} onPageChange={handleInvitesPageChange} />}
     </div>
   )

@@ -1,9 +1,11 @@
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Label } from 'react-aria-components'
 import { afterEach, expect, test } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
+import { AttachmentsSection } from '@/components/attachments/attachments-section'
 import { Notification, toastQueue } from '@/components/notification'
 import { PageHeading } from '@/components/page-heading'
 import { QueryError } from '@/components/query-error'
@@ -40,6 +42,18 @@ function DialogForm({ children }: { children: ReactNode }) {
       <form className="flex flex-col gap-5">{children}</form>
     </ResponsiveDialog>
   )
+}
+
+function FilesOfOneLongFileType() {
+  const list = useQuery({
+    queryKey: ['attachments'],
+    queryFn: () => ({
+      uploadRules: { fileTypes: [{ name: longWord, mediaType: 'image/png', extensions: ['.png'] }], maxSizeBytes: 1024 },
+      attachments: [],
+    }),
+  })
+  const noWrite = { mutate: () => {}, isPending: false }
+  return <AttachmentsSection list={list} upload={noWrite} remove={noWrite} canManage emptyText="No files." />
 }
 
 afterEach(() => {
@@ -284,6 +298,18 @@ const cases: {
     ),
     text: '[data-slot=combobox-chip]',
     box: ['[data-slot=combobox-chip]', '[data-slot=combobox-chips]'],
+    count: 1,
+    widths: phoneOnly,
+  },
+  {
+    name: 'file upload hint',
+    ui: () => (
+      <QueryClientProvider client={new QueryClient()}>
+        <FilesOfOneLongFileType />
+      </QueryClientProvider>
+    ),
+    text: 'section p[id]',
+    box: 'section',
     count: 1,
     widths: phoneOnly,
   },

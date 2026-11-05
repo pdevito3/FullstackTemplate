@@ -55,12 +55,12 @@ export function AttachmentsSection({ list, upload, remove, canManage, emptyText 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
           <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-medium outline-none">
             Files
           </h2>
           {canManage && rules && (
-            <p id={hintId} className="text-sm text-muted-foreground">
+            <p id={hintId} className="text-sm text-muted-foreground wrap-anywhere">
               {uploadHint(rules)}
             </p>
           )}

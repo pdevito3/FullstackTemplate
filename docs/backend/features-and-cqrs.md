@@ -257,7 +257,7 @@ public static class GetUserList
             var query = dbContext.Users
                 .TagWithOperationCallSite("users.list")
                 .AsNoTracking()
-                .ToUserDtoQueryable();
+                .ToUserDtoWithoutActionsQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);

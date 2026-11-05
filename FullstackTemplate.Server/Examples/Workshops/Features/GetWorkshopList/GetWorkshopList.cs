@@ -24,7 +24,7 @@ public static class GetWorkshopList
             var query = dbContext.Workshops
                 .TagWithOperationCallSite("workshops.list")
                 .AsNoTracking()
-                .ToWorkshopDtoQueryable(dbContext.Venues);
+                .ToWorkshopDtoWithoutActionsQueryable(dbContext.Venues);
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);

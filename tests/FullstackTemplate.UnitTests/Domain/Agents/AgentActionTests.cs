@@ -102,7 +102,7 @@ public class AgentActionTests
 
         foreach (var caller in Callers)
         {
-            var rows = new[] { agent }.AsQueryable().ToAgentDtoQueryable().ToList();
+            var rows = new[] { agent }.AsQueryable().ToAgentDtoWithoutActionsQueryable().ToList();
 
             // Act
             rows.AddAllowedActions(caller);

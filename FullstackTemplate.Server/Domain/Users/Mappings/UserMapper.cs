@@ -27,7 +27,7 @@ public static partial class UserMapper
     }
 
     // It takes the configuration of ToUserDtoWithoutActions. The list handler adds the actions after the page loads.
-    public static partial IQueryable<UserDto> ToUserDtoQueryable(this IQueryable<User> queryable);
+    public static partial IQueryable<UserDto> ToUserDtoWithoutActionsQueryable(this IQueryable<User> queryable);
 
     // The handler decides the tenant from the caller's scope. The tenant in the DTO is only a request.
     [MapperIgnoreSource(nameof(UserForCreationDto.TenantId))]

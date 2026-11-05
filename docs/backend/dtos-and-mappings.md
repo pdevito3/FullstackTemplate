@@ -107,10 +107,10 @@ Mapperly makes the map at build time. Do not write a reflection mapper. See [sou
 
 1. Make the mapper a `static partial class` with `[Mapper]`.
 2. Write each mapping as an extension method, for example `tenant.ToTenantDto()`.
-3. Add an `IQueryable` projection for list queries. Mapperly turns it into one SQL query.
+3. Add an `IQueryable` projection for list queries, with the name `To[EntityName]DtoQueryable`. Mapperly turns it into one SQL query.
 4. Map a value object to its primitive with a private method.
 5. Ignore `LastModifiedOn`, `IsDeleted`, and `DomainEvents` on the source of the DTO mapping.
-6. When the DTO has the allowed actions of the caller, write the public map by hand. It calls a private generated map that ignores `AllowedActions`, and adds the actions. The `IQueryable` projection takes the configuration of the private map.
+6. When the DTO has the allowed actions of the caller, write the public map by hand. It calls a private generated map that ignores `AllowedActions`, and adds the actions. The `IQueryable` projection takes the configuration of the private map, so its rows have no actions until the list handler calls `AddAllowedActions`. Give the projection the name `To[EntityName]DtoWithoutActionsQueryable`.
 
 <!-- code: FullstackTemplate.Server/Domain/Users/Mappings/UserMapper.cs -->
 ```csharp
@@ -123,7 +123,7 @@ public static partial class UserMapper
 
     // ...
     // It takes the configuration of ToUserDtoWithoutActions. The list handler adds the actions after the page loads.
-    public static partial IQueryable<UserDto> ToUserDtoQueryable(this IQueryable<User> queryable);
+    public static partial IQueryable<UserDto> ToUserDtoWithoutActionsQueryable(this IQueryable<User> queryable);
     // ...
     [MapperIgnoreTarget(nameof(UserForCreation.Id))]
     public static partial UserForCreation ToUserForCreation(this UserForCreationDto dto, string tenantId);

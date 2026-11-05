@@ -25,7 +25,7 @@ public static class GetAgentList
             var query = dbContext.Agents
                 .TagWithOperationCallSite("agents.list")
                 .AsNoTracking()
-                .ToAgentDtoQueryable();
+                .ToAgentDtoWithoutActionsQueryable();
 
             if (!string.IsNullOrWhiteSpace(request.Parameters.Filters))
                 query = query.ApplyFilters(request.Parameters.Filters, queryKitConfig);

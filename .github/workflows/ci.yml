@@ -4,6 +4,7 @@ name: CI
 # To correct a failure, build the Server, run `pnpm generate:api` in frontend/, and commit the result.
 # The job also builds, lints, and tests the frontend against the contract, and runs the functional suite of the frontend. The test job runs the .NET tests.
 # The line-endings job fails when a tracked text file has a CR. .gitattributes stores each text file with LF.
+# The verify-cleanup-helper job tests the helper that the cleanup of the verify skill calls. The test needs no stack and runs in seconds, so the job has no path filter.
 # The grpc-contract job lints the .proto files and fails on a breaking change against main. See buf.yaml.
 # The new-feature job runs scripts/ci/new-feature.cs, which runs scripts/new-feature.cs for two sample entities, then lints, builds, and tests the result.
 # example:start
@@ -183,6 +184,17 @@ jobs:
             echo "::error::git grep failed."
             exit 2
           fi
+
+  verify-cleanup-helper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Test the cleanup helper
+        run: .agents/skills/verify-fullstack-template/scripts/leftover-processes.test.sh
 
   grpc-contract:
     runs-on: ubuntu-latest

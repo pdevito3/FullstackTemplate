@@ -249,6 +249,8 @@ The sweep does not report these faults:
 - Text that runs half its font size or less below its box. A tight line height looks the same.
 - Text directly in a box that cuts it at its top, for example with `justify-end` in a column.
 - Text directly in a column with a fixed height and `justify-end`, with no clip, which grows up past the top of the box.
+- An auto table that runs past its parent and stays in the window. The check stops at a table.
+- Text with only symbols, such as `$$$` or an emoji, that runs past its box. If a box cuts this text, the sweep reports it.
 
 The sweep can report these forms, which are correct:
 

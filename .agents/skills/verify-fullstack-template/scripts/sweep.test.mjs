@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { after, before, test } from 'node:test'
-import { markLayoutFaults } from './sweep.mjs'
+import { markLayoutFaults, sweepFocus, trackLastFocused } from './sweep.mjs'
 
 const requireFromFrontend = createRequire(new URL('../../../../frontend/package.json', import.meta.url))
 const { chromium } = requireFromFrontend('@playwright/test')
@@ -219,11 +222,16 @@ const planned = [
 
 let browser
 let page
+let outDir
 before(async () => {
   browser = await chromium.launch()
   page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  outDir = mkdtempSync(path.join(tmpdir(), 'sweep-test-'))
 })
-after(() => browser.close())
+after(async () => {
+  await browser.close()
+  rmSync(outDir, { recursive: true })
+})
 
 const faultsOf = async (html) => {
   await page.setContent(`<!doctype html><html><body>${html}</body></html>`)
@@ -246,4 +254,32 @@ for (const { name, html } of planned) {
 test('reports a word that passes a heading and its parent once, as a fault of the heading', async () => {
   const found = await faultsOf(`<div style="width:100px"><h2 data-slot="dialog-title">${word.slice(0, 20)}</h2></div>`)
   assert.deepEqual(found.map(({ kind, element }) => ({ kind, element })), [{ kind: 'heading text runs past its box', element: 'dialog-title' }])
+})
+
+// Each test gets a new page, because a timer of the page in a test must not fire in the next test.
+const focusFaultsAfterPress = async (onPress) => {
+  const page = await browser.newPage()
+  await page.setContent(`<!doctype html><html><body>
+    <button>Join tenant</button>
+    <h1 tabindex="-1">Home</h1>
+    <script>document.querySelector('button').addEventListener('click', ({ target: button }) => { ${onPress} })</script>
+  </body></html>`)
+  await page.evaluate(trackLastFocused)
+  await page.getByRole('button').click()
+  const found = []
+  await sweepFocus({ page, settle: async () => {}, outDir, step: 'press the button', faults: found })
+  await page.close()
+  return found.map(({ kind, how }) => ({ kind, how }))
+}
+
+test('reports a focus that stays on the body after the focused element is removed', async () => {
+  assert.deepEqual(await focusFaultsAfterPress('button.remove()'), [{ kind: 'focus goes to the body', how: 'the focused element was removed' }])
+})
+
+test('does not report a focus that moves to the heading 90 ms after the focused element is removed', async () => {
+  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); setTimeout(() => document.querySelector('h1').focus(), 90)`), [])
+})
+
+test('reports a focus that stays on the body when the button that lost it is enabled again 300 ms later', async () => {
+  assert.deepEqual(await focusFaultsAfterPress('button.disabled = true; setTimeout(() => { button.disabled = false }, 300)'), [{ kind: 'focus goes to the body', how: 'the focused element was disabled' }])
 })

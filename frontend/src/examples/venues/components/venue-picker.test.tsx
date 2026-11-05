@@ -51,15 +51,17 @@ async function renderPicker(initial = '', ...more: Answer[]) {
     ...more,
   ])
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const submitted = vi.fn((e: React.FormEvent) => e.preventDefault())
   const screen = await render(
     // The list keeps 12 px from the edge of the page. A list wider than the page scrolls the page and closes.
-    <div style={{ padding: 12 }}>
+    <form style={{ padding: 12 }} onSubmit={submitted}>
       <QueryClientProvider client={client}>
         <Picker initial={initial} />
       </QueryClientProvider>
-    </div>,
+      <button type="submit">Save</button>
+    </form>,
   )
-  return { screen, client, input: screen.getByRole('combobox', { name: 'Venue' }) }
+  return { screen, client, submitted, input: screen.getByRole('combobox', { name: 'Venue' }) }
 }
 
 test('shows a picked venue that is not on the first page of the search, by its name', async () => {
@@ -331,6 +333,12 @@ async function failedRowIsActive(screen: Awaited<ReturnType<typeof renderPicker>
   await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
 }
 
+function everyReadOfTheClockIsLater() {
+  let now = Date.now()
+  const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 1000))
+  onTestFinished(() => clock.mockRestore())
+}
+
 function stopTheClock() {
   // The clock stands still, so a slow machine cannot move the second press past the end of a double press.
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -357,6 +365,37 @@ test('a second Enter just after a retry that works picks nothing and keeps the l
 
   await expect.element(screen.getByRole('option', { name: 'Venue 11' })).not.toBeInTheDocument()
   await expect.element(input).not.toHaveValue(firstPage[0].name)
+})
+
+test('a second Enter after a slow retry picks nothing, also when the first press was long ago', async () => {
+  stopTheClock()
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await failedRowIsActive(screen, input)
+  await commands.answerRequests(faultEnded())
+  await holdPage(pageTwoPath)
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  vi.advanceTimersByTime(600)
+  await commands.releaseRequests(pageTwoPath)
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(input).toHaveValue(firstPage[0].name)
+})
+
+test('an Enter held through a retry that works picks nothing and does not submit the form', async () => {
+  const { screen, input, submitted } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await failedRowIsActive(screen, input)
+  await commands.answerRequests(faultEnded())
+  everyReadOfTheClockIsLater()
+
+  await userEvent.keyboard('{Enter>300/}')
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(input).toHaveValue(firstPage[0].name)
+  expect(submitted).not.toHaveBeenCalled()
 })
 
 test('an arrow key after a retry that works lets the next Enter pick', async () => {

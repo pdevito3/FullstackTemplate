@@ -1,6 +1,6 @@
 import { Collection, Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
 import { useState } from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -668,7 +668,21 @@ test('a press on the option of ComboboxLoadMore asks once and keeps the list ope
   await expect.element(input).toHaveValue('Vue')
 })
 
-test('Enter on the option of ComboboxLoadMore does not submit the form', async () => {
+function everyReadOfTheClockIsLater() {
+  let now = Date.now()
+  const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 1000))
+  onTestFinished(() => clock.mockRestore())
+}
+
+function stopTheClock() {
+  // The clock stands still, so a slow machine cannot move a second press past the end of a double press.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+}
+
+async function renderFailedListInForm() {
   const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
   const onLoadMore = vi.fn()
   const screen = await render(
@@ -679,30 +693,55 @@ test('Enter on the option of ComboboxLoadMore does not submit the form', async (
   )
   await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
   await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(screen.getByRole('combobox', { name: 'Framework' })).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+  return { screen, onSubmit, onLoadMore }
+}
 
-  await userEvent.keyboard('{ArrowUp}{Enter}')
+test('Enter on the option of ComboboxLoadMore does not submit the form', async () => {
+  const { onSubmit, onLoadMore } = await renderFailedListInForm()
+
+  await userEvent.keyboard('{Enter}')
 
   expect(onLoadMore).toHaveBeenCalledOnce()
   expect(onSubmit).not.toHaveBeenCalled()
 })
 
 test('a held Enter on the option of ComboboxLoadMore asks once and does not submit the form', async () => {
-  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
-  const onLoadMore = vi.fn()
-  const screen = await render(
-    <form onSubmit={onSubmit}>
-      <FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />
-      <button type="submit">Save</button>
-    </form>,
-  )
-  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
-  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  const { screen, onSubmit, onLoadMore } = await renderFailedListInForm()
+  everyReadOfTheClockIsLater()
 
-  await userEvent.keyboard('{ArrowUp}{Enter>5/}')
+  await userEvent.keyboard('{Enter>5/}')
 
   expect(onLoadMore).toHaveBeenCalledOnce()
   expect(onSubmit).not.toHaveBeenCalled()
   await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+})
+
+test('a second Enter on the option of ComboboxLoadMore asks only after the time of a double press', async () => {
+  stopTheClock()
+  const { onLoadMore } = await renderFailedListInForm()
+
+  await userEvent.keyboard('{Enter}{Enter}')
+  expect(onLoadMore).toHaveBeenCalledOnce()
+
+  vi.advanceTimersByTime(600)
+  await userEvent.keyboard('{Enter}')
+  expect(onLoadMore).toHaveBeenCalledTimes(2)
+})
+
+test('Enter submits the form just after a retry when the list has closed', async () => {
+  stopTheClock()
+  const { screen, onSubmit, onLoadMore } = await renderFailedListInForm()
+  await userEvent.keyboard('{Enter}')
+  expect(onLoadMore).toHaveBeenCalledOnce()
+
+  window.dispatchEvent(new Event('scroll'))
+  await expect.element(screen.getByRole('option', failedRow)).not.toBeInTheDocument()
+  await userEvent.keyboard('{Enter}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onSubmit).toHaveBeenCalledOnce()
 })
 
 test('only Enter on the option of ComboboxLoadMore asks for the page', async () => {
@@ -717,21 +756,6 @@ test('only Enter on the option of ComboboxLoadMore asks for the page', async () 
   await userEvent.keyboard('{ArrowUp}')
 
   await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Vue' }).element().id)
-  expect(onLoadMore).not.toHaveBeenCalled()
-})
-
-test('Enter asks for nothing after the list closes on the option of ComboboxLoadMore', async () => {
-  const onLoadMore = vi.fn()
-  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />)
-  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
-  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
-  await userEvent.keyboard('{ArrowUp}')
-  await expect.element(screen.getByRole('combobox', { name: 'Framework' })).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
-
-  window.dispatchEvent(new Event('scroll'))
-  await expect.element(screen.getByRole('option', failedRow)).not.toBeInTheDocument()
-  await userEvent.keyboard('{Enter}')
-
   expect(onLoadMore).not.toHaveBeenCalled()
 })
 

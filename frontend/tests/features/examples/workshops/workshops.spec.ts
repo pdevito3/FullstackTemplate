@@ -1,12 +1,61 @@
-import { as } from '@tests/support/auth/actors'
+import { membershipApi, membershipPaths } from '@tests/support/api/membership-api'
+import { actorSubject, as } from '@tests/support/auth/actors'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { aVenue } from '@tests/support/examples/venue-builder'
 import { aWorkshop } from '@tests/support/examples/workshop-builder'
 import { workshopPaths, workshopsApi } from '@tests/support/examples/workshops-api'
 import { expect, test } from '@tests/support/fixtures'
 import { appShellPage } from '@tests/features/app-shell/app-shell.tasks'
+import { startTenantPage } from '@tests/features/start-tenant/start-tenant.tasks'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { workshopsPage } from './workshops.tasks'
+
+test.describe('the search of the workshops while the membership check fails', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+  const lookupPath = membershipPaths.userOf(actorSubject)
+
+  test('keeps the text that the user types while the answer of Try Again is on the way', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]), membershipApi.lookupRefuses(refusal))
+    const workshops = workshopsPage(page)
+    const banner = startTenantPage(page).at
+    await workshops.openList()
+    await expect(banner.checkFailure).toContainText(refusal)
+
+    const answer = api.hold(...membershipApi.userIs(as.user('Ana Admin')))
+    const before = api.all('get', lookupPath).length
+    await banner.tryAgain.click()
+    await expect.poll(() => api.all('get', lookupPath).length).toBe(before + 1)
+    await workshops.at.search.click()
+    await page.keyboard.type('ab')
+    answer()
+    await expect(banner.checkFailure).toHaveCount(0)
+    await page.keyboard.type('cd')
+
+    await expect(workshops.at.search).toHaveValue('abcd')
+    await expect(workshops.at.search).toBeFocused()
+  })
+
+  test('keeps the focus in the box and sends no lookup for each search after Try Again got a new refusal', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]), membershipApi.lookupRefuses(refusal))
+    const workshops = workshopsPage(page)
+    const banner = startTenantPage(page).at
+    await workshops.openList()
+    await expect(banner.checkFailure).toContainText(refusal)
+    const before = api.all('get', lookupPath).length
+    await banner.tryAgain.click()
+    await expect.poll(() => api.all('get', lookupPath).length).toBe(before + 1)
+    await expect(banner.tryAgain).toBeEnabled()
+    api.mock(...membershipApi.userIs(as.user('Ana Admin')))
+
+    await workshops.searchKeyByKey('alpha')
+
+    expect(api.all('get', lookupPath)).toHaveLength(before + 1)
+    await expect(workshops.at.search).toHaveValue('alpha')
+    await expect(workshops.at.search).toBeFocused()
+  })
+})
 
 test.describe('the workshops', () => {
   test.use({ actor: as.user('Ana Admin') })

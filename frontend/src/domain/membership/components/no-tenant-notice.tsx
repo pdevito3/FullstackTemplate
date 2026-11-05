@@ -16,15 +16,18 @@ export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const noticeLink = useRef<HTMLAnchorElement>(null)
-  const pressedTryAgain = useRef(false)
+  const isFailed = membership.status === 'error'
+  const wasFailed = useRef(false)
 
-  // Try Again goes away with the answer, so the focus moves to the link of the notice or the page heading.
+  // Try Again goes away when the check stops failing, on this banner or on a page, and its focus falls to the body.
+  // Focus on another element is where the user went while the answer was on the way, so it stays there.
   useEffect(() => {
-    if (!pressedTryAgain.current || membership.status === 'error') return
-    pressedTryAgain.current = false
-    if (noticeLink.current) noticeLink.current.focus()
+    const stoppedFailing = wasFailed.current && !isFailed
+    wasFailed.current = isFailed
+    if (!stoppedFailing || document.activeElement !== document.body) return
+    if (noticeLink.current) noticeLink.current.focus({ preventScroll: true })
     else focusWithoutTabStop(document.querySelector<HTMLElement>('main h1'))
-  }, [membership.status])
+  }, [isFailed])
 
   if (PAGES_WITH_NO_NOTICE.includes(pathname.replace(/\/$/, ''))) return null
 
@@ -40,10 +43,7 @@ export function NoTenantNotice() {
             variant="outline"
             size="sm"
             isPending={membership.isRetrying}
-            onPress={() => {
-              pressedTryAgain.current = true
-              membership.retry?.()
-            }}
+            onPress={membership.retry}
           >
             Try Again
           </Button>

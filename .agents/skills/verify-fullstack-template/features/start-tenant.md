@@ -10,7 +10,7 @@ A new database has no user records. A user who signs in with no user record sees
 - `start` sends `POST /api/v1/users/initiate` with the `sub` of the session and the role `Admin`. The page shows `You started <name>. You are its admin, ...`, and the link `Go to the home page` has the focus. The notice does not show again.
 - `refused` shows the refusal of the Server next to its field, for example a tenant name in use.
 - `member` tells a user with a user record that they already have a tenant.
-- `check-failed` shows the region `Membership check` with the reason and `Try Again` when the lookup of the user record fails. `Try Again` and a click on another page each ask again.
+- `check-failed` shows the region `Membership check` with the reason and `Try Again` when the lookup of the user record fails. `Try Again` and a click on another page each ask again. A change of the search of a page does not ask again. While the check runs, the banner keeps the reason and `Try Again` is pending. When the check stops failing, the focus moves to the link of the notice or the page heading only if it is on the body.
 
 ## How to get to it (user POV)
 

@@ -37,6 +37,30 @@ export function startTenantPage(page: Page) {
       await expect(page).toHaveURL('/')
     },
 
+    async goBackTo(path: string) {
+      await page.goBack()
+      await expect(page).toHaveURL(path)
+    },
+
+    /** Clicks the page, and waits for the lookup that the click sends. */
+    async goToAboutAndAskAgain() {
+      const settled = answered('GET', membershipPaths.userOf(actorSubject))
+      await at.aboutLink.click()
+      await settled
+    },
+
+    async scrollPastTheBanner() {
+      await at.tryAgain.waitFor()
+      await page.mouse.wheel(0, 2000)
+      await expect(at.tryAgain).not.toBeInViewport()
+    },
+
+    /** The app sends a failed lookup again when the network comes back. */
+    async reconnect() {
+      await page.context().setOffline(true)
+      await page.context().setOffline(false)
+    },
+
     async submitEmpty() {
       await at.submit.click()
       await expect(at.formErrors).toHaveCount(1)

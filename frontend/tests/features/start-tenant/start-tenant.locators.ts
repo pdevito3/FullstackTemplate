@@ -17,10 +17,11 @@ export const startTenant = (page: Page) => {
     started: (tenantName: string) => page.getByText(`You started ${tenantName}. You are its admin`, { exact: false }),
     homeLink: page.getByRole('main').getByRole('link', { name: 'Go to the home page' }),
     homeHeading: page.getByRole('heading', { name: 'Fullstack Template', level: 1 }),
-    aboutLink: page.getByRole('link', { name: 'About' }),
+    aboutLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About' }),
     homeNavLink: page.getByRole('link', { name: 'Home' }),
     main: page.getByRole('main'),
     lookupFailure: page.getByRole('main').getByRole('alert'),
+    loadingAccount: page.getByRole('status', { name: 'Loading your account' }),
     tryAgain: page.getByRole('button', { name: 'Try Again' }),
     toasts: page.getByRole('alertdialog'),
   }

@@ -87,7 +87,8 @@ export function useMembership(): Membership {
   }
   if (!claims.data || !identifier) return { status: 'error', message: CHECK_FAILED }
   if (user.data === undefined) {
-    if (user.errorUpdateCount === 0) return { status: 'loading' }
+    // A hook that mounts during a check has no failure to show until the answer comes.
+    if (user.errorUpdateCount === 0 || lastError === null) return { status: 'loading' }
     return {
       status: 'error',
       message: isRefusal(lastError) ? lastError.displayMessage : CHECK_FAILED,

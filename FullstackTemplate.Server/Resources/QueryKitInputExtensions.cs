@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using Databases;
 using Domain;
+using Domain.Invites.Dtos;
 using Exceptions;
 using QueryKit;
 using QueryKit.Configuration;
@@ -12,7 +13,7 @@ using Sprache;
 
 /// <summary>
 /// Applies the <c>filters</c> and <c>sortOrder</c> values of a list request with QueryKit.
-/// A value that QueryKit cannot apply, or that uses the version, the allowed actions, or the expired flag, throws a <see cref="QueryInputException"/> with the name of its parameter.
+/// A value that QueryKit cannot apply, or that uses the version, the allowed actions, or the expired flag of an invite, throws a <see cref="QueryInputException"/> with the name of its parameter.
 /// </summary>
 public static class QueryKitInputExtensions
 {
@@ -32,8 +33,6 @@ public static class QueryKitInputExtensions
         "A field that holds a list cannot compare with null. To find an empty list, use #== 0, then try again.";
     // The convention name of the allowed actions on the read DTO of each entity, so this check covers each list.
     private const string AllowedActionsMember = "AllowedActions";
-    // The expired flag of an invite depends on the time, and the handler adds it after the page loads.
-    private const string ExpiredMember = "IsExpired";
 
     public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, string filters, IQueryKitConfiguration config)
         where T : class
@@ -43,7 +42,7 @@ public static class QueryKitInputExtensions
             if (!PostgresText.CanStore(filters))
                 throw new QueryInputException(FiltersParameter, FilterCharacterMessage);
             var predicate = FilterParser.ParseFilter<T>(filters, config);
-            RefuseFieldsOutsideTheQuery(FiltersParameter, predicate);
+            RefuseFieldsOutsideTheQuery<T>(FiltersParameter, predicate);
             RefusePartsOfFields<T>(FiltersParameter, predicate);
             RefuseNullThatTheQueryCannotRun(predicate);
             return query.Where(predicate);
@@ -54,7 +53,7 @@ public static class QueryKitInputExtensions
         {
             foreach (var sort in SortParser.ParseSort<T>(sortOrder, config))
             {
-                RefuseFieldsOutsideTheQuery(SortOrderParameter, sort.Expression);
+                RefuseFieldsOutsideTheQuery<T>(SortOrderParameter, sort.Expression);
                 RefusePartsOfFields<T>(SortOrderParameter, sort.Expression);
             }
             return query.ApplyQueryKitSort(sortOrder, config);
@@ -62,8 +61,9 @@ public static class QueryKitInputExtensions
 
     // A version is opaque, and Postgres has no order for its xid, so a range or a sort fails with 500 when the query runs.
     // The handler adds AllowedActions after the page loads, so EF cannot translate a clause on it, and the query gives 500.
+    // The handler of the invite list also adds the expired flag after the page loads, because the flag depends on the time.
     // PreventFilter and PreventSort of QueryKit drop the clause and give 200 with the wrong rows, so this check gives 400.
-    private static void RefuseFieldsOutsideTheQuery(string parameter, Expression? expression)
+    private static void RefuseFieldsOutsideTheQuery<T>(string parameter, Expression? expression)
     {
         if (expression is null)
             return;
@@ -72,7 +72,7 @@ public static class QueryKitInputExtensions
         if (MemberReader.Reads(expression, AllowedActionsMember))
             throw new QueryInputException(parameter,
                 $"The {Words(parameter)} cannot use the allowed actions, because they depend on the user. Choose another field.");
-        if (MemberReader.Reads(expression, ExpiredMember))
+        if (typeof(T) == typeof(InviteDto) && MemberReader.Reads(expression, nameof(InviteDto.IsExpired)))
             throw new QueryInputException(
                 parameter,
                 $"The {Words(parameter)} cannot use the expired state, because it depends on the time. Choose another field.");
@@ -171,7 +171,8 @@ public static class QueryKitInputExtensions
 
     private static string FieldsOf<T>() => string.Join(", ", RequestRules.For(typeof(T))
         .Where(rule => rule.Holds == PropertyHolds.Value
-            && rule.Property.Name is not (nameof(BaseEntity.Version) or AllowedActionsMember or ExpiredMember))
+            && rule.Property.Name is not (nameof(BaseEntity.Version) or AllowedActionsMember)
+            && !(typeof(T) == typeof(InviteDto) && rule.Property.Name == nameof(InviteDto.IsExpired)))
         .Select(rule => rule.JsonName));
 
     private static string NotReadMessage(string parameter) =>

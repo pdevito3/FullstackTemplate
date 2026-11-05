@@ -154,6 +154,77 @@ public class UserReadAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
+    // The same delete as the test above, and the same state as a request that overlaps a delete on this instance
+    [Test]
+    [NotInParallel]
+    public async Task deleted_user_with_a_cached_tenant_gets_not_found_for_their_own_identifier()
+    {
+        // Arrange
+        var (member, _) = await AddTwoUsersAsync("User", "User");
+        SignInAs(member);
+        (await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(member.Id))).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+        await DeleteOutsideTheServerAsync(member);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(member.Identifier));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail
+            .ShouldBe("User was not found.");
+    }
+
+    [Test]
+    public async Task member_without_read_users_is_forbidden_for_the_identifier_of_a_user_of_another_tenant()
+    {
+        // Arrange
+        var (member, _) = await AddTwoUsersAsync("User", "User");
+        var (otherTenantUser, _) = await AddTwoUsersAsync("User", "User");
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(otherTenantUser.Identifier));
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, ReadUsersDenial);
+    }
+
+    [Test]
+    public async Task member_with_read_users_gets_not_found_for_the_identifier_of_a_user_of_another_tenant()
+    {
+        // Arrange
+        var (member, _) = await AddTwoUsersAsync("User", "User",
+            first => first.AddPermission(Permission.ReadUsers()));
+        var (otherTenantUser, _) = await AddTwoUsersAsync("User", "User");
+        SignInAs(member);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(otherTenantUser.Identifier));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    [NotInParallel]
+    public async Task deleted_user_with_a_cached_tenant_is_forbidden_for_the_identifier_of_a_user_of_another_tenant()
+    {
+        // Arrange
+        var (member, _) = await AddTwoUsersAsync("User", "User");
+        var (otherTenantUser, _) = await AddTwoUsersAsync("User", "User");
+        SignInAs(member);
+        (await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetRecord(member.Id))).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+        await DeleteOutsideTheServerAsync(member);
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(otherTenantUser.Identifier));
+
+        // Assert
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
+    }
+
     [Test]
     public async Task user_role_member_granted_read_users_can_list_the_users()
     {

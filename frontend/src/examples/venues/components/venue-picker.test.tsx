@@ -333,12 +333,6 @@ async function failedRowIsActive(screen: Awaited<ReturnType<typeof renderPicker>
   await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
 }
 
-function everyReadOfTheClockIsLater() {
-  let now = Date.now()
-  const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 1000))
-  onTestFinished(() => clock.mockRestore())
-}
-
 function stopTheClock() {
   // The clock stands still, so a slow machine cannot move the second press past the end of a double press.
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -385,17 +379,23 @@ test('a second Enter after a slow retry picks nothing, also when the first press
   await expect.element(input).toHaveValue(firstPage[0].name)
 })
 
-test('an Enter held through a retry that works picks nothing and does not submit the form', async () => {
-  const { screen, input, submitted } = await renderPicker(firstPage[0].id, pageTwoFails)
+test('an Enter held after a retry that works picks nothing and does not submit the form', async () => {
+  stopTheClock()
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
   await failedRowIsActive(screen, input)
   await commands.answerRequests(faultEnded())
-  everyReadOfTheClockIsLater()
 
-  await userEvent.keyboard('{Enter>300/}')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  vi.advanceTimersByTime(600)
+  // A browser submits the form on each repeat that is not prevented. The answer can come after the end of one
+  // userEvent.keyboard hold, and the next call releases the key, so the repeat comes from this event.
+  const repeat = new KeyboardEvent('keydown', { key: 'Enter', repeat: true, bubbles: true, cancelable: true })
+  input.element().dispatchEvent(repeat)
 
+  expect(repeat.defaultPrevented).toBe(true)
   await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
   await expect.element(input).toHaveValue(firstPage[0].name)
-  expect(submitted).not.toHaveBeenCalled()
 })
 
 test('an arrow key after a retry that works lets the next Enter pick', async () => {

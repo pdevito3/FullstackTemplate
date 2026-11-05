@@ -1,3 +1,5 @@
+export const testIdHeader = 'x-test-id'
+
 /** A response that the page gets for a request of the app, instead of a response of a server. */
 export type Answer = {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'

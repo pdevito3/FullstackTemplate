@@ -55,7 +55,7 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
     : new Error(`The membership check failed with status ${result.status}.`)
 }
 
-/** A refusal of the Server, such as a 403 for a deleted user whose tenant is still cached, does not change on an immediate retry. */
+/** A refusal of the Server does not change on an immediate retry, so only the user asks again, with Try Again. */
 export const isRefusal = (error: unknown): error is ProblemDetailsError =>
   isProblemDetailsError(error) && (error.status ?? 500) < 500
 
@@ -83,9 +83,11 @@ export function useMembership(): Membership {
   if (!claims.data || !identifier) return { status: 'error', message: CHECK_FAILED }
   if (user.data === undefined) {
     if (!user.isError) return { status: 'loading' }
-    return isRefusal(user.error)
-      ? { status: 'error', message: user.error.displayMessage }
-      : { status: 'error', message: CHECK_FAILED, retry: () => void user.refetch() }
+    return {
+      status: 'error',
+      message: isRefusal(user.error) ? user.error.displayMessage : CHECK_FAILED,
+      retry: () => void user.refetch(),
+    }
   }
   return user.data
     ? { status: 'member', user: user.data }

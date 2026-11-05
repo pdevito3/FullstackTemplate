@@ -32,7 +32,7 @@ CSharpRepl connects to the running `FullstackTemplate.Server` process and runs C
    EOF
    ```
 
-If the server restarts (a rebuild, a crash, or an AppHost restart), the process ID changes. All usings, variables, helpers, and patches are then gone. Start again at step 2.
+If the server restarts (a rebuild, a crash, an AppHost restart, or a recipe run of the `verify-fullstack-template` skill that writes `appdb`), the process ID changes. All usings, variables, helpers, and patches are then gone. Start again at step 2.
 
 ## Input modes
 

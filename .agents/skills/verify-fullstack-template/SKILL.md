@@ -23,7 +23,7 @@ S=.agents/skills/verify-fullstack-template
 - `launch.sh` always starts an `--isolated` stack: random ports, an empty database, and a copy of the user secrets. A stack in another worktree does not conflict.
 - Each checkout can run one stack for its AppHost path. If a stack runs for this checkout and this skill did not start it, `launch.sh` stops with an error. Do not drive that stack and do not stop it. It belongs to the user. Ask the user, or work in a git worktree.
 - Each recipe run gets a new Chromium context. No cookies or `localStorage` carry over between recipes.
-- Each recipe run gets the database of the run before it. `browse.mjs` puts back the rows that a recipe wrote. See [Data](#data).
+- Each recipe run gets the database of the run before it. `browse.mjs` puts back the rows that a recipe wrote, and it restarts the server to clear its cache. See [Data](#data).
 - If you use `--auth-provider DuendeDemo`, the IdP is shared and public. Use only the demo users. Do not change data on it.
 
 ## Launch
@@ -143,17 +143,18 @@ For interactive exploration, the Playwright MCP server in `.mcp.json` also works
 
 1. Before the recipe, it copies each table of each database (`appdb`, `bffdb`) to `artifacts/verify/<RUN_ID>/db-snapshot.json`.
 2. After the recipe, also after a failed step or a page error, it deletes and inserts only the rows that differ from the copy. Then it reads the tables again. If one still differs, the run fails with `the restore left these tables different`.
-3. `result.json` gives the rows that the run wrote in `data.changes`, for example `"appdb.public.tenants": { "added": 1, "changed": 0, "deleted": 0 }`. If the restore failed, `data.restored` is `false`, and `data.changes` gives the rows that the run wrote. Some of them can still be in the database. If the restore failed before it read the rows, `data.changes` is `null` and `run-twice.sh` prints `unknown`.
+3. If the rows of `appdb` changed, it restarts the `server` resource and waits until it is healthy. This adds about 7 seconds to the run.
+4. `result.json` gives the rows that the run wrote in `data.changes`, for example `"appdb.public.tenants": { "added": 1, "changed": 0, "deleted": 0 }`. If the restore or the restart failed, `data.restored` is `false`, and `data.changes` gives the rows that the run wrote. Some of them can still be in the database. If the restore failed before it read the rows, `data.changes` is `null` and `run-twice.sh` prints `unknown`.
 
 Each row that the restore did not touch keeps its `xmin`, which is the `version` of an entity. A row that the restore put back gets a new `xmin`. The next recipe reads its rows from the page, so it gets the new version.
 
-If a run stops before the restore (Ctrl-C, a killed process, a restore that failed), `db-snapshot.json` stays. The next `browse.mjs` run restores it first and prints `data: an earlier run did not restore the database`. The doctor prints a `warn` line while the file is there. If that restore also fails, for example after a migration changed a table, `browse.mjs` stops. Delete `db-snapshot.json` to keep the rows as they are, or launch a new stack.
+If a run stops before the restore (Ctrl-C, a killed process, a restore that failed), `db-snapshot.json` stays. The next `browse.mjs` run restores it first, restarts the server, and prints `data: an earlier run did not restore the database`. The doctor prints a `warn` line while the file is there. If that restore also fails, for example after a migration changed a table, `browse.mjs` stops. Delete `db-snapshot.json` to keep the rows as they are, or launch a new stack.
 
-The restore changes only rows. The server keeps a cache of the tenant of each user for up to 30 minutes. A recipe that adds, deletes, or moves a user, or changes a tenant, can leave the old answer in that cache, so the next run can see it. Run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` after such a recipe.
+The server keeps a cache of the tenant of each user for up to 30 minutes. The restore writes rows behind that cache, because it does not go through the server. The restart clears the cache, so the same user can start a tenant again on the next run. A restart also ends each CSharpRepl connection and removes each patch, so apply a patch again before the next run. `dotnet aspire logs server` shows only the new process after a restart. To read what the server logged in a run, use `dotnet aspire otel logs server`, which keeps the logs of the earlier process.
 
 Only one recipe runs on a stack at a time. A restore would delete the rows of a second run. Do not drive the stack with the Playwright MCP server while a recipe runs, for the same reason. `browse.mjs` holds `recipe.lock` in the run directory, and a second run stops with `browse: the recipe run with pid <pid> drives this stack`.
 
-To look at the rows after a recipe, give `--keep-data`. The run then takes no copy and restores nothing, so the rows stay until the stack stops.
+To look at the rows after a recipe, give `--keep-data`. The run then takes no copy, restores nothing, and makes no restart, so the rows and a CSharpRepl patch stay. If an earlier run left `db-snapshot.json`, the run still restores it and restarts the server first. A kept user is a member of a tenant, and later copies include that user. So a recipe that starts a tenant for that user fails until you launch a new stack.
 
 ## Production build
 

@@ -33,4 +33,3 @@ Preconditions:
 
 - A user belongs to one tenant only. After a start, the same user sees `You are already a member of a tenant.` on `/start-tenant`.
 - The unique index on the tenant name also covers the deleted tenants. Give each run a new name.
-- The Server caches the tenant of each user. The restore of `browse.mjs` deletes rows behind that cache, so the recipe deletes its tenant through `DELETE /api/v1/tenants/{id}` at the end. If a run stops before that step, run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` before the next run.

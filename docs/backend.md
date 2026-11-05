@@ -272,6 +272,14 @@ TUnit runs all tests in parallel, also the tests of one class. The integration a
 
 A list has an integration test that filters its text field with `@=*` for `50%`, `a_b`, `c\d`, and text with a quote at an end, and finds only the row with that text. Build each filter value with `QueryKitText.Quote`. A raw `ILike` with `LikePattern` has the same test. See `tests/FullstackTemplate.IntegrationTests/Databases/LikePatternTests.cs`.
 
+To run one test class, use `--treenode-filter`. The form is `/<assembly>/<namespace>/<class>/<test>`:
+
+```bash
+dotnet test --project tests/FullstackTemplate.UnitTests --treenode-filter '/*/*/CSharpReplPreludeTests/*'
+```
+
+The test app has no `--filter-class` option. A run with an unknown option exits with code 5, and `total: 0` is its only sign in the summary. A filter that matches no test exits with code 8. Read the exit code, because a pipe to `grep` or `tail` hides it.
+
 To run the tests in a web UI, open the **Labcoat UI** link of the `tests` resource in the Aspire dashboard. [Labcoat](https://github.com/eriklieben/labcoat) builds and runs the test projects, and shows each failure with its source.
 
 To use Labcoat without the stack, run `dotnet labcoat` from the repository root.

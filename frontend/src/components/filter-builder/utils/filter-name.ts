@@ -1,7 +1,8 @@
-import { formatInstant } from '@/lib/zoned-time'
+import { toCalendarDate, type CalendarDateTime } from '@internationalized/date'
+
+import { browserTimeZone, formatDate as formatCalendarDate, formatInstant } from '@/lib/zoned-time'
 
 import type { DateValue, Filter } from '../types'
-import { wallClockZone } from './date-zone'
 import { getOperatorLabel } from './operators'
 
 /**
@@ -48,8 +49,11 @@ function formatValue(
   // DateValue
   if (typeof value === 'object' && 'mode' in value) {
     const dateValue = value as DateValue
-    const zone = wallClockZone(dateValue.dateType, dateValue.timeZone)
-    const formatDate = (date: Date) => formatInstant(date, zone, { month: 'short', day: 'numeric', year: 'numeric' })
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+    const formatDate = (date: Date | CalendarDateTime) =>
+      date instanceof Date
+        ? formatInstant(date, dateValue.timeZone ?? browserTimeZone(), options)
+        : formatCalendarDate(toCalendarDate(date), options)
 
     switch (dateValue.mode) {
       case 'before':

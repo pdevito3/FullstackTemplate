@@ -577,6 +577,20 @@ test.describe('a date filter of a place in another zone', () => {
   })
 })
 
+test.describe('the filter state card', () => {
+  test('shows a wall clock time as text, not as the fields of its object', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.chooseProperty('Scheduled At (Local)')
+
+    await demo.typeDate('Scheduled At (Local)', 'Date', '08152026')
+    await demo.at.time('Scheduled At (Local)', 'Time').fill('23:30')
+    await demo.at.addFilter('Scheduled At (Local)').click()
+
+    await expect(demo.at.filterStateText('"startDate": "2026-08-15T23:30:00"')).toBeVisible()
+  })
+})
+
 test.describe('a date filter with no zone, in a browser in New York', () => {
   test.use({ timezoneId: 'America/New_York' })
   test.skip(() => test.info().project.name !== 'utc', 'The describe sets its own zone.')

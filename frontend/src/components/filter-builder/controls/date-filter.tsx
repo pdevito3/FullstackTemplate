@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { CalendarDate, parseTime, toCalendarDate, toCalendarDateTime } from '@internationalized/date'
+import { useId, useState, useMemo } from 'react'
+import { CalendarDate, parseTime, toCalendarDate, toCalendarDateTime, type CalendarDateTime } from '@internationalized/date'
 import type { RangeValue, DateValue as AriaDateValue } from 'react-aria-components'
 import { Button } from '@/components/ui/button'
 import { JollyCalendar, JollyRangeCalendar } from '@/components/ui/calendar'
@@ -18,22 +18,25 @@ import {
   type TimeZone,
 } from '@/lib/zoned-time'
 import type { DateValue, Filter, FilterControlProps } from '../types'
-import { wallClockZone } from '../utils/date-zone'
 import { Operators } from '../utils/operators'
 import { FilterControlFooter } from './filter-control-footer'
 
 type DateMode = 'before' | 'after' | 'between' | 'on'
 
-function dateAt(instant: Date, zone: TimeZone): CalendarDate {
-  return toCalendarDate(wallClockAt(instant, zone))
+function wallClockOf(value: Date | CalendarDateTime, zone: TimeZone): CalendarDateTime {
+  return value instanceof Date ? wallClockAt(value, zone) : value
 }
 
-function timeAt(instant: Date, zone: TimeZone): string {
-  return wallClockAt(instant, zone).toString().slice(11, 16)
+function dateAt(value: Date | CalendarDateTime, zone: TimeZone): CalendarDate {
+  return toCalendarDate(wallClockOf(value, zone))
 }
 
-function typedInstant(date: CalendarDate, time: string, zone: TimeZone): Date | null {
-  return instantAt(toCalendarDateTime(date, parseTime(time || '00:00')), zone)
+function timeAt(value: Date | CalendarDateTime, zone: TimeZone): string {
+  return wallClockOf(value, zone).toString().slice(11, 16)
+}
+
+function typedWallClock(date: CalendarDate, time: string): CalendarDateTime {
+  return toCalendarDateTime(date, parseTime(time || '00:00'))
 }
 
 export function DateFilter({
@@ -47,11 +50,12 @@ export function DateFilter({
   const { propertyKey, propertyLabel, dateType = 'date', timeZone } = config
   const initialDateValue = initialFilter?.value as DateValue | undefined
   const placeZone = initialDateValue?.timeZone ?? timeZone
-  const zone = wallClockZone(dateType, placeZone)
-  const todayZone = placeZone ?? browserTimeZone()
+  const zone = placeZone ?? browserTimeZone()
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
   const isMobile = useIsMobile()
+  const startTimeId = useId()
+  const endTimeId = useId()
 
   // Convert initial values to CalendarDate
   const initialCalendarDate = useMemo(() => {
@@ -95,32 +99,51 @@ export function DateFilter({
   const startCalendarDate = mode === 'between' ? (dateRange?.start as CalendarDate | undefined) : date
   const endCalendarDate = mode === 'between' ? (dateRange?.end as CalendarDate | undefined) : undefined
   const instantOf = (date: CalendarDate, time: string) =>
-    isDateTime ? typedInstant(date, time, zone) : startOfDayAt(date, zone)
-  const startDateValue = startCalendarDate ? instantOf(startCalendarDate, startTime) : null
-  const endDateValue = endCalendarDate ? instantOf(endCalendarDate, endTime) : null
-  const isTimeInGap = Boolean((startCalendarDate && !startDateValue) || (endCalendarDate && !endDateValue))
+    isDateTime ? instantAt(typedWallClock(date, time), zone) : startOfDayAt(date, zone)
+
+  // The dates that the filter keeps, or null when no date is picked or a time is in the spring gap of the zone.
+  const pickDates = () => {
+    if (!startCalendarDate) return null
+
+    const startInstant = instantOf(startCalendarDate, startTime)
+    const endInstant = endCalendarDate ? instantOf(endCalendarDate, endTime) : undefined
+    const isInGap = !startInstant || endInstant === null
+
+    if (dateType === 'datetime') {
+      // A wall clock with no place has no zone, so no time of day is in a gap.
+      return placeZone && isInGap
+        ? null
+        : {
+            dateType,
+            startDate: typedWallClock(startCalendarDate, startTime),
+            endDate: endCalendarDate && typedWallClock(endCalendarDate, endTime),
+          }
+    }
+
+    return isInGap ? null : { dateType, startDate: startInstant, endDate: endInstant }
+  }
+
+  const dates = pickDates()
+  const isTimeInGap = Boolean(startCalendarDate) && !dates
 
   const handleSubmit = () => {
-    if (!startDateValue || isTimeInGap) return
+    if (!dates) return
 
     const dateValue: DateValue =
       mode === 'between'
         ? {
+            ...dates,
             mode: 'between',
-            startDate: startDateValue,
-            endDate: endDateValue ?? undefined,
             exclude: exclude || undefined,
-            dateType: dateType,
             timeZone: placeZone,
           }
         : {
+            ...dates,
             mode: (exclude ? 'excluding' : mode) as
               | 'before'
               | 'after'
               | 'on'
               | 'excluding',
-            startDate: startDateValue,
-            dateType: dateType,
             timeZone: placeZone,
           }
 
@@ -140,7 +163,7 @@ export function DateFilter({
     { value: 'between', label: 'Between' },
   ]
 
-  const isValid = Boolean(startDateValue) && !isTimeInGap
+  const isValid = Boolean(dates)
   // A user can be in another zone than the place, so the label names the zone of the place.
   const timeLabel = placeZone ? timeZoneLabel(placeZone) : 'Time'
   // In a wide sheet, such as a phone on its side, a month grid of the full width has wide, flat day cells. The other
@@ -188,7 +211,7 @@ export function DateFilter({
             fixedHeight={!isMobile}
             showDateInput
             autoFocus={autoFocus}
-            timeZone={todayZone}
+            timeZone={zone}
           />
         ) : (
           <JollyCalendar
@@ -200,7 +223,7 @@ export function DateFilter({
             fixedHeight={!isMobile}
             showDateInput
             autoFocus={autoFocus}
-            timeZone={todayZone}
+            timeZone={zone}
           />
         )}
 
@@ -214,18 +237,22 @@ export function DateFilter({
               {mode === 'between' ? (
                 <>
                   <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">Start</Label>
+                    <Label htmlFor={startTimeId} className="text-xs text-muted-foreground">Start</Label>
                     <Input
+                      id={startTimeId}
                       type="time"
+                      aria-label={`Start, ${timeLabel}`}
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
                       className="h-8"
                     />
                   </div>
                   <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">End</Label>
+                    <Label htmlFor={endTimeId} className="text-xs text-muted-foreground">End</Label>
                     <Input
+                      id={endTimeId}
                       type="time"
+                      aria-label={`End, ${timeLabel}`}
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
                       className="h-8"

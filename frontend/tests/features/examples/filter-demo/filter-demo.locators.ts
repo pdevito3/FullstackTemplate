@@ -44,6 +44,7 @@ export const filterDemo = (page: Page) => {
     onlyButtons: (propertyLabel: string) => control(propertyLabel).getByRole('button', { name: /^Only / }),
     toasts: page.getByRole('alertdialog'),
     queryKit: page.getByRole('status', { name: 'QueryKit string' }),
+    filterStateText: (text: string) => page.getByText(text),
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
     /** `name` is the full name of the filter, for example `Labels | Has | Bug`. */

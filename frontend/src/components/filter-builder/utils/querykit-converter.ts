@@ -1,11 +1,10 @@
-import { toCalendarDate } from '@internationalized/date'
+import { toCalendarDate, type CalendarDateTime } from '@internationalized/date'
 
 import { quoteText } from '@/lib/querykit-text'
-import { offsetAt, wallClockAt } from '@/lib/zoned-time'
+import { browserTimeZone, offsetAt, wallClockAt } from '@/lib/zoned-time'
 
 import type { Filter, FilterGroup, FilterState, DateValue } from '../types'
 import { isFilter } from '../types'
-import { wallClockZone } from './date-zone'
 import { LogicalOperators } from './operators'
 
 /**
@@ -89,7 +88,7 @@ function convertMultiSelectFilter(
  */
 function convertDateFilter(propertyKey: string, _operator: string, value: DateValue): string {
   const { mode, startDate, endDate, exclude, dateType = 'date' } = value
-  const timeZone = wallClockZone(dateType, value.timeZone)
+  const timeZone = value.timeZone ?? browserTimeZone()
 
   // Format dates as ISO 8601 strings based on dateType. The date and the wall clock time are those of the zone that the
   // dates were picked in:
@@ -97,12 +96,11 @@ function convertDateFilter(propertyKey: string, _operator: string, value: DateVa
   // - datetime: YYYY-MM-DDTHH:mm:ss (wall clock time, no zone)
   // - datetimeUtc: YYYY-MM-DDTHH:mm:ssZ (UTC)
   // - datetimeOffset: YYYY-MM-DDTHH:mm:ss±HH:mm (wall clock time and its offset)
-  const formatDateValue = (date: Date): string => {
+  const formatDateValue = (date: Date | CalendarDateTime): string => {
+    if (!(date instanceof Date)) return date.set({ millisecond: 0 }).toString()
+
     const wallClock = wallClockAt(date, timeZone).set({ millisecond: 0 })
     switch (dateType) {
-      case 'datetime':
-        return wallClock.toString()
-
       case 'datetimeUtc':
         return `${date.toISOString().slice(0, 19)}Z`
 

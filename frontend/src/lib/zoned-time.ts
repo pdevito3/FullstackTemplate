@@ -52,9 +52,9 @@ export function springGapMessage(zone?: TimeZone): string {
   return `This time does not exist${zone ? ` in ${timeZoneLabel(zone)}` : ''} on that day, because the clocks go forward. Choose another time.`
 }
 
-/** Not an abbreviation, such as "ET", and not an offset, such as "GMT-5". */
+/** Not an abbreviation, such as "ET" or "PT (Canada)", and not an offset, such as "GMT-5". */
 function isWordName(name: string): boolean {
-  return name.includes(' ') && !name.startsWith('GMT')
+  return name.includes(' ') && !/^[A-Z]+ /.test(name)
 }
 
 /** Today at the place, as `ZonedDate.TodayAt` on the Server. */

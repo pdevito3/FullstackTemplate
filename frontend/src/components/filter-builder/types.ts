@@ -1,5 +1,7 @@
 // Core filter types for the FilterBuilder component
 
+import type { CalendarDateTime } from '@internationalized/date'
+
 import type { TimeZone } from '@/lib/zoned-time'
 
 export type ControlType = 'text' | 'multiselect' | 'date' | 'number' | 'boolean'
@@ -25,25 +27,37 @@ export type LogicalOperator = 'AND' | 'OR'
 
 // Date format types for QueryKit:
 // - 'date': Date only (2022-07-01)
-// - 'datetime': Local datetime without timezone (2022-07-01T00:00:03). Only for a Server `DateTime`, not a
-//   `DateTimeOffset`. See "Dates and times" in docs/frontend/code-style.md.
+// - 'datetime': Local datetime without timezone (2022-07-01T00:00:03). Only for a Server `DateTime` in a
+//   `timestamp without time zone` column, not a `DateTimeOffset`. See "Dates and times" in docs/frontend/code-style.md.
 // - 'datetimeUtc': DateTime with UTC indicator (2022-07-01T00:00:03Z)
 // - 'datetimeOffset': DateTime with timezone offset (2022-07-01T00:00:03+01:00)
 export type DateType = 'date' | 'datetime' | 'datetimeUtc' | 'datetimeOffset'
 
-export interface DateValue {
+interface DateValueBase {
   mode: 'before' | 'after' | 'between' | 'on' | 'excluding'
-  /** For a `datetime` with no `timeZone`, the UTC fields of the date hold the wall clock time. See `wallClockZone`. */
-  startDate: Date
-  endDate?: Date // Only for 'between' mode
   exclude?: boolean // When true with 'between' mode, becomes OR logic (outside range)
-  dateType?: DateType // 'date' for date-only, 'datetime' for date+time (defaults to 'date')
   /**
-   * The zone of the place that the dates were picked in. Without it, a `datetime` is a wall clock time with no zone, and
-   * the other types are in the zone of the browser.
+   * The zone of the place that the dates were picked in. Without it, an instant is in the zone of the browser, and a
+   * `datetime` has no zone.
    */
   timeZone?: TimeZone
 }
+
+/** Dates that are instants. `dateType` defaults to 'date'. */
+export interface InstantDateValue extends DateValueBase {
+  dateType?: Exclude<DateType, 'datetime'>
+  startDate: Date
+  endDate?: Date // Only for 'between' mode
+}
+
+/** The dates of a `datetime` are wall clock times, not instants. */
+export interface WallClockDateValue extends DateValueBase {
+  dateType: 'datetime'
+  startDate: CalendarDateTime
+  endDate?: CalendarDateTime // Only for 'between' mode
+}
+
+export type DateValue = InstantDateValue | WallClockDateValue
 
 export interface Filter {
   id: string

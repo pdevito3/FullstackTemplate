@@ -1,3 +1,4 @@
+import { CalendarDateTime } from '@internationalized/date'
 import { expect, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -19,6 +20,15 @@ const startsAt: FilterConfig = {
 
 test('the component tests run in Pacific/Kiritimati, so that a date of the browser zone is not the UTC date', () => {
   expect(browserTimeZone()).toBe('Pacific/Kiritimati')
+})
+
+test.each([
+  ['America/Vancouver', 'Pacific Time (Canada)'],
+  ['America/Edmonton', 'Mountain Time (Canada)'],
+])('names the zone %s in words, with no abbreviation', async (zone, label) => {
+  await render(<DateFilter config={{ ...startsAt, timeZone: parseTimeZone(zone) }} surface="submenu" onSubmit={vi.fn()} />)
+
+  await expect.element(page.getByRole('textbox', { name: label, exact: true })).toBeVisible()
 })
 
 test('takes today and reads the typed time in the zone of the place, not of the browser', async () => {
@@ -104,6 +114,137 @@ test('names the zone that a filter to edit reads its time in, not the zone of th
 
   // Assert
   await expect.element(page.getByRole('textbox', { name: 'American Samoa Time' })).toHaveValue('09:00')
+})
+
+const scheduledAt: FilterConfig = {
+  propertyKey: 'scheduledAt',
+  propertyLabel: 'Scheduled At',
+  controlType: 'date',
+  dateType: 'datetime',
+}
+
+test('keeps a datetime as the wall clock time that the user typed', async () => {
+  // Arrange
+  const onSubmit = vi.fn()
+  await render(<DateFilter config={scheduledAt} surface="submenu" onSubmit={onSubmit} />)
+
+  // Act
+  await page.getByRole('spinbutton', { name: 'month, Date' }).click()
+  await userEvent.keyboard('08152026')
+  await page.getByRole('textbox', { name: 'Time' }).fill('23:30')
+  await page.getByRole('button', { name: 'Add Filter' }).click()
+
+  // Assert
+  const value = onSubmit.mock.lastCall?.[0].value as DateValue
+  expect(value.startDate).toEqual(new CalendarDateTime(2026, 8, 15, 23, 30))
+})
+
+test('shows a datetime to edit at its wall clock time, and keeps that time', async () => {
+  // Arrange
+  const value: DateValue = { mode: 'on', startDate: new CalendarDateTime(2026, 8, 15, 23, 30), dateType: 'datetime' }
+  const onSubmit = vi.fn()
+  await render(
+    <DateFilter
+      config={scheduledAt}
+      surface="submenu"
+      initialFilter={{ id: '1', ...scheduledAt, operator: Operators.EQUALS, value }}
+      onSubmit={onSubmit}
+    />,
+  )
+
+  // Act
+  await page.getByRole('button', { name: 'Update Filter' }).click()
+
+  // Assert
+  await expect.element(page.getByRole('group', { name: 'Date' })).toHaveTextContent('8/15/2026')
+  await expect.element(page.getByRole('textbox', { name: 'Time' })).toHaveValue('23:30')
+  expect((onSubmit.mock.lastCall?.[0].value as DateValue).startDate).toEqual(value.startDate)
+})
+
+test('keeps a datetime range as two wall clock times, and names the zone of each time input', async () => {
+  // Arrange
+  const config = { ...scheduledAt, timeZone: pagoPago }
+  const onSubmit = vi.fn()
+  await render(<DateFilter config={config} surface="submenu" onSubmit={onSubmit} />)
+
+  // Act
+  await page.getByRole('button', { name: 'Between', exact: true }).click()
+  await page.getByRole('spinbutton', { name: 'month, Start date' }).click()
+  await userEvent.keyboard('08152026')
+  await page.getByRole('spinbutton', { name: 'month, End date' }).click()
+  await userEvent.keyboard('08162026')
+  await page.getByRole('textbox', { name: 'Start, American Samoa Time' }).fill('01:00')
+  await page.getByRole('textbox', { name: 'End, American Samoa Time' }).fill('02:30')
+  await page.getByRole('button', { name: 'Add Filter' }).click()
+
+  // Assert
+  const value = onSubmit.mock.lastCall?.[0].value as DateValue
+  expect(value.startDate).toEqual(new CalendarDateTime(2026, 8, 15, 1))
+  expect(value.endDate).toEqual(new CalendarDateTime(2026, 8, 16, 2, 30))
+})
+
+test.each<[string, FilterConfig, DateValue, string]>([
+  [
+    'a datetime',
+    scheduledAt,
+    { mode: 'between', startDate: new CalendarDateTime(2026, 8, 15, 1), endDate: new CalendarDateTime(2026, 8, 16, 2, 30), dateType: 'datetime' },
+    'End, Time',
+  ],
+  [
+    'an instant',
+    startsAt,
+    // 13:30 UTC on August 16 is 02:30 on August 16 in Pago Pago.
+    { mode: 'between', startDate: new Date('2026-08-15T12:00:00Z'), endDate: new Date('2026-08-16T13:30:00Z'), dateType: 'datetimeUtc', timeZone: pagoPago },
+    'End, American Samoa Time',
+  ],
+])('shows the range of %s to edit at its end time, and keeps that time', async (_, config, value, endTimeName) => {
+  // Arrange
+  const onSubmit = vi.fn()
+  await render(
+    <DateFilter
+      config={config}
+      surface="submenu"
+      initialFilter={{ id: '1', ...config, operator: Operators.EQUALS, value }}
+      onSubmit={onSubmit}
+    />,
+  )
+
+  // Act
+  await page.getByRole('button', { name: 'Update Filter' }).click()
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: endTimeName })).toHaveValue('02:30')
+  expect((onSubmit.mock.lastCall?.[0].value as DateValue).endDate).toEqual(value.endDate)
+})
+
+test.each([
+  ['Start', 'Start, Time'],
+  ['End', 'End, Time'],
+])('moves focus to the time input of a range after a click on its label %s', async (label, inputName) => {
+  // Arrange
+  await render(<DateFilter config={scheduledAt} surface="submenu" onSubmit={() => {}} />)
+  await page.getByRole('button', { name: 'Between', exact: true }).click()
+
+  // Act
+  await page.getByText(label, { exact: true }).click()
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: inputName })).toHaveFocus()
+})
+
+test('refuses a datetime of a place at a time that the clocks of the place skip', async () => {
+  // Arrange
+  const config = { ...scheduledAt, timeZone: parseTimeZone('America/New_York') }
+  await render(<DateFilter config={config} surface="submenu" onSubmit={() => {}} />)
+
+  // Act
+  await page.getByRole('spinbutton', { name: 'month, Date' }).click()
+  await userEvent.keyboard('03082026')
+  await page.getByRole('textbox', { name: 'Eastern Time' }).fill('02:30')
+
+  // Assert
+  await expect.element(page.getByRole('alert')).toBeVisible()
+  await expect.element(page.getByRole('button', { name: 'Add Filter' })).toBeDisabled()
 })
 
 test('refuses a time that the clocks of the place skip in the spring', async () => {

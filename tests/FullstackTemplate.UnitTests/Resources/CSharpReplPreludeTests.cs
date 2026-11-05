@@ -1,6 +1,7 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
 using System.Globalization;
+using FullstackTemplate.UnitTests.SourceGenerators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Shouldly;
@@ -68,13 +69,10 @@ public class CSharpReplPreludeTests
     private static List<string> FaultsOf(string prelude)
     {
         var tree = CSharpSyntaxTree.ParseText(prelude, new CSharpParseOptions(kind: SourceCodeKind.Script));
-        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(Path.PathSeparator)
-            .Select(path => MetadataReference.CreateFromFile(path));
         var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithUsings("System", "System.Collections.Generic", "System.Linq", "System.Threading.Tasks");
         var compilation = CSharpCompilation.CreateScriptCompilation(
-            "Prelude", tree, references, options, globalsType: typeof(ReplHostGlobals));
+            "Prelude", tree, PlatformReferences.All, options, globalsType: typeof(ReplHostGlobals));
 
         return [.. compilation.GetDiagnostics()
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)

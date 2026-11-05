@@ -4,6 +4,9 @@
 //
 // A second run with the same arguments changes nothing.
 
+// Nothing publishes this script, so it needs no native AOT packages.
+#:property PublishAot=false
+
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;

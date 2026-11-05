@@ -10,6 +10,9 @@
 
 #:include ../job.cs
 
+// Nothing publishes this script, so it needs no native AOT packages.
+#:property PublishAot=false
+
 if (args.Length > 0)
 {
     Console.Error.WriteLine("Usage: dotnet run scripts/ci/examples/without-examples.cs");

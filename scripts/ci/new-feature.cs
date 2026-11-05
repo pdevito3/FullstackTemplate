@@ -14,6 +14,9 @@
 
 #:include job.cs
 
+// Nothing publishes this script, so it needs no native AOT packages.
+#:property PublishAot=false
+
 Dictionary<string, Step[]> examples = new()
 {
     ["keep"] = [],

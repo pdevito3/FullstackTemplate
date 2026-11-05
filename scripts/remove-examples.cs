@@ -4,6 +4,9 @@
 //
 // A second run changes nothing.
 
+// Nothing publishes this script, so it needs no native AOT packages.
+#:property PublishAot=false
+
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;

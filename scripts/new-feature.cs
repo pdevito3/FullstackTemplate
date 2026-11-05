@@ -12,6 +12,9 @@
 // parameters whose name does not tell their meaning.
 #:property NoWarn=$(NoWarn);CS1573
 
+// Nothing publishes this script, so it needs no native AOT packages.
+#:property PublishAot=false
+
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.RegularExpressions;

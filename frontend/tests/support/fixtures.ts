@@ -10,6 +10,8 @@ export interface Api {
   mock(...routes: MockRoute[]): void
   /** Like `mock`, and the answers wait until the test calls the function that this returns. The seam records a request on arrival. */
   hold(...routes: MockRoute[]): () => void
+  /** Holds the source file of a page until the test calls the function that this returns, so that the navigation to the page stays in progress. */
+  holdPageSource(file: RegExp): Promise<() => void>
   /** The last request that the seam served for this method and path, or undefined if there was none. */
   last(method: HttpMethod, path: string): ServedRequest | undefined
   /** Each request that the seam served for this method and path, in order. */
@@ -38,6 +40,14 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
       const served = requestRecorder()
       const missed: string[] = []
       const holds: (() => void)[] = []
+      const newHold = () => {
+        let release = () => {}
+        const heldUntil = new Promise<void>((resolve) => {
+          release = resolve
+        })
+        holds.push(release)
+        return { heldUntil, release }
+      }
 
       await page.route(
         (url) => url.origin === origin && isMockedPath(url.pathname),
@@ -70,12 +80,16 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
       await provide({
         mock: (...added) => routes.push(...added),
         hold: (...added) => {
-          let release = () => {}
-          const heldUntil = new Promise<void>((resolve) => {
-            release = resolve
-          })
-          holds.push(release)
+          const { heldUntil, release } = newHold()
           routes.push(...added.map((route) => ({ ...route, heldUntil })))
+          return release
+        },
+        holdPageSource: async (file) => {
+          const { heldUntil, release } = newHold()
+          await page.route(file, async (route) => {
+            await heldUntil
+            await route.fallback()
+          })
           return release
         },
         last: served.last,

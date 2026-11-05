@@ -306,6 +306,25 @@ test.describe('a signed-in user whose lookup the Server refuses', () => {
     await expect(start.at.lookupFailure).toContainText(refusal)
   })
 
+  test('shows the failure one time while the next page loads', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+    await expect(start.at.lookupFailure).toContainText(refusal)
+    const loadAbout = await api.holdPageSource(/\/routes\/about\.tsx/)
+
+    await start.goToAbout()
+
+    await expect(start.at.checkFailure).toHaveCount(0)
+    await expect(start.at.lookupFailure).toContainText(refusal)
+
+    loadAbout()
+
+    await expect(start.at.aboutHeading).toBeVisible()
+    await expect(start.at.checkFailure).toContainText(refusal)
+    await expect(start.at.lookupFailure).toHaveCount(0)
+  })
+
   test('moves the focus to the heading of the start page after its Try Again finds a member', async ({ page, api }) => {
     api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
     const start = startTenantPage(page)

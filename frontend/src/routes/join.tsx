@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useClaimInvite } from '@/domain/invites/apis/claim-invite'
+import { SessionChangedError, useClaimInvite } from '@/domain/invites/apis/claim-invite'
 import type { ClaimValues } from '@/domain/invites/apis/claim-invite'
 import { useInvitePreview } from '@/domain/invites/apis/get-invite-preview'
 import { ClaimInviteForm } from '@/domain/invites/components/claim-invite-form'
@@ -64,6 +64,11 @@ function Join({ membership, headingRef }: { membership: Membership; headingRef: 
     try {
       await claim.mutateAsync({ values, identifier, tenantName })
     } catch (error) {
+      // The new session replaces this form, or the root route goes to the login, so this is not a failure to show.
+      if (error instanceof SessionChangedError) {
+        headingRef.current?.focus()
+        return
+      }
       const status = isProblemDetailsError(error) ? error.status : undefined
       if (isProblemDetailsError(error) && (status === 404 || status === 410)) {
         forgetInviteToken()

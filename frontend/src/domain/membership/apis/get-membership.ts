@@ -27,6 +27,9 @@ export function subOf(membership: Membership): string | undefined {
 
 const claim = (claims: BffClaim[], type: string) => claims.find((c) => c.type === type)?.value
 
+/** The `sub` of the claims of a session, or undefined with no session. */
+export const subOfClaims = (claims: BffClaim[] | null | undefined) => (claims ? claim(claims, 'sub') : undefined)
+
 function profileOf(identifier: string, claims: BffClaim[]): StartTenantProfile {
   const email = claim(claims, 'email') ?? ''
   return {
@@ -69,7 +72,7 @@ export const callerRecordQuery = (identifier: string) =>
 
 export function useMembership(): Membership {
   const claims = useQuery(authClaimsQuery)
-  const identifier = claims.data ? claim(claims.data, 'sub') : undefined
+  const identifier = subOfClaims(claims.data)
   const user = useQuery({ ...callerRecordQuery(identifier ?? ''), enabled: !!identifier })
 
   // A failed refetch keeps the data of the last answer, and that answer is still good to show.

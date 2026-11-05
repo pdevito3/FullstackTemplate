@@ -3,7 +3,8 @@ import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-q
 import { claimInvite } from '@/api/generated/invites/clients/claim-invite'
 import type { ClaimInviteDto } from '@/api/generated/models/types/claim-invite-dto'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
-import { callerRecordQuery } from '@/domain/membership/apis/get-membership'
+import { authClaimsQuery } from '@/domain/auth/apis/get-user'
+import { callerRecordQuery, subOfClaims } from '@/domain/membership/apis/get-membership'
 import { refreshCallerMembership } from '@/domain/membership/apis/refresh-caller-membership'
 import { isProblemDetailsError } from '@/lib/problem-details'
 
@@ -16,6 +17,9 @@ interface Claim {
   identifier: string
   tenantName: string
 }
+
+/** The session is no longer the session that the form was filled for, so no claim went out. */
+export class SessionChangedError extends Error {}
 
 /** A 409 or a 410 after the own submit can mean that an earlier submit of this user won. */
 const canBeAnEarlierWin = (error: unknown) =>
@@ -39,6 +43,9 @@ export function useClaimInvite() {
   return useMutation({
     // The token is not a variable of the mutation, so the mutation cache does not hold it.
     mutationFn: async (claim: Claim) => {
+      // The Server binds the new user to the session, and another tab can have changed the session since the last read.
+      const claims = await queryClient.fetchQuery({ ...authClaimsQuery, staleTime: 0 })
+      if (subOfClaims(claims) !== claim.identifier) throw new SessionChangedError()
       const body = { ...claim.values, token: readInviteToken() ?? '' }
       try {
         await claimInvite({ body, options: { suppressErrorToast: true } })

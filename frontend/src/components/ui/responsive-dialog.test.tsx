@@ -138,17 +138,23 @@ for (const [width, height] of [
     scrollParent(page.getByRole('textbox', { name: 'Field 1', exact: true }).element()).scrollTop = 40
     const focused: string[] = []
     const hidden: string[] = []
-    function readField(event: KeyboardEvent) {
-      if (event.key !== 'Tab') return
+    function readHidden() {
       const field = document.activeElement!
-      focused.push(field.ariaLabel!)
       if (isHidden(field)) hidden.push(field.ariaLabel!)
     }
-    document.addEventListener('keyup', readField)
+    function readPress(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return
+      focused.push(document.activeElement!.ariaLabel!)
+      readHidden()
+    }
+    document.addEventListener('keyup', readPress)
     // Send all the presses in one call. The answer to a keyboard call waits for the next frame, and a frame is slow under load.
+    // A read at a keyup comes before that frame, so read again after each call, for a fault that moves the field in a frame.
     await userEvent.keyboard('{Tab}'.repeat(20))
+    readHidden()
     await userEvent.keyboard(`{Shift>}${'{Tab}'.repeat(19)}{/Shift}`)
-    document.removeEventListener('keyup', readField)
+    readHidden()
+    document.removeEventListener('keyup', readPress)
 
     expect(focused).toHaveLength(39)
     expect(focused[0]).toBe('Field 1')

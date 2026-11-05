@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { commands, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import type { Answer } from '@/test/answer'
+import { observersHaveRun } from '@/test/observers-have-run'
 import { venueForCreationDtoSchema } from '@/api/generated/models/zod/venue-for-creation-dto'
 import { maxLengthOf } from '@/lib/api-contract'
 
@@ -120,4 +121,70 @@ test.each([
   await client.invalidateQueries({ queryKey: VenueKeys.detail(picked.id) })
 
   await expect.element(input).toHaveValue('Renamed Hall')
+})
+
+const pageOnePath = '/api/v1/venues?pageNumber=1&pageSize=10'
+const pageTwoPath = '/api/v1/venues?pageNumber=2&pageSize=10'
+
+/** Counts each request for `path` that the page sends from now on, in the page, so a request needs no trip to Node to count. */
+function countRequests(path: string) {
+  const open = vi.spyOn(XMLHttpRequest.prototype, 'open')
+  onTestFinished(() => open.mockRestore())
+  return () => open.mock.calls.filter(([, url]) => String(url).endsWith(path)).length
+}
+
+async function holdPage(path: string) {
+  await commands.holdRequests(path)
+  onTestFinished(() => commands.releaseRequests(path))
+}
+
+test('sends one request for page 2 while the answer is on the way, and shows the answer', async () => {
+  await holdPage(pageTwoPath)
+  const { screen } = await renderPicker()
+  const pageTwoRequests = countRequests(pageTwoPath)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByText('Loading more')).toBeVisible()
+  await observersHaveRun()
+
+  expect(pageTwoRequests()).toBe(1)
+
+  await commands.releaseRequests(pageTwoPath)
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  expect(pageTwoRequests()).toBe(1)
+})
+
+test('stops the request for page 2 on a new search, and shows only the venues of the new search', async () => {
+  await holdPage(pageTwoPath)
+  const { screen, input } = await renderPicker()
+  const stop = vi.spyOn(XMLHttpRequest.prototype, 'abort')
+  onTestFinished(() => stop.mockRestore())
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByText('Loading more')).toBeVisible()
+
+  await userEvent.fill(input, 'Zeta')
+
+  await expect.element(screen.getByRole('option', { name: 'Zeta Hall' })).toBeVisible()
+  expect(stop).toHaveBeenCalledOnce()
+
+  await commands.releaseRequests(pageTwoPath)
+
+  await expect.element(screen.getByRole('option')).toHaveTextContent('Zeta Hall')
+})
+
+test('loads page 2 when the list opens while page 1 loads again', async () => {
+  const { screen, client } = await renderPicker()
+  await expect.poll(() => client.isFetching()).toBe(0)
+  await holdPage(pageOnePath)
+  void client.invalidateQueries({ queryKey: VenueKeys.lists() })
+  await expect.poll(() => client.isFetching()).toBe(1)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', { name: 'Venue 1', exact: true })).toBeVisible()
+  await observersHaveRun()
+  await commands.releaseRequests(pageOnePath)
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
 })

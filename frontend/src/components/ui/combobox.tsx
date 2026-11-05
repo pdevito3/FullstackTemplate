@@ -352,12 +352,24 @@ function ComboboxItem<T extends object>({
 /**
  * Asks for the next page of options when the user scrolls to the end of the list. Put it after a `Collection` of the
  * options in `ComboboxList`. It shows its text while `isLoading` is true.
+ *
+ * React Aria calls `onLoadMore` again each time the collection changes, and a change of `isLoading` changes the
+ * collection. A second `fetchNextPage()` stops the first request and sends it again, so no call goes out while
+ * `isLoading` is true.
  */
-function ComboboxLoadMore({ className, children = "Loading more", ...props }: ListBoxLoadMoreItemProps) {
+function ComboboxLoadMore({
+  className,
+  children = "Loading more",
+  isLoading,
+  onLoadMore,
+  ...props
+}: ListBoxLoadMoreItemProps & { isLoading: boolean }) {
   return (
     <ListBoxLoadMoreItemPrimitive
       data-slot="combobox-load-more"
       className={cn("py-1 text-center text-sm text-muted-foreground", className)}
+      isLoading={isLoading}
+      onLoadMore={isLoading ? undefined : onLoadMore}
       {...props}
     >
       {children}

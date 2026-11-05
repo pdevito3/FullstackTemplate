@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
 import type { AddInviteResponseDto } from '@/api/generated/models/types/add-invite-response-dto'
@@ -55,10 +55,13 @@ function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
   const serverErrors = useServerErrors(form, INVITE_USER_FIELDS)
   const id = useId()
   const { errors } = form.formState
+  const creating = useRef(false)
 
   const handleSubmit = form.handleSubmit(async ({ email, ...values }) => {
-    // Enter submits again while the button waits, and a second create would replace the link of the first.
-    if (add.isPending) return
+    // Enter submits again while the button waits, and a second create would replace the link of the first. The value of
+    // `add.isPending` is the value of the last render, so a second Enter before the next render does not see it.
+    if (creating.current) return
+    creating.current = true
     serverErrors.clear()
     try {
       await add.mutateAsync({ ...values, email: email.trim() || null })
@@ -66,6 +69,8 @@ function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
       serverErrors.show(
         isProblemDetailsError(error) ? error : new Error('The invite was not created. Check your connection, then try again.'),
       )
+    } finally {
+      creating.current = false
     }
   }, focusFirstError(form, INVITE_USER_FIELDS))
 

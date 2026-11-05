@@ -422,7 +422,7 @@ function ComboboxItem<T extends object>({
  * asks again, with an option that the arrow keys and a screen reader can reach. The option stays while the page loads
  * again, so the active option stays in place.
  *
- * A fast answer puts a venue under the pointer and makes it the active option between the two presses of a double
+ * A fast answer puts an option under the pointer and makes it the active option between the two presses of a double
  * press, so the list takes no press for a short time after a press on the option and after the page loads.
  */
 function ComboboxLoadMore({

@@ -75,6 +75,8 @@ const answeringOn = async (page: Page) => {
   if (current) return current
   const state: Answering = { answers: [], unanswered: new Set(), testId: '' }
   answering.set(page, state)
+  // This route must stay on for the life of the page. With no route on, each hold turns interception on,
+  // and about 0.3% of the first image requests after that load with no hold (#377).
   await page.route(isBffRequest, async (route) => {
     const request = route.request()
     const answer = state.answers.findLast(isAnswerFor(request))

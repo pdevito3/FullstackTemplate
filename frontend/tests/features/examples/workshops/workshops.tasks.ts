@@ -59,9 +59,17 @@ export function workshopsPage(page: Page) {
       await expect(at.newForm).toBeVisible()
     },
 
+    // A keyboard user reaches a link in a table with Tab and an arrow key. Do not use locator.press() here: it focuses
+    // the link with no key event, and React Aria then moves the focus to the row in the next frame, so Enter can land on the row.
     async pressWorkshopLink(title: string, id: string, venueId: string) {
       const settled = Promise.all([answered('GET', workshopPaths.one(id)), answered('GET', workshopPaths.venue(venueId))])
-      await at.titleLink(title).press('Enter')
+      await expect(at.row(title)).toBeVisible()
+      await at.search.focus()
+      await page.keyboard.press('Tab')
+      await expect(at.row(title)).toBeFocused()
+      await page.keyboard.press('ArrowRight')
+      await expect(at.titleLink(title)).toBeFocused()
+      await page.keyboard.press('Enter')
       await expect(at.detailHeading(title)).toBeVisible()
       await settled
     },

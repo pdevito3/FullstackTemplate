@@ -28,6 +28,8 @@ A component that takes a save function as a prop does not need answers. Give it 
 
 A click on an option of a combobox can scroll the page, and a scroll of the page closes the list. Pick an option with `userEvent.keyboard('{ArrowDown}{Enter}')`.
 
+To prove that an `IntersectionObserver` did not make a call, such as a second `onLoadMore` of a combobox, wait for `observersHaveRun` from `src/test/observers-have-run.ts`. Then assert. Do not add a fixed wait.
+
 When a component test fails in CI, open the `.vitest/attachments/` folder in the test report artifact of the job. It has the failure screenshot and the Playwright trace of each failed test. The screenshot is at `failure-screenshots/<path of the test file>/<full test name>.png`, with a `-` in place of each character that is not a letter, a digit, or `_`. Vitest 5.0.5 puts only the file name of the test file in that path. So when two files of one name in two folders had a failed test of the same name, one screenshot replaced the other. The patch of `@vitest/browser` in `frontend/patches/` puts the path of the file there. Open the trace at https://trace.playwright.dev. For a test that timed out, the last action with no end is the step that the test waited on. Only CI records the traces, because they make `pnpm test` about 50% slower. In CI that is 16 s more for each job: the median of 8 runs with traces and 8 runs without traces, on one commit, in each of the `api-contract` and `without-examples` jobs. To record them locally, run `CI=1 pnpm test`.
 <!-- example:start -->
 

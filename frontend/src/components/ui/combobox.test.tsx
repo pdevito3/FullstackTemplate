@@ -1,11 +1,18 @@
-import { Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
+import { Collection, Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
 import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
 import { Button } from '@/components/ui/button'
-import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxLoadMore,
+} from '@/components/ui/combobox'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -15,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Popover } from '@/components/ui/popover'
+import { observersHaveRun } from '@/test/observers-have-run'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -540,4 +548,40 @@ test('the option under the pointer has no fill while the arrow keys make another
 
   await expect.element(page.getByRole('option', { name: 'Vue Router' })).toHaveAttribute('data-hovered', 'true')
   await expect.poll(optionsWithFill).toEqual(['Vue'])
+})
+
+function LoadMoreList({ finished, onLoadMore }: { finished: number; onLoadMore: () => void }) {
+  const [asked, setAsked] = useState(0)
+  return (
+    <Combobox aria-label="Framework">
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <Collection items={[{ id: 'vue' }]}>{({ id }) => <ComboboxItem id={id}>Vue</ComboboxItem>}</Collection>
+          <ComboboxLoadMore
+            isLoading={asked > finished}
+            onLoadMore={() => {
+              onLoadMore()
+              setAsked((count) => count + 1)
+            }}
+          />
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+test('ComboboxLoadMore asks for more one time while isLoading is true, and asks again after it', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<LoadMoreList finished={0} onLoadMore={onLoadMore} />)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByText('Loading more')).toBeVisible()
+  await observersHaveRun()
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+
+  await screen.rerender(<LoadMoreList finished={1} onLoadMore={onLoadMore} />)
+
+  await expect.poll(() => onLoadMore.mock.calls.length).toBe(2)
 })

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useId, useState, useMemo } from 'react'
 import { CalendarDate, parseTime, toCalendarDate, toCalendarDateTime, type CalendarDateTime } from '@internationalized/date'
 import type { RangeValue, DateValue as AriaDateValue } from 'react-aria-components'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,8 @@ export function DateFilter({
   // Show time inputs for any datetime variant
   const isDateTime = dateType === 'datetime' || dateType === 'datetimeUtc' || dateType === 'datetimeOffset'
   const isMobile = useIsMobile()
+  const startTimeId = useId()
+  const endTimeId = useId()
 
   // Convert initial values to CalendarDate
   const initialCalendarDate = useMemo(() => {
@@ -235,8 +237,9 @@ export function DateFilter({
               {mode === 'between' ? (
                 <>
                   <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">Start</Label>
+                    <Label htmlFor={startTimeId} className="text-xs text-muted-foreground">Start</Label>
                     <Input
+                      id={startTimeId}
                       type="time"
                       aria-label={`Start, ${timeLabel}`}
                       value={startTime}
@@ -245,8 +248,9 @@ export function DateFilter({
                     />
                   </div>
                   <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">End</Label>
+                    <Label htmlFor={endTimeId} className="text-xs text-muted-foreground">End</Label>
                     <Input
+                      id={endTimeId}
                       type="time"
                       aria-label={`End, ${timeLabel}`}
                       value={endTime}

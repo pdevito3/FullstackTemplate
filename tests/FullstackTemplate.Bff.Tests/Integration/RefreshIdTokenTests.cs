@@ -123,7 +123,9 @@ public class RefreshIdTokenTests
     {
         // Arrange
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        await using var provider = await FakeIdentityProvider.StartAsync();
+        // A revocation waits for the load of the keys, with a limit that starts after the limit of the load. No
+        // revocation here, so that one move of the clock ends the call while the provider still holds the keys.
+        await using var provider = await FakeIdentityProvider.StartAsync(new FakeProviderOptions { Revocation = false });
         await using var app = RefreshLockTests.StartWithClock(clock, provider,
             new Dictionary<string, string?> { [IdentityProviderBackchannel.MetadataRefreshIntervalKey] = "00:00:01" });
         var subject = NewSubject();
@@ -140,7 +142,8 @@ public class RefreshIdTokenTests
             var call = browser.GetApiAsync("/api/v1/items");
             await gate.Arrived.Task.WaitAsync(Timeout);
             clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
-            gate.Released.SetResult();
+            // The gate stays closed until the call ends. With an early release, the load can end before the BFF starts
+            // its wait for the load. The BFF then uses the keys, although this clock passed the limit.
             var response = await call.WaitAsync(Timeout);
 
             // Assert

@@ -50,6 +50,20 @@ describe('a date filter with no zone', () => {
   })
 })
 
+describe('a date filter with milliseconds', () => {
+  it('writes a datetime with no fraction of a second', () => {
+    const value: DateValue = { mode: 'on', startDate: new CalendarDateTime(2026, 8, 15, 20, 0, 0, 500), dateType: 'datetime' }
+
+    expect(queryFor(value)).toBe('startsAt == "2026-08-15T20:00:00"')
+  })
+
+  it('writes a datetimeOffset with no fraction of a second', () => {
+    const value: DateValue = { mode: 'on', startDate: new Date('2026-08-15T20:00:00.500Z'), dateType: 'datetimeOffset' }
+
+    expect(queryFor(value)).toBe('startsAt == "2026-08-15T09:00:00-11:00"')
+  })
+})
+
 function textQuery(value: string): string {
   return toQueryKitString({
     rootLogicalOperator: 'AND',

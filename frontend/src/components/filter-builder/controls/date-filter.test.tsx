@@ -183,6 +183,55 @@ test('keeps a datetime range as two wall clock times, and names the zone of each
   expect(value.endDate).toEqual(new CalendarDateTime(2026, 8, 16, 2, 30))
 })
 
+test.each<[string, FilterConfig, DateValue, string]>([
+  [
+    'a datetime',
+    scheduledAt,
+    { mode: 'between', startDate: new CalendarDateTime(2026, 8, 15, 1), endDate: new CalendarDateTime(2026, 8, 16, 2, 30), dateType: 'datetime' },
+    'End, Time',
+  ],
+  [
+    'an instant',
+    startsAt,
+    // 13:30 UTC on August 16 is 02:30 on August 16 in Pago Pago.
+    { mode: 'between', startDate: new Date('2026-08-15T12:00:00Z'), endDate: new Date('2026-08-16T13:30:00Z'), dateType: 'datetimeUtc', timeZone: pagoPago },
+    'End, American Samoa Time',
+  ],
+])('shows the range of %s to edit at its end time, and keeps that time', async (_, config, value, endTimeName) => {
+  // Arrange
+  const onSubmit = vi.fn()
+  await render(
+    <DateFilter
+      config={config}
+      surface="submenu"
+      initialFilter={{ id: '1', ...config, operator: Operators.EQUALS, value }}
+      onSubmit={onSubmit}
+    />,
+  )
+
+  // Act
+  await page.getByRole('button', { name: 'Update Filter' }).click()
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: endTimeName })).toHaveValue('02:30')
+  expect((onSubmit.mock.lastCall?.[0].value as DateValue).endDate).toEqual(value.endDate)
+})
+
+test.each([
+  ['Start', 'Start, Time'],
+  ['End', 'End, Time'],
+])('moves focus to the time input of a range after a click on its label %s', async (label, inputName) => {
+  // Arrange
+  await render(<DateFilter config={scheduledAt} surface="submenu" onSubmit={() => {}} />)
+  await page.getByRole('button', { name: 'Between', exact: true }).click()
+
+  // Act
+  await page.getByText(label, { exact: true }).click()
+
+  // Assert
+  await expect.element(page.getByRole('textbox', { name: inputName })).toHaveFocus()
+})
+
 test('refuses a datetime of a place at a time that the clocks of the place skip', async () => {
   // Arrange
   const config = { ...scheduledAt, timeZone: parseTimeZone('America/New_York') }

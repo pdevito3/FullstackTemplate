@@ -103,7 +103,7 @@ Recipe rules. Each rule stops a recipe that passes one time and fails on the nex
   - To find a property, keep the pointer off the list, and type in `Search properties`.
   - Do not click an item that is out of view. `locator.click` scrolls its target into view, so the items can move under the pointer.
   - To go to a field of the submenu with the mouse, move the pointer level into the submenu. Then move the pointer to the field.
-- One fixed clock delays the close of the Add Filter menu. If a recipe sets the clock before the first load and then reloads, the menu takes about 1.6 s to go after a submit. On the real clock, or with no reload, it takes about 0.38 s. If the recipe sets the clock after the first load and then reloads, it takes about 0.45 s. The cause is not known. The menu closed each time in an 8 s wait, so it did not stay open forever. An assertion with a timeout of 1.5 s gives a false result of "stays open". If a recipe checks that the menu closed, use a timeout of more than 2 s.
+- One fixed clock delays the close of the Add Filter menu. If a recipe sets the clock before the first load and then reloads, the menu takes about 1.7 to 2.2 s to go after a submit. On the real clock, or with no reload, it takes about 0.38 s. If the recipe sets the clock after the first load and then reloads, it takes about 0.45 s. The cause is not known. The menu closed each time in an 8 s wait, so it did not stay open forever. An assertion with a timeout of 1.5 s gives a false result of "stays open". If a recipe checks that the menu closed, use a timeout of 5 s.
 
 A recipe is an ES module with a default export. `browse.mjs` gives it these values:
 

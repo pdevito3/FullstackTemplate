@@ -372,6 +372,13 @@ public class QueryInputAnalyzerTests
     [Arguments("""PostgresText.CanStore(string.Format("{0}", request.Identifier))""", """u => u.Identifier == string.Format("{0}", request.Identifier)""")]
     [Arguments("""new[] { request.Identifier, request.TenantId }.All(PostgresText.CanStore)""", """u => new[] { request.Identifier, request.TenantId }.Contains(u.Id)""")]
     [Arguments("""new[] { request.Identifier, request.TenantId }.All(id => PostgresText.CanStore(id))""", """u => new[] { request.Identifier, request.TenantId }.Contains(u.Id)""")]
+    [Arguments("""PostgresText.CanStore(string.Concat(request.Identifier, "-1"))""", """u => string.Concat(request.Identifier, "-1") == u.Identifier""")]
+    [Arguments("""PostgresText.CanStore(string.Concat(request.Identifier, "-1"))""", """u => u.Identifier == string.Concat(request.Identifier, "-1") && u.Id != "a" """)]
+    [Arguments("""PostgresText.CanStore( string.Concat( request.Identifier,"-1") )""", """u => u.Identifier == string.Concat(request.Identifier, "-1")""")]
+    [Arguments("""(request.Ids ?? request.More).All(id => PostgresText.CanStore(id))""", """u => (request.Ids ?? request.More).Contains(u.Id)""")]
+    [Arguments("""(request.Ids ?? request.More).All(PostgresText.CanStore)""", """u => (request.Ids ?? request.More).Contains(u.Id)""")]
+    [Arguments("PostgresText.CanStore(request.Names[0])", "u => u.Identifier == request.Names[0]")]
+    [Arguments("PostgresText.CanStore(request.Names[0].Trim())", "u => u.Identifier == request.Names[0].ToLower()")]
     public async Task a_check_of_the_expression_that_the_query_compares_has_no_diagnostics(string check, string predicate)
     {
         // Act
@@ -392,6 +399,9 @@ public class QueryInputAnalyzerTests
     [Arguments("""PostgresText.CanStore(string.Concat(request.Identifier, "-1"))""", """u => u.Identifier == string.Concat(request.TenantId, "-1")""", "request.TenantId")]
     [Arguments("""new[] { request.Identifier, "a" }.All(PostgresText.CanStore)""", """u => new[] { request.TenantId, "a" }.Contains(u.Id)""", "request.TenantId")]
     [Arguments("""new[] { new { Dto = new NameDto("a") } }.All(request => PostgresText.CanStore(request.Dto.Name ?? ""))""", """u => u.Identifier == (request.Dto.Name ?? "")""", "request.Dto.Name")]
+    [Arguments("""(request.Ids ?? request.More).All(PostgresText.CanStore)""", "u => request.More.Contains(u.Id)", "request.More")]
+    [Arguments("PostgresText.CanStore(request.Names[0])", "u => u.Identifier == request.Names[1]", "request.Names[1]")]
+    [Arguments("""PostgresText.CanStore(request.Names?[0] ?? "")""", "u => u.Identifier == request.Names[1]", "request.Names[1]")]
     public async Task a_check_of_another_expression_gets_fstqry001(string check, string predicate, string text)
     {
         // Act
@@ -403,6 +413,44 @@ public class QueryInputAnalyzerTests
 
         // Assert
         Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    public async Task a_check_of_the_same_expression_on_other_lines_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            if (!new[] { request.Identifier, request.TenantId }
+                .All(PostgresText.CanStore))
+                return false;
+            return await dbContext.Users.AnyAsync(u =>
+                new[]
+                {
+                    request.Identifier,
+                    request.TenantId
+                }.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_foreach_check_of_a_coalesce_covers_the_same_coalesce()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            foreach (var id in request.Ids ?? request.More)
+            {
+                if (!PostgresText.CanStore(id))
+                    return false;
+            }
+
+            return await dbContext.Users.AnyAsync(u => (request.Ids ?? request.More).Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
     }
 
     [Test]
@@ -536,6 +584,7 @@ public class QueryInputAnalyzerTests
     [Arguments("id => { var copy = id.Trim(); return EntityId.IsValid(copy, Tenant.IdPrefix); }")]
     [Arguments("id => { ref readonly var alias = ref id; return EntityId.IsValid(alias, Tenant.IdPrefix) && EntityId.IsValid(id, Tenant.IdPrefix); }")]
     [Arguments("""id => { var other = "y"; ref var alias = ref other; alias = "x"; return EntityId.IsValid(id, alias); }""")]
+    [Arguments("""id => { var other = "y"; ref readonly var alias = ref other; alias = ref id; return EntityId.IsValid(id, Tenant.IdPrefix); }""")]
     public async Task a_check_of_a_lambda_parameter_that_the_code_does_not_assign_again_has_no_diagnostics(string check)
     {
         // Act
@@ -768,7 +817,7 @@ public class QueryInputAnalyzerTests
         => Run($$"""
             public sealed record NameDto(string Name);
 
-            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids, string? Filter, System.Collections.Generic.List<string> Names) : IRequest<bool>;
+            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids, string[] More, string? Filter, System.Collections.Generic.List<string> Names) : IRequest<bool>;
 
             public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, bool>
             {

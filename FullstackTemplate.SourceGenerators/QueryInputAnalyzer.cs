@@ -161,22 +161,25 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		return root.Descendants()
 			.Where(check => check.Syntax.SpanStart < text.Syntax.SpanStart)
 			.SelectMany(check => CheckedValues(check, root, types))
-			.Any(value => IsAtPath(value, path, types) || ChecksExpressionThatHolds(value, text, path, types));
+			.Any(value => IsSameText(value, text, path, types) || ChecksExpressionThatHolds(value, text, path, types));
 	}
 
-	private static bool IsAtPath(IOperation value, List<ISymbol> path, InputTypes types)
-		=> PathFromFirstParameter(value, types) is { } other && other.SequenceEqual(path, SymbolEqualityComparer.Default);
+	// A path has no index, so a check of `names[0]` must not count for `names[1]`.
+	private static bool IsSameText(IOperation value, IOperation text, List<ISymbol> path, InputTypes types)
+		=> PathFromFirstParameter(value, types) is { } other
+			&& other.SequenceEqual(path, SymbolEqualityComparer.Default)
+			&& (!path.Any(static symbol => symbol is IPropertySymbol { IsIndexer: true }) || Unwrap(value).Syntax.IsEquivalentTo(Unwrap(text).Syntax, topLevel: false));
 
 	// The check of `a ?? b` does not cover a compare of `b` alone, but it covers a compare of the same `a ?? b`.
 	private static bool ChecksExpressionThatHolds(IOperation value, IOperation text, List<ISymbol> path, InputTypes types)
 	{
-		if (!TextsIn(value, types).Any(inner => IsAtPath(inner, path, types)))
+		if (!TextsIn(value, types).Any(inner => IsSameText(inner, text, path, types)))
 			return false;
 
 		var expression = Unwrap(value).Syntax;
 		for (var parent = text.Parent; parent is not null; parent = parent.Parent)
 		{
-			if (parent.Syntax.IsEquivalentTo(expression))
+			if (parent.Syntax.IsEquivalentTo(expression, topLevel: false))
 				return true;
 		}
 
@@ -185,24 +188,21 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 	private static IEnumerable<IOperation> CheckedValues(IOperation operation, IOperation root, InputTypes types)
 	{
-		switch (operation)
+		foreach (var value in ValuesThatCheckReads(operation, root, types).OfType<IOperation>())
 		{
-			case IInvocationOperation call when types.IsCheck(call.TargetMethod):
-				foreach (var argument in call.Arguments)
-				{
-					yield return argument.Value;
-					if (Unwrap(argument.Value) is ICoalesceOperation coalesce)
-						yield return coalesce.Value;
-					if (ListThatHoldsItem(argument.Value, root, types) is { } list)
-						yield return list;
-				}
-
-				break;
-			case IMethodReferenceOperation reference when types.IsCheck(reference.Method) && SourceOf(reference.Parent) is { } source:
-				yield return source;
-				break;
+			yield return value;
+			if (Unwrap(value) is ICoalesceOperation coalesce)
+				yield return coalesce.Value;
 		}
 	}
+
+	private static IEnumerable<IOperation?> ValuesThatCheckReads(IOperation operation, IOperation root, InputTypes types)
+		=> operation switch
+		{
+			IInvocationOperation call when types.IsCheck(call.TargetMethod) => call.Arguments.SelectMany(argument => new[] { argument.Value, ListThatHoldsItem(argument.Value, root, types) }),
+			IMethodReferenceOperation reference when types.IsCheck(reference.Method) => [SourceOf(reference.Parent)],
+			_ => [],
+		};
 
 	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root, InputTypes types)
 	{
@@ -323,7 +323,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 		return target.Parent switch
 		{
-			IAssignmentOperation assignment => ReferenceEquals(assignment.Target, target) || assignment is ISimpleAssignmentOperation { IsRef: true },
+			IAssignmentOperation assignment => ReferenceEquals(assignment.Target, target) || assignment is ISimpleAssignmentOperation { IsRef: true, Target: not ILocalReferenceOperation { Local.RefKind: RefKind.RefReadOnly } },
 			IVariableInitializerOperation { Parent: IVariableDeclaratorOperation { Symbol.RefKind: RefKind.Ref } } => true,
 			IIncrementOrDecrementOperation => true,
 			IArgumentOperation { Parameter.RefKind: RefKind.Ref or RefKind.Out } => true,
@@ -340,10 +340,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static IOperation ListOf(IOperation collection)
 	{
 		var list = Unwrap(collection);
-		if (list is IConditionalAccessInstanceOperation instance && ReceiverOf(instance) is { } receiver)
-			list = Unwrap(receiver);
-
-		return list is ICoalesceOperation coalesce ? coalesce.Value : list;
+		return list is IConditionalAccessInstanceOperation instance && ReceiverOf(instance) is { } receiver ? Unwrap(receiver) : list;
 	}
 
 	private sealed class InputTypes(

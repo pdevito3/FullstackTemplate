@@ -197,6 +197,7 @@ public class TelemetryNameAnalyzerTests
     [Arguments("""KeyValuePair<string, object?>[] pairs = [new("UserId", id)]; var tags = new TagList(pairs);""")]
     [Arguments("""System.ReadOnlySpan<KeyValuePair<string, object?>> pairs = [new("UserId", id)]; var tags = new TagList(pairs);""")]
     [Arguments("""var tags = new TagList(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new ActivityTagsCollection { ["UserId"] = id });""")]
     [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] ??= id;""")]
     [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] += id;""")]
     public async Task a_bad_key_in_a_tag_list_or_an_activity_tags_collection_gets_fsttel004(string statement)
@@ -245,6 +246,40 @@ public class TelemetryNameAnalyzerTests
     {
         // Act
         var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""var tags = new ActivityTagsCollection(new Pairs { { "user_id", 1 } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Pairs { ["user_id"] = 1 });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new List<KeyValuePair<string, object?>> { { "user_id", 1 } });""")]
+    public async Task an_initializer_that_names_its_own_key_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await Run($$"""
+            public sealed class Pairs : List<KeyValuePair<string, object?>>
+            {
+                public void Add(string key, object? value) => Add(new KeyValuePair<string, object?>($"app.{key}", value));
+
+                public object? this[string key]
+                {
+                    set => Add(key, value);
+                }
+            }
+
+            public static class PairExtensions
+            {
+                public static void Add(this List<KeyValuePair<string, object?>> pairs, string key, object? value)
+                    => pairs.Add(new KeyValuePair<string, object?>($"app.{key}", value));
+
+                public static void Run()
+                {
+                    {{statement}}
+                }
+            }
+            """);
 
         // Assert
         diagnostics.ShouldBeEmpty();

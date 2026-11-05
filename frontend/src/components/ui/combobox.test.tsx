@@ -1,6 +1,6 @@
 import { Collection, Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
-import { useState } from 'react'
-import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
+import { useEffect, useState } from 'react'
+import { afterEach, expect, onTestFinished, test, vi, type Mock } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -424,13 +424,17 @@ test.each(['{Tab}', '{Enter}'])('%s picks the option that the arrow keys made ac
   expect(onChange).toHaveBeenCalledExactlyOnceWith('vue')
 })
 
-function ControlledFrameworkCombobox({ onChange }: { onChange: (key: unknown) => void }) {
+function ControlledFrameworkCombobox({
+  onChange,
+  ...props
+}: { onChange: (key: unknown) => void } & Pick<ComboBoxProps<object>, 'menuTrigger' | 'onBlur' | 'onOpenChange'>) {
   const [value, setValue] = useState<Key | null>(null)
   const [inputValue, setInputValue] = useState('')
   const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
   return (
     <div style={{ height: '300vh' }}>
       <Combobox
+        {...props}
         value={value}
         onChange={(key) => {
           onChange(key)
@@ -469,44 +473,216 @@ test('Tab in an open list picks the option with the typed text when the value an
   expect(onChange.mock.calls).toEqual([['vue']])
 })
 
+/** Nothing signals that a list will not open, so this looks at each frame for longer than the exit of .22 s. */
+async function expectListStaysClosed() {
+  const end = performance.now() + 300
+  while (performance.now() < end) {
+    expect(page.getByRole('listbox').query()).toBeNull()
+    await new Promise(requestAnimationFrame)
+  }
+}
+
+const opens = (onOpenChange: Mock) => onOpenChange.mock.calls.filter(([isOpen]) => isOpen)
+
 const closeTheList = [
   ['a scroll of the page', async () => window.scrollBy(0, 200)],
   ['the button', () => page.getByRole('button', { name: /^Show suggestions/, includeHidden: true }).click()],
 ] as const
 
-test.each(closeTheList)('Tab in a list that %s closed picks one time when the value and the text are controlled', async (_, close) => {
+const keyTimes = [
+  [
+    'after its exit',
+    async (close: () => Promise<void>) => {
+      await close()
+      await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+      return () => {}
+    },
+  ],
+  [
+    'during its exit',
+    // A long exit puts the key inside the exit on a slow machine too. The exit ends when the style goes.
+    async (close: () => Promise<void>) => {
+      const longExit = document.head.appendChild(document.createElement('style'))
+      longExit.textContent = '[data-exiting] { animation-duration: 1h !important; }'
+      onTestFinished(() => longExit.remove())
+      await close()
+      await vi.waitFor(() => expect(document.querySelector('[data-exiting]')).not.toBeNull())
+      return () => longExit.remove()
+    },
+  ],
+] as const
+
+const closedLists = closeTheList.flatMap(([closer, close]) =>
+  keyTimes.map(([keyTime, closeForKey]) => [closer, keyTime, () => closeForKey(close)] as const),
+)
+
+test.each(closedLists)('Tab picks one time in a list that %s closed, %s, with controlled value and text', async (_, __, closeForKey) => {
   const onChange = vi.fn()
-  const screen = await render(<ControlledFrameworkCombobox onChange={onChange} />)
+  const onOpenChange = vi.fn()
+  const screen = await render(<ControlledFrameworkCombobox onChange={onChange} onOpenChange={onOpenChange} />)
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await userEvent.keyboard('vue')
   await expect.element(page.getByRole('listbox')).toBeVisible()
-  await close()
-  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  const endExit = await closeForKey()
+  onOpenChange.mockClear()
 
   await userEvent.keyboard('{Tab}')
 
-  expect(onChange.mock.calls).toEqual([['vue']])
-  expect(page.getByRole('listbox').query()).toBeNull()
   await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
   await expect.element(input).toHaveValue('Vue')
+  endExit()
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await expectListStaysClosed()
+  expect(onChange.mock.calls).toEqual([['vue']])
+  expect(opens(onOpenChange)).toEqual([])
 })
 
-test.each(closeTheList)('Enter in a list that %s closed picks and keeps the list closed when the value and the text are controlled', async (_, close) => {
+test.each(closedLists)('Enter picks and keeps closed a list that %s closed, %s, with controlled value and text', async (_, __, closeForKey) => {
   const onChange = vi.fn()
-  const screen = await render(<ControlledFrameworkCombobox onChange={onChange} />)
+  const onOpenChange = vi.fn()
+  const screen = await render(<ControlledFrameworkCombobox onChange={onChange} onOpenChange={onOpenChange} />)
   const input = screen.getByRole('combobox', { name: 'Framework' })
   await input.click()
   await userEvent.keyboard('vue')
   await expect.element(page.getByRole('listbox')).toBeVisible()
-  await close()
-  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  const endExit = await closeForKey()
+  onOpenChange.mockClear()
 
   await userEvent.keyboard('{Enter}')
 
-  expect(page.getByRole('listbox').query()).toBeNull()
-  expect(onChange.mock.calls).toEqual([['vue']])
   await expect.element(input).toHaveValue('Vue')
+  endExit()
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await expectListStaysClosed()
+  expect(onChange.mock.calls).toEqual([['vue']])
+  expect(opens(onOpenChange)).toEqual([])
+})
+
+function LateTextFrameworkCombobox({
+  onChange,
+  onOpenChange,
+  setTextLater,
+}: {
+  onChange: (key: unknown) => void
+  onOpenChange: (isOpen: boolean) => void
+  setTextLater: (setText: () => void) => void
+}) {
+  const [value, setValue] = useState<Key | null>(null)
+  const [inputValue, setInputValue] = useState('')
+  useEffect(() => {
+    if (value != null) {
+      setTextLater(() => setInputValue('Vue'))
+    }
+  }, [value, setTextLater])
+  return (
+    <div style={{ height: '300vh' }}>
+      <Combobox
+        value={value}
+        onChange={(key) => {
+          onChange(key)
+          setValue(key)
+        }}
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+        onOpenChange={onOpenChange}
+      >
+        <Label>Framework</Label>
+        <ComboboxInput />
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxItem id="vue">Vue</ComboboxItem>
+            <ComboboxItem id="vue-router">Vue Router</ComboboxItem>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <input aria-label="Next field" />
+    </div>
+  )
+}
+
+const setTextInAnEffect = (setText: () => void) => setText()
+const setTextInATimer = (setText: () => void) => void setTimeout(setText, 50)
+
+const closeWithTheButton = () => page.getByRole('button', { name: /^Show suggestions/, includeHidden: true }).click()
+
+const lateTextPicks = [
+  ['an open list', 'an effect', async () => {}, setTextInAnEffect],
+  ['an open list', 'a timer', async () => {}, setTextInATimer],
+  ['a closed list', 'an effect', closeWithTheButton, setTextInAnEffect],
+  ['a closed list', 'a timer', closeWithTheButton, setTextInATimer],
+] as const
+
+test.each(lateTextPicks)('Enter in %s keeps the list closed when the app sets the text in %s', async (_, __, closeOrNot, setTextLater) => {
+  const onChange = vi.fn()
+  const onOpenChange = vi.fn()
+  const screen = await render(<LateTextFrameworkCombobox onChange={onChange} onOpenChange={onOpenChange} setTextLater={setTextLater} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  await closeOrNot()
+  onOpenChange.mockClear()
+
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue('Vue')
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await expectListStaysClosed()
+  expect(onChange.mock.calls).toEqual([['vue']])
+  expect(opens(onOpenChange)).toEqual([])
+})
+
+test('Tab in a closed list picks one time when the app sets the text in an effect', async () => {
+  const onChange = vi.fn()
+  const onOpenChange = vi.fn()
+  const screen = await render(<LateTextFrameworkCombobox onChange={onChange} onOpenChange={onOpenChange} setTextLater={setTextInAnEffect} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  await page.getByRole('button', { name: /^Show suggestions/, includeHidden: true }).click()
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  onOpenChange.mockClear()
+
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
+  await expect.element(input).toHaveValue('Vue')
+  await expectListStaysClosed()
+  expect(onChange.mock.calls).toEqual([['vue']])
+  expect(opens(onOpenChange)).toEqual([])
+})
+
+test('the focus trigger of the app opens the list again when the focus comes back after a pick', async () => {
+  const screen = await render(<ControlledFrameworkCombobox onChange={vi.fn()} menuTrigger="focus" />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  await userEvent.keyboard('vue')
+  await page.getByRole('button', { name: /^Show suggestions/, includeHidden: true }).click()
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('Vue')
+  await expectListStaysClosed()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
+
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+
+  await expect.element(input).toHaveFocus()
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+})
+
+test('a blur of the input calls the onBlur of the app', async () => {
+  const onBlur = vi.fn()
+  const screen = await render(<ControlledFrameworkCombobox onChange={vi.fn()} onBlur={onBlur} />)
+  await screen.getByRole('combobox', { name: 'Framework' }).click()
+
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
+  expect(onBlur).toHaveBeenCalledOnce()
 })
 
 test('typing after Enter in a closed list opens the list when the value and the text are controlled', async () => {

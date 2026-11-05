@@ -35,7 +35,7 @@ onUnauthorized(async () => {
   return queryClient.getQueryData(AuthKeys.user()) === null
 })
 
-// The membership banner stays mounted across pages, and a page such as About has no query of its own to ask again.
+// The banner of the layout stays mounted, and a page that does not read the membership does not ask again.
 router.subscribe('onResolved', ({ pathChanged }) => {
   if (pathChanged) void retryFailedMembership(queryClient)
 })

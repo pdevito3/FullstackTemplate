@@ -154,7 +154,8 @@ public class UserReadAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
-    // The same delete as the test above, and the same state as a request that overlaps a delete on this instance
+    // The same delete as the test above, so this test also runs alone. The caller is an outsider with a cached tenant,
+    // as when a delete commits before the request loads the caller.
     [Test]
     [NotInParallel]
     public async Task deleted_user_with_a_cached_tenant_gets_not_found_for_their_own_identifier()
@@ -206,6 +207,7 @@ public class UserReadAccessTests : TestBase
         result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    // The same delete as above, so this test also runs alone.
     [Test]
     [NotInParallel]
     public async Task deleted_user_with_a_cached_tenant_is_forbidden_for_the_identifier_of_a_user_of_another_tenant()

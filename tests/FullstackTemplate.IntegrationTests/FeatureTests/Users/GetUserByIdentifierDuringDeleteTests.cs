@@ -16,15 +16,12 @@ using Shouldly;
 /// </summary>
 public class GetUserByIdentifierDuringDeleteTests : TestBase
 {
-    // The request knows that the caller is a member, and it did not read the record yet.
-    private const string CallerIsLoaded = "users.get_by_identifier";
-
-    // The request has the tenant scope of the caller, and it did not load the caller yet.
-    private const string ScopeIsResolved = "users.permission_guard.load";
+    private const string BeforeRecordRead = "users.get_by_identifier";
+    private const string BeforeCallerLoad = "users.permission_guard.load";
 
     [Test]
-    [Arguments(CallerIsLoaded)]
-    [Arguments(ScopeIsResolved)]
+    [Arguments(BeforeRecordRead)]
+    [Arguments(BeforeCallerLoad)]
     public async Task user_who_reads_their_own_identifier_during_the_delete_of_their_record_gets_not_found(string step)
     {
         // Arrange
@@ -39,8 +36,8 @@ public class GetUserByIdentifierDuringDeleteTests : TestBase
     }
 
     [Test]
-    [Arguments(CallerIsLoaded)]
-    [Arguments(ScopeIsResolved)]
+    [Arguments(BeforeRecordRead)]
+    [Arguments(BeforeCallerLoad)]
     public async Task user_who_reads_their_own_identifier_during_the_delete_of_their_tenant_gets_not_found(string step)
     {
         // Arrange
@@ -61,7 +58,7 @@ public class GetUserByIdentifierDuringDeleteTests : TestBase
         var (admin, member, other) = await AddTenantWithOtherMemberAsync();
 
         // Act
-        var error = await ReadDuringDeleteAsync<ForbiddenAccessException>(CallerIsLoaded, member, other.Identifier,
+        var error = await ReadDuringDeleteAsync<ForbiddenAccessException>(BeforeRecordRead, member, other.Identifier,
             rival => rival.SendAsync(new DeleteUser.Command(other.Id)), admin);
 
         // Assert
@@ -75,7 +72,7 @@ public class GetUserByIdentifierDuringDeleteTests : TestBase
         var (admin, member, other) = await AddTenantWithOtherMemberAsync();
 
         // Act
-        var error = await ReadDuringDeleteAsync<ForbiddenAccessException>(ScopeIsResolved, member, $"unknown-{other.Id}",
+        var error = await ReadDuringDeleteAsync<ForbiddenAccessException>(BeforeCallerLoad, member, $"unknown-{other.Id}",
             rival => rival.SendAsync(new DeleteUser.Command(member.Id)), admin);
 
         // Assert

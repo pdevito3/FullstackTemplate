@@ -55,7 +55,7 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
     : new Error(`The membership check failed with status ${result.status}.`)
 }
 
-/** A refusal of the Server does not change on an immediate retry, so only the user asks again, with Try Again. */
+/** A refusal of the Server does not change on an immediate retry. */
 export const isRefusal = (error: unknown): error is ProblemDetailsError =>
   isProblemDetailsError(error) && (error.status ?? 500) < 500
 

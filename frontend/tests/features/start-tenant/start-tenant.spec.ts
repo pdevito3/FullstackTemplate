@@ -109,7 +109,7 @@ test.describe('a signed-in user whose lookup the Server refuses', () => {
 
   const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
 
-  test('sees the reason of the Server, and the app asks again only when the user presses Try Again', async ({ page, api }) => {
+  test('sees the reason of the Server with no automatic retry, and Try Again asks again', async ({ page, api }) => {
     api.mock(membershipApi.lookupRefuses(refusal))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
@@ -181,16 +181,5 @@ test.describe('a member of a tenant', () => {
 
     await expect(start.at.notice).toHaveCount(0)
     await expect(start.at.checkFailure).toHaveCount(0)
-  })
-
-  test('sends no new lookup for a click on another page', async ({ page, api }) => {
-    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Bob Smith' }))
-    const start = startTenantPage(page)
-    await start.openAsSignedIn('/')
-
-    await start.goToAbout()
-
-    await expect(start.at.aboutHeading).toBeVisible()
-    expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
   })
 })

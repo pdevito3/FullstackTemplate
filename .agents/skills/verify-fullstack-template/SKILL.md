@@ -228,11 +228,11 @@ The checks:
 | Overlay goes past the window | A dialog, alert dialog, menu, list box, tooltip, or popover that goes past the left or the right edge of the window. |
 | List grows past its max height | An element whose inline `max-height` lets it grow taller than the `max-height` in pixels of its class. React Aria sets an inline `max-height` on a popover from the space on the page, and an inline style wins over a class. Give the React Aria `Popover` a `maxHeight` instead. |
 | Fixed-height bar wraps | A `header` or a `[role=toolbar]` whose height does not come from its content, with its text on more than one line, or with text that runs out of its height. A bar whose height comes from its content can wrap. |
-| Focus goes to the body | The focus is on the body, and the element that had it last was removed, disabled, hidden, or made inert. |
+| Focus goes to the body | The focus is on the body, the element that had it last was removed, disabled, hidden, or made inert, and the focus is still on the body 1 s later. A navigation can hold the focus on the body for some time, because the root layout moves the focus only when the navigation ends. A step that finds a loss takes 1 s longer, even if an element gets the focus before the end of that 1 s. A step with no loss does not wait. |
 
 The sweep checks the focus only at the end of each step. Make a step for each action that can move the focus.
 
-`scripts/sweep.test.mjs` tests the layout checks on small pages, with no stack: each form of cut-off text that must fail, and each planned truncation that must pass. When you change a check, add its forms to the test. Run the test with `node --test $S/scripts/sweep.test.mjs`. CI runs it.
+`scripts/sweep.test.mjs` tests the layout and focus checks on small pages, with no stack: each form of cut-off text that must fail, each planned truncation that must pass, a focus that stays on the body, a focus that moves late inside and outside the limit, and a focus that returns to the body. When you change a check, add its forms to the test. Run the test with `node --test $S/scripts/sweep.test.mjs`. CI runs it.
 
 ### Known limits
 
@@ -251,6 +251,10 @@ The sweep does not report these faults:
 - Text directly in a column with a fixed height and `justify-end`, with no clip, which grows up past the top of the box.
 - An auto table that runs past its parent and stays in the window. The check stops at a table.
 - Text with only symbols, such as `$$$` or an emoji, that runs past its box. If a box cuts this text, the sweep reports it.
+- A focus that stays on the body until less than 1 s after the end of the step, and then moves to an element that still has it at the end of that 1 s. The element can be the wrong one.
+- A focus that moves to an element in that 1 s and then leaves that element with a blur after the 1 s.
+- A loss after the end of the step. The next step reports it. If the step is the last step of the recipe, the sweep gives no report.
+- A focused element that gets `visibility: hidden`. `checkVisibility()` does not read this property by default.
 
 The sweep can report these forms, which are correct:
 

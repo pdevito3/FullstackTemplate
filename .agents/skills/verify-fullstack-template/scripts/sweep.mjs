@@ -77,16 +77,23 @@ export function trackLastFocused() {
 // React Aria gives the focus back in the animation frame after an overlay unmounts, so for one frame it is on the body.
 // The check waits two frames, because a callback of the first frame can run before the callback of React Aria.
 // A hidden headed window runs no frames, so the wait also ends after 100 ms.
+// The root layout moves the focus only when a navigation ends, so the focus can stay on the body for longer: about 100 ms
+// after Join tenant, and about 450 ms with the CPU 4 times slower. So a loss counts only if the focus is on the body after 1 s.
+// The first focus does not end this wait, because that focus can return to the body.
+// The reason comes from the first read, because a button that gets enabled again does not get its focus back.
 async function readFocusLoss() {
+  const isOnBody = () => !document.activeElement || document.activeElement === document.body
   await new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve))
     setTimeout(resolve, 100)
   })
   const el = window.__sweepFocused
-  if (!el || (document.activeElement && document.activeElement !== document.body)) return null
+  if (!el || !isOnBody()) return null
   const reason = !el.isConnected ? 'was removed' : el.matches(':disabled') ? 'was disabled'
     : el.closest('[inert]') ? 'became inert' : !el.checkVisibility() ? 'was hidden' : null
   if (!reason) return null
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+  if (!isOnBody()) return null
   window.__sweepFocused = null
   const name = el.getAttribute('aria-label') ?? el.textContent.trim().replace(/\s+/g, ' ').slice(0, 60)
   return { element: `${el.getAttribute('role') ?? el.tagName.toLowerCase()} "${name}"`, reason }

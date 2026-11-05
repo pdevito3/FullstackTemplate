@@ -524,6 +524,76 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     })
   }
 
+  test('sends no claim for the next person when another person signed in while the form was open', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()), invitesApi.claims(aUser()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+
+    const bob = as.userWithNoTenant('Bob Smith', 'bob')
+    api.mock(bffApi.userIs(bob), ...membershipApi.userIs(bob))
+    await join.at.submit.click()
+
+    await expect(join.at.form).toHaveCount(0)
+    expect(api.all('post', invitesPaths.claim)).toEqual([])
+    await expect(join.at.alert(linkNeeded)).toBeVisible()
+    await expect(join.at.heading).toBeFocused()
+    await expect(join.at.toasts).toHaveCount(0)
+    expect(await join.storedToken()).toBeNull()
+  })
+
+  test('sends no claim when a member of a tenant signed in while the form was open', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()), invitesApi.claims(aUser()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+
+    const bob = as.user('Bob Smith', 'bob')
+    api.mock(bffApi.userIs(bob), ...membershipApi.userIs(bob))
+    await join.at.submit.click()
+
+    await expect(join.at.form).toHaveCount(0)
+    expect(api.all('post', invitesPaths.claim)).toEqual([])
+    await expect(join.at.alreadyMember).toBeVisible()
+    await expect(join.at.toasts).toHaveCount(0)
+    expect(await join.storedToken()).toBeNull()
+  })
+
+  test('sends no claim and goes to the login when the session ended while the form was open, and keeps the token', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()), invitesApi.claims(aUser()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await expect(join.at.form).toBeVisible()
+
+    api.mock(bffApi.userIs(as.anonymous()), bffApi.loginOpens())
+    await join.at.submit.click()
+
+    await expect(page).toHaveURL(/\/bff\/login/)
+    expect(api.all('post', invitesPaths.claim)).toEqual([])
+    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/join')
+    expect(await join.storedToken()).toBe(token)
+  })
+
+  test('sends no claim when the session cannot be read, says so in the form, and can claim after a new submit', { tag: '@INV-3' }, async ({ page, api }) => {
+    api.mock(invitesApi.previewIs(aPreview()), invitesApi.claims(aUser()))
+    const join = joinPage(page)
+    await join.openLink(token)
+    await join.at.username.fill('augusta')
+
+    api.mock(bffApi.userFails(aProblem().saying('The server had a problem.')))
+    await join.at.submit.click()
+
+    await expect(join.at.formAlert).toContainText('The server had a problem.')
+    expect(api.all('post', invitesPaths.claim)).toEqual([])
+    await expect(join.at.username).toHaveValue('augusta')
+    await expect(join.at.toasts).toHaveCount(0)
+
+    api.mock(bffApi.userIs(as.userWithNoTenant('Ada Lovelace')), membershipApi.userIsNow(aUser().identifiedBy(actorSubject)))
+    await join.claimAndGoHome()
+
+    expect(api.last('post', invitesPaths.claim)?.body).toMatchObject({ token, username: 'augusta' })
+  })
+
   test('holds long names and emails in a narrow window', { tag: '@INV-3' }, async ({ page, api }) => {
     await page.setViewportSize({ width: 320, height: 640 })
     const tenantName = `Acme ${'Longname'.repeat(20)}`

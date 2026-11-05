@@ -143,7 +143,9 @@ public class TelemetryNameAnalyzerTests
         var diagnostics = await RunInMethod(statement);
 
         // Assert
-        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("\"Raw Key\"");
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("""
+            "Raw Key"
+            """);
     }
 
     [Test]
@@ -192,7 +194,9 @@ public class TelemetryNameAnalyzerTests
         // Assert
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldStartWith("The tag key 'UserId' breaks the name rules.");
-        Text(diagnostic).ShouldBe("\"UserId\"");
+        Text(diagnostic).ShouldBe("""
+            "UserId"
+            """);
     }
 
     [Test]

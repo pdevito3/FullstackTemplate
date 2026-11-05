@@ -291,15 +291,15 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("u => u.Identifier == (request.Filter ?? \"\")", "request.Filter")]
-    [Arguments("u => (request.Filter ?? \"\") == u.Identifier", "request.Filter")]
-    [Arguments("u => u.Identifier == (request.Filter ?? \"\").Trim()", "request.Filter")]
-    [Arguments("u => u.Identifier.StartsWith(request.Filter ?? \"\")", "request.Filter")]
-    [Arguments("u => EF.Functions.ILike(u.Identifier, $\"%{request.Filter ?? \"\"}%\")", "request.Filter")]
+    [Arguments("""u => u.Identifier == (request.Filter ?? "")""", "request.Filter")]
+    [Arguments("""u => (request.Filter ?? "") == u.Identifier""", "request.Filter")]
+    [Arguments("""u => u.Identifier == (request.Filter ?? "").Trim()""", "request.Filter")]
+    [Arguments("""u => u.Identifier.StartsWith(request.Filter ?? "")""", "request.Filter")]
+    [Arguments("""u => EF.Functions.ILike(u.Identifier, $"%{request.Filter ?? ""}%")""", "request.Filter")]
     [Arguments("u => (request.Ids ?? new string[0]).Contains(u.Id)", "request.Ids")]
-    [Arguments("u => u.Identifier == (request.Filter == null ? \"\" : request.Filter)", "request.Filter")]
-    [Arguments("u => u.Identifier == (u.Id == \"a\" ? request.Identifier : \"b\")", "request.Identifier")]
-    [Arguments("u => u.Identifier == (u.Id == \"a\" ? \"b\" : request.Identifier)", "request.Identifier")]
+    [Arguments("""u => u.Identifier == (request.Filter == null ? "" : request.Filter)""", "request.Filter")]
+    [Arguments("""u => u.Identifier == (u.Id == "a" ? request.Identifier : "b")""", "request.Identifier")]
+    [Arguments("""u => u.Identifier == (u.Id == "a" ? "b" : request.Identifier)""", "request.Identifier")]
     public async Task a_request_text_through_a_coalesce_or_a_conditional_gets_fstqry001(string predicate, string text)
     {
         // Act
@@ -322,14 +322,14 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("if (!PostgresText.CanStore(request.Filter ?? \"\")) return false;", "u => u.Identifier == (request.Filter ?? \"\")")]
-    [Arguments("if (!PostgresText.CanStore((request.Filter ?? \"\").Trim())) return false;", "u => u.Identifier == (request.Filter ?? \"\").Trim()")]
-    [Arguments("if (request.Filter != null && !PostgresText.CanStore(request.Filter)) return false;", "u => u.Identifier == (request.Filter ?? \"\")")]
-    [Arguments("if (!PostgresText.CanStore(request.Identifier)) return false;", "u => u.Identifier == (u.Id == \"a\" ? request.Identifier : \"b\")")]
-    [Arguments("", "u => u.Identifier == (PostgresText.CanStore(request.Identifier) ? request.Identifier : \"\")")]
-    [Arguments("", "u => u.Identifier == (request.Filter == null ? \"a\" : \"b\")")]
-    [Arguments("var tenant = Create(request.Dto.Name);", "u => u.Identifier == (tenant.Name ?? \"\")")]
-    [Arguments("var tenant = Create(request.Dto.Name);", "u => u.Identifier == (u.Id == \"a\" ? tenant.Name : u.Id)")]
+    [Arguments("""if (!PostgresText.CanStore(request.Filter ?? "")) return false;""", """u => u.Identifier == (request.Filter ?? "")""")]
+    [Arguments("""if (!PostgresText.CanStore((request.Filter ?? "").Trim())) return false;""", """u => u.Identifier == (request.Filter ?? "").Trim()""")]
+    [Arguments("if (request.Filter != null && !PostgresText.CanStore(request.Filter)) return false;", """u => u.Identifier == (request.Filter ?? "")""")]
+    [Arguments("if (!PostgresText.CanStore(request.Identifier)) return false;", """u => u.Identifier == (u.Id == "a" ? request.Identifier : "b")""")]
+    [Arguments("", """u => u.Identifier == (PostgresText.CanStore(request.Identifier) ? request.Identifier : "")""")]
+    [Arguments("", """u => u.Identifier == (request.Filter == null ? "a" : "b")""")]
+    [Arguments("var tenant = Create(request.Dto.Name);", """u => u.Identifier == (tenant.Name ?? "")""")]
+    [Arguments("var tenant = Create(request.Dto.Name);", """u => u.Identifier == (u.Id == "a" ? tenant.Name : u.Id)""")]
     public async Task a_coalesce_or_a_conditional_with_no_unchecked_request_text_has_no_diagnostics(string arrange, string predicate)
     {
         // Act
@@ -357,17 +357,17 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("u => u.Identifier == string.Concat(request.Identifier, \"-1\")", "request.Identifier")]
-    [Arguments("u => u.Identifier == string.Concat(new[] { \"a\", request.Identifier })", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Concat(request.Identifier, "-1")""", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Concat(new[] { "a", request.Identifier })""", "request.Identifier")]
     [Arguments("u => u.Identifier == string.Concat(request.Ids)", "request.Ids")]
-    [Arguments("u => new[] { \"a\", request.Identifier }.Contains(u.Id)", "request.Identifier")]
-    [Arguments("u => u.Identifier == string.Concat(request.Identifier, \"-1\").Trim()", "request.Identifier")]
-    [Arguments("u => u.Identifier == string.Format(\"{0}\", request.Identifier)", "request.Identifier")]
-    [Arguments("u => u.Identifier == string.Format(\"{0}{1}\", new object[] { 1, request.Identifier })", "request.Identifier")]
-    [Arguments("u => u.Identifier == string.Format(System.Globalization.CultureInfo.InvariantCulture, \"{0}\", request.Identifier)", "request.Identifier")]
+    [Arguments("""u => new[] { "a", request.Identifier }.Contains(u.Id)""", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Concat(request.Identifier, "-1").Trim()""", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Format("{0}", request.Identifier)""", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Format("{0}{1}", new object[] { 1, request.Identifier })""", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}", request.Identifier)""", "request.Identifier")]
     [Arguments("u => u.Identifier == string.Format(request.Identifier, 1)", "request.Identifier")]
-    [Arguments("u => u.Identifier.StartsWith(string.Concat(request.Identifier, \"%\"))", "request.Identifier")]
-    [Arguments("u => EF.Functions.ILike(u.Identifier, string.Format(\"%{0}%\", request.Identifier))", "request.Identifier")]
+    [Arguments("""u => u.Identifier.StartsWith(string.Concat(request.Identifier, "%"))""", "request.Identifier")]
+    [Arguments("""u => EF.Functions.ILike(u.Identifier, string.Format("%{0}%", request.Identifier))""", "request.Identifier")]
     public async Task a_request_text_in_string_concat_string_format_or_an_array_gets_fstqry001(string predicate, string text)
     {
         // Act
@@ -378,12 +378,12 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("u => u.Identifier == string.Concat(tenant.Name, \"-1\")")]
-    [Arguments("u => u.Identifier == string.Format(\"{0}\", tenant.Name)")]
-    [Arguments("u => u.Identifier == string.Format(\"{0}\", u.Id)")]
-    [Arguments("u => u.Identifier == string.Format(\"{0}\", request.Dto)")]
-    [Arguments("u => u.Identifier == string.Format(\"{0}\", request.Identifier)")]
-    [Arguments("u => u.Identifier == string.Concat(new[] { \"a\", request.Identifier })")]
+    [Arguments("""u => u.Identifier == string.Concat(tenant.Name, "-1")""")]
+    [Arguments("""u => u.Identifier == string.Format("{0}", tenant.Name)""")]
+    [Arguments("""u => u.Identifier == string.Format("{0}", u.Id)""")]
+    [Arguments("""u => u.Identifier == string.Format("{0}", request.Dto)""")]
+    [Arguments("""u => u.Identifier == string.Format("{0}", request.Identifier)""")]
+    [Arguments("""u => u.Identifier == string.Concat(new[] { "a", request.Identifier })""")]
     public async Task string_concat_or_string_format_with_no_unchecked_request_text_has_no_diagnostics(string predicate)
     {
         // Act
@@ -399,9 +399,9 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("id = \"x\";")]
-    [Arguments("id += \"x\";")]
-    [Arguments("(id, _) = (\"x\", 1);")]
+    [Arguments("""id = "x";""")]
+    [Arguments("""id += "x";""")]
+    [Arguments("""(id, _) = ("x", 1);""")]
     public async Task a_check_of_a_lambda_parameter_that_the_code_assigns_again_gets_fstqry001(string assignment)
     {
         // Act
@@ -417,7 +417,7 @@ public class QueryInputAnalyzerTests
 
     [Test]
     [Arguments("id => { return EntityId.IsValid(id, Tenant.IdPrefix); }")]
-    [Arguments("id => { var other = \"x\"; other += \"y\"; return EntityId.IsValid(id, other); }")]
+    [Arguments("""id => { var other = "x"; other += "y"; return EntityId.IsValid(id, other); }""")]
     [Arguments("id => { var copy = id.Trim(); return EntityId.IsValid(copy, Tenant.IdPrefix); }")]
     public async Task a_check_of_a_lambda_parameter_that_the_code_does_not_assign_again_has_no_diagnostics(string check)
     {
@@ -512,13 +512,27 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
-    [Arguments("u => string.Equals(request.Filter, null) || u.Identifier == \"a\"")]
-    [Arguments("u => string.Equals(null, request.Filter) || u.Identifier == \"a\"")]
-    [Arguments("u => string.Equals(request.Filter, null, StringComparison.Ordinal) || u.Identifier == \"a\"")]
-    [Arguments("u => !string.Equals(request.Filter, null) && u.Identifier == \"a\"")]
-    [Arguments("u => request.Filter!.Equals(null) || u.Identifier == \"a\"")]
-    [Arguments("u => object.Equals(request.Filter, null) || u.Identifier == \"a\"")]
-    [Arguments("u => object.Equals(null, request.Filter) || u.Identifier == \"a\"")]
+    [Arguments("""
+        u => string.Equals(request.Filter, null) || u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => string.Equals(null, request.Filter) || u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => string.Equals(request.Filter, null, StringComparison.Ordinal) || u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => !string.Equals(request.Filter, null) && u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => request.Filter!.Equals(null) || u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => object.Equals(request.Filter, null) || u.Identifier == "a"
+        """)]
+    [Arguments("""
+        u => object.Equals(null, request.Filter) || u.Identifier == "a"
+        """)]
     public async Task a_null_check_of_a_request_text_by_equals_has_no_diagnostics(string predicate)
     {
         // Act

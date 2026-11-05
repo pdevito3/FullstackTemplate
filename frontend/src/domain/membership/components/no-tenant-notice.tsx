@@ -14,7 +14,8 @@ const PAGES_WITH_NO_NOTICE = ['/start-tenant', '/join']
 /** Tells a signed-in user with no user record, such as each user of a new database, how to start a tenant. */
 export function NoTenantNotice() {
   const membership = useMembership()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  // The page on the screen. The location changes first, and the old page stays until the code of the next page loads.
+  const pathname = useRouterState({ select: (state) => state.matches[state.matches.length - 1]?.pathname ?? state.location.pathname })
   const noticeLink = useRef<HTMLAnchorElement>(null)
   const isFailed = membership.status === 'error'
   const wasFailed = useRef(false)

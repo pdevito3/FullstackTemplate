@@ -123,6 +123,36 @@ test.each([
   await expect.element(input).toHaveValue('Renamed Hall')
 })
 
+const optionTexts = (screen: Awaited<ReturnType<typeof renderPicker>>['screen']) =>
+  screen.getByRole('option').elements().map((option) => option.textContent)
+
+const venuePage = (pageNumber: number, totalPages: number, body: VenueDto[]): Answer => ({
+  method: 'GET',
+  path: '/api/v1/venues',
+  query: { pageNumber: String(pageNumber) },
+  headers: pagination(pageNumber, totalPages),
+  body,
+})
+
+// A venue that the Server adds between two loads moves the last venue of page 1 to the start of page 2.
+test('shows a venue one time when page 2 starts with the last venue of page 1', async () => {
+  const { screen } = await renderPicker('', venuePage(2, 2, [venue(10), venue(11)]))
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  expect(optionTexts(screen)).toEqual([...firstPage.map((row) => row.name), 'Venue 11'])
+})
+
+test('loads the next page when a page has only venues that the list already shows', async () => {
+  const { screen } = await renderPicker('', venuePage(2, 3, firstPage), venuePage(3, 3, [venue(11)]))
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  expect(optionTexts(screen)).toEqual([...firstPage.map((row) => row.name), 'Venue 11'])
+})
+
 const pageOnePath = '/api/v1/venues?pageNumber=1&pageSize=10'
 const pageTwoPath = '/api/v1/venues?pageNumber=2&pageSize=10'
 

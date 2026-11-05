@@ -63,6 +63,8 @@ Give the `signal` to the client, so that TanStack Query can cancel the request.
 
 When more than one place uses the same query, put the key, the function, and the options in one `queryOptions` object. Then `useQuery`, `useSuspenseQuery`, and `queryClient.prefetchQuery` can share it.
 
+A `useInfiniteQuery` over offset pages joins its pages with `uniqueById` from `lib/pagination.ts`, in `select`. A row that the Server adds between two page loads puts the same row on two pages, and a repeated key freezes a React Aria collection in a production build.
+
 <!-- example:start -->
 The workshop example has one `queryOptions` for the detail: [`workshopQueryOptions`](<../../frontend/src/examples/workshops/apis/get-workshop.ts>). The list keeps the last page on the screen while the next one loads, and it turns the search into a `filters` value with `containsText`: [`useWorkshopList`](<../../frontend/src/examples/workshops/apis/get-workshop-list.ts>). The venue picker loads its search one page at a time with `useInfiniteQuery`: [`useVenueSearch`](<../../frontend/src/examples/venues/apis/get-venue-list.ts>).
 <!-- example:end -->

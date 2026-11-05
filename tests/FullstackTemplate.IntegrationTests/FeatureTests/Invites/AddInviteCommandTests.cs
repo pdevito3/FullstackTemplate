@@ -31,7 +31,7 @@ public class AddInviteCommandTests : TestBase
         stored.TenantId.ShouldBe(TestFixture.DefaultTenant.Id);
         stored.TokenHash.ShouldBe(InviteToken.HashOf(added.Token));
         var rowText = await scope.ExecuteDbContextAsync(db => db.Database
-            .SqlQuery<string>($"SELECT row_to_json(i)::text AS \"Value\" FROM invites i WHERE i.id = {added.Invite.Id}")
+            .SqlQuery<string>($"""SELECT row_to_json(i)::text AS "Value" FROM invites i WHERE i.id = {added.Invite.Id}""")
             .SingleAsync());
         rowText.ShouldNotContain(added.Token);
     }

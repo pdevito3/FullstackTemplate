@@ -56,7 +56,7 @@ public class TenantErrorResponseTests : TestBase
     {
         // Arrange
         FactoryClient.SetFakeBearerToken("user");
-        using var content = new StringContent("{ \"name\": ", Encoding.UTF8, "application/json");
+        using var content = new StringContent("""{ "name": """, Encoding.UTF8, "application/json");
 
         // Act
         var result = await FactoryClient.PostAsync(ApiRoutes.Tenants.Create, content);
@@ -92,7 +92,9 @@ public class TenantErrorResponseTests : TestBase
     }
 
     [Test]
-    [Arguments("\"abc\"")]
+    [Arguments("""
+        "abc"
+        """)]
     [Arguments("null")]
     public async Task value_of_the_wrong_type_returns_bad_request_problem_on_the_field(string version)
     {

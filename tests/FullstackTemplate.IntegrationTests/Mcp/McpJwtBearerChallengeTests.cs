@@ -18,7 +18,9 @@ using Shouldly;
 public class McpJwtBearerChallengeTests : TestBase
 {
     private const string Authority = "https://idp.test/realms/app";
-    private const string ResourceMetadata = "resource_metadata=\"https://server.test/.well-known/oauth-protected-resource/mcp\"";
+    private const string ResourceMetadata = """
+        resource_metadata="https://server.test/.well-known/oauth-protected-resource/mcp"
+        """;
 
     [Test]
     public async Task a_request_to_mcp_with_no_token_gets_the_metadata_url_in_the_first_challenge()
@@ -34,7 +36,7 @@ public class McpJwtBearerChallengeTests : TestBase
         var challenges = response.Headers.WwwAuthenticate.ToList();
         challenges.Select(c => c.Scheme).ShouldBe(["Bearer", "DPoP"]);
         challenges[0].Parameter.ShouldBe(ResourceMetadata);
-        challenges[1].Parameter.ShouldNotBeNull().ShouldStartWith("algs=\"ES256");
+        challenges[1].Parameter.ShouldNotBeNull().ShouldStartWith("""algs="ES256""");
     }
 
     [Test]
@@ -53,7 +55,9 @@ public class McpJwtBearerChallengeTests : TestBase
         var challenges = response.Headers.WwwAuthenticate.ToList();
         challenges.Select(c => c.Scheme).ShouldBe(["Bearer", "DPoP"]);
         var bearer = challenges[0].Parameter.ShouldNotBeNull();
-        bearer.ShouldStartWith($"{ResourceMetadata}, error=\"invalid_token\", error_description=\"");
+        bearer.ShouldStartWith($"""
+            {ResourceMetadata}, error="invalid_token", error_description="
+            """);
     }
 
     [Test]
@@ -71,7 +75,9 @@ public class McpJwtBearerChallengeTests : TestBase
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenge = response.Headers.WwwAuthenticate.ShouldHaveSingleItem();
         challenge.Scheme.ShouldBe("DPoP");
-        challenge.Parameter.ShouldNotBeNull().ShouldStartWith("error=\"invalid_token\"");
+        challenge.Parameter.ShouldNotBeNull().ShouldStartWith("""
+            error="invalid_token"
+            """);
     }
 
     [Test]

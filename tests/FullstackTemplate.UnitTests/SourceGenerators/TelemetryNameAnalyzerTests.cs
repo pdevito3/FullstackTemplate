@@ -32,7 +32,9 @@ public class TelemetryNameAnalyzerTests
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldBe(
             "The span name 'Invoice.render' breaks the name rules. Use lower case parts in snake_case joined by dots, as area.operation, for example invoice.render. See the Names section of docs/backend/feature-telemetry.md.");
-        Text(diagnostic).ShouldBe("\"Invoice.render\"");
+        Text(diagnostic).ShouldBe("""
+            "Invoice.render"
+            """);
     }
 
     [Test]
@@ -164,7 +166,13 @@ public class TelemetryNameAnalyzerTests
         var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
             "Features",
-            [CSharpSyntaxTree.ParseText($"namespace App;\n\n{Usings}\n\n{source}", path: "Source.cs")],
+            [CSharpSyntaxTree.ParseText($"""
+                namespace App;
+
+                {Usings}
+
+                {source}
+                """, path: "Source.cs")],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
         compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();

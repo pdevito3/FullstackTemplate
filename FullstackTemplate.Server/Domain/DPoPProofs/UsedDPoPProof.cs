@@ -15,6 +15,9 @@ using System.Text;
 public sealed record UsedDPoPProof(string Id, DateTimeOffset Expires)
 {
     public static string KeyFor(string jwkThumbprint, string jti) =>
-        Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes($"{jwkThumbprint}\n{jti}")))
+        Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes($"""
+            {jwkThumbprint}
+            {jti}
+            """)))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

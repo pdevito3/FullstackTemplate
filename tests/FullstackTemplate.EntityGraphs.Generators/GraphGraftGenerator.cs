@@ -28,17 +28,17 @@ public sealed class GraphGraftGenerator : IIncrementalGenerator
         "EntityGraph graft",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Rename one graft with [Graft(\"Name\")] so callers can identify the intended blueprint."
+        description: """Rename one graft with [Graft("Name")] so callers can identify the intended blueprint."""
     );
 
     private static readonly DiagnosticDescriptor SameSingularAndPlural = new(
         "GRAPH002",
         "EntityGraph graft plural matches singular",
-        "Blueprint member '{0}' uses '{1}' for both singular and plural; set [Graft(Plural = \"...\")]",
+        """Blueprint member '{0}' uses '{1}' for both singular and plural; set [Graft(Plural = "...")]""",
         "EntityGraph graft",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Choose a distinct plural graft suffix with [Graft(Plural = \"...\")]."
+        description: """Choose a distinct plural graft suffix with [Graft(Plural = "...")]."""
     );
 
     private static readonly DiagnosticDescriptor InvalidCatalog = new(

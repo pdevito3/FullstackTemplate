@@ -57,6 +57,8 @@ public static class ListFilterSweep
     {
         _ when type == typeof(int) || type == typeof(uint) => "5",
         _ when type == typeof(DateTimeOffset) => "2030-01-01T00:00:00Z",
-        _ => "\"x\"",
+        _ => """
+            "x"
+            """,
     };
 }

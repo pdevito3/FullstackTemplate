@@ -48,7 +48,7 @@ public class TenantLockTests
         // Assert
         unlocked.ShouldBeEmpty(
             "An add of a tenant-owned root must not save during a tenant delete. Load and check the tenant or the parent, " +
-            "add, and save in the work of RootLock.Tenant.RunSharedAsync, as AddAgent does. See docs/backend/concurrency.md, section \"Lock\".");
+            """add, and save in the work of RootLock.Tenant.RunSharedAsync, as AddAgent does. See docs/backend/concurrency.md, section "Lock".""");
     }
 
     [Test]

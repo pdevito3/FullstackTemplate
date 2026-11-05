@@ -10,7 +10,11 @@ using Shouldly;
 public class WorkshopListQueryTests : TestBase
 {
     private static readonly string[] Titles = ["Yard 50% full", "Yard 500 full", "a_b", "acb", @"c\d", "cd"];
-    private static readonly string[] TextTitles = ["Say \"hi\" now", "a\"\"\"b", @"c\d", "in-progress", "a.b", "null", "[DRAFT]", "\"Paul\"", "Paul", "quote\""];
+    private static readonly string[] TextTitles = ["""Say "hi" now""", """"a"""b"""", @"c\d", "in-progress", "a.b", "null", "[DRAFT]", """
+        "Paul"
+        """, "Paul", """
+        quote"
+        """];
     private static readonly string[] DraftActions = ["Update", "Schedule", "Cancel", "ManageAttachments"];
 
     [Test]
@@ -26,7 +30,7 @@ public class WorkshopListQueryTests : TestBase
 
         // Act
         var found = await testingServiceScope.SendAsync(new GetWorkshopList.Query(WorkshopParametersDto.From(
-            null, null, $"venueId == \"{venueId}\" && title @=* {QueryKitText.Quote(text)}", null)));
+            null, null, $"""venueId == "{venueId}" && title @=* {QueryKitText.Quote(text)}""", null)));
 
         // Assert
         found.Select(w => w.Title).ShouldBe([match]);
@@ -41,7 +45,9 @@ public class WorkshopListQueryTests : TestBase
 
         // Act
         var page = await testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(1, 4, $"venueId == \"{venueId}\"", null)));
+            WorkshopParametersDto.From(1, 4, $"""
+                venueId == "{venueId}"
+                """, null)));
 
         // Assert
         page.TotalCount.ShouldBe(Titles.Length);
@@ -67,22 +73,52 @@ public class WorkshopListQueryTests : TestBase
 
     public static IEnumerable<(string, string[])> FiltersThatTheFilterBuilderWrites =>
     [
-        ("title == \"\"\" Say \"hi\" now \"\"\"", ["Say \"hi\" now"]),
-        ("title == \"\"\"\" a\"\"\"b \"\"\"\"", ["a\"\"\"b"]),
-        ("title == \"\"\" \"Paul\" \"\"\"", ["\"Paul\""]),
-        ("title @=* \"\"\" quote\" \"\"\"", ["quote\""]),
-        ("title ^^ [\"\"\" \"Paul\" \"\"\", \"Paul\"]", ["\"Paul\"", "Paul"]),
-        ("title @=* \"\"\" say \"HI\" \"\"\"", ["Say \"hi\" now"]),
+        (""""
+            title == """ Say "hi" now """
+            """", ["""Say "hi" now"""]),
+        ("""""
+            title == """" a"""b """"
+            """"", [""""a"""b""""]),
+        (""""
+            title == """ "Paul" """
+            """", ["""
+            "Paul"
+            """]),
+        (""""
+            title @=* """ quote" """
+            """", ["""
+            quote"
+            """]),
+        (""""title ^^ [""" "Paul" """, "Paul"]"""", ["""
+            "Paul"
+            """, "Paul"]),
+        (""""
+            title @=* """ say "HI" """
+            """", ["""Say "hi" now"""]),
         (@"title == ""c\d""", [@"c\d"]),
-        ("title == \"in-progress\"", ["in-progress"]),
-        ("title == \"a.b\"", ["a.b"]),
-        ("title == \"null\"", ["null"]),
-        ("title ^^ [\"in-progress\", \"\"\" Say \"hi\" now \"\"\"]", ["Say \"hi\" now", "in-progress"]),
-        ("title ^^ [\"[DRAFT]\"]", ["[DRAFT]"]),
-        ("title @=* \"[DRAFT\"", ["[DRAFT]"]),
-        ("title @=* \"[DRAFT]\"", ["[DRAFT]"]),
-        ("title @=* \"\"\" [DRAFT] \"\"\"", ["[DRAFT]"]),
-        ("title == \"[DRAFT]\"", ["[DRAFT]"]),
+        ("""
+            title == "in-progress"
+            """, ["in-progress"]),
+        ("""
+            title == "a.b"
+            """, ["a.b"]),
+        ("""
+            title == "null"
+            """, ["null"]),
+        (""""title ^^ ["in-progress", """ Say "hi" now """]"""", ["""Say "hi" now""", "in-progress"]),
+        ("""title ^^ ["[DRAFT]"]""", ["[DRAFT]"]),
+        ("""
+            title @=* "[DRAFT"
+            """, ["[DRAFT]"]),
+        ("""
+            title @=* "[DRAFT]"
+            """, ["[DRAFT]"]),
+        (""""
+            title @=* """ [DRAFT] """
+            """", ["[DRAFT]"]),
+        ("""
+            title == "[DRAFT]"
+            """, ["[DRAFT]"]),
     ];
 
     [Test]
@@ -95,7 +131,7 @@ public class WorkshopListQueryTests : TestBase
 
         // Act
         var found = await testingServiceScope.SendAsync(new GetWorkshopList.Query(
-            WorkshopParametersDto.From(null, null, $"venueId == \"{venueId}\" && {filter}", null)));
+            WorkshopParametersDto.From(null, null, $"""venueId == "{venueId}" && {filter}""", null)));
 
         // Assert
         found.Select(w => w.Title).ShouldBe(matches, ignoreOrder: true);

@@ -15,8 +15,10 @@ WORKDIR /src
 
 COPY Directory.Packages.props Directory.Build.props .editorconfig ./
 COPY FullstackTemplate.Bff/*.csproj FullstackTemplate.Bff/
+COPY FullstackTemplate.SourceGenerators/*.csproj FullstackTemplate.SourceGenerators/
 RUN dotnet restore FullstackTemplate.Bff/FullstackTemplate.Bff.csproj
 
+COPY FullstackTemplate.SourceGenerators/ FullstackTemplate.SourceGenerators/
 COPY FullstackTemplate.Bff/ FullstackTemplate.Bff/
 COPY FullstackTemplate.Server/Resources/Extensions/CallerCancellationHealthCheck.cs FullstackTemplate.Server/Resources/Extensions/
 WORKDIR /src/FullstackTemplate.Bff

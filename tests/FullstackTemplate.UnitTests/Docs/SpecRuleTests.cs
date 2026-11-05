@@ -59,8 +59,16 @@ public class SpecRuleTests
     public void an_id_in_two_specs_is_listed()
     {
         // Arrange
-        var rules = SpecRules.Read("docs/specs/a.md", "| ID | Rule |\n|---|---|\n| R-1 | One. |").Rules
-            .Concat(SpecRules.Read("docs/specs/b.md", "| ID | Rule |\n|---|---|\n| R-1 (later) | Two. |").Rules)
+        var rules = SpecRules.Read("docs/specs/a.md", """
+            | ID | Rule |
+            |---|---|
+            | R-1 | One. |
+            """).Rules
+            .Concat(SpecRules.Read("docs/specs/b.md", """
+                | ID | Rule |
+                |---|---|
+                | R-1 (later) | Two. |
+                """).Rules)
             .ToList();
         var references = new List<SpecRules.Reference> { new("R-1", "tests/ATests.cs") };
 
@@ -267,7 +275,16 @@ public class SpecRuleTests
 
         // Act
         var read = SpecRules.Read("docs/specs/work-orders.md", spec);
-        var none = SpecRules.Read("docs/specs/sites.md", "## 3. Rules\n\nNone.\n\nA slice adds the rules.\n\n## 4. Permissions\n");
+        var none = SpecRules.Read("docs/specs/sites.md", """
+            ## 3. Rules
+
+            None.
+
+            A slice adds the rules.
+
+            ## 4. Permissions
+
+            """);
 
         // Assert
         read.Rules.Select(r => r.Id).ShouldBe(["R-1", "R-2"]);

@@ -67,8 +67,10 @@ public class DPoPAuthenticationTests : TestBase
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenge = response.Headers.WwwAuthenticate.Single();
         challenge.Scheme.ShouldBe("DPoP");
-        challenge.Parameter.ShouldNotBeNull().ShouldContain($"error=\"{error}\"");
-        challenge.Parameter.ShouldContain("algs=\"ES256");
+        challenge.Parameter.ShouldNotBeNull().ShouldContain($"""
+            error="{error}"
+            """);
+        challenge.Parameter.ShouldContain("""algs="ES256""");
         await Task.CompletedTask;
     }
 
@@ -634,7 +636,7 @@ public class DPoPAuthenticationTests : TestBase
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         var challenge = Challenge(response);
         challenge.ShouldContain("Bearer");
-        challenge.ShouldContain("DPoP algs=\"ES256");
+        challenge.ShouldContain("""DPoP algs="ES256""");
     }
 
     [Test]

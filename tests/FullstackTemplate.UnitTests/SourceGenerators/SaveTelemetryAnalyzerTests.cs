@@ -52,9 +52,9 @@ public class SaveTelemetryAnalyzerTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldBe(
             "The handler 'App.Handler' saves changes with no state change log and no ID tag. "
             + "Add a _logger.Here().Information log with a message template after the save, "
-            + "for example _logger.Here().Information(\"Updated order {OrderId}\", order.Id), "
-            + "and an Activity.Current?.SetTag(\"app.<entity>_id\", ...) tag as soon as the handler knows the ID, "
-            + "for example Activity.Current?.SetTag(\"app.order_id\", order.Id). "
+            + """for example _logger.Here().Information("Updated order {OrderId}", order.Id), """
+            + """and an Activity.Current?.SetTag("app.<entity>_id", ...) tag as soon as the handler knows the ID, """
+            + """for example Activity.Current?.SetTag("app.order_id", order.Id). """
             + "See docs/backend/feature-telemetry.md.");
         Text(diagnostic).ShouldBe("Handler");
     }
@@ -249,7 +249,13 @@ public class SaveTelemetryAnalyzerTests
         var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
             "Features",
-            [CSharpSyntaxTree.ParseText($"namespace App;\n\n{Usings}\n\n{source}", path: "Source.cs")],
+            [CSharpSyntaxTree.ParseText($"""
+                namespace App;
+
+                {Usings}
+
+                {source}
+                """, path: "Source.cs")],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
         compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();

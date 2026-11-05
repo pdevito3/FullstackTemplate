@@ -89,7 +89,9 @@ public sealed class EchoApi : IAsyncDisposable
                 && (request.Query.ContainsKey(RejectNonceParameter) || ProofNonce(request.Headers["DPoP"].ToString()) != nonce))
             {
                 response.Headers["DPoP-Nonce"] = nonce;
-                response.Headers.WWWAuthenticate = "DPoP error=\"use_dpop_nonce\", algs=\"ES256\"";
+                response.Headers.WWWAuthenticate = """
+                    DPoP error="use_dpop_nonce", algs="ES256"
+                    """;
                 return Results.StatusCode(StatusCodes.Status401Unauthorized);
             }
 

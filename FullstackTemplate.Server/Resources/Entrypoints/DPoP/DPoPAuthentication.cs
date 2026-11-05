@@ -181,7 +181,9 @@ public static class DPoPAuthentication
         else
         {
             // No credentials, or a Bearer failure: add the DPoP challenge next to the Bearer challenge of the handler
-            context.Response.Headers.Append(HeaderNames.WWWAuthenticate, $"{SchemeName} algs=\"{algs}\"");
+            context.Response.Headers.Append(HeaderNames.WWWAuthenticate, $"""
+                {SchemeName} algs="{algs}"
+                """);
         }
     }
 
@@ -189,10 +191,16 @@ public static class DPoPAuthentication
     {
         context.HandleResponse();
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        var value = $"{SchemeName} error=\"{error}\"";
+        var value = $"""
+            {SchemeName} error="{error}"
+            """;
         if (description is not null)
-            value += $", error_description=\"{description.Replace("\"", "'")}\"";
-        context.Response.Headers.Append(HeaderNames.WWWAuthenticate, $"{value}, algs=\"{algs}\"");
+            value += $"""
+                , error_description="{description.Replace("\"", "'")}"
+                """;
+        context.Response.Headers.Append(HeaderNames.WWWAuthenticate, $"""
+            {value}, algs="{algs}"
+            """);
     }
 }
 

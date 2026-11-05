@@ -16,7 +16,7 @@ public class AddTenantTests : TestBase
         {
             ["client_id"] = TestingWebApplicationFactory.TrustedMachineClientId
         });
-        using var content = new StringContent($"{{ \"name\": \"Tenant {Guid.NewGuid()}\" }}", Encoding.UTF8, "text/json");
+        using var content = new StringContent($$"""{ "name": "Tenant {{Guid.NewGuid()}}" }""", Encoding.UTF8, "text/json");
 
         // Act
         var result = await FactoryClient.PostAsync(ApiRoutes.Tenants.Create, content);

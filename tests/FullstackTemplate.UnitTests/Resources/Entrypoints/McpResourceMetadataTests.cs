@@ -14,7 +14,9 @@ public class McpResourceMetadataTests
     {
         // Act & Assert
         McpResourceMetadata.Challenge(MetadataUrl, null, null, null)
-            .ShouldBe($"Bearer resource_metadata=\"{MetadataUrl}\"");
+            .ShouldBe($"""
+                Bearer resource_metadata="{MetadataUrl}"
+                """);
     }
 
     [Test]
@@ -22,15 +24,19 @@ public class McpResourceMetadataTests
     {
         // Act & Assert
         McpResourceMetadata.Challenge(MetadataUrl, "invalid_token", "The token expired at '10/28/2026 12:00:00'", "https://errors.example.com/expired")
-            .ShouldBe($"Bearer resource_metadata=\"{MetadataUrl}\", error=\"invalid_token\", error_description=\"The token expired at '10/28/2026 12:00:00'\", error_uri=\"https://errors.example.com/expired\"");
+            .ShouldBe($"""
+                Bearer resource_metadata="{MetadataUrl}", error="invalid_token", error_description="The token expired at '10/28/2026 12:00:00'", error_uri="https://errors.example.com/expired"
+                """);
     }
 
     [Test]
     public void a_quote_in_the_description_does_not_end_the_quoted_string()
     {
         // Act & Assert
-        McpResourceMetadata.Challenge(MetadataUrl, "invalid_token", "The audience \"x\" is not valid", null)
-            .ShouldBe($"Bearer resource_metadata=\"{MetadataUrl}\", error=\"invalid_token\", error_description=\"The audience 'x' is not valid\"");
+        McpResourceMetadata.Challenge(MetadataUrl, "invalid_token", """The audience "x" is not valid""", null)
+            .ShouldBe($"""
+                Bearer resource_metadata="{MetadataUrl}", error="invalid_token", error_description="The audience 'x' is not valid"
+                """);
     }
 
     [Test]
@@ -38,7 +44,9 @@ public class McpResourceMetadataTests
     {
         // Act & Assert
         McpResourceMetadata.Challenge(MetadataUrl, "invalid_token", "", null)
-            .ShouldBe($"Bearer resource_metadata=\"{MetadataUrl}\", error=\"invalid_token\"");
+            .ShouldBe($"""
+                Bearer resource_metadata="{MetadataUrl}", error="invalid_token"
+                """);
     }
 
     [Test]

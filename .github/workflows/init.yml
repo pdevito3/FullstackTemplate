@@ -73,10 +73,25 @@ jobs:
             git -c user.name=ci -c user.email=ci@localhost commit --quiet --no-edit
             test "$(git merge-base HEAD "$tip")" = "$tip"
             grep -q '"AuthProvider": "Keycloak"' "$name.AppHost/appsettings.json"
+            dotnet run scripts/raw-strings.cs
             cd "$GITHUB_WORKSPACE"
           done
           cd ../older-Acme.Shop
           if git grep -inP '(?<!pdevito3/)fullstack|full[ ._-]stack[ ._-]?template' -- ':!scripts/init.cs'; then exit 1; fi
+
+      - name: Prove the raw string script on a seeded file
+        working-directory: ../older-Acme.Shop
+        run: |
+          printf 'class Seed { string S = "say \\"hi\\" now"; int N = 1 / 2; }\n' > Seed.cs
+          git add Seed.cs
+          git -c user.name=ci -c user.email=ci@localhost commit --quiet -m "Add the seed"
+          dotnet run scripts/raw-strings.cs
+          grep -qF '"""say "hi" now"""' Seed.cs
+          dotnet run scripts/raw-strings.cs -- --check HEAD
+          sed -i 's|1 / 2|1 / 2.0|' Seed.cs
+          if dotnet run scripts/raw-strings.cs -- --check HEAD; then exit 1; fi
+          git reset --quiet HEAD~1
+          rm Seed.cs
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:

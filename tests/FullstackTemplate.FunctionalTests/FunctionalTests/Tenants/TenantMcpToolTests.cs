@@ -219,9 +219,13 @@ public class TenantMcpToolTests : TestBase
 
         // Act
         var wrong = await client.CallToolAsync("list_tenants",
-            new Dictionary<string, object?> { ["filters"] = $"title == \"{tenant.Name}\"" });
+            new Dictionary<string, object?> { ["filters"] = $"""
+                title == "{tenant.Name}"
+                """ });
         var corrected = await client.CallToolAsync("list_tenants",
-            new Dictionary<string, object?> { ["filters"] = $"name == \"{tenant.Name}\"" });
+            new Dictionary<string, object?> { ["filters"] = $"""
+                name == "{tenant.Name}"
+                """ });
 
         // Assert
         wrong.ShouldBeToolError("invalid_argument");

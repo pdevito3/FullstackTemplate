@@ -11,7 +11,9 @@ public static class QueryKitText
     {
         if (!text.Contains('"'))
         {
-            return $"\"{text}\"";
+            return $"""
+                "{text}"
+                """;
         }
 
         var (run, longestRun) = (0, 0);

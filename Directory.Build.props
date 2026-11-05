@@ -16,4 +16,21 @@
          switch forgets, so CS8509 can no longer fail the build when a new member is added. -->
     <NoWarn>$(NoWarn);CS8524</NoWarn>
   </PropertyGroup>
+
+  <!-- Each C# project gets the analyzers of FullstackTemplate.SourceGenerators, so that the build refuses a string that
+       breaks FSTSTR001 in each project. The other rules check only the code of the Server, so ServerRulesOff.globalconfig
+       turns them off in each other project. A global config cannot turn off a generator, so ValueObjectGenerator runs in
+       each project and writes code only for a class that derives from ValueObject. IsAspireProjectResource stops the
+       AppHost from making the analyzer a resource.
+       A file-based script under scripts/ and the analyzer project do not get the analyzer, so ScriptRawStringTests runs
+       FSTSTR001 on them. -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and '$(FileBasedProgram)' != 'true' and '$(MSBuildProjectName)' != 'FullstackTemplate.SourceGenerators'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)FullstackTemplate.SourceGenerators/FullstackTemplate.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      IsAspireProjectResource="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and '$(FileBasedProgram)' != 'true' and '$(MSBuildProjectName)' != 'FullstackTemplate.SourceGenerators' and '$(MSBuildProjectName)' != 'FullstackTemplate.Server'">
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)FullstackTemplate.SourceGenerators/ServerRulesOff.globalconfig" />
+  </ItemGroup>
 </Project>

@@ -38,7 +38,7 @@ public class QueryTagAnalyzerTests
         diagnostic.Id.ShouldBe("FSTTEL001");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldBe(
-            "The query on 'Users' has no TagWithOperationCallSite. Put .TagWithOperationCallSite(\"area.operation\") directly after 'Users'. See docs/backend/feature-telemetry.md.");
+            """The query on 'Users' has no TagWithOperationCallSite. Put .TagWithOperationCallSite("area.operation") directly after 'Users'. See docs/backend/feature-telemetry.md.""");
         Text(diagnostic).ShouldBe("dbContext.Users");
     }
 
@@ -258,7 +258,7 @@ public class QueryTagAnalyzerTests
         var diagnostic = diagnostics.ShouldHaveSingleItem();
         diagnostic.Id.ShouldBe("FSTTEL003");
         diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldBe(
-            "'LiveUsers()' returns a query with no TagWithOperationCallSite, and this caller does not tag it. Put .TagWithOperationCallSite(\"area.operation\") directly after 'LiveUsers()'. See docs/backend/feature-telemetry.md.");
+            """'LiveUsers()' returns a query with no TagWithOperationCallSite, and this caller does not tag it. Put .TagWithOperationCallSite("area.operation") directly after 'LiveUsers()'. See docs/backend/feature-telemetry.md.""");
         Text(diagnostic).ShouldBe("LiveUsers()");
     }
 
@@ -378,9 +378,9 @@ public class QueryTagAnalyzerTests
     }
 
     [Test]
-    [Arguments("private IEnumerable<User> LiveUsers() => dbContext.Users.Where(u => u.Id != \"\");")]
+    [Arguments("""private IEnumerable<User> LiveUsers() => dbContext.Users.Where(u => u.Id != "");""")]
     [Arguments("private IEnumerable<User> LiveUsers() { var query = dbContext.Users.AsNoTracking(); return query; }")]
-    [Arguments("private object LiveUsers() => dbContext.Users.Where(u => u.Id != \"\");")]
+    [Arguments("""private object LiveUsers() => dbContext.Users.Where(u => u.Id != "");""")]
     public async Task a_helper_that_returns_an_untagged_query_as_a_type_that_is_not_iqueryable_gets_fsttel001(string helper)
     {
         // Act
@@ -477,7 +477,13 @@ public class QueryTagAnalyzerTests
         var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
             "Features",
-            [CSharpSyntaxTree.ParseText($"namespace App;\n\n{Usings}\n\n{source}", path: "Source.cs")],
+            [CSharpSyntaxTree.ParseText($"""
+                namespace App;
+
+                {Usings}
+
+                {source}
+                """, path: "Source.cs")],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
         compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();

@@ -260,7 +260,9 @@ public class EntityIdPrefixAnalyzerTests
 
     [Test]
     [Arguments("User.IdPrefix")]
-    [Arguments("\"ten\"")]
+    [Arguments("""
+        "ten"
+        """)]
     [Arguments("Other")]
     public async Task a_constructor_that_does_not_pass_the_own_prefix_gets_fstid004(string argument)
     {
@@ -381,7 +383,9 @@ public class EntityIdPrefixAnalyzerTests
     }
 
     [Test]
-    [Arguments("\"ord\"")]
+    [Arguments("""
+        "ord"
+        """)]
     [Arguments("User.IdPrefix")]
     public async Task a_primary_constructor_that_does_not_pass_the_own_prefix_gets_fstid004(string argument)
     {
@@ -412,7 +416,9 @@ public class EntityIdPrefixAnalyzerTests
     }
 
     [Test]
-    [Arguments("\"aud\"")]
+    [Arguments("""
+        "aud"
+        """)]
     [Arguments("App.User.IdPrefix")]
     public async Task an_abstract_base_with_a_primary_constructor_that_does_not_pass_its_parameter_gets_fstid004(string argument)
     {
@@ -481,8 +487,8 @@ public class EntityIdPrefixAnalyzerTests
     }
 
     [Test]
-    [Arguments("(string idPrefix, string createdBy) : base(createdBy)", "base(IdPrefix, \"system\")", "App.AuditedEntity")]
-    [Arguments("(string idPrefix, string createdBy) : base(idPrefix)", "base(\"system\", IdPrefix)", "App.Tenant")]
+    [Arguments("(string idPrefix, string createdBy) : base(createdBy)", """base(IdPrefix, "system")""", "App.AuditedEntity")]
+    [Arguments("(string idPrefix, string createdBy) : base(idPrefix)", """base("system", IdPrefix)""", "App.Tenant")]
     [Arguments("(string prefix) : base(prefix)", "base(IdPrefix)", "App.AuditedEntity", "App.Tenant")]
     public async Task a_prefix_that_does_not_bind_to_the_idprefix_parameter_gets_fstid004(
         string auditedConstructor, string tenantInitializer, params string[] entities)

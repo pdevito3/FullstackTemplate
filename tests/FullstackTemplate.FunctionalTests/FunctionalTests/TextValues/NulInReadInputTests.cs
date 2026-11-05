@@ -44,7 +44,9 @@ public class NulInReadInputTests : TestBase
     {
         // Arrange
         await SignInAsAdminAsync();
-        var value = parameter == "filters" ? $"Id == \"{Nul}\"" : Nul;
+        var value = parameter == "filters" ? $"""
+            Id == "{Nul}"
+            """ : Nul;
 
         // Act
         var result = await FactoryClient.GetRequestAsync($"{route}?{parameter}={Uri.EscapeDataString(value)}");
@@ -81,7 +83,9 @@ public class NulInReadInputTests : TestBase
         using var channel = CreateGrpcChannel();
         var client = new TenantsService.TenantsServiceClient(channel);
         var request = field == "filters"
-            ? new ListTenantsRequest { Filters = $"Name == \"{Nul}\"" }
+            ? new ListTenantsRequest { Filters = $"""
+                Name == "{Nul}"
+                """ }
             : new ListTenantsRequest { SortOrder = Nul };
 
         // Act
@@ -123,7 +127,9 @@ public class NulInReadInputTests : TestBase
         // Arrange
         await SignInAsAdminAsync();
         await using var client = await CreateMcpClientAsync();
-        var value = field == "filters" ? $"Name == \"{Nul}\"" : Nul;
+        var value = field == "filters" ? $"""
+            Name == "{Nul}"
+            """ : Nul;
 
         // Act
         var result = await client.CallToolAsync("list_tenants", new Dictionary<string, object?> { [field] = value });

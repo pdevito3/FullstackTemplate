@@ -22,11 +22,15 @@ public static class SampleFiles
     // A RIFF header with the size of the file, then the WEBP form type and a VP8 chunk
     public static readonly byte[] WebP = [.. Ascii("RIFF"), 0x24, 0x00, 0x00, 0x00, .. Ascii("WEBPVP8 ")];
 
-    public static readonly byte[] Pdf = Ascii("%PDF-1.7\n%âãÏÓ\n");
+    public static readonly byte[] Pdf = Ascii("""
+        %PDF-1.7
+        %âãÏÓ
+
+        """);
 
     public static readonly byte[] Text = Ascii("Bring an apron.\n");
 
-    public static readonly byte[] Svg = Ascii("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>");
+    public static readonly byte[] Svg = Ascii("""<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>""");
 
     public static readonly byte[] Html = Ascii("<!DOCTYPE html><html><script>alert(1)</script></html>");
 

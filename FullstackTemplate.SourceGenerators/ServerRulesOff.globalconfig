@@ -1,0 +1,16 @@
+is_global = true
+
+# Directory.Build.props gives each C# project the analyzers of this project. These rules check the code of the Server
+# only, so each other project turns them off. FSTSTR001 stays on in each project. Add each new Server rule here.
+dotnet_diagnostic.FSTID001.severity = none
+dotnet_diagnostic.FSTID002.severity = none
+dotnet_diagnostic.FSTID003.severity = none
+dotnet_diagnostic.FSTID004.severity = none
+dotnet_diagnostic.FSTID005.severity = none
+dotnet_diagnostic.FSTMSG001.severity = none
+dotnet_diagnostic.FSTMSG002.severity = none
+dotnet_diagnostic.FSTTEL001.severity = none
+dotnet_diagnostic.FSTTEL002.severity = none
+dotnet_diagnostic.FSTTEL003.severity = none
+dotnet_diagnostic.FSTTEL004.severity = none
+dotnet_diagnostic.FSTQRY001.severity = none

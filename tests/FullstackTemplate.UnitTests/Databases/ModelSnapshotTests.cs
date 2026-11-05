@@ -41,7 +41,7 @@ public class ModelSnapshotTests
         => snapshot.ReplaceLineEndings("\n")
             .Split('\n')
             .Select(line => line.StartsWith("using ", StringComparison.Ordinal)
-                || line.Contains(".HasAnnotation(\"ProductVersion\",", StringComparison.Ordinal) ? string.Empty : line)
+                || line.Contains(""".HasAnnotation("ProductVersion",""", StringComparison.Ordinal) ? string.Empty : line)
             .ToArray();
 
     private static string LineAt(string[] lines, int index)

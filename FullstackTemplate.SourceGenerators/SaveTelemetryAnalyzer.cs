@@ -18,10 +18,10 @@ public sealed class SaveTelemetryAnalyzer : DiagnosticAnalyzer
 		isEnabledByDefault: true);
 
 	private const string LogFix = "a _logger.Here().Information log with a message template after the save, "
-		+ "for example _logger.Here().Information(\"Updated order {OrderId}\", order.Id)";
+		+ """for example _logger.Here().Information("Updated order {OrderId}", order.Id)""";
 
-	private const string TagFix = "an Activity.Current?.SetTag(\"app.<entity>_id\", ...) tag as soon as the handler knows the ID, "
-		+ "for example Activity.Current?.SetTag(\"app.order_id\", order.Id)";
+	private const string TagFix = """an Activity.Current?.SetTag("app.<entity>_id", ...) tag as soon as the handler knows the ID, """
+		+ """for example Activity.Current?.SetTag("app.order_id", order.Id)""";
 
 	public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = [SaveWithoutTelemetry];
 

@@ -14,7 +14,7 @@ public sealed class HelperQueryTagAnalyzer : DiagnosticAnalyzer
 	internal static readonly DiagnosticDescriptor UntaggedHelperQuery = new(
 		id: "FSTTEL003",
 		title: "A caller of a method that returns an untagged query does not tag it",
-		messageFormat: "'{0}' returns a query with no TagWithOperationCallSite, and this caller does not tag it. Put .TagWithOperationCallSite(\"area.operation\") directly after '{0}'. See docs/backend/feature-telemetry.md.",
+		messageFormat: """'{0}' returns a query with no TagWithOperationCallSite, and this caller does not tag it. Put .TagWithOperationCallSite("area.operation") directly after '{0}'. See docs/backend/feature-telemetry.md.""",
 		category: "Telemetry",
 		defaultSeverity: DiagnosticSeverity.Error,
 		isEnabledByDefault: true,

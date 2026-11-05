@@ -45,7 +45,10 @@ public class LocalUrlTests
     [Arguments("https://evil.example")]
     [Arguments("https://localhost/a")]
     [Arguments("javascript:alert(1)")]
-    [Arguments("/a\nb")]
+    [Arguments("""
+        /a
+        b
+        """)]
     [Arguments("/a\r\nLocation: https://evil.example")]
     [Arguments("/a\tb")]
     [Arguments("/\t/evil.example")]

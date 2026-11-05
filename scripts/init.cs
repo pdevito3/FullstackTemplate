@@ -223,7 +223,9 @@ internal sealed partial class AppRepo(string root)
 
     public void SetAuthProvider(string provider)
     {
-        ReplaceInFile(AppSettingsPath, text => SettingPattern().Replace(text, $"${{prefix}}{provider}\"", 1));
+        ReplaceInFile(AppSettingsPath, text => SettingPattern().Replace(text, $$"""
+            ${prefix}{{provider}}"
+            """, 1));
         Console.WriteLine($"Set the default AuthProvider to {provider}.");
     }
 
@@ -320,7 +322,9 @@ internal sealed partial class AppRepo(string root)
     [GeneratedRegex(@"^[\p{L}\p{M}\p{N}]+([ .'-][\p{L}\p{M}\p{N}]+)*\z")]
     private static partial Regex DisplayNamePattern();
 
-    [GeneratedRegex("(?<prefix>\"AuthProvider\"\\s*:\\s*\")(?<value>[^\"]*)\"")]
+    [GeneratedRegex("""
+        (?<prefix>"AuthProvider"\s*:\s*")(?<value>[^"]*)"
+        """)]
     private static partial Regex SettingPattern();
 }
 

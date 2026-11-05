@@ -10,7 +10,7 @@ public sealed class QueryTagAnalyzer : DiagnosticAnalyzer
 	internal static readonly DiagnosticDescriptor UntaggedQuery = new(
 		id: "FSTTEL001",
 		title: "An EF query has no operation tag",
-		messageFormat: "The query on '{0}' has no TagWithOperationCallSite. Put .TagWithOperationCallSite(\"area.operation\") directly after '{0}'. See docs/backend/feature-telemetry.md.",
+		messageFormat: """The query on '{0}' has no TagWithOperationCallSite. Put .TagWithOperationCallSite("area.operation") directly after '{0}'. See docs/backend/feature-telemetry.md.""",
 		category: "Telemetry",
 		defaultSeverity: DiagnosticSeverity.Error,
 		isEnabledByDefault: true);

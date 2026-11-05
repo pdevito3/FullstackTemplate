@@ -15,7 +15,7 @@ import type { ClaimValues } from '@/domain/invites/apis/claim-invite'
 import { useInvitePreview } from '@/domain/invites/apis/get-invite-preview'
 import { ClaimInviteForm } from '@/domain/invites/components/claim-invite-form'
 import { formatExpiry } from '@/domain/invites/components/invite-state'
-import { inviteTokenFor } from '@/domain/invites/invite-link'
+import { forgetInviteToken, inviteTokenFor } from '@/domain/invites/invite-link'
 import { ALREADY_MEMBER, joinViewOf } from '@/domain/invites/join-view'
 import type { JoinView, TabLink } from '@/domain/invites/join-view'
 import { subOf, useMembership } from '@/domain/membership/apis/get-membership'
@@ -65,7 +65,10 @@ function Join({ membership, headingRef }: { membership: Membership; headingRef: 
       await claim.mutateAsync({ values, identifier, tenantName })
     } catch (error) {
       const status = isProblemDetailsError(error) ? error.status : undefined
-      if (isProblemDetailsError(error) && (status === 404 || status === 410)) setRefusedLink(error.displayMessage)
+      if (isProblemDetailsError(error) && (status === 404 || status === 410)) {
+        forgetInviteToken()
+        setRefusedLink(error.displayMessage)
+      }
       // These refusals replace the form, and the focus must not fall to the body.
       if (status === 404 || status === 409 || status === 410) headingRef.current?.focus()
       throw error

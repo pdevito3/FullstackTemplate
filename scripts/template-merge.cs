@@ -10,6 +10,9 @@
 // conflict. Resolve each conflict, then run `git commit`. To stop, run `git merge --abort`.
 // init.cs deletes this script in an app, so the script can spell the template name.
 
+// Nothing publishes this script, so it needs no native AOT packages.
+#:property PublishAot=false
+
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 

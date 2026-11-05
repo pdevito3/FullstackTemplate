@@ -11,11 +11,10 @@ import { testIdHeader, type Answer } from './answer'
 // The commands are in vitest.commands.ts. They run in Node and drive the Playwright page.
 declare module 'vitest/browser' {
   interface BrowserCommands {
-    /** Removes all answers, forgets the unanswered requests, and counts an unanswered request only if `testId` sent it. */
-    startTest: (testId: string) => Promise<void>
+    resetRequestsFor: (testId: string) => Promise<void>
     /** Answers each request that matches an answer. A later answer wins. `[]` removes all answers. */
     answerRequests: (answers: Answer[]) => Promise<void>
-    /** Returns each request to `/api/*` or `/bff/*` that no answer matched since the last call, and forgets them. */
+    /** Returns each request of this test to `/api/*` or `/bff/*` that no answer matched since the last call, and forgets them. */
     takeUnansweredRequests: () => Promise<string[]>
     /** Holds each request for `path` (pathname and query) until `releaseRequests(path)`. */
     holdRequests: (path: string) => Promise<void>
@@ -32,20 +31,17 @@ declare module 'vitest/browser' {
 
 let testId = ''
 
-// The app sends each request to the BFF with XMLHttpRequest, through axios.
 const send = XMLHttpRequest.prototype.send
 XMLHttpRequest.prototype.send = function (body) {
   this.setRequestHeader(testIdHeader, testId)
   send.call(this, body)
 }
 
-// vitest-browser-react unmounts the page of the last test only before the next test. Unmount it first, so that the
-// last test sends no more requests. A request that it already sent can reach the commands after this hook, also when
-// the unmount aborted it. The header shows that the request is not of this test.
+// A request of the last test can reach the commands after this hook, also when the unmount aborted it.
 beforeEach(async ({ task }) => {
   await cleanup()
   testId = task.id
-  await commands.startTest(task.id)
+  await commands.resetRequestsFor(task.id)
 })
 
 // A request with no answer gets an error from the dev server. A test can still pass by mistake, for example when

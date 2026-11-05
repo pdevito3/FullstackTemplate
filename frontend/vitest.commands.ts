@@ -97,7 +97,7 @@ const answeringOn = async (page: Page) => {
   return state
 }
 
-export const startTest: BrowserCommand<[testId: string]> = async ({ page }, testId) => {
+export const resetRequestsFor: BrowserCommand<[testId: string]> = async ({ page }, testId) => {
   const state = await answeringOn(page)
   state.testId = testId
   state.answers = []

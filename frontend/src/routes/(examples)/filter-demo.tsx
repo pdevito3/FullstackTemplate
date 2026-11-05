@@ -1,3 +1,4 @@
+import { CalendarDateTime } from '@internationalized/date'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { FilterBuilder } from '@/components/filter-builder/filter-builder'
@@ -22,6 +23,11 @@ export const Route = createFileRoute('/(examples)/filter-demo')({
   component: FilterDemoPage,
   staticData: { breadcrumb: 'Filter Builder' },
 })
+
+/** The state card shows a wall clock time as text, not as the fields of its object. */
+function wallClockAsText(_key: string, value: unknown): unknown {
+  return value instanceof CalendarDateTime ? value.toString() : value
+}
 
 function FilterDemoPage() {
   const [filterState, setFilterState] = useState<FilterState>({
@@ -438,7 +444,7 @@ function FilterDemoPage() {
         </CardHeader>
         <CardContent>
           <div className="bg-muted p-4 rounded-md font-mono text-xs max-h-96 overflow-auto">
-            <pre>{JSON.stringify(filterState, null, 2)}</pre>
+            <pre>{JSON.stringify(filterState, wallClockAsText, 2)}</pre>
           </div>
         </CardContent>
       </Card>

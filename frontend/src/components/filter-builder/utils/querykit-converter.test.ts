@@ -1,15 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { CalendarDateTime } from '@internationalized/date'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { parseTimeZone } from '@/lib/zoned-time'
 
-import type { DateType, DateValue } from '../types'
+import type { DateValue } from '../types'
 import { toQueryKitString } from './querykit-converter'
 
 // 20:00 UTC on August 15 is 10:00 on August 16 in Kiritimati, and 09:00 on August 15 in Pago Pago, the zone of the
 // unit tests.
 const startsAt = new Date('2026-08-15T20:00:00Z')
 
-function queryFor(dateType: DateType, timeZone?: DateValue['timeZone']): string {
+function queryFor(value: DateValue): string {
   return toQueryKitString({
     rootLogicalOperator: 'AND',
     filters: [
@@ -19,7 +20,7 @@ function queryFor(dateType: DateType, timeZone?: DateValue['timeZone']): string 
         propertyLabel: 'Starts At',
         controlType: 'date',
         operator: '==',
-        value: { mode: 'on', startDate: startsAt, dateType, timeZone },
+        value,
       },
     ],
   })
@@ -30,21 +31,22 @@ describe('a date filter of a place', () => {
 
   it.each([
     ['date', 'startsAt == "2026-08-16"'],
-    ['datetime', 'startsAt == "2026-08-16T10:00:00"'],
     ['datetimeUtc', 'startsAt == "2026-08-15T20:00:00Z"'],
     ['datetimeOffset', 'startsAt == "2026-08-16T10:00:00+14:00"'],
   ] as const)('writes a %s in the zone of the place', (dateType, query) => {
-    expect(queryFor(dateType, kiritimati)).toBe(query)
+    expect(queryFor({ mode: 'on', startDate: startsAt, dateType, timeZone: kiritimati })).toBe(query)
   })
 })
 
 describe('a date filter with no zone', () => {
   it('writes the wall clock time of the browser', () => {
-    expect(queryFor('datetimeOffset')).toBe('startsAt == "2026-08-15T09:00:00-11:00"')
+    expect(queryFor({ mode: 'on', startDate: startsAt, dateType: 'datetimeOffset' })).toBe('startsAt == "2026-08-15T09:00:00-11:00"')
   })
 
-  it('writes a datetime as the wall clock time that it keeps in UTC, because a datetime with no zone has no zone', () => {
-    expect(queryFor('datetime')).toBe('startsAt == "2026-08-15T20:00:00"')
+  it('writes a datetime as its wall clock time, because a datetime has no zone', () => {
+    const value: DateValue = { mode: 'on', startDate: new CalendarDateTime(2026, 8, 15, 20), dateType: 'datetime' }
+
+    expect(queryFor(value)).toBe('startsAt == "2026-08-15T20:00:00"')
   })
 })
 
@@ -106,5 +108,22 @@ describe('a multiselect filter', () => {
     })
 
     expect(query).toBe('status ^^ ["open", "in-progress", """ a"b """, """ "Paul" """, "[DRAFT]"]')
+  })
+})
+
+// These are type tests. The Vitest typecheck in `pnpm test` checks them.
+describe('the type of a date value', () => {
+  it('holds a datetime as a wall clock time and each other type as an instant', () => {
+    expectTypeOf<{ mode: 'on'; startDate: CalendarDateTime; dateType: 'datetime' }>().toExtend<DateValue>()
+    expectTypeOf<{ mode: 'on'; startDate: Date; dateType: 'datetimeUtc' }>().toExtend<DateValue>()
+    expectTypeOf<{ mode: 'on'; startDate: Date }>().toExtend<DateValue>()
+  })
+
+  it('refuses a datetime that holds an instant, because an instant moves with the zone of the reader', () => {
+    expectTypeOf<{ mode: 'on'; startDate: Date; dateType: 'datetime' }>().not.toExtend<DateValue>()
+  })
+
+  it('refuses an instant that holds a wall clock time, because a wall clock time has no zone', () => {
+    expectTypeOf<{ mode: 'on'; startDate: CalendarDateTime; dateType: 'datetimeUtc' }>().not.toExtend<DateValue>()
   })
 })

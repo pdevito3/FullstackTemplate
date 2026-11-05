@@ -150,11 +150,11 @@ Each row that the restore did not touch keeps its `xmin`, which is the `version`
 
 If a run stops before the restore (Ctrl-C, a killed process, a restore that failed), `db-snapshot.json` stays. The next `browse.mjs` run restores it first, restarts the server, and prints `data: an earlier run did not restore the database`. The doctor prints a `warn` line while the file is there. If that restore also fails, for example after a migration changed a table, `browse.mjs` stops. Delete `db-snapshot.json` to keep the rows as they are, or launch a new stack.
 
-The server keeps a cache of the tenant of each user for up to 30 minutes. The restore writes rows behind that cache, because it does not go through the server. The restart clears the cache, so the same user can start a tenant again on the next run. A restart also ends each CSharpRepl connection and removes each patch. To keep a patch across recipe runs, give `--keep-data`, which makes no restore and no restart. `dotnet aspire logs server` shows only the new process after a restart. To read what the server logged in a run, use `dotnet aspire otel logs server`, which keeps the logs of the earlier process.
+The server keeps a cache of the tenant of each user for up to 30 minutes. The restore writes rows behind that cache, because it does not go through the server. The restart clears the cache, so the same user can start a tenant again on the next run. A restart also ends each CSharpRepl connection and removes each patch, so apply a patch again before the next run. `dotnet aspire logs server` shows only the new process after a restart. To read what the server logged in a run, use `dotnet aspire otel logs server`, which keeps the logs of the earlier process.
 
 Only one recipe runs on a stack at a time. A restore would delete the rows of a second run. Do not drive the stack with the Playwright MCP server while a recipe runs, for the same reason. `browse.mjs` holds `recipe.lock` in the run directory, and a second run stops with `browse: the recipe run with pid <pid> drives this stack`.
 
-To look at the rows after a recipe, give `--keep-data`. The run then takes no copy and restores nothing, so the rows stay until the stack stops.
+To look at the rows after a recipe, give `--keep-data`. The run then takes no copy, restores nothing, and makes no restart, so the rows and a CSharpRepl patch stay. If an earlier run left `db-snapshot.json`, the run still restores it and restarts the server first. A kept user is a member of a tenant, and later copies include that user. So a recipe that starts a tenant for that user fails until you launch a new stack.
 
 ## Production build
 

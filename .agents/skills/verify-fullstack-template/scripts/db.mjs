@@ -9,7 +9,7 @@ const keyExpression = (table, alias) => `json_build_array(${table.key.map((colum
 
 const aspire = (stack, ...args) =>
   execFileSync('dotnet', ['aspire', ...args, '--apphost', stack.appHostPath, '--nologo', '--non-interactive'],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 
 export function postgresContainer(stack) {
   const described = JSON.parse(aspire(stack, 'describe', 'postgres', '--format', 'Json'))
@@ -126,6 +126,7 @@ export class RestoreError extends Error {
 function restartServer(stack) {
   aspire(stack, 'resource', 'server', 'restart')
   aspire(stack, 'wait', 'server', '--status', 'healthy', '--timeout', '120')
+  console.log('data: restarted the server to clear its cache')
 }
 
 const changesServerDatabase = (changes) => Object.keys(changes).some((table) => table.startsWith('appdb.'))

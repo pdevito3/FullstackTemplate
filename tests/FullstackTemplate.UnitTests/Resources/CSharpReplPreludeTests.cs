@@ -1,6 +1,7 @@
 namespace FullstackTemplate.UnitTests.Resources;
 
 using System.Globalization;
+using System.Text.RegularExpressions;
 using FullstackTemplate.UnitTests.SourceGenerators;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -8,7 +9,11 @@ using Shouldly;
 
 public class CSharpReplPreludeTests
 {
+    private static readonly CSharpCompilationOptions ScriptOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        .WithUsings("System", "System.Collections.Generic", "System.Linq", "System.Threading.Tasks");
+
     private const string PreludePath = ".agents/skills/csharprepl/prelude.csx";
+    private const string SkillPath = ".agents/skills/csharprepl/SKILL.md";
 
     [Test]
     public void a_using_that_does_not_compile_is_listed_with_its_line()
@@ -66,24 +71,83 @@ public class CSharpReplPreludeTests
         faults.ShouldBeEmpty();
     }
 
+    [Test]
+    public void a_command_that_names_a_moved_type_is_listed()
+    {
+        // Arrange
+        var prelude = File.ReadAllText(Path.Combine(FindRepositoryRoot(), PreludePath));
+        const string skill = """
+            NO_COLOR=1 dotnet csharprepl connect <pid> --eval 'await InScope<MovedDbContext, int>(db => db.Tenants.CountAsync())'
+            """;
+
+        // Act
+        var faults = CommandsOf(skill).SelectMany(command => FaultsOf(prelude, command)).ToList();
+
+        // Assert
+        faults.ShouldNotBeEmpty();
+        faults[0].ShouldStartWith(
+            $"{SkillPath}: 'await InScope<MovedDbContext, int>(db => db.Tenants.CountAsync())' does not compile (CS0246)");
+    }
+
+    [Test]
+    public void the_commands_of_the_skill_compile_after_the_prelude()
+    {
+        // Arrange
+        var root = FindRepositoryRoot();
+        var prelude = File.ReadAllText(Path.Combine(root, PreludePath));
+        var commands = CommandsOf(File.ReadAllText(Path.Combine(root, SkillPath)));
+
+        // Act
+        var faults = commands.SelectMany(command => FaultsOf(prelude, command)).ToList();
+
+        // Assert
+        commands.ShouldContain(command => command.Contains("InScope<AppDbContext, int>"));
+        faults.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Reads the C# of each `--eval` and each heredoc. A line that starts with # is a command of the REPL, not C#.
+    /// </summary>
+    private static List<string> CommandsOf(string skill) =>
+        [.. Regex.Matches(skill, @"connect <pid> --eval '(?<code>[^']+)'|<<'EOF'\n(?<code>.*?)\n\s*EOF", RegexOptions.Singleline)
+            .Select(match => string.Join('\n', match.Groups["code"].Value.Split('\n').Where(line => !line.TrimStart().StartsWith('#'))))];
+
+    private static CSharpCompilation CompilationOf(string prelude) =>
+        CSharpCompilation.CreateScriptCompilation(
+            "Prelude", ScriptTreeOf(prelude), PlatformReferences.All, ScriptOptions, globalsType: typeof(ReplHostGlobals));
+
+    private static SyntaxTree ScriptTreeOf(string text) =>
+        CSharpSyntaxTree.ParseText(text, new CSharpParseOptions(kind: SourceCodeKind.Script));
+
     private static List<string> FaultsOf(string prelude)
     {
-        var tree = CSharpSyntaxTree.ParseText(prelude, new CSharpParseOptions(kind: SourceCodeKind.Script));
-        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            .WithUsings("System", "System.Collections.Generic", "System.Linq", "System.Threading.Tasks");
-        var compilation = CSharpCompilation.CreateScriptCompilation(
-            "Prelude", tree, PlatformReferences.All, options, globalsType: typeof(ReplHostGlobals));
+        var compilation = CompilationOf(prelude);
 
         return [.. compilation.GetDiagnostics()
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .Select(diagnostic => FaultOf(diagnostic, tree))];
+            .Select(diagnostic => FaultOf(diagnostic, PreludeFaultPrefix(diagnostic), compilation.SyntaxTrees.Single()))];
     }
 
-    private static string FaultOf(Diagnostic diagnostic, SyntaxTree tree)
+    // A command is the next submission of the session, as in the real REPL: the usings and helpers of the prelude apply to it.
+    private static List<string> FaultsOf(string prelude, string command)
+    {
+        var tree = ScriptTreeOf(command);
+        var compilation = CSharpCompilation.CreateScriptCompilation(
+            "Command", tree, PlatformReferences.All, ScriptOptions, CompilationOf(prelude), globalsType: typeof(ReplHostGlobals));
+
+        return [.. compilation.GetDiagnostics()
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Select(diagnostic => FaultOf(diagnostic, SkillPath, tree))];
+    }
+
+    private static string PreludeFaultPrefix(Diagnostic diagnostic) =>
+        $"{PreludePath} line {diagnostic.Location.GetLineSpan().StartLinePosition.Line + 1}";
+
+    private static string FaultOf(Diagnostic diagnostic, string place, SyntaxTree tree)
     {
         var line = diagnostic.Location.GetLineSpan().StartLinePosition.Line;
         var text = tree.GetText().Lines[line].ToString().Trim();
-        return $"{PreludePath} line {line + 1}: '{text}' does not compile ({diagnostic.Id}). {diagnostic.GetMessage(CultureInfo.InvariantCulture)}";
+        return $"{place}: '{text}' does not compile ({diagnostic.Id}). {diagnostic.GetMessage(CultureInfo.InvariantCulture)}";
     }
 
     /// <summary>

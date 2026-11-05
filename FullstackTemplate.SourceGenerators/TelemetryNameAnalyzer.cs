@@ -71,6 +71,8 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 			var types = new NameTypes(start.Compilation);
 			start.RegisterOperationAction(ctx => AnalyzeInvocation(ctx, types), OperationKind.Invocation);
 			start.RegisterOperationAction(ctx => AnalyzeCreation(ctx, types), OperationKind.ObjectCreation);
+			start.RegisterOperationAction(ctx => AnalyzeCollectionExpression(ctx, types), OperationKind.CollectionExpression);
+			start.RegisterOperationAction(ctx => AnalyzeAssignment(ctx, types), OperationKind.SimpleAssignment);
 		});
 	}
 
@@ -95,6 +97,8 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 			Check(ctx, Argument(call.Arguments, "operationName"), QueryName);
 		else if (types.IsActivity(owner) && method.Name == "SetTag")
 			Check(ctx, Argument(call.Arguments, "key"), TagKey);
+		else if (types.IsTagCollection(owner) && method.Name is "Add" or "Insert")
+			CheckTagArguments(ctx, call.Arguments);
 		else if (types.IsMeter(owner) && method.Name.StartsWith("Create", System.StringComparison.Ordinal))
 			Check(ctx, Argument(call.Arguments, "name"), MetricName, PlatformMetrics);
 		else if (types.TemplateParameter(method) is { } parameter
@@ -113,6 +117,25 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		var creation = (IObjectCreationOperation)ctx.Operation;
 		if (types.IsActivityEvent(creation.Constructor?.ContainingType))
 			Check(ctx, Argument(creation.Arguments, "name"), EventName);
+		else if (types.IsTagCollection(creation.Constructor?.ContainingType))
+			CheckTagArguments(ctx, creation.Arguments);
+	}
+
+	private static void AnalyzeCollectionExpression(OperationAnalysisContext ctx, NameTypes types)
+	{
+		var collection = (ICollectionExpressionOperation)ctx.Operation;
+		if (types.IsTagCollection(collection.Type as INamedTypeSymbol))
+			CheckTagPairs(ctx, collection);
+	}
+
+	private static void AnalyzeAssignment(OperationAnalysisContext ctx, NameTypes types)
+	{
+		var assignment = (ISimpleAssignmentOperation)ctx.Operation;
+		if (assignment.Target is IPropertyReferenceOperation { Property.IsIndexer: true } indexer && types.IsTagCollection(indexer.Property.ContainingType))
+		{
+			Check(ctx, Argument(indexer.Arguments, "key"), TagKey);
+			CheckTagPair(ctx, assignment.Value);
+		}
 	}
 
 	/// <summary>
@@ -148,14 +171,57 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 	}
 
 	private static IEnumerable<ITupleOperation> TagTuples(IOperation tags)
+		=> ValuesHeldBy(Unwrap(tags))
+			.SelectMany(ItemsOf)
+			.Select(Unwrap)
+			.OfType<ITupleOperation>()
+			.Where(static tuple => tuple.Elements.Length == 2);
+
+	private static IEnumerable<IOperation> ValuesHeldBy(IOperation value)
 	{
-		var items = Unwrap(tags) switch
+		if (value is not ILocalReferenceOperation { Local: var local })
+			return [value];
+
+		var root = value;
+		while (root.Parent is not null)
+			root = root.Parent;
+
+		return root.Descendants().SelectMany<IOperation, IOperation>(operation => operation switch
 		{
-			ICollectionExpressionOperation collection => collection.Elements,
+			IVariableDeclaratorOperation { Initializer: { } initializer } declarator when SymbolEqualityComparer.Default.Equals(declarator.Symbol, local) => [initializer.Value],
+			ISimpleAssignmentOperation { Target: ILocalReferenceOperation target } assignment when SymbolEqualityComparer.Default.Equals(target.Local, local) => [assignment.Value],
+			_ => [],
+		});
+	}
+
+	private static IEnumerable<IOperation> ItemsOf(IOperation collection)
+		=> Unwrap(collection) switch
+		{
+			ICollectionExpressionOperation expression => expression.Elements,
 			IArrayCreationOperation { Initializer: { } initializer } => initializer.ElementValues,
 			_ => [],
 		};
-		return items.Select(Unwrap).OfType<ITupleOperation>().Where(static tuple => tuple.Elements.Length == 2);
+
+	private static void CheckTagArguments(OperationAnalysisContext ctx, ImmutableArray<IArgumentOperation> arguments)
+	{
+		Check(ctx, Argument(arguments, "key"), TagKey);
+		foreach (var argument in arguments)
+		{
+			CheckTagPair(ctx, argument.Value);
+			CheckTagPairs(ctx, argument.Value);
+		}
+	}
+
+	private static void CheckTagPairs(OperationAnalysisContext ctx, IOperation collection)
+	{
+		foreach (var item in ItemsOf(collection))
+			CheckTagPair(ctx, item);
+	}
+
+	private static void CheckTagPair(OperationAnalysisContext ctx, IOperation pair)
+	{
+		if (Unwrap(pair) is IObjectCreationOperation creation)
+			Check(ctx, Argument(creation.Arguments, "key"), TagKey);
 	}
 
 	private static IOperation Unwrap(IOperation operation)
@@ -192,6 +258,8 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		private readonly INamedTypeSymbol? activity = compilation.GetTypeByMetadataName("System.Diagnostics.Activity");
 		private readonly INamedTypeSymbol? activityEvent = compilation.GetTypeByMetadataName("System.Diagnostics.ActivityEvent");
 		private readonly INamedTypeSymbol? meter = compilation.GetTypeByMetadataName("System.Diagnostics.Metrics.Meter");
+		private readonly INamedTypeSymbol? tagList = compilation.GetTypeByMetadataName("System.Diagnostics.TagList");
+		private readonly INamedTypeSymbol? activityTagsCollection = compilation.GetTypeByMetadataName("System.Diagnostics.ActivityTagsCollection");
 		private readonly INamedTypeSymbol? templateFormatMethod = compilation.GetTypeByMetadataName("Serilog.Core.MessageTemplateFormatMethodAttribute");
 
 		public bool IsTelemetry(INamedTypeSymbol? type) => Is(type, telemetry);
@@ -199,6 +267,7 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		public bool IsActivity(INamedTypeSymbol? type) => Is(type, activity);
 		public bool IsActivityEvent(INamedTypeSymbol? type) => Is(type, activityEvent);
 		public bool IsMeter(INamedTypeSymbol? type) => Is(type, meter);
+		public bool IsTagCollection(INamedTypeSymbol? type) => Is(type, tagList) || Is(type, activityTagsCollection);
 
 		public string? TemplateParameter(IMethodSymbol method)
 			=> templateFormatMethod is null

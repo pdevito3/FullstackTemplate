@@ -11,6 +11,7 @@ using Shouldly;
 public class TelemetryNameAnalyzerTests
 {
     private const string Usings = """
+        using System.Collections.Generic;
         using System.Diagnostics;
         using System.Diagnostics.Metrics;
         using System.Linq;
@@ -129,6 +130,96 @@ public class TelemetryNameAnalyzerTests
     }
 
     [Test]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; using var activity = Telemetry.Trace(tags, "lock.acquire");""")]
+    [Arguments("""var tags = new (string, object?)[] { ("Raw Key", 1) }; using var activity = Telemetry.Trace(tags, "lock.acquire");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; using var trace = Telemetry.TraceRoot(tags, "lock.acquire");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; tags = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags; tags = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; System.Action write = () => Telemetry.AddEvent(tags, "lock.acquired");""")]
+    public async Task a_tags_array_in_a_local_with_a_bad_key_gets_fsttel004(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("\"Raw Key\"");
+    }
+
+    [Test]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; using var activity = Telemetry.Trace(tags, "lock.acquire");""")]
+    [Arguments("""(string, object?)[] tags = [(name, 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""var tags = Tags(); Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; System.Console.WriteLine(tags.Length);""")]
+    public async Task a_tags_array_in_a_local_with_no_bad_key_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""var tags = new TagList { { "UserId", id } };""")]
+    [Arguments("""TagList tags = new() { { "UserId", id } };""")]
+    [Arguments("""var tags = new TagList(); tags.Add("UserId", id);""")]
+    [Arguments("""var tags = new TagList(); tags.Add(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new TagList(); tags.Add(new("UserId", id));""")]
+    [Arguments("""var tags = new TagList(); tags.Insert(0, new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new TagList(); tags[0] = new KeyValuePair<string, object?>("UserId", id);""")]
+    [Arguments("""var tags = new TagList { new KeyValuePair<string, object?>("UserId", id) };""")]
+    [Arguments("""TagList tags = [new("UserId", id)];""")]
+    [Arguments("""TagList tags = [new KeyValuePair<string, object?>("UserId", id)];""")]
+    [Arguments("""var tags = new TagList([new KeyValuePair<string, object?>("UserId", id)]);""")]
+    [Arguments("""var tags = new TagList(new[] { new KeyValuePair<string, object?>("UserId", id) });""")]
+    [Arguments("""Telemetry.Errors.Add(1, new TagList { { "UserId", id } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection { { "UserId", id } };""")]
+    [Arguments("""var tags = new ActivityTagsCollection { ["UserId"] = id };""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] = id;""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags.Add("UserId", id);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags.Add(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new ActivityTagsCollection { new KeyValuePair<string, object?>("UserId", id) };""")]
+    [Arguments("""ActivityTagsCollection tags = [new("UserId", id)];""")]
+    [Arguments("""var tags = new ActivityTagsCollection([new("UserId", id)]);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new[] { new KeyValuePair<string, object?>("UserId", id) });""")]
+    [Arguments("""Activity.Current?.AddEvent(new ActivityEvent("cache.missed", tags: new ActivityTagsCollection { { "UserId", id } }));""")]
+    public async Task a_bad_key_in_a_tag_list_or_an_activity_tags_collection_gets_fsttel004(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldStartWith("The tag key 'UserId' breaks the name rules.");
+        Text(diagnostic).ShouldBe("\"UserId\"");
+    }
+
+    [Test]
+    [Arguments("""var tags = new TagList { { "app.request.name", id } };""")]
+    [Arguments("""var tags = new TagList(); tags.Add("error.type", id);""")]
+    [Arguments("""var tags = new TagList { new KeyValuePair<string, object?>("exception.message", id) };""")]
+    [Arguments("""TagList tags = [new("app.user_id", id)];""")]
+    [Arguments("""var tags = new TagList(); tags.Add(name, id);""")]
+    [Arguments("""var tags = new TagList([new KeyValuePair<string, object?>(name, id)]);""")]
+    [Arguments("""var tags = new ActivityTagsCollection { { "app.user_id", id } };""")]
+    [Arguments("""var tags = new ActivityTagsCollection { ["error.type"] = id };""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags[name] = id;""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); var found = tags["UserId"]; tags.Remove("UserId"); tags.ContainsKey("UserId");""")]
+    [Arguments("""var tags = new Dictionary<string, object?> { { "UserId", id } };""")]
+    [Arguments("""var tags = new Dictionary<string, object?> { ["UserId"] = id };""")]
+    [Arguments("""var tags = new List<KeyValuePair<string, object?>> { new("UserId", id) };""")]
+    [Arguments("""var tag = new KeyValuePair<string, object?>("UserId", id);""")]
+    public async Task a_tag_list_or_an_activity_tags_collection_with_no_bad_key_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task a_constant_field_that_breaks_the_names_table_gets_fsttel004()
     {
         // Act
@@ -158,6 +249,8 @@ public class TelemetryNameAnalyzerTests
                 {
                     {{statement}}
                 }
+
+                private static (string, object?)[] Tags() => [];
             }
             """);
 

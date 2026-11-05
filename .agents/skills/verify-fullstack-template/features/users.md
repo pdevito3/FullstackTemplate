@@ -33,6 +33,5 @@ Preconditions:
 
 ## Gotchas
 
-- The Server caches the tenant of each user. The recipe deletes its tenant through `DELETE /api/v1/tenants/{id}` at the end. If a run stops before that step, run `dotnet aspire resource server restart --apphost FullstackTemplate.AppHost` before the next run. Otherwise `GET /api/v1/users/by-identifier/{sub}` gives 403 for the user of `login()`, and the start of a tenant fails.
 - The queries retry one time. For a refused list, the toast shows first, and `The users did not load.` shows about 1 s later. Wait for the text, not for the toast.
 - The success screen of `Start a tenant` has no `Logout` button. Open `/` before `logout()`.

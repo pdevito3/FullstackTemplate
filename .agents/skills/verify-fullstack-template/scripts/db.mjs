@@ -7,11 +7,12 @@ const literal = (value) => `'${value.replaceAll("'", "''")}'`
 const qualified = (table) => `${ident(table.schema)}.${ident(table.name)}`
 const keyExpression = (table, alias) => `json_build_array(${table.key.map((column) => `${alias}.${ident(column)}`).join(', ')})::text`
 
+const aspire = (stack, ...args) =>
+  execFileSync('dotnet', ['aspire', ...args, '--apphost', stack.appHostPath, '--nologo', '--non-interactive'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+
 export function postgresContainer(stack) {
-  const described = JSON.parse(
-    execFileSync('dotnet', ['aspire', 'describe', 'postgres', '--apphost', stack.appHostPath, '--format', 'Json', '--nologo',
-      '--non-interactive'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }),
-  )
+  const described = JSON.parse(aspire(stack, 'describe', 'postgres', '--format', 'Json'))
   const id = described.resources?.[0]?.properties?.['container.id']
   if (!id) throw new Error('db: aspire describe postgres gave no container.id. Is the stack running?')
   return id
@@ -120,7 +121,18 @@ export class RestoreError extends Error {
   }
 }
 
-export function restore(container, before) {
+// The Server caches what it reads from its database, such as the tenant of each user, and a restore writes behind that
+// cache. A new process has an empty cache, so the next run gets the answers of the restored rows.
+function restartServer(stack) {
+  aspire(stack, 'resource', 'server', 'restart')
+  aspire(stack, 'wait', 'server', '--status', 'healthy', '--timeout', '120')
+}
+
+const changesServerDatabase = (changes) => Object.keys(changes).some((table) => table.startsWith('appdb.'))
+
+// A run can stop after its restore and before the restart of the server. The next restore then finds no changes, so
+// that run gives alwaysRestartServer.
+export function restore(stack, container, before, { alwaysRestartServer = false } = {}) {
   const diffs = differences(before, snapshot(container))
   const changes = changeCountsByTable(diffs)
   try {
@@ -129,6 +141,7 @@ export function restore(container, before) {
     if (left.length) {
       throw new Error(`db: the restore left these tables different from the snapshot: ${Object.keys(changeCountsByTable(left)).join(', ')}`)
     }
+    if (alwaysRestartServer || changesServerDatabase(changes)) restartServer(stack)
   } catch (e) {
     throw new RestoreError(e, changes)
   }

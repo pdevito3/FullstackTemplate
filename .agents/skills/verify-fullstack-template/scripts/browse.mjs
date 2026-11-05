@@ -5,6 +5,7 @@
 //
 // Each run takes a copy of the databases before the recipe and puts the rows back after it (see db.mjs), also after
 // a failed run. A run that was killed leaves its copy in the run directory, and the next run restores it first.
+// A restore that changed the database of the server also restarts the server, to clear its cache.
 // --keep-data skips the copy and the restore, so the rows of the recipe stay for a look at them.
 //
 // A recipe is an ES module with a default export:
@@ -96,7 +97,7 @@ const postgres = postgresContainer(stack)
 if (existsSync(snapshotFile)) {
   let changes
   try {
-    changes = restore(postgres, JSON.parse(readFileSync(snapshotFile, 'utf8')))
+    changes = restore(stack, postgres, JSON.parse(readFileSync(snapshotFile, 'utf8')), { alwaysRestartServer: true })
   } catch (e) {
     console.error(`browse: the restore of the snapshot of an earlier run failed: ${e.message}`)
     console.error(`browse: delete ${snapshotFile} to keep the rows as they are, or run cleanup.sh and launch.sh for new rows.`)
@@ -313,7 +314,7 @@ try {
   }
   if (before) {
     try {
-      data = { restored: true, changes: restore(postgres, before) }
+      data = { restored: true, changes: restore(stack, postgres, before) }
       rmSync(snapshotFile)
     } catch (e) {
       data = { restored: false, changes: e.changes ?? null, error: e.message }

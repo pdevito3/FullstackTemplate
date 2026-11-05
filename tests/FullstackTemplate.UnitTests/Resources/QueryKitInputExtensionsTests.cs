@@ -12,6 +12,8 @@ public class QueryKitInputExtensionsTests : IDisposable
 
     private sealed record Tagged(string Name, IReadOnlyList<string> Tags);
 
+    private sealed record StoredExpiry(string Name, bool IsExpired);
+
     private static readonly IQueryable<Row> Rows = new[] { new Row("a") }.AsQueryable();
 
     private readonly ActivitySource _source = new("FullstackTemplate.UnitTests.QueryKitInput");
@@ -386,5 +388,33 @@ public class QueryKitInputExtensionsTests : IDisposable
         // Assert
         exception.Parameter.ShouldBe("sortOrder");
         exception.Message.ShouldBe("The sort order cannot use the version. Choose another field.");
+    }
+
+    [Test]
+    public void a_stored_expired_flag_of_another_list_can_filter_and_sort()
+    {
+        // Arrange
+        var rows = new[] { new StoredExpiry("a", false), new StoredExpiry("b", true) }.AsQueryable();
+
+        // Act
+        var filtered = rows.ApplyFilters("IsExpired == true", new CustomQueryKitConfiguration()).Single();
+        var sorted = rows.ApplySortOrder("-IsExpired", new CustomQueryKitConfiguration()).First();
+
+        // Assert
+        filtered.Name.ShouldBe("b");
+        sorted.Name.ShouldBe("b");
+    }
+
+    [Test]
+    public void the_refusal_of_an_unknown_field_offers_a_stored_expired_flag_of_another_list()
+    {
+        // Arrange
+        var rows = new[] { new StoredExpiry("a", false) }.AsQueryable();
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => rows.ApplyFilters("noSuchField == 1", new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Message.ShouldContain("isExpired");
     }
 }

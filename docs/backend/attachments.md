@@ -17,7 +17,8 @@ For the bucket in each environment, see [Object storage](../backend.md#object-st
 |------|--------------|
 | [`FileType`](../../FullstackTemplate.Server/Domain/Attachments/FileType.cs) | The registry of the types that an upload can have: the name, the media type, the extensions, the first bytes, and whether the page can show it |
 | [`UploadRules`](../../FullstackTemplate.Server/Domain/Attachments/UploadRules.cs) | The allowed types and the largest size of one use. It checks an upload and writes the messages from its own limits |
-| [`FileUpload`](../../FullstackTemplate.Server/Domain/Attachments/FileUpload.cs) | What the client sent: the name, the claimed media type, the size, and the first bytes |
+| [`ReceivedFile`](../../FullstackTemplate.Server/Domain/Attachments/ReceivedFile.cs) | The file of an upload request: the stream, the name, and the claimed media type. Its constructor refuses a stream that cannot seek. The size is the length of the stream |
+| [`FileUpload`](../../FullstackTemplate.Server/Domain/Attachments/FileUpload.cs) | What the client sent: the name, the claimed media type, the size, and the first bytes. `ReadAsync` reads it from a `ReceivedFile` |
 | [`StoredFile`](../../FullstackTemplate.Server/Domain/Attachments/StoredFile.cs) | The value object of an attachment entity. `Accept` checks the upload. `DownloadAt` and `PreviewAt` give the presigned GETs |
 | [`IAttachment`](../../FullstackTemplate.Server/Domain/Attachments/IAttachment.cs) | The interface of each attachment entity |
 | [`AttachmentStorage`](../../FullstackTemplate.Server/Domain/Attachments/AttachmentStorage.cs) | The add and the delete, in the order of [The order of the writes](#the-order-of-the-writes) |
@@ -93,7 +94,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    }
    ```
 
-4. **The add.** The command takes a stream, not an `IFormFile`. Call `GuardCaller` of the action before the load of the owner, and the access check of the owner, such as `GuardChangeBy`, after it. Then read the first bytes and make the entity. Give the save of the row to `AttachmentStorage.AddAsync`. The save takes the shared lock of the tenant, as each add of a tenant-owned root does ([concurrency.md](concurrency.md#lock)).
+4. **The add.** The command takes a `ReceivedFile`, not an `IFormFile`. Call `GuardCaller` of the action before the load of the owner, and the access check of the owner, such as `GuardChangeBy`, after it. Then read the first bytes and make the entity. Give the save of the row to `AttachmentStorage.AddAsync`. The save takes the shared lock of the tenant, as each add of a tenant-owned root does ([concurrency.md](concurrency.md#lock)).
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
@@ -103,12 +104,11 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    repair.GuardChangeBy(caller);
 
    // The rules run before the upload, so a file that they refuse never gets to storage
-   var upload = await FileUpload.ReadAsync(request.Content, request.FileName, request.MediaType,
-       request.SizeBytes, cancellationToken);
+   var upload = await FileUpload.ReadAsync(request.File, cancellationToken);
    var photo = RepairPhoto.Create(repair, upload, timeProvider.GetUtcNow());
 
    // The upload is before the lock, because the work of the lock can run more than one time
-   await attachments.AddAsync(photo, request.Content, async () =>
+   await attachments.AddAsync(photo, request.File, async () =>
        await RootLock.Tenant.RunSharedAsync(dbContext, repair.TenantId, async ct =>
        {
            await dbContext.Set<Repair>()
@@ -124,7 +124,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    return await photo.ToAttachmentDtoAsync(storage, timeProvider.GetUtcNow());
    ```
 
-5. **The upload endpoint.** Only the endpoint knows `IFormFile` (`EntrypointBoundaryTests`). It opens the stream and owns it. Kubb then writes a client that takes `body: { file }`.
+5. **The upload endpoint.** Only the endpoint knows `IFormFile` (`EntrypointBoundaryTests`). It makes the `ReceivedFile` from the form file and disposes it. Kubb then writes a client that takes `body: { file }`.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
@@ -137,10 +137,8 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
        IMediator mediator,
        CancellationToken cancellationToken)
    {
-       await using var content = file.OpenReadStream();
-       var result = await mediator.Send(
-           new AddRepairPhoto.Command(id, content, file.FileName, file.ContentType, file.Length),
-           cancellationToken);
+       await using var received = new ReceivedFile(file.OpenReadStream(), file.FileName, file.ContentType);
+       var result = await mediator.Send(new AddRepairPhoto.Command(id, received), cancellationToken);
        return TypedResults.CreatedAtRoute(result, "GetRepairPhotos", new { id });
    }
    ```

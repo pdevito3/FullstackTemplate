@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Server.Examples.Workshops.Features;
 
+using Domain.Attachments;
 using Domain.Attachments.Dtos;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -30,10 +31,8 @@ public sealed class AddWorkshopAttachmentEndpoint : IEndpoint
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        await using var content = file.OpenReadStream();
-        var result = await mediator.Send(
-            new AddWorkshopAttachment.Command(id, content, file.FileName, file.ContentType, file.Length),
-            cancellationToken);
+        await using var received = new ReceivedFile(file.OpenReadStream(), file.FileName, file.ContentType);
+        var result = await mediator.Send(new AddWorkshopAttachment.Command(id, received), cancellationToken);
         return TypedResults.CreatedAtRoute(result, "GetWorkshopAttachments", new { id });
     }
 }

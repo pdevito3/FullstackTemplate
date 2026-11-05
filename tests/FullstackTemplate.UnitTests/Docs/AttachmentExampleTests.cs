@@ -142,8 +142,7 @@ public sealed class RepairPhotoConfiguration : IEntityTypeConfiguration<RepairPh
 
 public static class AddRepairPhoto
 {
-    public sealed record Command(string RepairId, Stream Content, string FileName, string? MediaType, long SizeBytes)
-        : IRequest<AttachmentDto>;
+    public sealed record Command(string RepairId, ReceivedFile File) : IRequest<AttachmentDto>;
 
     public sealed class Handler(
         AppDbContext dbContext,
@@ -165,12 +164,11 @@ public static class AddRepairPhoto
             repair.GuardChangeBy(caller);
 
             // The rules run before the upload, so a file that they refuse never gets to storage
-            var upload = await FileUpload.ReadAsync(request.Content, request.FileName, request.MediaType,
-                request.SizeBytes, cancellationToken);
+            var upload = await FileUpload.ReadAsync(request.File, cancellationToken);
             var photo = RepairPhoto.Create(repair, upload, timeProvider.GetUtcNow());
 
             // The upload is before the lock, because the work of the lock can run more than one time
-            await attachments.AddAsync(photo, request.Content, async () =>
+            await attachments.AddAsync(photo, request.File, async () =>
                 await RootLock.Tenant.RunSharedAsync(dbContext, repair.TenantId, async ct =>
                 {
                     await dbContext.Set<Repair>()
@@ -212,10 +210,8 @@ public sealed class AddRepairPhotoEndpoint : IEndpoint
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        await using var content = file.OpenReadStream();
-        var result = await mediator.Send(
-            new AddRepairPhoto.Command(id, content, file.FileName, file.ContentType, file.Length),
-            cancellationToken);
+        await using var received = new ReceivedFile(file.OpenReadStream(), file.FileName, file.ContentType);
+        var result = await mediator.Send(new AddRepairPhoto.Command(id, received), cancellationToken);
         return TypedResults.CreatedAtRoute(result, "GetRepairPhotos", new { id });
     }
 }

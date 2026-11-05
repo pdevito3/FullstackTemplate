@@ -70,9 +70,4 @@ export default async ({ page, step, capture, expect, login }) => {
     expect(users.body.map((u) => u.id)).toEqual([started.user.id])
     expect(started.user.permissions).toContain('manage_users')
   })
-
-  // The restore of browse.mjs deletes the rows behind the tenant cache of the Server. A delete through the API clears it.
-  await step('clean up: DELETE the tenant', async () => {
-    expect((await api(page, 'DELETE', `/api/v1/tenants/${started.tenant.id}`)).status).toBe(204)
-  })
 }

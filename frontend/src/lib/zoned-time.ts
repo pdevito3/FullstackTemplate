@@ -54,7 +54,7 @@ export function springGapMessage(zone?: TimeZone): string {
 
 /** Not an abbreviation, such as "ET" or "PT (Canada)", and not an offset, such as "GMT-5". */
 function isWordName(name: string): boolean {
-  return name.includes(' ') && !/^[A-Z]+ /.test(name) && !name.startsWith('GMT')
+  return name.includes(' ') && !/^[A-Z]+ /.test(name)
 }
 
 /** Today at the place, as `ZonedDate.TodayAt` on the Server. */

@@ -69,6 +69,30 @@ const faults = [
     element: 'name',
   },
   {
+    name: 'an ellipsis on a parent, with nothing that shows the full value',
+    html: `<p data-slot="name" style="${truncate}"><span>${word}</span></p>`,
+    kind: 'text is cut',
+    element: 'name',
+  },
+  {
+    name: 'a line clamp on a parent, with nothing that shows the full value',
+    html: `<p data-slot="name" style="${lineClamp}"><span>${words}</span></p>`,
+    kind: 'text is cut',
+    element: 'name',
+  },
+  {
+    name: 'text in a flex box that hides its overflow and is cut at the left',
+    html: `<div data-slot="row" style="display:flex;justify-content:flex-end;width:100px;overflow:hidden">${word}</div>`,
+    kind: 'text is cut',
+    element: 'row',
+  },
+  {
+    name: 'text that wraps past a fixed height and prints over the next row',
+    html: `<p data-slot="note" style="width:100px;height:20px;margin:0">${words}</p><p>Next row</p>`,
+    kind: 'text runs past its box',
+    element: 'note',
+  },
+  {
     name: 'a line clamp with nothing that shows the full value',
     html: `<p data-slot="name" style="${lineClamp}">${words}</p>`,
     kind: 'text is cut',

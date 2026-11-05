@@ -23,7 +23,6 @@ const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdom
 const nameKeys = new Set(['name', 'title', 'summary', 'description', 'label', 'firstName', 'lastName', 'fullName', 'tenantName',
   'requestedBy', 'given_name', 'family_name', 'fileName'])
 const emailKeys = new Set(['email'])
-const serverFixedKeys = new Set(['uploadRules'])
 
 function longValues() {
   const seen = new Map()
@@ -42,7 +41,7 @@ function longValues() {
     if (typeof node.type === 'string' && 'value' in node) {
       return rewrites(node.type, node.value) ? { ...node, value: longFor(node.type, node.value) } : node
     }
-    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, serverFixedKeys.has(key) ? value : rewrites(key, value) ? longFor(key, value) : walk(value)]))
+    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrites(key, value) ? longFor(key, value) : walk(value)]))
   }
   return walk
 }
@@ -233,7 +232,7 @@ export function markLayoutFaults() {
   const hasLetterOrDigit = (text) => text.some((node) => /[\p{L}\p{N}]/u.test(node.textContent))
   // A space at the end of a line in pre-wrap hangs past the box, and the rect of the whole text includes it.
   const wordEdges = (text) => {
-    const edges = { left: Infinity, right: -Infinity }
+    const edges = { left: Infinity, right: -Infinity, bottom: -Infinity }
     for (const node of text) {
       for (const { 0: word, index } of node.textContent.matchAll(/\S+/g)) {
         const range = document.createRange()
@@ -242,6 +241,7 @@ export function markLayoutFaults() {
         const rect = range.getBoundingClientRect()
         edges.left = Math.min(edges.left, rect.left)
         edges.right = Math.max(edges.right, rect.right)
+        edges.bottom = Math.max(edges.bottom, rect.bottom)
       }
     }
     return edges
@@ -262,8 +262,7 @@ export function markLayoutFaults() {
     return width >= scroller.clientWidth - sum(getComputedStyle(scroller), 'paddingLeft', 'paddingRight') - 1
   }
   // A flex item grows with a long word and holds it, so the box that the text passes can be an ancestor.
-  const boxThatTextPasses = (el, text) => {
-    const edges = wordEdges(text)
+  const boxThatTextPasses = (el, edges) => {
     const scroller = firstBoxWithOverflow(el)
     const isLineInScroller = /^(nowrap|pre)$/.test(getComputedStyle(el).whiteSpace) && scroller && scrolls(getComputedStyle(scroller).overflowX)
     for (let node = el; node && node !== scroller && node !== document.body; node = node.parentElement) {
@@ -281,6 +280,21 @@ export function markLayoutFaults() {
     }
     return null
   }
+  // A box with a fixed height shows its overflow, so the next lines print over the next row. The font of a tight line
+  // height passes its box by a little, so only half a line or more counts.
+  const boxThatTextOutgrows = (el, edges) => {
+    let box = el
+    while (isInline(box)) box = box.parentElement
+    if (getComputedStyle(box).overflowY !== 'visible') return null
+    const overrun = edges.bottom - box.getBoundingClientRect().bottom
+    return overrun > parseFloat(getComputedStyle(el).fontSize) / 2 ? { box, overrun } : null
+  }
+  // A scroll width does not count text that a box cuts at its left, for example in a justify-end flex box.
+  const isCutAtLeft = (box, text) => {
+    const { left, right } = textRect(text)
+    const clipLeft = box.getBoundingClientRect().left + box.clientLeft
+    return left < clipLeft - 1 && right > clipLeft
+  }
   const isInFixedBox = (el) => {
     for (let node = el; node && node !== document.body; node = node.parentElement) {
       if (getComputedStyle(node).position === 'fixed') return true
@@ -292,7 +306,7 @@ export function markLayoutFaults() {
     const text = ownText(el)
     if (!text.length || isHidden(el)) continue
     const style = getComputedStyle(el)
-    const cutX = clipsContent(style.overflowX) && el.scrollWidth > el.clientWidth + 1
+    const cutX = clipsContent(style.overflowX) && (el.scrollWidth > el.clientWidth + 1 || isCutAtLeft(el, text))
     const cutY = clipsContent(style.overflowY) && el.scrollHeight > el.clientHeight + 1
     if (cutX || cutY) {
       if (!showsEllipsis(el, el, cutX, cutY)) add(el, { kind: 'text is cut', how: 'cut with no ellipsis' })
@@ -324,9 +338,15 @@ export function markLayoutFaults() {
       checkY &&= !scrolls(nodeStyle.overflowY)
     }
     if (settled) continue
-    const past = hasLetterOrDigit(text) && boxThatTextPasses(el, text)
+    const edges = hasLetterOrDigit(text) ? wordEdges(text) : null
+    const past = edges && boxThatTextPasses(el, edges)
     if (past) {
       add(el, { kind: 'text runs past its box', how: `runs ${Math.round(past.overrun)} px past the ${Math.round(past.boxWidth)} px of the ${label(past.box)} that holds it` })
+      continue
+    }
+    const outgrown = edges && boxThatTextOutgrows(el, edges)
+    if (outgrown) {
+      add(el, { kind: 'text runs past its box', how: `runs ${Math.round(outgrown.overrun)} px below the ${label(outgrown.box)} that holds it` })
       continue
     }
     const pastX = checkX && (shown.left < -1 || shown.right > width + 1)

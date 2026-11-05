@@ -146,7 +146,9 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
       expect(res.status()).toBe(422)
       const body = await res.json()
       expect(body.errors.mediaType).toEqual([body.detail])
-      for (const type of rules.fileTypes) expect(body.detail).toContain(type.name)
+      // The sweep changes the names in an answer that the browser gets, and the message has the names of the Server
+      const answer = await page.request.get(`/api/v1/workshops/${workshop.id}/attachments`, { headers: { 'X-CSRF': '1' } })
+      for (const type of (await answer.json()).uploadRules.fileTypes) expect(body.detail).toContain(type.name)
       await expect(page.getByRole('alertdialog').filter({ hasText: body.detail })).toBeVisible()
       await expect(files.getByRole('list', { name: 'Files' }).getByRole('listitem')).toHaveCount(2)
     })

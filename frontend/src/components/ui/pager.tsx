@@ -75,12 +75,14 @@ function Pager({ label, pagination, onPageChange }: PagerProps) {
       <span className="mr-auto text-sm text-muted-foreground">
         Page {pageNumber} of {Math.max(totalPages, 1)}
       </span>
-      <PagerButtons
-        hasPrevious={hasPrevious}
-        hasNext={hasNext}
-        onPrevious={() => onPageChange(pageNumber - 1)}
-        onNext={() => onPageChange(pageNumber + 1)}
-      />
+      <div className="flex gap-2">
+        <PagerButtons
+          hasPrevious={hasPrevious}
+          hasNext={hasNext}
+          onPrevious={() => onPageChange(pageNumber - 1)}
+          onNext={() => onPageChange(pageNumber + 1)}
+        />
+      </div>
     </nav>
   )
 }

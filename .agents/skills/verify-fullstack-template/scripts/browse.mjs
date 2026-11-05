@@ -268,14 +268,18 @@ async function signInAtDuendeDemo(user) {
   await page.locator('button[value="login"]').click()
 }
 
-// Logs out through the BFF. 0factor sends the browser back at once. Duende shows a "return to the application"
-// page, which this follows. Back on the app, the SPA has no session, so it sends the browser to the login of the IdP.
 // StrictMode runs the effect that goes to the login twice in the dev build, and the first navigation aborts. A waitForURL rejects on that abort.
 async function waitForIdp() {
-  await expect.poll(() => new URL(page.url()).origin, { timeout: 30_000 }).not.toBe(new URL(stack.urls.web).origin)
+  const onIdp = () => {
+    const { protocol, origin } = new URL(page.url())
+    return protocol.startsWith('http') && origin !== new URL(stack.urls.web).origin
+  }
+  await expect.poll(onIdp, { timeout: 30_000 }).toBe(true)
   await page.waitForLoadState('domcontentloaded')
 }
 
+// Logs out through the BFF. 0factor sends the browser back at once. Duende shows a "return to the application"
+// page, which this follows. Back on the app, the SPA has no session, so it sends the browser to the login of the IdP.
 async function logout() {
   const loginAgain = page.waitForRequest((r) => new URL(r.url()).pathname === '/bff/login', { timeout: 30_000 })
   await page.getByRole('button', { name: 'Logout' }).click()

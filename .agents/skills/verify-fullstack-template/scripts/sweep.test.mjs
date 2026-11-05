@@ -119,6 +119,25 @@ const faults = [
     element: 'link',
   },
   {
+    name: 'overflow on an inline span, which does nothing',
+    html: `<div data-slot="row" style="width:100px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${word}</span></div>`,
+    kind: 'text runs past its box',
+    element: 'row',
+  },
+  {
+    name: 'a heading that grows with its word past its parent',
+    html: `<div style="width:300px"><div style="display:flex;flex-wrap:wrap;gap:16px">
+      <h1 data-slot="title" style="margin:0">${word}</h1><button>New</button></div></div>`,
+    kind: 'text runs past its box',
+    element: 'title',
+  },
+  {
+    name: 'a line clamp that also cuts a long word at the side',
+    html: `<a href="/" data-slot="link" style="${lineClamp}">${word} ${words}</a>`,
+    kind: 'text is cut',
+    element: 'link',
+  },
+  {
     name: 'a dialog title: a long word runs past the heading',
     html: `<h2 data-slot="dialog-title" style="width:100px">${word}</h2>`,
     kind: 'heading text runs past its box',
@@ -140,6 +159,11 @@ const planned = [
   { name: 'a wide table in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><table><tr><td style="white-space:nowrap">${word}</td></tr></table></div>` },
   { name: 'a line of code that scrolls sideways', html: `<pre style="width:100px;overflow-x:auto"><code>${word}</code></pre>` },
   { name: 'a line of code in a padded box that scrolls', html: `<div style="width:100px;padding:16px;overflow:auto"><pre>${word}</pre></div>` },
+  { name: 'a line of code in a padded wrapper in a box that scrolls', html: `<div style="width:300px;overflow:auto"><div style="padding:16px"><pre>${word}</pre></div></div>` },
+  { name: 'a line of code with a margin in a box that scrolls', html: `<div style="width:300px;overflow:auto"><pre style="margin:0 16px">${word}</pre></div>` },
+  { name: 'a list item that does not wrap in a box that scrolls', html: `<div style="width:300px;overflow-x:auto"><ul style="padding-left:40px"><li style="white-space:nowrap">${word}</li></ul></div>` },
+  { name: 'a line of code in a scaled box that scrolls', html: `<div style="transform:scale(.5);transform-origin:0 0"><div style="width:300px;overflow:auto"><pre>${word}</pre></div></div>` },
+  { name: 'a wide table under a wrapper in a box that scrolls', html: `<div style="width:300px;overflow-x:auto"><div style="width:100%"><table style="min-width:800px"><tr><td>${words}</td></tr></table></div></div>` },
   { name: 'a line that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p style="white-space:nowrap">${word}</p></div>` },
   { name: 'an inline child that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p><span style="white-space:nowrap">${word}</span></p></div>` },
   { name: 'a separator that hangs past its box', html: `<div style="width:4px"><span style="white-space:nowrap;padding:0 6px">|</span></div>` },

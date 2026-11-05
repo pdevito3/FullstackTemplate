@@ -132,7 +132,7 @@ export function markLayoutFaults() {
   // A flex, a grid, or a -webkit-box does not draw the ellipsis of text-overflow, and a block child does not get it.
   const showsEllipsis = (el, box, cutX, cutY) => {
     const { textOverflow, webkitLineClamp, display } = getComputedStyle(box)
-    if (cutY && webkitLineClamp !== 'none' && /^(flow-root|inline-block)$/.test(display)) return true
+    if (cutY && webkitLineClamp !== 'none' && /^(flow-root|inline-block)$/.test(display)) return !cutX
     return cutX && textOverflow === 'ellipsis' && !/flex|grid|-webkit-box/.test(display) && isInlineIn(el, box)
   }
   const ownText = (el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
@@ -248,22 +248,36 @@ export function markLayoutFaults() {
   }
   const firstBoxWithOverflow = (el) => {
     let node = el
-    while (node && node !== document.body && getComputedStyle(node).overflowX === 'visible') node = node.parentElement
+    while (node && node !== document.body && (isInline(node) || getComputedStyle(node).overflowX === 'visible')) node = node.parentElement
     return node === document.body ? null : node
+  }
+  const sum = (style, ...names) => names.reduce((total, name) => total + parseFloat(style[name]), 0)
+  const fillsScroller = (box, scroller) => {
+    let width = box.offsetWidth
+    for (let node = box; node !== scroller; node = node.parentElement) {
+      const style = getComputedStyle(node)
+      width += sum(style, 'marginLeft', 'marginRight')
+      if (node !== box) width += sum(style, 'borderLeftWidth', 'borderRightWidth', 'paddingLeft', 'paddingRight')
+    }
+    return width >= scroller.clientWidth - sum(getComputedStyle(scroller), 'paddingLeft', 'paddingRight') - 1
   }
   // A flex item grows with a long word and holds it, so the box that the text passes can be an ancestor.
   const boxThatTextPasses = (el, text) => {
     const edges = wordEdges(text)
     const scroller = firstBoxWithOverflow(el)
-    const scrollerStyle = scroller && getComputedStyle(scroller)
-    const isLineInScroller = /^(nowrap|pre)$/.test(getComputedStyle(el).whiteSpace) && scroller && scrolls(scrollerStyle.overflowX)
+    const isLineInScroller = /^(nowrap|pre)$/.test(getComputedStyle(el).whiteSpace) && scroller && scrolls(getComputedStyle(scroller).overflowX)
     for (let node = el; node && node !== scroller && node !== document.body; node = node.parentElement) {
       if (isInline(node)) continue
       const rect = node.getBoundingClientRect()
       const overrun = Math.max(0, edges.right - rect.right) + Math.max(0, rect.left - edges.left)
-      const fillsScroller = isLineInScroller && rect.width >= scroller.clientWidth - parseFloat(scrollerStyle.paddingLeft) - parseFloat(scrollerStyle.paddingRight) - 1
-      if (overrun > 1 && !fillsScroller) return { box: node, overrun, boxWidth: rect.width }
-      if (['absolute', 'fixed'].includes(getComputedStyle(node).position)) return null
+      // The check of the headings below reports text that passes its heading.
+      if (node.closest(headings)) {
+        if (overrun > 1) return null
+        continue
+      }
+      if (overrun > 1 && !(isLineInScroller && fillsScroller(node, scroller))) return { box: node, overrun, boxWidth: rect.width }
+      const { position, display } = getComputedStyle(node)
+      if (['absolute', 'fixed'].includes(position) || display === 'table') return null
     }
     return null
   }
@@ -310,7 +324,7 @@ export function markLayoutFaults() {
       checkY &&= !scrolls(nodeStyle.overflowY)
     }
     if (settled) continue
-    const past = hasLetterOrDigit(text) && !el.closest(headings) && boxThatTextPasses(el, text)
+    const past = hasLetterOrDigit(text) && boxThatTextPasses(el, text)
     if (past) {
       add(el, { kind: 'text runs past its box', how: `runs ${Math.round(past.overrun)} px past the ${Math.round(past.boxWidth)} px of the ${label(past.box)} that holds it` })
       continue

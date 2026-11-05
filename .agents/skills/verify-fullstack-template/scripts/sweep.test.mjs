@@ -1,6 +1,3 @@
-// Tests the layout checks of the sweep on small pages in a real Chromium. The test needs no stack.
-//
-// Usage: node --test .agents/skills/verify-fullstack-template/scripts/sweep.test.mjs
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { after, before, test } from 'node:test'
@@ -84,6 +81,44 @@ const faults = [
     element: 'link',
   },
   {
+    name: 'a picker option: the text is in a span, which grows with the word and holds it',
+    html: `<div style="width:200px;overflow:hidden"><div style="max-height:200px;overflow-y:auto">
+      <div data-slot="option" style="display:flex;width:100%"><span>${word}</span></div></div></div>`,
+    kind: 'text runs past its box',
+    element: 'option',
+  },
+  {
+    name: 'a flex row in a dialog body: the name grows over the button',
+    html: `<div style="position:fixed;left:20px;top:20px;width:300px;max-height:400px;overflow-y:auto">
+      <div style="display:flex;gap:8px"><span data-slot="name">${word}</span><button>Remove</button></div></div>`,
+    kind: 'text runs past its box',
+    element: 'name',
+  },
+  {
+    name: 'a word that does not wrap in a box narrower than the box that scrolls',
+    html: `<div style="width:300px;overflow-y:auto"><div style="width:100px"><span data-slot="badge" style="white-space:nowrap">${word}</span></div></div>`,
+    kind: 'text runs past its box',
+    element: 'badge',
+  },
+  {
+    name: 'a long word in pre-wrap in a box that scrolls',
+    html: `<div style="width:100px;overflow-y:auto"><p data-slot="note" style="white-space:pre-wrap">${word}</p></div>`,
+    kind: 'text runs past its box',
+    element: 'note',
+  },
+  {
+    name: 'a clamp on a block box, which cuts a line with no ellipsis',
+    html: `<a href="/" data-slot="link" style="display:block;-webkit-line-clamp:2;width:100px;height:40px;overflow:hidden">${words}</a>`,
+    kind: 'text is cut',
+    element: 'link',
+  },
+  {
+    name: 'an ellipsis on a -webkit-box with no clamp, which never shows it',
+    html: `<a href="/" data-slot="link" style="display:-webkit-box;width:100px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${word}</a>`,
+    kind: 'text is cut',
+    element: 'link',
+  },
+  {
     name: 'a dialog title: a long word runs past the heading',
     html: `<h2 data-slot="dialog-title" style="width:100px">${word}</h2>`,
     kind: 'heading text runs past its box',
@@ -97,9 +132,14 @@ const planned = [
   { name: 'an ellipsis in a button that has the full value as its name', html: `<button aria-label="Open ${word}"><span style="${truncate}">${word}</span></button>` },
   { name: 'a line clamp in a link', html: `<a href="/" style="${lineClamp}">${words}</a>` },
   { name: 'a line clamp on a parent, with the text in an inline child', html: `<a href="/" style="${lineClamp}"><span>${words}</span></a>` },
+  { name: 'a line clamp on a parent, with the text in a block child', html: `<a href="/" style="${lineClamp}"><p>${words}</p></a>` },
+  { name: 'a text in the padding of its button', html: `<button style="display:inline-flex;justify-content:center;box-sizing:border-box;width:76px;padding:0 12px;white-space:nowrap;border:1px solid">Tomorrow</button>` },
+  { name: 'prose in pre-wrap, where a space hangs at the end of a line', html: `<div style="width:80px;white-space:pre-wrap">${words}</div>` },
+  { name: 'a popover that is wider than the parent it is anchored to', html: `<div style="position:relative;width:40px"><div style="position:absolute;width:200px">Some words for the popover</div></div>` },
   { name: 'a long word that wraps', html: `<div style="width:100px;overflow-wrap:anywhere">${word}</div>` },
   { name: 'a wide table in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><table><tr><td style="white-space:nowrap">${word}</td></tr></table></div>` },
   { name: 'a line of code that scrolls sideways', html: `<pre style="width:100px;overflow-x:auto"><code>${word}</code></pre>` },
+  { name: 'a line of code in a padded box that scrolls', html: `<div style="width:100px;padding:16px;overflow:auto"><pre>${word}</pre></div>` },
   { name: 'a line that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p style="white-space:nowrap">${word}</p></div>` },
   { name: 'an inline child that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p><span style="white-space:nowrap">${word}</span></p></div>` },
   { name: 'a separator that hangs past its box', html: `<div style="width:4px"><span style="white-space:nowrap;padding:0 6px">|</span></div>` },

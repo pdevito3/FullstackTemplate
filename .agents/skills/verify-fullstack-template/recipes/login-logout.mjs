@@ -3,16 +3,14 @@
 // sends the cookies of the app with it.
 const appStatus = async (page, path) => (await page.request.get(path, { headers: { 'X-CSRF': '1' } })).status()
 
-export default async ({ page, context, stack, step, capture, expect, login, logout }) => {
+export default async ({ page, context, step, capture, expect, login, logout, waitForIdp }) => {
   await step('anonymous: /bff/user is 204, the SPA goes to the login at once with / as the return URL, and the Server answers 401', async () => {
     const res = page.waitForResponse((r) => r.url().endsWith('/bff/user'))
     const loginRequest = page.waitForRequest((r) => new URL(r.url()).pathname === '/bff/login')
     await page.goto('/', { waitUntil: 'commit' })
     expect((await res).status()).toBe(204)
     expect(new URL((await loginRequest).url()).searchParams.get('returnUrl')).toBe('/')
-    // The dev build goes to the login twice, and the first navigation aborts. A waitForURL can fail on that abort.
-    await expect.poll(() => new URL(page.url()).origin).not.toBe(new URL(stack.urls.web).origin)
-    await page.waitForLoadState('domcontentloaded')
+    await waitForIdp()
     expect(await appStatus(page, '/api/v1/users/me')).toBe(401)
   })
   await capture('anonymous')

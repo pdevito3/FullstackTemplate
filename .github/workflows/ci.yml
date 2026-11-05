@@ -96,6 +96,10 @@ jobs:
         working-directory: frontend
         run: pnpm test
 
+      # The test uses the Playwright of frontend/ and the Chromium of the step above. It needs no stack.
+      - name: Test the layout checks of the verify sweep
+        run: node --test .agents/skills/verify-fullstack-template/scripts/sweep.test.mjs
+
       # The functional suite: the SPA in a headless Chromium, with each call to the BFF mocked in the browser.
       - name: Run the functional tests
         working-directory: frontend

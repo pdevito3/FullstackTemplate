@@ -23,6 +23,8 @@ const longEmail = 'maximilian.bartholomew-alexander.vanderwesthuizen@long-subdom
 const nameKeys = new Set(['name', 'title', 'summary', 'description', 'label', 'firstName', 'lastName', 'fullName', 'tenantName',
   'requestedBy', 'given_name', 'family_name', 'fileName'])
 const emailKeys = new Set(['email'])
+// The upload rules are fixed values of the Server, such as the file type "PNG". The user does not write them.
+const fixedKeys = new Set(['uploadRules'])
 
 function longValues() {
   const seen = new Map()
@@ -41,7 +43,7 @@ function longValues() {
     if (typeof node.type === 'string' && 'value' in node) {
       return rewrites(node.type, node.value) ? { ...node, value: longFor(node.type, node.value) } : node
     }
-    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrites(key, value) ? longFor(key, value) : walk(value)]))
+    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, fixedKeys.has(key) ? value : rewrites(key, value) ? longFor(key, value) : walk(value)]))
   }
   return walk
 }
@@ -92,7 +94,7 @@ async function readFocusLoss() {
   return { element: `${el.getAttribute('role') ?? el.tagName.toLowerCase()} "${name}"`, reason }
 }
 
-function markLayoutFaults() {
+export function markLayoutFaults() {
   document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault'))
   const isHidden = (el) => {
     while (el.parentElement && getComputedStyle(el).display === 'contents') el = el.parentElement
@@ -120,6 +122,18 @@ function markLayoutFaults() {
     const name = host.getAttribute('aria-label') ?? labelledBy ?? host.textContent
     return [host.getAttribute('title'), name].some((value) => oneLine(value).includes(full))
   }
+  // A flex or a grid box does not draw an ellipsis or a clamp.
+  const showsEllipsis = (box, cutX, cutY) => {
+    const { textOverflow, webkitLineClamp, display } = getComputedStyle(box)
+    return !/flex|grid/.test(display) && ((cutX && textOverflow === 'ellipsis') || (cutY && webkitLineClamp !== 'none'))
+  }
+  const isInline = (el) => ['inline', 'contents'].includes(getComputedStyle(el).display)
+  const isInlineIn = (el, box) => {
+    for (let node = el; node !== box; node = node.parentElement) {
+      if (!isInline(node)) return false
+    }
+    return true
+  }
   const ownText = (el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
   const textRect = (text) => {
     const range = document.createRange()
@@ -131,6 +145,15 @@ function markLayoutFaults() {
   const add = (el, fault) => {
     el.setAttribute('data-sweep-fault', `${el.getAttribute('data-sweep-fault') ?? ''} ${faults.length}`.trim())
     faults.push({ element: label(el), text: textOf(el), ...fault })
+  }
+
+  // The edges of the content box, in the px of the window. A transform can scale a box, and offsetWidth does not show that.
+  const contentEdges = (box) => {
+    const style = getComputedStyle(box)
+    const rect = box.getBoundingClientRect()
+    const scale = rect.width / box.offsetWidth
+    const left = rect.left + (box.clientLeft + parseFloat(style.paddingLeft)) * scale
+    return { left, right: left + (box.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) * scale }
   }
 
   const width = document.documentElement.clientWidth
@@ -214,6 +237,32 @@ function markLayoutFaults() {
     }
   }
 
+  const headings = 'h1, h2, h3, h4, h5, h6, [role=heading]'
+  // A text that does not wrap on purpose, in a box that scrolls sideways, is reachable.
+  const scrollsSidewaysToIt = (box) => {
+    if (!/^(nowrap|pre)/.test(getComputedStyle(box).whiteSpace)) return false
+    for (let node = box.parentElement; node && node !== document.body; node = node.parentElement) {
+      if (scrolls(getComputedStyle(node).overflowX)) return true
+    }
+    return false
+  }
+  // A heading has its own check below. A box that hides or scrolls its overflow has the check of the clip.
+  const overrunOfItsBox = (el, text) => {
+    let box = el
+    while (box.parentElement && isInline(box)) box = box.parentElement
+    if (!box.offsetWidth || box.closest(headings) || getComputedStyle(box).overflowX !== 'visible' || scrollsSidewaysToIt(box)) return null
+    const edges = contentEdges(box)
+    const shown = textRect(text)
+    const overrun = Math.max(0, shown.right - edges.right) + Math.max(0, edges.left - shown.left)
+    return overrun > 1 ? { overrun, boxWidth: edges.right - edges.left } : null
+  }
+  const isInFixedBox = (el) => {
+    for (let node = el; node && node !== document.body; node = node.parentElement) {
+      if (getComputedStyle(node).position === 'fixed') return true
+    }
+    return false
+  }
+
   for (const el of document.querySelectorAll('body *')) {
     const text = ownText(el)
     if (!text.length || isHidden(el)) continue
@@ -221,14 +270,14 @@ function markLayoutFaults() {
     const cutX = clipsContent(style.overflowX) && el.scrollWidth > el.clientWidth + 1
     const cutY = clipsContent(style.overflowY) && el.scrollHeight > el.clientHeight + 1
     if (cutX || cutY) {
-      const ellipsis = (cutX && style.textOverflow === 'ellipsis') || (cutY && style.webkitLineClamp !== 'none')
-      if (!ellipsis) add(el, { kind: 'text is cut', how: 'cut with no ellipsis' })
+      if (!showsEllipsis(el, cutX, cutY)) add(el, { kind: 'text is cut', how: 'cut with no ellipsis' })
       else if (!canShowFullValue(el)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
       continue
     }
     const shown = { ...textRect(text).toJSON() }
     let checkX = true
     let checkY = true
+    let settled = false
     for (let node = el.parentElement; node && node !== document.body && (checkX || checkY); node = node.parentElement) {
       const nodeStyle = getComputedStyle(node)
       const clip = node.getBoundingClientRect()
@@ -236,13 +285,30 @@ function markLayoutFaults() {
       const outY = checkY && clipsContent(nodeStyle.overflowY) && (shown.top < clip.top - 1 || shown.bottom > clip.bottom + 1)
       if (outX) Object.assign(shown, { left: Math.max(shown.left, clip.left), right: Math.min(shown.right, clip.right) })
       if (outY) Object.assign(shown, { top: Math.max(shown.top, clip.top), bottom: Math.min(shown.bottom, clip.bottom) })
-      if (shown.right <= shown.left || shown.bottom <= shown.top) break
+      if (shown.right <= shown.left || shown.bottom <= shown.top) {
+        settled = true
+        break
+      }
       if (outX || outY) {
-        add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
+        if (!isInlineIn(el, node) || !showsEllipsis(node, outX, outY)) add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
+        else if (!canShowFullValue(node)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
+        settled = true
         break
       }
       checkX &&= !scrolls(nodeStyle.overflowX)
       checkY &&= !scrolls(nodeStyle.overflowY)
+    }
+    if (settled) continue
+    const past = overrunOfItsBox(el, text)
+    if (past) {
+      add(el, { kind: 'text runs past its box', how: `runs ${Math.round(past.overrun)} px past the ${Math.round(past.boxWidth)} px of its box` })
+      continue
+    }
+    const pastX = checkX && (shown.left < -1 || shown.right > width + 1)
+    const pastY = checkY && (shown.top < -1 || shown.bottom > innerHeight + 1)
+    const reachesWindow = shown.right > 0 && shown.left < width && shown.bottom > 0 && shown.top < innerHeight
+    if ((pastX || pastY) && reachesWindow && isInFixedBox(el)) {
+      add(el, { kind: 'text is cut', how: 'runs past the edge of the window in a fixed box, which cannot scroll' })
     }
   }
 
@@ -268,14 +334,11 @@ function markLayoutFaults() {
     }
     return shown
   }
-  for (const heading of document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')) {
+  for (const heading of document.querySelectorAll(headings)) {
     if (!heading.offsetWidth || isHidden(heading)) continue
     const style = getComputedStyle(heading)
     if (style.display === 'inline' || style.overflowX !== 'visible') continue
-    const rect = heading.getBoundingClientRect()
-    const scale = rect.width / heading.offsetWidth
-    const left = rect.left + (heading.clientLeft + parseFloat(style.paddingLeft)) * scale
-    const right = left + (heading.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) * scale
+    const { left, right } = contentEdges(heading)
     const shown = shownTextOf(heading)
     const overrun = Math.max(0, shown.right - right) + Math.max(0, left - shown.left)
     if (overrun > 1) {

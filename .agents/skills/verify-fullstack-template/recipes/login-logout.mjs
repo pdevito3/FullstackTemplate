@@ -10,7 +10,9 @@ export default async ({ page, context, stack, step, capture, expect, login, logo
     await page.goto('/', { waitUntil: 'commit' })
     expect((await res).status()).toBe(204)
     expect(new URL((await loginRequest).url()).searchParams.get('returnUrl')).toBe('/')
-    await page.waitForURL((u) => u.origin !== new URL(stack.urls.web).origin, { waitUntil: 'domcontentloaded' })
+    // The dev build goes to the login twice, and the first navigation aborts. A waitForURL can fail on that abort.
+    await expect.poll(() => new URL(page.url()).origin).not.toBe(new URL(stack.urls.web).origin)
+    await page.waitForLoadState('domcontentloaded')
     expect(await appStatus(page, '/api/v1/users/me')).toBe(401)
   })
   await capture('anonymous')

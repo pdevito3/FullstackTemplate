@@ -72,7 +72,7 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 			start.RegisterOperationAction(ctx => AnalyzeInvocation(ctx, types), OperationKind.Invocation);
 			start.RegisterOperationAction(ctx => AnalyzeCreation(ctx, types), OperationKind.ObjectCreation);
 			start.RegisterOperationAction(ctx => AnalyzeCollectionExpression(ctx, types), OperationKind.CollectionExpression);
-			start.RegisterOperationAction(ctx => AnalyzeAssignment(ctx, types), OperationKind.SimpleAssignment);
+			start.RegisterOperationAction(ctx => AnalyzeAssignment(ctx, types), OperationKind.SimpleAssignment, OperationKind.CompoundAssignment, OperationKind.CoalesceAssignment);
 		});
 	}
 
@@ -98,7 +98,7 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		else if (types.IsActivity(owner) && method.Name == "SetTag")
 			Check(ctx, Argument(call.Arguments, "key"), TagKey);
 		else if (types.IsTagCollection(owner) && method.Name is "Add" or "Insert")
-			CheckTagArguments(ctx, call.Arguments);
+			CheckAddedTag(ctx, call.Arguments, types);
 		else if (types.IsMeter(owner) && method.Name.StartsWith("Create", System.StringComparison.Ordinal))
 			Check(ctx, Argument(call.Arguments, "name"), MetricName, PlatformMetrics);
 		else if (types.TemplateParameter(method) is { } parameter
@@ -118,23 +118,27 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		if (types.IsActivityEvent(creation.Constructor?.ContainingType))
 			Check(ctx, Argument(creation.Arguments, "name"), EventName);
 		else if (types.IsTagCollection(creation.Constructor?.ContainingType))
-			CheckTagArguments(ctx, creation.Arguments);
+		{
+			foreach (var argument in creation.Arguments)
+				CheckTagPairs(ctx, argument.Value, types);
+		}
 	}
 
 	private static void AnalyzeCollectionExpression(OperationAnalysisContext ctx, NameTypes types)
 	{
 		var collection = (ICollectionExpressionOperation)ctx.Operation;
 		if (types.IsTagCollection(collection.Type as INamedTypeSymbol))
-			CheckTagPairs(ctx, collection);
+			CheckTagPairs(ctx, collection, types);
 	}
 
 	private static void AnalyzeAssignment(OperationAnalysisContext ctx, NameTypes types)
 	{
-		var assignment = (ISimpleAssignmentOperation)ctx.Operation;
+		var assignment = (IAssignmentOperation)ctx.Operation;
 		if (assignment.Target is IPropertyReferenceOperation { Property.IsIndexer: true } indexer && types.IsTagCollection(indexer.Property.ContainingType))
 		{
 			Check(ctx, Argument(indexer.Arguments, "key"), TagKey);
-			CheckTagPair(ctx, assignment.Value);
+			if (types.IsTagPair(indexer.Property.Type))
+				CheckTagPair(ctx, assignment.Value, types);
 		}
 	}
 
@@ -202,25 +206,39 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 			_ => [],
 		};
 
-	private static void CheckTagArguments(OperationAnalysisContext ctx, ImmutableArray<IArgumentOperation> arguments)
+	private static void CheckAddedTag(OperationAnalysisContext ctx, ImmutableArray<IArgumentOperation> arguments, NameTypes types)
 	{
 		Check(ctx, Argument(arguments, "key"), TagKey);
-		foreach (var argument in arguments)
+		foreach (var argument in arguments.Where(a => types.IsTagPair(a.Parameter?.Type)))
+			CheckTagPair(ctx, argument.Value, types);
+	}
+
+	private static void CheckTagPairs(OperationAnalysisContext ctx, IOperation source, NameTypes types)
+	{
+		foreach (var held in ValuesHeldBy(Unwrap(source)))
 		{
-			CheckTagPair(ctx, argument.Value);
-			CheckTagPairs(ctx, argument.Value);
+			foreach (var item in ItemsOf(held))
+				CheckTagPair(ctx, item, types);
+
+			if (Unwrap(held) is IObjectCreationOperation { Initializer: { } initializer })
+				CheckInitializer(ctx, initializer, types);
 		}
 	}
 
-	private static void CheckTagPairs(OperationAnalysisContext ctx, IOperation collection)
+	private static void CheckInitializer(OperationAnalysisContext ctx, IObjectOrCollectionInitializerOperation initializer, NameTypes types)
 	{
-		foreach (var item in ItemsOf(collection))
-			CheckTagPair(ctx, item);
+		foreach (var entry in initializer.Initializers)
+		{
+			if (entry is IInvocationOperation add)
+				CheckAddedTag(ctx, add.Arguments, types);
+			else if (entry is ISimpleAssignmentOperation { Target: IPropertyReferenceOperation { Property.IsIndexer: true } indexer })
+				Check(ctx, Argument(indexer.Arguments, "key"), TagKey);
+		}
 	}
 
-	private static void CheckTagPair(OperationAnalysisContext ctx, IOperation pair)
+	private static void CheckTagPair(OperationAnalysisContext ctx, IOperation pair, NameTypes types)
 	{
-		if (Unwrap(pair) is IObjectCreationOperation creation)
+		if (Unwrap(pair) is IObjectCreationOperation creation && types.IsTagPair(creation.Type))
 			Check(ctx, Argument(creation.Arguments, "key"), TagKey);
 	}
 
@@ -260,6 +278,7 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		private readonly INamedTypeSymbol? meter = compilation.GetTypeByMetadataName("System.Diagnostics.Metrics.Meter");
 		private readonly INamedTypeSymbol? tagList = compilation.GetTypeByMetadataName("System.Diagnostics.TagList");
 		private readonly INamedTypeSymbol? activityTagsCollection = compilation.GetTypeByMetadataName("System.Diagnostics.ActivityTagsCollection");
+		private readonly INamedTypeSymbol? keyValuePair = compilation.GetTypeByMetadataName("System.Collections.Generic.KeyValuePair`2");
 		private readonly INamedTypeSymbol? templateFormatMethod = compilation.GetTypeByMetadataName("Serilog.Core.MessageTemplateFormatMethodAttribute");
 
 		public bool IsTelemetry(INamedTypeSymbol? type) => Is(type, telemetry);
@@ -268,6 +287,12 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		public bool IsActivityEvent(INamedTypeSymbol? type) => Is(type, activityEvent);
 		public bool IsMeter(INamedTypeSymbol? type) => Is(type, meter);
 		public bool IsTagCollection(INamedTypeSymbol? type) => Is(type, tagList) || Is(type, activityTagsCollection);
+
+		public bool IsTagPair(ITypeSymbol? type)
+			=> type is INamedTypeSymbol pair
+				&& Is(pair.OriginalDefinition, keyValuePair)
+				&& pair.TypeArguments[0].SpecialType == SpecialType.System_String
+				&& pair.TypeArguments[1].SpecialType == SpecialType.System_Object;
 
 		public string? TemplateParameter(IMethodSymbol method)
 			=> templateFormatMethod is null

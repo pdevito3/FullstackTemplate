@@ -330,6 +330,12 @@ public class QueryInputAnalyzerTests
     [Arguments("", """u => u.Identifier == (request.Filter == null ? "a" : "b")""")]
     [Arguments("var tenant = Create(request.Dto.Name);", """u => u.Identifier == (tenant.Name ?? "")""")]
     [Arguments("var tenant = Create(request.Dto.Name);", """u => u.Identifier == (u.Id == "a" ? tenant.Name : u.Id)""")]
+    [Arguments("""if (!PostgresText.CanStore(request.Filter?.Trim() ?? "")) return false;""", """u => u.Identifier == (request.Filter ?? "").Trim()""")]
+    [Arguments("""if (!PostgresText.CanStore(request.Filter?.Trim() ?? "")) return false;""", """u => u.Identifier == (request.Filter ?? "")""")]
+    [Arguments("""if (!PostgresText.CanStore(request.Filter?.Trim().ToLower() ?? "")) return false;""", """u => u.Identifier == (request.Filter ?? "")""")]
+    [Arguments("""if (!PostgresText.CanStore(request.Filter?.Trim()?.ToLower() ?? "")) return false;""", """u => u.Identifier == (request.Filter ?? "")""")]
+    [Arguments("""if (!PostgresText.CanStore((request.Filter?.Trim() ?? "").ToLower())) return false;""", """u => u.Identifier == (request.Filter ?? "")""")]
+    [Arguments("""if (!PostgresText.CanStore(request.Dto?.Name?.Trim() ?? "")) return false;""", """u => u.Identifier == request.Dto.Name""")]
     public async Task a_coalesce_or_a_conditional_with_no_unchecked_request_text_has_no_diagnostics(string arrange, string predicate)
     {
         // Act
@@ -354,6 +360,113 @@ public class QueryInputAnalyzerTests
 
         // Assert
         Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Identifier");
+    }
+
+    [Test]
+    [Arguments("""PostgresText.CanStore(request.Filter ?? request.Identifier)""", """u => u.Identifier == (request.Filter ?? request.Identifier)""")]
+    [Arguments("""PostgresText.CanStore(request.Filter ?? request.Identifier)""", """u => u.Identifier == (request.Filter ?? request.Identifier).Trim()""")]
+    [Arguments("""PostgresText.CanStore((request.Filter ?? request.Identifier).Trim())""", """u => u.Identifier == (request.Filter ?? request.Identifier)""")]
+    [Arguments("""PostgresText.CanStore(request.Filter ?? request.Identifier)""", """u => u.Identifier == (string)(request.Filter ?? request.Identifier)""")]
+    [Arguments("""PostgresText.CanStore(request.Filter == null ? "" : request.Filter)""", """u => u.Identifier == (request.Filter == null ? "" : request.Filter)""")]
+    [Arguments("""PostgresText.CanStore(string.Concat(request.Identifier, "-1"))""", """u => u.Identifier == string.Concat(request.Identifier, "-1")""")]
+    [Arguments("""PostgresText.CanStore(string.Format("{0}", request.Identifier))""", """u => u.Identifier == string.Format("{0}", request.Identifier)""")]
+    [Arguments("""new[] { request.Identifier, request.TenantId }.All(PostgresText.CanStore)""", """u => new[] { request.Identifier, request.TenantId }.Contains(u.Id)""")]
+    [Arguments("""new[] { request.Identifier, request.TenantId }.All(id => PostgresText.CanStore(id))""", """u => new[] { request.Identifier, request.TenantId }.Contains(u.Id)""")]
+    public async Task a_check_of_the_expression_that_the_query_compares_has_no_diagnostics(string check, string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            if (!{check})
+                return false;
+            return await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""PostgresText.CanStore(request.Filter ?? request.Identifier)""", """u => u.Identifier == (request.Filter ?? request.TenantId)""", "request.TenantId")]
+    [Arguments("""PostgresText.CanStore(request.Filter ?? request.Identifier)""", """u => u.Identifier == (request.Filter ?? request.Identifier) + request.TenantId""", "request.TenantId")]
+    [Arguments("""PostgresText.CanStore(request.Filter == null ? "" : request.Filter)""", """u => u.Identifier == (request.Filter == null ? "" : request.Identifier)""", "request.Identifier")]
+    [Arguments("""PostgresText.CanStore(string.Concat(request.Identifier, "-1"))""", """u => u.Identifier == string.Concat(request.TenantId, "-1")""", "request.TenantId")]
+    [Arguments("""new[] { request.Identifier, "a" }.All(PostgresText.CanStore)""", """u => new[] { request.TenantId, "a" }.Contains(u.Id)""", "request.TenantId")]
+    [Arguments("""new[] { new { Dto = new NameDto("a") } }.All(request => PostgresText.CanStore(request.Dto.Name ?? ""))""", """u => u.Identifier == (request.Dto.Name ?? "")""", "request.Dto.Name")]
+    public async Task a_check_of_another_expression_gets_fstqry001(string check, string predicate, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            if (!{check})
+                return false;
+            return await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    public async Task a_check_of_the_same_expression_after_the_query_gets_fstqry001()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            var found = await dbContext.Users.AnyAsync(u => u.Identifier == (request.Filter ?? request.Identifier), cancellationToken);
+            return found && PostgresText.CanStore(request.Filter ?? request.Identifier);
+            """);
+
+        // Assert
+        diagnostics.Select(Text).ShouldBe(["request.Filter", "request.Identifier"]);
+    }
+
+    [Test]
+    [Arguments("""PostgresText.CanStore(request.Filter?.Trim('\0') ?? "")""", """u => u.Identifier == (request.Filter ?? "")""", "request.Filter")]
+    [Arguments("""PostgresText.CanStore(request.Filter?.Substring(1) ?? "")""", """u => u.Identifier == (request.Filter ?? "").Trim()""", "request.Filter")]
+    [Arguments("""PostgresText.CanStore(request.Dto?.Name.Substring(1) ?? "")""", "u => u.Identifier == request.Dto.Name", "request.Dto.Name")]
+    [Arguments("""PostgresText.CanStore(request.Filter?.Trim() ?? "")""", "u => u.Identifier == request.Identifier", "request.Identifier")]
+    [Arguments("""PostgresText.CanStore(request.Filter?.Trim() ?? request.Identifier)""", "u => u.Identifier == request.Identifier", "request.Identifier")]
+    public async Task a_check_of_a_conditional_access_that_is_not_the_request_text_gets_fstqry001(string check, string predicate, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            if (!{check})
+                return false;
+            return await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    [Arguments("u => u.Identifier == (string)request.Identifier", "(string)request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Format("{0}", (object)request.Identifier)""", "(object)request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Concat((object)request.Identifier, "a")""", "(object)request.Identifier")]
+    [Arguments("""u => u.Identifier == (string)(request.Filter ?? "")""", "request.Filter")]
+    [Arguments("""u => u.Identifier == (u.Id == "a" ? (string)request.Identifier : "b")""", "(string)request.Identifier")]
+    public async Task a_request_text_through_an_explicit_cast_gets_fstqry001(string predicate, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    [Arguments("PostgresText.CanStore(request.Identifier)", """u => u.Identifier == string.Format("{0}", (object)request.Identifier)""")]
+    [Arguments("PostgresText.CanStore((string)request.Identifier)", "u => u.Identifier == request.Identifier")]
+    [Arguments("PostgresText.CanStore(request.Identifier)", "u => u.Identifier == (string)request.Identifier")]
+    public async Task a_checked_request_text_through_an_explicit_cast_has_no_diagnostics(string check, string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            if (!{check})
+                return false;
+            return await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
     }
 
     [Test]
@@ -402,6 +515,8 @@ public class QueryInputAnalyzerTests
     [Arguments("""id = "x";""")]
     [Arguments("""id += "x";""")]
     [Arguments("""(id, _) = ("x", 1);""")]
+    [Arguments("""ref var alias = ref id; alias = "x";""")]
+    [Arguments("""var other = "y"; ref var alias = ref other; alias = ref id; alias = "x";""")]
     public async Task a_check_of_a_lambda_parameter_that_the_code_assigns_again_gets_fstqry001(string assignment)
     {
         // Act
@@ -419,6 +534,8 @@ public class QueryInputAnalyzerTests
     [Arguments("id => { return EntityId.IsValid(id, Tenant.IdPrefix); }")]
     [Arguments("""id => { var other = "x"; other += "y"; return EntityId.IsValid(id, other); }""")]
     [Arguments("id => { var copy = id.Trim(); return EntityId.IsValid(copy, Tenant.IdPrefix); }")]
+    [Arguments("id => { ref readonly var alias = ref id; return EntityId.IsValid(alias, Tenant.IdPrefix) && EntityId.IsValid(id, Tenant.IdPrefix); }")]
+    [Arguments("""id => { var other = "y"; ref var alias = ref other; alias = "x"; return EntityId.IsValid(id, alias); }""")]
     public async Task a_check_of_a_lambda_parameter_that_the_code_does_not_assign_again_has_no_diagnostics(string check)
     {
         // Act
@@ -445,6 +562,16 @@ public class QueryInputAnalyzerTests
     [Arguments("for (var i = request.Ids.Length - 1; i > 0; i--)")]
     [Arguments("for (var i = other.Length - 1; i >= 0; i--)")]
     [Arguments("for (var i = request.Ids.Length - 1; i >= 0; i -= 2)")]
+    [Arguments("for (var i = 0; i <= request.Ids.Length; i++)")]
+    [Arguments("for (var i = 0; i > request.Ids.Length; i++)")]
+    [Arguments("for (var i = 0; 0 < request.Ids.Length; i++)")]
+    [Arguments("for (var i = request.Ids.Length - 1; 0 >= 0; i--)")]
+    [Arguments("for (var i = request.Ids.Length - 1; i >= 1; i--)")]
+    [Arguments("for (var i = request.Ids.Length + 1; i >= 0; i--)")]
+    [Arguments("for (int i = 0, j = 0; i < request.Ids.Length; j++)")]
+    [Arguments("for (int i = 0, j = 0; i < request.Ids.Length; j += 1)")]
+    [Arguments("for (int i = request.Ids.Length - 1, j = 0; i >= 0; j--)")]
+    [Arguments("for (int i = request.Ids.Length - 1, j = 0; i >= 0; j -= 1)")]
     public async Task a_for_loop_that_skips_an_item_gets_fstqry001(string loop)
     {
         // Act
@@ -459,8 +586,24 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
+    [Arguments("for (var i = 0; i < request.Names.Capacity; i++)")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++)")]
+    public async Task a_for_loop_that_does_not_read_the_size_of_the_same_list_gets_fstqry001(string loop)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            {{loop}} { if (!EntityId.IsValid(request.Names[i], Tenant.IdPrefix)) return false; }
+            return await dbContext.Users.AnyAsync(u => request.Names.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Names");
+    }
+
+    [Test]
     [Arguments("for (var i = 0; i < request.Ids.Length; i++) { i++; if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
     [Arguments("for (var i = 0; i < request.Ids.Length; ) { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; i += 2; }")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++) { ref var alias = ref i; alias += 1; if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
     public async Task a_for_loop_that_moves_its_index_in_the_body_gets_fstqry001(string loop)
     {
         // Act

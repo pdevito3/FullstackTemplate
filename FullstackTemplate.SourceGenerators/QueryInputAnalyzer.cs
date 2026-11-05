@@ -104,6 +104,12 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 					path.Add(field.Field);
 					value = instance;
 					break;
+				case IConditionalAccessOperation access:
+					value = Unwrap(access.WhenNotNull);
+					break;
+				case IConditionalAccessInstanceOperation instance when ReceiverOf(instance) is { } receiver:
+					value = Unwrap(receiver);
+					break;
 				case IParameterReferenceOperation { Parameter.Ordinal: 0 } parameter:
 					path.Add(parameter.Parameter);
 					path.Reverse();
@@ -114,6 +120,18 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		}
 	}
 
+	private static IOperation? ReceiverOf(IConditionalAccessInstanceOperation instance)
+	{
+		IOperation child = instance;
+		for (var parent = instance.Parent; parent is not null; child = parent, parent = parent.Parent)
+		{
+			if (parent is IConditionalAccessOperation access && ReferenceEquals(access.WhenNotNull, child))
+				return access.Operation;
+		}
+
+		return null;
+	}
+
 	private static IOperation Unwrap(IOperation operand)
 	{
 		var value = operand;
@@ -121,7 +139,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		{
 			switch (value)
 			{
-				case IConversionOperation { IsImplicit: true } conversion:
+				case IConversionOperation conversion when conversion.IsImplicit || conversion.Conversion is { IsIdentity: true } or { IsReference: true }:
 					value = conversion.Operand;
 					break;
 				case IInvocationOperation { Instance: { } instance, TargetMethod: { ContainingType.SpecialType: SpecialType.System_String, Parameters.Length: 0 } } call
@@ -143,7 +161,26 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		return root.Descendants()
 			.Where(check => check.Syntax.SpanStart < text.Syntax.SpanStart)
 			.SelectMany(check => CheckedValues(check, root, types))
-			.Any(value => PathFromFirstParameter(value, types) is { } checkedPath && checkedPath.SequenceEqual(path, SymbolEqualityComparer.Default));
+			.Any(value => IsAtPath(value, path, types) || ChecksExpressionThatHolds(value, text, path, types));
+	}
+
+	private static bool IsAtPath(IOperation value, List<ISymbol> path, InputTypes types)
+		=> PathFromFirstParameter(value, types) is { } other && other.SequenceEqual(path, SymbolEqualityComparer.Default);
+
+	// The check of `a ?? b` does not cover a compare of `b` alone, but it covers a compare of the same `a ?? b`.
+	private static bool ChecksExpressionThatHolds(IOperation value, IOperation text, List<ISymbol> path, InputTypes types)
+	{
+		if (!TextsIn(value, types).Any(inner => IsAtPath(inner, path, types)))
+			return false;
+
+		var expression = Unwrap(value).Syntax;
+		for (var parent = text.Parent; parent is not null; parent = parent.Parent)
+		{
+			if (parent.Syntax.IsEquivalentTo(expression))
+				return true;
+		}
+
+		return false;
 	}
 
 	private static IEnumerable<IOperation> CheckedValues(IOperation operation, IOperation root, InputTypes types)
@@ -286,7 +323,8 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 		return target.Parent switch
 		{
-			IAssignmentOperation assignment => ReferenceEquals(assignment.Target, target),
+			IAssignmentOperation assignment => ReferenceEquals(assignment.Target, target) || assignment is ISimpleAssignmentOperation { IsRef: true },
+			IVariableInitializerOperation { Parent: IVariableDeclaratorOperation { Symbol.RefKind: RefKind.Ref } } => true,
 			IIncrementOrDecrementOperation => true,
 			IArgumentOperation { Parameter.RefKind: RefKind.Ref or RefKind.Out } => true,
 			_ => false,
@@ -302,17 +340,8 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static IOperation ListOf(IOperation collection)
 	{
 		var list = Unwrap(collection);
-		if (list is IConditionalAccessInstanceOperation)
-		{
-			for (var parent = list.Parent; parent is not null; parent = parent.Parent)
-			{
-				if (parent is IConditionalAccessOperation access)
-				{
-					list = Unwrap(access.Operation);
-					break;
-				}
-			}
-		}
+		if (list is IConditionalAccessInstanceOperation instance && ReceiverOf(instance) is { } receiver)
+			list = Unwrap(receiver);
 
 		return list is ICoalesceOperation coalesce ? coalesce.Value : list;
 	}

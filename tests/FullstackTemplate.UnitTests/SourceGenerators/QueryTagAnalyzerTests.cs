@@ -474,9 +474,7 @@ public class QueryTagAnalyzerTests
 
     private static async Task<ImmutableArray<Diagnostic>> Run(string source)
     {
-        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(Path.PathSeparator)
-            .Select(path => MetadataReference.CreateFromFile(path));
+        var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
             "Features",
             [CSharpSyntaxTree.ParseText($"namespace App;\n\n{Usings}\n\n{source}", path: "Source.cs")],

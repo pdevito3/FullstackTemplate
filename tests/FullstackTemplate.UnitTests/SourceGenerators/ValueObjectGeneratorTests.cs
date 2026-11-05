@@ -108,9 +108,7 @@ public class ValueObjectGeneratorTests
 
     private static Assembly Compile(string source)
     {
-        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(Path.PathSeparator)
-            .Select(path => MetadataReference.CreateFromFile(path));
+        var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
             $"ValueObjects{Guid.NewGuid():N}",
             [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest))],

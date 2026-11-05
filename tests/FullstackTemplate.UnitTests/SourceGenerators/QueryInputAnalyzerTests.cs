@@ -364,9 +364,7 @@ public class QueryInputAnalyzerTests
 
     private static async Task<ImmutableArray<Diagnostic>> Run(string source)
     {
-        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-            .Split(Path.PathSeparator)
-            .Select(path => MetadataReference.CreateFromFile(path));
+        var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
             "Features",
             [CSharpSyntaxTree.ParseText(

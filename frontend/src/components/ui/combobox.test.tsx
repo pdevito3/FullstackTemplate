@@ -590,7 +590,8 @@ test('ComboboxLoadMore asks for more one time while isLoading is true, and asks 
 
 function FailedLoadMoreList({ isLoading, onLoadMore, onChange }: { isLoading: boolean; onLoadMore: () => void; onChange?: (key: Key | null) => void }) {
   return (
-    <Combobox aria-label="Framework" onChange={onChange}>
+    // The items prop turns off the filter of React Aria, as in a picker that searches on the Server.
+    <Combobox aria-label="Framework" items={[{ id: 'vue' }]} onChange={onChange}>
       <ComboboxInput />
       <ComboboxContent>
         <ComboboxList>
@@ -639,4 +640,20 @@ test('ComboboxLoadMore tells a screen reader that the page failed and where to t
   await expect
     .poll(() => document.querySelector('[data-live-announcer]')?.textContent)
     .toContain('More frameworks did not load. Go to the end of the list to try again.')
+})
+
+test('a press on the option of ComboboxLoadMore asks once and keeps the list open and the typed text', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await userEvent.fill(input, 'Vue')
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  const content = document.querySelector<HTMLElement>('[data-slot="combobox-content"]')!
+  await Promise.all(content.getAnimations().map((animation) => animation.finished))
+
+  await screen.getByRole('option', failedRow).click()
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await expect.element(input).toHaveValue('Vue')
 })

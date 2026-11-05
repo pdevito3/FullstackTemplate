@@ -191,9 +191,16 @@ function usePickTypedOption() {
 const RETRY_ROW_ID = "combobox-load-more-retry"
 
 /**
- * React Aria closes the list after Enter on an action option, and the close drops the typed search. The retry row of
- * `ComboboxLoadMore` asks for the page of that search, so Enter runs its action here and the list stays open.
+ * React Aria closes the list after a press or an Enter on an action option, and the close drops the typed search. The
+ * retry row of `ComboboxLoadMore` asks for the page of that search, so the list must stay open. A press tells the list
+ * with this event, which the row stops. Enter runs the action of the row in `useRetryOnEnter`.
  */
+function keepListOpenAfterPress(row: HTMLElement | null) {
+  const stop = (e: Event) => e.stopPropagation()
+  row?.addEventListener("react-aria-item-action", stop)
+  return () => row?.removeEventListener("react-aria-item-action", stop)
+}
+
 function useRetryOnEnter() {
   const state = React.useContext(ComboBoxStateContext)
 
@@ -203,9 +210,7 @@ function useRetryOnEnter() {
     }
     e.preventDefault()
     e.stopPropagation()
-    if (!e.repeat) {
-      state.collection.getItem(RETRY_ROW_ID)?.props?.onAction?.()
-    }
+    state.collection.getItem(RETRY_ROW_ID)?.props?.onAction?.()
   }
 }
 
@@ -333,6 +338,7 @@ type ComboboxItemProps<T extends object = object> = Omit<
   ListBoxItemProps<T>,
   "children" | "textValue"
 > &
+  React.RefAttributes<HTMLDivElement> &
   (
     | { children: string; textValue?: string }
     | {
@@ -401,19 +407,20 @@ function ComboboxLoadMore({
 
   React.useEffect(() => {
     if (showsFailure) {
-      announce(`${failedText} Go to the end of the list to try again.`, "assertive")
+      announce(`${failedText} Go to the end of the list to try again.`)
     }
   }, [showsFailure, failedText])
 
   if (isFailed) {
     return (
       <ComboboxItem
+        ref={keepListOpenAfterPress}
         id={RETRY_ROW_ID}
         textValue={isLoading ? children : `${failedText} Try again`}
         onAction={() => {
           if (!isLoading) onLoadMore?.()
         }}
-        className={isLoading ? "justify-center pr-1.5 text-muted-foreground" : "block text-destructive"}
+        className={cn("block px-1.5 text-center", isLoading ? "text-muted-foreground" : "text-destructive", className)}
       >
         {isLoading ? (
           children

@@ -93,6 +93,7 @@ test('takes no more search text than a venue name can hold', async () => {
 })
 
 test('says that the venues did not load when the search fails, and searches again when the list opens again', async () => {
+  const toast = spyOnToasts()
   const { screen } = await renderPicker('', searchFails)
   const toggle = screen.getByRole('button', { name: /show suggestions/i })
 
@@ -100,6 +101,7 @@ test('says that the venues did not load when the search fails, and searches agai
 
   await expect.element(screen.getByText('The venues did not load. Close the list, then open it to try again.')).toBeVisible()
   await expect.element(screen.getByText('No venue found.')).not.toBeInTheDocument()
+  expect(toast).toHaveBeenCalledOnce()
 
   await commands.answerRequests([{ method: 'GET', path: '/api/v1/venues', headers: pagination(1, 1), body: firstPage }])
   await userEvent.keyboard('{Escape}')

@@ -18,8 +18,30 @@ export function usersWithInvites(page: Page) {
   const at = invites(page)
   const answered = answeredBy(page)
 
+  /** Holds the answer of each create until the steps end, so that a slow machine cannot end the wait early. */
+  async function whileTheCreateRuns(steps: () => Promise<void>) {
+    let answer = () => {}
+    const held = new Promise<void>((resolve) => {
+      answer = resolve
+    })
+    await page.route(
+      (url) => url.pathname === invitesPaths.list,
+      async (route, request) => {
+        if (request.method() === 'POST') await held
+        await route.fallback()
+      },
+    )
+    try {
+      await steps()
+    } finally {
+      answer()
+    }
+  }
+
   return {
     at,
+
+    whileTheCreateRuns,
 
     pageOverflow: () => pageOverflow(page),
 
@@ -78,10 +100,12 @@ export function usersWithInvites(page: Page) {
 
     /** Presses Enter in the email field, and again while the first request of the create runs. */
     async pressEnterTwiceInTheEmailField() {
-      const sent = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === invitesPaths.list)
-      await at.emailField.press('Enter')
-      await sent
-      await at.emailField.press('Enter')
+      await whileTheCreateRuns(async () => {
+        const sent = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === invitesPaths.list)
+        await at.emailField.press('Enter')
+        await sent
+        await at.emailField.press('Enter')
+      })
     },
 
     /** Sends both presses at once, so that the second almost always comes before a render of the first. */

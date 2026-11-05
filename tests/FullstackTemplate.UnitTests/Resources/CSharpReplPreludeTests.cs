@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Shouldly;
 
-public class CSharpReplPreludeTests
+public partial class CSharpReplPreludeTests
 {
     private static readonly CSharpCompilationOptions ScriptOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         .WithUsings("System", "System.Collections.Generic", "System.Linq", "System.Threading.Tasks");
@@ -84,8 +84,7 @@ public class CSharpReplPreludeTests
         var faults = CommandsOf(skill).SelectMany(command => FaultsOf(prelude, command)).ToList();
 
         // Assert
-        faults.ShouldNotBeEmpty();
-        faults[0].ShouldStartWith(
+        faults.ShouldHaveSingleItem().ShouldStartWith(
             $"{SkillPath}: 'await InScope<MovedDbContext, int>(db => db.Tenants.CountAsync())' does not compile (CS0246)");
     }
 
@@ -95,12 +94,14 @@ public class CSharpReplPreludeTests
         // Arrange
         var root = FindRepositoryRoot();
         var prelude = File.ReadAllText(Path.Combine(root, PreludePath));
-        var commands = CommandsOf(File.ReadAllText(Path.Combine(root, SkillPath)));
+        var skill = File.ReadAllText(Path.Combine(root, SkillPath));
+        var commands = CommandsOf(skill);
 
         // Act
         var faults = commands.SelectMany(command => FaultsOf(prelude, command)).ToList();
 
         // Assert
+        commands.Count.ShouldBe(CommandLineRegex().Count(skill), "A command in SKILL.md has a form that this test does not read.");
         commands.ShouldContain(command => command.Contains("InScope<AppDbContext, int>"));
         faults.ShouldBeEmpty();
     }
@@ -109,8 +110,14 @@ public class CSharpReplPreludeTests
     /// Reads the C# of each `--eval` and each heredoc. A line that starts with # is a command of the REPL, not C#.
     /// </summary>
     private static List<string> CommandsOf(string skill) =>
-        [.. Regex.Matches(skill, @"connect <pid> --eval '(?<code>[^']+)'|<<'EOF'\n(?<code>.*?)\n\s*EOF", RegexOptions.Singleline)
+        [.. CommandRegex().Matches(skill)
             .Select(match => string.Join('\n', match.Groups["code"].Value.Split('\n').Where(line => !line.TrimStart().StartsWith('#'))))];
+
+    [GeneratedRegex(@"connect <pid> --eval '(?<code>[^']+)'|connect <pid> --streamPipedInput <<'EOF'\n(?<code>.*?)\n\s*EOF", RegexOptions.Singleline)]
+    private static partial Regex CommandRegex();
+
+    [GeneratedRegex(@"connect <pid> (?!--eval-file)")]
+    private static partial Regex CommandLineRegex();
 
     private static CSharpCompilation CompilationOf(string prelude) =>
         CSharpCompilation.CreateScriptCompilation(
@@ -125,7 +132,7 @@ public class CSharpReplPreludeTests
 
         return [.. compilation.GetDiagnostics()
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .Select(diagnostic => FaultOf(diagnostic, PreludeFaultPrefix(diagnostic), compilation.SyntaxTrees.Single()))];
+            .Select(diagnostic => FaultOf(diagnostic, $"{PreludePath} line {diagnostic.Location.GetLineSpan().StartLinePosition.Line + 1}", compilation.SyntaxTrees.Single()))];
     }
 
     // A command is the next submission of the session, as in the real REPL: the usings and helpers of the prelude apply to it.
@@ -140,9 +147,6 @@ public class CSharpReplPreludeTests
             .Select(diagnostic => FaultOf(diagnostic, SkillPath, tree))];
     }
 
-    private static string PreludeFaultPrefix(Diagnostic diagnostic) =>
-        $"{PreludePath} line {diagnostic.Location.GetLineSpan().StartLinePosition.Line + 1}";
-
     private static string FaultOf(Diagnostic diagnostic, string place, SyntaxTree tree)
     {
         var line = diagnostic.Location.GetLineSpan().StartLinePosition.Line;
@@ -151,11 +155,11 @@ public class CSharpReplPreludeTests
     }
 
     /// <summary>
-    /// Stands in for ConnectorGlobals of the csharprepl tool. Only Get is here, because the prelude uses only Get.
+    /// Stands in for ConnectorGlobals of the csharprepl tool. Only Get is here, because the prelude and the commands of the skill use only Get.
     /// </summary>
     public sealed class ReplHostGlobals
     {
-        public T Get<T>() => throw new NotSupportedException("The test only compiles the prelude.");
+        public T Get<T>() => throw new NotSupportedException("The test only compiles the code.");
     }
 
     private static string FindRepositoryRoot()

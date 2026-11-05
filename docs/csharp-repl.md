@@ -17,7 +17,7 @@ CSharpRepl loads into the server as a .NET startup hook. The hook opens a local 
 | Non-Debug builds | `FullstackTemplate.Server/FullstackTemplate.Server.csproj` | `StartupHookSupport` is `false` for every configuration except `Debug` |
 | Server guard | `FullstackTemplate.Server/Resources/CSharpReplGuard.cs` | Stops the server if the hook is loaded outside `Development` |
 | Build test | `tests/FullstackTemplate.UnitTests/Resources/StartupHookSupportTests.cs` | Fails if a non-Debug build turns startup hooks on |
-| Prelude test | `tests/FullstackTemplate.UnitTests/Resources/CSharpReplPreludeTests.cs` | Fails and names the line if `.agents/skills/csharprepl/prelude.csx` does not compile against the Server |
+| Prelude test | `tests/FullstackTemplate.UnitTests/Resources/CSharpReplPreludeTests.cs` | Fails and names the line if `.agents/skills/csharprepl/prelude.csx` does not compile against the Server. Also fails and names the command if a command in `.agents/skills/csharprepl/SKILL.md` does not compile after the prelude, or has a form that the test does not read |
 
 When the `server` resource starts, `WithCSharpRepl()` runs `dotnet tool run csharprepl connect init`. It sets each variable that this command exports on the server. If the tool is not installed, the AppHost logs a warning and starts the server without the hook.
 

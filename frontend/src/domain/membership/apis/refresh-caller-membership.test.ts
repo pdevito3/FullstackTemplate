@@ -30,3 +30,23 @@ test.each([
 
   expect(queryFn).toHaveBeenCalledTimes(1)
 })
+
+test('asks again after a failed check that keeps the last answer', async () => {
+  const queryFn = vi.fn().mockResolvedValueOnce({ id: 'usr_1' }).mockRejectedValue(new Error('refused'))
+  const queryClient = await queryClientAfter(queryFn)
+  await queryClient.refetchQueries({ queryKey: MembershipKeys.of('bob') })
+
+  await retryFailedMembership(queryClient)
+
+  expect(queryFn).toHaveBeenCalledTimes(3)
+})
+
+test('does not restart a check that is in progress', async () => {
+  const queryFn = vi.fn().mockResolvedValueOnce({ id: 'usr_1' }).mockRejectedValue(new Error('refused'))
+  const queryClient = await queryClientAfter(queryFn)
+  await queryClient.refetchQueries({ queryKey: MembershipKeys.of('bob') })
+
+  await Promise.all([retryFailedMembership(queryClient), retryFailedMembership(queryClient)])
+
+  expect(queryFn).toHaveBeenCalledTimes(3)
+})

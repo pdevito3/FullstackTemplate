@@ -20,6 +20,20 @@ export default async ({ page, step, capture, expect, login }) => {
   })
   await capture('home-with-notice')
 
+  await step('a refused lookup shows the reason and Try Again, and Try Again gets the answer of the Server', async () => {
+    const reason = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+    await page.route('**/api/v1/users/by-identifier/**', (route) => route.fulfill({
+      status: 403,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({ type: 'https://tools.ietf.org/html/rfc9110#section-15.5.4', status: 403, title: 'Forbidden', detail: reason }),
+    }), { times: 1 })
+    await page.reload()
+    const banner = page.getByRole('region', { name: 'Membership check' })
+    await expect(banner).toContainText(reason)
+    await banner.getByRole('button', { name: 'Try Again' }).click()
+    await expect(notice.getByRole('link', { name: 'Start a tenant' })).toBeFocused()
+  })
+
   const form = page.getByRole('form', { name: 'Start a tenant' })
   await step('follow Start a tenant: the form has the name and email of the identity provider', async () => {
     await notice.getByRole('link', { name: 'Start a tenant' }).click()

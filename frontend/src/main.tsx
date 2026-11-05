@@ -36,9 +36,7 @@ onUnauthorized(async () => {
 })
 
 // The banner of the layout stays mounted, and a page that does not read the membership does not ask again.
-router.subscribe('onResolved', ({ pathChanged }) => {
-  if (pathChanged) void retryFailedMembership(queryClient)
-})
+router.subscribe('onResolved', () => void retryFailedMembership(queryClient))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

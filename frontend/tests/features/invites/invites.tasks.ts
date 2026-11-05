@@ -84,7 +84,7 @@ export function usersWithInvites(page: Page) {
       await at.emailField.press('Enter')
     },
 
-    /** Two real presses that the page gets before it renders the first submit. */
+    /** Sends both presses at once, so that the second almost always comes before a render of the first. */
     async pressEnterTwiceBeforeARender() {
       await at.emailField.focus()
       await Promise.all([page.keyboard.press('Enter'), page.keyboard.press('Enter')])

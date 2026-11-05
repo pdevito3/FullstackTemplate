@@ -18,7 +18,6 @@ interface Claim {
   tenantName: string
 }
 
-/** The session is no longer the session that the form was filled for, so no claim went out. */
 export class SessionChangedError extends Error {}
 
 /** A 409 or a 410 after the own submit can mean that an earlier submit of this user won. */

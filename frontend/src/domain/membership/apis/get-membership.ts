@@ -27,7 +27,6 @@ export function subOf(membership: Membership): string | undefined {
 
 const claim = (claims: BffClaim[], type: string) => claims.find((c) => c.type === type)?.value
 
-/** The `sub` of the claims of a session, or undefined with no session. */
 export const subOfClaims = (claims: BffClaim[] | null | undefined) => (claims ? claim(claims, 'sub') : undefined)
 
 function profileOf(identifier: string, claims: BffClaim[]): StartTenantProfile {

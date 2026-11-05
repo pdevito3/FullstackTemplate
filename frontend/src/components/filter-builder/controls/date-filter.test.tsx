@@ -21,6 +21,15 @@ test('the component tests run in Pacific/Kiritimati, so that a date of the brows
   expect(browserTimeZone()).toBe('Pacific/Kiritimati')
 })
 
+test.each([
+  ['America/Vancouver', 'Pacific Time (Canada)'],
+  ['America/Edmonton', 'Mountain Time (Canada)'],
+])('names the zone %s in words, with no abbreviation', async (zone, label) => {
+  await render(<DateFilter config={{ ...startsAt, timeZone: parseTimeZone(zone) }} surface="submenu" onSubmit={vi.fn()} />)
+
+  await expect.element(page.getByRole('textbox', { name: label, exact: true })).toBeVisible()
+})
+
 test('takes today and reads the typed time in the zone of the place, not of the browser', async () => {
   // Arrange
   vi.useFakeTimers({ toFake: ['Date'] })

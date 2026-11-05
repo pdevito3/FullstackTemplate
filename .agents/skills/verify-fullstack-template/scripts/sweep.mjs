@@ -110,12 +110,12 @@ export function markLayoutFaults() {
   const textOf = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 80)
   const oneLine = (value) => (value ?? '').trim().replace(/\s+/g, ' ')
   // The sweep cannot tell whether a press shows the full value. It only finds that the title or the name holds it.
-  const canShowFullValue = (el) => {
+  const canShowFullValue = (el, clipBox = el) => {
     const host = el.closest('a[href], button, input, select, textarea, summary, [tabindex]')
     if (!host || host.matches(':disabled, [aria-disabled="true"]')) return false
     // A roving tabindex gives -1 to each item of a composite widget but the current one. The arrow keys focus the others.
     if (host.tabIndex < 0 && !host.closest('[role=tablist], [role=menu], [role=listbox], [role=grid], [role=toolbar], [role=tree]')) return false
-    const full = oneLine(el.textContent)
+    const full = oneLine(clipBox.textContent)
     const labelledBy = host.getAttribute('aria-labelledby')?.split(/\s+/).map((id) => document.getElementById(id)?.textContent).join(' ')
     const name = host.getAttribute('aria-label') ?? labelledBy ?? host.textContent
     return [host.getAttribute('title'), name].some((value) => oneLine(value).includes(full))
@@ -281,7 +281,7 @@ export function markLayoutFaults() {
     return null
   }
   // A box with a fixed height shows its overflow, so the next lines print over the next row. The font of a tight line
-  // height passes its box by a little, so only half the font size or more counts.
+  // height passes its box by a little, so only more than half the font size counts.
   const boxThatTextOutgrows = (el, edges) => {
     let box = el
     while (isInline(box)) box = box.parentElement
@@ -330,7 +330,7 @@ export function markLayoutFaults() {
       }
       if (outX || outY) {
         if (!showsEllipsis(el, node, outX, outY)) add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
-        else if (!canShowFullValue(el)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
+        else if (!canShowFullValue(el, node)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
         settled = true
         break
       }

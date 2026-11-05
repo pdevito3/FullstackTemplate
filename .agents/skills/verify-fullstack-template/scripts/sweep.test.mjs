@@ -75,6 +75,12 @@ const faults = [
     element: 'name',
   },
   {
+    name: 'an ellipsis on a parent that cuts a text after a link',
+    html: `<div data-slot="row" style="${truncate}"><a href="/">${word}</a> <span>Overdue</span></div>`,
+    kind: 'text is cut',
+    element: 'row',
+  },
+  {
     name: 'a line clamp on a parent, with nothing that shows the full value',
     html: `<p data-slot="name" style="${lineClamp}"><span>${words}</span></p>`,
     kind: 'text is cut',
@@ -89,6 +95,12 @@ const faults = [
   {
     name: 'text that wraps past a fixed height and prints over the next row',
     html: `<p data-slot="note" style="width:100px;height:20px;margin:0">${words}</p><p>Next row</p>`,
+    kind: 'text runs past its box',
+    element: 'note',
+  },
+  {
+    name: 'one line that runs more than half its font size below a fixed height',
+    html: `<p data-slot="note" style="width:100px;height:10px;margin:0;font-size:16px;line-height:22px">Text</p>`,
     kind: 'text runs past its box',
     element: 'note',
   },
@@ -196,6 +208,7 @@ const planned = [
   { name: 'a tight line height in a box with a fixed height', html: `<p style="width:100px;height:16px;margin:0;font-size:16px;line-height:16px">Text</p>` },
   { name: 'text that wraps in a box with a fixed height that scrolls', html: `<div style="width:100px;height:40px;overflow-y:auto">${words}</div>` },
   { name: 'text that is all left of its clip in a justify-end flex box', html: `<div style="display:flex;justify-content:flex-end;width:40px;overflow:hidden">Label<span style="flex:none;width:200px"></span></div>` },
+  { name: 'text after a long page in a body with a fixed height', html: `<style>html,body{height:100%;margin:0}</style><div style="height:2000px"></div><span>Text</span>` },
   { name: 'a collapsed label that is all outside its clip', html: `<div style="width:40px;overflow:hidden;display:flex"><span style="margin-left:60px;white-space:nowrap">${word}</span></div>` },
 ]
 

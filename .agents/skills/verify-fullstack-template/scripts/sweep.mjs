@@ -92,7 +92,7 @@ async function readFocusLoss() {
   return { element: `${el.getAttribute('role') ?? el.tagName.toLowerCase()} "${name}"`, reason }
 }
 
-function markLayoutFaults() {
+export function markLayoutFaults() {
   document.querySelectorAll('[data-sweep-fault]').forEach((el) => el.removeAttribute('data-sweep-fault'))
   const isHidden = (el) => {
     while (el.parentElement && getComputedStyle(el).display === 'contents') el = el.parentElement
@@ -110,15 +110,29 @@ function markLayoutFaults() {
   const textOf = (el) => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 80)
   const oneLine = (value) => (value ?? '').trim().replace(/\s+/g, ' ')
   // The sweep cannot tell whether a press shows the full value. It only finds that the title or the name holds it.
-  const canShowFullValue = (el) => {
+  const canShowFullValue = (el, clipBox = el) => {
     const host = el.closest('a[href], button, input, select, textarea, summary, [tabindex]')
     if (!host || host.matches(':disabled, [aria-disabled="true"]')) return false
     // A roving tabindex gives -1 to each item of a composite widget but the current one. The arrow keys focus the others.
     if (host.tabIndex < 0 && !host.closest('[role=tablist], [role=menu], [role=listbox], [role=grid], [role=toolbar], [role=tree]')) return false
-    const full = oneLine(el.textContent)
+    const full = oneLine(clipBox.textContent)
     const labelledBy = host.getAttribute('aria-labelledby')?.split(/\s+/).map((id) => document.getElementById(id)?.textContent).join(' ')
     const name = host.getAttribute('aria-label') ?? labelledBy ?? host.textContent
     return [host.getAttribute('title'), name].some((value) => oneLine(value).includes(full))
+  }
+  const isInline = (el) => ['inline', 'contents'].includes(getComputedStyle(el).display)
+  const isInlineIn = (el, box) => {
+    for (let node = el; node !== box; node = node.parentElement) {
+      if (!isInline(node)) return false
+    }
+    return true
+  }
+  // Chromium computes a -webkit-box with a clamp as flow-root. A clamp on another box cuts with no ellipsis.
+  // A flex, a grid, or a -webkit-box does not draw the ellipsis of text-overflow, and a block child does not get it.
+  const showsEllipsis = (el, box, cutX, cutY) => {
+    const { textOverflow, webkitLineClamp, display } = getComputedStyle(box)
+    if (cutY && webkitLineClamp !== 'none' && /^(flow-root|inline-block)$/.test(display)) return !cutX
+    return cutX && textOverflow === 'ellipsis' && !/flex|grid|-webkit-box/.test(display) && isInlineIn(el, box)
   }
   const ownText = (el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
   const textRect = (text) => {
@@ -214,21 +228,95 @@ function markLayoutFaults() {
     }
   }
 
+  const headings = 'h1, h2, h3, h4, h5, h6, [role=heading]'
+  const hasLetterOrDigit = (text) => text.some((node) => /[\p{L}\p{N}]/u.test(node.textContent))
+  // A space at the end of a line in pre-wrap hangs past the box, and the rect of the whole text includes it.
+  const wordEdges = (text) => {
+    const edges = { left: Infinity, right: -Infinity, bottom: -Infinity }
+    for (const node of text) {
+      for (const { 0: word, index } of node.textContent.matchAll(/\S+/g)) {
+        const range = document.createRange()
+        range.setStart(node, index)
+        range.setEnd(node, index + word.length)
+        const rect = range.getBoundingClientRect()
+        edges.left = Math.min(edges.left, rect.left)
+        edges.right = Math.max(edges.right, rect.right)
+        edges.bottom = Math.max(edges.bottom, rect.bottom)
+      }
+    }
+    return edges
+  }
+  const firstBoxWithOverflow = (el) => {
+    let node = el
+    while (node && node !== document.body && (isInline(node) || getComputedStyle(node).overflowX === 'visible')) node = node.parentElement
+    return node === document.body ? null : node
+  }
+  const sum = (style, ...names) => names.reduce((total, name) => total + parseFloat(style[name]), 0)
+  const fillsScroller = (box, scroller) => {
+    let width = box.offsetWidth
+    for (let node = box; node !== scroller; node = node.parentElement) {
+      const style = getComputedStyle(node)
+      width += sum(style, 'marginLeft', 'marginRight')
+      if (node !== box) width += sum(style, 'borderLeftWidth', 'borderRightWidth', 'paddingLeft', 'paddingRight')
+    }
+    return width >= scroller.clientWidth - sum(getComputedStyle(scroller), 'paddingLeft', 'paddingRight') - 1
+  }
+  // A flex item grows with a long word and holds it, so the box that the text passes can be an ancestor.
+  const boxThatTextPasses = (el, edges) => {
+    const scroller = firstBoxWithOverflow(el)
+    const isLineInScroller = /^(nowrap|pre)$/.test(getComputedStyle(el).whiteSpace) && scroller && scrolls(getComputedStyle(scroller).overflowX)
+    for (let node = el; node && node !== scroller && node !== document.body; node = node.parentElement) {
+      if (isInline(node)) continue
+      const rect = node.getBoundingClientRect()
+      const overrun = Math.max(0, edges.right - rect.right) + Math.max(0, rect.left - edges.left)
+      // The check of the headings below reports text that passes its heading.
+      if (node.closest(headings)) {
+        if (overrun > 1) return null
+        continue
+      }
+      if (overrun > 1 && !(isLineInScroller && fillsScroller(node, scroller))) return { box: node, overrun, boxWidth: rect.width }
+      const { position, display } = getComputedStyle(node)
+      if (['absolute', 'fixed'].includes(position) || display === 'table') return null
+    }
+    return null
+  }
+  // A box with a fixed height shows its overflow, so the next lines print over the next row. The font of a tight line
+  // height passes its box by a little, so only more than half the font size counts.
+  const boxThatTextOutgrows = (el, edges) => {
+    let box = el
+    while (isInline(box)) box = box.parentElement
+    if (box === document.body || getComputedStyle(box).overflowY !== 'visible') return null
+    const overrun = edges.bottom - box.getBoundingClientRect().bottom
+    return overrun > parseFloat(getComputedStyle(el).fontSize) / 2 ? { box, overrun } : null
+  }
+  // A scroll width does not count text that a box cuts at its left, for example in a justify-end flex box.
+  const isCutAtLeft = (box, text) => {
+    const { left, right } = textRect(text)
+    const clipLeft = box.getBoundingClientRect().left + box.clientLeft
+    return left < clipLeft - 1 && right > clipLeft
+  }
+  const isInFixedBox = (el) => {
+    for (let node = el; node && node !== document.body; node = node.parentElement) {
+      if (getComputedStyle(node).position === 'fixed') return true
+    }
+    return false
+  }
+
   for (const el of document.querySelectorAll('body *')) {
     const text = ownText(el)
     if (!text.length || isHidden(el)) continue
     const style = getComputedStyle(el)
-    const cutX = clipsContent(style.overflowX) && el.scrollWidth > el.clientWidth + 1
+    const cutX = clipsContent(style.overflowX) && (el.scrollWidth > el.clientWidth + 1 || isCutAtLeft(el, text))
     const cutY = clipsContent(style.overflowY) && el.scrollHeight > el.clientHeight + 1
     if (cutX || cutY) {
-      const ellipsis = (cutX && style.textOverflow === 'ellipsis') || (cutY && style.webkitLineClamp !== 'none')
-      if (!ellipsis) add(el, { kind: 'text is cut', how: 'cut with no ellipsis' })
+      if (!showsEllipsis(el, el, cutX, cutY)) add(el, { kind: 'text is cut', how: 'cut with no ellipsis' })
       else if (!canShowFullValue(el)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
       continue
     }
     const shown = { ...textRect(text).toJSON() }
     let checkX = true
     let checkY = true
+    let settled = false
     for (let node = el.parentElement; node && node !== document.body && (checkX || checkY); node = node.parentElement) {
       const nodeStyle = getComputedStyle(node)
       const clip = node.getBoundingClientRect()
@@ -236,13 +324,36 @@ function markLayoutFaults() {
       const outY = checkY && clipsContent(nodeStyle.overflowY) && (shown.top < clip.top - 1 || shown.bottom > clip.bottom + 1)
       if (outX) Object.assign(shown, { left: Math.max(shown.left, clip.left), right: Math.min(shown.right, clip.right) })
       if (outY) Object.assign(shown, { top: Math.max(shown.top, clip.top), bottom: Math.min(shown.bottom, clip.bottom) })
-      if (shown.right <= shown.left || shown.bottom <= shown.top) break
+      if (shown.right <= shown.left || shown.bottom <= shown.top) {
+        settled = true
+        break
+      }
       if (outX || outY) {
-        add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
+        if (!showsEllipsis(el, node, outX, outY)) add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
+        else if (!canShowFullValue(el, node)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
+        settled = true
         break
       }
       checkX &&= !scrolls(nodeStyle.overflowX)
       checkY &&= !scrolls(nodeStyle.overflowY)
+    }
+    if (settled) continue
+    const edges = hasLetterOrDigit(text) ? wordEdges(text) : null
+    const past = edges && boxThatTextPasses(el, edges)
+    if (past) {
+      add(el, { kind: 'text runs past its box', how: `runs ${Math.round(past.overrun)} px past the ${Math.round(past.boxWidth)} px of the ${label(past.box)} that holds it` })
+      continue
+    }
+    const outgrown = edges && boxThatTextOutgrows(el, edges)
+    if (outgrown) {
+      add(el, { kind: 'text runs past its box', how: `runs ${Math.round(outgrown.overrun)} px below the ${label(outgrown.box)} that holds it` })
+      continue
+    }
+    const pastX = checkX && (shown.left < -1 || shown.right > width + 1)
+    const pastY = checkY && (shown.top < -1 || shown.bottom > innerHeight + 1)
+    const reachesWindow = shown.right > 0 && shown.left < width && shown.bottom > 0 && shown.top < innerHeight
+    if ((pastX || pastY) && reachesWindow && isInFixedBox(el)) {
+      add(el, { kind: 'text is cut', how: 'runs past the edge of the window in a fixed box, which cannot scroll' })
     }
   }
 
@@ -268,7 +379,7 @@ function markLayoutFaults() {
     }
     return shown
   }
-  for (const heading of document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')) {
+  for (const heading of document.querySelectorAll(headings)) {
     if (!heading.offsetWidth || isHidden(heading)) continue
     const style = getComputedStyle(heading)
     if (style.display === 'inline' || style.overflowX !== 'visible') continue

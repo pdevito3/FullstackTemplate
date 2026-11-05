@@ -27,7 +27,9 @@ export default async ({ page, step, capture, settle, expect, login }) => {
     // Hold the image request, so that the step can see the avatar while the image loads.
     let release
     const held = new Promise((resolve) => (release = resolve))
-    const isAvatar = (url) => url.pathname === '/avatar.png'
+    // A glob and not a function: a function sends each request through this route, and the unroute then runs the route
+    // of the sweep a second time for an API request that is in flight, which rejects with Route is already handled.
+    const isAvatar = '**/avatar.png'
     await page.route(isAvatar, async (route) => {
       await held
       await route.continue()

@@ -9,7 +9,7 @@
 // --keep-data skips the copy and the restore, so the rows of the recipe stay for a look at them.
 //
 // A recipe is an ES module with a default export:
-//   export default async ({ page, context, stack, expect, step, capture, settle, login, logout }) => { ... }
+//   export default async ({ page, context, stack, expect, step, capture, settle, login, logout, waitForIdp }) => { ... }
 //
 // Evidence goes to artifacts/verify/<RUN_ID>/<label>/ (label defaults to the recipe file name):
 //   steps.log      each step with ok/FAIL and its duration
@@ -268,6 +268,16 @@ async function signInAtDuendeDemo(user) {
   await page.locator('button[value="login"]').click()
 }
 
+// StrictMode runs the effect that goes to the login twice in the dev build, and the first navigation aborts. A waitForURL rejects on that abort.
+async function waitForIdp() {
+  const onIdp = () => {
+    const { protocol, origin } = new URL(page.url())
+    return protocol.startsWith('http') && origin !== new URL(stack.urls.web).origin
+  }
+  await expect.poll(onIdp, { timeout: 30_000 }).toBe(true)
+  await page.waitForLoadState('domcontentloaded')
+}
+
 // Logs out through the BFF. 0factor sends the browser back at once. Duende shows a "return to the application"
 // page, which this follows. Back on the app, the SPA has no session, so it sends the browser to the login of the IdP.
 async function logout() {
@@ -277,10 +287,7 @@ async function logout() {
   const followedBack = back.waitFor({ timeout: 20_000 }).then(() => back.click(), () => {})
   await Promise.race([followedBack, loginAgain])
   await loginAgain
-  // Not waitForURL: React StrictMode runs the effect of the login twice in development, so the browser aborts the first
-  // navigation, and waitForURL can reject on that abort.
-  await expect.poll(() => new URL(page.url()).origin, { timeout: 30_000 }).not.toBe(new URL(stack.urls.web).origin)
-  await page.waitForLoadState('domcontentloaded')
+  await waitForIdp()
 }
 
 let status = 'passed'
@@ -288,7 +295,7 @@ let error = null
 let data = { restored: false, changes: {} }
 try {
   const recipe = await import(pathToFileURL(path.resolve(recipeArg)).href)
-  await recipe.default({ page, context, stack, expect, step, capture, settle, login, logout })
+  await recipe.default({ page, context, stack, expect, step, capture, settle, login, logout, waitForIdp })
 } catch (e) {
   status = 'failed'
   error = e.message

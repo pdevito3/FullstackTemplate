@@ -96,6 +96,9 @@ jobs:
         working-directory: frontend
         run: pnpm test
 
+      - name: Test the layout checks of the verify sweep
+        run: node --test .agents/skills/verify-fullstack-template/scripts/sweep.test.mjs
+
       # The functional suite: the SPA in a headless Chromium, with each call to the BFF mocked in the browser.
       - name: Run the functional tests
         working-directory: frontend

@@ -42,7 +42,7 @@ export function AttachmentList({ attachments, canManage, deletingId, onDelete }:
               </span>
             </div>
           </div>
-          <div className="ml-auto flex shrink-0 gap-2">
+          <div className="ml-auto flex flex-wrap justify-end gap-2">
             <a
               href={attachment.downloadUrl}
               aria-label={`Download ${attachment.fileName}`}

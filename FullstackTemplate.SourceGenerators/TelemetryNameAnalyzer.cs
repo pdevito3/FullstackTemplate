@@ -229,9 +229,9 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 	{
 		foreach (var entry in initializer.Initializers)
 		{
-			if (entry is IInvocationOperation add)
+			if (entry is IInvocationOperation add && types.IsListOrDictionary(add.TargetMethod.ContainingType))
 				CheckAddedTag(ctx, add.Arguments, types);
-			else if (entry is ISimpleAssignmentOperation { Target: IPropertyReferenceOperation { Property.IsIndexer: true } indexer })
+			else if (entry is ISimpleAssignmentOperation { Target: IPropertyReferenceOperation { Property.IsIndexer: true } indexer } && types.IsListOrDictionary(indexer.Property.ContainingType))
 				Check(ctx, Argument(indexer.Arguments, "key"), TagKey);
 		}
 	}
@@ -278,6 +278,8 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		private readonly INamedTypeSymbol? meter = compilation.GetTypeByMetadataName("System.Diagnostics.Metrics.Meter");
 		private readonly INamedTypeSymbol? tagList = compilation.GetTypeByMetadataName("System.Diagnostics.TagList");
 		private readonly INamedTypeSymbol? activityTagsCollection = compilation.GetTypeByMetadataName("System.Diagnostics.ActivityTagsCollection");
+		private readonly INamedTypeSymbol? list = compilation.GetTypeByMetadataName("System.Collections.Generic.List`1");
+		private readonly INamedTypeSymbol? dictionary = compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2");
 		private readonly INamedTypeSymbol? keyValuePair = compilation.GetTypeByMetadataName("System.Collections.Generic.KeyValuePair`2");
 		private readonly INamedTypeSymbol? templateFormatMethod = compilation.GetTypeByMetadataName("Serilog.Core.MessageTemplateFormatMethodAttribute");
 
@@ -287,6 +289,8 @@ public sealed class TelemetryNameAnalyzer : DiagnosticAnalyzer
 		public bool IsActivityEvent(INamedTypeSymbol? type) => Is(type, activityEvent);
 		public bool IsMeter(INamedTypeSymbol? type) => Is(type, meter);
 		public bool IsTagCollection(INamedTypeSymbol? type) => Is(type, tagList) || Is(type, activityTagsCollection);
+
+		public bool IsListOrDictionary(INamedTypeSymbol type) => Is(type.OriginalDefinition, list) || Is(type.OriginalDefinition, dictionary);
 
 		public bool IsTagPair(ITypeSymbol? type)
 			=> type is INamedTypeSymbol pair

@@ -210,6 +210,11 @@ const planned = [
   { name: 'text that is all left of its clip in a justify-end flex box', html: `<div style="display:flex;justify-content:flex-end;width:40px;overflow:hidden">Label<span style="flex:none;width:200px"></span></div>` },
   { name: 'text after a long page in a body with a fixed height', html: `<style>html,body{height:100%;margin:0}</style><div style="height:2000px"></div><span>Text</span>` },
   { name: 'a collapsed label that is all outside its clip', html: `<div style="width:40px;overflow:hidden;display:flex"><span style="margin-left:60px;white-space:nowrap">${word}</span></div>` },
+  { name: 'prose that runs below the window, in a page that scrolls', html: `<p style="width:100px">${words.repeat(10)}</p>` },
+  { name: 'a closed panel that is fixed all past the left of the window', html: `<div style="position:fixed;top:0;left:-300px;width:200px">Some words</div>` },
+  { name: 'a closed panel that is fixed all past the right of the window', html: `<div style="position:fixed;top:0;left:100%;width:200px">Some words</div>` },
+  { name: 'a closed panel that is fixed all past the top of the window', html: `<div style="position:fixed;top:-100px;left:0;height:50px">Some words</div>` },
+  { name: 'a closed panel that is fixed all past the bottom of the window', html: `<div style="position:fixed;top:100%;left:0">Some words</div>` },
 ]
 
 let browser
@@ -237,3 +242,8 @@ for (const { name, html } of planned) {
     assert.deepEqual(await faultsOf(html), [])
   })
 }
+
+test('reports a word that passes a heading and its parent once, as a fault of the heading', async () => {
+  const found = await faultsOf(`<div style="width:100px"><h2 data-slot="dialog-title">${word.slice(0, 20)}</h2></div>`)
+  assert.deepEqual(found.map(({ kind, element }) => ({ kind, element })), [{ kind: 'heading text runs past its box', element: 'dialog-title' }])
+})

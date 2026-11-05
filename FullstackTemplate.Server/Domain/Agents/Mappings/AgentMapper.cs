@@ -22,7 +22,7 @@ public static partial class AgentMapper
     }
 
     // It takes the configuration of ToAgentDtoWithoutActions.
-    public static partial IQueryable<AgentDto> ToAgentDtoQueryable(this IQueryable<Agent> queryable);
+    public static partial IQueryable<AgentDto> ToAgentDtoWithoutActionsQueryable(this IQueryable<Agent> queryable);
 
     [MapperIgnoreSource(nameof(AgentForCreationDto.TenantId))]
     [MapperIgnoreTarget(nameof(AgentForCreation.Id))]

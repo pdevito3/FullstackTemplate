@@ -147,7 +147,7 @@ public class UserActionTests
         foreach (var callerOf in Callers)
         {
             var caller = callerOf(user);
-            var rows = new[] { user }.AsQueryable().ToUserDtoQueryable().ToList();
+            var rows = new[] { user }.AsQueryable().ToUserDtoWithoutActionsQueryable().ToList();
 
             // Act
             rows.AddAllowedActions(caller);

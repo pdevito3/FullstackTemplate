@@ -33,11 +33,11 @@ public static partial class WorkshopMapper
         }
     }
 
-    public static IQueryable<WorkshopDto> ToWorkshopDtoQueryable(this IQueryable<Workshop> workshops, IQueryable<Venue> venues)
+    public static IQueryable<WorkshopDto> ToWorkshopDtoWithoutActionsQueryable(this IQueryable<Workshop> workshops, IQueryable<Venue> venues)
         => workshops
             .Join(venues, w => w.VenueId, v => v.Id,
                 (w, v) => new WorkshopAtVenue { Workshop = w, VenueTimeZone = v.TimeZone.Value })
-            .ProjectToWorkshopDto();
+            .ProjectToWorkshopDtoWithoutActions();
 
     [MapperIgnoreSource(nameof(WorkshopForCreationDto.VenueId))]
     [MapperIgnoreTarget(nameof(WorkshopForCreation.Id))]
@@ -45,7 +45,7 @@ public static partial class WorkshopMapper
 
     public static partial WorkshopForUpdate ToWorkshopForUpdate(this WorkshopForUpdateDto dto);
 
-    private static partial IQueryable<WorkshopDto> ProjectToWorkshopDto(this IQueryable<WorkshopAtVenue> rows);
+    private static partial IQueryable<WorkshopDto> ProjectToWorkshopDtoWithoutActions(this IQueryable<WorkshopAtVenue> rows);
 
     [MapNestedProperties(nameof(WorkshopAtVenue.Workshop))]
     [MapperIgnoreTarget(nameof(WorkshopDto.AllowedActions))]

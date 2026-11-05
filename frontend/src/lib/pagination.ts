@@ -27,3 +27,12 @@ export function parsePagination(result: { response: Pick<AxiosResponse, 'headers
   // The schema rejects a header that does not have the shape of the contract, so a caller does not read a wrong type.
   return paginationMetadataSchema.parse(JSON.parse(header))
 }
+
+/**
+ * Drops the repeats from the joined rows of offset pages. A row that the Server adds between two page loads moves the
+ * last row of a page to the start of the next page. A React Aria collection does not accept a repeated key: the page
+ * freezes in a production build. A repeated row keeps its first place and takes the data of the later read.
+ */
+export function uniqueById<Row extends { id: string }>(rows: Row[]): Row[] {
+  return [...new Map(rows.map((row) => [row.id, row])).values()]
+}

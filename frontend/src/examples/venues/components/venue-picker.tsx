@@ -57,8 +57,7 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
   const pick = useVenue(value || undefined)
   // After a pick, the input shows the name of the venue. That text is not a search.
   const results = useVenueSearch(text === pick.data?.name ? '' : text.trim())
-  const venues = results.data?.pages.flatMap((page) => page.venues) ?? []
-  const options = optionsWithPick(venues, pick.data)
+  const options = optionsWithPick(results.data ?? [], pick.data)
   const empty = emptyText(results)
 
   const handleSelectionChange = (key: Key | null) => {

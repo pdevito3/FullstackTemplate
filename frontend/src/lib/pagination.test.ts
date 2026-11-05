@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
 
 import type { PaginationMetadata } from '@/api/generated/models/types/pagination-metadata'
-import { parsePagination } from '@/lib/pagination'
+import { parsePagination, uniqueById } from '@/lib/pagination'
 
 const metadata: PaginationMetadata = {
   totalCount: 42,
@@ -63,5 +63,23 @@ describe('parsePagination', () => {
     const headers = AxiosHeaders.from('x-pagination: not json')
 
     expect(() => parsePagination(resultWith(headers))).toThrow(SyntaxError)
+  })
+})
+
+describe('uniqueById', () => {
+  const row = (id: string, name = id) => ({ id, name })
+
+  it('keeps each row when no id repeats', () => {
+    const rows = [row('a'), row('b'), row('c')]
+
+    expect(uniqueById(rows)).toEqual(rows)
+  })
+
+  it('keeps a repeated row at its first place, with the data of the later page', () => {
+    expect(uniqueById([row('a'), row('b', 'old'), row('b', 'new'), row('c')])).toEqual([
+      row('a'),
+      row('b', 'new'),
+      row('c'),
+    ])
   })
 })

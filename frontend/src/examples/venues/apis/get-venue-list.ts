@@ -2,7 +2,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 
 import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import { getVenueList } from '@/api/generated/venues/clients/get-venue-list'
-import { parsePagination } from '@/lib/pagination'
+import { parsePagination, uniqueById } from '@/lib/pagination'
 import { containsText } from '@/lib/querykit-text'
 
 import { VenueKeys } from './venue.keys'
@@ -22,5 +22,6 @@ export function useVenueSearch(search: string) {
     placeholderData: keepPreviousData,
     initialPageParam: 1,
     getNextPageParam: ({ pagination }) => (pagination.hasNext ? pagination.pageNumber + 1 : undefined),
+    select: ({ pages }) => uniqueById(pages.flatMap((page) => page.venues)),
   })
 }

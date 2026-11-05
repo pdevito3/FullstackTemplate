@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Domain.Tenants;
 
 using DomainEvents;
 using Models;
+using Users;
 
 public class Tenant : BaseEntity
 {
@@ -36,6 +37,12 @@ public class Tenant : BaseEntity
 
         return this;
     }
+
+    /// <summary>
+    /// The actions that the caller can send for this tenant. The tenant filter shows a member only the own tenant, so
+    /// the list needs no check of the tenant.
+    /// </summary>
+    public IReadOnlyList<TenantAction> AllowedActions(Caller caller) => TenantAction.AllowedFor(caller);
 
     private static void ValidateTenant(Tenant tenant)
     {

@@ -99,7 +99,7 @@ public static class InitiateUserAndTenant
                 : new Caller.Member(user.Id, user.UserPermissions.Select(p => p.Permission));
             return new InitiateUserAndTenantResponseDto
             {
-                Tenant = tenant.ToTenantDto(),
+                Tenant = tenant.ToTenantDto(caller),
                 User = user.ToUserDto(caller)
             };
         }

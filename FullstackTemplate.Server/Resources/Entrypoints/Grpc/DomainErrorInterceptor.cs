@@ -83,6 +83,7 @@ public sealed class DomainErrorInterceptor : Interceptor
         DomainErrorKind.Validation or DomainErrorKind.InvalidInput => StatusCode.InvalidArgument,
         DomainErrorKind.NotFound => StatusCode.NotFound,
         DomainErrorKind.Forbidden => StatusCode.PermissionDenied,
+        DomainErrorKind.Gone => StatusCode.FailedPrecondition,
         DomainErrorKind.Conflict => StatusCode.AlreadyExists,
         DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange => StatusCode.Aborted,
         DomainErrorKind.Unexpected => null,

@@ -7,6 +7,7 @@ using Domain.Agents;
 using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
+using Domain.Invites;
 // new-feature:db-usings
 using EntityConfigurations;
 // example:start
@@ -44,6 +45,7 @@ public class AppDbContext(
     public DbSet<Workshop> Workshops => Set<Workshop>();
     public DbSet<WorkshopAttachment> WorkshopAttachments => Set<WorkshopAttachment>();
     // example:end
+    public DbSet<Invite> Invites => Set<Invite>();
     // new-feature:db-sets
     #endregion
 

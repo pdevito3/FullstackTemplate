@@ -2,6 +2,8 @@ namespace FullstackTemplate.UnitTests.Domain.Users;
 
 using System.Security.Claims;
 using FullstackTemplate.Server.Domain.Users;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Shouldly;
 
@@ -123,6 +125,53 @@ public class CurrentUserServiceTests
 
         // Assert
         email.ShouldBe("oidc@example.com");
+    }
+
+    [Test]
+    [Arguments("true", true)]
+    [Arguments("True", true)]
+    [Arguments("false", false)]
+    [Arguments("yes", false)]
+    public void EmailVerified_reads_the_email_verified_claim(string value, bool expected)
+    {
+        // Arrange
+        SetupUserWithClaims(new Claim("email_verified", value));
+
+        // Act
+        var verified = _sut.EmailVerified;
+
+        // Assert
+        verified.ShouldBe(expected);
+    }
+
+    [Test]
+    public void EmailVerified_reads_a_json_boolean_of_a_jwt()
+    {
+        // Arrange
+        var jwt = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Claims = new Dictionary<string, object> { ["email_verified"] = true },
+        });
+        _principalAccessor.Principal.Returns(new ClaimsPrincipal(new ClaimsIdentity(new JsonWebToken(jwt).Claims, "TestAuth")));
+
+        // Act
+        var verified = _sut.EmailVerified;
+
+        // Assert
+        verified.ShouldBeTrue();
+    }
+
+    [Test]
+    public void EmailVerified_is_false_when_the_token_has_no_email_verified_claim()
+    {
+        // Arrange
+        SetupUserWithClaims(new Claim("email", "oidc@example.com"));
+
+        // Act
+        var verified = _sut.EmailVerified;
+
+        // Assert
+        verified.ShouldBeFalse();
     }
 
     [Test]

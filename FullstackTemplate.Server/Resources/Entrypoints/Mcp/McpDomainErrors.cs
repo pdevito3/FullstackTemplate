@@ -52,6 +52,7 @@ public static partial class McpDomainErrors
         DomainErrorKind.Validation or DomainErrorKind.InvalidInput => "invalid_argument",
         DomainErrorKind.NotFound => "not_found",
         DomainErrorKind.Forbidden => "permission_denied",
+        DomainErrorKind.Gone => "failed_precondition",
         DomainErrorKind.Conflict => "already_exists",
         DomainErrorKind.StaleVersion or DomainErrorKind.ConcurrentChange => "aborted",
         DomainErrorKind.Unexpected => "internal",

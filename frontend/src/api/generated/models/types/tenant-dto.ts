@@ -7,6 +7,11 @@ export type TenantDto = {
     id: string;
     name: string;
     /**
+     * @description The actions that the caller can send for this tenant now. A button in the SPA reads this list.
+     * @type array
+    */
+    allowedActions: "InviteUser"[];
+    /**
      * @minLength 0
      * @maxLength 4294967295
      * @type integer

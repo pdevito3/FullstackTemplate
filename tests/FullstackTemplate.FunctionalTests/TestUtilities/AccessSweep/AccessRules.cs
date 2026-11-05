@@ -14,17 +14,22 @@ public enum SweepCall
 public sealed record SweepTarget(string Key, string Label, bool NamesARecord);
 
 /// <param name="Anonymous">A call with no user does not get the code of a missing token.</param>
-public sealed record Open(string Reason, bool Anonymous = false);
+/// <param name="OnlyWithNoUser">
+/// Only a caller with no user record gets a success. A member has a user record, so each member call gets the conflict
+/// code of the surface.
+/// </param>
+public sealed record Open(string Reason, bool Anonymous = false, bool OnlyWithNoUser = false);
 
 public sealed record Outcome(string Code, string Detail);
 
 /// <param name="StaleVersion">The code of a stale version. The handler must find the record to compare its version.</param>
+/// <param name="Conflict">The code of a conflict with the state of the server.</param>
 /// <param name="Unauthenticated">
 /// The code of a call with no token. It is null for a surface that refuses such a call before it reaches an entrypoint,
 /// so the sweep makes no call with no user there.
 /// </param>
 public sealed record SurfaceCodes(
-    string Forbidden, string NotFound, string StaleVersion, string? Unauthenticated, Func<string, bool> IsSuccess);
+    string Forbidden, string NotFound, string StaleVersion, string Conflict, string? Unauthenticated, Func<string, bool> IsSuccess);
 
 public sealed class SweepSetupException(string message) : Exception(message);
 
@@ -77,6 +82,9 @@ public static class AccessRules
             SweepCall.NoUser
                 => (code => code == codes.Unauthenticated,
                     $"{codes.Unauthenticated}, because no allow-list entry marks it anonymous"),
+            SweepCall.MemberWithOwnTenantIds or SweepCall.MemberWithUnknownIds when entry is { OnlyWithNoUser: true }
+                => (code => code == codes.Conflict,
+                    $"{codes.Conflict}, because its allow-list entry is only for a caller with no user record"),
             SweepCall.MemberWithOwnTenantIds when entry is not null
                 => (codes.IsSuccess, "a success, because it is on the allow list"),
             SweepCall.MemberWithUnknownIds when entry is not null

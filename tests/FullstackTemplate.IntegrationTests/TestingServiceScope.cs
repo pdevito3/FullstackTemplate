@@ -47,7 +47,8 @@ public class TestingServiceScope
         string? identifier = null,
         string? email = null,
         string? firstName = null,
-        string? lastName = null)
+        string? lastName = null,
+        bool emailVerified = true)
     {
         var faker = new Faker();
         var currentUserService = GetService<ICurrentUserService>();
@@ -60,6 +61,7 @@ public class TestingServiceScope
         currentUserService.UserIdentifier.Returns(userIdentifier);
         currentUserService.ClientId.Returns(TestFixture.FirstPartyClientId);
         currentUserService.Email.Returns(email ?? faker.Internet.Email());
+        currentUserService.EmailVerified.Returns(emailVerified);
         currentUserService.FirstName.Returns(firstName ?? faker.Person.FirstName);
         currentUserService.LastName.Returns(lastName ?? faker.Person.LastName);
         currentUserService.Username.Returns(faker.Internet.UserName());

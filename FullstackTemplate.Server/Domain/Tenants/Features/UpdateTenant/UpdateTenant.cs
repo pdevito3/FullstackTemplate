@@ -23,7 +23,8 @@ public static class UpdateTenant
         {
             Activity.Current?.SetTag("app.tenant_id", request.Id);
 
-            await permissionGuard.RequireAsync(Permission.ManageTenant(), cancellationToken);
+            var caller = await permissionGuard.GetCallerAsync(cancellationToken);
+            caller.Require(Permission.ManageTenant());
 
             var tenant = await dbContext.Tenants
                 .TagWithOperationCallSite("tenants.update.load")
@@ -45,7 +46,7 @@ public static class UpdateTenant
 
             _logger.Here().Information("Updated tenant {TenantId}", tenant.Id);
 
-            return tenant.ToTenantDto();
+            return tenant.ToTenantDto(caller);
         }
     }
 }

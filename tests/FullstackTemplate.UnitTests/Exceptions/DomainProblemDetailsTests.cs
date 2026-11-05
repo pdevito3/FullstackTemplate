@@ -186,6 +186,7 @@ public class DomainProblemDetailsTests
         (new QueryInputException("sortOrder", "Parsing failed during sorting.", new SortParsingException("Unknown")), StatusCodes.Status400BadRequest),
         (new NotFoundException("Tenant was not found."), StatusCodes.Status404NotFound),
         (new ForbiddenAccessException("Only an admin can do this."), StatusCodes.Status403Forbidden),
+        (new GoneException("This invite expired. Ask a tenant admin for a new invite."), StatusCodes.Status410Gone),
         (new ConflictException("identifier", "A user with this identifier already exists."), StatusCodes.Status409Conflict),
         (new StaleVersionException(), StatusCodes.Status409Conflict),
         (new ConcurrentChangeException(), StatusCodes.Status409Conflict),

@@ -41,3 +41,21 @@ public sealed class AgentInput
     /// <summary>The permission names of the first grant. The default is no permission.</summary>
     public IReadOnlyList<string>? Permissions { get; set; }
 }
+
+public sealed class InviteInput
+{
+    /// <summary>An <c>inv_</c> ID. Null by default, so the entity makes the ID. Set it to give a fixed ID.</summary>
+    public string? Id { get; set; }
+
+    /// <summary>A <c>UserRole</c> name, for example "Admin" or "User". The claim gives the user this role.</summary>
+    public string? Role { get; set; }
+
+    public string? Email { get; set; }
+    public bool? RequireEmailMatch { get; set; }
+
+    /// <summary>The raw token of the link. Read it to preview or claim the invite.</summary>
+    public string? Token { get; set; }
+
+    /// <summary>The time of the creation. The default is <c>ctx.Now</c>. The invite expires <c>Invite.Lifetime</c> after it.</summary>
+    public DateTimeOffset? CreatedAt { get; set; }
+}

@@ -5,7 +5,7 @@ using TestUtilities.AccessSweep;
 
 public class AccessRulesTests
 {
-    private static readonly SurfaceCodes Codes = new("403", "404", "409", "401", code => code[0] == '2');
+    private static readonly SurfaceCodes Codes = new("403", "404", "409", "409", "401", code => code[0] == '2');
     private static readonly SweepTarget Target = new("GetThing", "GET /things", NamesARecord: false);
 
     [Test]
@@ -54,5 +54,28 @@ public class AccessRulesTests
         // Assert
         calls.ShouldNotContain(SweepCall.NoUser);
         AccessRules.CallsFor(Codes, Target).ShouldContain(SweepCall.NoUser);
+    }
+
+    [Test]
+    [Arguments("409", false)]
+    [Arguments("200", true)]
+    [Arguments("403", true)]
+    public void a_member_call_to_an_entry_only_for_a_caller_with_no_user_is_a_gap_unless_it_gets_the_conflict_code(
+        string code, bool isGap)
+    {
+        // Arrange
+        var openToEachMember = new Dictionary<string, Open> { [Target.Key] = new("A reason.", OnlyWithNoUser: true) };
+        var outcomes = new Dictionary<SweepCall, Outcome>
+        {
+            [SweepCall.NoUser] = new("401", ""),
+            [SweepCall.MemberWithOwnTenantIds] = new(code, ""),
+            [SweepCall.MemberWithUnknownIds] = new(code, ""),
+        };
+
+        // Act
+        var gaps = AccessRules.Gaps(Codes, Target, outcomes, openToEachMember);
+
+        // Assert
+        (gaps.Count > 0).ShouldBe(isGap, string.Join("; ", gaps));
     }
 }

@@ -119,6 +119,7 @@ All error responses use RFC 7807 problem details. The text of each message follo
 | `ValidationException`, `FluentValidation.ValidationException` | 422. `detail` has the message. `errors` has the messages for each named property |
 | `NotFoundException` | 404 |
 | `ForbiddenAccessException` | 403. `detail` has the message |
+| `GoneException`, for a record that exists but can no longer be used, such as an invite that expired or that someone claimed | 410. `detail` has the message |
 | `ConflictException` from a duplicate check in a handler, and `ConstraintConflictException`, which `AppDbContext` throws when a unique index (Postgres `23505`) or an exclusion constraint (`23P01`) stops a save | 409 with the default `type`. `title` is "The request conflicts with a record that exists." `detail` has the message, and `errors` has it under the named field. A `ConstraintConflictException` has the field and the message of its constraint. It does not show the constraint or the values |
 | `StaleVersionException`, which `GuardVersion` throws for an old version in the request, and `AppDbContext` throws when another save changed the row after the load, or when a unique index with `ForStaleVersion` stops a save | 409 with `type` `urn:fullstacktemplate:problem:stale-version`. `title` is "The record changed after you loaded it." `detail` has the message, and `errors` has it under `version` |
 | `ConcurrentChangeException`, which `RaceRetryBehavior` throws when a command with no version lost the race on each run | 409 with `type` `urn:fullstacktemplate:problem:concurrent-change`. `title` is "Other users changed the record at the same time." `detail` has the message, and `errors` is empty |
@@ -132,13 +133,14 @@ A 422 comes from a domain rule or a FluentValidation rule. Its body also has the
 
 A 409 comes from a duplicate unique value, an overlap that an exclusion constraint stops, or a record that changed after the caller loaded it. Its body also has the `ValidationProblemDetails` shape. The `type` tells the cases apart. The type `urn:fullstacktemplate:problem:stale-version` (`DomainProblemDetails.StaleVersionType`) means that the caller must load the record again and repeat the change. The type `urn:fullstacktemplate:problem:concurrent-change` (`DomainProblemDetails.ConcurrentChangeType`) means that the caller can send the same request again. Any other type means that the caller must change the value of the field in `errors`.
 
-Each entrypoint shows the three kinds differently:
+Each entrypoint shows the three kinds of 409, and the 410, differently:
 
 | Kind | HTTP | gRPC | MCP `code` |
 |------|------|------|------------|
 | Conflict with a record that exists | 409 with the default `type` | `AlreadyExists` | `already_exists` |
 | Stale version | 409 with the stale version `type` | `Aborted` | `aborted` |
 | Concurrent change | 409 with the concurrent change `type` | `Aborted` | `aborted` |
+| Record that can no longer be used | 410 | `FailedPrecondition` | `failed_precondition` |
 
 Declare `.ProducesValidationProblem(StatusCodes.Status409Conflict)` on each write endpoint that changes an existing record, because each one can lose a race with another save. Also declare it on each write endpoint that can add or change a unique value.
 

@@ -510,6 +510,427 @@
         }
       }
     },
+    "/api/v1/invites": {
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Adds an invite to a tenant. The response has the token one time only.",
+        "operationId": "AddInvite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteForCreationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddInviteResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Gets a page of the invites of the tenant.",
+        "operationId": "GetInviteList",
+        "parameters": [
+          {
+            "name": "filters",
+            "in": "query",
+            "schema": {
+              "maxLength": 2000,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "maximum": 4294967,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "X-Pagination": {
+                "description": "The pagination data for the returned page, as JSON.",
+                "required": true,
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/PaginationMetadata"
+                    }
+                  }
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InviteDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/invites/claim": {
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Claims an invite: adds the caller to the tenant of the invite as a new user with the role of the invite.",
+        "operationId": "ClaimInvite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimInviteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/invites/preview": {
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Gets the tenant and the role of an invite, so the join page can show them before the claim. A POST keeps the\ntoken out of the logs of the path and the query.",
+        "operationId": "GetInvitePreview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteTokenDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitePreviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
+    "/api/v1/invites/{id}/revoke": {
+      "post": {
+        "tags": [
+          "Invites"
+        ],
+        "summary": "Revokes a pending invite, so that no one can claim it.",
+        "operationId": "RevokeInvite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request has no valid access token."
+          }
+        }
+      }
+    },
     "/api/v1/tenants": {
       "post": {
         "tags": [
@@ -2695,6 +3116,23 @@
   },
   "components": {
     "schemas": {
+      "AddInviteResponseDto": {
+        "required": [
+          "invite",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "invite": {
+            "$ref": "#/components/schemas/InviteDto"
+          },
+          "token": {
+            "type": "string",
+            "description": "The secret of the link. The SPA puts it in the fragment of the join URL: `/join#token=...`."
+          }
+        },
+        "description": "The new invite and its token. This is the one response that has the token (INV-2)."
+      },
       "AgentDto": {
         "required": [
           "id",
@@ -3066,6 +3504,39 @@
           }
         }
       },
+      "ClaimInviteDto": {
+        "required": [
+          "token",
+          "firstName",
+          "lastName",
+          "email",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "maxLength": 43,
+            "type": "string"
+          },
+          "firstName": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "lastName": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 320,
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "description": "The token and the values of the new user. The join page fills the values from the token claims (INV-8)."
+      },
       "CurrentUserDto": {
         "required": [
           "identifier"
@@ -3173,6 +3644,158 @@
             "$ref": "#/components/schemas/UserDto"
           }
         }
+      },
+      "InviteDto": {
+        "required": [
+          "id",
+          "tenantId",
+          "role",
+          "requireEmailMatch",
+          "expiresAt",
+          "status",
+          "allowedActions",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The email that the invite is for. Null when the admin gave none."
+          },
+          "requireEmailMatch": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "enum": [
+              "Pending",
+              "Claimed",
+              "Revoked"
+            ],
+            "type": "string",
+            "description": "The stored state. A pending invite after DateTimeOffset InviteDto.ExpiresAt is expired."
+          },
+          "claimedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The user that the claim added. Null until a claim."
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "Revoke"
+              ],
+              "type": "string"
+            },
+            "description": "The actions that the caller can send for this invite now. A button in the SPA reads this list."
+          },
+          "version": {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "description": "An invite as an admin sees it. It never has the token (INV-2)."
+      },
+      "InviteForCreationDto": {
+        "required": [
+          "role",
+          "requireEmailMatch"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Only for a caller that sees all tenants, such as an allow-listed machine client. That caller must name the tenant.\nA user always invites to their own tenant. If a user sends a tenant, it must be their own tenant."
+          },
+          "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 320,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The email of the colleague. The invite requires it only when bool InviteForCreationDto.RequireEmailMatch is true."
+          },
+          "requireEmailMatch": {
+            "type": "boolean",
+            "description": "When true, only a caller whose token has string? InviteForCreationDto.Email can claim the invite."
+          }
+        }
+      },
+      "InvitePreviewDto": {
+        "required": [
+          "tenantName",
+          "role",
+          "expiresAt",
+          "requireEmailMatch"
+        ],
+        "type": "object",
+        "properties": {
+          "tenantName": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "Admin",
+              "User"
+            ],
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requireEmailMatch": {
+            "type": "boolean",
+            "description": "When true, only a caller whose token has the email of the invite can claim it."
+          }
+        },
+        "description": "What the join page shows before the claim."
+      },
+      "InviteTokenDto": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "maxLength": 43,
+            "type": "string"
+          }
+        },
+        "description": "The token of an invite link. It is in the body, so it is not in a log of the path or the query."
       },
       "PaginationMetadata": {
         "required": [
@@ -3298,6 +3921,7 @@
         "required": [
           "id",
           "name",
+          "allowedActions",
           "version"
         ],
         "type": "object",
@@ -3307,6 +3931,16 @@
           },
           "name": {
             "type": "string"
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "InviteUser"
+              ],
+              "type": "string"
+            },
+            "description": "The actions that the caller can send for this tenant now. A button in the SPA reads this list."
           },
           "version": {
             "maximum": 4294967295,
@@ -3844,6 +4478,9 @@
     },
     {
       "name": "AuditEntries"
+    },
+    {
+      "name": "Invites"
     },
     {
       "name": "Tenants"

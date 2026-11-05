@@ -309,6 +309,7 @@ public class OpenApiDocumentTests
         string[] entityIds =
         [
             "AgentForCreationDto.tenantId",
+            "InviteForCreationDto.tenantId",
             "UserForCreationDto.tenantId",
             // example:start
             "WorkshopForCreationDto.venueId",

@@ -27,6 +27,7 @@ const pagination = (pageNumber: number, totalPages: number) => ({
 async function renderListAt(path: string) {
   await commands.answerRequests([
     ...signedInMember,
+    { method: 'GET', path: `/api/v1/tenants/${member.tenantId}`, body: { id: member.tenantId, name: 'Acme', allowedActions: [], version: 1 } },
     { method: 'GET', path: '/api/v1/users', headers: pagination(1, 3), body: [user('Page One')] },
     { method: 'GET', path: '/api/v1/users', query: { pageNumber: '2' }, headers: pagination(2, 3), body: [user('Page Two')] },
   ])

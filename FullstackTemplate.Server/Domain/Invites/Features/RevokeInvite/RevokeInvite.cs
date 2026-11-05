@@ -13,7 +13,7 @@ public static class RevokeInvite
 {
     public sealed record Command(string Id) : IRequest<InviteDto>, IRunsAgainWhenRaced;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, TimeProvider timeProvider)
         : IRequestHandler<Command, InviteDto>
     {
         private readonly ILogger _logger = Log.ForContext<Handler>();
@@ -36,7 +36,7 @@ public static class RevokeInvite
             if (!wasRevoked)
                 _logger.Here().Information("Revoked invite {InviteId}", invite.Id);
 
-            return invite.ToInviteDto(caller);
+            return invite.ToInviteDto(caller, timeProvider.GetUtcNow());
         }
     }
 }

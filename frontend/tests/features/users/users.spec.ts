@@ -1,9 +1,15 @@
+import { tenantsApi } from '@tests/support/api/tenants-api'
 import { usersApi, usersPaths } from '@tests/support/api/users-api'
 import { as } from '@tests/support/auth/actors'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
+import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
 import { expect, test } from '@tests/support/fixtures'
 import { usersPage } from './users.tasks'
+
+test.beforeEach(({ api }) => {
+  api.mock(tenantsApi.oneIs(aTenant()))
+})
 
 test.describe('the users of a tenant', () => {
   test.use({ actor: as.user('Ana Admin') })

@@ -4,7 +4,7 @@ using Ardalis.SmartEnum;
 using Exceptions;
 
 /// <summary>
-/// The stored state of an invite. Expired is not a state: <see cref="Invite.IsExpiredAt"/> computes it from the expiry.
+/// The stored state of an invite. Expired is not a state: <see cref="Invite.IsExpiredAt(DateTimeOffset)"/> computes it from the expiry.
 /// </summary>
 public partial class InviteStatus : ValueObject, IFixedNames
 {

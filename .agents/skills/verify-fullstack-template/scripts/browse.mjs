@@ -277,7 +277,10 @@ async function logout() {
   const followedBack = back.waitFor({ timeout: 20_000 }).then(() => back.click(), () => {})
   await Promise.race([followedBack, loginAgain])
   await loginAgain
-  await page.waitForURL((u) => u.origin !== new URL(stack.urls.web).origin, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  // Not waitForURL: React StrictMode runs the effect of the login twice in development, so the browser aborts the first
+  // navigation, and waitForURL can reject on that abort.
+  await expect.poll(() => new URL(page.url()).origin, { timeout: 30_000 }).not.toBe(new URL(stack.urls.web).origin)
+  await page.waitForLoadState('domcontentloaded')
 }
 
 let status = 'passed'

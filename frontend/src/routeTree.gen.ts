@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StartTenantRouteImport } from './routes/start-tenant'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users/index'
@@ -26,6 +27,11 @@ import { Route as examplesWorkshopsIdEditRouteImport } from './routes/(examples)
 const StartTenantRoute = StartTenantRouteImport.update({
   id: '/start-tenant',
   path: '/start-tenant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -93,6 +99,7 @@ const examplesWorkshopsIdEditRoute = examplesWorkshopsIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/join': typeof JoinRoute
   '/start-tenant': typeof StartTenantRoute
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/join': typeof JoinRoute
   '/start-tenant': typeof StartTenantRoute
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/join': typeof JoinRoute
   '/start-tenant': typeof StartTenantRoute
   '/(examples)/components': typeof examplesComponentsRoute
   '/(examples)/filter-demo': typeof examplesFilterDemoRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/join'
     | '/start-tenant'
     | '/components'
     | '/filter-demo'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/join'
     | '/start-tenant'
     | '/components'
     | '/filter-demo'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/join'
     | '/start-tenant'
     | '/(examples)/components'
     | '/(examples)/filter-demo'
@@ -187,6 +199,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  JoinRoute: typeof JoinRoute
   StartTenantRoute: typeof StartTenantRoute
   examplesComponentsRoute: typeof examplesComponentsRoute
   examplesFilterDemoRoute: typeof examplesFilterDemoRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/start-tenant'
       fullPath: '/start-tenant'
       preLoaderRoute: typeof StartTenantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -299,6 +319,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  JoinRoute: JoinRoute,
   StartTenantRoute: StartTenantRoute,
   examplesComponentsRoute: examplesComponentsRoute,
   examplesFilterDemoRoute: examplesFilterDemoRoute,

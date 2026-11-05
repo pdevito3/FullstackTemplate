@@ -10,23 +10,32 @@ using Users;
 public static partial class InviteMapper
 {
     /// <summary>The DTO with the actions that <paramref name="caller"/> can send for the invite.</summary>
-    public static InviteDto ToInviteDto(this Invite invite, Caller caller)
-        => invite.ToInviteDtoWithoutActions() with { AllowedActions = NamesOf(invite.AllowedActions(caller)) };
+    public static InviteDto ToInviteDto(this Invite invite, Caller caller, DateTimeOffset now)
+        => invite.ToInviteDtoWithoutAnswers() with
+        {
+            AllowedActions = NamesOf(invite.AllowedActions(caller)),
+            IsExpired = invite.IsExpiredAt(now),
+        };
 
     /// <summary>
-    /// Gives each row of a list the actions that <paramref name="caller"/> can send for it. The list query projects
-    /// to the DTO, so the rule reads the status of the DTO.
+    /// Gives each row of a list the actions that <paramref name="caller"/> can send for it, and its expired flag at
+    /// <paramref name="now"/>. The list query projects to the DTO, so each rule reads the values of the DTO. The
+    /// projection cannot compute the flag, because Mapperly cannot give a value of the handler to a query.
     /// </summary>
-    public static void AddAllowedActions(this List<InviteDto> invites, Caller caller)
+    public static void AddAllowedActionsAndExpiry(this List<InviteDto> invites, Caller caller, DateTimeOffset now)
     {
         for (var i = 0; i < invites.Count; i++)
         {
             var status = InviteStatus.Of(invites[i].Status);
-            invites[i] = invites[i] with { AllowedActions = NamesOf(InviteAction.AllowedFor(caller, status)) };
+            invites[i] = invites[i] with
+            {
+                AllowedActions = NamesOf(InviteAction.AllowedFor(caller, status)),
+                IsExpired = Invite.IsExpiredAt(status, invites[i].ExpiresAt, now),
+            };
         }
     }
 
-    // It takes the configuration of ToInviteDtoWithoutActions. The list handler adds the actions after the page loads.
+    // It takes the configuration of ToInviteDtoWithoutAnswers. The list handler adds the answers after the page loads.
     public static partial IQueryable<InviteDto> ToInviteDtoQueryable(this IQueryable<Invite> queryable);
 
     // The handler decides the tenant from the caller's scope. The tenant in the DTO is only a request.
@@ -39,7 +48,8 @@ public static partial class InviteMapper
     [MapperIgnoreSource(nameof(Invite.IsDeleted))]
     [MapperIgnoreSource(nameof(Invite.DomainEvents))]
     [MapperIgnoreTarget(nameof(InviteDto.AllowedActions))]
-    private static partial InviteDto ToInviteDtoWithoutActions(this Invite invite);
+    [MapperIgnoreTarget(nameof(InviteDto.IsExpired))]
+    private static partial InviteDto ToInviteDtoWithoutAnswers(this Invite invite);
 
     private static List<string> NamesOf(IEnumerable<InviteAction> actions) => actions.Select(a => a.Value).ToList();
     private static string MapEmail(EmailAddress email) => email.Value;

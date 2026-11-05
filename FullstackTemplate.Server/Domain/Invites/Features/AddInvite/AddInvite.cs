@@ -60,7 +60,7 @@ public static class AddInvite
             _logger.Here().Information("Added invite {InviteId} to tenant {TenantId} with role {Role}",
                 invite.Id, tenantId, role.Value);
 
-            return new AddInviteResponseDto { Invite = invite.ToInviteDto(caller), Token = token.Value };
+            return new AddInviteResponseDto { Invite = invite.ToInviteDto(caller, timeProvider.GetUtcNow()), Token = token.Value };
         }
 
         // A user invites to their own tenant. A caller that sees all tenants has no tenant of its own,

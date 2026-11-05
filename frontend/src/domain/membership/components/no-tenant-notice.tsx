@@ -6,12 +6,15 @@ import { Link } from '@/components/ui/link'
 
 import { useMembership } from '../apis/get-membership'
 
+// Each of these pages tells the user what to do next, and on /join the user is about to join a tenant.
+const PAGES_WITH_NO_NOTICE = ['/start-tenant', '/join']
+
 /** Tells a signed-in user with no user record, such as each user of a new database, how to start a tenant. */
 export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
-  if (pathname === '/start-tenant') return null
+  if (PAGES_WITH_NO_NOTICE.includes(pathname.replace(/\/$/, ''))) return null
 
   if (membership.status === 'error') {
     return (

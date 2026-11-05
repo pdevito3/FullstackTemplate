@@ -1,4 +1,5 @@
 import type { InitiateUserAndTenantResponseDto } from '@/api/generated/models/types/initiate-user-and-tenant-response-dto'
+import type { UserDto } from '@/api/generated/models/types/user-dto'
 import type { Identity } from '../auth/actors'
 import { actorSubject } from '../auth/actors'
 import { aProblem } from '../builders/problem-details-builder'
@@ -14,10 +15,16 @@ export const membershipApi = {
   /** No route for an anonymous actor, because the SPA does not look up a user record without a session. */
   userIs(identity: Identity): MockRoute[] {
     if (!identity.signedIn) return []
-    const path = membershipPaths.userOf(actorSubject)
+    const subject = identity.claims.find((claim) => claim.type === 'sub')?.value ?? actorSubject
+    const path = membershipPaths.userOf(subject)
     return identity.hasTenant
-      ? [{ method: 'get', path, status: 200, body: aUser().identifiedBy(actorSubject).build() }]
+      ? [{ method: 'get', path, status: 200, body: aUser().identifiedBy(subject).build() }]
       : [{ method: 'get', path, status: 404, body: { ...aProblem().saying('User was not found.').build(), status: 404 } }]
+  },
+
+  /** The caller has a user record from now on, as after a claim or a tenant start. */
+  userIsNow(user: { build(): UserDto }): MockRoute {
+    return { method: 'get', path: membershipPaths.userOf(actorSubject), status: 200, body: user.build() }
   },
 
   /** The Server refuses the lookup, as it does for a deleted user whose tenant it still has in its cache. */

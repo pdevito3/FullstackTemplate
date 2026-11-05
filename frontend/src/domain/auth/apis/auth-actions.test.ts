@@ -10,6 +10,15 @@ describe('the return URL of the login', () => {
   })
 
   it.each([
+    ['a percent-encoded token', '#token%3Dabc'],
+    ['another case', '#TOKEN=abc'],
+    ['a query in the fragment', '#?token=abc'],
+    ['a value after another value', '#a=1;token=abc'],
+  ])('@INV-3 leaves out a hash with %s', (_, hash) => {
+    expect(returnUrlOf(at('/join', '?a=1', hash))).toBe('/join?a=1')
+  })
+
+  it.each([
     ['//', '//evil.example/x'],
     ['/\\', '/\\evil.example/x'],
   ])('is / for a path that starts with %s, which the BFF refuses', (_, pathname) => {

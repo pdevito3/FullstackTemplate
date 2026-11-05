@@ -53,6 +53,27 @@ class ProblemDetailsBuilder {
     })
   }
 
+  gone(detail: string) {
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'https://tools.ietf.org/html/rfc9110#section-15.5.11',
+      title: 'The resource is gone.',
+      status: 410,
+      detail,
+    })
+  }
+
+  conflict(detail: string) {
+    return new ProblemDetailsBuilder({
+      ...this.problem,
+      type: 'https://tools.ietf.org/html/rfc9110#section-15.5.10',
+      title: 'The request conflicts with the state of the resource.',
+      status: 409,
+      detail,
+      errors: { '': [detail] },
+    })
+  }
+
   invalid(errors: Record<string, string[]>) {
     return new ProblemDetailsBuilder({
       ...this.problem,

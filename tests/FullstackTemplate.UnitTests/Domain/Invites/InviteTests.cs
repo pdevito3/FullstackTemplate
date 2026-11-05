@@ -33,6 +33,34 @@ public class InviteTests
         Username = "ada",
     };
 
+    [Test, Property("Rule", "INV-4")]
+    public void a_pending_invite_is_expired_from_its_expiry_on()
+    {
+        // Arrange
+        var invite = PendingInvite();
+
+        // Act
+        var justBefore = invite.IsExpiredAt(invite.ExpiresAt - TimeSpan.FromSeconds(1));
+        var atTheExpiry = invite.IsExpiredAt(invite.ExpiresAt);
+
+        // Assert
+        justBefore.ShouldBeFalse();
+        atTheExpiry.ShouldBeTrue();
+    }
+
+    [Test, Property("Rule", "INV-4")]
+    public void a_revoked_invite_is_not_expired_after_its_expiry()
+    {
+        // Arrange
+        var invite = PendingInvite();
+
+        // Act
+        invite.Revoke();
+
+        // Assert
+        invite.IsExpiredAt(invite.ExpiresAt).ShouldBeFalse();
+    }
+
     [Test, Property("Rule", "INV-2")]
     public void create_stores_the_hash_of_the_token_and_never_the_token()
     {

@@ -171,7 +171,7 @@ Each page needs a session. The root route (`routes/__root.tsx`) reads `authClaim
 | State of the session query | The root route shows |
 |---|---|
 | Loading | Nothing |
-| No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. |
+| No session (`null`) | Nothing. It goes to `/bff/login` with the path, the query, and the hash as `returnUrl`. The token of an invite link is not in that hash: `main.tsx` moves it to `sessionStorage` before the router starts, on each path, and sets the path to `/join`, so `returnUrl` is `/join` (INV-3). `returnUrlOf` leaves out a hash that names a token in any other form, such as `#token%3Dabc`. The first `sub` that reads the token holds it. The tab forgets the token when the join page sees another `sub`, at a logout in this tab, after a claim, and after a 404 or a 410 of the preview or the claim. A tab with no token asks the user to open the link again. Before a claim, the join page reads the session again with `staleTime: 0`, so a session that changed in another tab sends no claim. |
 | Error, and no earlier answer | An alert and Try Again. It does not go to the login. While the check runs again, Try Again is pending and takes no press. |
 | Claims | The layout and the page |
 

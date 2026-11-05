@@ -13,6 +13,7 @@ export const inviteDtoSchema = z.object({
   requireEmailMatch: z.boolean(),
   expiresAt: z.iso.datetime(),
   status: z.enum(['Pending', 'Claimed', 'Revoked']).describe('The stored state. A pending invite after DateTimeOffset InviteDto.ExpiresAt is expired.'),
+  isExpired: z.boolean().describe('True when a pending invite is past DateTimeOffset InviteDto.ExpiresAt. The state on the screen reads this flag.'),
   claimedByUserId: z.string().nullish().describe('The user that the claim added. Null until a claim.'),
   allowedActions: z.array(z.enum(['Revoke'])).describe('The actions that the caller can send for this invite now. A button in the SPA reads this list.'),
   version: z.int().min(0).max(4294967295),

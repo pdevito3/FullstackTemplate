@@ -61,7 +61,12 @@ public class Invite : BaseEntity, ITenantable
         return invite;
     }
 
-    public bool IsExpiredAt(DateTimeOffset now) => now >= ExpiresAt;
+    /// <summary>A pending invite after its expiry is expired.</summary>
+    public bool IsExpiredAt(DateTimeOffset now) => IsExpiredAt(Status, ExpiresAt, now);
+
+    /// <summary>The same rule for a row of a list, which the query projects to the DTO.</summary>
+    internal static bool IsExpiredAt(InviteStatus status, DateTimeOffset expiresAt, DateTimeOffset now)
+        => status == InviteStatus.Pending() && now >= expiresAt;
 
     /// <summary>The check of a preview and of a claim: the invite is pending and not expired.</summary>
     /// <exception cref="GoneException">The invite was claimed or revoked, or it expired.</exception>

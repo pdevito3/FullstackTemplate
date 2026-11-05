@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/toaster'
 import { AuthKeys } from '@/domain/auth/apis/auth.keys'
 import { keepInviteTokenOutOfTheUrl } from '@/domain/invites/invite-link'
+import { retryFailedMembership } from '@/domain/membership/apis/refresh-caller-membership'
 // Connects the generated API clients to apiClient before the first request.
 import { onUnauthorized } from '@/lib/api-client'
 import { createQueryClient } from '@/lib/query-client'
@@ -32,6 +33,11 @@ const queryClient = createQueryClient()
 onUnauthorized(async () => {
   await queryClient.invalidateQueries({ queryKey: AuthKeys.user() }, { cancelRefetch: false })
   return queryClient.getQueryData(AuthKeys.user()) === null
+})
+
+// The banner of the layout stays mounted, and a page that does not read the membership does not ask again.
+router.subscribe('onResolved', ({ pathChanged }) => {
+  if (pathChanged) void retryFailedMembership(queryClient)
 })
 
 createRoot(document.getElementById('root')!).render(

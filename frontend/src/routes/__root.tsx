@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
+import { focusWithoutTabStop } from '@/lib/focus-without-tab-stop'
 import { login, returnUrlOf } from '@/domain/auth/apis/auth-actions'
 import { authClaimsQuery } from '@/domain/auth/apis/get-user'
 import { NoTenantNotice } from '@/domain/membership/components/no-tenant-notice'
@@ -155,26 +156,4 @@ function focusStartOfPage(content: HTMLElement) {
   })
   observer.observe(content, { childList: true, subtree: true })
   return () => observer.disconnect()
-}
-
-function focusWithoutTabStop(target: HTMLElement | null) {
-  if (!target) return
-  if (!target.hasAttribute('tabindex')) {
-    target.setAttribute('tabindex', '-1')
-    target.setAttribute('data-page-focus', '')
-    const removeTabStop = () => {
-      target.removeAttribute('tabindex')
-      target.removeAttribute('data-page-focus')
-      target.removeEventListener('blur', handleBlur)
-      target.removeEventListener('pointerdown', removeTabStop)
-    }
-    // A switch to another tab blurs the target, but the target keeps the focus for the return.
-    const handleBlur = () => {
-      if (document.activeElement !== target) removeTabStop()
-    }
-    target.addEventListener('blur', handleBlur)
-    // A press inside the target must not give it the focus again.
-    target.addEventListener('pointerdown', removeTabStop)
-  }
-  target.focus({ preventScroll: true })
 }

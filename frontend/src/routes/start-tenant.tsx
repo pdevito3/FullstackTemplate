@@ -50,7 +50,7 @@ function StartTenantContent() {
     return (
       <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
         <p>{membership.message}</p>
-        {membership.retry && <Button variant="outline" onPress={membership.retry}>Try Again</Button>}
+        {membership.retry && <Button variant="outline" isPending={membership.isRetrying} onPress={membership.retry}>Try Again</Button>}
       </div>
     )
   }

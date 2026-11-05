@@ -1,8 +1,9 @@
 import { membershipApi, membershipPaths } from '@tests/support/api/membership-api'
 import { usersApi } from '@tests/support/api/users-api'
 import { actorSubject, as } from '@tests/support/auth/actors'
-import { aStartedTenant } from '@tests/support/builders/user-builder'
+import { aStartedTenant, aUser } from '@tests/support/builders/user-builder'
 import { expect, test } from '@tests/support/fixtures'
+import { usersPage } from '../users/users.tasks'
 import { startTenantPage } from './start-tenant.tasks'
 
 test.describe('a signed-in user with no tenant', () => {
@@ -107,27 +108,233 @@ for (const viewport of [
 test.describe('a signed-in user whose lookup the Server refuses', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
-  test('sees the reason of the Server, and no Try Again that cannot help', async ({ page, api }) => {
-    api.mock(membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'))
+  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+
+  test('sees the reason of the Server with no automatic retry, and Try Again asks again', async ({ page, api }) => {
+    api.mock(membershipApi.lookupRefuses(refusal))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
 
-    await expect(start.at.lookupFailure).toHaveText('You are not a member of a tenant. Ask a tenant admin to add you.')
-    await expect(start.at.tryAgain).toHaveCount(0)
+    await expect(start.at.lookupFailure).toContainText(refusal)
     expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
     expect(await start.at.toasts.count()).toBe(0)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.form).toBeVisible()
+    await expect(start.at.lookupFailure).toHaveCount(0)
   })
 
-  test('sees the reason of the Server on the home page too', async ({ page, api }) => {
-    api.mock(
-      usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }),
-      membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'),
-    )
+  test('sees the notice after Try Again on the home page', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/')
-
-    await expect(start.at.checkFailure).toHaveText('You are not a member of a tenant. Ask a tenant admin to add you.')
+    await expect(start.at.checkFailure).toContainText(refusal)
     await expect(start.at.notice).toHaveCount(0)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.notice).toBeVisible()
+    await expect(start.at.checkFailure).toHaveCount(0)
+  })
+
+  test('sees the reason again after Try Again when the Server still refuses', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    await start.at.tryAgain.click()
+
+    await expect.poll(() => api.all('get', membershipPaths.userOf(actorSubject)).length).toBe(2)
+    await expect(start.at.checkFailure).toContainText(refusal)
+    await expect(start.at.tryAgain).toBeVisible()
+  })
+
+  test('keeps the reason and the focus on Try Again while the check runs and after a new refusal', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    const answer = api.hold(membershipApi.lookupRefuses(refusal))
+    await start.at.tryAgain.focus()
+    await page.keyboard.press('Enter')
+
+    await expect.poll(() => api.all('get', membershipPaths.userOf(actorSubject)).length).toBe(2)
+    await expect(start.at.checkFailure).toContainText(refusal)
+    await expect(start.at.tryAgain).toBeDisabled()
+    await expect(start.at.tryAgain).toBeFocused()
+
+    answer()
+
+    await expect(start.at.tryAgain).toBeEnabled()
+    await expect(start.at.checkFailure).toContainText(refusal)
+    await expect(start.at.tryAgain).toBeFocused()
+  })
+
+  test('moves the focus to the link of the notice after Try Again', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.noticeLink).toBeFocused()
+  })
+
+  test('moves the focus to the page heading after Try Again finds a member', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    api.mock(...membershipApi.userIs(as.user('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.checkFailure).toHaveCount(0)
+    await expect(start.at.homeHeading).toBeFocused()
+  })
+
+  test('keeps the focus where the user moved it while the answer of Try Again was on the way', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    const answer = api.hold(...membershipApi.userIs(as.user('Ada Lovelace')))
+    await start.at.tryAgain.click()
+    await expect.poll(() => api.all('get', membershipPaths.userOf(actorSubject)).length).toBe(2)
+    await start.at.aboutLink.focus()
+    answer()
+
+    await expect(start.at.checkFailure).toHaveCount(0)
+    await expect(start.at.aboutLink).toBeFocused()
+  })
+
+  test('keeps the focus on a link that the user clicks after Try Again got a new refusal', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+    await start.at.tryAgain.click()
+    await expect.poll(() => api.all('get', membershipPaths.userOf(actorSubject)).length).toBe(2)
+    await expect(start.at.tryAgain).toBeEnabled()
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.goToAbout()
+
+    await expect(start.at.notice).toBeVisible()
+    await expect(start.at.aboutLink).toBeFocused()
+  })
+
+  test('sees the notice after a click on another page, with no reload', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.goToAbout()
+
+    await expect(start.at.notice).toBeVisible()
+    await expect(start.at.checkFailure).toHaveCount(0)
+    await expect(start.at.aboutLink).toBeFocused()
+  })
+
+  test.describe('in a short window', () => {
+    test.use({ viewport: { width: 320, height: 240 } })
+
+    test('does not scroll the page when the check stops failing with no press', async ({ page, api }) => {
+      api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+      const start = startTenantPage(page)
+      await start.openAsSignedIn('/')
+      await expect(start.at.checkFailure).toContainText(refusal)
+      api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+      await start.scrollPastTheBanner()
+
+      await start.reconnect()
+
+      await expect(start.at.noticeLink).toBeFocused()
+      const link = await start.at.noticeLink.boundingBox()
+      expect(link!.y + link!.height).toBeLessThan(0)
+    })
+  })
+
+  test('sends no lookup for a change of the search of a page, and one lookup for another page', async ({ page, api }) => {
+    api.mock(
+      usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }),
+      membershipApi.lookupRefuses(refusal),
+      usersApi.listReturns([aUser().identifiedBy('other')], { total: 40 }),
+    )
+    const start = startTenantPage(page)
+    const users = usersPage(page)
+    await users.openList()
+    await expect(start.at.checkFailure).toContainText(refusal)
+    const lookups = () => api.all('get', membershipPaths.userOf(actorSubject)).length
+    const before = lookups()
+
+    await users.goToNextPage()
+
+    expect(lookups()).toBe(before)
+
+    await start.goToAboutAndAskAgain()
+
+    expect(lookups()).toBe(before + 1)
+  })
+
+  test('shows the loading state, not the general message, on a page that mounts while the check runs', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+    await expect(start.at.lookupFailure).toContainText(refusal)
+    await start.goToAbout()
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    const answer = api.hold(membershipApi.lookupRefuses(refusal))
+    await start.goBackTo('/start-tenant')
+
+    await expect(start.at.loadingAccount).toBeVisible()
+    await expect(start.at.lookupFailure).toHaveCount(0)
+
+    answer()
+
+    await expect(start.at.lookupFailure).toContainText(refusal)
+  })
+
+  test('moves the focus to the heading of the start page after its Try Again finds a member', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+    await expect(start.at.lookupFailure).toContainText(refusal)
+
+    const answer = api.hold(...membershipApi.userIs(as.user('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.tryAgain).toBeDisabled()
+    await expect(start.at.lookupFailure).toContainText(refusal)
+    await expect(start.at.tryAgain).toBeFocused()
+
+    answer()
+
+    await expect(start.at.alreadyMember).toBeVisible()
+    await expect(start.at.heading).toBeFocused()
+  })
+
+  test('keeps the focus of the form after Try Again of the start page finds no record', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+    await expect(start.at.lookupFailure).toContainText(refusal)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.field('Tenant name')).toBeFocused()
   })
 })
 
@@ -146,5 +353,19 @@ test.describe('a member of a tenant', () => {
 
     await expect(start.at.notice).toHaveCount(0)
     await expect(start.at.checkFailure).toHaveCount(0)
+  })
+
+  test('sends no new lookup for a click on another page', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Bob Smith' }))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.homeHeading).toBeVisible()
+
+    // Two clicks, because a request of the first click reaches the mock before the second page shows.
+    await start.goToAbout()
+    await start.goHomeInSidebar()
+
+    await expect(start.at.homeHeading).toBeVisible()
+    expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
   })
 })

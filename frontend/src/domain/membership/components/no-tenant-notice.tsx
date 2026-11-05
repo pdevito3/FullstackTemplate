@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
 import { useRouterState } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Link } from '@/components/ui/link'
+import { focusWithoutTabStop } from '@/lib/focus-without-tab-stop'
 
 import { useMembership } from '../apis/get-membership'
 
@@ -13,6 +15,19 @@ const PAGES_WITH_NO_NOTICE = ['/start-tenant', '/join']
 export function NoTenantNotice() {
   const membership = useMembership()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const noticeLink = useRef<HTMLAnchorElement>(null)
+  const isFailed = membership.status === 'error'
+  const wasFailed = useRef(false)
+
+  // Try Again goes away when the check stops failing, on this banner or on a page, and its focus falls to the body.
+  // Focus on another element is where the user went while the answer was on the way, so it stays there.
+  useEffect(() => {
+    const stoppedFailing = wasFailed.current && !isFailed
+    wasFailed.current = isFailed
+    if (!stoppedFailing || document.activeElement !== document.body) return
+    if (noticeLink.current) noticeLink.current.focus({ preventScroll: true })
+    else focusWithoutTabStop(document.querySelector<HTMLElement>('main h1'))
+  }, [isFailed])
 
   if (PAGES_WITH_NO_NOTICE.includes(pathname.replace(/\/$/, ''))) return null
 
@@ -23,7 +38,16 @@ export function NoTenantNotice() {
         className="mb-4 flex flex-wrap items-center justify-between gap-3 border-y border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         <p className="min-w-0">{membership.message}</p>
-        {membership.retry && <Button variant="outline" size="sm" onPress={membership.retry}>Try Again</Button>}
+        {membership.retry && (
+          <Button
+            variant="outline"
+            size="sm"
+            isPending={membership.isRetrying}
+            onPress={membership.retry}
+          >
+            Try Again
+          </Button>
+        )}
       </section>
     )
   }
@@ -38,7 +62,7 @@ export function NoTenantNotice() {
       <p className="min-w-0">
         You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.
       </p>
-      <Link to="/start-tenant" className={buttonVariants({ size: 'sm' })}>
+      <Link ref={noticeLink} to="/start-tenant" className={buttonVariants({ size: 'sm' })}>
         Start a tenant
       </Link>
     </section>

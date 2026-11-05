@@ -71,6 +71,7 @@ A mock is a `MockRoute`: a plain object with a method, a full path, a status, an
 The `api` fixture applies to each test automatically:
 
 - It answers each request from the mocks of the test. A later mock wins over an earlier one, so a test can change an answer in the middle of a scenario.
+- `api.hold(...routes)` is `api.mock` with answers that wait until the test calls the function that it returns. Use it to act or assert while an answer is on the way. The test does not depend on a time, as it does with `delayMs`.
 - It records each request that it answers. Read a request back with `api.last(method, path)` or `api.all(method, path)`.
 - It fails the test if the page calls a route that has no mock. The failure message names the route.
 

@@ -8,6 +8,8 @@ import { as, type Identity } from './auth/actors'
 export interface Api {
   /** Serve these canned responses for the rest of the test. A later route wins over an earlier one. */
   mock(...routes: MockRoute[]): void
+  /** Like `mock`, and the answers wait until the test calls the function that this returns. The seam records a request on arrival. */
+  hold(...routes: MockRoute[]): () => void
   /** The last request that the seam served for this method and path, or undefined if there was none. */
   last(method: HttpMethod, path: string): ServedRequest | undefined
   /** Each request that the seam served for this method and path, in order. */
@@ -35,6 +37,7 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
       const routes: MockRoute[] = [bffApi.userIs(actor), ...membershipApi.userIs(actor), ...usersApi.currentOf(actor)]
       const served = requestRecorder()
       const missed: string[] = []
+      const holds: (() => void)[] = []
 
       await page.route(
         (url) => url.origin === origin && isMockedPath(url.pathname),
@@ -53,6 +56,7 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
 
           served.add(match.method, url, new Headers(await request.allHeaders()), postBody(request))
           if (match.delayMs) await new Promise((resolve) => setTimeout(resolve, match.delayMs))
+          await match.heldUntil
           await route.fulfill({
             status: match.status,
             headers: match.headers,
@@ -65,10 +69,21 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
 
       await provide({
         mock: (...added) => routes.push(...added),
+        hold: (...added) => {
+          let release = () => {}
+          const heldUntil = new Promise<void>((resolve) => {
+            release = resolve
+          })
+          holds.push(release)
+          routes.push(...added.map((route) => ({ ...route, heldUntil })))
+          return release
+        },
         last: served.last,
         all: served.all,
       })
 
+      // A failed assertion can leave an answer on hold, and its route handler must end.
+      holds.forEach((release) => release())
       // Let an in-flight handler finish, so that a late call is still recorded.
       await page.unrouteAll({ behavior: 'wait' })
       expect(missed, 'the page called an API route that no test mocked').toEqual([])

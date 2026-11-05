@@ -101,7 +101,7 @@ function JoinContent({ view, onRetryPreview, onClaim }: JoinContentProps) {
       return (
         <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive wrap-anywhere">
           <p>{view.message}</p>
-          {view.retry && <Button variant="outline" onPress={view.retry}>Try again</Button>}
+          {view.retry && <Button variant="outline" isPending={view.isRetrying} onPress={view.retry}>Try again</Button>}
         </div>
       )
     case 'member':

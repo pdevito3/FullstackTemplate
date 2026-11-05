@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 
 import { getUserByIdentifier } from '@/api/generated/users/clients/get-user-by-identifier'
@@ -15,7 +16,7 @@ export type StartTenantProfile = Pick<InitiateUserAndTenantDto, 'identifier' | '
 /** The state of the signed-in person's user record on the Server. A user record means a tenant. */
 export type Membership =
   | { status: 'loading' }
-  | { status: 'error'; message: string; retry?: () => void }
+  | { status: 'error'; message: string; isRetrying?: boolean; retry?: () => void }
   | { status: 'member'; user: UserDto }
   | { status: 'no-tenant'; profile: StartTenantProfile }
 
@@ -55,7 +56,7 @@ async function findUser(identifier: string, signal: AbortSignal): Promise<UserDt
     : new Error(`The membership check failed with status ${result.status}.`)
 }
 
-/** A refusal of the Server, such as a 403 for a deleted user whose tenant is still cached, does not change on an immediate retry. */
+/** A refusal of the Server does not change on an immediate retry. */
 export const isRefusal = (error: unknown): error is ProblemDetailsError =>
   isProblemDetailsError(error) && (error.status ?? 500) < 500
 
@@ -73,6 +74,10 @@ export function useMembership(): Membership {
   const claims = useQuery(authClaimsQuery)
   const identifier = subOfClaims(claims.data)
   const user = useQuery({ ...callerRecordQuery(identifier ?? ''), enabled: !!identifier })
+  // A refetch with no data sets the query back to pending and clears the error. The failure must stay on the page until
+  // the answer comes, or the focused Try Again goes away.
+  const [lastError, setLastError] = useState<unknown>(null)
+  if (user.error && user.error !== lastError) setLastError(user.error)
 
   // A failed refetch keeps the data of the last answer, and that answer is still good to show.
   if (claims.data === undefined) {
@@ -82,10 +87,14 @@ export function useMembership(): Membership {
   }
   if (!claims.data || !identifier) return { status: 'error', message: CHECK_FAILED }
   if (user.data === undefined) {
-    if (!user.isError) return { status: 'loading' }
-    return isRefusal(user.error)
-      ? { status: 'error', message: user.error.displayMessage }
-      : { status: 'error', message: CHECK_FAILED, retry: () => void user.refetch() }
+    // A hook that mounts during a check has no failure to show until the answer comes.
+    if (user.errorUpdateCount === 0 || lastError === null) return { status: 'loading' }
+    return {
+      status: 'error',
+      message: isRefusal(lastError) ? lastError.displayMessage : CHECK_FAILED,
+      isRetrying: user.isFetching,
+      retry: () => void user.refetch(),
+    }
   }
   return user.data
     ? { status: 'member', user: user.data }

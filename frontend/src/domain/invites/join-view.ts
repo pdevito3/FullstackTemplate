@@ -15,7 +15,7 @@ export type TabLink = 'none' | 'too-long' | 'fits'
 
 export type JoinView =
   | { kind: 'loading' }
-  | { kind: 'membership-failed'; message: string; retry?: () => void }
+  | { kind: 'membership-failed'; message: string; isRetrying?: boolean; retry?: () => void }
   | { kind: 'joining' }
   | { kind: 'member' }
   | { kind: 'link-refused'; message: string }
@@ -35,7 +35,7 @@ export function joinViewOf({ membership, link, preview, refusedLink, claim }: Jo
   if (claim === 'success') return { kind: 'joining' }
   if (membership.status === 'loading') return { kind: 'loading' }
   if (membership.status === 'error') {
-    return { kind: 'membership-failed', message: membership.message, retry: membership.retry }
+    return { kind: 'membership-failed', message: membership.message, isRetrying: membership.isRetrying, retry: membership.retry }
   }
   // The check of a double submit can find the record while the claim still runs.
   if (membership.status === 'member') return { kind: claim === 'pending' ? 'joining' : 'member' }

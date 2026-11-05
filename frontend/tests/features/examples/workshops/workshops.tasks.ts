@@ -164,6 +164,15 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    /** Types each key after the search of the last key is in the URL. */
+    async searchKeyByKey(text: string) {
+      await at.search.click()
+      for (let length = 1; length <= text.length; length++) {
+        await page.keyboard.type(text[length - 1])
+        await expect(page).toHaveURL(`/workshops?search=${text.slice(0, length)}`)
+      }
+    },
+
     async goToNextPage() {
       const settled = answered('GET', workshopPaths.list)
       await at.nextPage.click()

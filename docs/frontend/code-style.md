@@ -76,7 +76,7 @@ The components in `components/ui/` use React Aria Components (`react-aria-compon
 4. Give a `Dialog` or a `Popover` a title or an `aria-label`. Give an icon-only `Button` an `aria-label`. Use a `Tooltip`, not the `title` attribute.
 5. Use `Link` from `@/components/ui/link` for a link to a route, with `to` and `params`. See [Links](../frontend.md#links).
 6. To show a toast, call `Notification.success`, `error`, `info`, or `warning` from `@/components/notification`.
-7. After an action removes, hides, or disables the focused element, move the focus to a named target: the next row, the heading, or the trigger. Name the target in the code. For example, `filter-builder.tsx` moves the focus to `addFilterRef` when a filter, a group, or the Clear button goes away.
+7. After an action removes, hides, or disables the focused element, move the focus to a named target: the next row, the heading, or the trigger. Name the target in the code. For example, `filter-builder.tsx` moves the focus to `addFilterRef` when a filter, a group, or the Clear button goes away. If an answer of the Server removes the element after a time, move the focus only when it is on the body. Focus on another element is where the user went in that time, and the user can be typing there. See `NoTenantNotice`.
 
 ## Styles
 

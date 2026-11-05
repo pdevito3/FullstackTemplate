@@ -162,7 +162,7 @@ A command, or a query that reads data that needs a permission, checks a permissi
 | `manage_agents` | `AddAgent`, `DeleteAgent`, `AddAgentPermission`, `RemoveAgentPermission` |
 | `read_audit_log` | `GetAuditEntryPage` |
 | `read_audit_log_sensitive` | None. `GetAuditEntryPage` shows the sensitive values of the audit log only to a caller with it. |
-| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for an identifier that no user has. `UpdateUser`, `UpdateUserRole`, `AddUserPermission`, and `RemoveUserPermission` for another user, because they return the user. |
+| `read_users` | `GetUserList`, `GetUser` for another user, `GetUserByIdentifier` for another user or for another identifier that no user has. `UpdateUser`, `UpdateUserRole`, `AddUserPermission`, and `RemoveUserPermission` for another user, because they return the user. |
 | `read_agents` | `GetAgentList`, `GetAgent`. `AddAgentPermission` and `RemoveAgentPermission`, because they return the agent. |
 
 <!-- example:start -->
@@ -184,7 +184,7 @@ A caller can give or take away a permission only if they have it. Thus a user wi
 | A client in `Tenancy:ManageAllTenantsClientIds`, or system work in a system scope | Passes for each permission. The tenant filter still applies. |
 | A client in `Tenancy:ReadAllTenantsClientIds` | 403 |
 | An unknown client: a client that is not first-party, on no list, and with no agent for the token | 403 |
-| A user of a first-party client with no user record, or an anonymous principal | 403. `GetUserByIdentifier` gives a user with no user record and no tenant 404 when it finds no user, because that user sees no rows. Thus a new user who reads their own identifier knows to start a tenant. |
+| A user of a first-party client with no user record, or an anonymous principal | 403. `GetUserByIdentifier` gives a user with no user record and no tenant 404 when it finds no user, because that user sees no rows. It also gives 404 to a user who reads their own identifier when it finds no user, also when a delete commits during the request. Thus a new or a removed user knows to start a tenant. |
 
 [Agents](authentication.md#agents) tells how the server identifies an agent and how a tenant registers it.
 

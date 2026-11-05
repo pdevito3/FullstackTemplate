@@ -13,7 +13,10 @@ public static class GetUserByIdentifier
 {
     public sealed record Query(string Identifier) : IRequest<UserDto>;
 
-    public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
+    public sealed class Handler(
+        AppDbContext dbContext,
+        IPermissionGuard permissionGuard,
+        ICallerIdentityResolver callerIdentityResolver)
         : IRequestHandler<Query, UserDto>
     {
         public async Task<UserDto> Handle(Query request, CancellationToken cancellationToken)
@@ -33,12 +36,16 @@ public static class GetUserByIdentifier
             // The check follows the load, because the exception for the own record needs the ID of the user
             if (user is null)
             {
-                // A user with no user record and no tenant sees no rows, so the 404 tells it nothing. A new user who
-                // reads their own identifier gets the 404 and knows to start a tenant. The scope is checked too,
-                // because a cached tenant of a user who was just deleted can still give rows.
+                // A user who reads their own identifier learns nothing from the 404. A new user knows to start a tenant
+                // from it. A delete can commit after this request found the caller, and the next request gets this 404.
+                var readsOwnIdentifier = await callerIdentityResolver.GetAsync(cancellationToken)
+                    is CallerIdentity.User { Subject: var subject } && subject == request.Identifier;
+
+                // A user with no user record and no tenant sees no rows, so the 404 tells it nothing. The scope is
+                // checked too, because a cached tenant of a user who was just deleted can still give rows.
                 var seesNoRows = caller is Caller.Outsider { Kind: OutsiderKind.NoUserRecord }
                     && dbContext.CurrentTenantScope == TenantScope.NoTenant;
-                if (!seesNoRows)
+                if (!readsOwnIdentifier && !seesNoRows)
                     caller.Require(Permission.ReadUsers());
                 throw new NotFoundException("User was not found.");
             }

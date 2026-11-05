@@ -607,6 +607,31 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
   })
 })
 
+test.describe('a signed-in user whose lookup the Server refuses opens an invite link', () => {
+  test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
+
+  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+
+  test('sees Try again as pending while the check runs, and the focus moves to the heading after a member is found', async ({ page, api }) => {
+    api.mock(membershipApi.lookupRefuses(refusal))
+    const join = joinPage(page)
+    await join.openLinkWithNoPreview('/join')
+    await expect(join.at.alert(refusal)).toBeVisible()
+
+    const answer = api.hold(membershipApi.userIsNow(aUser().identifiedBy(actorSubject)))
+    await join.at.retry.click()
+
+    await expect(join.at.retry).toBeDisabled()
+    await expect(join.at.alert(refusal)).toBeVisible()
+    await expect(join.at.retry).toBeFocused()
+
+    answer()
+
+    await expect(join.at.alreadyMember).toBeVisible()
+    await expect(join.at.heading).toBeFocused()
+  })
+})
+
 test.describe('a member of a tenant opens an invite link', () => {
   test.use({ actor: as.user('Bob Smith') })
 

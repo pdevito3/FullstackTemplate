@@ -60,7 +60,8 @@ export function workshopsPage(page: Page) {
     },
 
     // A keyboard user reaches a link in a table with Tab and an arrow key. Do not use locator.press() here: it focuses
-    // the link with no key event, and React Aria then moves the focus to the row in the next frame, so Enter can land on the row.
+    // the link with no key event, and React Aria then moves the focus to the first or remembered row, so Enter can land on that row.
+    // Tab reaches only that row, so the title must be in the first row of the list.
     async pressWorkshopLink(title: string, id: string, venueId: string) {
       const settled = Promise.all([answered('GET', workshopPaths.one(id)), answered('GET', workshopPaths.venue(venueId))])
       await expect(at.row(title)).toBeVisible()

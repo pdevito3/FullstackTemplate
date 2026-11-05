@@ -139,7 +139,7 @@ Check: `pnpm lint` fails on `nth`, `first()`, and `last()` in each `.ts` file of
 - An error toast closes after 6 seconds. `toHaveCount` retries for 5 seconds, so `toHaveCount(1)` can pass when an extra toast closes. To prove that only one toast shows, read `count()` once.
 - The queries retry once (`main.tsx`). A failed load sends two requests, and the page shows the error after the second.
 - The page shows after the answer of `/bff/user`, and TanStack Query reports that answer in a timer. If a spec stops the clock before the page opens, the page does not show until the clock moves. See `openWithTheClockStopped` in `tests/features/toasts/toasts.tasks.ts`.
-- `locator.press()` focuses its element with no key event. A React Aria table moves such a focus to the row in the next frame, so Enter can land on the row and do nothing. To press a link in a table, press Tab to reach the row and an arrow key to reach the link, as a keyboard user does.
+- `locator.press()` and `locator.focus()` focus an element with no key event. A React Aria table moves such a focus to its first or remembered row. The move comes in the next frame at rest, and up to about 400 ms later just after a load. Enter then lands on that row and does nothing. To press a link in a table, press Tab to reach the first or remembered row, ArrowDown to reach the row of the link, and ArrowRight to reach the link, as a keyboard user does.
 - The suite sets the locale `en-US`. For the zone, see [Time zones](#time-zones).
 
 ### Time zones

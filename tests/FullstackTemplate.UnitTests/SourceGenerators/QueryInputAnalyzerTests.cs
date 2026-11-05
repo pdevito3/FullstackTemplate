@@ -291,6 +291,258 @@ public class QueryInputAnalyzerTests
     }
 
     [Test]
+    [Arguments("u => u.Identifier == (request.Filter ?? \"\")", "request.Filter")]
+    [Arguments("u => (request.Filter ?? \"\") == u.Identifier", "request.Filter")]
+    [Arguments("u => u.Identifier == (request.Filter ?? \"\").Trim()", "request.Filter")]
+    [Arguments("u => u.Identifier.StartsWith(request.Filter ?? \"\")", "request.Filter")]
+    [Arguments("u => EF.Functions.ILike(u.Identifier, $\"%{request.Filter ?? \"\"}%\")", "request.Filter")]
+    [Arguments("u => (request.Ids ?? new string[0]).Contains(u.Id)", "request.Ids")]
+    [Arguments("u => u.Identifier == (request.Filter == null ? \"\" : request.Filter)", "request.Filter")]
+    [Arguments("u => u.Identifier == (u.Id == \"a\" ? request.Identifier : \"b\")", "request.Identifier")]
+    [Arguments("u => u.Identifier == (u.Id == \"a\" ? \"b\" : request.Identifier)", "request.Identifier")]
+    public async Task a_request_text_through_a_coalesce_or_a_conditional_gets_fstqry001(string predicate, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    public async Task each_request_text_in_a_coalesce_gets_fstqry001()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            return await dbContext.Users.AnyAsync(u => u.Identifier == (request.Filter ?? request.Identifier), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.Select(Text).ShouldBe(["request.Filter", "request.Identifier"]);
+    }
+
+    [Test]
+    [Arguments("if (!PostgresText.CanStore(request.Filter ?? \"\")) return false;", "u => u.Identifier == (request.Filter ?? \"\")")]
+    [Arguments("if (!PostgresText.CanStore((request.Filter ?? \"\").Trim())) return false;", "u => u.Identifier == (request.Filter ?? \"\").Trim()")]
+    [Arguments("if (request.Filter != null && !PostgresText.CanStore(request.Filter)) return false;", "u => u.Identifier == (request.Filter ?? \"\")")]
+    [Arguments("if (!PostgresText.CanStore(request.Identifier)) return false;", "u => u.Identifier == (u.Id == \"a\" ? request.Identifier : \"b\")")]
+    [Arguments("", "u => u.Identifier == (PostgresText.CanStore(request.Identifier) ? request.Identifier : \"\")")]
+    [Arguments("", "u => u.Identifier == (request.Filter == null ? \"a\" : \"b\")")]
+    [Arguments("var tenant = Create(request.Dto.Name);", "u => u.Identifier == (tenant.Name ?? \"\")")]
+    [Arguments("var tenant = Create(request.Dto.Name);", "u => u.Identifier == (u.Id == \"a\" ? tenant.Name : u.Id)")]
+    public async Task a_coalesce_or_a_conditional_with_no_unchecked_request_text_has_no_diagnostics(string arrange, string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            {arrange}
+            return await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_check_of_the_default_of_a_coalesce_gets_fstqry001()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            if (!PostgresText.CanStore(request.Filter ?? request.Identifier))
+                return false;
+            return await dbContext.Users.AnyAsync(u => u.Identifier == request.Identifier, cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Identifier");
+    }
+
+    [Test]
+    [Arguments("u => u.Identifier == string.Concat(request.Identifier, \"-1\")", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Concat(new[] { \"a\", request.Identifier })", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Concat(request.Ids)", "request.Ids")]
+    [Arguments("u => new[] { \"a\", request.Identifier }.Contains(u.Id)", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Concat(request.Identifier, \"-1\").Trim()", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Format(\"{0}\", request.Identifier)", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Format(\"{0}{1}\", new object[] { 1, request.Identifier })", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Format(System.Globalization.CultureInfo.InvariantCulture, \"{0}\", request.Identifier)", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Format(request.Identifier, 1)", "request.Identifier")]
+    [Arguments("u => u.Identifier.StartsWith(string.Concat(request.Identifier, \"%\"))", "request.Identifier")]
+    [Arguments("u => EF.Functions.ILike(u.Identifier, string.Format(\"%{0}%\", request.Identifier))", "request.Identifier")]
+    public async Task a_request_text_in_string_concat_string_format_or_an_array_gets_fstqry001(string predicate, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    [Arguments("u => u.Identifier == string.Concat(tenant.Name, \"-1\")")]
+    [Arguments("u => u.Identifier == string.Format(\"{0}\", tenant.Name)")]
+    [Arguments("u => u.Identifier == string.Format(\"{0}\", u.Id)")]
+    [Arguments("u => u.Identifier == string.Format(\"{0}\", request.Dto)")]
+    [Arguments("u => u.Identifier == string.Format(\"{0}\", request.Identifier)")]
+    [Arguments("u => u.Identifier == string.Concat(new[] { \"a\", request.Identifier })")]
+    public async Task string_concat_or_string_format_with_no_unchecked_request_text_has_no_diagnostics(string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            var tenant = Create(request.Dto.Name);
+            if (!PostgresText.CanStore(request.Identifier))
+                return false;
+            return await dbContext.Users.AnyAsync({predicate}, cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("id = \"x\";")]
+    [Arguments("id += \"x\";")]
+    [Arguments("(id, _) = (\"x\", 1);")]
+    public async Task a_check_of_a_lambda_parameter_that_the_code_assigns_again_gets_fstqry001(string assignment)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            if (!request.Ids.All(id => { {{assignment}} return EntityId.IsValid(id, Tenant.IdPrefix); }))
+                return false;
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Ids");
+    }
+
+    [Test]
+    [Arguments("id => { return EntityId.IsValid(id, Tenant.IdPrefix); }")]
+    [Arguments("id => { var other = \"x\"; other += \"y\"; return EntityId.IsValid(id, other); }")]
+    [Arguments("id => { var copy = id.Trim(); return EntityId.IsValid(copy, Tenant.IdPrefix); }")]
+    public async Task a_check_of_a_lambda_parameter_that_the_code_does_not_assign_again_has_no_diagnostics(string check)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            if (!request.Ids.All({check}))
+                return false;
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("for (var i = 1; i < request.Ids.Length; i++)")]
+    [Arguments("for (var i = 0; i < request.Ids.Length - 1; i++)")]
+    [Arguments("for (var i = 0; i <= request.Ids.Length - 2; i++)")]
+    [Arguments("for (var i = 0; i < 1; i++)")]
+    [Arguments("for (var i = 0; i < other.Length; i++)")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i += 2)")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i = i + 2)")]
+    [Arguments("for (var i = 0; ; i++)")]
+    [Arguments("for (var i = request.Ids.Length - 2; i >= 0; i--)")]
+    [Arguments("for (var i = request.Ids.Length - 1; i > 0; i--)")]
+    [Arguments("for (var i = other.Length - 1; i >= 0; i--)")]
+    [Arguments("for (var i = request.Ids.Length - 1; i >= 0; i -= 2)")]
+    public async Task a_for_loop_that_skips_an_item_gets_fstqry001(string loop)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            string[] other = ["a"];
+            {{loop}} { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Ids");
+    }
+
+    [Test]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++) { i++; if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; ) { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; i += 2; }")]
+    public async Task a_for_loop_that_moves_its_index_in_the_body_gets_fstqry001(string loop)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            {loop}
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Ids");
+    }
+
+    [Test]
+    [Arguments("for (var i = 0; i < request.Ids.Length; ++i)")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i += 1)")]
+    [Arguments("for (int i = 0; i < request.Ids.Length; i++)")]
+    [Arguments("for (var i = request.Ids.Length - 1; i >= 0; i--)")]
+    [Arguments("for (var i = request.Ids.Length - 1; i >= 0; --i)")]
+    [Arguments("for (var i = request.Ids.Length - 1; i >= 0; i -= 1)")]
+    public async Task a_for_loop_that_reaches_each_item_has_no_diagnostics(string loop)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            {{loop}} { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_for_loop_over_the_count_of_a_list_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            for (var i = 0; i < request.Names.Count; i++)
+            {
+                var name = request.Names[i].Trim();
+                if (!PostgresText.CanStore(name))
+                    return false;
+            }
+
+            return await dbContext.Users.AnyAsync(u => request.Names.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("u => string.Equals(request.Filter, null) || u.Identifier == \"a\"")]
+    [Arguments("u => string.Equals(null, request.Filter) || u.Identifier == \"a\"")]
+    [Arguments("u => string.Equals(request.Filter, null, StringComparison.Ordinal) || u.Identifier == \"a\"")]
+    [Arguments("u => !string.Equals(request.Filter, null) && u.Identifier == \"a\"")]
+    [Arguments("u => request.Filter!.Equals(null) || u.Identifier == \"a\"")]
+    [Arguments("u => object.Equals(request.Filter, null) || u.Identifier == \"a\"")]
+    [Arguments("u => object.Equals(null, request.Filter) || u.Identifier == \"a\"")]
+    public async Task a_null_check_of_a_request_text_by_equals_has_no_diagnostics(string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_compare_of_a_request_text_next_to_a_null_check_by_equals_gets_fstqry001()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            return await dbContext.Users.AnyAsync(u => string.Equals(request.Filter, null) || string.Equals(u.Identifier, request.Filter), cancellationToken);
+            """);
+
+        // Assert
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.Location.SourceSpan.Start.ShouldBeGreaterThan(diagnostic.Location.SourceTree!.GetText().ToString().IndexOf("u.Identifier,", StringComparison.Ordinal));
+        Text(diagnostic).ShouldBe("request.Filter");
+    }
+
+    [Test]
     public async Task a_check_of_each_item_of_another_list_gets_fstqry001()
     {
         // Act
@@ -359,7 +611,7 @@ public class QueryInputAnalyzerTests
         => Run($$"""
             public sealed record NameDto(string Name);
 
-            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids, string? Filter) : IRequest<bool>;
+            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids, string? Filter, System.Collections.Generic.List<string> Names) : IRequest<bool>;
 
             public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, bool>
             {

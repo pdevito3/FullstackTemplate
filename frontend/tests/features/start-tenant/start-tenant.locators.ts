@@ -17,6 +17,8 @@ export const startTenant = (page: Page) => {
     started: (tenantName: string) => page.getByText(`You started ${tenantName}. You are its admin`, { exact: false }),
     homeLink: page.getByRole('main').getByRole('link', { name: 'Go to the home page' }),
     homeHeading: page.getByRole('heading', { name: 'Fullstack Template', level: 1 }),
+    aboutLink: page.getByRole('link', { name: 'About' }),
+    aboutHeading: page.getByRole('heading', { name: 'About', level: 1 }),
     main: page.getByRole('main'),
     lookupFailure: page.getByRole('main').getByRole('alert'),
     tryAgain: page.getByRole('button', { name: 'Try Again' }),

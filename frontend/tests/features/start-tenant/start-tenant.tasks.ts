@@ -28,6 +28,11 @@ export function startTenantPage(page: Page) {
       await expect(page).toHaveURL('/')
     },
 
+    async goToAbout() {
+      await at.aboutLink.click()
+      await expect(page).toHaveURL('/about')
+    },
+
     async submitEmpty() {
       await at.submit.click()
       await expect(at.formErrors).toHaveCount(1)

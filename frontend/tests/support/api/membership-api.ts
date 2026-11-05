@@ -27,7 +27,7 @@ export const membershipApi = {
     return { method: 'get', path: membershipPaths.userOf(actorSubject), status: 200, body: user.build() }
   },
 
-  /** The Server refuses the lookup, as it does for a deleted user whose tenant it still has in its cache. */
+  /** The Server refuses the lookup with a 403. */
   lookupRefuses(detail: string): MockRoute {
     const body = { ...aProblem().saying(detail).build(), status: 403 }
     return { method: 'get', path: membershipPaths.userOf(actorSubject), status: 403, body }

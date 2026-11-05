@@ -107,27 +107,62 @@ for (const viewport of [
 test.describe('a signed-in user whose lookup the Server refuses', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
-  test('sees the reason of the Server, and no Try Again that cannot help', async ({ page, api }) => {
-    api.mock(membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'))
+  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+
+  test('sees the reason of the Server, and the app asks again only when the user presses Try Again', async ({ page, api }) => {
+    api.mock(membershipApi.lookupRefuses(refusal))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
 
-    await expect(start.at.lookupFailure).toHaveText('You are not a member of a tenant. Ask a tenant admin to add you.')
-    await expect(start.at.tryAgain).toHaveCount(0)
+    await expect(start.at.lookupFailure).toContainText(refusal)
     expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
     expect(await start.at.toasts.count()).toBe(0)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.form).toBeVisible()
+    await expect(start.at.lookupFailure).toHaveCount(0)
   })
 
-  test('sees the reason of the Server on the home page too', async ({ page, api }) => {
-    api.mock(
-      usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }),
-      membershipApi.lookupRefuses('You are not a member of a tenant. Ask a tenant admin to add you.'),
-    )
+  test('sees the notice after Try Again on the home page', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
     const start = startTenantPage(page)
     await start.openAsSignedIn('/')
-
-    await expect(start.at.checkFailure).toHaveText('You are not a member of a tenant. Ask a tenant admin to add you.')
+    await expect(start.at.checkFailure).toContainText(refusal)
     await expect(start.at.notice).toHaveCount(0)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.at.tryAgain.click()
+
+    await expect(start.at.notice).toBeVisible()
+    await expect(start.at.checkFailure).toHaveCount(0)
+  })
+
+  test('sees the reason again after Try Again when the Server still refuses', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    await start.at.tryAgain.click()
+
+    await expect.poll(() => api.all('get', membershipPaths.userOf(actorSubject)).length).toBe(2)
+    await expect(start.at.checkFailure).toContainText(refusal)
+    await expect(start.at.tryAgain).toBeVisible()
+  })
+
+  test('sees the notice after a click on another page, with no reload', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Ada Lovelace' }), membershipApi.lookupRefuses(refusal))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+    await expect(start.at.checkFailure).toContainText(refusal)
+
+    api.mock(...membershipApi.userIs(as.userWithNoTenant('Ada Lovelace')))
+    await start.goToAbout()
+
+    await expect(start.at.notice).toBeVisible()
+    await expect(start.at.checkFailure).toHaveCount(0)
   })
 })
 
@@ -146,5 +181,16 @@ test.describe('a member of a tenant', () => {
 
     await expect(start.at.notice).toHaveCount(0)
     await expect(start.at.checkFailure).toHaveCount(0)
+  })
+
+  test('sends no new lookup for a click on another page', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Bob Smith' }))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/')
+
+    await start.goToAbout()
+
+    await expect(start.at.aboutHeading).toBeVisible()
+    expect(api.all('get', membershipPaths.userOf(actorSubject))).toHaveLength(1)
   })
 })

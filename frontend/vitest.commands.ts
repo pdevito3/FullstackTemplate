@@ -1,6 +1,6 @@
 import type { BrowserCommand } from 'vitest/node'
 
-import type { Answer } from './src/test/answer'
+import { testIdHeader, type Answer } from './src/test/answer'
 
 // Browser commands for the component tests. They run in Node and drive the Playwright page.
 // A test calls them with `commands` from 'vitest/browser'.
@@ -51,6 +51,7 @@ const isBffRequest = (url: URL) => url.pathname.startsWith('/api/') || url.pathn
 interface Answering {
   answers: Answer[]
   unanswered: Set<string>
+  testId: string
 }
 
 const answering = new WeakMap<Page, Answering>()
@@ -69,20 +70,20 @@ const body = (answer: Answer) => {
   return answer.body === undefined ? '' : JSON.stringify(answer.body)
 }
 
-export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page }, answers) => {
+const answeringOn = async (page: Page) => {
   const current = answering.get(page)
-  if (current) {
-    current.answers = answers
-    return
-  }
-  const state: Answering = { answers, unanswered: new Set() }
+  if (current) return current
+  const state: Answering = { answers: [], unanswered: new Set(), testId: '' }
   answering.set(page, state)
   await page.route(isBffRequest, async (route) => {
     const request = route.request()
     const answer = state.answers.findLast(isAnswerFor(request))
     if (!answer) {
       const url = new URL(request.url())
-      state.unanswered.add(`${request.method()} ${url.pathname}${url.search}`)
+      const sender = request.headers()[testIdHeader]
+      if (sender === undefined || sender === state.testId) {
+        state.unanswered.add(`${request.method()} ${url.pathname}${url.search}`)
+      }
       await route.fallback()
       return
     }
@@ -93,6 +94,19 @@ export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page
       body: body(answer),
     })
   })
+  return state
+}
+
+export const startTest: BrowserCommand<[testId: string]> = async ({ page }, testId) => {
+  const state = await answeringOn(page)
+  state.testId = testId
+  state.answers = []
+  state.unanswered.clear()
+}
+
+export const answerRequests: BrowserCommand<[answers: Answer[]]> = async ({ page }, answers) => {
+  const state = await answeringOn(page)
+  state.answers = answers
 }
 
 export const takeUnansweredRequests: BrowserCommand<[]> = async ({ page }) => {

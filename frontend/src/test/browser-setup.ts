@@ -6,11 +6,13 @@ import { afterEach, beforeEach } from 'vitest'
 import { commands } from 'vitest/browser'
 import { cleanup } from 'vitest-browser-react'
 
-import type { Answer } from './answer'
+import { testIdHeader, type Answer } from './answer'
 
 // The commands are in vitest.commands.ts. They run in Node and drive the Playwright page.
 declare module 'vitest/browser' {
   interface BrowserCommands {
+    /** Removes all answers, forgets the unanswered requests, and counts an unanswered request only if `testId` sent it. */
+    startTest: (testId: string) => Promise<void>
     /** Answers each request that matches an answer. A later answer wins. `[]` removes all answers. */
     answerRequests: (answers: Answer[]) => Promise<void>
     /** Returns each request to `/api/*` or `/bff/*` that no answer matched since the last call, and forgets them. */
@@ -28,12 +30,22 @@ declare module 'vitest/browser' {
   }
 }
 
-// vitest-browser-react unmounts the page of the last test only before the next test. Unmount it first, so that a
-// late request of the last test does not count as one of this test.
-beforeEach(async () => {
+let testId = ''
+
+// The app sends each request to the BFF with XMLHttpRequest, through axios.
+const send = XMLHttpRequest.prototype.send
+XMLHttpRequest.prototype.send = function (body) {
+  this.setRequestHeader(testIdHeader, testId)
+  send.call(this, body)
+}
+
+// vitest-browser-react unmounts the page of the last test only before the next test. Unmount it first, so that the
+// last test sends no more requests. A request that it already sent can reach the commands after this hook, also when
+// the unmount aborted it. The header shows that the request is not of this test.
+beforeEach(async ({ task }) => {
   await cleanup()
-  await commands.answerRequests([])
-  await commands.takeUnansweredRequests()
+  testId = task.id
+  await commands.startTest(task.id)
 })
 
 // A request with no answer gets an error from the dev server. A test can still pass by mistake, for example when

@@ -32,3 +32,9 @@ test('a request of this test with no answer counts for this test', async () => {
 
   expect(await commands.takeUnansweredRequests()).toEqual([`GET ${path}`])
 })
+
+test('a request with no test ID and no answer counts for this test', async () => {
+  await fetch(path)
+
+  expect(await commands.takeUnansweredRequests()).toEqual([`GET ${path}`])
+})

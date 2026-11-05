@@ -13,6 +13,7 @@ import {
   pressPointer,
   releasePointer,
   releaseRequests,
+  startTest,
   takeUnansweredRequests,
 } from './vitest.commands'
 import { firstPageChunks } from './first-page-chunks'
@@ -183,6 +184,7 @@ export default defineConfig({
               pressPointer,
               releasePointer,
               releaseRequests,
+              startTest,
               takeUnansweredRequests,
             },
           },

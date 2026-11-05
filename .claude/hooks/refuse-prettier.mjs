@@ -21,20 +21,15 @@ function commandWord(segment) {
   const words = segment.trim().split(/\s+/)
   for (let i = 0; i < words.length; i++) {
     const name = words[i].split('/').at(-1)
-    if (flagsWithValue.has(name)) i++
-    else if (!name.startsWith('-') && !/^\w+=/.test(name) && !runners.has(name)) return name
+    if (flagsWithValue.has(words[i])) i++
+    else if (!/^(-|\w+=)/.test(words[i]) && !runners.has(name)) return name
   }
-}
-
-function mask(text) {
-  if (text === '\\\n') return ' '
-  return text.startsWith('#') ? '' : '""'
 }
 
 function runsPrettier(command) {
   return command
     .replace(heredocBody, '$3')
-    .replace(escapeQuoteOrComment, mask)
+    .replace(escapeQuoteOrComment, (text) => (text === '\\\n' ? ' ' : '""'))
     .split(commandBoundary)
     .some((segment) => prettierFile.test(commandWord(segment)))
 }

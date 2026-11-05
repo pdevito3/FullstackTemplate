@@ -77,6 +77,27 @@ test('a hover on an item highlights it while the focus is in the input of the Co
   expect(isHighlighted()).toBe(true)
 })
 
+test('a hover on an item shows a highlight while the focus is outside the Command', async () => {
+  // Arrange
+  await render(
+    <>
+      <Input aria-label="Email" />
+      <InlineCommand />
+    </>
+  )
+  await page.getByRole('textbox', { name: 'Email' }).click()
+  const background = () => getComputedStyle(calendar().element()).backgroundColor
+  const backgroundWithNoHover = background()
+
+  // Act
+  await calendar().hover()
+  await waitForTheHoverToSettle()
+
+  // Assert
+  expect(isHighlighted()).toBe(false)
+  expect(background()).not.toBe(backgroundWithNoHover)
+})
+
 test('a click on an item with the focus outside the Command runs the item and moves the focus to the input', async () => {
   // Arrange
   const onAction = vi.fn()

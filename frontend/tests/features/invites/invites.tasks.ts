@@ -84,6 +84,12 @@ export function usersWithInvites(page: Page) {
       await at.emailField.press('Enter')
     },
 
+    /** Two real presses that the page gets before it renders the first submit. */
+    async pressEnterTwiceBeforeARender() {
+      await at.emailField.focus()
+      await Promise.all([page.keyboard.press('Enter'), page.keyboard.press('Enter')])
+    },
+
     /** Leaves the page with a link, so that the caches of the SPA stay. */
     async openUserFromTheList(name: string) {
       await at.userLink(name).click()

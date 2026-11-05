@@ -149,7 +149,7 @@ for (const [width, height] of [
     }
     document.addEventListener('keyup', readPress)
     // Send all the presses in one call. The answer to a keyboard call waits for the next frame, and a frame is slow under load.
-    // A read at a keyup comes before that frame, so read again after each call, for a fault that moves the field in a frame.
+    // A read at a keyup comes before that frame, so read the last field of each call again after the frame.
     await userEvent.keyboard('{Tab}'.repeat(20))
     readHidden()
     await userEvent.keyboard(`{Shift>}${'{Tab}'.repeat(19)}{/Shift}`)

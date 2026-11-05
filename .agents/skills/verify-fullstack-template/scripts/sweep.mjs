@@ -281,11 +281,11 @@ export function markLayoutFaults() {
     return null
   }
   // A box with a fixed height shows its overflow, so the next lines print over the next row. The font of a tight line
-  // height passes its box by a little, so only half a line or more counts.
+  // height passes its box by a little, so only half the font size or more counts.
   const boxThatTextOutgrows = (el, edges) => {
     let box = el
     while (isInline(box)) box = box.parentElement
-    if (getComputedStyle(box).overflowY !== 'visible') return null
+    if (box === document.body || getComputedStyle(box).overflowY !== 'visible') return null
     const overrun = edges.bottom - box.getBoundingClientRect().bottom
     return overrun > parseFloat(getComputedStyle(el).fontSize) / 2 ? { box, overrun } : null
   }
@@ -330,7 +330,7 @@ export function markLayoutFaults() {
       }
       if (outX || outY) {
         if (!showsEllipsis(el, node, outX, outY)) add(el, { kind: 'text is cut', how: `runs out of the ${label(node)} that clips it` })
-        else if (!canShowFullValue(node)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
+        else if (!canShowFullValue(el)) add(el, { kind: 'text is cut', how: 'ends with an ellipsis, and no focusable element shows the full value' })
         settled = true
         break
       }

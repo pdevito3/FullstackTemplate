@@ -173,6 +173,7 @@ const planned = [
   { name: 'an ellipsis in a link', html: `<a href="/" style="${truncate}">${word}</a>` },
   { name: 'an ellipsis on a parent, with the text in an inline child', html: `<a href="/" style="${truncate}"><span>${word}</span></a>` },
   { name: 'an ellipsis in a button that has the full value as its name', html: `<button aria-label="Open ${word}"><span style="${truncate}">${word}</span></button>` },
+  { name: 'an ellipsis on a parent, with the text in a link', html: `<div style="${truncate}"><a href="/">${word}</a></div>` },
   { name: 'a line clamp in a link', html: `<a href="/" style="${lineClamp}">${words}</a>` },
   { name: 'a line clamp on a parent, with the text in an inline child', html: `<a href="/" style="${lineClamp}"><span>${words}</span></a>` },
   { name: 'a line clamp on a parent, with the text in a block child', html: `<a href="/" style="${lineClamp}"><p>${words}</p></a>` },
@@ -192,6 +193,9 @@ const planned = [
   { name: 'an inline child that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p><span style="white-space:nowrap">${word}</span></p></div>` },
   { name: 'a separator that hangs past its box', html: `<div style="width:4px"><span style="white-space:nowrap;padding:0 6px">|</span></div>` },
   { name: 'text that only a screen reader reads', html: `<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">${word}</span>` },
+  { name: 'a tight line height in a box with a fixed height', html: `<p style="width:100px;height:16px;margin:0;font-size:16px;line-height:16px">Text</p>` },
+  { name: 'text that wraps in a box with a fixed height that scrolls', html: `<div style="width:100px;height:40px;overflow-y:auto">${words}</div>` },
+  { name: 'text that is all left of its clip in a justify-end flex box', html: `<div style="display:flex;justify-content:flex-end;width:40px;overflow:hidden">Label<span style="flex:none;width:200px"></span></div>` },
   { name: 'a collapsed label that is all outside its clip', html: `<div style="width:40px;overflow:hidden;display:flex"><span style="margin-left:60px;white-space:nowrap">${word}</span></div>` },
 ]
 

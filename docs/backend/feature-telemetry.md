@@ -132,14 +132,14 @@ The build refuses a constant name that breaks this table (FSTTEL004) in these ca
 
 - The span name of `Telemetry.Trace` and `Telemetry.TraceRoot`, and the event name of `Telemetry.AddEvent` and `new ActivityEvent(...)`.
 - The tag keys in a `tags` array of a `Telemetry` call, as a collection expression or an array creation that the call writes inline or that a local of the same method holds, and the key of `Activity.SetTag`.
-- The tag keys that go into a `TagList` or an `ActivityTagsCollection` through `Add`, `Insert`, an indexer, an initializer, a collection expression, or an array or a collection expression in the constructor. A `KeyValuePair` counts only as a `new KeyValuePair<string, object?>(...)` that the code writes at that place.
+- The tag keys that go into a `TagList` or an `ActivityTagsCollection` through `Add`, `Insert`, an indexer with `=`, `+=`, or `??=`, an initializer, a collection expression, or the constructor. The constructor argument can be an array, a collection expression, or a `new List` or `new Dictionary` with an initializer, that the call writes inline or that a local of the same method holds. A `KeyValuePair` counts only as a `new KeyValuePair<string, object?>(...)` that the code writes at that place.
 - The query name of `TagWithOperationCallSite`.
 - The metric name of a `Meter.Create...` method, except the platform metrics `app.errors` and `app.request.duration` of `Telemetry`.
 - The property names of a Serilog message template.
 
 A tag key can also start with a namespace in `SemanticConventionNamespaces` of `FullstackTemplate.SourceGenerators/TelemetryNameAnalyzer.cs`, such as `error.type` or `server.address`. The list is a selection: the OpenTelemetry semantic-convention namespaces and the .NET, gRPC, and MCP namespaces that the packages of the Server emit. A key in another namespace gets FSTTEL004. The list leaves out `user`, `enduser`, and `session`, because this app names those tags `app.user_id` and `app.user.role`.
 
-The build does not check a name in `ActivitySource.StartActivity`, in `Activity.AddTag`, in a metric tag in a `KeyValuePair` that is not in a `TagList`, in a `tags` array in a field or a parameter, in an item that the code assigns to a `tags` array later, as `tags[0] = ...`, in a property from `PropertyEnricher`, `LogContext.PushProperty`, or `ForContext`, or in a Microsoft.Extensions.Logging template. Obey the table there yourself.
+The build does not check a name in `ActivitySource.StartActivity`, in `Activity.AddTag`, in a metric tag in a `KeyValuePair` that is not in a `TagList`, in a `tags` array or a constructor argument in a field or a parameter, in a constructor argument that a method returns, in an item that the code assigns to a `tags` array later, as `tags[0] = ...`, in a key that the code adds later to a local that it gives to a constructor, as `pairs["UserId"] = id` or `pairs.Add(...)`, in a key in a deconstruction, as `(tags["UserId"], _) = (id, 1)`, in a property from `PropertyEnricher`, `LogContext.PushProperty`, or `ForContext`, or in a Microsoft.Extensions.Logging template. Obey the table there yourself.
 
 Before you add a tag name, search the code for a tag with the same meaning. Use one name for one concept in all features.
 

@@ -153,6 +153,8 @@ public class TelemetryNameAnalyzerTests
     [Arguments("""(string, object?)[] tags = [(name, 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
     [Arguments("""var tags = Tags(); Telemetry.AddEvent(tags, "lock.acquired");""")]
     [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; System.Console.WriteLine(tags.Length);""")]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; (string, object?)[] other = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; (string, object?)[] other; other = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
     public async Task a_tags_array_in_a_local_with_no_bad_key_has_no_diagnostics(string statement)
     {
         // Act
@@ -186,6 +188,17 @@ public class TelemetryNameAnalyzerTests
     [Arguments("""var tags = new ActivityTagsCollection([new("UserId", id)]);""")]
     [Arguments("""var tags = new ActivityTagsCollection(new[] { new KeyValuePair<string, object?>("UserId", id) });""")]
     [Arguments("""Activity.Current?.AddEvent(new ActivityEvent("cache.missed", tags: new ActivityTagsCollection { { "UserId", id } }));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { ["UserId"] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { { "UserId", id } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new List<KeyValuePair<string, object?>> { new("UserId", id) });""")]
+    [Arguments("""var pairs = new Dictionary<string, object?> { ["UserId"] = id }; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""var pairs = new List<KeyValuePair<string, object?>> { new("UserId", id) }; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("UserId", id)]; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("UserId", id)]; var tags = new TagList(pairs);""")]
+    [Arguments("""System.ReadOnlySpan<KeyValuePair<string, object?>> pairs = [new("UserId", id)]; var tags = new TagList(pairs);""")]
+    [Arguments("""var tags = new TagList(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] ??= id;""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] += id;""")]
     public async Task a_bad_key_in_a_tag_list_or_an_activity_tags_collection_gets_fsttel004(string statement)
     {
         // Act
@@ -214,10 +227,47 @@ public class TelemetryNameAnalyzerTests
     [Arguments("""var tags = new Dictionary<string, object?> { ["UserId"] = id };""")]
     [Arguments("""var tags = new List<KeyValuePair<string, object?>> { new("UserId", id) };""")]
     [Arguments("""var tag = new KeyValuePair<string, object?>("UserId", id);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { ["app.user_id"] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { { "error.type", id } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { [name] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new List<KeyValuePair<string, object?>> { new("app.user_id", id) });""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("app.user_id", id)]; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("app.user_id", id)]; KeyValuePair<string, object?>[] other = [new("UserId", id)]; var tags = new TagList(pairs);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["app.user_id"] ??= id;""")]
+    [Arguments("""var tags = new TagList(); tags.Add("app.pair", new KeyValuePair<string, int>("Not A Tag", 1));""")]
+    [Arguments("""var tags = new TagList { { "app.pair", new KeyValuePair<string, int>("Not A Tag", 1) } };""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["app.pair"] = new KeyValuePair<string, int>("Not A Tag", 1);""")]
+    [Arguments("""var tags = new ActivityTagsCollection { ["app.pair"] = new KeyValuePair<string, int>("Not A Tag", 1) };""")]
+    [Arguments("""var tags = new TagList(); tags.Add("app.pair", new KeyValuePair<string, object?>("Not A Tag", 1));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["app.pair"] = new KeyValuePair<string, object?>("Not A Tag", 1);""")]
+    [Arguments("""var tags = new TagList(); tags.Add("app.pair", new[] { new KeyValuePair<string, object?>("Not A Tag", 1) });""")]
     public async Task a_tag_list_or_an_activity_tags_collection_with_no_bad_key_has_no_diagnostics(string statement)
     {
         // Act
         var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task another_type_with_a_key_parameter_that_converts_to_a_tag_pair_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await Run("""
+            public sealed class Pair(string key)
+            {
+                public static implicit operator KeyValuePair<string, object?>(Pair pair) => new(pair.Key, null);
+
+                public string Key { get; } = key;
+
+                public static void Run()
+                {
+                    var tags = new TagList();
+                    tags.Add(new Pair("Not A Tag"));
+                }
+            }
+            """);
 
         // Assert
         diagnostics.ShouldBeEmpty();

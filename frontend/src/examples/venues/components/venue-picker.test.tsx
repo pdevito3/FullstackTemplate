@@ -316,3 +316,110 @@ test('Enter on the failed page asks again, and keeps the list open and the searc
 
   await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Venue 11' }).element().id)
 })
+
+/** The answers after the fault ends, also for a pick, which reads the venue and searches for its name until it has the venue. */
+const faultEnded = (): Answer[] => [
+  { method: 'GET', path: '/api/v1/venues', headers: pagination(1, 2), body: firstPage },
+  pageTwoWorks,
+  ...[...firstPage, venue(11)].map((row): Answer => ({ method: 'GET', path: `/api/v1/venues/${row.id}`, body: row })),
+]
+
+async function failedRowIsActive(screen: Awaited<ReturnType<typeof renderPicker>>['screen'], input: Awaited<ReturnType<typeof renderPicker>>['input']) {
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{End}')
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+}
+
+function stopTheClock() {
+  // The clock stands still, so a slow machine cannot move the second press past the end of a double press.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+}
+
+test('a second Enter just after a retry that works picks nothing and keeps the list open', async () => {
+  stopTheClock()
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await failedRowIsActive(screen, input)
+  await commands.answerRequests(faultEnded())
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(input).toHaveValue(firstPage[0].name)
+
+  vi.advanceTimersByTime(600)
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).not.toBeInTheDocument()
+  await expect.element(input).not.toHaveValue(firstPage[0].name)
+})
+
+test('an arrow key after a retry that works lets the next Enter pick', async () => {
+  stopTheClock()
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await failedRowIsActive(screen, input)
+  await commands.answerRequests(faultEnded())
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await userEvent.keyboard('{ArrowDown}{Enter}')
+
+  await expect.element(input).toHaveValue('Venue 11')
+})
+
+test('a second click just after a retry that works picks nothing and keeps the list open', async () => {
+  stopTheClock()
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  const content = document.querySelector<HTMLElement>('[data-slot="combobox-content"]')!
+  await Promise.all(content.getAnimations().map((animation) => animation.finished))
+  await commands.answerRequests(faultEnded())
+
+  await screen.getByRole('option', failedRow).click()
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await screen.getByRole('option', { name: 'Venue 11' }).click()
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(input).toHaveValue(firstPage[0].name)
+
+  vi.advanceTimersByTime(600)
+  await screen.getByRole('option', { name: 'Venue 11' }).click()
+
+  await expect.element(input).toHaveValue('Venue 11')
+})
+
+test('a press while the retry runs picks nothing and asks for nothing more', async () => {
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await failedRowIsActive(screen, input)
+  await commands.answerRequests(faultEnded())
+  await holdPage(pageTwoPath)
+  const pageTwoRequests = countRequests(pageTwoPath)
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue(firstPage[0].name)
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  expect(pageTwoRequests()).toBe(1)
+})
+
+test('a later page that fails when the list loads again shows a toast, because the list has no row to say so', async () => {
+  const { screen, client } = await renderPicker()
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.poll(() => client.isFetching()).toBe(0)
+  await commands.answerRequests([{ method: 'GET', path: '/api/v1/venues', headers: pagination(1, 2), body: firstPage }, pageTwoFails])
+  const toast = spyOnToasts()
+
+  await client.invalidateQueries({ queryKey: VenueKeys.lists() })
+
+  await expect.poll(() => toast.mock.calls.length).toBe(1)
+})

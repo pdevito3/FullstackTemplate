@@ -588,7 +588,17 @@ test('ComboboxLoadMore asks for more one time while isLoading is true, and asks 
   await expect.poll(() => onLoadMore.mock.calls.length).toBe(2)
 })
 
-function FailedLoadMoreList({ isLoading, onLoadMore, onChange }: { isLoading: boolean; onLoadMore: () => void; onChange?: (key: Key | null) => void }) {
+function FailedLoadMoreList({
+  isLoading,
+  onLoadMore,
+  onChange,
+  failedText = 'More frameworks did not load.',
+}: {
+  isLoading: boolean
+  onLoadMore: () => void
+  onChange?: (key: Key | null) => void
+  failedText?: string
+}) {
   return (
     // The items prop turns off the filter of React Aria, as in a picker that searches on the Server.
     <Combobox aria-label="Framework" items={[{ id: 'vue' }]} onChange={onChange}>
@@ -596,7 +606,7 @@ function FailedLoadMoreList({ isLoading, onLoadMore, onChange }: { isLoading: bo
       <ComboboxContent>
         <ComboboxList>
           <Collection items={[{ id: 'vue' }]}>{({ id }) => <ComboboxItem id={id}>Vue</ComboboxItem>}</Collection>
-          <ComboboxLoadMore isLoading={isLoading} isFailed failedText="More frameworks did not load." onLoadMore={onLoadMore} />
+          <ComboboxLoadMore isLoading={isLoading} isFailed failedText={failedText} onLoadMore={onLoadMore} />
         </ComboboxList>
       </ComboboxContent>
     </Combobox>
@@ -656,4 +666,110 @@ test('a press on the option of ComboboxLoadMore asks once and keeps the list ope
   expect(onLoadMore).toHaveBeenCalledOnce()
   await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
   await expect.element(input).toHaveValue('Vue')
+})
+
+test('Enter on the option of ComboboxLoadMore does not submit the form', async () => {
+  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+  const onLoadMore = vi.fn()
+  const screen = await render(
+    <form onSubmit={onSubmit}>
+      <FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />
+      <button type="submit">Save</button>
+    </form>,
+  )
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+
+  await userEvent.keyboard('{ArrowUp}{Enter}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onSubmit).not.toHaveBeenCalled()
+})
+
+test('a held Enter on the option of ComboboxLoadMore asks once and does not submit the form', async () => {
+  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+  const onLoadMore = vi.fn()
+  const screen = await render(
+    <form onSubmit={onSubmit}>
+      <FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />
+      <button type="submit">Save</button>
+    </form>,
+  )
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+
+  await userEvent.keyboard('{ArrowUp}{Enter>5/}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onSubmit).not.toHaveBeenCalled()
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+})
+
+test('only Enter on the option of ComboboxLoadMore asks for the page', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+
+  await userEvent.keyboard('{ArrowUp}')
+
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Vue' }).element().id)
+  expect(onLoadMore).not.toHaveBeenCalled()
+})
+
+test('Enter asks for nothing after the list closes on the option of ComboboxLoadMore', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />)
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(screen.getByRole('combobox', { name: 'Framework' })).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+
+  window.dispatchEvent(new Event('scroll'))
+  await expect.element(screen.getByRole('option', failedRow)).not.toBeInTheDocument()
+  await userEvent.keyboard('{Enter}')
+
+  expect(onLoadMore).not.toHaveBeenCalled()
+})
+
+test('ComboboxLoadMore tells a screen reader only when the page has failed, and not while it loads again', async () => {
+  const failedText = 'More plugins did not load.'
+  const announced = () => document.querySelector('[data-live-announcer]')?.textContent ?? ''
+  const screen = await render(<FailedLoadMoreList isLoading onLoadMore={vi.fn()} failedText={failedText} />)
+  await observersHaveRun()
+
+  expect(announced()).not.toContain(failedText)
+
+  await screen.rerender(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} failedText={failedText} />)
+
+  await expect.poll(announced).toContain(failedText)
+})
+
+test('the option of ComboboxLoadMore stays the active option while the page loads again, with no failure color', async () => {
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(screen.getByRole('option', failedRow)).toHaveClass('text-destructive')
+
+  await screen.rerender(<FailedLoadMoreList isLoading onLoadMore={vi.fn()} />)
+
+  const loading = screen.getByRole('option', { name: 'Loading more' })
+  await expect.element(loading).toBeVisible()
+  await expect.element(input).toHaveAttribute('aria-activedescendant', loading.element().id)
+  await expect.element(loading).not.toHaveClass('text-destructive')
+})
+
+test('the option of ComboboxLoadMore adds no space to the list', async () => {
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} />)
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+
+  const list = screen.getByRole('listbox').element()
+
+  expect(list.scrollHeight).toBe(list.clientHeight)
 })

@@ -16,6 +16,8 @@ export function useVenueSearch(search: string) {
       const result = await getVenueList({
         query: { filters: containsText<VenueDto>('name', search), pageNumber: pageParam, pageSize: VENUE_PAGE_SIZE },
         signal,
+        // The list says that a next page failed, and how to ask for it again.
+        options: { suppressErrorToast: pageParam > 1 },
       })
       return { venues: result.data, pagination: parsePagination(result) }
     },

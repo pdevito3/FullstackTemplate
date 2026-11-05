@@ -8,6 +8,7 @@ import type { VenueDto } from '@/api/generated/models/types/venue-dto'
 import type { Answer } from '@/test/answer'
 import { observersHaveRun } from '@/test/observers-have-run'
 import { venueForCreationDtoSchema } from '@/api/generated/models/zod/venue-for-creation-dto'
+import { Notification } from '@/components/notification'
 import { maxLengthOf } from '@/lib/api-contract'
 
 import { VenueKeys } from '../apis/venue.keys'
@@ -217,4 +218,80 @@ test('loads page 2 when the list opens while page 1 loads again', async () => {
   await commands.releaseRequests(pageOnePath)
 
   await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+})
+
+const pageTwoFails = { method: 'GET', path: '/api/v1/venues', query: { pageNumber: '2' }, status: 500, body: { title: 'Server error', status: 500 } } as const
+const pageTwoWorks = { method: 'GET', path: '/api/v1/venues', query: { pageNumber: '2' }, headers: pagination(2, 2), body: [venue(11)] } as const
+const failedRow = { name: 'More venues did not load. Try again' }
+
+function spyOnToasts() {
+  const toast = vi.spyOn(Notification, 'error')
+  onTestFinished(() => toast.mockRestore())
+  return toast
+}
+
+test('sends one request for a page 2 that fails, says so in the list and not in a toast, and loads it when the user asks', async () => {
+  const toast = spyOnToasts()
+  const { screen } = await renderPicker(firstPage[0].id, pageTwoFails)
+  const pageTwoRequests = countRequests(pageTwoPath)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await observersHaveRun()
+
+  expect(pageTwoRequests()).toBe(1)
+  expect(toast).not.toHaveBeenCalled()
+
+  await commands.answerRequests([pageTwoWorks])
+  await userEvent.keyboard(`${'{ArrowDown}'.repeat(firstPage.length)}{Enter}`)
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(screen.getByRole('option', failedRow)).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('combobox', { name: 'Venue' })).toHaveValue(firstPage[0].name)
+  expect(pageTwoRequests()).toBe(2)
+})
+
+test('sends no request when the list closes and opens after a page 2 that fails', async () => {
+  const { screen } = await renderPicker('', pageTwoFails)
+  const toggle = screen.getByRole('button', { name: /show suggestions/i })
+  await userEvent.click(toggle)
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await observersHaveRun()
+  const pageOneRequests = countRequests(pageOnePath)
+  const pageTwoRequests = countRequests(pageTwoPath)
+
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('option', failedRow)).not.toBeInTheDocument()
+  await userEvent.click(toggle)
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await observersHaveRun()
+
+  expect(pageOneRequests()).toBe(0)
+  expect(pageTwoRequests()).toBe(0)
+})
+
+test('Enter on the failed page asks again, and keeps the list open and the search', async () => {
+  const filters = 'name @=* "Venue"'
+  const { screen, input } = await renderPicker(
+    '',
+    { method: 'GET', path: '/api/v1/venues', query: { filters }, headers: pagination(1, 2), body: firstPage },
+    { method: 'GET', path: '/api/v1/venues', query: { filters, pageNumber: '2' }, status: 500, body: { title: 'Server error', status: 500 } },
+  )
+
+  await userEvent.fill(input, 'Venue')
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+
+  await commands.answerRequests([
+    { method: 'GET', path: '/api/v1/venues', query: { filters, pageNumber: '2' }, headers: pagination(2, 2), body: [venue(11)] },
+  ])
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(input).toHaveValue('Venue')
+
+  await userEvent.keyboard('{ArrowDown}')
+
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Venue 11' }).element().id)
 })

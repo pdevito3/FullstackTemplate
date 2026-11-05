@@ -560,6 +560,8 @@ function LoadMoreList({ finished, onLoadMore }: { finished: number; onLoadMore: 
           <Collection items={[{ id: 'vue' }]}>{({ id }) => <ComboboxItem id={id}>Vue</ComboboxItem>}</Collection>
           <ComboboxLoadMore
             isLoading={asked > finished}
+            isFailed={false}
+            failedText="More frameworks did not load."
             onLoadMore={() => {
               onLoadMore()
               setAsked((count) => count + 1)
@@ -584,4 +586,57 @@ test('ComboboxLoadMore asks for more one time while isLoading is true, and asks 
   await screen.rerender(<LoadMoreList finished={1} onLoadMore={onLoadMore} />)
 
   await expect.poll(() => onLoadMore.mock.calls.length).toBe(2)
+})
+
+function FailedLoadMoreList({ isLoading, onLoadMore, onChange }: { isLoading: boolean; onLoadMore: () => void; onChange?: (key: Key | null) => void }) {
+  return (
+    <Combobox aria-label="Framework" onChange={onChange}>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <Collection items={[{ id: 'vue' }]}>{({ id }) => <ComboboxItem id={id}>Vue</ComboboxItem>}</Collection>
+          <ComboboxLoadMore isLoading={isLoading} isFailed failedText="More frameworks did not load." onLoadMore={onLoadMore} />
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+const failedRow = { name: 'More frameworks did not load. Try again' }
+
+test('ComboboxLoadMore asks for nothing after a failure, and asks once for each Enter on its option', async () => {
+  const onLoadMore = vi.fn()
+  const onChange = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} onChange={onChange} />)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await observersHaveRun()
+  expect(onLoadMore).not.toHaveBeenCalled()
+
+  await userEvent.keyboard('{ArrowUp}{Enter}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onChange).not.toHaveBeenCalled()
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+})
+
+test('ComboboxLoadMore asks for nothing on Enter on its option while the page loads again', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading onLoadMore={onLoadMore} />)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}{Enter}')
+
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  expect(onLoadMore).not.toHaveBeenCalled()
+})
+
+test('ComboboxLoadMore tells a screen reader that the page failed and where to try again', async () => {
+  await render(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} />)
+
+  await expect
+    .poll(() => document.querySelector('[data-live-announcer]')?.textContent)
+    .toContain('More frameworks did not load. Go to the end of the list to try again.')
 })

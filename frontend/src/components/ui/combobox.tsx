@@ -30,6 +30,7 @@ import {
   useLocale,
   type Key,
 } from "@animate-ui/react/primitives/react-aria"
+import { announce } from "@react-aria/live-announcer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
@@ -187,6 +188,27 @@ function usePickTypedOption() {
   }
 }
 
+const RETRY_ROW_ID = "combobox-load-more-retry"
+
+/**
+ * React Aria closes the list after Enter on an action option, and the close drops the typed search. The retry row of
+ * `ComboboxLoadMore` asks for the page of that search, so Enter runs its action here and the list stays open.
+ */
+function useRetryOnEnter() {
+  const state = React.useContext(ComboBoxStateContext)
+
+  return (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter" || !state?.isOpen || state.selectionManager.focusedKey !== RETRY_ROW_ID) {
+      return
+    }
+    e.preventDefault()
+    e.stopPropagation()
+    if (!e.repeat) {
+      state.collection.getItem(RETRY_ROW_ID)?.props?.onAction?.()
+    }
+  }
+}
+
 function ComboboxInput({
   className,
   children,
@@ -199,11 +221,13 @@ function ComboboxInput({
   showClear?: boolean
 }) {
   const pickTypedOption = usePickTypedOption()
+  const retryOnEnter = useRetryOnEnter()
   return (
     <InputGroup className={cn("w-auto", className)}>
       <InputGroupInput
         onKeyDownCapture={(e) => {
           pickTypedOption(e)
+          retryOnEnter(e)
           onKeyDownCapture?.(e)
         }}
         {...props}
@@ -355,15 +379,53 @@ function ComboboxItem<T extends object>({
  *
  * React Aria calls `onLoadMore` again each time the collection changes, and a change of `isLoading` changes the
  * collection. A second `fetchNextPage()` stops the first request and sends it again, so no call goes out while
- * `isLoading` is true.
+ * `isLoading` is true. A failed page would send its request again in the same way, so after a failure only the user
+ * asks again, with an option that the arrow keys and a screen reader can reach. The option stays while the page loads
+ * again, so the active option stays in place.
  */
 function ComboboxLoadMore({
   className,
   children = "Loading more",
   isLoading,
+  isFailed,
+  failedText,
   onLoadMore,
   ...props
-}: ListBoxLoadMoreItemProps & { isLoading: boolean }) {
+}: Omit<ListBoxLoadMoreItemProps, "children"> & {
+  children?: string
+  isLoading: boolean
+  isFailed: boolean
+  failedText: string
+}) {
+  const showsFailure = isFailed && !isLoading
+
+  React.useEffect(() => {
+    if (showsFailure) {
+      announce(`${failedText} Go to the end of the list to try again.`, "assertive")
+    }
+  }, [showsFailure, failedText])
+
+  if (isFailed) {
+    return (
+      <ComboboxItem
+        id={RETRY_ROW_ID}
+        textValue={isLoading ? children : `${failedText} Try again`}
+        onAction={() => {
+          if (!isLoading) onLoadMore?.()
+        }}
+        className={isLoading ? "justify-center pr-1.5 text-muted-foreground" : "block text-destructive"}
+      >
+        {isLoading ? (
+          children
+        ) : (
+          <>
+            {failedText} <span className="font-medium underline">Try again</span>
+          </>
+        )}
+      </ComboboxItem>
+    )
+  }
+
   return (
     <ListBoxLoadMoreItemPrimitive
       data-slot="combobox-load-more"

@@ -245,6 +245,8 @@ public class QueryInputAnalyzerTests
     [Arguments("""var t = id; t = "x";""")]
     [Arguments("""var t = id; t += "x";""")]
     [Arguments("""var t = id; (t, _) = ("x", 1);""")]
+    [Arguments("var t = id; Change(ref t);")]
+    [Arguments("var t = id; Fill(out t);")]
     public async Task a_check_of_a_copy_of_each_item_that_the_code_assigns_again_gets_fstqry001(string copy)
     {
         // Act
@@ -563,6 +565,8 @@ public class QueryInputAnalyzerTests
     [Arguments("""id = "x";""")]
     [Arguments("""id += "x";""")]
     [Arguments("""(id, _) = ("x", 1);""")]
+    [Arguments("Change(ref id);")]
+    [Arguments("Fill(out id);")]
     [Arguments("""ref var alias = ref id; alias = "x";""")]
     [Arguments("""var other = "y"; ref var alias = ref other; alias = ref id; alias = "x";""")]
     public async Task a_check_of_a_lambda_parameter_that_the_code_assigns_again_gets_fstqry001(string assignment)
@@ -582,6 +586,8 @@ public class QueryInputAnalyzerTests
     [Arguments("id => { return EntityId.IsValid(id, Tenant.IdPrefix); }")]
     [Arguments("""id => { var other = "x"; other += "y"; return EntityId.IsValid(id, other); }""")]
     [Arguments("id => { var copy = id.Trim(); return EntityId.IsValid(copy, Tenant.IdPrefix); }")]
+    [Arguments("id => { Read(in id); return EntityId.IsValid(id, Tenant.IdPrefix); }")]
+    [Arguments("id => { Read(id); return EntityId.IsValid(id, Tenant.IdPrefix); }")]
     [Arguments("id => { ref readonly var alias = ref id; return EntityId.IsValid(alias, Tenant.IdPrefix) && EntityId.IsValid(id, Tenant.IdPrefix); }")]
     [Arguments("""id => { var other = "y"; ref var alias = ref other; alias = "x"; return EntityId.IsValid(id, alias); }""")]
     [Arguments("""id => { var other = "y"; ref readonly var alias = ref other; alias = ref id; return EntityId.IsValid(id, Tenant.IdPrefix); }""")]
@@ -606,6 +612,7 @@ public class QueryInputAnalyzerTests
     [Arguments("for (var i = 0; i < other.Length; i++)")]
     [Arguments("for (var i = 0; i < request.Ids.Length; i += 2)")]
     [Arguments("for (var i = 0; i < request.Ids.Length; i = i + 2)")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++, i++)")]
     [Arguments("for (var i = 0; ; i++)")]
     [Arguments("for (var i = request.Ids.Length - 2; i >= 0; i--)")]
     [Arguments("for (var i = request.Ids.Length - 1; i > 0; i--)")]
@@ -653,6 +660,8 @@ public class QueryInputAnalyzerTests
     [Arguments("for (var i = 0; i < request.Ids.Length; i++) { i++; if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
     [Arguments("for (var i = 0; i < request.Ids.Length; ) { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; i += 2; }")]
     [Arguments("for (var i = 0; i < request.Ids.Length; i++) { ref var alias = ref i; alias += 1; if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++) { Move(ref i); if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
+    [Arguments("for (var i = 0; i < request.Ids.Length; i++) { Put(out i); if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
     public async Task a_for_loop_that_moves_its_index_in_the_body_gets_fstqry001(string loop)
     {
         // Act
@@ -698,6 +707,192 @@ public class QueryInputAnalyzerTests
 
             return await dbContext.Users.AnyAsync(u => request.Names.Contains(u.Id), cancellationToken);
             """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    private const string EachName = "for (var i = 0; i < request.Names.Count; i++) { if (!PostgresText.CanStore(request.Names[i])) return false; }";
+
+    [Test]
+    [Arguments(EachName, "request.Names[0]")]
+    [Arguments(EachName, "request.Names[0].Trim()")]
+    [Arguments(EachName, "request.Names[request.Names.Count - 1]")]
+    [Arguments(EachName, """request.Names[0] + "a" """)]
+    [Arguments("for (var i = 0; i < request.RoList.Count; i++) { if (!PostgresText.CanStore(request.RoList[i])) return false; }", "request.RoList[0]")]
+    [Arguments("for (var i = request.Names.Count - 1; i >= 0; i--) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[0]")]
+    [Arguments("for (var i = 0; i < request.Names.Count; i += 1) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[0]")]
+    [Arguments("for (var i = 0; i < request.Names.Count; i++) { if (!PostgresText.CanStore(request.Names[i].Trim())) return false; }", "request.Names[0]")]
+    [Arguments("""for (var i = 0; i < request.Names.Count; i++) { if (!PostgresText.CanStore(request.Names[i] ?? "")) return false; }""", "request.Names[0]")]
+    [Arguments("""for (var i = 0; i < request.Names.Count; i++) { if (!PostgresText.CanStore(request.Names?[i] ?? "")) return false; }""", "request.Names[0]")]
+    [Arguments("for (var i = 0; i < request.Names.Count; i++) { var name = request.Names[i]; if (!PostgresText.CanStore(name)) return false; }", "request.Names[0]")]
+    [Arguments("foreach (var name in request.Names) { if (!PostgresText.CanStore(name)) return false; }", "request.Names[0]")]
+    [Arguments("foreach (var name in request.Names) { if (!PostgresText.CanStore(name)) return false; }", "request.Names[0].Trim()")]
+    [Arguments("if (!request.Names.All(name => PostgresText.CanStore(name))) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.All(PostgresText.CanStore)) return false;", "request.Names[0]")]
+    [Arguments("for (var i = 0; i < request.Items.Count; i++) { if (!PostgresText.CanStore(request.Items[i].Name)) return false; }", "request.Items[0].Name")]
+    [Arguments("for (var i = 0; i < request.Table.Count; i++) { for (var j = 0; j < request.Table[i].Count; j++) { if (!PostgresText.CanStore(request.Table[i][j])) return false; } }", "request.Table[0][1]")]
+    [Arguments("for (var j = 0; j < request.Table[0].Count; j++) { if (!PostgresText.CanStore(request.Table[0][j])) return false; }", "request.Table[0][1]")]
+    [Arguments("foreach (var cell in request.Table[0]) { if (!PostgresText.CanStore(cell)) return false; }", "request.Table[0][1]")]
+    [Arguments("if (!PostgresText.CanStore(request.Items[0].Name)) return false;", "request.Items[0].Name")]
+    [Arguments("if (!PostgresText.CanStore(request.Table[0][1])) return false;", "request.Table[0][1]")]
+    public async Task a_check_of_each_item_counts_for_a_compare_of_one_item(string check, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            {{check}}
+            return await dbContext.Users.AnyAsync(u => u.Identifier == {{text}}, cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_check_of_each_item_counts_for_a_second_loop_with_another_index()
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            {{EachName}}
+            for (var index = 0; index < request.Names.Count; index++)
+            {
+                if (await dbContext.Users.AnyAsync(u => u.Identifier == request.Names[index], cancellationToken))
+                    return true;
+            }
+
+            return false;
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("for (var i = 1; i < request.Names.Count; i++) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[0]")]
+    [Arguments("for (var i = 0; i < request.Names.Count - 1; i++) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[request.Names.Count - 1]")]
+    [Arguments("for (var i = 0; i < request.Names.Count; i += 2) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[1]")]
+    [Arguments("for (var i = 0; i < request.Names.Count; i++, i++) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[1]")]
+    [Arguments("for (var i = 0; i < request.Names.Count; i++) { i++; if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[0]")]
+    [Arguments("for (var i = 0; i < request.RoList.Count; i++) { if (!PostgresText.CanStore(request.Names[i])) return false; }", "request.Names[0]")]
+    [Arguments(EachName, "request.RoList[0]")]
+    [Arguments("foreach (var name in request.RoList) { if (!PostgresText.CanStore(name)) return false; }", "request.Names[0]")]
+    [Arguments("foreach (var name in request.Names.Skip(1)) { if (!PostgresText.CanStore(name)) return false; }", "request.Names[0]")]
+    [Arguments("if (!request.Names.Skip(1).All(PostgresText.CanStore)) return false;", "request.Names[0]")]
+    [Arguments("if (!PostgresText.CanStore(request.Names[0])) return false;", "request.Names[request.Names.Count - 1]")]
+    [Arguments("for (var i = 1; i < request.Items.Count; i++) { if (!PostgresText.CanStore(request.Items[i].Name)) return false; }", "request.Items[0].Name")]
+    [Arguments("for (var i = 0; i < request.Items.Count; i++) { if (!PostgresText.CanStore(request.Items[i].Name)) return false; }", "request.Dto.Name")]
+    [Arguments("if (!PostgresText.CanStore(request.Items[0].Name)) return false;", "request.Items[1].Name")]
+    [Arguments("for (var j = 0; j < request.Table[0].Count; j++) { if (!PostgresText.CanStore(request.Table[0][j])) return false; }", "request.Table[1][0]")]
+    [Arguments("foreach (var cell in request.Table[0]) { if (!PostgresText.CanStore(cell)) return false; }", "request.Table[1][0]")]
+    [Arguments("if (!PostgresText.CanStore(request.Table[0][0])) return false;", "request.Table[0][1]")]
+    [Arguments("foreach (var text in request.Bag) { if (!PostgresText.CanStore(text)) return false; }", "request.Bag.Label")]
+    public async Task a_check_that_does_not_reach_the_item_gets_fstqry001(string check, string text)
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            {{check}}
+            return await dbContext.Users.AnyAsync(u => u.Identifier == {{text}}, cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe(text);
+    }
+
+    [Test]
+    public async Task a_check_of_each_item_after_the_query_gets_fstqry001()
+    {
+        // Act
+        var diagnostics = await RunInHandler($$"""
+            var found = await dbContext.Users.AnyAsync(u => u.Identifier == request.Names[0], cancellationToken);
+            {{EachName}}
+            return found;
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Names[0]");
+    }
+
+    [Test]
+    [Arguments("Empty a = a; if (!PostgresText.CanStore(a)) return false;")]
+    [Arguments("Empty a = (Empty)a; if (!PostgresText.CanStore(a)) return false;")]
+    [Arguments("Empty a = a; Empty b = a; if (!PostgresText.CanStore(b)) return false;")]
+    public async Task a_check_of_a_local_that_refers_to_itself_is_not_a_check_of_the_request(string statement)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"""
+            {statement}
+            return await dbContext.Users.AnyAsync(u => u.Identifier == request.Identifier, cancellationToken);
+            """);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Identifier");
+    }
+
+    [Test]
+    [Arguments("string a = a;", "CS0165")]
+    [Arguments("string a = a.Trim();", "CS0165")]
+    [Arguments("var a = a;", "CS0841")]
+    [Arguments("string a = b; string b = a;", "CS0841")]
+    public async Task a_local_that_does_not_compile_because_it_refers_to_itself_does_not_stop_the_analyzer(string statement, string compileError)
+    {
+        // Act
+        var diagnostics = await Run(
+            Handler($$"""
+                {{statement}}
+                if (!PostgresText.CanStore(a))
+                    return false;
+                return await dbContext.Users.AnyAsync(u => u.Identifier == request.Identifier, cancellationToken);
+                """),
+            compileError);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("request.Identifier");
+    }
+
+    [Test]
+    public async Task a_check_of_a_copy_of_a_copy_of_each_item_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await RunInHandler("""
+            foreach (var id in request.Ids)
+            {
+                var copy = id;
+                var last = copy;
+                if (!PostgresText.CanStore(last))
+                    return false;
+            }
+
+            return await dbContext.Users.AnyAsync(u => request.Ids.Contains(u.Id), cancellationToken);
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_long_concat_does_not_stop_the_analyzer()
+    {
+        // Arrange
+        var concat = string.Join(" + ", Enumerable.Repeat("""
+            "a"
+            """, 3000));
+
+        // Act
+        var diagnostics = await RunInHandler($"""
+            return request.Identifier == (request.TenantId + {concat});
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("u => u.Identifier == Format(request.Identifier)")]
+    [Arguments("u => u.Identifier == Concat(request.Identifier)")]
+    public async Task a_format_or_a_concat_method_of_another_class_has_no_diagnostics(string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
 
         // Assert
         diagnostics.ShouldBeEmpty();
@@ -813,11 +1008,34 @@ public class QueryInputAnalyzerTests
     private static string Text(Diagnostic diagnostic)
         => diagnostic.Location.SourceTree!.GetText().ToString(diagnostic.Location.SourceSpan);
 
-    private static Task<ImmutableArray<Diagnostic>> RunInHandler(string body)
-        => Run($$"""
+    private static Task<ImmutableArray<Diagnostic>> RunInHandler(string body) => Run(Handler(body));
+
+    private static string Handler(string body)
+        => $$"""
             public sealed record NameDto(string Name);
 
-            public sealed record Command(string Identifier, string TenantId, NameDto Dto, string[] Ids, string[] More, string? Filter, System.Collections.Generic.List<string> Names) : IRequest<bool>;
+            public sealed record Command(
+                string Identifier,
+                string TenantId,
+                NameDto Dto,
+                string[] Ids,
+                string[] More,
+                string? Filter,
+                System.Collections.Generic.List<string> Names,
+                System.Collections.Generic.IReadOnlyList<string> RoList,
+                System.Collections.Generic.List<NameDto> Items,
+                System.Collections.Generic.List<System.Collections.Generic.List<string>> Table,
+                TextBag Bag) : IRequest<bool>;
+
+            public sealed class TextBag : System.Collections.Generic.List<string>
+            {
+                public string Label => "";
+            }
+
+            public readonly struct Empty
+            {
+                public static implicit operator string(Empty empty) => "";
+            }
 
             public sealed class Handler(AppDbContext dbContext) : IRequestHandler<Command, bool>
             {
@@ -827,10 +1045,24 @@ public class QueryInputAnalyzerTests
                 }
 
                 private static Tenant Create(string name) => throw new NotSupportedException(name);
-            }
-            """);
 
-    private static async Task<ImmutableArray<Diagnostic>> Run(string source)
+                private static string Format(string text) => text;
+
+                private static string Concat(string text) => text;
+
+                private static void Change(ref string text) => text = "";
+
+                private static void Fill(out string text) => text = "";
+
+                private static void Read(in string text) => _ = text;
+
+                private static void Move(ref int index) => index++;
+
+                private static void Put(out int index) => index = 0;
+            }
+            """;
+
+    private static async Task<ImmutableArray<Diagnostic>> Run(string source, string? compileError = null)
     {
         var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
@@ -854,7 +1086,11 @@ public class QueryInputAnalyzerTests
                 path: "Source.cs")],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
-        compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        var compileErrors = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.Id);
+        if (compileError is null)
+            compileErrors.ShouldBeEmpty();
+        else
+            compileErrors.ShouldContain(compileError);
 
         var exceptions = new List<Exception>();
         var options = new CompilationWithAnalyzersOptions(

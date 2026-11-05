@@ -50,7 +50,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 		foreach (var operand in operands.SelectMany(o => TextsIn(o, types)))
 		{
-			if (PathFromFirstParameter(operand, types) is not { } path || !types.IsHandle(path[0].ContainingSymbol) || !types.InQueryLambda(ctx.Operation))
+			if (PathFromFirstParameter(operand, types) is not { } path || !types.IsHandle(path[0].Member.ContainingSymbol) || !types.InQueryLambda(ctx.Operation))
 				continue;
 
 			if (!IsCheckedBefore(operand, path, types))
@@ -60,8 +60,19 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 
 	private static IEnumerable<IOperation> TextsIn(IOperation operand, InputTypes types)
 	{
-		yield return operand;
-		var parts = Unwrap(operand) switch
+		var pending = new Stack<IOperation>();
+		pending.Push(operand);
+		while (pending.Count > 0)
+		{
+			var text = pending.Pop();
+			yield return text;
+			foreach (var part in PartsOf(Unwrap(text), types))
+				pending.Push(part);
+		}
+	}
+
+	private static IEnumerable<IOperation> PartsOf(IOperation text, InputTypes types)
+		=> text switch
 		{
 			IInterpolatedStringOperation interpolated => interpolated.Parts.OfType<IInterpolationOperation>().Select(static p => p.Expression),
 			IBinaryOperation { OperatorKind: BinaryOperatorKind.Add, Type.SpecialType: SpecialType.System_String } concat => [concat.LeftOperand, concat.RightOperand],
@@ -72,10 +83,6 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 			_ => [],
 		};
 
-		foreach (var text in parts.SelectMany(p => TextsIn(p, types)))
-			yield return text;
-	}
-
 	// EF evaluates a compare of a request value with null on the client, so the text does not go to Postgres
 	private static bool IsNull(IOperation operand) => operand.ConstantValue is { HasValue: true, Value: null };
 
@@ -85,23 +92,26 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static bool BuildsText(IMethodSymbol method)
 		=> method.ContainingType.SpecialType == SpecialType.System_String && method.Name is "Concat" or "Format";
 
-	private static List<ISymbol>? PathFromFirstParameter(IOperation operand, InputTypes types)
+	private static List<PathStep>? PathFromFirstParameter(IOperation operand, InputTypes types)
 	{
 		var value = Unwrap(operand);
-		if (value.Type?.SpecialType != SpecialType.System_String && !types.IsTextList(value.Type))
-			return null;
+		return value.Type?.SpecialType == SpecialType.System_String || types.IsTextList(value.Type) ? PathOf(value) : null;
+	}
 
-		var path = new List<ISymbol>();
+	private static List<PathStep>? PathOf(IOperation operand)
+	{
+		var value = Unwrap(operand);
+		var path = new List<PathStep>();
 		while (true)
 		{
 			switch (value)
 			{
 				case IPropertyReferenceOperation { Instance: { } instance } property:
-					path.Add(property.Property);
+					path.Add(new PathStep(property.Property, property.Property.IsIndexer ? property : null));
 					value = instance;
 					break;
 				case IFieldReferenceOperation { Instance: { } instance } field:
-					path.Add(field.Field);
+					path.Add(new PathStep(field.Field, null));
 					value = instance;
 					break;
 				case IConditionalAccessOperation access:
@@ -111,7 +121,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 					value = Unwrap(receiver);
 					break;
 				case IParameterReferenceOperation { Parameter.Ordinal: 0 } parameter:
-					path.Add(parameter.Parameter);
+					path.Add(new PathStep(parameter.Parameter, null));
 					path.Reverse();
 					return path;
 				default:
@@ -152,7 +162,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		}
 	}
 
-	private static bool IsCheckedBefore(IOperation text, List<ISymbol> path, InputTypes types)
+	private static bool IsCheckedBefore(IOperation text, List<PathStep> path, InputTypes types)
 	{
 		var root = text;
 		while (root.Parent is not null)
@@ -161,19 +171,30 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		return root.Descendants()
 			.Where(check => check.Syntax.SpanStart < text.Syntax.SpanStart)
 			.SelectMany(check => CheckedValues(check, root, types))
-			.Any(value => IsSameText(value, text, path, types) || ChecksExpressionThatHolds(value, text, path, types));
+			.Any(value => IsSameText(value, path, types) || ChecksExpressionThatHolds(value, text, path, types));
 	}
 
-	// A path has no index, so a check of `names[0]` must not count for `names[1]`.
-	private static bool IsSameText(IOperation value, IOperation text, List<ISymbol> path, InputTypes types)
+	// A check of `names[0]` must not count for `names[1]`, but a check of each item of `names` counts for any item.
+	private static bool IsSameText(IOperation value, List<PathStep> path, InputTypes types)
 		=> PathFromFirstParameter(value, types) is { } other
-			&& other.SequenceEqual(path, SymbolEqualityComparer.Default)
-			&& (!path.Any(static symbol => symbol is IPropertySymbol { IsIndexer: true }) || Unwrap(value).Syntax.IsEquivalentTo(Unwrap(text).Syntax, topLevel: false));
+			&& (other.Count == path.Count || (other.Count == path.Count - 1 && path.Last().Indexer is not null))
+			&& other.Zip(path, (check, compare) => CheckCoversStep(check, compare, types)).All(static covers => covers);
+
+	private static bool CheckCoversStep(PathStep check, PathStep compare, InputTypes types)
+	{
+		if (!SymbolEqualityComparer.Default.Equals(check.Member, compare.Member))
+			return false;
+
+		return check.Indexer is not { Instance: { } list } item
+			|| compare.Indexer is not { } other
+			|| (item.Arguments.Length == 1 && InLoopOverEachItem(item, list, item.Arguments[0].Value))
+			|| item.Arguments.Zip(other.Arguments, static (a, b) => a.Value.Syntax.IsEquivalentTo(b.Value.Syntax, topLevel: false)).All(static same => same);
+	}
 
 	// The check of `a ?? b` does not cover a compare of `b` alone, but it covers a compare of the same `a ?? b`.
-	private static bool ChecksExpressionThatHolds(IOperation value, IOperation text, List<ISymbol> path, InputTypes types)
+	private static bool ChecksExpressionThatHolds(IOperation value, IOperation text, List<PathStep> path, InputTypes types)
 	{
-		if (!TextsIn(value, types).Any(inner => IsSameText(inner, text, path, types)))
+		if (!TextsIn(value, types).Any(inner => IsSameText(inner, path, types)))
 			return false;
 
 		var expression = Unwrap(value).Syntax;
@@ -199,23 +220,25 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static IEnumerable<IOperation?> ValuesThatCheckReads(IOperation operation, IOperation root, InputTypes types)
 		=> operation switch
 		{
-			IInvocationOperation call when types.IsCheck(call.TargetMethod) => call.Arguments.SelectMany(argument => new[] { argument.Value, ListThatHoldsItem(argument.Value, root, types) }),
+			IInvocationOperation call when types.IsCheck(call.TargetMethod) => call.Arguments.SelectMany(argument => new[] { argument.Value, ListThatHoldsItem(argument.Value, root) }),
 			IMethodReferenceOperation reference when types.IsCheck(reference.Method) => [SourceOf(reference.Parent)],
 			_ => [],
 		};
 
-	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root, InputTypes types)
+	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root)
 	{
+		var copies = new HashSet<ILocalSymbol>(SymbolEqualityComparer.Default);
+		while (Unwrap(value) is ILocalReferenceOperation { Local: var copy } && copies.Add(copy) && InitializerIfNeverReassigned(copy, root) is { } initializer)
+			value = initializer;
+
 		ISymbol item;
 		switch (Unwrap(value))
 		{
-			case IArrayElementReferenceOperation { Indices.Length: 1 } element when InLoopOverEachItem(element, element.ArrayReference, element.Indices[0], types):
+			case IArrayElementReferenceOperation { Indices.Length: 1 } element when InLoopOverEachItem(element, element.ArrayReference, element.Indices[0]):
 				return element.ArrayReference;
 			case IPropertyReferenceOperation { Property.IsIndexer: true, Instance: { } list, Arguments.Length: 1 } element
-				when InLoopOverEachItem(element, list, element.Arguments[0].Value, types):
+				when InLoopOverEachItem(element, list, element.Arguments[0].Value):
 				return list;
-			case ILocalReferenceOperation local when InitializerIfNeverReassigned(local.Local, root) is { } initializer:
-				return ListThatHoldsItem(initializer, root, types);
 			case IParameterReferenceOperation parameter when !IsAssigned(parameter.Parameter, root):
 				item = parameter.Parameter;
 				break;
@@ -237,21 +260,21 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		return null;
 	}
 
-	private static bool InLoopOverEachItem(IOperation item, IOperation list, IOperation index, InputTypes types)
+	private static bool InLoopOverEachItem(IOperation item, IOperation list, IOperation index)
 	{
-		if (Unwrap(index) is not ILocalReferenceOperation { Local: var local } || PathFromFirstParameter(list, types) is not { } path)
+		if (Unwrap(index) is not ILocalReferenceOperation { Local: var local } || PathOf(list) is not { } path)
 			return false;
 
 		for (var parent = item.Parent; parent is not null; parent = parent.Parent)
 		{
 			if (parent is IForLoopOperation loop && loop.Locals.Contains(local, SymbolEqualityComparer.Default))
-				return ReachesEachItem(loop, local, path, types);
+				return ReachesEachItem(loop, local, path);
 		}
 
 		return false;
 	}
 
-	private static bool ReachesEachItem(IForLoopOperation loop, ILocalSymbol index, List<ISymbol> list, InputTypes types)
+	private static bool ReachesEachItem(IForLoopOperation loop, ILocalSymbol index, List<PathStep> list)
 	{
 		if (loop.AtLoopBottom.Length != 1 || loop.AtLoopBottom[0] is not IExpressionStatementOperation { Operation: var step } || IsAssigned(index, loop.Body))
 			return false;
@@ -268,10 +291,10 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 			1 => IsNumber(start, 0)
 				&& loop.Condition is IBinaryOperation { OperatorKind: BinaryOperatorKind.LessThan } below
 				&& IsIndex(below.LeftOperand, index)
-				&& IsSizeOf(below.RightOperand, list, types),
+				&& IsSizeOf(below.RightOperand, list),
 			-1 => start is IBinaryOperation { OperatorKind: BinaryOperatorKind.Subtract } last
 				&& IsNumber(last.RightOperand, 1)
-				&& IsSizeOf(last.LeftOperand, list, types)
+				&& IsSizeOf(last.LeftOperand, list)
 				&& loop.Condition is IBinaryOperation { OperatorKind: BinaryOperatorKind.GreaterThanOrEqual } above
 				&& IsIndex(above.LeftOperand, index)
 				&& IsNumber(above.RightOperand, 0),
@@ -294,10 +317,10 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static bool IsIndex(IOperation operation, ILocalSymbol index)
 		=> Unwrap(operation) is ILocalReferenceOperation reference && SymbolEqualityComparer.Default.Equals(reference.Local, index);
 
-	private static bool IsSizeOf(IOperation operation, List<ISymbol> list, InputTypes types)
+	private static bool IsSizeOf(IOperation operation, List<PathStep> list)
 		=> Unwrap(operation) is IPropertyReferenceOperation { Property.Name: "Length" or "Count", Instance: { } owner }
-			&& PathFromFirstParameter(owner, types) is { } path
-			&& path.SequenceEqual(list, SymbolEqualityComparer.Default);
+			&& PathOf(owner) is { } path
+			&& path.Select(static step => step.Member).SequenceEqual(list.Select(static step => step.Member), SymbolEqualityComparer.Default);
 
 	private static IOperation? InitializerIfNeverReassigned(ILocalSymbol local, IOperation root)
 		=> IsAssigned(local, root)
@@ -341,6 +364,12 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	{
 		var list = Unwrap(collection);
 		return list is IConditionalAccessInstanceOperation instance && ReceiverOf(instance) is { } receiver ? Unwrap(receiver) : list;
+	}
+
+	private sealed class PathStep(ISymbol member, IPropertyReferenceOperation? indexer)
+	{
+		public ISymbol Member { get; } = member;
+		public IPropertyReferenceOperation? Indexer { get; } = indexer;
 	}
 
 	private sealed class InputTypes(

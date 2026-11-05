@@ -309,6 +309,31 @@ public class TelemetryNameAnalyzerTests
     }
 
     [Test]
+    [Arguments("""Empty tags = tags; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""Empty first = first; Empty tags = first; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    public async Task a_tags_local_that_refers_to_itself_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""(string, object?)[] tags = tags; Telemetry.AddEvent(tags, "lock.acquired");""", "CS0165")]
+    [Arguments("""(string, object?)[] tags = other; (string, object?)[] other = tags; Telemetry.AddEvent(tags, "lock.acquired");""", "CS0841")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = pairs; _ = new TagList(pairs);""", "CS0165")]
+    public async Task a_tags_local_that_does_not_compile_because_it_refers_to_itself_does_not_stop_the_analyzer(string statement, string compileError)
+    {
+        // Act
+        var diagnostics = await Run(Method(statement), compileError);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task a_constant_field_that_breaks_the_names_table_gets_fsttel004()
     {
         // Act
@@ -328,8 +353,15 @@ public class TelemetryNameAnalyzerTests
     private static string Text(Diagnostic diagnostic)
         => diagnostic.Location.SourceTree!.GetText().ToString(diagnostic.Location.SourceSpan);
 
-    private static Task<ImmutableArray<Diagnostic>> RunInMethod(string statement)
-        => Run($$"""
+    private static Task<ImmutableArray<Diagnostic>> RunInMethod(string statement) => Run(Method(statement));
+
+    private static string Method(string statement)
+        => $$"""
+            public readonly struct Empty
+            {
+                public static implicit operator (string, object?)[](Empty empty) => [];
+            }
+
             public static class Sample
             {
                 private static readonly ILogger Logger = Log.ForContext(typeof(Sample));
@@ -341,9 +373,9 @@ public class TelemetryNameAnalyzerTests
 
                 private static (string, object?)[] Tags() => [];
             }
-            """);
+            """;
 
-    private static async Task<ImmutableArray<Diagnostic>> Run(string source)
+    private static async Task<ImmutableArray<Diagnostic>> Run(string source, string? compileError = null)
     {
         var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
@@ -357,7 +389,11 @@ public class TelemetryNameAnalyzerTests
                 """, path: "Source.cs")],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
-        compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        var compileErrors = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.Id);
+        if (compileError is null)
+            compileErrors.ShouldBeEmpty();
+        else
+            compileErrors.ShouldContain(compileError);
 
         var exceptions = new List<Exception>();
         var options = new CompilationWithAnalyzersOptions(

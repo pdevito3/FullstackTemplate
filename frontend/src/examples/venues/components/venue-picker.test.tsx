@@ -255,6 +255,23 @@ test('sends one request for a page 2 that fails, says so in the list and not in 
   expect(pageTwoRequests()).toBe(2)
 })
 
+test('a press on the failed page keeps the pick and asks again', async () => {
+  const { screen, input } = await renderPicker(firstPage[0].id, pageTwoFails)
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  const content = document.querySelector<HTMLElement>('[data-slot="combobox-content"]')!
+  await Promise.all(content.getAnimations().map((animation) => animation.finished))
+  const pageTwoRequests = countRequests(pageTwoPath)
+  await commands.answerRequests([pageTwoWorks])
+
+  await screen.getByRole('option', failedRow).click()
+
+  await expect.element(screen.getByRole('option', { name: 'Venue 11' })).toBeInTheDocument()
+  await expect.element(input).toHaveValue(firstPage[0].name)
+  await expect.element(screen.getByRole('option', { name: firstPage[0].name, exact: true })).toHaveAttribute('aria-selected', 'true')
+  expect(pageTwoRequests()).toBe(1)
+})
+
 test('sends no request when the list closes and opens after a page 2 that fails', async () => {
   const { screen } = await renderPicker('', pageTwoFails)
   const toggle = screen.getByRole('button', { name: /show suggestions/i })

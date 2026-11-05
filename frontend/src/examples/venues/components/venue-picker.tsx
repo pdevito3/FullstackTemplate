@@ -74,7 +74,7 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
       onChange={handleSelectionChange}
       onInputChange={sendText}
       onOpenChange={(isOpen) => {
-        if (isOpen && results.isError) results.refetch()
+        if (isOpen && results.isError && !results.isFetchNextPageError) results.refetch()
       }}
       onBlur={onBlur}
       isInvalid={!!errorMessage}
@@ -98,7 +98,12 @@ export function VenuePicker({ ref, value, onChange, onBlur, errorMessage }: Venu
             )}
           </Collection>
           {results.hasNextPage && (
-            <ComboboxLoadMore isLoading={results.isFetchingNextPage} onLoadMore={() => results.fetchNextPage()} />
+            <ComboboxLoadMore
+              isLoading={results.isFetchingNextPage}
+              isFailed={results.isFetchNextPageError}
+              failedText="More venues did not load."
+              onLoadMore={() => results.fetchNextPage()}
+            />
           )}
         </ComboboxList>
       </ComboboxContent>

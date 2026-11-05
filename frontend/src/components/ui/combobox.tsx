@@ -30,6 +30,7 @@ import {
   useLocale,
   type Key,
 } from "@animate-ui/react/primitives/react-aria"
+import { announce } from "@react-aria/live-announcer"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
@@ -46,11 +47,14 @@ interface ComboboxSettings {
   ariaLabelOnly?: string
   allowsCustomValue: boolean
   isReadOnly: boolean
+  /** The time before which the list takes no press. See `ComboboxLoadMore`. */
+  pressesResumeAt: React.RefObject<number>
 }
 
 const ComboboxSettingsContext = React.createContext<ComboboxSettings>({
   allowsCustomValue: false,
   isReadOnly: false,
+  pressesResumeAt: { current: 0 },
 })
 
 function Combobox<T extends object, M extends "single" | "multiple" = "single">(
@@ -60,6 +64,7 @@ function Combobox<T extends object, M extends "single" | "multiple" = "single">(
     ariaLabelOnly: props["aria-labelledby"] ? undefined : props["aria-label"],
     allowsCustomValue: props.allowsCustomValue ?? false,
     isReadOnly: props.isReadOnly ?? false,
+    pressesResumeAt: React.useRef(0),
   }
   return (
     // The same guard as in Select: in an overlay, the hidden copy that the
@@ -187,6 +192,52 @@ function usePickTypedOption() {
   }
 }
 
+const RETRY_ROW_ID = "combobox-load-more-retry"
+
+/** The second press of a double press comes up to 500 ms after the first. */
+const DOUBLE_PRESS_MS = 600
+
+/**
+ * React Aria closes the list after a press or an Enter on an action option, and the close drops the typed search. The
+ * retry row of `ComboboxLoadMore` asks for the page of that search, so the list must stay open. A press tells the list
+ * with this event, which the row stops. Enter runs the action of the row in `useEnterAfterRetry`.
+ */
+function keepListOpenAfterPress(row: HTMLElement | null) {
+  const stop = (e: Event) => e.stopPropagation()
+  row?.addEventListener("react-aria-item-action", stop)
+  return () => row?.removeEventListener("react-aria-item-action", stop)
+}
+
+/**
+ * Enter on the retry row asks for the page. A held Enter asks once. React Aria ignores a repeat of Enter and leaves it
+ * to the browser, which submits the form, so a repeat stops here. A second Enter after the row leaves would pick the
+ * option that React Aria made active in its place. Another key is the user who has seen the new list, so it ends the wait.
+ */
+function useEnterAfterRetry() {
+  const state = React.useContext(ComboBoxStateContext)
+  const { pressesResumeAt } = React.useContext(ComboboxSettingsContext)
+
+  return (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!state?.isOpen) {
+      return
+    }
+    if (e.key !== "Enter") {
+      pressesResumeAt.current = 0
+      return
+    }
+    const isOnRow = state.selectionManager.focusedKey === RETRY_ROW_ID
+    const isSecondPress = e.repeat || Date.now() < pressesResumeAt.current
+    if (!isOnRow && !isSecondPress) {
+      return
+    }
+    e.preventDefault()
+    e.stopPropagation()
+    if (isOnRow && !isSecondPress) {
+      state.collection.getItem(RETRY_ROW_ID)?.props?.onAction?.()
+    }
+  }
+}
+
 function ComboboxInput({
   className,
   children,
@@ -199,11 +250,13 @@ function ComboboxInput({
   showClear?: boolean
 }) {
   const pickTypedOption = usePickTypedOption()
+  const enterAfterRetry = useEnterAfterRetry()
   return (
     <InputGroup className={cn("w-auto", className)}>
       <InputGroupInput
         onKeyDownCapture={(e) => {
           pickTypedOption(e)
+          enterAfterRetry(e)
           onKeyDownCapture?.(e)
         }}
         {...props}
@@ -276,7 +329,7 @@ function ComboboxList<T extends object>({
   className,
   ...props
 }: ListBoxProps<T>) {
-  const { ariaLabelOnly } = React.useContext(ComboboxSettingsContext)
+  const { ariaLabelOnly, pressesResumeAt } = React.useContext(ComboboxSettingsContext)
   // React Aria names the list "Suggestions" and the label of the Combobox. With
   // only an aria-label, it takes the trigger button as the label.
   const labelProps = ariaLabelOnly
@@ -286,6 +339,15 @@ function ComboboxList<T extends object>({
     <ListBoxPrimitive
       data-slot="combobox-list"
       {...labelProps}
+      ref={(list: HTMLDivElement | null) => {
+        // A press starts on pointerdown, and the list does not pass a capture handler on to the DOM. With no start, the
+        // press does nothing, and the input keeps the focus.
+        const stopSecondPress = (e: Event) => {
+          if (Date.now() < pressesResumeAt.current) e.stopPropagation()
+        }
+        list?.addEventListener("pointerdown", stopSecondPress, { capture: true })
+        return () => list?.removeEventListener("pointerdown", stopSecondPress, { capture: true })
+      }}
       // React Aria makes the option under the pointer the active option, and
       // Enter and Tab pick the active option. The user who types does not look
       // at the pointer, so only the arrow keys make an option active.
@@ -309,6 +371,7 @@ type ComboboxItemProps<T extends object = object> = Omit<
   ListBoxItemProps<T>,
   "children" | "textValue"
 > &
+  React.RefAttributes<HTMLDivElement> &
   (
     | { children: string; textValue?: string }
     | {
@@ -355,15 +418,72 @@ function ComboboxItem<T extends object>({
  *
  * React Aria calls `onLoadMore` again each time the collection changes, and a change of `isLoading` changes the
  * collection. A second `fetchNextPage()` stops the first request and sends it again, so no call goes out while
- * `isLoading` is true.
+ * `isLoading` is true. A failed page would send its request again in the same way, so after a failure only the user
+ * asks again, with an option that the arrow keys and a screen reader can reach. The option stays while the page loads
+ * again, so the active option stays in place.
+ *
+ * A fast answer puts an option under the pointer and makes it the active option between the two presses of a double
+ * press, so the list takes no press for a short time after a press on the option and after the page loads.
  */
 function ComboboxLoadMore({
   className,
   children = "Loading more",
   isLoading,
+  isFailed,
+  failedText,
   onLoadMore,
   ...props
-}: ListBoxLoadMoreItemProps & { isLoading: boolean }) {
+}: Omit<ListBoxLoadMoreItemProps, "children"> & {
+  children?: string
+  isLoading: boolean
+  isFailed: boolean
+  failedText: string
+}) {
+  const { pressesResumeAt } = React.useContext(ComboboxSettingsContext)
+  const showsFailure = isFailed && !isLoading
+  const isAskingAgain = isFailed && isLoading
+
+  React.useEffect(() => {
+    if (showsFailure) {
+      announce(`${failedText} Go to the end of the list to try again.`)
+    }
+  }, [showsFailure, failedText])
+
+  React.useEffect(() => {
+    if (!isAskingAgain) {
+      return
+    }
+    return () => {
+      pressesResumeAt.current = Date.now() + DOUBLE_PRESS_MS
+    }
+  }, [isAskingAgain, pressesResumeAt])
+
+  if (isFailed) {
+    return (
+      <ComboboxItem
+        ref={keepListOpenAfterPress}
+        id={RETRY_ROW_ID}
+        textValue={isLoading ? children : `${failedText} Try again`}
+        onAction={() => {
+          if (isLoading) return
+          pressesResumeAt.current = Date.now() + DOUBLE_PRESS_MS
+          onLoadMore?.()
+        }}
+        className={cn("px-1.5", isLoading ? "text-muted-foreground" : "text-destructive", className)}
+      >
+        <span className="flex-1 text-center">
+          {isLoading ? (
+            children
+          ) : (
+            <>
+              {failedText} <span className="font-medium underline">Try again</span>
+            </>
+          )}
+        </span>
+      </ComboboxItem>
+    )
+  }
+
   return (
     <ListBoxLoadMoreItemPrimitive
       data-slot="combobox-load-more"

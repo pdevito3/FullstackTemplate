@@ -1,6 +1,6 @@
 import { Collection, Dialog, type ComboBoxProps, type Key } from 'react-aria-components'
 import { useState } from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { commands, page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 
@@ -560,6 +560,8 @@ function LoadMoreList({ finished, onLoadMore }: { finished: number; onLoadMore: 
           <Collection items={[{ id: 'vue' }]}>{({ id }) => <ComboboxItem id={id}>Vue</ComboboxItem>}</Collection>
           <ComboboxLoadMore
             isLoading={asked > finished}
+            isFailed={false}
+            failedText="More frameworks did not load."
             onLoadMore={() => {
               onLoadMore()
               setAsked((count) => count + 1)
@@ -584,4 +586,214 @@ test('ComboboxLoadMore asks for more one time while isLoading is true, and asks 
   await screen.rerender(<LoadMoreList finished={1} onLoadMore={onLoadMore} />)
 
   await expect.poll(() => onLoadMore.mock.calls.length).toBe(2)
+})
+
+function FailedLoadMoreList({
+  isLoading,
+  onLoadMore,
+  onChange,
+  failedText = 'More frameworks did not load.',
+}: {
+  isLoading: boolean
+  onLoadMore: () => void
+  onChange?: (key: Key | null) => void
+  failedText?: string
+}) {
+  return (
+    // The items prop turns off the filter of React Aria, as in a picker that searches on the Server.
+    <Combobox aria-label="Framework" items={[{ id: 'vue' }]} onChange={onChange}>
+      <ComboboxInput />
+      <ComboboxContent>
+        <ComboboxList>
+          <Collection items={[{ id: 'vue' }]}>{({ id }) => <ComboboxItem id={id}>Vue</ComboboxItem>}</Collection>
+          <ComboboxLoadMore isLoading={isLoading} isFailed failedText={failedText} onLoadMore={onLoadMore} />
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
+
+const failedRow = { name: 'More frameworks did not load. Try again' }
+
+test('ComboboxLoadMore asks for nothing after a failure, and asks once for each Enter on its option', async () => {
+  const onLoadMore = vi.fn()
+  const onChange = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} onChange={onChange} />)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await observersHaveRun()
+  expect(onLoadMore).not.toHaveBeenCalled()
+
+  await userEvent.keyboard('{ArrowUp}{Enter}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onChange).not.toHaveBeenCalled()
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+})
+
+test('ComboboxLoadMore asks for nothing on Enter on its option while the page loads again', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading onLoadMore={onLoadMore} />)
+
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}{Enter}')
+
+  await expect.element(screen.getByRole('option', { name: 'Loading more' })).toBeVisible()
+  expect(onLoadMore).not.toHaveBeenCalled()
+})
+
+test('ComboboxLoadMore tells a screen reader that the page failed and where to try again', async () => {
+  await render(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} />)
+
+  await expect
+    .poll(() => document.querySelector('[data-live-announcer]')?.textContent)
+    .toContain('More frameworks did not load. Go to the end of the list to try again.')
+})
+
+test('a press on the option of ComboboxLoadMore asks once and keeps the list open and the typed text', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await userEvent.fill(input, 'Vue')
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  const content = document.querySelector<HTMLElement>('[data-slot="combobox-content"]')!
+  await Promise.all(content.getAnimations().map((animation) => animation.finished))
+
+  await screen.getByRole('option', failedRow).click()
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await expect.element(input).toHaveValue('Vue')
+})
+
+function everyReadOfTheClockIsLater() {
+  let now = Date.now()
+  const clock = vi.spyOn(Date, 'now').mockImplementation(() => (now += 1000))
+  onTestFinished(() => clock.mockRestore())
+}
+
+function stopTheClock() {
+  // The clock stands still, so a slow machine cannot move a second press past the end of a double press.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+}
+
+async function renderFailedListInForm() {
+  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+  const onLoadMore = vi.fn()
+  const screen = await render(
+    <form onSubmit={onSubmit}>
+      <FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />
+      <button type="submit">Save</button>
+    </form>,
+  )
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(screen.getByRole('combobox', { name: 'Framework' })).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+  return { screen, onSubmit, onLoadMore }
+}
+
+test('Enter on the option of ComboboxLoadMore does not submit the form', async () => {
+  const { onSubmit, onLoadMore } = await renderFailedListInForm()
+
+  await userEvent.keyboard('{Enter}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onSubmit).not.toHaveBeenCalled()
+})
+
+test('a held Enter on the option of ComboboxLoadMore asks once and does not submit the form', async () => {
+  const { screen, onSubmit, onLoadMore } = await renderFailedListInForm()
+  everyReadOfTheClockIsLater()
+
+  await userEvent.keyboard('{Enter>5/}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onSubmit).not.toHaveBeenCalled()
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+})
+
+test('a second Enter on the option of ComboboxLoadMore asks only after the time of a double press', async () => {
+  stopTheClock()
+  const { onLoadMore } = await renderFailedListInForm()
+
+  await userEvent.keyboard('{Enter}{Enter}')
+  expect(onLoadMore).toHaveBeenCalledOnce()
+
+  vi.advanceTimersByTime(600)
+  await userEvent.keyboard('{Enter}')
+  expect(onLoadMore).toHaveBeenCalledTimes(2)
+})
+
+test('Enter submits the form just after a retry when the list has closed', async () => {
+  stopTheClock()
+  const { screen, onSubmit, onLoadMore } = await renderFailedListInForm()
+  await userEvent.keyboard('{Enter}')
+  expect(onLoadMore).toHaveBeenCalledOnce()
+
+  window.dispatchEvent(new Event('scroll'))
+  await expect.element(screen.getByRole('option', failedRow)).not.toBeInTheDocument()
+  await userEvent.keyboard('{Enter}')
+
+  expect(onLoadMore).toHaveBeenCalledOnce()
+  expect(onSubmit).toHaveBeenCalledOnce()
+})
+
+test('only Enter on the option of ComboboxLoadMore asks for the page', async () => {
+  const onLoadMore = vi.fn()
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={onLoadMore} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', failedRow).element().id)
+
+  await userEvent.keyboard('{ArrowUp}')
+
+  await expect.element(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Vue' }).element().id)
+  expect(onLoadMore).not.toHaveBeenCalled()
+})
+
+test('ComboboxLoadMore tells a screen reader only when the page has failed, and not while it loads again', async () => {
+  const failedText = 'More plugins did not load.'
+  const announced = () => document.querySelector('[data-live-announcer]')?.textContent ?? ''
+  const screen = await render(<FailedLoadMoreList isLoading onLoadMore={vi.fn()} failedText={failedText} />)
+  await observersHaveRun()
+
+  expect(announced()).not.toContain(failedText)
+
+  await screen.rerender(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} failedText={failedText} />)
+
+  await expect.poll(announced).toContain(failedText)
+})
+
+test('the option of ComboboxLoadMore stays the active option while the page loads again, with no failure color', async () => {
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+  await userEvent.keyboard('{ArrowUp}')
+  await expect.element(screen.getByRole('option', failedRow)).toHaveClass('text-destructive')
+
+  await screen.rerender(<FailedLoadMoreList isLoading onLoadMore={vi.fn()} />)
+
+  const loading = screen.getByRole('option', { name: 'Loading more' })
+  await expect.element(loading).toBeVisible()
+  await expect.element(input).toHaveAttribute('aria-activedescendant', loading.element().id)
+  await expect.element(loading).not.toHaveClass('text-destructive')
+})
+
+test('the option of ComboboxLoadMore adds no space to the list', async () => {
+  const screen = await render(<FailedLoadMoreList isLoading={false} onLoadMore={vi.fn()} />)
+  await userEvent.click(screen.getByRole('button', { name: /show suggestions/i }))
+  await expect.element(screen.getByRole('option', failedRow)).toBeVisible()
+
+  const list = screen.getByRole('listbox').element()
+
+  expect(list.scrollHeight).toBe(list.clientHeight)
 })

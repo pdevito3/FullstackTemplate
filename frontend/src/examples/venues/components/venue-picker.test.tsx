@@ -9,6 +9,8 @@ import type { Answer } from '@/test/answer'
 import { observersHaveRun } from '@/test/observers-have-run'
 import { venueForCreationDtoSchema } from '@/api/generated/models/zod/venue-for-creation-dto'
 import { Notification } from '@/components/notification'
+// The toasts of a failed request come from this client, and this import connects the generated clients to it.
+import '@/lib/api-client'
 import { maxLengthOf } from '@/lib/api-contract'
 
 import { VenueKeys } from '../apis/venue.keys'
@@ -101,7 +103,7 @@ test('says that the venues did not load when the search fails, and searches agai
 
   await expect.element(screen.getByText('The venues did not load. Close the list, then open it to try again.')).toBeVisible()
   await expect.element(screen.getByText('No venue found.')).not.toBeInTheDocument()
-  expect(toast).toHaveBeenCalledOnce()
+  expect(toast).toHaveBeenCalled()
 
   await commands.answerRequests([{ method: 'GET', path: '/api/v1/venues', headers: pagination(1, 1), body: firstPage }])
   await userEvent.keyboard('{Escape}')

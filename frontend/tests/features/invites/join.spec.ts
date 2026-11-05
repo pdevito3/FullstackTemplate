@@ -501,6 +501,29 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     await expect(join.at.toasts).toHaveCount(0)
   })
 
+  for (const [status, problem, message] of [
+    ['404', aProblem().notFound(notValid), notValid],
+    ['410', aProblem().gone(usedOrRevoked), usedOrRevoked],
+  ] as const) {
+    test(`forgets the token after a ${status} of the claim, and then shows what a tab with no token shows`, { tag: '@INV-3' }, async ({ page, api }) => {
+      api.mock(invitesApi.previewIs(aPreview()), invitesApi.claimFails(problem))
+      const join = joinPage(page)
+      await join.openLink(token)
+      await expect(join.at.form).toBeVisible()
+
+      await join.claim()
+
+      await expect(join.at.alert(message)).toBeVisible()
+      expect(await join.storedToken()).toBeNull()
+
+      await join.reloadWithNoPreview()
+
+      await expect(join.at.alert(linkNeeded)).toBeVisible()
+      await expect(join.at.form).toHaveCount(0)
+      expect(api.all('post', invitesPaths.claim)).toHaveLength(1)
+    })
+  }
+
   test('holds long names and emails in a narrow window', { tag: '@INV-3' }, async ({ page, api }) => {
     await page.setViewportSize({ width: 320, height: 640 })
     const tenantName = `Acme ${'Longname'.repeat(20)}`

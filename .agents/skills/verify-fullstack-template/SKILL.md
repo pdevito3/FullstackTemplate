@@ -99,6 +99,7 @@ Recipe rules. Each rule stops a recipe that passes one time and fails on the nex
 - Take "today" from the time zone of the data, never from the clock of the machine. A recipe that needs a day books its own data for that day. It does not walk from today, because the seed data does not cover each day, and a time after local midnight may not have come yet at the place.
 - Wait for a named ready state with `expect(...)`: a heading, a row, a response, or a button that is enabled again. Never wait a fixed time.
 - After an action that changes a row, read the row again before the next edit. The response or a reload gives the new `version`.
+- In the Add Filter menu, type in `Search properties` to find a property. Do not click an item that is out of view. A click scrolls its target into view, and the page then moves under the pointer that rests on the menu. Another item takes the hover, so React Aria closes the open submenu, and the menu stays open with no submenu. This is a limit of the test tool, not a fault of the product or of a fixed clock. A person cannot scroll that page, because it has `overflow: hidden` while the menu is open.
 
 A recipe is an ES module with a default export. `browse.mjs` gives it these values:
 

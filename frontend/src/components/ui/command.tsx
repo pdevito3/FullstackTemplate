@@ -196,7 +196,7 @@ function CommandSeparator({ className, ...props }: SeparatorProps) {
  */
 type CommandItemProps<T extends object = object> = Omit<
   MenuItemProps<T>,
-  "children" | "textValue"
+  "children" | "textValue" | "render"
 > &
   (
     | { children: string; textValue?: string }
@@ -204,6 +204,34 @@ type CommandItemProps<T extends object = object> = Omit<
         children?: Exclude<MenuItemProps<T>["children"], string>
         textValue: string
       }
+  )
+
+function ownsFocus(item: Element) {
+  const focused = item.ownerDocument.activeElement
+  if (!focused) return false
+  return (
+    item.closest('[data-slot="command"]')?.contains(focused) ||
+    focused === item.closest('[role="dialog"]')
+  )
+}
+
+// React Aria moves the virtual focus to a hovered menu item, and its Autocomplete then moves
+// the real focus to the input. A Command that does not own the focus must not start this. If it
+// does, a pointer that comes to rest on an item takes the focus from the control that has it, or
+// from the trigger that gets the focus back when an overlay closes under a mouse click.
+function ignoreHoverWithoutFocus<E extends Element>(
+  onPointerEnter?: React.PointerEventHandler<E>
+): React.PointerEventHandler<E> {
+  return (event) => {
+    if (ownsFocus(event.currentTarget)) onPointerEnter?.(event)
+  }
+}
+
+const renderCommandItem: NonNullable<MenuItemProps["render"]> = (props) =>
+  "href" in props ? (
+    <a {...props} onPointerEnter={ignoreHoverWithoutFocus(props.onPointerEnter)} />
+  ) : (
+    <div {...props} onPointerEnter={ignoreHoverWithoutFocus(props.onPointerEnter)} />
   )
 
 function CommandItem<T extends object>({
@@ -215,10 +243,13 @@ function CommandItem<T extends object>({
   return (
     <MenuItem
       {...props}
+      render={renderCommandItem}
       data-slot="command-item"
       className={composeRenderProps(className, (className) =>
         cn(
           "group/command-item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-focused:bg-muted data-focused:text-foreground data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-focused:*:[svg]:text-foreground",
+          // Without the focus, a hover does not set data-focused, so the item shows the same highlight from the CSS hover.
+          "in-[[data-slot=command]:not(:focus-within)]:hover:bg-muted in-[[data-slot=command]:not(:focus-within)]:hover:text-foreground in-[[data-slot=command]:not(:focus-within)]:hover:*:[svg]:text-foreground",
           className
         )
       )}
@@ -244,7 +275,7 @@ function CommandShortcut({
     <span
       data-slot="command-shortcut"
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground group-data-focused/command-item:text-foreground group-data-selected/command-item:text-foreground",
+        "ml-auto text-xs tracking-widest text-muted-foreground group-data-focused/command-item:text-foreground group-data-selected/command-item:text-foreground in-[[data-slot=command]:not(:focus-within)]:group-hover/command-item:text-foreground",
         className
       )}
       {...props}

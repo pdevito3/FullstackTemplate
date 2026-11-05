@@ -292,8 +292,8 @@ test.describe('a signed-in user whose lookup the Server refuses', () => {
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
     await expect(start.at.lookupFailure).toContainText(refusal)
-    await start.goToAbout()
-    await expect(start.at.checkFailure).toContainText(refusal)
+    await start.goToAboutAndAskAgain()
+    await expect(start.at.tryAgain).toBeEnabled()
 
     const answer = api.hold(membershipApi.lookupRefuses(refusal))
     await start.goBackTo('/start-tenant')

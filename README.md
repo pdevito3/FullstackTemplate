@@ -88,6 +88,14 @@ This starts:
 
 The UI starts after the BFF and the API are healthy, and the BFF starts after the auth provider is healthy. Until then, the dashboard shows the UI as `Waiting`.
 
+### Container runtime
+
+The stack runs its containers in Docker or Podman. To select one, set the environment variable `ASPIRE_CONTAINER_RUNTIME` to `docker` or `podman`. To check the version on your machine, run `dotnet aspire doctor`.
+
+Podman must be version 5.0 or later. Podman 4, for example the 4.9.3 that `apt` installs on Ubuntu 24.04, is below the minimum of Aspire. The Aspire container tunnel then does not start, and no resource logs an error. The BFF and each provider container that gets the BFF container endpoint stay in `Waiting`.
+
+If you cannot update Podman, set `ASPIRE_ENABLE_CONTAINER_TUNNEL=false`. The stack then starts on Podman 4.9.3, and a login works. But the provider container cannot connect to the BFF, so a back-channel logout does not reach the BFF.
+
 ### Ports
 
 A normal run uses the same ports at each start. All of them are in the block 24700 to 24799, which no common tool uses as a default. Each group of ten ports has one part of the stack:

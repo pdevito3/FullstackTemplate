@@ -260,7 +260,7 @@ test('reports a word that passes a heading and its parent once, as a fault of th
 const focusFaultsAfterPress = async (onPress) => {
   const page = await browser.newPage()
   await page.setContent(`<!doctype html><html><body>
-    <button>Join tenant</button>
+    <div role="dialog"><button>Join tenant</button></div>
     <h1 tabindex="-1">Home</h1>
     <script>document.querySelector('button').addEventListener('click', ({ target: button }) => { ${onPress} })</script>
   </body></html>`)
@@ -272,12 +272,41 @@ const focusFaultsAfterPress = async (onPress) => {
   return found.map(({ kind, how }) => ({ kind, how }))
 }
 
+const headingFocusAfter = (ms) => `setTimeout(() => document.querySelector('h1').focus(), ${ms})`
+const removed = [{ kind: 'focus goes to the body', how: 'the focused element was removed' }]
+
 test('reports a focus that stays on the body after the focused element is removed', async () => {
-  assert.deepEqual(await focusFaultsAfterPress('button.remove()'), [{ kind: 'focus goes to the body', how: 'the focused element was removed' }])
+  assert.deepEqual(await focusFaultsAfterPress('button.remove()'), removed)
 })
 
-test('does not report a focus that moves to the heading 90 ms after the focused element is removed', async () => {
-  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); setTimeout(() => document.querySelector('h1').focus(), 90)`), [])
+for (const ms of [500, 900]) {
+  test(`does not report a focus that moves to the heading ${ms} ms after the focused element is removed`, async () => {
+    assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(ms)}`), [])
+  })
+}
+
+test('reports a focus that moves to the heading 1500 ms after the focused element is removed', async () => {
+  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(1500)}`), removed)
+})
+
+test('reports a focus that goes to the heading and returns to the body in a blur', async () => {
+  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(200)}; setTimeout(() => document.querySelector('h1').blur(), 250)`), removed)
+})
+
+test('reports a focus that goes to the heading and returns to the body when the heading is removed with no blur', async () => {
+  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(200)}; setTimeout(() => document.querySelector('h1').remove(), 250)`), removed)
+})
+
+test('reports a focus that stays on the body after the focused element becomes inert', async () => {
+  assert.deepEqual(await focusFaultsAfterPress('button.parentElement.inert = true'), [{ kind: 'focus goes to the body', how: 'the focused element became inert' }])
+})
+
+test('reports a focus that stays on the body after the focused element is blurred and hidden', async () => {
+  assert.deepEqual(await focusFaultsAfterPress(`button.blur(); button.style.display = 'none'`), [{ kind: 'focus goes to the body', how: 'the focused element was hidden' }])
+})
+
+test('reports a focus that stays on the body after a dialog closes and returns no focus', async () => {
+  assert.deepEqual(await focusFaultsAfterPress('button.parentElement.remove()'), removed)
 })
 
 test('reports a focus that stays on the body when the button that lost it is enabled again 300 ms later', async () => {

@@ -79,6 +79,24 @@ public class GetUserByIdentifierDuringDeleteTests : TestBase
         error.Message.ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
+    // The compare is exact. A variant of the own identifier is another identifier, so it keeps the permission check.
+    [Test]
+    [Arguments("upper case")]
+    [Arguments("spaces")]
+    public async Task user_who_reads_a_variant_of_their_own_identifier_during_the_delete_of_their_record_is_forbidden(string variant)
+    {
+        // Arrange
+        var (admin, member, _) = await AddTenantAsync();
+        var identifier = variant == "spaces" ? $" {member.Identifier} " : member.Identifier.ToUpperInvariant();
+
+        // Act
+        var error = await ReadDuringDeleteAsync<ForbiddenAccessException>(BeforeCallerLoad, member, identifier,
+            rival => rival.SendAsync(new DeleteUser.Command(member.Id)), admin);
+
+        // Assert
+        error.Message.ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
+    }
+
     private static async Task<TException> ReadDuringDeleteAsync<TException>(
         string step, User caller, string identifier, Func<TestingServiceScope, Task> delete, User admin)
         where TException : Exception

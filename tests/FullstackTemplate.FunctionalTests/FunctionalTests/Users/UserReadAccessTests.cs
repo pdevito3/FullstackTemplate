@@ -154,6 +154,23 @@ public class UserReadAccessTests : TestBase
         await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
     }
 
+    // A user with no record and no tenant sees no rows, so the 404 says nothing about the identifier of another user
+    [Test]
+    public async Task user_with_no_user_record_gets_not_found_for_the_identifier_of_another_user()
+    {
+        // Arrange
+        var (other, _) = await AddTwoUsersAsync("Admin", "User");
+        FactoryClient.SignInAsAppUser($"new-{Guid.NewGuid()}");
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(other.Identifier));
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await result.Content.ReadFromJsonAsync<ProblemDetails>()).ShouldNotBeNull().Detail
+            .ShouldBe("User was not found.");
+    }
+
     // The same delete as the test above, so this test also runs alone. The caller is an outsider with a cached tenant,
     // as when a delete commits before the request loads the caller.
     [Test]

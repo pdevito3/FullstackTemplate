@@ -42,6 +42,12 @@ const faults = [
     element: 'option',
   },
   {
+    name: 'a word that does not wrap and runs past its box, with no box that scrolls to it',
+    html: `<div style="width:100px"><span data-slot="badge" style="white-space:nowrap">${word}</span></div>`,
+    kind: 'text runs past its box',
+    element: 'badge',
+  },
+  {
     name: 'a bar that is fixed past the edge of the window',
     html: `<div data-slot="bar" style="position:fixed;left:0;top:0;width:900px">${word}</div>`,
     kind: 'text is cut',
@@ -95,6 +101,8 @@ const planned = [
   { name: 'a wide table in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><table><tr><td style="white-space:nowrap">${word}</td></tr></table></div>` },
   { name: 'a line of code that scrolls sideways', html: `<pre style="width:100px;overflow-x:auto"><code>${word}</code></pre>` },
   { name: 'a line that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p style="white-space:nowrap">${word}</p></div>` },
+  { name: 'an inline child that does not wrap in a box that scrolls sideways', html: `<div style="width:100px;overflow-x:auto"><p><span style="white-space:nowrap">${word}</span></p></div>` },
+  { name: 'a separator that hangs past its box', html: `<div style="width:4px"><span style="white-space:nowrap;padding:0 6px">|</span></div>` },
   { name: 'text that only a screen reader reads', html: `<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">${word}</span>` },
   { name: 'a collapsed label that is all outside its clip', html: `<div style="width:40px;overflow:hidden;display:flex"><span style="margin-left:60px;white-space:nowrap">${word}</span></div>` },
 ]

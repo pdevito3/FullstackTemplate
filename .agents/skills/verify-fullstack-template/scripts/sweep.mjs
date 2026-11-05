@@ -239,18 +239,20 @@ export function markLayoutFaults() {
 
   const headings = 'h1, h2, h3, h4, h5, h6, [role=heading]'
   // A text that does not wrap on purpose, in a box that scrolls sideways, is reachable.
-  const scrollsSidewaysToIt = (box) => {
-    if (!/^(nowrap|pre)/.test(getComputedStyle(box).whiteSpace)) return false
-    for (let node = box.parentElement; node && node !== document.body; node = node.parentElement) {
+  const scrollsSidewaysToIt = (el) => {
+    if (!/^(nowrap|pre)/.test(getComputedStyle(el).whiteSpace)) return false
+    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
       if (scrolls(getComputedStyle(node).overflowX)) return true
     }
     return false
   }
   // A heading has its own check below. A box that hides or scrolls its overflow has the check of the clip.
+  // A separator, such as the | of a filter badge, loses nothing when it hangs past its box.
   const overrunOfItsBox = (el, text) => {
+    if (!text.some((node) => /[\p{L}\p{N}]/u.test(node.textContent))) return null
     let box = el
     while (box.parentElement && isInline(box)) box = box.parentElement
-    if (!box.offsetWidth || box.closest(headings) || getComputedStyle(box).overflowX !== 'visible' || scrollsSidewaysToIt(box)) return null
+    if (!box.offsetWidth || box.closest(headings) || getComputedStyle(box).overflowX !== 'visible' || scrollsSidewaysToIt(el)) return null
     const edges = contentEdges(box)
     const shown = textRect(text)
     const overrun = Math.max(0, shown.right - edges.right) + Math.max(0, edges.left - shown.left)

@@ -66,7 +66,8 @@ jobs:
       DCP_DIAGNOSTICS_LOG_FOLDER: ${{ github.workspace }}/stack-logs/dcp
       DCP_DIAGNOSTICS_LOG_LEVEL: debug
       # The runner has Docker and Podman. With no setting, Aspire probes both and can pick Podman when the Docker probe
-      # is slow (#281). Under Podman, a provider container that gets the BFF container endpoint never starts (#285).
+      # is slow (#281). The Podman of the runner is 4.9.3, below the minimum of Aspire, and on it the container tunnel
+      # never starts (#285).
       ASPIRE_CONTAINER_RUNTIME: docker
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

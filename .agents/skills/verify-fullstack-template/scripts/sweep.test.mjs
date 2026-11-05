@@ -279,7 +279,7 @@ test('reports a focus that stays on the body after the focused element is remove
   assert.deepEqual(await focusFaultsAfterPress('button.remove()'), removed)
 })
 
-for (const ms of [500, 900]) {
+for (const ms of [500, 990]) {
   test(`does not report a focus that moves to the heading ${ms} ms after the focused element is removed`, async () => {
     assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(ms)}`), [])
   })
@@ -290,11 +290,11 @@ test('reports a focus that moves to the heading 1500 ms after the focused elemen
 })
 
 test('reports a focus that goes to the heading and returns to the body in a blur', async () => {
-  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(200)}; setTimeout(() => document.querySelector('h1').blur(), 250)`), removed)
+  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(600)}; setTimeout(() => document.querySelector('h1').blur(), 650)`), removed)
 })
 
 test('reports a focus that goes to the heading and returns to the body when the heading is removed with no blur', async () => {
-  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(200)}; setTimeout(() => document.querySelector('h1').remove(), 250)`), removed)
+  assert.deepEqual(await focusFaultsAfterPress(`button.remove(); ${headingFocusAfter(600)}; setTimeout(() => document.querySelector('h1').remove(), 650)`), removed)
 })
 
 test('reports a focus that stays on the body after the focused element becomes inert', async () => {
@@ -309,6 +309,6 @@ test('reports a focus that stays on the body after a dialog closes and returns n
   assert.deepEqual(await focusFaultsAfterPress('button.parentElement.remove()'), removed)
 })
 
-test('reports a focus that stays on the body when the button that lost it is enabled again 300 ms later', async () => {
-  assert.deepEqual(await focusFaultsAfterPress('button.disabled = true; setTimeout(() => { button.disabled = false }, 300)'), [{ kind: 'focus goes to the body', how: 'the focused element was disabled' }])
+test('reports a focus that stays on the body when the button that lost it is enabled again 600 ms later', async () => {
+  assert.deepEqual(await focusFaultsAfterPress('button.disabled = true; setTimeout(() => { button.disabled = false }, 600)'), [{ kind: 'focus goes to the body', how: 'the focused element was disabled' }])
 })

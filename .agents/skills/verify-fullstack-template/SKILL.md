@@ -251,8 +251,10 @@ The sweep does not report these faults:
 - Text directly in a column with a fixed height and `justify-end`, with no clip, which grows up past the top of the box.
 - An auto table that runs past its parent and stays in the window. The check stops at a table.
 - Text with only symbols, such as `$$$` or an emoji, that runs past its box. If a box cuts this text, the sweep reports it.
-- A focus that stays on the body for less than 1 s and then moves to an element that still has it at the end of that 1 s. The element can be the wrong one.
+- A focus that stays on the body until less than 1 s after the end of the step, and then moves to an element that still has it at the end of that 1 s. The element can be the wrong one.
 - A focus that moves to an element in that 1 s and then leaves that element with a blur after the 1 s.
+- A loss after the end of the step. The next step reports it. If the step is the last step of the recipe, the sweep gives no report.
+- A focused element that gets `visibility: hidden`. `checkVisibility()` does not read this property by default.
 
 The sweep can report these forms, which are correct:
 

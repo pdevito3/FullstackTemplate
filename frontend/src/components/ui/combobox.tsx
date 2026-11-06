@@ -49,22 +49,30 @@ interface ComboboxSettings {
   isReadOnly: boolean
   /** The time before which the list takes no press. See `ComboboxLoadMore`. */
   pressesResumeAt: React.RefObject<number>
+  holdListClosed: () => void
 }
 
 const ComboboxSettingsContext = React.createContext<ComboboxSettings>({
   allowsCustomValue: false,
   isReadOnly: false,
   pressesResumeAt: { current: 0 },
+  holdListClosed: () => {},
 })
 
 function Combobox<T extends object, M extends "single" | "multiple" = "single">(
   props: ComboBoxProps<T, M>
 ) {
+  // A pick changes the controlled text while the input has the focus. React Aria
+  // takes this for typing and opens the list, and menuTrigger is the only public
+  // gate on that open. The app can set the text in a later render than the value,
+  // so the hold lasts until the next onInputChange or until the input loses the focus.
+  const [isListHeldClosed, setIsListHeldClosed] = React.useState(false)
   const settings: ComboboxSettings = {
     ariaLabelOnly: props["aria-labelledby"] ? undefined : props["aria-label"],
     allowsCustomValue: props.allowsCustomValue ?? false,
     isReadOnly: props.isReadOnly ?? false,
     pressesResumeAt: React.useRef(0),
+    holdListClosed: () => setIsListHeldClosed(true),
   }
   return (
     // The same guard as in Select: in an overlay, the hidden copy that the
@@ -72,7 +80,18 @@ function Combobox<T extends object, M extends "single" | "multiple" = "single">(
     // overlay, and React Aria throws "Duplicate key" when the overlay closes.
     <OverlayTriggerStateContext.Provider value={null}>
       <ComboboxSettingsContext.Provider value={settings}>
-        <ComboBoxPrimitive {...props} />
+        <ComboBoxPrimitive
+          {...props}
+          menuTrigger={isListHeldClosed ? "manual" : props.menuTrigger}
+          onInputChange={(text) => {
+            setIsListHeldClosed(false)
+            props.onInputChange?.(text)
+          }}
+          onBlur={(e) => {
+            setIsListHeldClosed(false)
+            props.onBlur?.(e)
+          }}
+        />
       </ComboboxSettingsContext.Provider>
     </OverlayTriggerStateContext.Provider>
   )
@@ -146,7 +165,7 @@ function onlyOptionWithText(
  */
 function usePickTypedOption() {
   const state = React.useContext(ComboBoxStateContext)
-  const { allowsCustomValue, isReadOnly } = React.useContext(ComboboxSettingsContext)
+  const { allowsCustomValue, isReadOnly, holdListClosed } = React.useContext(ComboboxSettingsContext)
   const { locale } = useLocale()
 
   return (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -178,6 +197,7 @@ function usePickTypedOption() {
     }
     const key = onlyOptionWithText(state.selectionManager, state.inputValue, collator)
     if (key != null) {
+      holdListClosed()
       state.setValue(key)
     }
     // Tab goes on to React Aria, which closes the list, and to a focus scope,

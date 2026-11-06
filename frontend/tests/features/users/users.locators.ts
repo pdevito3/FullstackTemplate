@@ -22,6 +22,7 @@ export const users = (page: Page) => {
     startTenantFirst,
     startTenantLink: startTenantFirst.getByRole('link', { name: 'Start a tenant' }),
     detailHeading: (name: string) => page.getByRole('heading', { name, exact: true }),
+    loadingUser: page.getByRole('status', { name: 'Loading user' }),
     detail: (text: string) => details.getByRole('definition').and(details.getByText(text, { exact: true })),
     actions: (name: string) => page.getByRole('group', { name: `Actions for ${name}` }),
     actionButtons: (name: string) => page.getByRole('group', { name: `Actions for ${name}` }).getByRole('button'),

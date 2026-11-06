@@ -34,7 +34,8 @@ function UserPage() {
 
   if (membership === 'no-tenant') {
     return (
-      <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
+        <PageHeading>User</PageHeading>
         <StartTenantPrompt purpose="to manage its users." />
       </div>
     )

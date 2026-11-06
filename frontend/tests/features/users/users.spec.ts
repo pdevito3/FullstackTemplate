@@ -225,6 +225,27 @@ test.describe('the page of a user while the membership check fails', () => {
   })
 })
 
+test.describe('the page of a user while the membership loads', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('shows no prompt and asks for no user until the membership is known', async ({ page, api }) => {
+    const grace = aUser().named('Grace Hopper').seenByAdmin()
+    api.mock(usersApi.oneIs(grace))
+    const answer = api.hold(...membershipApi.userIs(as.user('Ana Admin')))
+    const users = usersPage(page)
+
+    await page.goto(`/users/${grace.build().id}`)
+
+    await expect(users.at.loadingUser).toBeVisible()
+    await expect(users.at.startTenantFirst).toBeHidden()
+    expect(api.last('get', usersPaths.one(grace.build().id))).toBeUndefined()
+
+    answer()
+
+    await expect(users.at.detailHeading('Grace Hopper')).toBeVisible()
+  })
+})
+
 test.describe('the users of a signed-in user with no tenant', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
@@ -246,6 +267,7 @@ test.describe('the users of a signed-in user with no tenant', () => {
 
     await page.goto('/users/usr_1')
 
+    await expect(users.at.detailHeading('User')).toBeVisible()
     await expect(users.at.startTenantFirst).toBeVisible()
     await expect(users.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
     expect(await users.at.sentence(refusal).count()).toBe(1)

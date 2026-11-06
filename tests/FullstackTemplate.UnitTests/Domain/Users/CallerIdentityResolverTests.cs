@@ -124,6 +124,9 @@ public sealed class CallerIdentityResolverTests : IDisposable
         yield return () => ("delegated agent client with no app user",
             [new("client_id", DelegatedClientId)],
             new CallerIdentity.UnknownClient(DelegatedClientId));
+        yield return () => ("delegated agent client with a sub that has no user record",
+            [new("sub", "no-record"), new("azp", DelegatedClientId)],
+            new CallerIdentity.UnknownClient(DelegatedClientId));
         yield return () => ("Keycloak service account of a machine agent",
             [new("sub", ServiceAccount), new("azp", MachineClientId)],
             new CallerIdentity.MachineAgent(MachineAgentId, MachineClientId, MachineTenantId));

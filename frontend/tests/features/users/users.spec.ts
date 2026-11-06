@@ -1,3 +1,4 @@
+import { membershipApi } from '@tests/support/api/membership-api'
 import { tenantsApi } from '@tests/support/api/tenants-api'
 import { usersApi, usersPaths } from '@tests/support/api/users-api'
 import { as } from '@tests/support/auth/actors'
@@ -210,6 +211,41 @@ test.describe('the users of a tenant, for a member who cannot see them', () => {
   })
 })
 
+test.describe('the page of a user while the membership check fails', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('shows the user, because the check does not say that the caller has no tenant', async ({ page, api }) => {
+    const grace = aUser().named('Grace Hopper').seenByAdmin()
+    api.mock(usersApi.oneIs(grace), membershipApi.lookupRefuses('No access.'))
+    const users = usersPage(page)
+
+    await users.openDetail(grace.build().id)
+
+    await expect(users.at.detailHeading('Grace Hopper')).toBeVisible()
+  })
+})
+
+test.describe('the page of a user while the membership loads', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('shows no prompt and asks for no user until the membership is known', async ({ page, api }) => {
+    const grace = aUser().named('Grace Hopper').seenByAdmin()
+    api.mock(usersApi.oneIs(grace))
+    const answer = api.hold(...membershipApi.userIs(as.user('Ana Admin')))
+    const users = usersPage(page)
+
+    await page.goto(`/users/${grace.build().id}`)
+
+    await expect(users.at.loadingUser).toBeVisible()
+    await expect(users.at.startTenantFirst).toBeHidden()
+    expect(api.last('get', usersPaths.one(grace.build().id))).toBeUndefined()
+
+    answer()
+
+    await expect(users.at.detailHeading('Grace Hopper')).toBeVisible()
+  })
+})
+
 test.describe('the users of a signed-in user with no tenant', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
@@ -222,6 +258,20 @@ test.describe('the users of a signed-in user with no tenant', () => {
     await expect(users.at.startTenantFirst).toBeVisible()
     await expect(users.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
     expect(api.last('get', usersPaths.list)).toBeUndefined()
+  })
+
+  test('shows the notice once on the page of a user, and asks for no user', async ({ page, api }) => {
+    const refusal = 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.'
+    api.mock(usersApi.oneFails('usr_1', aProblem().forbidden(refusal)))
+    const users = usersPage(page)
+
+    await page.goto('/users/usr_1')
+
+    await expect(users.at.detailHeading('User')).toBeVisible()
+    await expect(users.at.startTenantFirst).toBeVisible()
+    await expect(users.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
+    expect(await users.at.sentence(refusal).count()).toBe(1)
+    expect(api.last('get', usersPaths.one('usr_1'))).toBeUndefined()
   })
 })
 

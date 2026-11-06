@@ -76,7 +76,7 @@ public class GetUserByIdentifierDuringDeleteTests : TestBase
             rival => rival.SendAsync(new DeleteUser.Command(member.Id)), admin);
 
         // Assert
-        error.Message.ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
+        error.Message.ShouldBe("You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
     }
 
     // The compare is exact. A variant of the own identifier is another identifier, so it keeps the permission check.
@@ -94,7 +94,7 @@ public class GetUserByIdentifierDuringDeleteTests : TestBase
             rival => rival.SendAsync(new DeleteUser.Command(member.Id)), admin);
 
         // Assert
-        error.Message.ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
+        error.Message.ShouldBe("You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
     }
 
     private static async Task<TException> ReadDuringDeleteAsync<TException>(

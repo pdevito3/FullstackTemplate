@@ -39,6 +39,31 @@ async function renderForm(onSave = vi.fn().mockResolvedValue(undefined), onLoadL
   }
 }
 
+test('the Tab key goes through the fields in the order of the form: Title, Starts at, Capacity, then Save', async () => {
+  // A control before the form, because a positive tabIndex on a field shows only when the Tab key comes from outside.
+  const screen = await render(
+    <>
+      <button type="button">Before the form</button>
+      <WorkshopEditForm workshop={workshop} onSave={vi.fn()} onLoadLatest={vi.fn()} />
+    </>,
+  )
+  const save = screen.getByRole('button', { name: 'Save' })
+  const startsAt = screen.getByRole('group', { name: 'Starts at' }).element()
+  const stops: string[] = []
+
+  await userEvent.click(screen.getByRole('button', { name: 'Before the form' }))
+  for (let tab = 0; tab < 20; tab++) {
+    await userEvent.tab()
+    const focused = document.activeElement!
+    if (focused === save.element()) break
+    const stop = startsAt.contains(focused) ? 'Starts at' : (focused.getAttribute('name') ?? focused.tagName)
+    if (stops[stops.length - 1] !== stop) stops.push(stop)
+  }
+
+  expect(stops).toEqual(['title', 'Starts at', 'capacity'])
+  await expect.element(save).toHaveFocus()
+})
+
 test('refuses a title and a capacity over the limits of the contract, and does not save', async () => {
   const titleMax = maxLengthOf(workshopForUpdateDtoSchema.shape.title)
   const capacityMax = maximumOf(workshopForUpdateDtoSchema.shape.capacity)

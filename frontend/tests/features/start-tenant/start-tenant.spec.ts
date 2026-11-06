@@ -108,7 +108,7 @@ for (const viewport of [
 test.describe('a signed-in user whose lookup the Server refuses', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
-  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+  const refusal = 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.'
 
   test('sees the reason of the Server with no automatic retry, and Try Again asks again', async ({ page, api }) => {
     api.mock(membershipApi.lookupRefuses(refusal))

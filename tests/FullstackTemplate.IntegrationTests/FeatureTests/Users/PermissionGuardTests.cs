@@ -138,7 +138,7 @@ public class PermissionGuardTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
-            .ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
+            .ShouldBe("You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
         (await UserExistsAsync(target.Id)).ShouldBeTrue();
     }
 
@@ -391,7 +391,7 @@ public class PermissionGuardTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<ForbiddenAccessException>()).Message
-            .ShouldBe("You are not a member of a tenant. Ask a tenant admin to add you.");
+            .ShouldBe("You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
         (await UserExistsAsync(target.Id)).ShouldBeTrue();
     }
 

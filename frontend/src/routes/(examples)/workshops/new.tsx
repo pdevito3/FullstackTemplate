@@ -5,6 +5,7 @@ import type { WorkshopForCreationDto } from '@/api/generated/models/types/worksh
 import { Notification } from '@/components/notification'
 import { PageHeading } from '@/components/page-heading'
 import { Link } from '@/components/ui/link'
+import { RequireTenant } from '@/domain/membership/components/require-tenant'
 import { useVenue } from '@/examples/venues/apis/get-venue'
 import { useAddWorkshop } from '@/examples/workshops/apis/add-workshop'
 import { WorkshopCreateForm } from '@/examples/workshops/components/workshop-create-form'
@@ -16,6 +17,20 @@ export const Route = createFileRoute('/(examples)/workshops/new')({
 })
 
 function NewWorkshopPage() {
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
+      <Link to="/workshops" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+        All workshops
+      </Link>
+      <PageHeading>New workshop</PageHeading>
+      <RequireTenant purpose="to add workshops.">
+        <NewWorkshop />
+      </RequireTenant>
+    </div>
+  )
+}
+
+function NewWorkshop() {
   const { venueId } = Route.useSearch()
   const linkedVenue = useVenue(venueId, { suppressErrorToast: true })
   const add = useAddWorkshop()
@@ -28,11 +43,7 @@ function NewWorkshopPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
-      <Link to="/workshops" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-        All workshops
-      </Link>
-      <PageHeading>New workshop</PageHeading>
+    <>
       {venueId && linkedVenue.isPending ? (
         <p role="status" className="text-muted-foreground">
           Loading venue
@@ -47,6 +58,6 @@ function NewWorkshopPage() {
         </Link>
         .
       </p>
-    </div>
+    </>
   )
 }

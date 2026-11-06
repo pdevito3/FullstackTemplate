@@ -21,7 +21,7 @@ export default async ({ page, step, capture, expect, login }) => {
   await capture('home-with-notice')
 
   await step('a refused lookup shows the reason and Try Again, and Try Again gets the answer of the Server', async () => {
-    const reason = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+    const reason = 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.'
     await page.route('**/api/v1/users/by-identifier/**', (route) => route.fulfill({
       status: 403,
       contentType: 'application/problem+json',

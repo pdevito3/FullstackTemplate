@@ -576,6 +576,90 @@ test.each(closedLists)('Tab picks one time in a list that %s closed, %s, with co
   expect(opens(onOpenChange)).toEqual([])
 })
 
+function SelectedKeyFrameworkCombobox({ onChange }: { onChange: (key: unknown) => void }) {
+  const [selectedKey, setSelectedKey] = useState<Key | null>(null)
+  const [inputValue, setInputValue] = useState('')
+  const names: Record<string, string> = { vue: 'Vue', 'vue-router': 'Vue Router' }
+  return (
+    <div style={{ height: '300vh' }}>
+      <Combobox
+        selectedKey={selectedKey}
+        onSelectionChange={(key) => {
+          onChange(key)
+          setSelectedKey(key)
+          setInputValue(key == null ? '' : names[String(key)])
+        }}
+        inputValue={inputValue}
+        onInputChange={setInputValue}
+      >
+        <Label>Framework</Label>
+        <ComboboxInput />
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxItem id="vue">Vue</ComboboxItem>
+            <ComboboxItem id="vue-router">Vue Router</ComboboxItem>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+      <input aria-label="Next field" />
+    </div>
+  )
+}
+
+test.each(closedLists)('Tab picks one time in a list that %s closed, %s, with a controlled selectedKey and text', async (_, __, closeForKey) => {
+  const onChange = vi.fn()
+  const screen = await render(<SelectedKeyFrameworkCombobox onChange={onChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  const endExit = await closeForKey()
+
+  await userEvent.keyboard('{Tab}')
+
+  await expect.element(screen.getByRole('textbox', { name: 'Next field' })).toHaveFocus()
+  await expect.element(input).toHaveValue('Vue')
+  endExit()
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  await expectListStaysClosed()
+  expect(onChange.mock.calls).toEqual([['vue']])
+})
+
+function ValueOnlyFrameworkCombobox({ onInputChange }: { onInputChange: (text: string) => void }) {
+  const [value, setValue] = useState<Key | null>(null)
+  return (
+    <div style={{ height: '300vh' }}>
+      <Combobox value={value} onChange={setValue} onInputChange={onInputChange}>
+        <Label>Framework</Label>
+        <ComboboxInput showClear />
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxItem id="vue">Vue</ComboboxItem>
+            <ComboboxItem id="vue-router">Vue Router</ComboboxItem>
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </div>
+  )
+}
+
+test('Clear of a Combobox with only a controlled value sends the empty text one time and opens the list', async () => {
+  const onInputChange = vi.fn()
+  const screen = await render(<ValueOnlyFrameworkCombobox onInputChange={onInputChange} />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue{ArrowDown}{Enter}')
+  await expect.element(input).toHaveValue('Vue')
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+  onInputChange.mockClear()
+
+  await page.getByRole('button', { name: 'Clear' }).click()
+
+  await expect.element(input).toHaveValue('')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  expect(onInputChange.mock.calls).toEqual([['']])
+})
+
 test.each(closedLists)('Enter picks and keeps closed a list that %s closed, %s, with controlled value and text', async (_, __, closeForKey) => {
   const onChange = vi.fn()
   const onOpenChange = vi.fn()

@@ -65,7 +65,7 @@ function Combobox<T extends object, M extends "single" | "multiple" = "single">(
   // A pick changes the controlled text while the input has the focus. React Aria
   // takes this for typing and opens the list, and menuTrigger is the only public
   // gate on that open. The app can set the text in a later render than the value,
-  // so the hold lasts until the user changes the text or the input loses the focus.
+  // so the hold lasts until the next onInputChange or until the input loses the focus.
   const [isListHeldClosed, setIsListHeldClosed] = React.useState(false)
   const settings: ComboboxSettings = {
     ariaLabelOnly: props["aria-labelledby"] ? undefined : props["aria-label"],

@@ -10,7 +10,7 @@ const srcFolder = import.meta.dirname
 
 const sourceFiles = readdirSync(srcFolder, { recursive: true, encoding: 'utf8' })
   .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$|\.gen\.ts$/.test(file))
-  .filter((file) => !file.split(sep).some((part) => ['examples', '(examples)', 'test', 'generated'].includes(part)))
+  .filter((file) => !file.split(sep).some((part) => ['examples', '(examples)', 'test'].includes(part)))
   .map((file) => ({ file, text: readFileSync(join(srcFolder, file), 'utf8') }))
 
 const pageOf = (text: string) => text.match(/createFileRoute\(['"]([^'"]+)['"]\)/)?.[1].replace(/(?<=.)\/$/, '')

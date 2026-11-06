@@ -333,7 +333,7 @@ test.describe('the workshops of a signed-in user with no tenant', () => {
     await page.goto('/venues/new')
 
     await expect(workshops.at.startTenantForVenues).toBeVisible()
-    await expect(workshops.at.startTenantForVenues.getByRole('link', { name: 'Start a tenant' })).toHaveAttribute('href', '/start-tenant')
+    await expect(workshops.at.startTenantForVenuesLink).toHaveAttribute('href', '/start-tenant')
     await expect(workshops.at.venueForm).toHaveCount(0)
     expect(api.last('post', workshopPaths.venues)).toBeUndefined()
   })
@@ -368,6 +368,20 @@ test.describe('the sidebar of a member', () => {
     await page.goto('/workshops')
 
     await expect(workshops.at.sidebarNewVenue).toHaveAttribute('href', '/venues/new')
+  })
+
+  test('the Examples menu has no New venue until the membership is known', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]))
+    const answer = api.hold(...membershipApi.userIs(as.user('Ana Admin')))
+    const workshops = workshopsPage(page)
+
+    await page.goto('/workshops')
+    await expect(workshops.at.sidebarWorkshops).toBeVisible()
+    await expect(workshops.at.sidebarNewVenue).toHaveCount(0)
+
+    answer()
+
+    await expect(workshops.at.sidebarNewVenue).toBeVisible()
   })
 })
 

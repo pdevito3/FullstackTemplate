@@ -37,7 +37,8 @@ test.each([
   ['Pacific/Chuuk', 'Chuuk Time'],
   ['Pacific/Pohnpei', 'Pohnpei Time'],
   ['Pacific/Kanton', 'Canton Island Time'],
-])('names the renamed zone %s by its current name, not by the old ID that Chromium uses', async (zone, label) => {
+  ['Antarctica/DumontDUrville', "Dumont d'Urville Time"],
+])('names the zone %s by a clear name, not by the ID that Chromium uses', async (zone, label) => {
   await render(<DateFilter config={{ ...startsAt, timeZone: parseTimeZone(zone) }} surface="submenu" onSubmit={vi.fn()} />)
 
   await expect.element(page.getByRole('textbox', { name: label, exact: true })).toBeVisible()

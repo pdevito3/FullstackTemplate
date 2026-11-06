@@ -370,6 +370,16 @@ test.describe('the sidebar of a member', () => {
     await expect(workshops.at.sidebarNewVenue).toHaveAttribute('href', '/venues/new')
   })
 
+  test('the Examples menu keeps New venue when the membership check fails, as the page keeps the form', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]), membershipApi.lookupRefuses('No access.'))
+    const workshops = workshopsPage(page)
+
+    await page.goto('/workshops')
+
+    await expect(startTenantPage(page).at.checkFailure).toContainText('No access.')
+    await expect(workshops.at.sidebarNewVenue).toHaveAttribute('href', '/venues/new')
+  })
+
   test('the Examples menu has no New venue until the membership is known', async ({ page, api }) => {
     api.mock(workshopsApi.listReturns([]))
     const answer = api.hold(...membershipApi.userIs(as.user('Ana Admin')))

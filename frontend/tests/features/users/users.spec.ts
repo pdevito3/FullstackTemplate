@@ -1,3 +1,4 @@
+import { membershipApi } from '@tests/support/api/membership-api'
 import { tenantsApi } from '@tests/support/api/tenants-api'
 import { usersApi, usersPaths } from '@tests/support/api/users-api'
 import { as } from '@tests/support/auth/actors'
@@ -207,6 +208,20 @@ test.describe('the users of a tenant, for a member who cannot see them', () => {
 
     await expect(users.at.loadFailure).toContainText('You cannot see the users of the tenant. Ask a tenant admin for access.')
     await expect(users.at.grid).toHaveCount(0)
+  })
+})
+
+test.describe('the page of a user while the membership check fails', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('shows the user, because the check does not say that the caller has no tenant', async ({ page, api }) => {
+    const grace = aUser().named('Grace Hopper').seenByAdmin()
+    api.mock(usersApi.oneIs(grace), membershipApi.lookupRefuses('No access.'))
+    const users = usersPage(page)
+
+    await users.openDetail(grace.build().id)
+
+    await expect(users.at.detailHeading('Grace Hopper')).toBeVisible()
   })
 })
 

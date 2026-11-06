@@ -31,6 +31,18 @@ test.each([
   await expect.element(page.getByRole('textbox', { name: label, exact: true })).toBeVisible()
 })
 
+test.each([
+  ['America/Nuuk', 'Nuuk Time'],
+  ['America/Godthab', 'Nuuk Time'],
+  ['Pacific/Chuuk', 'Chuuk Time'],
+  ['Pacific/Pohnpei', 'Pohnpei Time'],
+  ['Pacific/Kanton', 'Canton Island Time'],
+])('names the renamed zone %s by its current name, not by the old ID that Chromium uses', async (zone, label) => {
+  await render(<DateFilter config={{ ...startsAt, timeZone: parseTimeZone(zone) }} surface="submenu" onSubmit={vi.fn()} />)
+
+  await expect.element(page.getByRole('textbox', { name: label, exact: true })).toBeVisible()
+})
+
 test('takes today and reads the typed time in the zone of the place, not of the browser', async () => {
   // Arrange
   vi.useFakeTimers({ toFake: ['Date'] })

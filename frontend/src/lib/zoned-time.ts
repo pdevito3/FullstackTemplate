@@ -41,7 +41,20 @@ export function timeZoneLabel(zone: TimeZone): string {
         .formatToParts()
         .find((part) => part.type === 'timeZoneName')?.value ?? '',
   )
-  return names.find(isWordName) ?? names[names.length - 1]
+  const name = names.find(isWordName) ?? names[names.length - 1]
+  return CURRENT_NAME_OF_RENAMED_ZONE[name] ?? name
+}
+
+/**
+ * Chromium makes these names from the old ID of a zone that IANA renamed, for `America/Nuuk` too. They name a place by
+ * a name that it no longer has, or another place: Enderbury is not Kanton. WebKit and Node give the current names.
+ * These are the only such names in a scan of 597 zones. Other Chromium names differ only in form, as "Sao Paulo Time".
+ */
+const CURRENT_NAME_OF_RENAMED_ZONE: Partial<Record<string, string>> = {
+  'Godthab Time': 'Nuuk Time',
+  'Truk Time': 'Chuuk Time',
+  'Ponape Time': 'Pohnpei Time',
+  'Enderbury Time': 'Canton Island Time',
 }
 
 /**

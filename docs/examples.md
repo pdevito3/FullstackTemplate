@@ -43,7 +43,9 @@ Put example code where the script finds it:
 - Put a file that is only an example in a folder named `Examples` (.NET), `examples` (the SPA and the tests), or `(examples)` (a TanStack Router route group, which adds no segment to the URL).
 - Put example lines in a shared file between two comments. Use the comment form of the file: `// example:start` and `// example:end` in C# and TypeScript, `# example:start` in YAML and shell, `<!-- example:start -->` in Markdown, and `{/* example:start */}` in JSX.
 - Do not let code outside the examples use example code. After the script runs, that code does not compile.
-- Do not add a demo page outside `(examples)`. `frontend/src/each-page-has-a-link.test.ts` fails when a page outside `(examples)` has no link in the code that the script keeps. The test cannot find a demo page with an unmarked link in core code, so a reviewer must look for that. A link from a page that the script keeps counts, also when no user can reach that page.
+- Do not add a demo page outside `(examples)`. `frontend/src/each-page-has-a-link.test.ts` fails when the URL of a page outside `(examples)` is in no string of the code that the script keeps. It reads the strings, so these limits apply:
+  - It passes when a string in core code has the URL. A reviewer must look for a demo page with an unmarked link in core code, and for a string that has the URL and is not a link, such as `from: '/demo'`. A link from a page that the script keeps counts, also when no user can reach that page. A link in a marked section counts until the script deletes it, so only the `without-examples` job of CI finds that case.
+  - It fails when a page has a way in with no whole URL in a string: a URL that starts with a variable (`${base}/things`), a relative link (`./edit`), `Route.to`, a URL from the Server, or a link from outside the app. Add such a page to `PAGES_WITH_ANOTHER_WAY_IN` in the test.
 - Keep each `// new-feature:<slot>` marker of `scripts/new-feature.cs` out of an example section. The new-feature script adds its lines above the marker, also in an app with no examples.
 
 ## Run the CI jobs locally

@@ -10,6 +10,6 @@ export const userQueryOptions = (id: string) =>
     queryFn: ({ signal }) => getUser({ path: { id }, signal }),
   })
 
-export function useUser(id: string) {
-  return useQuery(userQueryOptions(id))
+export function useUser(id: string, { enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ ...userQueryOptions(id), enabled })
 }

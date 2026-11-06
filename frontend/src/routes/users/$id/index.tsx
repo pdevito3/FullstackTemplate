@@ -6,6 +6,8 @@ import { Notification } from '@/components/notification'
 import { PageHeading } from '@/components/page-heading'
 import { QueryError } from '@/components/query-error'
 import { Link } from '@/components/ui/link'
+import { useMembership } from '@/domain/membership/apis/get-membership'
+import { StartTenantPrompt } from '@/domain/membership/components/require-tenant'
 import { useDeleteUser } from '@/domain/users/apis/delete-user'
 import { useUser } from '@/domain/users/apis/get-user'
 import { useUpdateUserRole } from '@/domain/users/apis/update-user-role'
@@ -21,12 +23,22 @@ export const Route = createFileRoute('/users/$id/')({
 
 function UserPage() {
   const { id } = Route.useParams()
-  const user = useUser(id)
+  const membership = useMembership().status
+  // The Server refuses this request for a user with no tenant, and its text repeats the notice of the layout.
+  const user = useUser(id, { enabled: membership !== 'loading' && membership !== 'no-tenant' })
   const changeRole = useUpdateUserRole(id)
   const remove = useDeleteUser()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const headingRef = useRef<HTMLHeadingElement>(null)
+
+  if (membership === 'no-tenant') {
+    return (
+      <div className="mx-auto w-full max-w-4xl px-4 py-8">
+        <StartTenantPrompt purpose="to manage its users." />
+      </div>
+    )
+  }
 
   if (user.isPending) {
     return <p role="status" aria-label="Loading user" className="px-4 py-8 text-muted-foreground">Loading user</p>

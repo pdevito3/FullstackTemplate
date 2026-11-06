@@ -223,6 +223,19 @@ test.describe('the users of a signed-in user with no tenant', () => {
     await expect(users.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
     expect(api.last('get', usersPaths.list)).toBeUndefined()
   })
+
+  test('shows the notice once on the page of a user, and asks for no user', async ({ page, api }) => {
+    const refusal = 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.'
+    api.mock(usersApi.oneFails('usr_1', aProblem().forbidden(refusal)))
+    const users = usersPage(page)
+
+    await page.goto('/users/usr_1')
+
+    await expect(users.at.startTenantFirst).toBeVisible()
+    await expect(users.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
+    expect(await users.at.sentence(refusal).count()).toBe(1)
+    expect(api.last('get', usersPaths.one('usr_1'))).toBeUndefined()
+  })
 })
 
 const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythesinclairfitzgeraldworthingtonhughes'

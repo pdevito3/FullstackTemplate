@@ -50,6 +50,10 @@ export const usersApi = {
     return problemAt('get', usersPaths.list, problem)
   },
 
+  oneFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
+    return problemAt('get', usersPaths.one(id), problem)
+  },
+
   oneIs(user: Buildable<UserDto>): MockRoute {
     const body = user.build()
     return { method: 'get', path: usersPaths.one(body.id), status: 200, body }

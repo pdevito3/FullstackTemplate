@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { VenueForCreationDto } from '@/api/generated/models/types/venue-for-creation-dto'
 import { Notification } from '@/components/notification'
 import { Link } from '@/components/ui/link'
+import { RequireTenant } from '@/domain/membership/components/require-tenant'
 import { useAddVenue } from '@/examples/venues/apis/add-venue'
 import { VenueCreateForm } from '@/examples/venues/components/venue-create-form'
 import { PageHeading } from '@/components/page-heading'
@@ -28,7 +29,9 @@ function NewVenuePage() {
         All workshops
       </Link>
       <PageHeading>New venue</PageHeading>
-      <VenueCreateForm onSave={handleSave} />
+      <RequireTenant purpose="to add venues.">
+        <VenueCreateForm onSave={handleSave} />
+      </RequireTenant>
     </div>
   )
 }

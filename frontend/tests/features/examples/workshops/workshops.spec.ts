@@ -13,7 +13,7 @@ import { workshopsPage } from './workshops.tasks'
 test.describe('the search of the workshops while the membership check fails', () => {
   test.use({ actor: as.user('Ana Admin') })
 
-  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+  const refusal = 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.'
   const lookupPath = membershipPaths.userOf(actorSubject)
 
   test('keeps the text that the user types while the answer of Try Again is on the way', async ({ page, api }) => {
@@ -325,6 +325,49 @@ test.describe('the workshops of a signed-in user with no tenant', () => {
     await expect(workshops.at.emptyList).toHaveCount(0)
     await expect(workshops.at.newWorkshopLink).toHaveCount(0)
     await expect(workshops.at.newVenueLink).toHaveCount(0)
+  })
+
+  test('shows the way to start a tenant in place of the venue form', async ({ page, api }) => {
+    const workshops = workshopsPage(page)
+
+    await page.goto('/venues/new')
+
+    await expect(workshops.at.startTenantForVenues).toBeVisible()
+    await expect(workshops.at.startTenantForVenues.getByRole('link', { name: 'Start a tenant' })).toHaveAttribute('href', '/start-tenant')
+    await expect(workshops.at.venueForm).toHaveCount(0)
+    expect(api.last('post', workshopPaths.venues)).toBeUndefined()
+  })
+
+  test('shows the way to start a tenant in place of the workshop form, and asks for no venue of the URL', async ({ page, api }) => {
+    const workshops = workshopsPage(page)
+
+    await page.goto('/workshops/new?venueId=vnu_1')
+
+    await expect(workshops.at.startTenantFirst).toBeVisible()
+    await expect(workshops.at.startTenantLink).toHaveAttribute('href', '/start-tenant')
+    await expect(workshops.at.newForm).toHaveCount(0)
+    expect(api.last('get', workshopPaths.venue('vnu_1'))).toBeUndefined()
+  })
+
+  test('the Examples menu of the sidebar has Workshops, and no New venue', async ({ page }) => {
+    const workshops = workshopsPage(page)
+    await page.goto('/workshops')
+    await expect(workshops.at.sidebarWorkshops).toBeVisible()
+
+    await expect(workshops.at.sidebarNewVenue).toHaveCount(0)
+  })
+})
+
+test.describe('the sidebar of a member', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('the Examples menu has New venue', async ({ page, api }) => {
+    api.mock(workshopsApi.listReturns([]))
+    const workshops = workshopsPage(page)
+
+    await page.goto('/workshops')
+
+    await expect(workshops.at.sidebarNewVenue).toHaveAttribute('href', '/venues/new')
   })
 })
 

@@ -33,7 +33,7 @@ public class UserCreationAccessTests : TestBase
         var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Users.Create, dto);
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
     }
 
     [Test]

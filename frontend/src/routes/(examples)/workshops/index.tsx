@@ -10,6 +10,7 @@ import { Link } from '@/components/ui/link'
 import { Pager } from '@/components/ui/pager'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useMembership } from '@/domain/membership/apis/get-membership'
+import { StartTenantPrompt } from '@/domain/membership/components/require-tenant'
 import { useWorkshopList } from '@/examples/workshops/apis/get-workshop-list'
 import { formatStart } from '@/examples/workshops/components/format-start'
 import { WorkshopStatusBadge } from '@/examples/workshops/components/workshop-status-badge'
@@ -64,12 +65,7 @@ function WorkshopsPage() {
       </div>
 
       {hasNoTenant ? (
-        <p className="text-muted-foreground">
-          <Link to="/start-tenant" className="underline underline-offset-4 hover:text-primary">
-            Start a tenant
-          </Link>{' '}
-          to add workshops.
-        </p>
+        <StartTenantPrompt purpose="to add workshops." />
       ) : (
         <>
           <SearchBox

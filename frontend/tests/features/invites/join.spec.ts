@@ -610,7 +610,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
 test.describe('a signed-in user whose lookup the Server refuses opens an invite link', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
-  const refusal = 'You are not a member of a tenant. Ask a tenant admin to add you.'
+  const refusal = 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.'
 
   test('sees Try again as pending while the check runs, and the focus moves to the heading after a member is found', async ({ page, api }) => {
     api.mock(membershipApi.lookupRefuses(refusal))

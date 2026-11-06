@@ -6,6 +6,7 @@ A user with the `manage_workshops` permission adds a venue and a workshop in it,
 
 - `workshops-onboard` starts a tenant on the Start a tenant page, so the signed-in user is its `Admin` and has `manage_workshops`.
 - `workshops-no-tenant` shows `Start a tenant to add workshops.` on `/workshops` to a signed-in user with no tenant, with no `New workshop` or `New venue` link in the page.
+- `workshops-no-tenant-forms` shows `Start a tenant to add venues.` on `/venues/new` and `Start a tenant to add workshops.` on `/workshops/new` in place of the form, and the Examples menu of the sidebar has no `New venue`. `POST /api/v1/venues` gives 403 with the text that names Start a tenant.
 - `workshops-empty` shows `No workshops yet. Add one with New workshop.` on a new tenant.
 - `venue-create` adds a venue at `/venues/new` and opens `/workshops/new?venueId=<id>` with the venue picked.
 - `workshop-create` adds a workshop and opens its detail page with the status `Draft`.
@@ -17,7 +18,7 @@ A user with the `manage_workshops` permission adds a venue and a workshop in it,
 
 ## How to get to it (user POV)
 
-- Examples, Workshops in the sidebar opens `/workshops`. Examples, New venue opens `/venues/new`.
+- Examples, Workshops in the sidebar opens `/workshops`. Examples, New venue opens `/venues/new`. A user with no tenant, and a user whose membership is still loading, does not see New venue in that menu.
 - On `/workshops`, the links `New venue` and `New workshop`, and the title link of each row.
 - On a detail page, the group `Actions for <title>` has the `Edit` link and the action buttons.
 
@@ -29,7 +30,7 @@ Preconditions:
 - The database is empty, so the signed-in user has no Server user, and the home page shows the notice `No tenant`. The recipe follows its link `Start a tenant` and starts a tenant (see [Start a tenant](../start-tenant.md)). The user is the `Admin` of the tenant. The role `Admin` has each permission. The role `User` has none, so a `User` sees no action buttons.
 - On ZeroFactor, `admin@example.com` (`Admin User`), the user that `login()` signs in by default, gets `manage_workshops` this way. So does `user@example.com`, when it starts its own tenant.
 
-- **No tenant.** Run `await login()`. Open `/workshops`. The text `Start a tenant to add workshops.` shows, and the page has no `New workshop` or `New venue` link.
+- **No tenant.** Run `await login()`. Open `/workshops`. The text `Start a tenant to add workshops.` shows, and the page has no `New workshop` or `New venue` link. Open `/venues/new` and `/workshops/new`. Each shows its `Start a tenant to add ...` text and no form.
 - **Onboard.** In the region `No tenant`, click `Start a tenant`. Fill `Tenant name` in the form `Start a tenant` and click `Start a tenant`. `POST /api/v1/users/initiate` gives 201 with `user.role` = `Admin`.
 - **Empty list.** Click `Examples`, then `Workshops`. The heading `Workshops` and the empty text show.
 - **Add a venue.** Click `New venue`. Fill `Name`. Fill `Time zone` with `Pacific/Pago_Pago`, a zone that is not the zone of the browser. Click `Add venue`. `POST /api/v1/venues` gives 201. The URL is `/workshops/new?venueId=<id>`, and the combobox `Venue` has the name of the venue. The hint of `Starts at` is `The time in American Samoa Time.`, the name of the zone from `timeZoneLabel` and not its ID.
@@ -39,7 +40,7 @@ Preconditions:
 - **Stale save.** Open the edit page in this tab and in a second tab. Save a title in the second tab. Save another title in the first tab. `PUT` gives 409 with the type `urn:fullstacktemplate:problem:stale-version`. The alert shows, and `Title` keeps the text of the first tab. Click `Load the latest`. The URL stays `/workshops/<id>/edit`, and `Title` has the title of the second tab.
 - **Actions.** On the detail page, the buttons equal `allowedActions` of the last `GET` (`Update` is the `Edit` link, and `ManageAttachments` has no button). Click `Schedule`. `POST /api/v1/workshops/{id}/schedule` sends the loaded `version` and gives 200 with the status `Scheduled`. The page shows `Scheduled`, `Cancel workshop`, and `Mark completed`. `Schedule` and `Edit` are gone. Click `Cancel workshop`. The dialog `Cancel this workshop?` shows. Click `Keep workshop`. The dialog closes, no `POST .../cancel` goes out, and `Cancel workshop` has the focus.
 - **Search.** Open `/workshops`, type a word of the title into the searchbox `Search workshops`. The URL gets `?search=<word>`, and `GET /api/v1/workshops` has `filters=title @=* "<word>"`. Text with a `"` goes in a padded raw string, as `docs/backend/features-and-cqrs.md`, "Search text", says. The row of the workshop shows, with the start in the zone of the venue.
-- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/workshops.mjs`. The captures `no-tenant-list`, `empty-list`, `venue-picked`, `detail-draft`, `stale-alert`, `latest-loaded`, `scheduled`, `cancel-dialog`, and `search` show the states.
+- **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/workshops.mjs`. The captures `no-tenant-list`, `no-tenant-new-venue`, `no-tenant-new-workshop`, `empty-list`, `venue-picked`, `detail-draft`, `stale-alert`, `latest-loaded`, `scheduled`, `cancel-dialog`, and `search` show the states.
 
 ## Gotchas
 

@@ -151,7 +151,7 @@ public class UserReadAccessTests : TestBase
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier($"unknown-{Guid.NewGuid()}"));
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
     }
 
     // A user with no record and no tenant sees no rows, so the 404 says nothing about the identifier of another user
@@ -241,7 +241,7 @@ public class UserReadAccessTests : TestBase
         var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetByIdentifier(otherTenantUser.Identifier));
 
         // Assert
-        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Ask a tenant admin to add you.");
+        await ShouldBeForbiddenAsync(result, "You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.");
     }
 
     [Test]

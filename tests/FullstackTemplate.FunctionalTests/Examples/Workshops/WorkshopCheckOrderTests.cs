@@ -79,6 +79,26 @@ public class WorkshopCheckOrderTests : TestBase
     }
 
     [Test]
+    public async Task a_stale_schedule_of_a_workshop_whose_venue_is_gone_is_not_found_before_the_version_check()
+    {
+        // Arrange
+        var members = await AddMembersAsync();
+        var workshop = await AddWorkshopAsAsync(members.Organizer, members.Venue);
+        await ExecuteDbContextAsync(async db =>
+        {
+            db.Venues.Remove(await db.Venues.SingleAsync(v => v.Id == members.Venue.Id));
+            await db.SaveChangesAsync();
+        });
+
+        // Act
+        var result = await FactoryClient.PostJsonRequestAsync(ApiRoutes.Workshops.Schedule(workshop.Id),
+            new { version = workshop.Version + 1 });
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Test]
     public async Task the_organizer_changes_their_own_workshop()
     {
         // Arrange

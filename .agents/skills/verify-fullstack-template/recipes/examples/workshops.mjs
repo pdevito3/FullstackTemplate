@@ -34,6 +34,43 @@ export default async ({ page, context, step, capture, settle, expect, login }) =
   })
   await capture('no-tenant-list')
 
+  await step('with no tenant, the Examples menu has Workshops and no New venue', async () => {
+    const nav = page.getByRole('navigation', { name: 'Main' })
+    await expect(nav.getByRole('link', { name: 'Workshops', exact: true })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'New venue', exact: true })).toHaveCount(0)
+  })
+
+  await step('with no tenant, /venues/new shows the way to start one in place of the form', async () => {
+    await page.goto('/venues/new')
+    const prompt = page.getByText('Start a tenant to add venues.', { exact: true })
+    await expect(prompt).toBeVisible()
+    await expect(prompt.getByRole('link', { name: 'Start a tenant' })).toHaveAttribute('href', '/start-tenant')
+    await expect(page.getByRole('form', { name: 'New venue' })).toHaveCount(0)
+  })
+  await capture('no-tenant-new-venue')
+
+  await step('with no tenant, /workshops/new shows the way to start one in place of the form', async () => {
+    await page.goto('/workshops/new')
+    await expect(page.getByText('Start a tenant to add workshops.', { exact: true })).toBeVisible()
+    await expect(page.getByRole('form', { name: 'New workshop' })).toHaveCount(0)
+  })
+  await capture('no-tenant-new-workshop')
+
+  await step('with no tenant, a save that the page no longer offers gets the 403 that names Start a tenant', async () => {
+    const refused = await page.evaluate(async () => {
+      const r = await fetch('/api/v1/venues', {
+        method: 'POST',
+        headers: { 'X-CSRF': '1', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Refused', timeZone: 'UTC' }),
+      })
+      return { status: r.status, detail: (await r.json()).detail }
+    })
+    expect(refused).toEqual({
+      status: 403,
+      detail: 'You are not a member of a tenant. Start a tenant to become its admin, or ask the admin of a tenant to add you.',
+    })
+  })
+
   await step('start a tenant on the Start a tenant page, as its admin', async () => {
     await page.getByRole('region', { name: 'No tenant' }).getByRole('link', { name: 'Start a tenant' }).click()
     const form = page.getByRole('form', { name: 'Start a tenant' })

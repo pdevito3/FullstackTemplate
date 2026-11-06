@@ -84,6 +84,9 @@ export const workshops = (page: Page) => {
     newVenueLink: page.getByRole('main').getByRole('link', { name: 'New venue', exact: true }),
     emptyList: page.getByText('No workshops yet. Add one with New workshop.', { exact: true }),
     startTenantFirst: page.getByText('Start a tenant to add workshops.', { exact: true }),
+    startTenantForVenues: page.getByText('Start a tenant to add venues.', { exact: true }),
+    sidebarNewVenue: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'New venue', exact: true }),
+    sidebarWorkshops: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Workshops', exact: true }),
     startTenantLink: page.getByText('Start a tenant to add workshops.', { exact: true }).getByRole('link', { name: 'Start a tenant' }),
   }
 }

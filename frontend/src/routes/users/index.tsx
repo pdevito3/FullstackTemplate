@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { InviteList } from '@/domain/invites/components/invite-list'
 import { InviteUserButton } from '@/domain/invites/components/invite-user-dialog'
 import { useMembership } from '@/domain/membership/apis/get-membership'
+import { StartTenantPrompt } from '@/domain/membership/components/require-tenant'
 import { useTenant } from '@/domain/tenants/apis/get-tenant'
 import { useUserList } from '@/domain/users/apis/get-user-list'
 import { ROLE_LABELS } from '@/domain/users/components/user-role'
@@ -48,12 +49,7 @@ function UsersPage() {
         {canInvite && <InviteUserButton />}
       </div>
       {hasNoTenant ? (
-        <p className="text-muted-foreground">
-          <Link to="/start-tenant" className="underline underline-offset-4 hover:text-primary">
-            Start a tenant
-          </Link>{' '}
-          to manage its users.
-        </p>
+        <StartTenantPrompt purpose="to manage its users." />
       ) : (
         <UserRows list={list} page={page} onPageChange={handlePageChange} />
       )}

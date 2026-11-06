@@ -39,6 +39,23 @@ async function renderForm(onSave = vi.fn().mockResolvedValue(undefined), onLoadL
   }
 }
 
+test('the Tab key goes through the fields in the order of the form: Title, Starts at, Capacity, then Save', async () => {
+  const form = await renderForm()
+  const startsAt = form.screen.getByRole('group', { name: 'Starts at' }).element()
+  const stops: string[] = []
+
+  await userEvent.click(form.title)
+  for (let tab = 0; tab < 20 && document.activeElement !== form.save.element(); tab++) {
+    const focused = document.activeElement!
+    const stop = startsAt.contains(focused) ? 'Starts at' : (focused.getAttribute('name') ?? focused.tagName)
+    if (stops[stops.length - 1] !== stop) stops.push(stop)
+    await userEvent.tab()
+  }
+
+  expect(stops).toEqual(['title', 'Starts at', 'capacity'])
+  await expect.element(form.save).toHaveFocus()
+})
+
 test('refuses a title and a capacity over the limits of the contract, and does not save', async () => {
   const titleMax = maxLengthOf(workshopForUpdateDtoSchema.shape.title)
   const capacityMax = maximumOf(workshopForUpdateDtoSchema.shape.capacity)

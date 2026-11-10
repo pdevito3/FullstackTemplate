@@ -26,7 +26,7 @@ public sealed class ObjectDeleteWorker(
                 {
                     await using var scope = scopeFactory.CreateAsyncScope();
                     await scope.ServiceProvider.GetRequiredService<ObjectDeleteRunner>()
-                        .RunDueAsync(timeProvider.GetUtcNow(), stoppingToken);
+                        .RunDueAsync(stoppingToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

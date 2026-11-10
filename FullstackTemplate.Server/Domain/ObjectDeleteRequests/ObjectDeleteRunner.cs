@@ -14,22 +14,28 @@ using Serilog;
 /// Server instances never claim the same request at the same time. A delete of an object that is gone succeeds, so a
 /// request that runs two times, for example after a runner stopped during an attempt, does no harm.
 /// </summary>
-public sealed class ObjectDeleteRunner(AppDbContext dbContext, ObjectStorage storage, IOptions<ObjectDeleteOptions> options)
+public sealed class ObjectDeleteRunner(
+    AppDbContext dbContext,
+    ObjectStorage storage,
+    IOptions<ObjectDeleteOptions> options,
+    TimeProvider timeProvider)
 {
     private readonly ILogger _logger = Log.ForContext<ObjectDeleteRunner>();
 
-    /// <summary>Claims and does each request that is due at <paramref name="now"/>, and gives the outcome of each.</summary>
-    public async Task<IReadOnlyList<ObjectDeleteAttempt>> RunDueAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    /// <summary>
+    /// Claims and does each request that is due, and gives the outcome of each. It reads the clock at each claim and
+    /// each failure, not one time for the run, because an attempt can take up to <c>AttemptTimeout</c>.
+    /// </summary>
+    public async Task<IReadOnlyList<ObjectDeleteAttempt>> RunDueAsync(CancellationToken cancellationToken)
     {
         var attempts = new List<ObjectDeleteAttempt>();
-        while (await ClaimNextAsync(now, cancellationToken) is { } request)
-            attempts.Add(await RunAsync(request, now, cancellationToken));
+        while (await ClaimNextAsync(timeProvider.GetUtcNow(), cancellationToken) is { } request)
+            attempts.Add(await RunAsync(request, cancellationToken));
         return attempts;
     }
 
     // An idle run starts no trace, so the claim query of a run with nothing due exports no span
-    private async Task<ObjectDeleteAttempt> RunAsync(ObjectDeleteRequest request, DateTimeOffset now,
-        CancellationToken cancellationToken)
+    private async Task<ObjectDeleteAttempt> RunAsync(ObjectDeleteRequest request, CancellationToken cancellationToken)
     {
         using var trace = Telemetry.TraceRoot(
             [
@@ -40,17 +46,16 @@ public sealed class ObjectDeleteRunner(AppDbContext dbContext, ObjectStorage sto
             ],
             "object_delete.run");
 
-        var outcome = await DeleteObjectsAsync(request, now, cancellationToken);
+        var outcome = await DeleteObjectsAsync(request, cancellationToken);
         trace.Activity?.SetTag("app.object_delete.outcome", ObjectDeleteMetrics.NameOf(outcome.Outcome));
         ObjectDeleteMetrics.Record(outcome.Outcome);
         return outcome;
     }
 
-    private async Task<ObjectDeleteAttempt> DeleteObjectsAsync(ObjectDeleteRequest request, DateTimeOffset now,
-        CancellationToken cancellationToken)
+    private async Task<ObjectDeleteAttempt> DeleteObjectsAsync(ObjectDeleteRequest request, CancellationToken cancellationToken)
     {
         if (!request.HasAttemptLeft(options.Value))
-            return await FailAsync(request, now, "The runner stopped during the last attempt.", null, cancellationToken);
+            return await FailAsync(request, "The runner stopped during the last attempt.", null, cancellationToken);
 
         int objectCount;
         try
@@ -63,7 +68,7 @@ public sealed class ObjectDeleteRunner(AppDbContext dbContext, ObjectStorage sto
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return await FailAsync(request, now, $"{ex.GetType().FullName}: {ex.Message}", ex, cancellationToken);
+            return await FailAsync(request, $"{ex.GetType().FullName}: {ex.Message}", ex, cancellationToken);
         }
 
         var completed = await CompleteAsync(request, cancellationToken);
@@ -79,10 +84,11 @@ public sealed class ObjectDeleteRunner(AppDbContext dbContext, ObjectStorage sto
         return 1;
     }
 
-    private async Task<ObjectDeleteAttempt> FailAsync(ObjectDeleteRequest request, DateTimeOffset now, string error,
-        Exception? exception, CancellationToken cancellationToken)
+    // The delay starts at the end of the attempt, so an attempt that ran to its timeout still waits the whole delay
+    private async Task<ObjectDeleteAttempt> FailAsync(ObjectDeleteRequest request, string error, Exception? exception,
+        CancellationToken cancellationToken)
     {
-        var failure = request.AfterFailure(error, now, options.Value);
+        var failure = request.AfterFailure(error, timeProvider.GetUtcNow(), options.Value);
         var recorded = await RecordFailureAsync(request, failure, cancellationToken);
         if (!recorded)
             return new ObjectDeleteAttempt(request.Id, ObjectDeleteOutcome.LostClaim);

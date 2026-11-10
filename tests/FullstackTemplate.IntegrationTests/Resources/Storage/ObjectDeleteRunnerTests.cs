@@ -50,6 +50,24 @@ public class ObjectDeleteRunnerTests : TestBase
     }
 
     [Test]
+    public async Task the_delay_after_a_failure_starts_when_the_attempt_ends_not_when_the_run_starts()
+    {
+        // Arrange
+        var (tenantId, _) = await DeleteAttachmentsAsync(1);
+        var delay = TimeSpan.FromDays(1);
+        // Each read of the clock is a minute later, so the attempt ends a minute or more after the run starts
+        await using var storageDown = WithStorageDown(
+            new ObjectDeleteOptions { FirstRetryDelay = delay, MaxRetryDelay = delay }, clockStep: TimeSpan.FromMinutes(1));
+        var start = DateTimeOffset.UtcNow;
+
+        // Act
+        await RunDueAsync(storageDown, start);
+
+        // Assert
+        (await RequestsOfTenantAsync(tenantId)).Single().DueAt.ShouldBeGreaterThanOrEqualTo(start + TimeSpan.FromMinutes(1) + delay);
+    }
+
+    [Test]
     public async Task a_request_that_fails_each_attempt_is_dead_and_its_span_shows_the_error()
     {
         // Arrange

@@ -15,7 +15,8 @@ using Microsoft.Extensions.Options;
 /// <summary>
 /// The Server of the object delete tests, with storage up or down, and reads of the real store. A runner claims each
 /// due request of the database, also the requests of other tests, so the tests that run a runner do not run in
-/// parallel with each other and look only at their own requests.
+/// parallel with each other and look only at their own requests. Each Server has its own <see cref="RunClock"/>, so a
+/// test sets the time of a run.
 /// </summary>
 public static class ObjectDeleteTestServer
 {
@@ -25,7 +26,7 @@ public static class ObjectDeleteTestServer
     /// A Server whose S3 client calls a port that refuses each connection, as a stopped storage does. The client does
     /// not try again, so a run over the requests of other tests stays short.
     /// </summary>
-    public static ServiceProvider WithStorageDown(ObjectDeleteOptions? options = null)
+    public static ServiceProvider WithStorageDown(ObjectDeleteOptions? options = null, TimeSpan? clockStep = null)
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -42,15 +43,19 @@ public static class ObjectDeleteTestServer
                 AuthenticationRegion = "us-east-1",
                 MaxErrorRetry = 0,
             }));
-            UseOptions(services, options);
+            UseOptions(services, options, clockStep);
         });
     }
 
     public static ServiceProvider WithStorageUp(ObjectDeleteOptions? options = null)
-        => TestFixture.BuildServiceProvider(services => UseOptions(services, options));
+        => TestFixture.BuildServiceProvider(services => UseOptions(services, options, null));
 
+    /// <summary>Runs the due requests with the clock of the Server at <paramref name="now"/>.</summary>
     public static Task<IReadOnlyList<ObjectDeleteAttempt>> RunDueAsync(IServiceProvider server, DateTimeOffset now)
-        => new TestingServiceScope(server).GetService<ObjectDeleteRunner>().RunDueAsync(now, CancellationToken.None);
+    {
+        ((RunClock)server.GetRequiredService<TimeProvider>()).Now = now;
+        return new TestingServiceScope(server).GetService<ObjectDeleteRunner>().RunDueAsync(CancellationToken.None);
+    }
 
     public static Task<List<ObjectDeleteRequest>> RequestsOfTenantAsync(string tenantId)
         => new TestingServiceScope().ExecuteDbContextAsync(db => db.Set<ObjectDeleteRequest>()
@@ -81,12 +86,27 @@ public static class ObjectDeleteTestServer
         return page.S3Objects?.Select(o => o.Key).ToList() ?? [];
     }
 
-    private static void UseOptions(IServiceCollection services, ObjectDeleteOptions? options)
+    private static void UseOptions(IServiceCollection services, ObjectDeleteOptions? options, TimeSpan? clockStep)
     {
+        services.RemoveAll<TimeProvider>();
+        services.AddSingleton<TimeProvider>(new RunClock(clockStep ?? TimeSpan.Zero));
         if (options is null)
             return;
 
         services.RemoveAll<IOptions<ObjectDeleteOptions>>();
         services.AddSingleton(Options.Create(options));
+    }
+
+    /// <summary>A clock that a test sets. It moves on by <paramref name="step"/> after each read, as time passes in a run.</summary>
+    private sealed class RunClock(TimeSpan step) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            var now = Now;
+            Now += step;
+            return now;
+        }
     }
 }

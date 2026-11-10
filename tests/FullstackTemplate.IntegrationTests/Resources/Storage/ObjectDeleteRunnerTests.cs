@@ -3,12 +3,8 @@ namespace FullstackTemplate.IntegrationTests.Resources.Storage;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
-using FullstackTemplate.Server.Domain.Tenants.Features;
-using FullstackTemplate.Server.Domain.Users;
-using FullstackTemplate.Server.Examples.Workshops.Features;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
-using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 using Shouldly;
 using static ObjectDeleteTestServer;
 
@@ -26,7 +22,7 @@ public class ObjectDeleteRunnerTests : TestBase
     public async Task a_failed_request_waits_a_delay_that_doubles_up_to_the_largest_delay()
     {
         // Arrange
-        var (tenantId, _) = await DeleteAttachmentsAsync(1);
+        var (tenantId, _) = await DeleteTenantWithObjectAsync();
         await using var storageDown = WithStorageDown(ThreeAttempts);
         var start = DatabaseNow();
 
@@ -53,7 +49,7 @@ public class ObjectDeleteRunnerTests : TestBase
     public async Task the_delay_after_a_failure_starts_when_the_attempt_ends_not_when_the_run_starts()
     {
         // Arrange
-        var (tenantId, _) = await DeleteAttachmentsAsync(1);
+        var (tenantId, _) = await DeleteTenantWithObjectAsync();
         var delay = TimeSpan.FromDays(1);
         // Each read of the clock is a minute later, so the attempt ends a minute or more after the run starts
         await using var storageDown = WithStorageDown(
@@ -71,8 +67,7 @@ public class ObjectDeleteRunnerTests : TestBase
     public async Task a_request_that_fails_each_attempt_is_dead_and_its_span_shows_the_error()
     {
         // Arrange
-        var (tenantId, keys) = await DeleteAttachmentsAsync(1);
-        await PutAsync(keys[0]);
+        var (tenantId, key) = await DeleteTenantWithObjectAsync();
         await using var storageDown = WithStorageDown(ThreeAttempts);
         using var spans = new RunSpans();
         var start = DatabaseNow();
@@ -93,7 +88,7 @@ public class ObjectDeleteRunnerTests : TestBase
             r => r.Attempts.ShouldBe(3),
             r => r.DeadAt.ShouldBe(start + TimeSpan.FromSeconds(75)),
             r => r.LastError.ShouldNotBeNullOrEmpty());
-        (await KeysUnderAsync(keys[0])).ShouldBe([keys[0]], "The object of a dead request stays for a person.");
+        (await KeysUnderAsync(key)).ShouldBe([key], "The object of a dead request stays for a person.");
         var runs = spans.Of(requestId);
         runs.Select(s => s.GetTagItem("app.object_delete.outcome")).ShouldBe(["retry_later", "retry_later", "dead"]);
         runs.Select(s => s.Status).ShouldBe([ActivityStatusCode.Unset, ActivityStatusCode.Unset, ActivityStatusCode.Error]);
@@ -104,7 +99,7 @@ public class ObjectDeleteRunnerTests : TestBase
     public async Task a_claim_after_a_runner_stopped_during_the_last_attempt_makes_the_request_dead()
     {
         // Arrange
-        var (tenantId, _) = await DeleteAttachmentsAsync(1);
+        var (tenantId, _) = await DeleteTenantWithObjectAsync();
         var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
         // A runner claimed the last attempt and stopped before it wrote the outcome
         await TestFixture.ExecuteOutOfBandAsync("UPDATE object_delete_requests SET attempts = @attempts WHERE id = @id",
@@ -123,10 +118,12 @@ public class ObjectDeleteRunnerTests : TestBase
     public async Task two_runners_at_the_same_time_claim_each_request_one_time()
     {
         // Arrange
-        var (tenantId, keys) = await DeleteAttachmentsAsync(20);
-        foreach (var key in keys)
-            await PutAsync(key);
-        var requestIds = (await RequestsOfTenantAsync(tenantId)).Select(r => r.Id).ToHashSet();
+        var tenants = new List<(string TenantId, string Key)>();
+        for (var i = 0; i < 20; i++)
+            tenants.Add(await DeleteTenantWithObjectAsync());
+        var requestIds = new HashSet<string>();
+        foreach (var (tenantId, _) in tenants)
+            requestIds.Add((await RequestsOfTenantAsync(tenantId)).Single().Id);
         await using var first = WithStorageUp();
         await using var second = WithStorageUp();
         var now = DateTimeOffset.UtcNow;
@@ -139,37 +136,30 @@ public class ObjectDeleteRunnerTests : TestBase
         ours.Select(a => a.RequestId).Order().ShouldBe(requestIds.Order(), "Each request was claimed one time.");
         ours.ShouldAllBe(a => a.Outcome == ObjectDeleteOutcome.Deleted);
         runs.ShouldAllBe(r => r.Count > 0, "Both runners did work, so the two ran at the same time.");
-        foreach (var key in keys)
+        foreach (var (tenantId, key) in tenants)
+        {
             (await KeysUnderAsync(key)).ShouldBeEmpty();
-        (await RequestsOfTenantAsync(tenantId)).ShouldBeEmpty();
+            (await RequestsOfTenantAsync(tenantId)).ShouldBeEmpty();
+        }
     }
 
     [Test]
     public async Task the_delete_of_a_tenant_keeps_the_objects_of_another_tenant()
     {
         // Arrange
-        await new TestingServiceScope().StartGraph(out _)
-            .AddTenant(out var deleted)
-            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
-            .Under(deleted).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out var deletedFile)
-            .BuildAsync();
-        await new TestingServiceScope().StartGraph(out _)
-            .AddTenant(out var kept)
-            .Under(kept).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out var keptFile)
-            .BuildAsync();
-        await PutAsync(deletedFile.File.StorageKey);
-        await PutAsync(keptFile.File.StorageKey);
+        var (deleted, admin) = await AddTenantAsync();
+        await new TestingServiceScope().StartGraph(out _).AddTenant(out var kept).BuildAsync();
+        await PutAsync($"tenants/{deleted}/files/{Guid.NewGuid():N}");
+        await PutAsync($"tenants/{kept.Id}/files/{Guid.NewGuid():N}");
         await PutAsync($"tenants/{kept.Id}/no-row/{Guid.NewGuid():N}");
         await using var storageUp = WithStorageUp();
-        var underTest = new TestingServiceScope(storageUp);
-        underTest.SetUserWithDefaults(identifier: admin.Identifier);
 
         // Act
-        await underTest.SendAsync(new DeleteTenant.Command(deleted.Id));
+        await DeleteTenantAsync(deleted, admin, storageUp);
         await RunDueAsync(storageUp, DateTimeOffset.UtcNow);
 
         // Assert
-        (await KeysUnderAsync($"tenants/{deleted.Id}/")).ShouldBeEmpty();
+        (await KeysUnderAsync($"tenants/{deleted}/")).ShouldBeEmpty();
         (await KeysUnderAsync($"tenants/{kept.Id}/")).Count.ShouldBe(2);
         (await RequestsOfTenantAsync(kept.Id)).ShouldBeEmpty();
     }
@@ -177,19 +167,14 @@ public class ObjectDeleteRunnerTests : TestBase
     private static List<ObjectDeleteOutcome> Of(string requestId, IReadOnlyList<ObjectDeleteAttempt> attempts)
         => [.. attempts.Where(a => a.RequestId == requestId).Select(a => a.Outcome)];
 
-    /// <summary>Deletes the given count of attachments of a new tenant, and gives the tenant and the object keys.</summary>
-    private static async Task<(string TenantId, string[] Keys)> DeleteAttachmentsAsync(int count)
+    /// <summary>Deletes a new tenant that has one object in storage, and gives the tenant and the key of the object.</summary>
+    private static async Task<(string TenantId, string Key)> DeleteTenantWithObjectAsync()
     {
-        await new TestingServiceScope().StartGraph(out _)
-            .AddTenant(out var tenant)
-            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
-            .Under(tenant).AddVenue(out _).AddWorkshop(out var workshop).AddWorkshopAttachments(out var attachments, count)
-            .BuildAsync();
-        var scope = new TestingServiceScope();
-        scope.SetUserWithDefaults(identifier: admin.Identifier);
-        foreach (var attachment in attachments)
-            await scope.SendAsync(new DeleteWorkshopAttachment.Command(workshop.Id, attachment.Id));
-        return (tenant.Id, [.. attachments.Select(a => a.File.StorageKey)]);
+        var (tenantId, admin) = await AddTenantAsync();
+        var key = $"tenants/{tenantId}/files/{Guid.NewGuid():N}";
+        await PutAsync(key);
+        await DeleteTenantAsync(tenantId, admin);
+        return (tenantId, key);
     }
 
     /// <summary>The <c>object_delete.run</c> spans. Each run is the root of a trace of its own, so this finds them by name.</summary>

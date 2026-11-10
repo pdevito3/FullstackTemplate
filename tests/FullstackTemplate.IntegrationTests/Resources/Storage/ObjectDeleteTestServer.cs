@@ -6,7 +6,10 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
+using FullstackTemplate.Server.Domain.Tenants.Features;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -65,6 +68,24 @@ public static class ObjectDeleteTestServer
     {
         ((RunClock)server.GetRequiredService<TimeProvider>()).Now = now;
         return new TestingServiceScope(server).GetService<ObjectDeleteRunner>().RunDueAsync(CancellationToken.None);
+    }
+
+    /// <summary>Adds a tenant and an admin of the tenant, who can delete it.</summary>
+    public static async Task<(string TenantId, string AdminIdentifier)> AddTenantAsync()
+    {
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .BuildAsync();
+        return (tenant.Id, admin.Identifier);
+    }
+
+    /// <summary>Deletes the tenant as its admin, on <paramref name="server"/> or on the default Server.</summary>
+    public static Task DeleteTenantAsync(string tenantId, string adminIdentifier, IServiceProvider? server = null)
+    {
+        var scope = server is null ? new TestingServiceScope() : new TestingServiceScope(server);
+        scope.SetUserWithDefaults(identifier: adminIdentifier);
+        return scope.SendAsync(new DeleteTenant.Command(tenantId));
     }
 
     public static Task<List<ObjectDeleteRequest>> RequestsOfTenantAsync(string tenantId)

@@ -1,5 +1,8 @@
 import type { Page } from '@playwright/test'
 
+// The component of the About page only. The route tree also imports the route file, and a failure there stops the app.
+export const aboutPageSource = /\/routes\/about\.tsx\?tsr-split=component/
+
 export const appShell = (page: Page) => ({
   aboutHeading: page.getByRole('heading', { level: 1, name: 'About' }),
   aboutText: page.getByText('This app runs on .NET Aspire and React.'),
@@ -17,6 +20,8 @@ export const appShell = (page: Page) => ({
   mainLandmarks: page.getByRole('main'),
   wideContent: page.getByRole('region', { name: 'Wide content' }),
   notFoundHeading: page.getByRole('heading', { name: 'Page not found' }),
+  pageError: page.getByRole('main').getByRole('alert'),
+  reloadPage: page.getByRole('button', { name: 'Reload the page' }),
   homeLink: page.getByRole('link', { name: 'Go to the home page' }),
   homeSubtitle: page.getByText('.NET Aspire + React with a BFF'),
   pageAnnouncement: page.getByTestId('page-announcement'),

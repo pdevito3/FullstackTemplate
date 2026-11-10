@@ -1,6 +1,7 @@
 import { expect, test } from '@tests/support/fixtures'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { homePage } from '../home/home.tasks'
+import { aboutPageSource } from './app-shell.locators'
 import { appShellPage } from './app-shell.tasks'
 
 for (const viewport of [
@@ -129,6 +130,34 @@ test.describe('an unknown address', () => {
 
     await expect(homePage(page).at.heading).toBeVisible()
     await expect(shell.at.currentPage).toHaveText('Home')
+  })
+})
+
+test.describe('a page whose code does not load', () => {
+  test('keeps the layout and says what to do', async ({ page, api }) => {
+    const shell = appShellPage(page)
+    await homePage(page).open()
+    await api.failPageSource(aboutPageSource)
+
+    await shell.chooseAboutWhoseCodeDoesNotLoad()
+
+    await expect(shell.at.pageError).toContainText('This page did not load')
+    await expect(shell.at.pageError).toContainText('Check your connection, then reload the page.')
+    await expect(shell.at.currentPage).toHaveText('About')
+    await expect(shell.at.homeNavigationLink).toBeVisible()
+  })
+
+  test('shows the page after Reload the page when its code loads again', async ({ page, api }) => {
+    const shell = appShellPage(page)
+    await homePage(page).open()
+    const restore = await api.failPageSource(aboutPageSource)
+    await shell.chooseAboutWhoseCodeDoesNotLoad()
+
+    restore()
+    await shell.reloadThePage()
+
+    await expect(shell.at.aboutHeading).toBeVisible()
+    await expect(shell.at.pageError).toHaveCount(0)
   })
 })
 

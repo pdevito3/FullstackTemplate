@@ -12,6 +12,8 @@ export interface Api {
   hold(...routes: MockRoute[]): () => void
   /** Holds the source file of a page until the test calls the function that this returns, so that the navigation to the page stays in progress. */
   holdPageSource(file: RegExp): Promise<() => void>
+  /** Aborts each request for the source file of a page until the test calls the function that this returns, as a lost connection does. */
+  failPageSource(file: RegExp): Promise<() => void>
   /** The last request that the seam served for this method and path, or undefined if there was none. */
   last(method: HttpMethod, path: string): ServedRequest | undefined
   /** Each request that the seam served for this method and path, in order. */
@@ -91,6 +93,13 @@ export const test = base.extend<{ actor: Identity; api: Api }>({
             await route.fallback()
           })
           return release
+        },
+        failPageSource: async (file) => {
+          let failing = true
+          await page.route(file, (route) => (failing ? route.abort() : route.fallback()))
+          return () => {
+            failing = false
+          }
         },
         last: served.last,
         all: served.all,

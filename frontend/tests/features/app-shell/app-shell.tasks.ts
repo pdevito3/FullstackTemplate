@@ -48,6 +48,21 @@ export function appShellPage(page: Page) {
       await expect(at.aboutText).toBeVisible()
     },
 
+    async chooseAboutWhoseCodeDoesNotLoad() {
+      // The router reloads the page once for a chunk that does not load.
+      const reloaded = page.waitForEvent('load')
+      await at.aboutNavigationLink.click()
+      await reloaded
+      await expect(at.pageError).toBeVisible()
+    },
+
+    async reloadThePage() {
+      const reloaded = page.waitForEvent('load')
+      await at.reloadPage.click()
+      await reloaded
+      await expect(at.aboutText).toBeVisible()
+    },
+
     async openAboutFromMobileSidebar() {
       await at.aboutNavigationLink.click()
       await expect(at.aboutText).toBeVisible()

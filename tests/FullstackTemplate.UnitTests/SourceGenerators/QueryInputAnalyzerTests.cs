@@ -214,6 +214,8 @@ public class QueryInputAnalyzerTests
     [Arguments("for (var i = 0; i < request.Ids.Length; i++) { if (!EntityId.IsValid(request.Ids[i], Tenant.IdPrefix)) return false; }")]
     [Arguments("if (request.Ids?.All(id => EntityId.IsValid(id, Tenant.IdPrefix)) == false) return false;")]
     [Arguments("if (request.Ids?.All(PostgresText.CanStore) == false) return false;")]
+    [Arguments("if (request.Ids.Any(id => !PostgresText.CanStore(id))) return false;")]
+    [Arguments("if (request.Ids.Where(id => !PostgresText.CanStore(id)).Any()) return false;")]
     public async Task a_request_list_that_a_check_of_each_item_checks_first_has_no_diagnostics(string check)
     {
         // Act
@@ -229,6 +231,9 @@ public class QueryInputAnalyzerTests
     [Test]
     [Arguments("if (!EntityId.IsValid(request.Ids[0], Tenant.IdPrefix)) return false;")]
     [Arguments("var first = request.Ids[0]; if (!EntityId.IsValid(first, Tenant.IdPrefix)) return false;")]
+    [Arguments("if (!request.Ids.Any(PostgresText.CanStore)) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id))) return false;")]
+    [Arguments("if (!request.Ids.Where(PostgresText.CanStore).Any()) return false;")]
     public async Task a_check_of_one_item_of_a_request_list_gets_fstqry001(string check)
     {
         // Act
@@ -730,6 +735,13 @@ public class QueryInputAnalyzerTests
     [Arguments("foreach (var name in request.Names) { if (!PostgresText.CanStore(name)) return false; }", "request.Names[0].Trim()")]
     [Arguments("if (!request.Names.All(name => PostgresText.CanStore(name))) return false;", "request.Names[0]")]
     [Arguments("if (!request.Names.All(PostgresText.CanStore)) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.TrueForAll(PostgresText.CanStore)) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.Select(PostgresText.CanStore).All(ok => ok)) return false;", "request.Names[0]")]
+    [Arguments("request.Names.ForEach(name => { if (!PostgresText.CanStore(name)) throw new ArgumentException(name); });", "request.Names[0]")]
+    [Arguments("if (request.Names.Any(name => !PostgresText.CanStore(name))) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.Exists(name => !PostgresText.CanStore(name))) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.Count(name => !PostgresText.CanStore(name)) > 0) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.FirstOrDefault(name => !PostgresText.CanStore(name)) is not null) return false;", "request.Names[0]")]
     [Arguments("for (var i = 0; i < request.Items.Count; i++) { if (!PostgresText.CanStore(request.Items[i].Name)) return false; }", "request.Items[0].Name")]
     [Arguments("for (var i = 0; i < request.Table.Count; i++) { for (var j = 0; j < request.Table[i].Count; j++) { if (!PostgresText.CanStore(request.Table[i][j])) return false; } }", "request.Table[0][1]")]
     [Arguments("for (var j = 0; j < request.Table[0].Count; j++) { if (!PostgresText.CanStore(request.Table[0][j])) return false; }", "request.Table[0][1]")]
@@ -786,6 +798,20 @@ public class QueryInputAnalyzerTests
     [Arguments("foreach (var cell in request.Table[0]) { if (!PostgresText.CanStore(cell)) return false; }", "request.Table[1][0]")]
     [Arguments("if (!PostgresText.CanStore(request.Table[0][0])) return false;", "request.Table[0][1]")]
     [Arguments("foreach (var text in request.Bag) { if (!PostgresText.CanStore(text)) return false; }", "request.Bag.Label")]
+    [Arguments("if (!request.Names.Any(PostgresText.CanStore)) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.Any(name => PostgresText.CanStore(name))) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.Exists(PostgresText.CanStore)) return false;", "request.Names[0]")]
+    [Arguments("var valid = request.Names.Where(PostgresText.CanStore).ToList(); if (valid.Count == 0) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.Where(name => PostgresText.CanStore(name)).ToList().Count == 0) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.FindAll(PostgresText.CanStore).Count == 0) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.Find(PostgresText.CanStore) is null) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.FirstOrDefault(PostgresText.CanStore) is null) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.First(name => PostgresText.CanStore(name)) is null) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.Count(PostgresText.CanStore) == 0) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.SkipWhile(PostgresText.CanStore).Any()) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.TakeWhile(PostgresText.CanStore).Count() == 0) return false;", "request.Names[0]")]
+    [Arguments("if (!request.Names.Zip(request.RoList, (a, b) => PostgresText.CanStore(b)).Any()) return false;", "request.Names[0]")]
+    [Arguments("request.Names.ForEach(name => PostgresText.CanStore(name));", "request.Names[0]")]
     public async Task a_check_that_does_not_reach_the_item_gets_fstqry001(string check, string text)
     {
         // Act

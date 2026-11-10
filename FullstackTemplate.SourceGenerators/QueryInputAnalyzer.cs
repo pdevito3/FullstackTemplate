@@ -221,9 +221,14 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		=> operation switch
 		{
 			IInvocationOperation call when types.IsCheck(call.TargetMethod) => call.Arguments.SelectMany(argument => new[] { argument.Value, ListThatHoldsItem(argument.Value, root) }),
-			IMethodReferenceOperation reference when types.IsCheck(reference.Method) => [SourceOf(reference.Parent)],
+			IMethodReferenceOperation reference when types.IsCheck(reference.Method) && AsksOfEachItem(reference.Parent) => [SourceOf(reference.Parent)],
 			_ => [],
 		};
+
+	// Only these calls need each item to pass the check. `Any(CanStore)`, `Where(CanStore)`, and `First(CanStore)` need one pass,
+	// so in them only a lambda that negates the check, as `Any(n => !CanStore(n))`, counts for each item.
+	private static bool AsksOfEachItem(IOperation? @delegate)
+		=> @delegate is IDelegateCreationOperation { Parent: IArgumentOperation { Parent: IInvocationOperation { TargetMethod.Name: "All" or "TrueForAll" or "Select" } } };
 
 	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root)
 	{
@@ -252,7 +257,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		for (var parent = value.Parent; parent is not null; parent = parent.Parent)
 		{
 			if (parent is IAnonymousFunctionOperation function && function.Symbol.Parameters.Contains(item, SymbolEqualityComparer.Default))
-				return SourceOf(function.Parent);
+				return value.Parent is IArgumentOperation { Parent: IInvocationOperation { Parent: IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } } } || AsksOfEachItem(function.Parent) ? SourceOf(function.Parent) : null;
 			if (parent is IForEachLoopOperation loop && loop.Locals.Contains(item, SymbolEqualityComparer.Default))
 				return ListOf(loop.Collection);
 		}

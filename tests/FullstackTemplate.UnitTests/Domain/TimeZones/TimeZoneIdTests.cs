@@ -129,6 +129,48 @@ public class TimeZoneIdTests
     }
 
     [Test]
+    public void a_wrong_case_of_a_zone_is_refused_as_not_known_not_as_not_a_place()
+    {
+        // Act
+        var act = () => TimeZoneId.Of("america/chicago");
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Message.ShouldContain("is not a time zone that the server knows");
+    }
+
+    [Test]
+    public void the_zone_of_an_unknown_local_time_is_refused_as_not_a_place()
+    {
+        // Act
+        var act = () => TimeZoneId.Of("Factory");
+
+        // Assert
+        var exception = act.ShouldThrow<ValidationException>();
+        exception.Property.ShouldBe("timeZone");
+        exception.Message.ShouldContain("is not the time zone of a place");
+    }
+
+    // A host with the file of the ID refuses it as not a place. A host with no file refuses it as not known.
+    [Test]
+    [Arguments("FACTORY")]
+    [Arguments("factory")]
+    [Arguments("posixrules")]
+    [Arguments("localtime")]
+    [Arguments("right/America/Chicago")]
+    [Arguments("Posixrules")]
+    [Arguments("POSIXRULES")]
+    [Arguments("Localtime")]
+    [Arguments("Right/America/Chicago")]
+    public void a_tzdata_file_that_is_not_the_zone_of_a_place_is_refused(string value)
+    {
+        // Act
+        var act = () => TimeZoneId.Of(value);
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Property.ShouldBe("timeZone");
+    }
+
+    [Test]
     public void an_id_that_is_too_long_is_refused_with_the_limit()
     {
         // Act

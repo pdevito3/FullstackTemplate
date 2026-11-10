@@ -1,5 +1,5 @@
 import { CalendarDate, parseDate, parseDateTime } from '@internationalized/date'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   browserTimeZone,
@@ -43,6 +43,38 @@ describe('parseTimeZone', () => {
   it('keeps an ID that the browser knows by an older name, as the Server holds it', () => {
     expect(parseTimeZone('Asia/Kolkata')).toBe('Asia/Kolkata')
     expect(parseTimeZone('Europe/Kyiv')).toBe('Europe/Kyiv')
+  })
+
+  // WebKit 27.2 throws a RangeError for these IDs, which the Server accepts. The zone of the place works in each browser.
+  it.each([
+    ['EST5EDT', 'America/New_York', 'Eastern Time'],
+    ['CST6CDT', 'America/Chicago', 'Central Time'],
+    ['MST7MDT', 'America/Denver', 'Mountain Time'],
+    ['PST8PDT', 'America/Los_Angeles', 'Pacific Time'],
+    ['est5edt', 'America/New_York', 'Eastern Time'],
+  ])('gives the zone of the place for the System V ID %s', (id, place, label) => {
+    const zone = parseTimeZone(id)
+
+    expect(zone).toBe(place)
+    expect(timeZoneLabel(zone)).toBe(label)
+  })
+
+  describe('in an engine that does not know the System V IDs, as WebKit 27.2', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it.each(['EST5EDT', 'CST6CDT', 'MST7MDT', 'PST8PDT'])('gives the zone of the place for %s', (id) => {
+      class RefusingDateTimeFormat extends Intl.DateTimeFormat {
+        constructor(locale?: string, options?: Intl.DateTimeFormatOptions) {
+          if (options?.timeZone?.toUpperCase() === id) throw new RangeError(`invalid time zone: ${id}`)
+          super(locale, options)
+        }
+      }
+      vi.stubGlobal('Intl', { ...Intl, DateTimeFormat: RefusingDateTimeFormat })
+
+      expect(() => parseTimeZone(id)).not.toThrow()
+    })
   })
 })
 

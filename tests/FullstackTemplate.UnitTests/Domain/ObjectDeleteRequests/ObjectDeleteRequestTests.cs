@@ -42,7 +42,7 @@ public class ObjectDeleteRequestTests
     }
 
     [Test]
-    public void an_attachment_whose_key_is_not_under_its_tenant_gets_no_request()
+    public void an_attachment_whose_key_is_not_under_its_tenant_stops_the_save()
     {
         // Arrange
         TestGraph.Start(out _).AddVenue(out _).AddWorkshop(out _).AddWorkshopAttachment(out var attachment);

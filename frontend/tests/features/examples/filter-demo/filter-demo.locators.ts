@@ -48,6 +48,8 @@ export const filterDemo = (page: Page) => {
     editFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^${propertyLabel} \\|`) }),
     removeFilter: (propertyLabel: string) => page.getByRole('button', { name: new RegExp(`^Remove filter: ${propertyLabel}`) }),
     /** `name` is the full name of the filter, for example `Labels | Has | Bug`. */
+    editFilterNamed: (name: string) => page.getByRole('button', { name, exact: true }),
+    /** `name` is the full name of the filter, for example `Labels | Has | Bug`. */
     removeFilterNamed: (name: string) => page.getByRole('button', { name: `Remove filter: ${name}`, exact: true }),
     toolbarButton: (name: 'Cancel' | 'Clear' | 'Complex Nested Query' | 'Group Filters' | 'Ungroup' | 'Urgent Bugs') =>
       page.getByRole('button', { name, exact: true }),

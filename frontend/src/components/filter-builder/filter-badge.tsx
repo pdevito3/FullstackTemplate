@@ -30,14 +30,14 @@ export function FilterBadge({ filter, onRemove, onEdit }: FilterBadgeProps) {
       <ButtonPrimitive
         data-slot="filter-badge-edit"
         onPress={onEdit}
-        className="min-w-0 cursor-pointer rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="min-w-0 cursor-pointer rounded-sm text-left wrap-anywhere outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="font-medium">{filter.propertyLabel}</span>
         <SeparatorAfterWord />
         <span className="text-xs">{getOperatorLabel(filter.operator)}</span>
         <SeparatorAfterWord />
         <span className="inline-flex max-w-full items-center gap-1.5 align-bottom">
-          <span className="min-w-0 max-w-[200px] truncate text-xs">{formattedValue}</span>
+          <span className="min-w-0 text-xs">{formattedValue}</span>
 
           {filter.controlType === 'text' && isCaseSensitive && (
             <HugeiconsIcon icon={TextFontIcon} className="ml-1 size-3 shrink-0 text-muted-foreground" />
@@ -69,8 +69,10 @@ function SeparatorAfterWord() {
     <>
       <span className="whitespace-nowrap text-xs font-semibold text-foreground/60">
         {' '}
-        <span className="px-1.5">|</span>
-      </span>{' '}
+        <span className="pl-1.5">|</span>
+      </span>
+      {/* The gap after the bar is word spacing, not padding: at the end of a line it takes no room, so the bar fits beside its word more often. */}
+      <span className="[word-spacing:--spacing(1.5)]"> </span>
     </>
   )
 }

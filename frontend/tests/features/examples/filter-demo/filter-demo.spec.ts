@@ -793,18 +793,40 @@ test.describe('a nested filter group on a 320 px phone with a 24 px font', () =>
 test.describe('a filter in a nested group on a 320 px phone with a 24 px font', () => {
   test.use({ viewport: { width: 320, height: 640 } })
 
-  test('reads as one phrase, with no more lines than its words need', async ({ page }) => {
+  test('reads as one phrase, with its lines broken where its words and bars break as a paragraph', async ({ page }) => {
     const demo = filterDemoPage(page)
     await useDefaultFontSize(page, 24)
 
     await demo.openNestedGroups()
 
     for (const propertyLabel of ['First Name', 'Comment Count']) {
-      const lines = await demo.linesOfBadgeAndOfItsWordsAsParagraph(demo.at.filterBadgeEdit(2, propertyLabel))
-      expect(lines.badge, lines.words).toBeLessThanOrEqual(lines.paragraph)
+      const lines = await demo.linesOfBadgeAndOfItsContentAsParagraph(demo.at.filterBadgeEdit(2, propertyLabel))
+      expect(lines.badge).toEqual(lines.paragraph)
     }
   })
 })
+
+for (const width of [320, 375, 390]) {
+  for (const fontSize of [16, 24]) {
+    test.describe(`a filter in a group on a ${width} px phone with a ${fontSize} px font`, () => {
+      test.use({ viewport: { width, height: 640 } })
+
+      test('keeps the full text of the filter inside its edit button, also a long word', async ({ page }) => {
+        const demo = filterDemoPage(page)
+        await useDefaultFontSize(page, fontSize)
+        await demo.open()
+        await demo.at.toolbarButton('Urgent Bugs').click()
+        await demo.addTextFilter('First Name', 'Wolfeschlegelsteinhausenbergerdorff')
+
+        await demo.at.toolbarButton('Group Filters').click()
+
+        for (const name of ['Labels | Has | Bug', 'Labels | Has | Urgent', 'First Name | Contains | Wolfeschlegelsteinhausenbergerdorff']) {
+          expect(await demo.textOverrunOf(demo.at.editFilterNamed(name)), name).toBeLessThanOrEqual(0)
+        }
+      })
+    })
+  }
+}
 
 test.describe('a filter group with one short filter on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } })

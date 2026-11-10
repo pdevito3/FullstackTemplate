@@ -255,31 +255,54 @@ export function filterDemoPage(page: Page) {
       return middle(a) > b.top && middle(a) < b.bottom && middle(b) > a.top && middle(b) < a.bottom
     },
 
-    async linesOfBadgeAndOfItsWordsAsParagraph(element: Locator): Promise<{ badge: number; paragraph: number; words: string }> {
+    /** How far the text of the element runs past its left or right edge. Text that a box hides counts too. */
+    async textOverrunOf(element: Locator) {
       return element.evaluate((node) => {
+        const box = node.getBoundingClientRect()
+        const range = document.createRange()
+        let overrun = -Infinity
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+        for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+          range.selectNodeContents(text)
+          for (const rect of range.getClientRects()) {
+            if (rect.width > 0) overrun = Math.max(overrun, box.left - rect.left, rect.right - box.right)
+          }
+        }
+        return overrun
+      })
+    },
+
+    /**
+     * The text of each line of the badge, and of each line of its own words, bars, and gaps in a paragraph of the same
+     * width. The two are the same when the badge wraps as one phrase.
+     */
+    async linesOfBadgeAndOfItsContentAsParagraph(element: Locator): Promise<{ badge: string[]; paragraph: string[] }> {
+      return element.evaluate((node) => {
+        const fontSize = parseFloat(getComputedStyle(node).fontSize)
         const linesOf = (root: Node) => {
           const range = document.createRange()
-          const tops: number[] = []
+          const lines: { top: number; text: string }[] = []
           const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-          for (let text = walker.nextNode(); text; text = walker.nextNode()) {
-            range.selectNodeContents(text)
-            for (const rect of range.getClientRects()) if (rect.width > 0) tops.push(rect.top)
+          for (let text = walker.nextNode() as Text | null; text; text = walker.nextNode() as Text | null) {
+            for (let index = 0; index < text.length; index++) {
+              range.setStart(text, index)
+              range.setEnd(text, index + 1)
+              const rect = range.getClientRects()[0]
+              if (!rect || rect.width === 0) continue
+              let line = lines.find(({ top }) => Math.abs(top - rect.top) <= fontSize / 2)
+              if (!line) lines.push((line = { top: rect.top, text: '' }))
+              line.text += text.data[index]
+            }
           }
-          tops.sort((a, b) => a - b)
-          const fontSize = parseFloat(getComputedStyle(node).fontSize)
-          return tops.filter((top, index) => index === 0 || top - tops[index - 1] > fontSize / 2).length
+          return lines.sort((a, b) => a.top - b.top).map(({ text }) => text.replace(/\s+/g, ' ').trim()).filter(Boolean)
         }
-        const textNodes = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
-        const texts: string[] = []
-        for (let text = textNodes.nextNode(); text; text = textNodes.nextNode()) texts.push(text.textContent ?? '')
-        const words = texts.join(' ').replace(/\s+/g, ' ').trim()
         const paragraph = document.createElement('p')
-        paragraph.textContent = words
+        paragraph.append(...[...node.childNodes].map((child) => child.cloneNode(true)))
         const style = getComputedStyle(node)
         paragraph.style.cssText = `position:absolute;visibility:hidden;margin:0;width:${node.getBoundingClientRect().width}px`
-        for (const property of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'] as const) paragraph.style[property] = style[property]
+        for (const property of ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'overflowWrap'] as const) paragraph.style[property] = style[property]
         document.body.append(paragraph)
-        const result = { badge: linesOf(node), paragraph: linesOf(paragraph), words }
+        const result = { badge: linesOf(node), paragraph: linesOf(paragraph) }
         paragraph.remove()
         return result
       })

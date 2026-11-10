@@ -18,7 +18,7 @@ export const startTenant = (page: Page) => {
     homeLink: page.getByRole('main').getByRole('link', { name: 'Go to the home page' }),
     homeHeading: page.getByRole('heading', { name: 'Fullstack Template', level: 1 }),
     aboutLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About' }),
-    homeNavLink: page.getByRole('link', { name: 'Home' }),
+    homeNavLink: page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }),
     aboutHeading: page.getByRole('heading', { name: 'About', level: 1 }),
     main: page.getByRole('main'),
     lookupFailure: page.getByRole('main').getByRole('alert'),

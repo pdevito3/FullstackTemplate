@@ -382,6 +382,7 @@ test.describe('a member of a tenant', () => {
 
     // Two clicks, because a request of the first click reaches the mock before the second page shows.
     await start.goToAbout()
+    await expect(start.at.aboutHeading).toBeVisible()
     await start.goHomeInSidebar()
 
     await expect(start.at.homeHeading).toBeVisible()

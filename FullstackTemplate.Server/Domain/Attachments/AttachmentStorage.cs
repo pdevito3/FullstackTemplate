@@ -44,8 +44,8 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
     }
 
     /// <summary>
-    /// Deletes the row of the attachment, then its object. A failed save keeps the file. A failed object delete leaves an
-    /// object that no row names, and the delete still succeeds.
+    /// Deletes the row of the attachment. The save also adds the request for the delete of its object, and
+    /// <see cref="ObjectDeleteRequests.ObjectDeleteWorker"/> deletes the object after the commit.
     /// </summary>
     public async Task DeleteAsync<TAttachment>(TAttachment attachment, CancellationToken cancellationToken)
         where TAttachment : BaseEntity, IAttachment
@@ -53,37 +53,6 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
         dbContext.Remove(attachment);
         await dbContext.SaveChangesAsync(cancellationToken);
         AttachmentMetrics.RecordDeleted<TAttachment>();
-
-        try
-        {
-            // Not the request token: a caller that left must not stop the delete of the bytes
-            await storage.DeleteAsync(attachment.File.StorageKey, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            Telemetry.RecordError(Activity.Current, ex);
-            _logger.Here().Error(ex, "Could not delete the object of deleted attachment {AttachmentId}", attachment.Id);
-        }
-    }
-
-    /// <summary>
-    /// Deletes each object of a deleted tenant. Call it after the delete of the tenant commits. A failure leaves the
-    /// objects, and the tenant delete still succeeds.
-    /// </summary>
-    public async Task DeleteFilesOfTenantAsync(string tenantId)
-    {
-        using var activity = Telemetry.Trace([("app.tenant_id", tenantId)], "attachments.delete_tenant_files");
-        try
-        {
-            var count = await storage.DeleteUnderAsync(StoredFile.TenantPrefix(tenantId), CancellationToken.None);
-            activity?.SetTag("app.attachment.deleted_object_count", count);
-            _logger.Here().Information("Deleted {ObjectCount} objects of deleted tenant {TenantId}", count, tenantId);
-        }
-        catch (Exception ex)
-        {
-            Telemetry.RecordError(activity, ex);
-            _logger.Here().Error(ex, "Could not delete the objects of deleted tenant {TenantId}", tenantId);
-        }
     }
 
     // A save can commit and still throw, for example when the reply of the commit is lost and the run again finds the

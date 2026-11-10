@@ -7,6 +7,7 @@ namespace FullstackTemplate.Server.Domain.Attachments;
 public interface IAttachment
 {
     string Id { get; }
+    string TenantId { get; }
     StoredFile File { get; }
     DateTimeOffset UploadedAt { get; }
 }

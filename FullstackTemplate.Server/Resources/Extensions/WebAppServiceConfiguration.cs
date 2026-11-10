@@ -3,6 +3,7 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 using System.Diagnostics;
 using Databases;
 using Domain.Attachments;
+using Domain.ObjectDeleteRequests;
 using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,15 @@ public static class WebAppServiceConfiguration
         builder.Services.AddScoped<SystemTenantAccess>();
         builder.AddObjectStorage();
         builder.Services.AddScoped<AttachmentStorage>();
+        builder.Services.AddOptions<ObjectDeleteOptions>()
+            .BindConfiguration(ObjectDeleteOptions.SectionName)
+            // A delay of zero would claim a failed request again in the same run, with no end
+            .Validate(o => o.Interval > TimeSpan.Zero && o.FirstRetryDelay > TimeSpan.Zero
+                    && o.MaxRetryDelay >= o.FirstRetryDelay && o.AttemptTimeout > TimeSpan.Zero && o.MaxAttempts > 0,
+                $"{ObjectDeleteOptions.SectionName} needs times over zero, a MaxRetryDelay not under FirstRetryDelay, and MaxAttempts over zero.")
+            .ValidateOnStart();
+        builder.Services.AddScoped<ObjectDeleteRunner>();
+        builder.Services.AddHostedService<ObjectDeleteWorker>();
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);

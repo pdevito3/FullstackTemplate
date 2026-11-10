@@ -376,6 +376,62 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     b.ToTable("invites", (string)null);
                 });
 
+            modelBuilder.Entity("FullstackTemplate.Server.Domain.ObjectDeleteRequests.ObjectDeleteRequest", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset?>("DeadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dead_at");
+
+                    b.Property<DateTimeOffset>("DueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
+                    b.Property<bool>("IsPrefix")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_prefix");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tenant_id")
+                        .UseCollation("C");
+
+                    b.HasKey("Id")
+                        .HasName("pk_object_delete_requests");
+
+                    b.HasIndex("DueAt", "Id")
+                        .HasDatabaseName("ix_object_delete_requests_due_at_id")
+                        .HasFilter("dead_at IS NULL");
+
+                    b.ToTable("object_delete_requests", (string)null);
+                });
+
             modelBuilder.Entity("FullstackTemplate.Server.Domain.Tenants.Tenant", b =>
                 {
                     b.Property<string>("Id")

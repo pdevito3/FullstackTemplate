@@ -18,12 +18,12 @@ test('says that the page did not load when its code did not load, and offers a r
 
 test('says that the page stopped working when the page throws, and shows no text of the error', async () => {
   // Arrange and Act
-  const screen = await render(<PageError error={new Error('Cannot read properties of undefined')} reset={() => {}} />)
+  const screen = await render(<PageError error={new TypeError('Cannot read properties of undefined')} reset={() => {}} />)
 
   // Assert
   const alert = screen.getByRole('alert')
   await expect.element(alert.getByRole('heading', { level: 1, name: 'This page stopped working' })).toBeVisible()
   await expect.element(alert.getByText('Reload the page to try again.')).toBeVisible()
   await expect.element(alert.getByRole('button', { name: 'Reload the page' })).toBeVisible()
-  await expect.element(alert.getByText('Cannot read properties of undefined')).not.toBeInTheDocument()
+  await expect.element(alert.getByText(/Cannot read properties of undefined/)).not.toBeInTheDocument()
 })

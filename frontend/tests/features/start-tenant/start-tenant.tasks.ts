@@ -31,6 +31,7 @@ export function startTenantPage(page: Page) {
     async goToAbout() {
       await at.aboutLink.click()
       await expect(page).toHaveURL('/about')
+      await expect(at.aboutHeading).toBeVisible()
     },
     async goHomeInSidebar() {
       await at.homeNavLink.click()

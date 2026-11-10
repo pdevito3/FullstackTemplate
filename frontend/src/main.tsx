@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { NotFound } from '@/components/not-found'
+import { PageError } from '@/components/page-error'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/toaster'
 import { AuthKeys } from '@/domain/auth/apis/auth.keys'
@@ -19,7 +20,7 @@ import { routeTree } from './routeTree.gen'
 keepInviteTokenOutOfTheUrl()
 
 // Create a new router instance
-const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound })
+const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound, defaultErrorComponent: PageError })
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {

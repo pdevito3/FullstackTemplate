@@ -48,6 +48,16 @@ export function appShellPage(page: Page) {
       await expect(at.aboutText).toBeVisible()
     },
 
+    async chooseAboutWhoseCodeDoesNotLoad() {
+      await at.aboutNavigationLink.click()
+      await expect(at.pageError).toBeVisible()
+    },
+
+    async reloadThePage() {
+      await at.reloadPage.click()
+      await expect(at.aboutText).toBeVisible()
+    },
+
     async openAboutFromMobileSidebar() {
       await at.aboutNavigationLink.click()
       await expect(at.aboutText).toBeVisible()

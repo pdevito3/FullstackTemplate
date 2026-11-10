@@ -231,6 +231,8 @@ The router moves the `component` of each route to a chunk that loads when the pa
 The workshop list checks its search and its page like this: [`listSearchSchema`](<../frontend/src/routes/(examples)/workshops/index.tsx>).
 <!-- example:end -->
 
+When a page throws, or the code of its chunk does not load, the router shows `PageError` (`defaultErrorComponent` in `main.tsx`) in place of the page. The layout and the sidebar stay. A failed chunk keeps its error until the page loads again, so the message tells the user to reload the page. For a chunk that does not load, the router first reloads the page one time by itself. After a deploy replaces the chunks, that reload gets the new build. The router stores the reload in `sessionStorage`, so it does not reload again for the same file.
+
 ## Bundle size
 
 `pnpm build` fails when the JavaScript that `dist/index.html` loads is more than 950 kB of minified code. That is the entry chunk in the `<script type="module">` tag and each chunk in the `modulepreload` links, which the entry imports statically. The budget does not count the CSS, or the chunk of a route, which loads after the entry runs. The budget is `firstPageBudgetKb` in `frontend/vite.config.ts`. The error gives the size of each chunk that it counts.

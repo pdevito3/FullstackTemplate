@@ -102,7 +102,7 @@ public class WorkshopAttachmentTests : TestBase
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await ListAsync(workshop.Id)).Attachments.ShouldBeEmpty();
-        (await Storage.GetAsync(attachment.DownloadUrl)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await StatusOnceGoneAsync(attachment.DownloadUrl)).ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Test]
@@ -121,8 +121,8 @@ public class WorkshopAttachmentTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await StatusOnceGoneAsync(attachment.DownloadUrl)).ShouldBe(HttpStatusCode.NotFound);
         (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
-        (await Storage.GetAsync(attachment.DownloadUrl)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await Storage.GetAsync(otherAttachment.DownloadUrl)).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -344,6 +344,22 @@ public class WorkshopAttachmentTests : TestBase
             Prefix = $"tenants/{tenant.Id}/workshops/{workshop.Id}/",
         });
         return page.S3Objects?.Select(o => o.Key).ToList() ?? [];
+    }
+
+    /// <summary>
+    /// The status of a URL once storage no longer has its object, or the last status after 30 seconds. The delete
+    /// worker deletes the object after the row delete, at its next run.
+    /// </summary>
+    private static async Task<HttpStatusCode> StatusOnceGoneAsync(string url)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            var status = (await Storage.GetAsync(url)).StatusCode;
+            if (status == HttpStatusCode.NotFound || DateTimeOffset.UtcNow > deadline)
+                return status;
+            await Task.Delay(TimeSpan.FromMilliseconds(200));
+        }
     }
 
     private static byte[] PdfOf(int length) => SampleFiles.OfLength(SampleFiles.Pdf, length);

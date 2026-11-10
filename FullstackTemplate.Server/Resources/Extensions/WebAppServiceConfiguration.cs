@@ -42,7 +42,6 @@ public static class WebAppServiceConfiguration
                 $"{ObjectDeleteOptions.SectionName} needs times over zero, a MaxRetryDelay not under FirstRetryDelay, and MaxAttempts over zero.")
             .ValidateOnStart();
         builder.Services.AddScoped<ObjectDeleteRunner>();
-        builder.Services.AddHostedService<ObjectDeleteWorker>();
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);

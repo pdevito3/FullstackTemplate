@@ -7,6 +7,7 @@ using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
 using FullstackTemplate.Bff.User;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -46,6 +47,8 @@ public class BffSessionTests
         tokens.Length.ShouldBe(3);
         foreach (var token in tokens)
             row.Ticket.AsSpan().IndexOf(System.Text.Encoding.UTF8.GetBytes(token)).ShouldBe(-1, $"the row holds {token} in clear text");
+        var protector = app.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector("FullstackTemplate.Bff.Sessions.Ticket");
+        Should.NotThrow(() => protector.Unprotect(row.Ticket), "the row holds a ticket that Data Protection did not encrypt");
     }
 
     [Test]

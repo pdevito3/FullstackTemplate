@@ -57,6 +57,26 @@ public class TimeZoneIdTests
         zone.Value.ShouldBe(value);
     }
 
+    public static IEnumerable<(string, string)> Links => TimeZoneLinks.All.Select(link => (link.Name, link.Target));
+
+    [Test]
+    [MethodDataSource(nameof(Links))]
+    public void each_link_of_the_iana_database_shows_the_time_of_the_zone_that_it_names(string name, string target)
+    {
+        // Arrange
+        var winter = new DateTimeOffset(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
+        var summer = new DateTimeOffset(2026, 7, 15, 12, 0, 0, TimeSpan.Zero);
+
+        // Act
+        var link = TimeZoneId.Of(name);
+        var zone = TimeZoneId.Of(target);
+
+        // Assert
+        link.Value.ShouldBe(name);
+        link.ToLocal(winter).ShouldBe(zone.ToLocal(winter));
+        link.ToLocal(summer).ShouldBe(zone.ToLocal(summer));
+    }
+
     [Test]
     public void a_wrong_case_of_an_old_name_is_refused()
     {

@@ -25,6 +25,48 @@ public class TimeZoneIdTests
         zone.Value.ShouldBe(value);
     }
 
+    /// <summary>
+    /// Chromium 156 and Node 24 give these old names of zones, which IANA keeps as links in its file "backward". Ubuntu
+    /// 26.04 puts the files of the links in the package tzdata-legacy, so a host can have no file for them.
+    /// </summary>
+    [Test]
+    [Arguments("Africa/Asmera")]
+    [Arguments("America/Buenos_Aires")]
+    [Arguments("America/Catamarca")]
+    [Arguments("America/Cordoba")]
+    [Arguments("America/Godthab")]
+    [Arguments("America/Indianapolis")]
+    [Arguments("America/Jujuy")]
+    [Arguments("America/Louisville")]
+    [Arguments("America/Mendoza")]
+    [Arguments("Asia/Calcutta")]
+    [Arguments("Asia/Katmandu")]
+    [Arguments("Asia/Rangoon")]
+    [Arguments("Asia/Saigon")]
+    [Arguments("Atlantic/Faeroe")]
+    [Arguments("Europe/Kiev")]
+    [Arguments("Pacific/Enderbury")]
+    [Arguments("Pacific/Ponape")]
+    [Arguments("Pacific/Truk")]
+    public void an_old_name_that_a_browser_gives_is_accepted(string value)
+    {
+        // Act
+        var zone = TimeZoneId.Of(value);
+
+        // Assert
+        zone.Value.ShouldBe(value);
+    }
+
+    [Test]
+    public void a_wrong_case_of_an_old_name_is_refused()
+    {
+        // Act
+        var act = () => TimeZoneId.Of("asia/calcutta");
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Property.ShouldBe("timeZone");
+    }
+
     [Test]
     public void an_alias_id_is_accepted_after_a_lookup_of_its_wrong_case()
     {

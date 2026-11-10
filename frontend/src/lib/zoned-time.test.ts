@@ -52,8 +52,8 @@ describe('parseTimeZone', () => {
     ['MST7MDT', 'America/Denver', 'Mountain Time'],
     ['PST8PDT', 'America/Los_Angeles', 'Pacific Time'],
     ['est5edt', 'America/New_York', 'Eastern Time'],
-  ])('gives the zone of the place for the tzdata link %s', (link, place, label) => {
-    const zone = parseTimeZone(link)
+  ])('gives the zone of the place for the System V ID %s', (id, place, label) => {
+    const zone = parseTimeZone(id)
 
     expect(zone).toBe(place)
     expect(timeZoneLabel(zone)).toBe(label)

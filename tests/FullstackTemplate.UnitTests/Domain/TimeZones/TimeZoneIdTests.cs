@@ -140,6 +140,22 @@ public class TimeZoneIdTests
         exception.Message.ShouldContain("is not the time zone of a place");
     }
 
+    // A host with the file of the ID refuses it as not a place. A host with no file refuses it as not known.
+    [Test]
+    [Arguments("FACTORY")]
+    [Arguments("factory")]
+    [Arguments("posixrules")]
+    [Arguments("localtime")]
+    [Arguments("right/America/Chicago")]
+    public void a_tzdata_file_that_is_not_the_zone_of_a_place_is_refused(string value)
+    {
+        // Act
+        var act = () => TimeZoneId.Of(value);
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Property.ShouldBe("timeZone");
+    }
+
     [Test]
     public void an_id_that_is_too_long_is_refused_with_the_limit()
     {

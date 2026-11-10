@@ -80,11 +80,13 @@ public sealed partial class TimeZoneId : ValueObject
                 || LinkTargets.TryGetValue(value, out var target) && TryFindIanaZone(target, out zone));
         ValidationException.Must(found, RequestField,
             $"'{value}' is not a time zone that the server knows. Use an IANA ID such as America/Chicago.");
-        // tzdata gives Factory to a machine whose local time is not known yet, and WebKit refuses the ID
-        ValidationException.Must(!zone!.Id.Equals(UnknownLocalTime, StringComparison.OrdinalIgnoreCase), RequestField,
+        // tzdata gives Factory to a machine whose local time is not known yet. Each name of a place starts with a capital
+        // letter, so the first letter refuses the files posixrules, localtime, and right/*. No browser knows these IDs.
+        ValidationException.Must(!value.Equals(UnknownLocalTime, StringComparison.OrdinalIgnoreCase)
+            && char.IsAsciiLetterUpper(value[0]), RequestField,
             $"'{value}' is not the time zone of a place. Use an IANA ID such as America/Chicago.");
 
-        return zone;
+        return zone!;
     }
 
     private static bool TryFindIanaZone(string id, [NotNullWhen(true)] out TimeZoneInfo? zone) =>

@@ -28,7 +28,7 @@ public class ObjectDeleteRunnerTests : TestBase
         // Arrange
         var (tenantId, _) = await DeleteAttachmentsAsync(1);
         await using var storageDown = WithStorageDown(ThreeAttempts);
-        var start = DateTimeOffset.UtcNow;
+        var start = DatabaseNow();
 
         // Act
         await RunDueAsync(storageDown, start);
@@ -58,7 +58,7 @@ public class ObjectDeleteRunnerTests : TestBase
         // Each read of the clock is a minute later, so the attempt ends a minute or more after the run starts
         await using var storageDown = WithStorageDown(
             new ObjectDeleteOptions { FirstRetryDelay = delay, MaxRetryDelay = delay }, clockStep: TimeSpan.FromMinutes(1));
-        var start = DateTimeOffset.UtcNow;
+        var start = DatabaseNow();
 
         // Act
         await RunDueAsync(storageDown, start);
@@ -75,7 +75,7 @@ public class ObjectDeleteRunnerTests : TestBase
         await PutAsync(keys[0]);
         await using var storageDown = WithStorageDown(ThreeAttempts);
         using var spans = new RunSpans();
-        var start = DateTimeOffset.UtcNow;
+        var start = DatabaseNow();
         var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
 
         // Act

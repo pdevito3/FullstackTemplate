@@ -50,6 +50,16 @@ public static class ObjectDeleteTestServer
     public static ServiceProvider WithStorageUp(ObjectDeleteOptions? options = null)
         => TestFixture.BuildServiceProvider(services => UseOptions(services, options, null));
 
+    /// <summary>
+    /// The time now, cut to the microseconds that Postgres keeps, so that a test can compare it with a stored time. Linux
+    /// gives the time in ticks of 100 ns.
+    /// </summary>
+    public static DateTimeOffset DatabaseNow()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return now.AddTicks(-(now.Ticks % (TimeSpan.TicksPerMillisecond / 1000)));
+    }
+
     /// <summary>Runs the due requests with the clock of the Server at <paramref name="now"/>.</summary>
     public static Task<IReadOnlyList<ObjectDeleteAttempt>> RunDueAsync(IServiceProvider server, DateTimeOffset now)
     {

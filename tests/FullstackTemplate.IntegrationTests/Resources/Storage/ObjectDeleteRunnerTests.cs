@@ -185,13 +185,18 @@ public class ObjectDeleteRunnerTests : TestBase
         await RunAllDueAsync();
         var (tenantId, _) = await DeleteTenantWithObjectAsync();
         var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
-        await using var hung = WithStorageHung(ThreeAttempts with { AttemptTimeout = TimeSpan.FromSeconds(3) });
+        // The second claim must land while the attempt hangs, so the timeout leaves room for a slow machine
+        await using var hung = WithStorageHung(ThreeAttempts with { AttemptTimeout = TimeSpan.FromSeconds(15) });
         var takenDueAt = DatabaseNow().AddDays(1);
 
         // Act
         var run = RunDueAsync(hung.Server, DateTimeOffset.UtcNow);
+        var claimed = Stopwatch.StartNew();
         while ((await RequestsOfTenantAsync(tenantId)).Single().Attempts != 1)
+        {
+            claimed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10), "The first runner did not claim the request.");
             await Task.Delay(50);
+        }
         // Another runner claims the request while the attempt of the first runner hangs
         await TestFixture.ExecuteOutOfBandAsync("UPDATE object_delete_requests SET attempts = 2, due_at = @due WHERE id = @id",
             ("due", takenDueAt), ("id", requestId));

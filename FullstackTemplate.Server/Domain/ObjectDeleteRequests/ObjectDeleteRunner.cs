@@ -102,7 +102,7 @@ public sealed class ObjectDeleteRunner(
         {
             Telemetry.RecordError(Activity.Current, exception ?? new InvalidOperationException(error));
             _logger.Here().Error(exception,
-                "Object delete request {ObjectDeleteRequestId} of tenant {TenantId} is dead after {Attempt} attempts, so its objects stay until a person deletes them",
+                "Object delete request {ObjectDeleteRequestId} of tenant {TenantId} is dead after {Attempt} attempts, so its objects stay until a person runs it again",
                 request.Id, request.TenantId, request.Attempts);
             return new ObjectDeleteAttempt(request.Id, ObjectDeleteOutcome.Dead);
         }

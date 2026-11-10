@@ -91,10 +91,11 @@ public sealed class ObjectDeleteRequest : ITenantable
         return new ObjectDeleteFailure(now + (delay < options.MaxRetryDelay ? delay : options.MaxRetryDelay), null, lastError);
     }
 
-    // The trace state comes from the tracestate header of the caller, so a long one must not fail the save of the delete
+    // The trace state comes from the tracestate header of the caller, so a long one must not fail the save of the delete.
+    // The link needs only the trace parent, so a long state is dropped and the parent stays.
     private static TraceContext? Fit(TraceContext trace)
-        => trace.TraceParent is { Length: TraceParentLength } && (trace.TraceState?.Length ?? 0) <= TraceStateMaxLength
-            ? trace
+        => trace.TraceParent is { Length: TraceParentLength }
+            ? trace with { TraceState = trace.TraceState?.Length <= TraceStateMaxLength ? trace.TraceState : null }
             : null;
 
     // A key from another tenant would make the tenant of the request delete the objects of that tenant

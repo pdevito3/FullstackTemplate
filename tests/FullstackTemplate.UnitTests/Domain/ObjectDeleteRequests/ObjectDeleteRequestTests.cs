@@ -92,19 +92,31 @@ public class ObjectDeleteRequestTests
     }
 
     [Test]
-    public void a_trace_context_that_does_not_fit_its_columns_is_dropped_and_the_request_stays()
+    public void a_trace_parent_that_is_not_w3c_drops_the_trace_context_and_the_request_stays()
+    {
+        // Arrange
+        var notW3C = new TraceContext("|a1b2c3.d4e5f6_" + new string('9', 60), "vendor=abc");
+
+        // Act
+        var request = ObjectDeleteRequest.ForDeleted([AttachmentOf("ten_a", "f1")], Now, notW3C).Single();
+
+        // Assert
+        request.TraceParent.ShouldBeNull();
+        request.TraceState.ShouldBeNull();
+    }
+
+    [Test]
+    public void a_trace_state_that_does_not_fit_its_column_is_dropped_and_the_trace_parent_stays()
     {
         // Arrange
         var longState = new TraceContext(TraceParent, new string('x', ObjectDeleteRequest.TraceStateMaxLength + 1));
-        var notW3C = new TraceContext("|a1b2c3.d4e5f6_" + new string('9', 60), null);
 
         // Act
-        var requests = new[] { longState, notW3C }
-            .Select(trace => ObjectDeleteRequest.ForDeleted([AttachmentOf("ten_a", "f1")], Now, trace).Single())
-            .ToList();
+        var request = ObjectDeleteRequest.ForDeleted([AttachmentOf("ten_a", "f1")], Now, longState).Single();
 
         // Assert
-        requests.ShouldAllBe(r => r.TraceParent == null && r.TraceState == null);
+        request.TraceParent.ShouldBe(TraceParent);
+        request.TraceState.ShouldBeNull();
     }
 
     private static Attachment AttachmentOf(string tenantId, string fileId)

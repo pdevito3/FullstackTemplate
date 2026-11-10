@@ -44,6 +44,20 @@ describe('parseTimeZone', () => {
     expect(parseTimeZone('Asia/Kolkata')).toBe('Asia/Kolkata')
     expect(parseTimeZone('Europe/Kyiv')).toBe('Europe/Kyiv')
   })
+
+  // WebKit 27.2 throws a RangeError for these IDs, which the Server accepts. The zone of the place works in each browser.
+  it.each([
+    ['EST5EDT', 'America/New_York', 'Eastern Time'],
+    ['CST6CDT', 'America/Chicago', 'Central Time'],
+    ['MST7MDT', 'America/Denver', 'Mountain Time'],
+    ['PST8PDT', 'America/Los_Angeles', 'Pacific Time'],
+    ['est5edt', 'America/New_York', 'Eastern Time'],
+  ])('gives the zone of the place for the tzdata link %s', (link, place, label) => {
+    const zone = parseTimeZone(link)
+
+    expect(zone).toBe(place)
+    expect(timeZoneLabel(zone)).toBe(label)
+  })
 })
 
 describe('todayAt', () => {

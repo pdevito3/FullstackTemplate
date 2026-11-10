@@ -16,12 +16,25 @@ export type TimeZone = string & { readonly __brand: 'TimeZone' }
 
 /**
  * Reads the zone of a place from an API field. It corrects the case, so `america/chicago` gives `America/Chicago`, but
- * it keeps a new name such as `Asia/Kolkata`, which the browser knows as `Asia/Calcutta`.
+ * it keeps a new name such as `Asia/Kolkata`, which the browser knows as `Asia/Calcutta`. An ID in `PLACE_OF_LINK`
+ * gives the zone of its place, so `EST5EDT` gives `America/New_York`.
  * Throws a `RangeError` for a zone that the browser does not know.
  */
 export function parseTimeZone(value: string): TimeZone {
-  const resolved = new Intl.DateTimeFormat('en-US', { timeZone: value }).resolvedOptions().timeZone
-  return (resolved.toLowerCase() === value.toLowerCase() ? resolved : value) as TimeZone
+  const zone = PLACE_OF_LINK[value.toUpperCase()] ?? value
+  const resolved = new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone
+  return (resolved.toLowerCase() === zone.toLowerCase() ? resolved : zone) as TimeZone
+}
+
+/**
+ * Since tzdata 2024b, these IDs are links to the zone of a place. The Server accepts them, but WebKit 27.2 throws a
+ * `RangeError` for them, and Chromium names them by a bare offset, for example "GMT-05:00".
+ */
+const PLACE_OF_LINK: Partial<Record<string, string>> = {
+  EST5EDT: 'America/New_York',
+  CST6CDT: 'America/Chicago',
+  MST7MDT: 'America/Denver',
+  PST8PDT: 'America/Los_Angeles',
 }
 
 /** The zone of the browser. Use it only for a time that belongs to the user, not to a place. */

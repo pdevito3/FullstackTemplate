@@ -129,6 +129,16 @@ public class TimeZoneIdTests
     }
 
     [Test]
+    public void a_wrong_case_of_a_zone_is_refused_as_not_known_not_as_not_a_place()
+    {
+        // Act
+        var act = () => TimeZoneId.Of("america/chicago");
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Message.ShouldContain("is not a time zone that the server knows");
+    }
+
+    [Test]
     public void the_zone_of_an_unknown_local_time_is_refused_as_not_a_place()
     {
         // Act
@@ -147,6 +157,10 @@ public class TimeZoneIdTests
     [Arguments("posixrules")]
     [Arguments("localtime")]
     [Arguments("right/America/Chicago")]
+    [Arguments("Posixrules")]
+    [Arguments("POSIXRULES")]
+    [Arguments("Localtime")]
+    [Arguments("Right/America/Chicago")]
     public void a_tzdata_file_that_is_not_the_zone_of_a_place_is_refused(string value)
     {
         // Act

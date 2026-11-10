@@ -9,7 +9,11 @@ public sealed partial class TimeZoneId : ValueObject
 {
     public const int MaxLength = 100;
     private const string RequestField = "timeZone";
-    private const string UnknownLocalTime = "Factory";
+
+    // tzdata installs these next to the zones. None is the zone of a place, and no browser knows one. The lookup of the
+    // host ignores case, so the check ignores case too: "Posixrules" and "Right/America/Chicago" find the same files.
+    private static readonly string[] FilesThatAreNotPlaces = ["Factory", "posixrules", "localtime"];
+    private static readonly string[] FoldersThatAreNotPlaces = ["right/", "posix/"];
 
     // A browser can give an old name such as "Asia/Calcutta", which IANA keeps as a link to "Asia/Kolkata". A host can
     // have no file for a link: Ubuntu 26.04 puts them in the package tzdata-legacy. The zone of the link is then found.
@@ -81,9 +85,11 @@ public sealed partial class TimeZoneId : ValueObject
         ValidationException.Must(found, RequestField,
             $"'{value}' is not a time zone that the server knows. Use an IANA ID such as America/Chicago.");
         // tzdata gives Factory to a machine whose local time is not known yet. Each name of a place starts with a capital
-        // letter, so the first letter refuses the files posixrules, localtime, and right/*. No browser knows these IDs.
-        ValidationException.Must(!value.Equals(UnknownLocalTime, StringComparison.OrdinalIgnoreCase)
-            && char.IsAsciiLetterUpper(value[0]), RequestField,
+        // letter. The lists also refuse a capital form of a file, such as Posixrules, because the lookup ignores case.
+        ValidationException.Must(char.IsAsciiLetterUpper(value[0])
+            && !FilesThatAreNotPlaces.Contains(value, StringComparer.OrdinalIgnoreCase)
+            && !FoldersThatAreNotPlaces.Any(folder => value.StartsWith(folder, StringComparison.OrdinalIgnoreCase)),
+            RequestField,
             $"'{value}' is not the time zone of a place. Use an IANA ID such as America/Chicago.");
 
         return zone!;

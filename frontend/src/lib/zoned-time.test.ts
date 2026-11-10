@@ -1,5 +1,5 @@
 import { CalendarDate, parseDate, parseDateTime } from '@internationalized/date'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   browserTimeZone,
@@ -57,6 +57,24 @@ describe('parseTimeZone', () => {
 
     expect(zone).toBe(place)
     expect(timeZoneLabel(zone)).toBe(label)
+  })
+
+  describe('in an engine that does not know the System V IDs, as WebKit 27.2', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it.each(['EST5EDT', 'CST6CDT', 'MST7MDT', 'PST8PDT'])('gives the zone of the place for %s', (id) => {
+      class RefusingDateTimeFormat extends Intl.DateTimeFormat {
+        constructor(locale?: string, options?: Intl.DateTimeFormatOptions) {
+          if (options?.timeZone?.toUpperCase() === id) throw new RangeError(`invalid time zone: ${id}`)
+          super(locale, options)
+        }
+      }
+      vi.stubGlobal('Intl', { ...Intl, DateTimeFormat: RefusingDateTimeFormat })
+
+      expect(() => parseTimeZone(id)).not.toThrow()
+    })
   })
 })
 

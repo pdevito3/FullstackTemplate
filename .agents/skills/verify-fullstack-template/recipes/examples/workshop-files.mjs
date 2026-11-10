@@ -217,9 +217,9 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
       await expect(files.getByRole('heading', { name: 'Files' })).toBeFocused()
     })
 
-    await step('storage no longer serves the deleted PDF', async () => {
-      const res = await page.request.get(handout.downloadUrl)
-      expect(res.status()).toBe(404)
+    // The object delete worker of the Server deletes the object at its next run, 10 seconds apart
+    await step('storage no longer serves the deleted PDF after the next run of the delete worker', async () => {
+      await expect.poll(async () => (await page.request.get(handout.downloadUrl)).status(), { timeout: 30_000 }).toBe(404)
     })
 
     await step('a reload shows the PNG and not the PDF', async () => {

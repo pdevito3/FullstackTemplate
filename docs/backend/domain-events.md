@@ -124,7 +124,7 @@ A failed save ends the context, also a failure of EF's own save, such as a 409 c
 A handler runs before the commit. Work outside the database cannot roll back, so it is not handler work.
 
 - **The tenant lookup cache.** You do not do anything. The context removes the stale lookups after each commit. See [multi-tenancy.md](../multi-tenancy.md#tenant-lookup).
-- **An email, a webhook, or a message to another system.** In a handler, add an entity that asks for the work, for example `WelcomeEmailRequest`. The request commits with the change, so it is never lost. A background service then does the work after the commit, at least one time. It sends the ID of the request as the idempotency key, because it can do the work two times after a crash. The template does not have this service yet. Add it with the first feature that needs it, in the shape that ADR 0010 gives.
+- **An email, a webhook, or a message to another system.** In a handler, add an entity that asks for the work, for example `WelcomeEmailRequest`. The request commits with the change, so it is never lost. A background service then does the work after the commit, at least one time. It sends the ID of the request as the idempotency key, because it can do the work two times after a crash. Build it in the shape that ADR 0010 gives. `ObjectDeleteRequest` and `ObjectDeleteRunner` are the first service in this shape: they delete the objects in storage of deleted rows (see [attachments.md](attachments.md#the-order-of-the-writes)). Copy their claim, their retry, and their dead state.
 
 Do not do the work after `SaveChangesAsync` returns when the work must happen. A crash or a failure after the commit loses it.
 

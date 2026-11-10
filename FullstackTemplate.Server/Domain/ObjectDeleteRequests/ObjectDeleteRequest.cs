@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Domain.ObjectDeleteRequests;
 
 using Attachments;
+using Resources;
 using Tenants;
 
 /// <summary>
@@ -15,6 +16,8 @@ public sealed class ObjectDeleteRequest : ITenantable
 {
     public const string IdPrefix = "objdel";
     public const int LastErrorMaxLength = 2000;
+    public const int TraceParentLength = 55;
+    public const int TraceStateMaxLength = 512;
 
     public string Id { get; private set; } = default!;
     public string TenantId { get; private set; } = default!;
@@ -39,6 +42,14 @@ public sealed class ObjectDeleteRequest : ITenantable
     /// <summary>The time that the request used its last attempt. No runner claims it again, and a person must look.</summary>
     public DateTimeOffset? DeadAt { get; private set; }
 
+    /// <summary>
+    /// The trace context of the save that made the request. Each attempt is a trace of its own, and its
+    /// <c>object_delete.run</c> span links to this context, so a person can go from an attempt to the delete.
+    /// </summary>
+    public string? TraceParent { get; private set; }
+
+    public string? TraceState { get; private set; }
+
     private ObjectDeleteRequest() { } // For EF Core
 
     /// <summary>
@@ -46,16 +57,18 @@ public sealed class ObjectDeleteRequest : ITenantable
     /// each deleted tenant. The request of a tenant covers the attachments of the tenant and each object that no row
     /// names, so an attachment of a deleted tenant gets no request of its own.
     /// </summary>
-    public static IReadOnlyList<ObjectDeleteRequest> ForDeleted(IEnumerable<object> deletedEntities, DateTimeOffset now)
+    public static IReadOnlyList<ObjectDeleteRequest> ForDeleted(IEnumerable<object> deletedEntities, DateTimeOffset now,
+        TraceContext trace)
     {
         var deleted = deletedEntities.ToList();
         var tenants = deleted.OfType<Tenant>().Select(t => t.Id).ToHashSet();
+        var fitted = Fit(trace);
         return
         [
-            .. tenants.Select(tenantId => New(tenantId, StoredFile.TenantPrefix(tenantId), isPrefix: true, now)),
+            .. tenants.Select(tenantId => New(tenantId, StoredFile.TenantPrefix(tenantId), isPrefix: true, now, fitted)),
             .. deleted.OfType<IAttachment>()
                 .Where(a => !tenants.Contains(a.TenantId))
-                .Select(a => New(a.TenantId, a.File.StorageKey, isPrefix: false, now)),
+                .Select(a => New(a.TenantId, a.File.StorageKey, isPrefix: false, now, fitted)),
         ];
     }
 
@@ -78,8 +91,14 @@ public sealed class ObjectDeleteRequest : ITenantable
         return new ObjectDeleteFailure(now + (delay < options.MaxRetryDelay ? delay : options.MaxRetryDelay), null, lastError);
     }
 
+    // The trace state comes from the tracestate header of the caller, so a long one must not fail the save of the delete
+    private static TraceContext? Fit(TraceContext trace)
+        => trace.TraceParent is { Length: TraceParentLength } && (trace.TraceState?.Length ?? 0) <= TraceStateMaxLength
+            ? trace
+            : null;
+
     // A key from another tenant would make the tenant of the request delete the objects of that tenant
-    private static ObjectDeleteRequest New(string tenantId, string key, bool isPrefix, DateTimeOffset now)
+    private static ObjectDeleteRequest New(string tenantId, string key, bool isPrefix, DateTimeOffset now, TraceContext? trace)
     {
         if (!key.StartsWith(StoredFile.TenantPrefix(tenantId), StringComparison.Ordinal))
             throw new InvalidOperationException(
@@ -93,6 +112,8 @@ public sealed class ObjectDeleteRequest : ITenantable
             IsPrefix = isPrefix,
             RequestedAt = now,
             DueAt = now,
+            TraceParent = trace?.TraceParent,
+            TraceState = trace?.TraceState,
         };
     }
 }

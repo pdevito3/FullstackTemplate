@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FullstackTemplate.Server.Databases.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261110192133_AddObjectDeleteRequests")]
+    [Migration("20261110223546_AddObjectDeleteRequests")]
     partial class AddObjectDeleteRequests
     {
         /// <inheritdoc />
@@ -424,6 +424,16 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("tenant_id")
                         .UseCollation("C");
+
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(55)
+                        .HasColumnType("character varying(55)")
+                        .HasColumnName("trace_parent");
+
+                    b.Property<string>("TraceState")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("trace_state");
 
                     b.HasKey("Id")
                         .HasName("pk_object_delete_requests");

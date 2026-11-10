@@ -467,7 +467,8 @@ public class AppDbContext(
         var now = timeProvider.GetUtcNow();
         // The objects of the deleted rows go after the commit, so the requests for them commit with the delete
         Set<ObjectDeleteRequest>().AddRange(ObjectDeleteRequest.ForDeleted(
-            ChangeTracker.Entries().Where(e => e.State == EntityState.Deleted).Select(e => e.Entity), now));
+            ChangeTracker.Entries().Where(e => e.State == EntityState.Deleted).Select(e => e.Entity), now,
+            Telemetry.CaptureCurrentTraceContext()));
         StampEntities(now);
 
         var actor = AuditActor.Of(currentUserService.UserIdentifier, currentUserService.ClientId, caller);

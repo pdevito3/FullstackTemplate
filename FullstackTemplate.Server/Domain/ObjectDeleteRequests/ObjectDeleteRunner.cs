@@ -37,6 +37,10 @@ public sealed class ObjectDeleteRunner(
     // An idle run starts no trace, so the claim query of a run with nothing due exports no span
     private async Task<ObjectDeleteAttempt> RunAsync(ObjectDeleteRequest request, CancellationToken cancellationToken)
     {
+        // An attempt is a trace of its own, as it can run hours after the delete. A link, not a parent, leads to the delete.
+        ActivityLink[] links = Telemetry.TryParseTraceContext(new TraceContext(request.TraceParent, request.TraceState), out var save)
+            ? [new ActivityLink(save)]
+            : [];
         using var trace = Telemetry.TraceRoot(
             [
                 ("app.object_delete_request_id", request.Id),
@@ -44,7 +48,8 @@ public sealed class ObjectDeleteRunner(
                 ("app.object_delete.is_prefix", request.IsPrefix),
                 ("app.object_delete.attempt", request.Attempts),
             ],
-            "object_delete.run");
+            "object_delete.run",
+            links);
 
         var outcome = await DeleteObjectsAsync(request, cancellationToken);
         trace.Activity?.SetTag("app.object_delete.outcome", ObjectDeleteMetrics.NameOf(outcome.Outcome));

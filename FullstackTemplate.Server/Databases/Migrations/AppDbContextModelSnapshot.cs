@@ -422,6 +422,16 @@ namespace FullstackTemplate.Server.Databases.Migrations
                         .HasColumnName("tenant_id")
                         .UseCollation("C");
 
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(55)
+                        .HasColumnType("character varying(55)")
+                        .HasColumnName("trace_parent");
+
+                    b.Property<string>("TraceState")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("trace_state");
+
                     b.HasKey("Id")
                         .HasName("pk_object_delete_requests");
 

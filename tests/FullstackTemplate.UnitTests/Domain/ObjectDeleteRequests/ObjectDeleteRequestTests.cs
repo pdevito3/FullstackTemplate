@@ -2,6 +2,7 @@ namespace FullstackTemplate.UnitTests.Domain.ObjectDeleteRequests;
 
 using FullstackTemplate.Server.Domain.Attachments;
 using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
+using FullstackTemplate.Server.Resources;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
 using Shouldly;
@@ -12,6 +13,10 @@ public class ObjectDeleteRequestTests
 
     private static readonly UploadRules Pdf = new(8, FileType.Pdf);
 
+    private static readonly TraceContext NoTrace = new(null, null);
+
+    private const string TraceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+
     [Test]
     public void each_deleted_attachment_gets_a_request_for_its_object_that_is_due_at_once()
     {
@@ -19,7 +24,7 @@ public class ObjectDeleteRequestTests
         Attachment[] attachments = [AttachmentOf("ten_a", "f1"), AttachmentOf("ten_a", "f2")];
 
         // Act
-        var requests = ObjectDeleteRequest.ForDeleted([.. attachments, new object()], Now);
+        var requests = ObjectDeleteRequest.ForDeleted([.. attachments, new object()], Now, NoTrace);
 
         // Assert
         requests.Select(r => r.Key).ShouldBe(attachments.Select(a => a.File.StorageKey), ignoreOrder: true);
@@ -35,7 +40,7 @@ public class ObjectDeleteRequestTests
 
         // Act
         var requests = ObjectDeleteRequest.ForDeleted(
-            [tenant, AttachmentOf(tenant.Id, "f1"), AttachmentOf(tenant.Id, "f2"), other], Now);
+            [tenant, AttachmentOf(tenant.Id, "f1"), AttachmentOf(tenant.Id, "f2"), other], Now, NoTrace);
 
         // Assert
         requests.Count.ShouldBe(2);
@@ -51,7 +56,7 @@ public class ObjectDeleteRequestTests
         var wrong = attachment with { TenantId = "ten_other" };
 
         // Act
-        var act = () => ObjectDeleteRequest.ForDeleted([wrong], Now);
+        var act = () => ObjectDeleteRequest.ForDeleted([wrong], Now, NoTrace);
 
         // Assert
         act.ShouldThrow<InvalidOperationException>();
@@ -61,7 +66,7 @@ public class ObjectDeleteRequestTests
     public void a_long_error_is_cut_to_the_length_of_its_column()
     {
         // Arrange
-        var request = ObjectDeleteRequest.ForDeleted([AttachmentOf("ten_a", "f1")], Now).Single();
+        var request = ObjectDeleteRequest.ForDeleted([AttachmentOf("ten_a", "f1")], Now, NoTrace).Single();
 
         // Act
         var failure = request.AfterFailure(new string('x', ObjectDeleteRequest.LastErrorMaxLength + 1), Now, new ObjectDeleteOptions());
@@ -69,6 +74,37 @@ public class ObjectDeleteRequestTests
         // Assert
         failure.LastError.Length.ShouldBe(ObjectDeleteRequest.LastErrorMaxLength);
         failure.IsDead.ShouldBeFalse();
+    }
+
+    [Test]
+    public void each_request_keeps_the_trace_context_of_the_save_that_made_it()
+    {
+        // Arrange
+        TestGraph.Start(out _).AddTenant(out var tenant);
+
+        // Act
+        var requests = ObjectDeleteRequest.ForDeleted(
+            [tenant, AttachmentOf("ten_a", "f1")], Now, new TraceContext(TraceParent, "vendor=1"));
+
+        // Assert
+        requests.Count.ShouldBe(2);
+        requests.ShouldAllBe(r => r.TraceParent == TraceParent && r.TraceState == "vendor=1");
+    }
+
+    [Test]
+    public void a_trace_context_that_does_not_fit_its_columns_is_dropped_and_the_request_stays()
+    {
+        // Arrange
+        var longState = new TraceContext(TraceParent, new string('x', ObjectDeleteRequest.TraceStateMaxLength + 1));
+        var notW3C = new TraceContext("|a1b2c3.d4e5f6_" + new string('9', 60), null);
+
+        // Act
+        var requests = new[] { longState, notW3C }
+            .Select(trace => ObjectDeleteRequest.ForDeleted([AttachmentOf("ten_a", "f1")], Now, trace).Single())
+            .ToList();
+
+        // Assert
+        requests.ShouldAllBe(r => r.TraceParent == null && r.TraceState == null);
     }
 
     private static Attachment AttachmentOf(string tenantId, string fileId)

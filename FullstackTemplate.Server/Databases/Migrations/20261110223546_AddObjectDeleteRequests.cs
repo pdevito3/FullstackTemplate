@@ -23,7 +23,9 @@ namespace FullstackTemplate.Server.Databases.Migrations
                     due_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     attempts = table.Column<int>(type: "integer", nullable: false),
                     last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    dead_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                    dead_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    trace_parent = table.Column<string>(type: "character varying(55)", maxLength: 55, nullable: true),
+                    trace_state = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true)
                 },
                 constraints: table =>
                 {

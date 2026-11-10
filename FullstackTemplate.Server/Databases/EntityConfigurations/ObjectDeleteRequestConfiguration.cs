@@ -29,6 +29,12 @@ public sealed class ObjectDeleteRequestConfiguration : IEntityTypeConfiguration<
         builder.Property(e => e.LastError)
             .HasMaxLength(ObjectDeleteRequest.LastErrorMaxLength);
 
+        builder.Property(e => e.TraceParent)
+            .HasMaxLength(ObjectDeleteRequest.TraceParentLength);
+
+        builder.Property(e => e.TraceState)
+            .HasMaxLength(ObjectDeleteRequest.TraceStateMaxLength);
+
         // The claim reads the due requests that are not dead
         builder.HasIndex(e => new { e.DueAt, e.Id })
             .HasFilter("dead_at IS NULL");

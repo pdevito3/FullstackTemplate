@@ -60,6 +60,19 @@ public class TimeZoneIdTests
     public static IEnumerable<(string, string)> Links => TimeZoneLinks.All.Select(link => (link.Name, link.Target));
 
     [Test]
+    public void the_link_table_holds_the_links_of_the_iana_file()
+    {
+        // Arrange: an empty table gives no rows to the tests of each link, and they pass with no check
+
+        // Act
+        var links = TimeZoneLinks.All;
+
+        // Assert
+        links.ShouldContain(("Asia/Calcutta", "Asia/Kolkata"));
+        links.ShouldContain(("Asia/Ulan_Bator", "Asia/Ulaanbaatar"));
+    }
+
+    [Test]
     [MethodDataSource(nameof(Links))]
     public void each_link_of_the_iana_database_shows_the_time_of_the_zone_that_it_names(string name, string target)
     {
@@ -88,16 +101,17 @@ public class TimeZoneIdTests
     }
 
     [Test]
-    public void an_alias_id_is_accepted_after_a_lookup_of_its_wrong_case()
+    public void an_id_is_accepted_after_a_lookup_of_its_wrong_case()
     {
-        // Arrange: macOS keeps the case of the first lookup as the ID of the zone, and Linux refuses the wrong case
-        try { TimeZoneId.Of("asia/ulan_bator"); } catch (ValidationException) { }
+        // Arrange: macOS keeps the case of the first lookup as the ID of the zone, and Linux refuses the wrong case.
+        // Etc/GMT+5 is in neither map of wrong cases on macOS, so this lookup reaches the host.
+        try { TimeZoneId.Of("etc/gmt+5"); } catch (ValidationException) { }
 
         // Act
-        var zone = TimeZoneId.Of("Asia/Ulan_Bator");
+        var zone = TimeZoneId.Of("Etc/GMT+5");
 
         // Assert
-        zone.Value.ShouldBe("Asia/Ulan_Bator");
+        zone.Value.ShouldBe("Etc/GMT+5");
     }
 
     [Test]

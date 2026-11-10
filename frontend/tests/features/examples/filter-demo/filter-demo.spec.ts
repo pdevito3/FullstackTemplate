@@ -811,7 +811,7 @@ for (const width of [320, 375, 390]) {
     test.describe(`a filter in a group on a ${width} px phone with a ${fontSize} px font`, () => {
       test.use({ viewport: { width, height: 640 } })
 
-      test('keeps the full text of the filter inside its edit button, also a long word', async ({ page }) => {
+      test('keeps the full text of the filter inside its edit button, also a long word, and starts no line with a bar', async ({ page }) => {
         const demo = filterDemoPage(page)
         await useDefaultFontSize(page, fontSize)
         await demo.open()
@@ -822,6 +822,8 @@ for (const width of [320, 375, 390]) {
 
         for (const name of ['Labels | Has | Bug', 'Labels | Has | Urgent', 'First Name | Contains | Wolfeschlegelsteinhausenbergerdorff']) {
           expect(await demo.textOverrunOf(demo.at.editFilterNamed(name)), name).toBeLessThanOrEqual(0)
+          const { badge } = await demo.linesOfBadgeAndOfItsContentAsParagraph(demo.at.editFilterNamed(name))
+          expect(badge.filter((line) => /^\|./.test(line)), name).toEqual([])
         }
       })
     })

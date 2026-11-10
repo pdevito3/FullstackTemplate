@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Domain.TimeZones;
 
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using Exceptions;
 
 /// <summary>The IANA time zone of a place, for example <c>America/Chicago</c>.</summary>
@@ -9,12 +10,19 @@ public sealed partial class TimeZoneId : ValueObject
     public const int MaxLength = 100;
     private const string RequestField = "timeZone";
 
+    // A browser can give an old name such as "Asia/Calcutta", which IANA keeps as a link to "Asia/Kolkata". A host can
+    // have no file for a link: Ubuntu 26.04 puts them in the package tzdata-legacy. The zone of the link is then found.
+    private static readonly FrozenDictionary<string, string> LinkTargets = TimeZoneLinks.All
+        .ToFrozenDictionary(link => link.Name, link => link.Target);
+
     // macOS finds "america/chicago" and keeps the first case that the process asked for as the ID of the zone. This
-    // map refuses a wrong case of a listed zone before the lookup. It is empty on Windows, which lists its zones by
-    // Windows ID. An alias such as "Asia/Calcutta" is not listed, so macOS accepts a wrong case of an alias.
+    // map refuses a wrong case of a listed zone or a link before the lookup. Windows lists its zones by Windows ID.
     private static readonly FrozenDictionary<string, string> IanaIdsIgnoringCase = TimeZoneInfo.GetSystemTimeZones()
         .Where(zone => zone.HasIanaId)
-        .ToFrozenDictionary(zone => zone.Id, zone => zone.Id, StringComparer.OrdinalIgnoreCase);
+        .Select(zone => zone.Id)
+        .Concat(LinkTargets.Keys)
+        .DistinctBy(id => id, StringComparer.OrdinalIgnoreCase)
+        .ToFrozenDictionary(id => id, id => id, StringComparer.OrdinalIgnoreCase);
 
     private TimeZoneInfo? _zone;
 
@@ -67,15 +75,19 @@ public sealed partial class TimeZoneId : ValueObject
         var wrongCase = IanaIdsIgnoringCase.TryGetValue(value, out var listed) && listed != value;
         TimeZoneInfo? zone = null;
         var found = !wrongCase
-            && TimeZoneInfo.TryFindSystemTimeZoneById(value, out zone)
-            && zone.HasIanaId
-            // The cached zone of an alias keeps the case of the first lookup, so compare with no case
-            && zone.Id.Equals(value, StringComparison.OrdinalIgnoreCase);
+            && (TryFindIanaZone(value, out zone)
+                || LinkTargets.TryGetValue(value, out var target) && TryFindIanaZone(target, out zone));
         ValidationException.Must(found, RequestField,
             $"'{value}' is not a time zone that the server knows. Use an IANA ID such as America/Chicago.");
 
         return zone!;
     }
+
+    private static bool TryFindIanaZone(string id, [NotNullWhen(true)] out TimeZoneInfo? zone) =>
+        TimeZoneInfo.TryFindSystemTimeZoneById(id, out zone)
+        && zone.HasIanaId
+        // The cached zone of an alias keeps the case of the first lookup, so compare with no case
+        && zone.Id.Equals(id, StringComparison.OrdinalIgnoreCase);
 
     private TimeZoneId() { } // EF Core
 }

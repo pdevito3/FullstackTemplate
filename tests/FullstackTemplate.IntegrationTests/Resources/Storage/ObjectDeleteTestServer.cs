@@ -79,7 +79,7 @@ public static class ObjectDeleteTestServer
         return new HungStorage(server, listener);
     }
 
-    /// <summary>Runs the due requests of the default Server with storage up, so that a test starts with none due.</summary>
+    /// <summary>Runs each due request with storage up, so that a test starts with no request due.</summary>
     public static async Task RunAllDueAsync()
     {
         await using var storageUp = WithStorageUp();

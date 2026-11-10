@@ -9,6 +9,7 @@ public sealed partial class TimeZoneId : ValueObject
 {
     public const int MaxLength = 100;
     private const string RequestField = "timeZone";
+    private const string UnknownLocalTime = "Factory";
 
     // A browser can give an old name such as "Asia/Calcutta", which IANA keeps as a link to "Asia/Kolkata". A host can
     // have no file for a link: Ubuntu 26.04 puts them in the package tzdata-legacy. The zone of the link is then found.
@@ -79,8 +80,11 @@ public sealed partial class TimeZoneId : ValueObject
                 || LinkTargets.TryGetValue(value, out var target) && TryFindIanaZone(target, out zone));
         ValidationException.Must(found, RequestField,
             $"'{value}' is not a time zone that the server knows. Use an IANA ID such as America/Chicago.");
+        // tzdata gives Factory to a machine whose local time is not known yet, and WebKit refuses the ID
+        ValidationException.Must(!zone!.Id.Equals(UnknownLocalTime, StringComparison.OrdinalIgnoreCase), RequestField,
+            $"'{value}' is not the time zone of a place. Use an IANA ID such as America/Chicago.");
 
-        return zone!;
+        return zone;
     }
 
     private static bool TryFindIanaZone(string id, [NotNullWhen(true)] out TimeZoneInfo? zone) =>

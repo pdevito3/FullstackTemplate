@@ -129,6 +129,18 @@ public class TimeZoneIdTests
     }
 
     [Test]
+    public void the_zone_of_an_unknown_local_time_is_refused_as_not_a_place()
+    {
+        // Act
+        var act = () => TimeZoneId.Of("Factory");
+
+        // Assert
+        var exception = act.ShouldThrow<ValidationException>();
+        exception.Property.ShouldBe("timeZone");
+        exception.Message.ShouldContain("is not the time zone of a place");
+    }
+
+    [Test]
     public void an_id_that_is_too_long_is_refused_with_the_limit()
     {
         // Act

@@ -54,6 +54,39 @@ public static class ObjectDeleteTestServer
         => TestFixture.BuildServiceProvider(services => UseOptions(services, options, null));
 
     /// <summary>
+    /// A Server whose S3 client calls a port that takes each connection and never answers, as a paused storage does.
+    /// The client waits 10 minutes, so only <see cref="ObjectDeleteOptions.AttemptTimeout"/> ends an attempt soon.
+    /// </summary>
+    public static HungStorage WithStorageHung(ObjectDeleteOptions options)
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        var server = TestFixture.BuildServiceProvider(services =>
+        {
+            services.RemoveAll<IAmazonS3>();
+            services.AddSingleton<IAmazonS3>(new AmazonS3Client(new BasicAWSCredentials("test", "test"), new AmazonS3Config
+            {
+                ServiceURL = $"http://127.0.0.1:{port}",
+                ForcePathStyle = true,
+                AuthenticationRegion = "us-east-1",
+                MaxErrorRetry = 0,
+                Timeout = TimeSpan.FromMinutes(10),
+            }));
+            UseOptions(services, options, null);
+        });
+        return new HungStorage(server, listener);
+    }
+
+    /// <summary>Runs the due requests of the default Server with storage up, so that a test starts with none due.</summary>
+    public static async Task RunAllDueAsync()
+    {
+        await using var storageUp = WithStorageUp();
+        await RunDueAsync(storageUp, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
     /// The time now, cut to the microseconds that Postgres keeps, so that a test can compare it with a stored time. Linux
     /// gives the time in ticks of 100 ns.
     /// </summary>
@@ -126,6 +159,17 @@ public static class ObjectDeleteTestServer
 
         services.RemoveAll<IOptions<ObjectDeleteOptions>>();
         services.AddSingleton(Options.Create(options));
+    }
+
+    public sealed class HungStorage(ServiceProvider server, TcpListener listener) : IAsyncDisposable
+    {
+        public ServiceProvider Server => server;
+
+        public async ValueTask DisposeAsync()
+        {
+            listener.Stop();
+            await server.DisposeAsync();
+        }
     }
 
     /// <summary>A clock that a test sets. It moves on by <paramref name="step"/> after each read, as time passes in a run.</summary>

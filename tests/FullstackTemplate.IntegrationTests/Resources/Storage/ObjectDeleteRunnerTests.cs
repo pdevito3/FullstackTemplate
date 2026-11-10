@@ -115,6 +115,125 @@ public class ObjectDeleteRunnerTests : TestBase
     }
 
     [Test]
+    public async Task a_dead_request_runs_again_after_the_update_of_the_attachments_doc()
+    {
+        // Arrange
+        var (tenantId, key) = await DeleteTenantWithObjectAsync();
+        var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
+        await TestFixture.ExecuteOutOfBandAsync(
+            "UPDATE object_delete_requests SET attempts = @attempts, dead_at = now(), last_error = 'down' WHERE id = @id",
+            ("attempts", ThreeAttempts.MaxAttempts), ("id", requestId));
+        await using var storageUp = WithStorageUp(ThreeAttempts);
+        var whileDead = await RunDueAsync(storageUp, DateTimeOffset.UtcNow.AddMinutes(1));
+
+        // Act
+        await TestFixture.ExecuteOutOfBandAsync(
+            "UPDATE object_delete_requests SET dead_at = NULL, attempts = 0, due_at = now() WHERE id = @id",
+            ("id", requestId));
+        var attempts = await RunDueAsync(storageUp, DateTimeOffset.UtcNow.AddMinutes(1));
+
+        // Assert
+        Of(requestId, whileDead).ShouldBeEmpty();
+        Of(requestId, attempts).ShouldBe([ObjectDeleteOutcome.Deleted]);
+        (await KeysUnderAsync(key)).ShouldBeEmpty();
+        (await RequestsOfTenantAsync(tenantId)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task the_last_attempt_still_calls_storage_and_can_delete_the_objects()
+    {
+        // Arrange
+        var (tenantId, key) = await DeleteTenantWithObjectAsync();
+        var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
+        // All attempts but the last failed
+        await TestFixture.ExecuteOutOfBandAsync("UPDATE object_delete_requests SET attempts = @attempts WHERE id = @id",
+            ("attempts", ThreeAttempts.MaxAttempts - 1), ("id", requestId));
+        await using var storageUp = WithStorageUp(ThreeAttempts);
+
+        // Act
+        var attempts = await RunDueAsync(storageUp, DateTimeOffset.UtcNow);
+
+        // Assert
+        Of(requestId, attempts).ShouldBe([ObjectDeleteOutcome.Deleted]);
+        (await KeysUnderAsync(key)).ShouldBeEmpty();
+        (await RequestsOfTenantAsync(tenantId)).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task an_attempt_on_a_storage_that_does_not_answer_ends_at_the_attempt_timeout()
+    {
+        // Arrange
+        await RunAllDueAsync();
+        var (tenantId, key) = await DeleteTenantWithObjectAsync();
+        var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
+        await using var hung = WithStorageHung(ThreeAttempts with { AttemptTimeout = TimeSpan.FromSeconds(1) });
+
+        // Act
+        var attempts = await RunDueAsync(hung.Server, DateTimeOffset.UtcNow)
+            .WaitAsync(TimeSpan.FromSeconds(30));
+
+        // Assert
+        Of(requestId, attempts).ShouldBe([ObjectDeleteOutcome.RetryLater]);
+        (await RequestsOfTenantAsync(tenantId)).Single().LastError.ShouldNotBeNullOrEmpty();
+        (await KeysUnderAsync(key)).ShouldBe([key]);
+    }
+
+    [Test]
+    public async Task a_runner_whose_claim_another_runner_took_writes_nothing_after_its_attempt()
+    {
+        // Arrange
+        await RunAllDueAsync();
+        var (tenantId, _) = await DeleteTenantWithObjectAsync();
+        var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
+        await using var hung = WithStorageHung(ThreeAttempts with { AttemptTimeout = TimeSpan.FromSeconds(3) });
+        var takenDueAt = DatabaseNow().AddDays(1);
+
+        // Act
+        var run = RunDueAsync(hung.Server, DateTimeOffset.UtcNow);
+        while ((await RequestsOfTenantAsync(tenantId)).Single().Attempts != 1)
+            await Task.Delay(50);
+        // Another runner claims the request while the attempt of the first runner hangs
+        await TestFixture.ExecuteOutOfBandAsync("UPDATE object_delete_requests SET attempts = 2, due_at = @due WHERE id = @id",
+            ("due", takenDueAt), ("id", requestId));
+        var attempts = await run.WaitAsync(TimeSpan.FromSeconds(30));
+
+        // Assert
+        Of(requestId, attempts).ShouldBe([ObjectDeleteOutcome.LostClaim]);
+        (await RequestsOfTenantAsync(tenantId)).Single().ShouldSatisfyAllConditions(
+            r => r.Attempts.ShouldBe(2),
+            r => r.DueAt.ShouldBe(takenDueAt),
+            r => r.LastError.ShouldBeNull("The first runner wrote no failure over the claim of the other runner."));
+    }
+
+    [Test]
+    public async Task each_attempt_is_a_trace_of_its_own_that_links_to_the_trace_of_the_delete()
+    {
+        // Arrange
+        var (tenantId, admin) = await AddTenantAsync();
+        await PutAsync($"tenants/{tenantId}/files/{Guid.NewGuid():N}");
+        using var spans = new RunSpans();
+        // A trace of its own, so that no ambient activity of the test runner shares its trace ID
+        var delete = new Activity("test.delete_tenant")
+            .SetParentId(ActivityTraceId.CreateRandom(), ActivitySpanId.CreateRandom())
+            .Start();
+        await DeleteTenantAsync(tenantId, admin);
+        delete.Stop();
+        var requestId = (await RequestsOfTenantAsync(tenantId)).Single().Id;
+        await using var storageDown = WithStorageDown(ThreeAttempts);
+        var start = DatabaseNow();
+
+        // Act
+        await RunDueAsync(storageDown, start);
+        await RunDueAsync(storageDown, start + TimeSpan.FromSeconds(30));
+
+        // Assert
+        var runs = spans.Of(requestId);
+        runs.Count.ShouldBe(2);
+        runs.ShouldAllBe(s => s.ParentSpanId == default && s.TraceId != delete.TraceId);
+        runs.ShouldAllBe(s => s.Links.Any(l => l.Context.TraceId == delete.TraceId));
+    }
+
+    [Test]
     public async Task two_runners_at_the_same_time_claim_each_request_one_time()
     {
         // Arrange

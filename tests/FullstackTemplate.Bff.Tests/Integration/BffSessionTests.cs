@@ -23,6 +23,7 @@ public class BffSessionTests
     {
         // Arrange
         var app = BffApp.Instance;
+        var provider = app.IdentityProvider;
         var subject = NewSubject();
         using var browser = app.CreateBrowser();
 
@@ -41,7 +42,10 @@ public class BffSessionTests
         row.ShouldNotBeNull();
         row.SubjectId.ShouldBe(subject);
         row.Ticket.Length.ShouldBeGreaterThan(cookie.Length);
-        System.Text.Encoding.UTF8.GetString(row.Ticket).ShouldNotContain("rt-");
+        string[] tokens = [.. provider.IssuedAccessTokens(subject), .. provider.IssuedRefreshTokens(subject), .. provider.IssuedIdTokens(subject)];
+        tokens.Length.ShouldBe(3);
+        foreach (var token in tokens)
+            row.Ticket.AsSpan().IndexOf(System.Text.Encoding.UTF8.GetBytes(token)).ShouldBe(-1, $"the row holds {token} in clear text");
     }
 
     [Test]

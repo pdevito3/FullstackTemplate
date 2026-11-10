@@ -28,6 +28,12 @@
     <AdditionalFiles Include="BannedSymbols.txt" />
   </ItemGroup>
 
+  <!-- TimeZoneLinksGenerator writes TimeZoneLinks from the file "backward" of the IANA time zone database. To update it,
+       copy backward and version from the newest tzdata at https://data.iana.org/time-zones/ -->
+  <ItemGroup>
+    <AdditionalFiles Include="Domain/TimeZones/tzdata/backward" />
+  </ItemGroup>
+
   <!-- The gRPC contract of each domain and version lives in its Grpc/v{n} folder. The functional tests generate the client. -->
   <ItemGroup>
     <Protobuf Include="Domain/**/Grpc/v*/*.proto" GrpcServices="Server" />

@@ -9,6 +9,7 @@ using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 // example:start
+using FullstackTemplate.Server.Domain.TimeZones;
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 // example:end
@@ -59,7 +60,8 @@ public class StringColumnLengthTests
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         // example:start
-        ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),
+        ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id)
+            .Concat(TimeZoneLinks.All.Select(link => link.Name)).ToList(),
         ["workshops.status"] = WorkshopStatus.ListNames(),
         // example:end
         // new-feature:fixed-option-columns

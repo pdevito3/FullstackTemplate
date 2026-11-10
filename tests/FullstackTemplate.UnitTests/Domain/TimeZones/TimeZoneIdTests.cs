@@ -25,17 +25,93 @@ public class TimeZoneIdTests
         zone.Value.ShouldBe(value);
     }
 
+    /// <summary>
+    /// Chromium 156 and Node 24 give these old names of zones, which IANA keeps as links in its file "backward". Ubuntu
+    /// 26.04 puts the files of the links in the package tzdata-legacy, so a host can have no file for them.
+    /// </summary>
     [Test]
-    public void an_alias_id_is_accepted_after_a_lookup_of_its_wrong_case()
+    [Arguments("Africa/Asmera")]
+    [Arguments("America/Buenos_Aires")]
+    [Arguments("America/Catamarca")]
+    [Arguments("America/Cordoba")]
+    [Arguments("America/Godthab")]
+    [Arguments("America/Indianapolis")]
+    [Arguments("America/Jujuy")]
+    [Arguments("America/Louisville")]
+    [Arguments("America/Mendoza")]
+    [Arguments("Asia/Calcutta")]
+    [Arguments("Asia/Katmandu")]
+    [Arguments("Asia/Rangoon")]
+    [Arguments("Asia/Saigon")]
+    [Arguments("Atlantic/Faeroe")]
+    [Arguments("Europe/Kiev")]
+    [Arguments("Pacific/Enderbury")]
+    [Arguments("Pacific/Ponape")]
+    [Arguments("Pacific/Truk")]
+    public void an_old_name_that_a_browser_gives_is_accepted(string value)
     {
-        // Arrange: macOS keeps the case of the first lookup as the ID of the zone, and Linux refuses the wrong case
-        try { TimeZoneId.Of("asia/ulan_bator"); } catch (ValidationException) { }
-
         // Act
-        var zone = TimeZoneId.Of("Asia/Ulan_Bator");
+        var zone = TimeZoneId.Of(value);
 
         // Assert
-        zone.Value.ShouldBe("Asia/Ulan_Bator");
+        zone.Value.ShouldBe(value);
+    }
+
+    public static IEnumerable<(string, string)> Links => TimeZoneLinks.All.Select(link => (link.Name, link.Target));
+
+    [Test]
+    public void the_link_table_holds_the_links_of_the_iana_file()
+    {
+        // Arrange: an empty table gives no rows to the tests of each link, and they pass with no check
+
+        // Act
+        var links = TimeZoneLinks.All;
+
+        // Assert
+        links.ShouldContain(("Asia/Calcutta", "Asia/Kolkata"));
+        links.ShouldContain(("Asia/Ulan_Bator", "Asia/Ulaanbaatar"));
+    }
+
+    [Test]
+    [MethodDataSource(nameof(Links))]
+    public void each_link_of_the_iana_database_shows_the_time_of_the_zone_that_it_names(string name, string target)
+    {
+        // Arrange
+        var winter = new DateTimeOffset(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
+        var summer = new DateTimeOffset(2026, 7, 15, 12, 0, 0, TimeSpan.Zero);
+
+        // Act
+        var link = TimeZoneId.Of(name);
+        var zone = TimeZoneId.Of(target);
+
+        // Assert
+        link.Value.ShouldBe(name);
+        link.ToLocal(winter).ShouldBe(zone.ToLocal(winter));
+        link.ToLocal(summer).ShouldBe(zone.ToLocal(summer));
+    }
+
+    [Test]
+    public void a_wrong_case_of_an_old_name_is_refused()
+    {
+        // Act
+        var act = () => TimeZoneId.Of("asia/calcutta");
+
+        // Assert
+        act.ShouldThrow<ValidationException>().Property.ShouldBe("timeZone");
+    }
+
+    [Test]
+    public void an_id_is_accepted_after_a_lookup_of_its_wrong_case()
+    {
+        // Arrange: macOS keeps the case of the first lookup as the ID of the zone, and Linux refuses the wrong case.
+        // Etc/GMT+5 is in neither map of wrong cases on macOS, so this lookup reaches the host.
+        try { TimeZoneId.Of("etc/gmt+5"); } catch (ValidationException) { }
+
+        // Act
+        var zone = TimeZoneId.Of("Etc/GMT+5");
+
+        // Assert
+        zone.Value.ShouldBe("Etc/GMT+5");
     }
 
     [Test]

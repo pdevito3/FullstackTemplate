@@ -8,6 +8,12 @@ interface ToastText {
   description: string
 }
 
+async function centerOf(element: Locator) {
+  const box = await element.boundingBox()
+  if (!box) throw new Error('The element is not on the page.')
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
+
 export function filterDemoPage(page: Page) {
   const at = filterDemo(page)
 
@@ -63,6 +69,74 @@ export function filterDemoPage(page: Page) {
       await at.property(propertyLabel).click()
       await expect(at.control(propertyLabel)).toBeVisible()
       await expect(at.loadingControl).toHaveCount(0)
+    },
+
+    /** Moves the mouse onto a property in steps, as a hand does, and rests it there until its submenu shows the loaded control. */
+    async hoverProperty(propertyLabel: string) {
+      await at.property(propertyLabel).scrollIntoViewIfNeeded()
+      const { x, y } = await centerOf(at.property(propertyLabel))
+      await page.mouse.move(x, y, { steps: 5 })
+      await expect(at.control(propertyLabel)).toBeVisible()
+      await expect(at.loadingControl).toHaveCount(0)
+    },
+
+    async scrollPropertyList(deltaY: number, toProperty: string) {
+      const { x, y } = await centerOf(at.propertyList)
+      await page.mouse.move(x, y)
+      await page.mouse.wheel(0, deltaY)
+      await expect(at.property(toProperty)).toBeInViewport()
+    },
+
+    async scrollTopOfPropertyList() {
+      return at.propertyList.evaluate((list) => list.scrollTop)
+    },
+
+    /**
+     * The straight line from the mouse on `property` to the center of `target`: whether it goes up, and each other
+     * property on it, with the middle point of the line in that property.
+     */
+    async pathFrom(property: Locator, target: Locator) {
+      const from = await centerOf(property)
+      const to = await centerOf(target)
+      const crossed = await at.propertyList.evaluate((list, { from, to, trigger }) => {
+        const inside = (box: DOMRect, x: number, y: number) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+        const listBox = list.getBoundingClientRect()
+        const rows = new Map<string, { x: number; y: number }[]>()
+        for (let step = 0; step <= 200; step++) {
+          const x = from.x + ((to.x - from.x) * step) / 200
+          const y = from.y + ((to.y - from.y) * step) / 200
+          if (!inside(listBox, x, y)) continue
+          for (const row of list.querySelectorAll('[role="menuitem"]')) {
+            const name = row.textContent ?? ''
+            if (name !== trigger && inside(row.getBoundingClientRect(), x, y)) rows.set(name, [...(rows.get(name) ?? []), { x, y }])
+          }
+        }
+        return [...rows].map(([name, points]) => ({ name, point: points[Math.floor(points.length / 2)] }))
+      }, { from, to, trigger: await property.textContent() })
+      return { rises: to.y < from.y, to, crossed }
+    },
+
+    /** A point near the right end of a property, the end nearest to its submenu. */
+    async rightEndOf(propertyLabel: string) {
+      const box = await at.property(propertyLabel).boundingBox()
+      if (!box) throw new Error('The property is not on the page.')
+      return { x: box.x + box.width - 8, y: box.y + box.height / 2 }
+    },
+
+    /** Moves the mouse on a straight line, as a hand does, in small steps. */
+    async moveMouseStraightTo({ x, y }: { x: number; y: number }) {
+      await page.mouse.move(x, y, { steps: 20 })
+    },
+
+    /** A click where the user sees `element`, also when an open menu keeps the pointer from it. */
+    async clickMouseAt(element: Locator) {
+      const { x, y } = await centerOf(element)
+      await page.mouse.click(x, y)
+    },
+
+    async clickMouse() {
+      await page.mouse.down()
+      await page.mouse.up()
     },
 
     /** Shows error toasts, as a failed request does while the control is open. The filter demo sends no request. */

@@ -166,6 +166,7 @@ function DropdownMenuSubTrigger({
   ...props
 }: MenuItemPrimitiveProps<object> & {
   inset?: boolean
+  ref?: React.Ref<HTMLDivElement>
 }) {
   return (
     <MenuItemPrimitive

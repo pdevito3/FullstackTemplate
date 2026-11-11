@@ -216,6 +216,9 @@ public class QueryInputAnalyzerTests
     [Arguments("if (request.Ids?.All(PostgresText.CanStore) == false) return false;")]
     [Arguments("if (request.Ids.Any(id => !PostgresText.CanStore(id))) return false;")]
     [Arguments("if (request.Ids.Where(id => !PostgresText.CanStore(id)).Any()) return false;")]
+    [Arguments("if (request.Ids.Any(id => PostgresText.CanStore(id) == false)) return false;")]
+    [Arguments("if (request.Ids.Any(id => false == PostgresText.CanStore(id))) return false;")]
+    [Arguments("if (request.Ids.Any(id => PostgresText.CanStore(id) is false)) return false;")]
     public async Task a_request_list_that_a_check_of_each_item_checks_first_has_no_diagnostics(string check)
     {
         // Act
@@ -234,6 +237,11 @@ public class QueryInputAnalyzerTests
     [Arguments("if (!request.Ids.Any(PostgresText.CanStore)) return false;")]
     [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id))) return false;")]
     [Arguments("if (!request.Ids.Where(PostgresText.CanStore).Any()) return false;")]
+    [Arguments("if (!request.Ids.Any(id => id.Length > 0 && PostgresText.CanStore(id))) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) || id.Length == 0)) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) == true)) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) is true)) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) != false)) return false;")]
     public async Task a_check_of_one_item_of_a_request_list_gets_fstqry001(string check)
     {
         // Act
@@ -739,6 +747,7 @@ public class QueryInputAnalyzerTests
     [Arguments("if (!request.Names.Select(PostgresText.CanStore).All(ok => ok)) return false;", "request.Names[0]")]
     [Arguments("request.Names.ForEach(name => { if (!PostgresText.CanStore(name)) throw new ArgumentException(name); });", "request.Names[0]")]
     [Arguments("if (request.Names.Any(name => !PostgresText.CanStore(name))) return false;", "request.Names[0]")]
+    [Arguments("if (request.Names.Any(name => PostgresText.CanStore(name) is false)) return false;", "request.Names[0]")]
     [Arguments("if (request.Names.Exists(name => !PostgresText.CanStore(name))) return false;", "request.Names[0]")]
     [Arguments("if (request.Names.Count(name => !PostgresText.CanStore(name)) > 0) return false;", "request.Names[0]")]
     [Arguments("if (request.Names.FirstOrDefault(name => !PostgresText.CanStore(name)) is not null) return false;", "request.Names[0]")]

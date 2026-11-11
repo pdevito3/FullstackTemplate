@@ -230,6 +230,18 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static bool AsksOfEachItem(IOperation? @delegate)
 		=> @delegate is IDelegateCreationOperation { Parent: IArgumentOperation { Parent: IInvocationOperation { TargetMethod.Name: "All" or "TrueForAll" or "Select" } } };
 
+	// `!check`, `check == false`, and `check is false` each fail when the item fails the check.
+	private static bool IsNegated(IOperation check)
+		=> check.Parent switch
+		{
+			IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } => true,
+			IBinaryOperation { OperatorKind: BinaryOperatorKind.Equals } compare => IsFalse(ReferenceEquals(compare.LeftOperand, check) ? compare.RightOperand : compare.LeftOperand),
+			IIsPatternOperation { Pattern: IConstantPatternOperation { Value: var constant } } => IsFalse(constant),
+			_ => false,
+		};
+
+	private static bool IsFalse(IOperation operand) => operand.ConstantValue is { HasValue: true, Value: false };
+
 	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root)
 	{
 		var copies = new HashSet<ILocalSymbol>(SymbolEqualityComparer.Default);
@@ -257,7 +269,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		for (var parent = value.Parent; parent is not null; parent = parent.Parent)
 		{
 			if (parent is IAnonymousFunctionOperation function && function.Symbol.Parameters.Contains(item, SymbolEqualityComparer.Default))
-				return value.Parent is IArgumentOperation { Parent: IInvocationOperation { Parent: IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } } } || AsksOfEachItem(function.Parent) ? SourceOf(function.Parent) : null;
+				return value.Parent is IArgumentOperation { Parent: IInvocationOperation check } && IsNegated(check) || AsksOfEachItem(function.Parent) ? SourceOf(function.Parent) : null;
 			if (parent is IForEachLoopOperation loop && loop.Locals.Contains(item, SymbolEqualityComparer.Default))
 				return ListOf(loop.Collection);
 		}

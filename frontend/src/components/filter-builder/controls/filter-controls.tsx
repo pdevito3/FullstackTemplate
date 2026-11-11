@@ -1,16 +1,14 @@
-import { lazy, type ComponentType } from 'react'
+import type { ComponentType } from 'react'
 import type { ControlType, FilterControlProps, FilterControlSurface } from '../types'
 import { BooleanFilter } from './boolean-filter'
+import { lazyControl } from './lazy-control'
 import { MultiSelectFilter } from './multiselect-filter'
 import { NumberFilter } from './number-filter'
 import { TextFilter } from './text-filter'
 
 // The date control brings the calendar and @internationalized/date. Load them
-// only when a date control shows. FilterControl gives the Suspense fallback.
-const DateFilter = lazy(async () => {
-  const { DateFilter } = await import('./date-filter')
-  return { default: DateFilter }
-})
+// only when a date control shows.
+const DateFilter = lazyControl(async () => (await import('./date-filter')).DateFilter)
 
 interface FilterControlDefinition {
   component: ComponentType<FilterControlProps>

@@ -9,8 +9,11 @@ patchedDependencies:
     hash: 32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3
     path: patches/@vitest__browser-playwright@5.0.5.patch
   '@vitest/browser@5.0.5':
-    hash: d2c0c7008a9fdc0dba85281e9e58a5e58c26ec1c97c9e0cdd14c4d159830a5f6
+    hash: 5546795f05d5c3baa286e81ca31fe1227df5a06a5b143d6fdfea96366d582d87
     path: patches/@vitest__browser@5.0.5.patch
+  vitest@5.0.5:
+    hash: e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7
+    path: patches/vitest@5.0.5.patch
 
 importers:
 
@@ -157,7 +160,7 @@ importers:
         version: 4.5.0(rollup@4.54.0)(typescript@5.9.3)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       vitest:
         specifier: 5.0.5
-        version: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+        version: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       vitest-browser-react:
         specifier: ^2.3.0
         version: 2.3.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@5.0.5)
@@ -3637,7 +3640,7 @@ snapshots:
       unstorage: 1.17.6
       verkit: 0.5.0
     optionalDependencies:
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -3664,7 +3667,7 @@ snapshots:
       '@kubb/ast': 5.11.0
       '@kubb/core': 5.11.0(vitest@5.0.5)
     optionalDependencies:
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -4598,18 +4601,18 @@ snapshots:
 
   '@vitest/browser-playwright@5.0.5(patch_hash=32f55f032ec83d67293f5524569d5961886ddf055cd7bf9c91a734e8efed0fd3)(playwright@1.64.1)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
     dependencies:
-      '@vitest/browser': 5.0.5(patch_hash=d2c0c7008a9fdc0dba85281e9e58a5e58c26ec1c97c9e0cdd14c4d159830a5f6)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
+      '@vitest/browser': 5.0.5(patch_hash=5546795f05d5c3baa286e81ca31fe1227df5a06a5b143d6fdfea96366d582d87)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       playwright: 1.64.1
       tinyrainbow: 3.2.0
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     transitivePeerDependencies:
       - bufferutil
       - msw
       - utf-8-validate
       - vite
 
-  '@vitest/browser@5.0.5(patch_hash=d2c0c7008a9fdc0dba85281e9e58a5e58c26ec1c97c9e0cdd14c4d159830a5f6)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
+  '@vitest/browser@5.0.5(patch_hash=5546795f05d5c3baa286e81ca31fe1227df5a06a5b143d6fdfea96366d582d87)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)':
     dependencies:
       '@blazediff/core': 1.10.0
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
@@ -4619,7 +4622,7 @@ snapshots:
       pngjs: 7.0.0
       sirv: 3.0.2
       tinyrainbow: 3.2.0
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
       ws: 8.22.0
     transitivePeerDependencies:
       - bufferutil
@@ -4650,7 +4653,7 @@ snapshots:
       pathe: 2.0.3
       sirv: 3.0.2
       tinyrainbow: 3.2.0
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
 
   '@vitest/utils@5.0.5':
     dependencies:
@@ -5336,7 +5339,7 @@ snapshots:
       '@kubb/studio': 5.11.0(tsx@4.21.0)(typescript@5.9.3)(vitest@5.0.5)
       unplugin-kubb: 5.11.0(esbuild@0.27.2)(openapi-types@12.1.3)(rolldown@1.2.14)(rollup@4.54.0)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))(vitest@5.0.5)
     optionalDependencies:
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     transitivePeerDependencies:
       - '@arethetypeswrong/core'
       - '@azure/app-configuration'
@@ -6066,12 +6069,12 @@ snapshots:
     dependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      vitest: 5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
+      vitest: 5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))
     optionalDependencies:
       '@types/react': 19.2.7
       '@types/react-dom': 19.2.3(@types/react@19.2.7)
 
-  vitest@5.0.5(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)):
+  vitest@5.0.5(patch_hash=e8be1893cdf872f33b660aef43e2396354166d5a864af80f9676b393197ec0f7)(@types/node@24.10.4)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/mocker': 5.0.5(vite@7.3.0(@types/node@24.10.4)(jiti@2.7.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.1))

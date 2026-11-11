@@ -80,7 +80,8 @@
     ],
     "patchedDependencies": {
       "@vitest/browser-playwright@5.0.5": "patches/@vitest__browser-playwright@5.0.5.patch",
-      "@vitest/browser@5.0.5": "patches/@vitest__browser@5.0.5.patch"
+      "@vitest/browser@5.0.5": "patches/@vitest__browser@5.0.5.patch",
+      "vitest@5.0.5": "patches/vitest@5.0.5.patch"
     }
   }
 }

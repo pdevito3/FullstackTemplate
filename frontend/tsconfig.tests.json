@@ -27,5 +27,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["tests", "e2e", "playwright.config.ts", "playwright.stack.config.ts"]
+  "include": ["tests", "e2e", "long-test-names", "playwright.config.ts", "playwright.stack.config.ts"]
 }

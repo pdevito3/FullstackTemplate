@@ -148,13 +148,16 @@ test('the list of a long Combobox is at most 18rem tall on a tall page', async (
   expect(content?.getBoundingClientRect().height).toBeLessThanOrEqual(18 * rem)
 })
 
-function FrameworkCombobox(
-  props: Pick<ComboBoxProps<object>, 'allowsCustomValue' | 'defaultSelectedKey' | 'menuTrigger' | 'onChange'>,
-) {
+function FrameworkCombobox({
+  showClear,
+  ...props
+}: Pick<ComboBoxProps<object>, 'allowsCustomValue' | 'defaultSelectedKey' | 'menuTrigger' | 'onChange'> & {
+  showClear?: boolean
+}) {
   return (
     <Combobox {...props}>
       <Label>Framework</Label>
-      <ComboboxInput />
+      <ComboboxInput showClear={showClear} />
       <ComboboxContent>
         <ComboboxList>
           <ComboboxItem id="vue">Vue</ComboboxItem>
@@ -658,6 +661,44 @@ test('Clear of a Combobox with only a controlled value sends the empty text one 
   await expect.element(input).toHaveValue('')
   await expect.element(page.getByRole('listbox')).toBeVisible()
   expect(onInputChange.mock.calls).toEqual([['']])
+})
+
+test('a mouse press on Clear of typed text with no pick empties the input and keeps the focus in it', async () => {
+  const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault())
+  const screen = await render(
+    <form onSubmit={onSubmit}>
+      <FrameworkCombobox showClear />
+    </form>,
+  )
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vu')
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+
+  // The open list hides the rest of the page from the accessibility tree, so the button has no role to find.
+  await userEvent.click(screen.container.querySelector('[data-slot="combobox-clear"]')!)
+
+  await expect.element(input).toHaveValue('')
+  await expect.element(input).toHaveFocus()
+  // Clear opens the list. Enter in an open list closes it and does not submit the form.
+  await expect.element(page.getByRole('listbox')).toBeVisible()
+  await userEvent.keyboard('{Enter}')
+  expect(onSubmit).not.toHaveBeenCalled()
+})
+
+test('Enter on Clear after a pick empties the input and gives the focus to it', async () => {
+  const screen = await render(<FrameworkCombobox showClear />)
+  const input = screen.getByRole('combobox', { name: 'Framework' })
+  await input.click()
+  await userEvent.keyboard('vue{ArrowDown}{Enter}')
+  await expect.element(input).toHaveValue('Vue')
+  await userEvent.keyboard('{Tab}')
+  await expect.element(page.getByRole('button', { name: 'Clear' })).toHaveFocus()
+
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(input).toHaveValue('')
+  await expect.element(input).toHaveFocus()
 })
 
 test.each(closedLists)('Enter picks and keeps closed a list that %s closed, %s, with controlled value and text', async (_, __, closeForKey) => {

@@ -125,11 +125,16 @@ function ComboboxClear({
         state?.setValue(null)
         // setValue(null) does not clear typed text when no item is selected.
         state?.setInputValue("")
-        // The button unmounts when the text is empty. Give the focus back to the input.
+        // A keyboard user moves the focus to this button before the press, and the button unmounts when the text is
+        // empty. Give the focus to the input.
         e.target.closest("[data-slot=input-group]")?.querySelector("input")?.focus()
         onPress?.(e)
       }}
       slot={null}
+      // A focus move to this button blurs the input, and the blur drops text that is not a pick. The button then
+      // unmounts with the focus, and the focus goes to the body. React Aria sets this prop on the trigger button of a
+      // ComboBox for the same reason.
+      preventFocusOnPress
       isDisabled={isDisabled}
       {...props}
     >

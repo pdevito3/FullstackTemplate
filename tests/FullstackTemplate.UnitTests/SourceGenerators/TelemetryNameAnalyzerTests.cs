@@ -11,6 +11,7 @@ using Shouldly;
 public class TelemetryNameAnalyzerTests
 {
     private const string Usings = """
+        using System.Collections.Generic;
         using System.Diagnostics;
         using System.Diagnostics.Metrics;
         using System.Linq;
@@ -129,6 +130,210 @@ public class TelemetryNameAnalyzerTests
     }
 
     [Test]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; using var activity = Telemetry.Trace(tags, "lock.acquire");""")]
+    [Arguments("""var tags = new (string, object?)[] { ("Raw Key", 1) }; using var activity = Telemetry.Trace(tags, "lock.acquire");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; using var trace = Telemetry.TraceRoot(tags, "lock.acquire");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; tags = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags; tags = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; System.Action write = () => Telemetry.AddEvent(tags, "lock.acquired");""")]
+    public async Task a_tags_array_in_a_local_with_a_bad_key_gets_fsttel004(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        Text(diagnostics.ShouldHaveSingleItem()).ShouldBe("""
+            "Raw Key"
+            """);
+    }
+
+    [Test]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; using var activity = Telemetry.Trace(tags, "lock.acquire");""")]
+    [Arguments("""(string, object?)[] tags = [(name, 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""var tags = Tags(); Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("Raw Key", 1)]; System.Console.WriteLine(tags.Length);""")]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; (string, object?)[] other = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""(string, object?)[] tags = [("app.lock.mode", 1)]; (string, object?)[] other; other = [("Raw Key", 1)]; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    public async Task a_tags_array_in_a_local_with_no_bad_key_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""var tags = new TagList { { "UserId", id } };""")]
+    [Arguments("""TagList tags = new() { { "UserId", id } };""")]
+    [Arguments("""var tags = new TagList(); tags.Add("UserId", id);""")]
+    [Arguments("""var tags = new TagList(); tags.Add(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new TagList(); tags.Add(new("UserId", id));""")]
+    [Arguments("""var tags = new TagList(); tags.Insert(0, new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new TagList(); tags[0] = new KeyValuePair<string, object?>("UserId", id);""")]
+    [Arguments("""var tags = new TagList { new KeyValuePair<string, object?>("UserId", id) };""")]
+    [Arguments("""TagList tags = [new("UserId", id)];""")]
+    [Arguments("""TagList tags = [new KeyValuePair<string, object?>("UserId", id)];""")]
+    [Arguments("""var tags = new TagList([new KeyValuePair<string, object?>("UserId", id)]);""")]
+    [Arguments("""var tags = new TagList(new[] { new KeyValuePair<string, object?>("UserId", id) });""")]
+    [Arguments("""Telemetry.Errors.Add(1, new TagList { { "UserId", id } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection { { "UserId", id } };""")]
+    [Arguments("""var tags = new ActivityTagsCollection { ["UserId"] = id };""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] = id;""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags.Add("UserId", id);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags.Add(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new ActivityTagsCollection { new KeyValuePair<string, object?>("UserId", id) };""")]
+    [Arguments("""ActivityTagsCollection tags = [new("UserId", id)];""")]
+    [Arguments("""var tags = new ActivityTagsCollection([new("UserId", id)]);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new[] { new KeyValuePair<string, object?>("UserId", id) });""")]
+    [Arguments("""Activity.Current?.AddEvent(new ActivityEvent("cache.missed", tags: new ActivityTagsCollection { { "UserId", id } }));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { ["UserId"] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { { "UserId", id } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new List<KeyValuePair<string, object?>> { new("UserId", id) });""")]
+    [Arguments("""var pairs = new Dictionary<string, object?> { ["UserId"] = id }; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""var pairs = new List<KeyValuePair<string, object?>> { new("UserId", id) }; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("UserId", id)]; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("UserId", id)]; var tags = new TagList(pairs);""")]
+    [Arguments("""System.ReadOnlySpan<KeyValuePair<string, object?>> pairs = [new("UserId", id)]; var tags = new TagList(pairs);""")]
+    [Arguments("""var tags = new TagList(new KeyValuePair<string, object?>("UserId", id));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new ActivityTagsCollection { ["UserId"] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] ??= id;""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["UserId"] += id;""")]
+    public async Task a_bad_key_in_a_tag_list_or_an_activity_tags_collection_gets_fsttel004(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        var diagnostic = diagnostics.ShouldHaveSingleItem();
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).ShouldStartWith("The tag key 'UserId' breaks the name rules.");
+        Text(diagnostic).ShouldBe("""
+            "UserId"
+            """);
+    }
+
+    [Test]
+    [Arguments("""var tags = new TagList { { "app.request.name", id } };""")]
+    [Arguments("""var tags = new TagList(); tags.Add("error.type", id);""")]
+    [Arguments("""var tags = new TagList { new KeyValuePair<string, object?>("exception.message", id) };""")]
+    [Arguments("""TagList tags = [new("app.user_id", id)];""")]
+    [Arguments("""var tags = new TagList(); tags.Add(name, id);""")]
+    [Arguments("""var tags = new TagList([new KeyValuePair<string, object?>(name, id)]);""")]
+    [Arguments("""var tags = new ActivityTagsCollection { { "app.user_id", id } };""")]
+    [Arguments("""var tags = new ActivityTagsCollection { ["error.type"] = id };""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags[name] = id;""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); var found = tags["UserId"]; tags.Remove("UserId"); tags.ContainsKey("UserId");""")]
+    [Arguments("""var tags = new Dictionary<string, object?> { { "UserId", id } };""")]
+    [Arguments("""var tags = new Dictionary<string, object?> { ["UserId"] = id };""")]
+    [Arguments("""var tags = new List<KeyValuePair<string, object?>> { new("UserId", id) };""")]
+    [Arguments("""var tag = new KeyValuePair<string, object?>("UserId", id);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { ["app.user_id"] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { { "error.type", id } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Dictionary<string, object?> { [name] = id });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new List<KeyValuePair<string, object?>> { new("app.user_id", id) });""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("app.user_id", id)]; var tags = new ActivityTagsCollection(pairs);""")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = [new("app.user_id", id)]; KeyValuePair<string, object?>[] other = [new("UserId", id)]; var tags = new TagList(pairs);""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["app.user_id"] ??= id;""")]
+    [Arguments("""var tags = new TagList(); tags.Add("app.pair", new KeyValuePair<string, int>("Not A Tag", 1));""")]
+    [Arguments("""var tags = new TagList { { "app.pair", new KeyValuePair<string, int>("Not A Tag", 1) } };""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["app.pair"] = new KeyValuePair<string, int>("Not A Tag", 1);""")]
+    [Arguments("""var tags = new ActivityTagsCollection { ["app.pair"] = new KeyValuePair<string, int>("Not A Tag", 1) };""")]
+    [Arguments("""var tags = new TagList(); tags.Add("app.pair", new KeyValuePair<string, object?>("Not A Tag", 1));""")]
+    [Arguments("""var tags = new ActivityTagsCollection(); tags["app.pair"] = new KeyValuePair<string, object?>("Not A Tag", 1);""")]
+    [Arguments("""var tags = new TagList(); tags.Add("app.pair", new[] { new KeyValuePair<string, object?>("Not A Tag", 1) });""")]
+    public async Task a_tag_list_or_an_activity_tags_collection_with_no_bad_key_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""var tags = new ActivityTagsCollection(new Pairs { { "user_id", 1 } });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new Pairs { ["user_id"] = 1 });""")]
+    [Arguments("""var tags = new ActivityTagsCollection(new List<KeyValuePair<string, object?>> { { "user_id", 1 } });""")]
+    public async Task an_initializer_that_names_its_own_key_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await Run($$"""
+            public sealed class Pairs : List<KeyValuePair<string, object?>>
+            {
+                public void Add(string key, object? value) => Add(new KeyValuePair<string, object?>($"app.{key}", value));
+
+                public object? this[string key]
+                {
+                    set => Add(key, value);
+                }
+            }
+
+            public static class PairExtensions
+            {
+                public static void Add(this List<KeyValuePair<string, object?>> pairs, string key, object? value)
+                    => pairs.Add(new KeyValuePair<string, object?>($"app.{key}", value));
+
+                public static void Run()
+                {
+                    {{statement}}
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task another_type_with_a_key_parameter_that_converts_to_a_tag_pair_has_no_diagnostics()
+    {
+        // Act
+        var diagnostics = await Run("""
+            public sealed class Pair(string key)
+            {
+                public static implicit operator KeyValuePair<string, object?>(Pair pair) => new(pair.Key, null);
+
+                public string Key { get; } = key;
+
+                public static void Run()
+                {
+                    var tags = new TagList();
+                    tags.Add(new Pair("Not A Tag"));
+                }
+            }
+            """);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""Empty tags = tags; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    [Arguments("""Empty first = first; Empty tags = first; Telemetry.AddEvent(tags, "lock.acquired");""")]
+    public async Task a_tags_local_that_refers_to_itself_has_no_diagnostics(string statement)
+    {
+        // Act
+        var diagnostics = await RunInMethod(statement);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""(string, object?)[] tags = tags; Telemetry.AddEvent(tags, "lock.acquired");""", "CS0165")]
+    [Arguments("""(string, object?)[] tags = other; (string, object?)[] other = tags; Telemetry.AddEvent(tags, "lock.acquired");""", "CS0841")]
+    [Arguments("""KeyValuePair<string, object?>[] pairs = pairs; _ = new TagList(pairs);""", "CS0165")]
+    public async Task a_tags_local_that_does_not_compile_because_it_refers_to_itself_does_not_stop_the_analyzer(string statement, string compileError)
+    {
+        // Act
+        var diagnostics = await Run(Method(statement), compileError);
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task a_constant_field_that_breaks_the_names_table_gets_fsttel004()
     {
         // Act
@@ -148,8 +353,15 @@ public class TelemetryNameAnalyzerTests
     private static string Text(Diagnostic diagnostic)
         => diagnostic.Location.SourceTree!.GetText().ToString(diagnostic.Location.SourceSpan);
 
-    private static Task<ImmutableArray<Diagnostic>> RunInMethod(string statement)
-        => Run($$"""
+    private static Task<ImmutableArray<Diagnostic>> RunInMethod(string statement) => Run(Method(statement));
+
+    private static string Method(string statement)
+        => $$"""
+            public readonly struct Empty
+            {
+                public static implicit operator (string, object?)[](Empty empty) => [];
+            }
+
             public static class Sample
             {
                 private static readonly ILogger Logger = Log.ForContext(typeof(Sample));
@@ -158,10 +370,12 @@ public class TelemetryNameAnalyzerTests
                 {
                     {{statement}}
                 }
-            }
-            """);
 
-    private static async Task<ImmutableArray<Diagnostic>> Run(string source)
+                private static (string, object?)[] Tags() => [];
+            }
+            """;
+
+    private static async Task<ImmutableArray<Diagnostic>> Run(string source, string? compileError = null)
     {
         var references = PlatformReferences.All;
         var compilation = CSharpCompilation.Create(
@@ -175,7 +389,11 @@ public class TelemetryNameAnalyzerTests
                 """, path: "Source.cs")],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
-        compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        var compileErrors = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.Id);
+        if (compileError is null)
+            compileErrors.ShouldBeEmpty();
+        else
+            compileErrors.ShouldContain(compileError);
 
         var exceptions = new List<Exception>();
         var options = new CompilationWithAnalyzersOptions(

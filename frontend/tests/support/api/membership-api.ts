@@ -41,4 +41,9 @@ export const membershipApi = {
     const body = { ...aProblem().saying(message).build(), status: 409, errors: { [field]: [message] } }
     return { method: 'post', path: membershipPaths.start, status: 409, body }
   },
+
+  /** An answer with no body, as the BFF gives when it cannot reach the Server. */
+  startFailsWithNoProblem(status: number): MockRoute {
+    return { method: 'post', path: membershipPaths.start, status }
+  },
 }

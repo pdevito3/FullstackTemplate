@@ -40,7 +40,8 @@ export function StartTenantForm({ profile: { identifier, ...names }, onStart }: 
 
   const showRefusal = (error: unknown) => {
     if (!isProblemDetailsError(error)) {
-      form.setError('root.server', { message: 'The tenant was not started. Check your connection, then try again.' })
+      // apiClient gives each failed request the text for the user.
+      form.setError('root.server', { message: error instanceof Error && error.message ? error.message : 'The tenant was not started. Try again.' })
       return
     }
     const fieldErrors = (error.problemDetails.errors ?? {}) as Record<string, string[]>

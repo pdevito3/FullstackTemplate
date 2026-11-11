@@ -60,6 +60,16 @@ test.describe('a signed-in user with no tenant', () => {
     expect(await start.at.toasts.count()).toBe(0)
   })
 
+  test('sees the text of a fault of the server when the answer has no problem', async ({ page, api }) => {
+    api.mock(membershipApi.startFailsWithNoProblem(502))
+    const start = startTenantPage(page)
+    await start.openAsSignedIn('/start-tenant')
+
+    await start.start('Acme')
+
+    await expect(start.at.formErrors).toHaveText('The server could not complete the request. Try again in a moment.')
+  })
+
   test('who got a user record in another tab sees that they are a member after the refusal', async ({ page, api }) => {
     api.mock(membershipApi.startRefuses('identifier', 'A user with this identifier already exists.'))
     const start = startTenantPage(page)

@@ -154,6 +154,7 @@ public class QueryInputAnalyzerTests
         """, "request.Identifier")]
     [Arguments("""u => u.Identifier.StartsWith("a" + request.Identifier + "b")""", "request.Identifier")]
     [Arguments("u => object.Equals(u.Identifier, request.Identifier)", "request.Identifier")]
+    [Arguments("u => ((object)request.Identifier).Equals(u.Identifier)", "(object)request.Identifier")]
     [Arguments("""u => u.Identifier == string.Join(",", request.Ids)""", "request.Ids")]
     public async Task each_query_operator_that_sends_a_request_text_gets_fstqry001(string predicate, string text)
     {

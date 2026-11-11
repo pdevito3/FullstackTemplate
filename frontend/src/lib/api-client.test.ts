@@ -157,7 +157,7 @@ describe('apiClient with a fault of the Server', () => {
     ['a message field', 503, { message: 'Down for maintenance.' }],
     ['an error field', 502, { error: 'Bad gateway.' }],
     ['no body', 502, ''],
-    ['a status that is not a fault of the Server', 404, ''],
+    ['a 404, as for a path that the BFF does not have', 404, ''],
   ])('shows the text of the SPA for an answer with %s and no problem', async (_, status, body) => {
     adapter.mockImplementation((config) => respond(config, status, body))
 

@@ -41,6 +41,8 @@ export function filterDemoPage(page: Page) {
     /** The mouse stays where it is for `ms` of the time of the page. */
     async restMouse(ms: number) {
       await page.clock.runFor(ms)
+      // The clock moves the timers forward, but not the CSS animations. In a real rest, the animations that the timers start also end.
+      await expect.poll(() => page.evaluate(() => document.getAnimations().filter((animation) => animation.playState === 'running').length)).toBe(0)
     },
 
     /** Opens the page at noon of `today`, a date such as `2026-08-15`, in the zone of the browser. */

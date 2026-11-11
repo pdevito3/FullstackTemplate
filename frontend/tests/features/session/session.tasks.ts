@@ -29,6 +29,7 @@ export function sessionPage(page: Page) {
       // The SPA leaves the page as it loads, so the wait is for the commit and not for the load.
       await page.goto(path, { waitUntil: 'commit' })
       await login
+      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
       return { rendered }
     },
 
@@ -66,6 +67,7 @@ export function sessionPage(page: Page) {
       const login = answered(bffPaths.login)
       await link.click()
       await login
+      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
       return { toasted }
     },
 

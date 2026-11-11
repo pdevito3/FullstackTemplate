@@ -209,6 +209,21 @@ test.describe('the focus after a navigation on a phone', () => {
   })
 })
 
+test.describe('a phone that loses the connection just after the page shows', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('keeps the page and opens the mobile sidebar', async ({ page }) => {
+    const shell = appShellPage(page)
+    await shell.openAbout()
+
+    await shell.goOffline()
+    await shell.openMobileSidebar()
+
+    await expect(shell.at.aboutNavigationLink).toBeVisible()
+    await expect(shell.at.aboutText).toBeVisible()
+  })
+})
+
 test.describe('the mobile sidebar with a 24 px default font', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

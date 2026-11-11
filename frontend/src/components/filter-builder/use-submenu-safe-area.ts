@@ -48,9 +48,9 @@ export function useSubmenuSafeArea(triggerRef: RefObject<HTMLElement | null>, su
     }
 
     // The wheel moves the items under the mouse, so the mouse no longer goes from the trigger to the submenu.
-    const handleWheel = () => {
+    const handleWheel = (event: WheelEvent) => {
       clearTimeout(restTimer)
-      area = null
+      if (area) releaseTo({ x: event.clientX, y: event.clientY })
     }
 
     window.addEventListener('pointerover', blockHover, true)

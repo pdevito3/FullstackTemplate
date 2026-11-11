@@ -89,6 +89,22 @@ test.describe('the submenu of a property on a desktop', () => {
     await expect(demo.at.control('Created Date')).toBeHidden()
   })
 
+  // The list is at its top, so the wheel up does not scroll it, and the browser does not hover the property again.
+  test('gives the hover to the property under the mouse after the wheel turns on the way to the submenu', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.open()
+    await demo.at.addFilterMenu.click()
+    await demo.hoverProperty('Created Date')
+    const path = await demo.pathFrom(demo.at.property('Created Date'), demo.at.dateSegment('Created Date', 'Date', 'month'))
+    const [stop] = path.crossed
+    expect(await demo.scrollTopOfPropertyList(), 'the list is at its top').toBe(0)
+    await demo.moveMouseStraightTo(stop.point)
+
+    await page.mouse.wheel(0, -100)
+
+    await expect(demo.at.control('Created Date')).toBeHidden()
+  })
+
   test('closes with Escape', async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.open()

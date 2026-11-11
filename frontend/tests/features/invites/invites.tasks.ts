@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { bffPaths } from '@tests/support/api/bff-api'
 import { invitesPaths } from '@tests/support/api/invites-api'
 import { tenantsPaths } from '@tests/support/api/tenants-api'
 import { invites, join } from './invites.locators'
@@ -218,9 +219,21 @@ export function joinPage(page: Page) {
     },
 
     async openLinkAndGoToLogin(token: string, path = '/join') {
-      // The SPA leaves the page as it loads, so the wait is for the commit and not for the load. React StrictMode starts
-      // the login twice in development, so wait for the address and not for the first answer, which an abort can follow.
+      // The SPA leaves the page as it loads, so the wait is for the commit and not for the load. Under a high load, the dev
+      // server can take more than the 5 s of an assertion to serve the modules of the app, so wait for the answer of the
+      // login, which the test timeout limits, and then assert the URL. React StrictMode starts the login twice in
+      // development, and the second start aborts the first navigation, so `page.waitForURL` can fail.
+      const login = answered('GET', bffPaths.login)
       await page.goto(`${path}#token=${token}`, { waitUntil: 'commit' })
+      await login
+      await expect(page).toHaveURL(/\/bff\/login/)
+    },
+
+    /** The session ended while the form was open, so the submit goes to the login. */
+    async submitAndGoToLogin() {
+      const login = answered('GET', bffPaths.login)
+      await at.submit.click()
+      await login
       await expect(page).toHaveURL(/\/bff\/login/)
     },
 

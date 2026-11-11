@@ -29,6 +29,7 @@ export function sessionPage(page: Page) {
       // The SPA leaves the page as it loads, so the wait is for the commit and not for the load.
       await page.goto(path, { waitUntil: 'commit' })
       await login
+      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
       return { rendered }
     },
 
@@ -36,8 +37,11 @@ export function sessionPage(page: Page) {
       await page.goto(blankPage)
     },
 
+    /** The dev server can take more than the 5 s of an assertion to serve the app, so wait for the answer of the login first. */
     async openDeepLinkAndWaitForLogin(path: string) {
+      const login = answered(bffPaths.login)
       await page.goto(path, { waitUntil: 'commit' })
+      await login
       await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
       await page.waitForLoadState()
     },
@@ -63,6 +67,7 @@ export function sessionPage(page: Page) {
       const login = answered(bffPaths.login)
       await link.click()
       await login
+      await expect.poll(() => new URL(page.url()).pathname).toBe(bffPaths.login)
       return { toasted }
     },
 

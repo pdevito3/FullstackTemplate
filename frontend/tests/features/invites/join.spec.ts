@@ -566,9 +566,8 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     await expect(join.at.form).toBeVisible()
 
     api.mock(bffApi.userIs(as.anonymous()), bffApi.loginOpens())
-    await join.at.submit.click()
+    await join.submitAndGoToLogin()
 
-    await expect(page).toHaveURL(/\/bff\/login/)
     expect(api.all('post', invitesPaths.claim)).toEqual([])
     expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/join')
     expect(await join.storedToken()).toBe(token)

@@ -123,6 +123,10 @@ public class QueryInputAnalyzerTests
     [Arguments("u => u.Identifier.Equals(request.Identifier)")]
     [Arguments("u => string.Equals(u.Identifier, request.Identifier)")]
     [Arguments("u => u.UserPermissions.Any(p => u.Identifier == request.Identifier)")]
+    [Arguments("u => object.Equals(request.Identifier, u.Identifier)")]
+    [Arguments("u => Equals(u.Identifier, request.Identifier)")]
+    [Arguments("u => ((object)u.Identifier).Equals(request.Identifier)")]
+    [Arguments("u => !object.Equals(u.Identifier, request.Identifier)")]
     public async Task each_compare_of_a_request_text_in_a_query_gets_fstqry001(string predicate)
     {
         // Act
@@ -149,6 +153,8 @@ public class QueryInputAnalyzerTests
         u => u.Identifier == request.Identifier + "-1"
         """, "request.Identifier")]
     [Arguments("""u => u.Identifier.StartsWith("a" + request.Identifier + "b")""", "request.Identifier")]
+    [Arguments("u => object.Equals(u.Identifier, request.Identifier)", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Join(",", request.Ids)""", "request.Ids")]
     public async Task each_query_operator_that_sends_a_request_text_gets_fstqry001(string predicate, string text)
     {
         // Act
@@ -167,6 +173,9 @@ public class QueryInputAnalyzerTests
     [Arguments("""
         u => u.Identifier == request.Identifier + "-1"
         """)]
+    [Arguments("u => object.Equals(u.Identifier, request.Identifier)")]
+    [Arguments("u => ((object)u.Identifier).Equals(request.Identifier)")]
+    [Arguments("""u => u.Identifier == string.Join(",", new[] { "a", request.Identifier })""")]
     public async Task a_request_text_that_postgres_text_can_store_checks_first_has_no_diagnostics_in_each_operator(string predicate)
     {
         // Act
@@ -399,6 +408,8 @@ public class QueryInputAnalyzerTests
     [Arguments("""(request.Ids ?? request.More).All(PostgresText.CanStore)""", """u => (request.Ids ?? request.More).Contains(u.Id)""")]
     [Arguments("PostgresText.CanStore(request.Names[0])", "u => u.Identifier == request.Names[0]")]
     [Arguments("PostgresText.CanStore(request.Names[0].Trim())", "u => u.Identifier == request.Names[0].ToLower()")]
+    [Arguments("""PostgresText.CanStore(string.Join(",", request.Ids))""", """u => u.Identifier == string.Join(",", request.Ids)""")]
+    [Arguments("request.Ids.All(PostgresText.CanStore)", """u => u.Identifier == string.Join(",", request.Ids)""")]
     public async Task a_check_of_the_expression_that_the_query_compares_has_no_diagnostics(string check, string predicate)
     {
         // Act
@@ -422,6 +433,8 @@ public class QueryInputAnalyzerTests
     [Arguments("""(request.Ids ?? request.More).All(PostgresText.CanStore)""", "u => request.More.Contains(u.Id)", "request.More")]
     [Arguments("PostgresText.CanStore(request.Names[0])", "u => u.Identifier == request.Names[1]", "request.Names[1]")]
     [Arguments("""PostgresText.CanStore(request.Names?[0] ?? "")""", "u => u.Identifier == request.Names[1]", "request.Names[1]")]
+    [Arguments("PostgresText.CanStore(request.Ids[0])", """u => u.Identifier == string.Join(",", request.Ids)""", "request.Ids")]
+    [Arguments("request.More.All(PostgresText.CanStore)", """u => u.Identifier == string.Join(",", request.Ids)""", "request.Ids")]
     public async Task a_check_of_another_expression_gets_fstqry001(string check, string predicate, string text)
     {
         // Act
@@ -549,7 +562,12 @@ public class QueryInputAnalyzerTests
     [Arguments("u => u.Identifier == string.Format(request.Identifier, 1)", "request.Identifier")]
     [Arguments("""u => u.Identifier.StartsWith(string.Concat(request.Identifier, "%"))""", "request.Identifier")]
     [Arguments("""u => EF.Functions.ILike(u.Identifier, string.Format("%{0}%", request.Identifier))""", "request.Identifier")]
-    public async Task a_request_text_in_string_concat_string_format_or_an_array_gets_fstqry001(string predicate, string text)
+    [Arguments("u => u.Identifier == string.Join(',', request.Names)", "request.Names")]
+    [Arguments("""u => u.Identifier == string.Join(",", new[] { "a", request.Identifier })""", "request.Identifier")]
+    [Arguments("u => u.Identifier == string.Join(request.Identifier, new[] { u.Id })", "request.Identifier")]
+    [Arguments("""u => u.Identifier == string.Join(",", request.Ids, 0, 1)""", "request.Ids")]
+    [Arguments("""u => string.Join(",", request.Ids).Contains(u.Identifier)""", "request.Ids")]
+    public async Task a_request_text_in_string_concat_string_format_string_join_or_an_array_gets_fstqry001(string predicate, string text)
     {
         // Act
         var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
@@ -565,7 +583,10 @@ public class QueryInputAnalyzerTests
     [Arguments("""u => u.Identifier == string.Format("{0}", request.Dto)""")]
     [Arguments("""u => u.Identifier == string.Format("{0}", request.Identifier)""")]
     [Arguments("""u => u.Identifier == string.Concat(new[] { "a", request.Identifier })""")]
-    public async Task string_concat_or_string_format_with_no_unchecked_request_text_has_no_diagnostics(string predicate)
+    [Arguments("""u => u.Identifier == string.Join(",", new[] { tenant.Name, u.Id })""")]
+    [Arguments("u => object.Equals(u.Identifier, tenant.Name)")]
+    [Arguments("u => object.Equals(u.Identifier, u.Id)")]
+    public async Task a_built_text_or_an_object_equals_with_no_unchecked_request_text_has_no_diagnostics(string predicate)
     {
         // Act
         var diagnostics = await RunInHandler($"""
@@ -929,7 +950,21 @@ public class QueryInputAnalyzerTests
     [Test]
     [Arguments("u => u.Identifier == Format(request.Identifier)")]
     [Arguments("u => u.Identifier == Concat(request.Identifier)")]
-    public async Task a_format_or_a_concat_method_of_another_class_has_no_diagnostics(string predicate)
+    [Arguments("u => u.Identifier == Join(request.Identifier)")]
+    public async Task a_format_a_concat_or_a_join_method_of_another_class_has_no_diagnostics(string predicate)
+    {
+        // Act
+        var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
+
+        // Assert
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Test]
+    [Arguments("""
+        u => request.Dto.Equals(request.Identifier) || u.Identifier == "a"
+        """)]
+    public async Task an_equals_of_another_type_has_no_diagnostics(string predicate)
     {
         // Act
         var diagnostics = await RunInHandler($"return await dbContext.Users.AnyAsync({predicate}, cancellationToken);");
@@ -1089,6 +1124,8 @@ public class QueryInputAnalyzerTests
                 private static string Format(string text) => text;
 
                 private static string Concat(string text) => text;
+
+                private static string Join(string text) => text;
 
                 private static void Change(ref string text) => text = "";
 

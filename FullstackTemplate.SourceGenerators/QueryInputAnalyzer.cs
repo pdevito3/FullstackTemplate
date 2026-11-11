@@ -90,7 +90,7 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		=> call.TargetMethod.Name == "Equals" && call.Arguments.Any(static a => IsNull(a.Value));
 
 	private static bool BuildsText(IMethodSymbol method)
-		=> method.ContainingType.SpecialType == SpecialType.System_String && method.Name is "Concat" or "Format";
+		=> method.ContainingType.SpecialType == SpecialType.System_String && method.Name is "Concat" or "Format" or "Join";
 
 	private static List<PathStep>? PathFromFirstParameter(IOperation operand, InputTypes types)
 	{
@@ -430,7 +430,8 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 		public bool SendsArguments(IMethodSymbol method)
 			=> method.Name switch
 			{
-				"Equals" or "StartsWith" or "EndsWith" => method.ContainingType.SpecialType == SpecialType.System_String,
+				"Equals" => method.ContainingType.SpecialType is SpecialType.System_String or SpecialType.System_Object,
+				"StartsWith" or "EndsWith" => method.ContainingType.SpecialType == SpecialType.System_String,
 				"Contains" => true,
 				"Like" or "ILike" => method.Parameters.Length > 0 && SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, dbFunctions),
 				_ => false,

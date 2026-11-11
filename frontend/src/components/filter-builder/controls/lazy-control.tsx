@@ -22,9 +22,13 @@ export function lazyControl(load: () => Promise<ComponentType<FilterControlProps
       setShown({ Control: Loaded, attempt: shown.attempt + 1 })
     }
 
+    // Try again unmounts the focused button. After a press, the focus goes to the control that loads, or to the new
+    // Try again, and not to the body, where Escape no longer closes the submenu.
+    const retried = shown.attempt > 0
+
     return (
-      <CodeLoadBoundary key={shown.attempt} fallback={<ControlLoadError onTryAgain={tryAgain} />}>
-        <shown.Control {...props} />
+      <CodeLoadBoundary key={shown.attempt} fallback={<ControlLoadError onTryAgain={tryAgain} autoFocus={retried} />}>
+        <shown.Control {...props} autoFocus={props.autoFocus || retried} />
       </CodeLoadBoundary>
     )
   }

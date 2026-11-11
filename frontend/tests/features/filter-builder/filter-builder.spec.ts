@@ -28,5 +28,25 @@ for (const screen of [
       await expect(demo.at.dateSegment('Due Date', 'month')).toBeVisible()
       await expect(demo.at.loadError('Due Date')).toHaveCount(0)
     })
+
+    test('keeps the focus in the control after Try again, so that Escape still closes it', async ({ page, api }) => {
+      const reconnect = await api.failPageSource(dateControlSource)
+      const demo = filterBuilderDemoPage(page)
+      await demo.open()
+      await demo.chooseProperty('Due Date')
+      await expect(demo.at.loadError('Due Date')).toBeVisible()
+
+      await demo.at.tryAgain('Due Date').click()
+
+      await expect(demo.at.loadError('Due Date')).toBeVisible()
+      await expect(demo.at.tryAgain('Due Date')).toBeFocused()
+
+      reconnect()
+      await demo.at.tryAgain('Due Date').click()
+
+      await expect(demo.at.dateSegment('Due Date', 'month')).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(demo.at.control('Due Date')).toHaveCount(0)
+    })
   })
 }

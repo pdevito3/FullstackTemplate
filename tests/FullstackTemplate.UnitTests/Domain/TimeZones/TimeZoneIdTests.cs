@@ -57,19 +57,24 @@ public class TimeZoneIdTests
         zone.Value.ShouldBe(value);
     }
 
-    public static IEnumerable<(string, string)> Links => TimeZoneLinks.All.Select(link => (link.Name, link.Target));
+    public static IEnumerable<(string, string)> Links => TimeZoneNames.Links.Select(link => (link.Name, link.Target));
+
+    public static IEnumerable<string> Zones => TimeZoneNames.Zones;
 
     [Test]
-    public void the_link_table_holds_the_links_of_the_iana_file()
+    public void the_name_tables_hold_the_links_and_the_zones_of_the_iana_files()
     {
-        // Arrange: an empty table gives no rows to the tests of each link, and they pass with no check
+        // Arrange: an empty table gives no rows to the tests of each link and each zone, and they pass with no check
 
         // Act
-        var links = TimeZoneLinks.All;
+        var links = TimeZoneNames.Links;
+        var zones = TimeZoneNames.Zones;
 
         // Assert
         links.ShouldContain(("Asia/Calcutta", "Asia/Kolkata"));
-        links.ShouldContain(("Asia/Ulan_Bator", "Asia/Ulaanbaatar"));
+        links.ShouldContain(("GMT", "Etc/GMT"));
+        zones.ShouldContain("EST5EDT");
+        zones.ShouldContain("Etc/GMT+5");
     }
 
     [Test]
@@ -90,6 +95,26 @@ public class TimeZoneIdTests
         link.ToLocal(summer).ShouldBe(zone.ToLocal(summer));
     }
 
+    /// <summary>
+    /// The host does not list these zones in GetSystemTimeZones, but macOS and Ubuntu 24.04 find each of them in any case.
+    /// </summary>
+    [Test]
+    [MethodDataSource(nameof(Zones))]
+    public void each_zone_of_the_iana_files_is_accepted_only_in_its_own_case(string zone)
+    {
+        // Arrange
+        var rest = zone[1..];
+        var wrongCase = zone[0] + (rest.Any(char.IsAsciiLetterUpper) ? rest.ToLowerInvariant() : rest.ToUpperInvariant());
+
+        // Act
+        var accepted = TimeZoneId.Of(zone);
+        var act = () => TimeZoneId.Of(wrongCase);
+
+        // Assert
+        accepted.Value.ShouldBe(zone);
+        act.ShouldThrow<ValidationException>().Message.ShouldContain("is not a time zone that the server knows");
+    }
+
     [Test]
     public void a_wrong_case_of_an_old_name_is_refused()
     {
@@ -103,9 +128,9 @@ public class TimeZoneIdTests
     [Test]
     public void an_id_is_accepted_after_a_lookup_of_its_wrong_case()
     {
-        // Arrange: macOS keeps the case of the first lookup as the ID of the zone, and Linux refuses the wrong case.
-        // Etc/GMT+5 is in neither map of wrong cases on macOS, so this lookup reaches the host.
-        try { TimeZoneId.Of("etc/gmt+5"); } catch (ValidationException) { }
+        // Arrange: macOS keeps the case of the first lookup in the process as the ID of the zone. TimeZoneId refuses a
+        // wrong case before the lookup, but other code in the process can look up the zone first.
+        TimeZoneInfo.TryFindSystemTimeZoneById("etc/gmt+5", out _);
 
         // Act
         var zone = TimeZoneId.Of("Etc/GMT+5");
@@ -117,6 +142,9 @@ public class TimeZoneIdTests
     [Test]
     [Arguments("Central Standard Time")]
     [Arguments("america/chicago")]
+    [Arguments("Est5edt")]
+    [Arguments("Etc/gmt+5")]
+    [Arguments("ETC/GMT+5")]
     [Arguments("Mars/Olympus_Mons")]
     [Arguments("")]
     public void an_id_that_is_not_an_iana_zone_is_refused_on_the_time_zone_field(string value)

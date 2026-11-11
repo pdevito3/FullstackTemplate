@@ -61,7 +61,7 @@ public class StringColumnLengthTests
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         // example:start
         ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id)
-            .Concat(TimeZoneLinks.All.Select(link => link.Name)).ToList(),
+            .Concat(TimeZoneNames.Links.Select(link => link.Name)).Concat(TimeZoneNames.Zones).ToList(),
         ["workshops.status"] = WorkshopStatus.ListNames(),
         // example:end
         // new-feature:fixed-option-columns

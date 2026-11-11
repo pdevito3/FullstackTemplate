@@ -5,11 +5,11 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Agents;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Invites;
+using FullstackTemplate.Server.Domain.TimeZones;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 // example:start
-using FullstackTemplate.Server.Domain.TimeZones;
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
 // example:end
@@ -50,6 +50,10 @@ public class StringColumnLengthTests
         // new-feature:caller-columns
     };
 
+    // TimeZoneId takes the IANA IDs that the host lists, the links of IANA, and the zones of the IANA files
+    private static List<string> TimeZoneIds() => TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id)
+        .Concat(TimeZoneNames.Links.Select(link => link.Name)).Concat(TimeZoneNames.Zones).ToList();
+
     private static readonly Dictionary<string, IReadOnlyList<string>> FixedOptionColumns = new()
     {
         ["users.role"] = UserRole.ListNames(),
@@ -60,8 +64,7 @@ public class StringColumnLengthTests
         ["user_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         ["agent_permissions.permission"] = Permission.GetAll().Select(p => p.Value).ToList(),
         // example:start
-        ["venues.time_zone"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id)
-            .Concat(TimeZoneNames.Links.Select(link => link.Name)).Concat(TimeZoneNames.Zones).ToList(),
+        ["venues.time_zone"] = TimeZoneIds(),
         ["workshops.status"] = WorkshopStatus.ListNames(),
         // example:end
         // new-feature:fixed-option-columns

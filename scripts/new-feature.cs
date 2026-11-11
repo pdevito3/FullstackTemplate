@@ -515,7 +515,7 @@ internal sealed record Plan(IReadOnlyList<FileWrite> Files, IReadOnlyList<Insert
         list.Add(new(columnsTest, "caller-columns", $"""["{n.SnakePlural}.{spec.Title.Snake}"]""", columns));
         if (spec.Fields.FirstOrDefault(f => f.Kind == Kind.TimeZone) is { } zone)
             list.Add(new(columnsTest, "fixed-option-columns", $"""["{n.SnakePlural}.{zone.Snake}"]""",
-                [$"""["{n.SnakePlural}.{zone.Snake}"] = TimeZoneInfo.GetSystemTimeZones().Where(z => z.HasIanaId).Select(z => z.Id).ToList(),"""]));
+                [$"""["{n.SnakePlural}.{zone.Snake}"] = TimeZoneIds(),"""]));
 
         var open = new List<string>();
         if (spec.Has(Entrypoints.Http))

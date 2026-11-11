@@ -97,21 +97,26 @@ public class TimeZoneIdTests
 
     /// <summary>
     /// The host does not list these zones in GetSystemTimeZones, but macOS and Ubuntu 24.04 find each of them in any case.
+    /// Ubuntu 26.04 puts the System V zones such as EST5EDT in the package tzdata-legacy, so a host can have no file for them.
     /// </summary>
     [Test]
     [MethodDataSource(nameof(Zones))]
-    public void each_zone_of_the_iana_files_is_accepted_only_in_its_own_case(string zone)
+    public void each_zone_of_the_iana_files_is_accepted_only_in_its_own_case_where_the_host_has_it(string zone)
     {
-        // Arrange
+        // Arrange: the lookup of the correct case comes first, because Linux then finds a wrong case in the cache of .NET
         var rest = zone[1..];
         var wrongCase = zone[0] + (rest.Any(char.IsAsciiLetterUpper) ? rest.ToLowerInvariant() : rest.ToUpperInvariant());
+        var hostHasZone = TimeZoneInfo.TryFindSystemTimeZoneById(zone, out _);
 
         // Act
-        var accepted = TimeZoneId.Of(zone);
+        var accept = () => TimeZoneId.Of(zone);
         var act = () => TimeZoneId.Of(wrongCase);
 
         // Assert
-        accepted.Value.ShouldBe(zone);
+        if (hostHasZone)
+            accept().Value.ShouldBe(zone);
+        else
+            accept.ShouldThrow<ValidationException>();
         act.ShouldThrow<ValidationException>().Message.ShouldContain("is not a time zone that the server knows");
     }
 

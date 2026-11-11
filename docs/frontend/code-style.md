@@ -37,7 +37,7 @@ function isUserDto(value: unknown): value is UserDto {
 <!-- example:start -->
 The workshop list returns early for its loading, error, and empty states: [`WorkshopRows`](<../../frontend/src/routes/(examples)/workshops/index.tsx>).
 <!-- example:end -->
-6. Load a heavy component or library with `lazy` or a dynamic `import()`.
+6. Load a heavy component or library with `lazy` or a dynamic `import()`. Do not do this for a component that the layout in `__root.tsx` renders when the app starts, such as the mobile sidebar sheet. Its code then loads after the first paint. If the load fails, the root error boundary shows "This page did not load" in place of the whole layout (#508).
 
 ```typescript
 interface UserCardProps {

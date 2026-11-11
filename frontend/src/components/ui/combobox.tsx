@@ -125,8 +125,8 @@ function ComboboxClear({
         state?.setValue(null)
         // setValue(null) does not clear typed text when no item is selected.
         state?.setInputValue("")
-        // A keyboard press, a screen reader press, or a long touch puts the focus on this button, which unmounts when
-        // the text is empty. Give the focus to the input.
+        // A keyboard user moves the focus to this button before the press, and the button unmounts when the text is
+        // empty. Give the focus to the input.
         e.target.closest("[data-slot=input-group]")?.querySelector("input")?.focus()
         onPress?.(e)
       }}

@@ -2,7 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
+import { FilterBuilder } from '@/components/filter-builder/filter-builder'
 import { Notification } from '@/components/notification'
+import { PageError } from '@/components/page-error'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/toaster'
 import { Button } from '@/components/ui/button'
@@ -70,6 +72,7 @@ export function SharedComponents() {
         <Button variant="outline" onPress={() => Notification.info('A new version is available')}>Info</Button>
         <Button variant="outline" onPress={() => Notification.warning('Your session ends in 5 minutes')}>Warning</Button>
       </div>
+      <FilterBuilder filterOptions={[{ propertyKey: 'dueDate', propertyLabel: 'Due Date', controlType: 'date' }]} />
     </div>
   )
 }
@@ -84,6 +87,7 @@ const page = createRoute({
 const router = createRouter({
   routeTree: root.addChildren([page]),
   history: createMemoryHistory({ initialEntries: ['/'] }),
+  defaultErrorComponent: PageError,
 })
 
 createRoot(document.getElementById('root')!).render(

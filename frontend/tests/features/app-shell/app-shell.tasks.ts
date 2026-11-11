@@ -23,6 +23,14 @@ export function appShellPage(page: Page) {
       await expect.poll(() => at.mobileSidebar.evaluate((sheet) => sheet.getAnimations().length)).toBe(0)
     },
 
+    async goOffline() {
+      await page.context().setOffline(true)
+    },
+
+    async narrowToPhone() {
+      await page.setViewportSize({ width: 390, height: 844 })
+    },
+
     async openMissingPage() {
       await page.goto('/no-such-page')
       await expect(at.currentPage).toBeVisible()

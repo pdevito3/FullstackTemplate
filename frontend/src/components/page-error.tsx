@@ -4,7 +4,7 @@ import { PageHeading } from '@/components/page-heading'
 import { Button } from '@/components/ui/button'
 
 const codeDidNotLoad = { title: 'This page did not load', action: 'Check your connection, then reload the page.' }
-const pageStopped = { title: 'This page stopped working', action: 'Reload the page to try again.' }
+const pageStopped = { title: 'This page stopped working', action: 'Reload the page to try again, or choose another page.' }
 
 // The router shows this in place of the page, so the layout and the menu stay. An error in the layout itself shows
 // this in place of the whole layout. For a missing code file of a route, as after a deploy, the router reloads the

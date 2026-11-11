@@ -65,6 +65,7 @@ Wrap the `cva` call of a `*-variants.ts` file in `withMergedClasses` from `@/lib
 - `withCredentials: true` sends the BFF cookie.
 - The `X-CSRF: 1` header is necessary for the BFF CSRF protection.
 - An error response that has problem details becomes a `ProblemDetailsError`. The client shows it as a toast by default. To stop the toast, send `{ suppressErrorToast: true }` with the request.
+- The `message` of each error that the client throws is the text for the user, so a toast, a form, and a page show the same text. A refusal (a 4xx problem) gives the `detail` of the Server, or its `title`. A 5xx, an answer with no problem details, and a request with no answer give the text of the SPA in `lib/problem-details.ts`. See [In the SPA](messages.md#in-the-spa).
 
 The generated API clients send each request through `apiClient`. `main.tsx` imports `lib/api-client.ts` to connect them before the first request. Use `apiClient` directly only for endpoints that are not in the OpenAPI document, such as `/bff/user`.
 

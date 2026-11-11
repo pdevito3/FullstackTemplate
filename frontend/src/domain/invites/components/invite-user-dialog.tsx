@@ -24,7 +24,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { isUserRole, ROLE_LABELS, USER_ROLES } from '@/domain/users/components/user-role'
 import { useServerErrors } from '@/hooks/use-server-errors'
 import { focusFirstError } from '@/lib/focus-first-error'
-import { isProblemDetailsError } from '@/lib/problem-details'
 
 import { useAddInvite } from '../apis/add-invite'
 import { inviteLinkOf } from '../invite-link'
@@ -66,9 +65,7 @@ function InviteForm({ add }: { add: ReturnType<typeof useAddInvite> }) {
     try {
       await add.mutateAsync({ ...values, email: email.trim() || null })
     } catch (error) {
-      serverErrors.show(
-        isProblemDetailsError(error) ? error : new Error('The invite was not created. Check your connection, then try again.'),
-      )
+      serverErrors.show(error)
     } finally {
       creating.current = false
     }

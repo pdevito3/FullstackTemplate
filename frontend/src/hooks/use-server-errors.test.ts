@@ -36,7 +36,10 @@ describe('refusalOf', () => {
   it('shows the message of an error with no field messages, so the form always says why', () => {
     const failure = new ProblemDetailsError({ type: 'error', title: 'An error occurred.', status: 500, detail: 'The database is down.' })
 
-    expect(refusalOf(failure, FIELDS).problem).toEqual({ kind: 'refused', messages: ['The database is down.'] })
+    expect(refusalOf(failure, FIELDS).problem).toEqual({
+      kind: 'refused',
+      messages: ['The server could not complete the request. Try again in a moment.'],
+    })
     expect(refusalOf(new Error(''), FIELDS).problem).toEqual({ kind: 'refused', messages: ['The save failed. Try again.'] })
   })
 })

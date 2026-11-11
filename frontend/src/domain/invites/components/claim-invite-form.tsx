@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useServerErrors } from '@/hooks/use-server-errors'
 import { focusFirstError } from '@/lib/focus-first-error'
-import { isProblemDetailsError } from '@/lib/problem-details'
 
 import type { ClaimValues } from '../apis/claim-invite'
 import { CLAIM_FIELDS, claimInviteSchema } from './claim-invite-schema'
@@ -33,9 +32,7 @@ export function ClaimInviteForm({ profile, requireEmailMatch, onClaim }: ClaimIn
     try {
       await onClaim(values)
     } catch (error) {
-      serverErrors.show(
-        isProblemDetailsError(error) ? error : new Error('You did not join the tenant. Check your connection, then try again.'),
-      )
+      serverErrors.show(error)
     }
   }, focusFirstError(form, CLAIM_FIELDS))
 

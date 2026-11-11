@@ -50,6 +50,11 @@ export const usersApi = {
     return problemAt('get', usersPaths.list, problem)
   },
 
+  /** An answer with no body, as the BFF gives when it cannot reach the Server. */
+  listFailsWithNoProblem(status: number): MockRoute {
+    return { method: 'get', path: usersPaths.list, status }
+  },
+
   oneFails(id: string, problem: Buildable<ProblemDetails>): MockRoute {
     return problemAt('get', usersPaths.one(id), problem)
   },

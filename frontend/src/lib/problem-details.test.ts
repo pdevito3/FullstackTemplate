@@ -60,10 +60,15 @@ describe('ProblemDetailsError', () => {
     expect(error.displayMessage).toBe('The resource was not found.')
   })
 
-  it('uses a default display message when the problem has no detail and no title', () => {
-    const error = new ProblemDetailsError({ type: problem.type, status: 500 })
+  it.each([
+    ['no detail and no title', { type: problem.type, status: 500 }],
+    ['the default title of ASP.NET', { type: problem.type, title: 'An error occurred while processing your request.', status: 500 }],
+    ['a detail for a developer', { type: problem.type, title: 'Error', status: 503, detail: 'Npgsql timeout' }],
+  ])('says what happened and what to do next for a fault of the Server with %s', (_, body) => {
+    const error = new ProblemDetailsError(body)
 
-    expect(error.displayMessage).toBe('An error occurred')
+    expect(error.message).toBe('The server could not complete the request. Try again in a moment.')
+    expect(error.displayMessage).toBe('The server could not complete the request. Try again in a moment.')
   })
 })
 

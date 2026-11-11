@@ -197,6 +197,33 @@ test.describe('the users of a tenant', () => {
   })
 })
 
+test.describe('the users of a tenant when the Server fails', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('says what happened and what to do next, in the page and in a toast, with no text of the Server', async ({ page, api }) => {
+    api.mock(usersApi.listFails(aProblem()))
+    const users = usersPage(page)
+
+    await users.openList()
+
+    await expect(users.at.loadFailure).toContainText('The server could not complete the request. Try again in a moment.')
+    await expect(users.at.loadFailure).not.toContainText('An error occurred while processing your request.')
+    await expect(users.at.toast('The server could not complete the request. Try again in a moment.')).toBeVisible()
+    await expect(users.at.toast('An error occurred while processing your request.')).toHaveCount(0)
+  })
+
+  test('says the same when the answer has no problem, as when the BFF cannot reach the Server', async ({ page, api }) => {
+    api.mock(usersApi.listFailsWithNoProblem(502))
+    const users = usersPage(page)
+
+    await users.openList()
+
+    await expect(users.at.loadFailure).toContainText('The server could not complete the request. Try again in a moment.')
+    await expect(users.at.loadFailure).not.toContainText('status code')
+    await expect(users.at.toast('The server could not complete the request. Try again in a moment.')).toBeVisible()
+  })
+})
+
 test.describe('the users of a tenant, for a member who cannot see them', () => {
   test.use({ actor: as.user('Bob Smith') })
 

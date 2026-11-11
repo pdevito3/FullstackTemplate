@@ -583,7 +583,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     api.mock(bffApi.userFails(aProblem().saying('The server had a problem.')))
     await join.at.submit.click()
 
-    await expect(join.at.formAlert).toContainText('The server had a problem.')
+    await expect(join.at.formAlert).toContainText('The server could not complete the request. Try again in a moment.')
     expect(api.all('post', invitesPaths.claim)).toEqual([])
     await expect(join.at.username).toHaveValue('augusta')
     await expect(join.at.toasts).toHaveCount(0)

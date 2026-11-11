@@ -16,6 +16,19 @@ export type ProblemDetails = ContractProblemDetails & {
   [key: string]: unknown
 }
 
+/** The text for an answer that has no text for the user: a 5xx, or an answer that is not a problem. */
+export const serverFaultMessage = 'The server could not complete the request. Try again in a moment.'
+
+/** The text for a request that got no answer. */
+export const noAnswerMessage = 'The app could not reach the server. Check your connection, then try again.'
+
+// A refusal (a 4xx) has a text for the user. The text of a 5xx is the default title of ASP.NET or a detail for a
+// developer, so the user gets the text of the SPA.
+function messageOf({ status, detail, title }: ProblemDetails): string {
+  if ((status ?? 500) >= 500) return serverFaultMessage
+  return detail || title || serverFaultMessage
+}
+
 /**
  * Custom error class that wraps Problem Details responses
  */
@@ -23,7 +36,7 @@ export class ProblemDetailsError extends Error {
   public readonly problemDetails: ProblemDetails
 
   constructor(problemDetails: ProblemDetails) {
-    super(problemDetails.detail || problemDetails.title || undefined)
+    super(messageOf(problemDetails))
     this.name = 'ProblemDetailsError'
     this.problemDetails = problemDetails
 
@@ -53,7 +66,7 @@ export class ProblemDetailsError extends Error {
    * Returns a user-friendly message suitable for display
    */
   get displayMessage(): string {
-    return this.problemDetails.detail || this.problemDetails.title || 'An error occurred'
+    return this.message
   }
 }
 

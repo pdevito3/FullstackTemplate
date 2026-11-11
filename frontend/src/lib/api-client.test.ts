@@ -137,22 +137,40 @@ describe('a generated list client', () => {
   })
 })
 
-describe('apiClient with a response that is not problem details', () => {
+describe('apiClient with a fault of the Server', () => {
+  const serverFault = 'The server could not complete the request. Try again in a moment.'
+
   it.each([
-    ['the message field', { message: 'Down for maintenance.' }, 'Down for maintenance.'],
-    ['the error field', { error: 'Bad gateway.' }, 'Bad gateway.'],
-    ['the axios message when the body has neither field', { reason: 'x' }, 'Request failed with status code 503'],
-  ])('rejects with %s', async (_, body, message) => {
-    adapter.mockImplementation((config) => respond(config, 503, body))
+    ['the default title of ASP.NET', { type: 'https://tools.ietf.org/html/rfc9110#section-15.6.1', title: 'An error occurred while processing your request.', status: 500 }],
+    ['a detail for a developer', { type: 'https://tools.ietf.org/html/rfc9110#section-15.6.1', title: 'Error', status: 500, detail: 'Npgsql timeout' }],
+  ])('shows the text of the SPA, not %s, for a 5xx problem', async (_, problem) => {
+    adapter.mockImplementation((config) => respond(config, problem.status, problem))
+
+    const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(ProblemDetailsError)
+    expect((error as Error).message).toBe(serverFault)
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
+  })
+
+  it.each([
+    ['a message field', 503, { message: 'Down for maintenance.' }],
+    ['an error field', 502, { error: 'Bad gateway.' }],
+    ['no body', 502, ''],
+    ['a 404, as for a path that the BFF does not have', 404, ''],
+  ])('shows the text of the SPA for an answer with %s and no problem', async (_, status, body) => {
+    adapter.mockImplementation((config) => respond(config, status, body))
 
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(Error)
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
-    expect((error as Error).message).toBe(message)
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(message)
+    expect((error as Error).message).toBe(serverFault)
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(serverFault)
   })
+})
 
+describe('apiClient with a 401 or with no answer', () => {
   // The Server answers 401 with no body to a call that needs a user, and the BFF passes it on.
   it('checks the session for a 401, and shows no toast when the session ended', async () => {
     checkSession.mockResolvedValue(true)
@@ -161,7 +179,6 @@ describe('apiClient with a response that is not problem details', () => {
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
-    expect((error as Error).message).toBe('Request failed with status code 401')
     expect(checkSession).toHaveBeenCalledOnce()
     expect(Notification.error).not.toHaveBeenCalled()
   })
@@ -172,23 +189,22 @@ describe('apiClient with a response that is not problem details', () => {
 
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
-    expect((error as Error).message).toBe('Request failed with status code 401')
+    const signInRejected =
+      'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+    expect((error as Error).message).toBe(signInRejected)
     expect(checkSession).toHaveBeenCalledOnce()
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(
-      'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.',
-    )
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(signInRejected)
   })
 
   it('does not check the session for a 401 of the session check itself', async () => {
     adapter.mockImplementation((config) => respond(config, 401, ''))
 
-    const error = await apiClient.get('/bff/user', { suppressErrorToast: true }).catch((e: unknown) => e)
+    await apiClient.get('/bff/user', { suppressErrorToast: true }).catch(() => undefined)
 
-    expect((error as Error).message).toBe('Request failed with status code 401')
     expect(checkSession).not.toHaveBeenCalled()
   })
 
-  it('rejects with the axios message for a network error', async () => {
+  it('says that the app could not reach the server for a network error', async () => {
     adapter.mockImplementation((config) =>
       Promise.reject(new AxiosError('Network Error', AxiosError.ERR_NETWORK, config)),
     )
@@ -196,7 +212,8 @@ describe('apiClient with a response that is not problem details', () => {
     const error = await getTenant({ path: { id: tenantId } }).catch((e: unknown) => e)
 
     expect(error).not.toBeInstanceOf(ProblemDetailsError)
-    expect((error as Error).message).toBe('Network Error')
-    expect(Notification.error).toHaveBeenCalledExactlyOnceWith('Network Error')
+    const noAnswer = 'The app could not reach the server. Check your connection, then try again.'
+    expect((error as Error).message).toBe(noAnswer)
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(noAnswer)
   })
 })

@@ -6,7 +6,8 @@ import { Notification } from '@/components/notification'
 import {
   ProblemDetailsError,
   isProblemDetails,
-  type ProblemDetails,
+  noAnswerMessage,
+  serverFaultMessage,
 } from './problem-details'
 
 declare module 'axios' {
@@ -45,19 +46,8 @@ export const apiClient = axios.create({
 })
 
 /**
- * Extracts a user-friendly error message from a Problem Details response
- */
-function getErrorMessage(problemDetails: ProblemDetails): string {
-  // Prefer detail as it's usually the most specific message
-  if (problemDetails.detail) {
-    return problemDetails.detail
-  }
-  // Fall back to title
-  return problemDetails.title || 'An error occurred'
-}
-
-/**
- * Handles error responses, converting to ProblemDetailsError when applicable
+ * Converts a failed request to an error whose message is the text for the user. Each place that shows the error, such
+ * as the toast, a form, or a page, shows this message.
  */
 function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
   const responseData = error.response?.data
@@ -66,22 +56,11 @@ function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
   if (isProblemDetails(responseData)) {
     return new ProblemDetailsError(responseData)
   }
-
-  // Handle non-Problem Details responses
-  // Try to extract a message from common error response formats
-  if (responseData && typeof responseData === 'object') {
-    const data = responseData as Record<string, unknown>
-    const message =
-      typeof data.message === 'string'
-        ? data.message
-        : typeof data.error === 'string'
-          ? data.error
-          : error.message
-
-    return new Error(message)
+  if (!error.response) {
+    return new Error(noAnswerMessage)
   }
-
-  return new Error(error.message || 'An unexpected error occurred')
+  // The Server answers 401 with no body to a call that needs a user.
+  return new Error(error.response.status === 401 ? signInRejectedMessage : serverFaultMessage)
 }
 
 const signInRejectedMessage =
@@ -122,12 +101,7 @@ apiClient.interceptors.response.use(
 
     // Show toast notification unless suppressed
     if (!suppressToast) {
-      const message =
-        processedError instanceof ProblemDetailsError
-          ? getErrorMessage(processedError.problemDetails)
-          : processedError.message
-
-      Notification.error(message)
+      Notification.error(processedError.message)
     }
 
     return Promise.reject(processedError)

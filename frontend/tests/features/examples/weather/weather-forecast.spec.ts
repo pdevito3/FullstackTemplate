@@ -67,16 +67,17 @@ test.describe('the weather forecast', () => {
 
   // The query retries once, and the page shows the error only after the last attempt. By then each attempt has
   // shown its toast. The count is read once: `toHaveCount(1)` retries, and it passes when the first toast closes.
-  test('shows the detail of an API error on the page and in one toast', async ({ page, api }) => {
+  test('says what happened and what to do next for a fault of the Server, on the page and in one toast', async ({ page, api }) => {
     api.mock(weatherApi.listFails(aProblem().saying('The weather service is down.')))
 
     const weather = weatherForecastPage(page)
     await weather.open()
 
-    await expect(weather.at.error).toContainText('The weather service is down.')
+    await expect(weather.at.error).toContainText('The server could not complete the request. Try again in a moment.')
+    await expect(weather.at.error).not.toContainText('The weather service is down.')
     await expect(weather.at.emptyMessage).toHaveCount(0)
     expect(api.all('get', weatherPaths.list)).toHaveLength(2)
-    expect(await weather.at.toast('The weather service is down.').count()).toBe(1)
+    expect(await weather.at.toast('The server could not complete the request. Try again in a moment.').count()).toBe(1)
   })
 
   test('keeps the last forecast under the error when a refresh fails', async ({ page, api }) => {
@@ -87,7 +88,7 @@ test.describe('the weather forecast', () => {
     api.mock(weatherApi.listFails(aProblem().saying('The weather service is down.')))
     await weather.refresh()
 
-    await expect(weather.at.error).toContainText('The weather service is down.')
+    await expect(weather.at.error).toContainText('The server could not complete the request. Try again in a moment.')
     await expect(weather.at.day('Sat, Mar 14')).toContainText('Cool')
   })
 })

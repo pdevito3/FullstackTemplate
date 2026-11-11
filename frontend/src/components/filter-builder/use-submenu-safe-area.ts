@@ -1,8 +1,11 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import { moveSafeArea, safeAreaFrom, type SafeArea } from './utils/safe-area'
 
-/** After this rest off the trigger, the item under the mouse takes the hover, as the user stopped there. */
-const REST_MS = 300
+/**
+ * After this rest off the trigger, the item under the mouse takes the hover, as the user stopped there. React Aria's
+ * safe triangle waits 1000 ms and then 100 ms more, so a trackpad user can lift a finger on the way.
+ */
+const REST_MS = 1100
 
 /**
  * Keeps an open submenu open while the mouse moves to it over the other items of the menu. Call it in a component

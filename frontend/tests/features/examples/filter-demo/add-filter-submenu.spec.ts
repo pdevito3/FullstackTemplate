@@ -61,6 +61,24 @@ test.describe('the submenu of a property on a desktop', () => {
     await expect(demo.at.control('Due Date')).toBeHidden()
   })
 
+  // A trackpad user can lift a finger on the way. React Aria waits 1100 ms before the property under the mouse opens.
+  test('stays open while the mouse rests for 500 ms on another property on its way to the submenu', async ({ page }) => {
+    const demo = filterDemoPage(page)
+    await demo.openWithTheClock()
+    await demo.at.addFilterMenu.click()
+    await demo.hoverProperty('Due Date')
+    const field = demo.at.dateSegment('Due Date', 'Date', 'month')
+    const path = await demo.pathFrom(demo.at.property('Due Date'), field)
+    const [stop] = path.crossed
+    await demo.moveMouseStraightTo(stop.point)
+
+    await demo.restMouse(500)
+    await demo.moveMouseStraightTo(path.to)
+    await demo.clickMouse()
+
+    await expect(field).toBeFocused()
+  })
+
   // A text property opens its dialog on a click, not on a hover.
   test('opens the property that the mouse clicks on its way to the submenu', async ({ page }) => {
     const demo = filterDemoPage(page)

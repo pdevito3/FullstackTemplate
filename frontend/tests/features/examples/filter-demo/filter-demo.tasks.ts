@@ -31,6 +31,18 @@ export function filterDemoPage(page: Page) {
       await expect(at.heading).toBeVisible()
     },
 
+    /** Opens the page with a clock that runs, so that `restMouse` can move the time of the page forward. */
+    async openWithTheClock() {
+      await page.clock.install()
+      await page.goto('/filter-demo')
+      await expect(at.heading).toBeVisible()
+    },
+
+    /** The mouse stays where it is for `ms` of the time of the page. */
+    async restMouse(ms: number) {
+      await page.clock.runFor(ms)
+    },
+
     /** Opens the page at noon of `today`, a date such as `2026-08-15`, in the zone of the browser. */
     async openOn(today: string) {
       await page.clock.setFixedTime(instantIn(`${today}T12:00`, browserZone()))

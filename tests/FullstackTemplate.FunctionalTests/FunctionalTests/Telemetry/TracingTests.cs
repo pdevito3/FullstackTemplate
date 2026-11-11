@@ -194,13 +194,14 @@ public class TracingTests : TestBase
     {
         // Arrange
         Activity.Current = null;
-        var before = ExportedSpans().Count(a => a.Source.Name == NpgsqlSource);
+        // A query of a background job, such as the object delete worker, can export under its own root at any time
+        var before = ExportedSpans().Count(a => a.Source.Name == NpgsqlSource && a.ParentSpanId == default);
 
         // Act
         await ExecuteDbContextAsync(db => db.Tenants.CountAsync());
 
         // Assert
-        ExportedSpans().Count(a => a.Source.Name == NpgsqlSource).ShouldBe(before);
+        ExportedSpans().Count(a => a.Source.Name == NpgsqlSource && a.ParentSpanId == default).ShouldBe(before);
     }
 
     [Test]

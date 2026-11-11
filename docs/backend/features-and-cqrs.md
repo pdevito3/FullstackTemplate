@@ -299,7 +299,7 @@ A handler checks the permission of the caller with one call to `IPermissionGuard
 
 <!-- code: FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant/DeleteTenant.cs -->
 ```csharp
-public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard, AttachmentStorage attachments)
+public sealed class Handler(AppDbContext dbContext, IPermissionGuard permissionGuard)
     : IRequestHandler<Command>
 {
     private readonly ILogger _logger = Log.ForContext<Handler>();

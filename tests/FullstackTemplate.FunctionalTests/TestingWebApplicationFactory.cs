@@ -82,6 +82,8 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         builder.UseEnvironment(TestingConsts.FunctionalTestingEnvName);
         // A health probe gets a Verbose request log, and a test reads it
         builder.UseSetting("Serilog:MinimumLevel:Override:Serilog.AspNetCore.RequestLoggingMiddleware", "Verbose");
+        // ObjectDeleteWorker deletes the objects of deleted rows at its next run, so a test waits at most a second
+        builder.UseSetting("ObjectStorage:Deletes:Interval", "00:00:01");
 
         builder.ConfigureLogging(logging =>
         {

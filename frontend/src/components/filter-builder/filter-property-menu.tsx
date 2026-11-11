@@ -1,4 +1,4 @@
-import { useState, type Ref } from 'react'
+import { useRef, useState, type Ref, type RefObject } from 'react'
 import {
   Autocomplete,
   Dialog,
@@ -22,6 +22,7 @@ import {
 import type { ControlType, FilterConfig, Filter, FilterControlSurface } from './types'
 import { FilterControl, FilterControlDialog } from './controls/filter-control'
 import { FILTER_CONTROLS } from './controls/filter-controls'
+import { useSubmenuSafeArea } from './use-submenu-safe-area'
 
 interface FilterPropertyMenuProps {
   options: FilterConfig[]
@@ -137,6 +138,9 @@ interface PropertyMenuItemProps {
 }
 
 function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemProps) {
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const submenuRef = useRef<HTMLElement>(null)
+
   // A dialog control opens after the menu closes, so its item has no submenu.
   if (surface === 'dialog') {
     const isSubmenuOnDesktop = FILTER_CONTROLS[config.controlType].addMenuSurface === 'submenu'
@@ -154,16 +158,28 @@ function PropertyMenuItem({ config, surface, onFilterSubmit }: PropertyMenuItemP
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger id={config.propertyKey} textValue={config.propertyLabel}>
+      <DropdownMenuSubTrigger ref={triggerRef} id={config.propertyKey} textValue={config.propertyLabel}>
         {config.propertyLabel}
       </DropdownMenuSubTrigger>
       {/* React Aria sets the max height of the popover to the room on the screen. */}
-      <Popover placement="end top" className="w-auto overflow-y-auto p-0">
-        <Dialog aria-label={`${config.propertyLabel} filter`} className="outline-none">
-          <FilterControl config={config} surface="submenu" onSubmit={onFilterSubmit} />
-        </Dialog>
+      <Popover ref={submenuRef} placement="end top" className="w-auto overflow-y-auto p-0">
+        <PropertySubmenuDialog config={config} onFilterSubmit={onFilterSubmit} triggerRef={triggerRef} submenuRef={submenuRef} />
       </Popover>
     </DropdownMenuSub>
   )
 }
 
+interface PropertySubmenuDialogProps extends Omit<PropertyMenuItemProps, 'surface'> {
+  triggerRef: RefObject<HTMLElement | null>
+  submenuRef: RefObject<HTMLElement | null>
+}
+
+function PropertySubmenuDialog({ config, onFilterSubmit, triggerRef, submenuRef }: PropertySubmenuDialogProps) {
+  useSubmenuSafeArea(triggerRef, submenuRef)
+
+  return (
+    <Dialog aria-label={`${config.propertyLabel} filter`} className="outline-none">
+      <FilterControl config={config} surface="submenu" onSubmit={onFilterSubmit} />
+    </Dialog>
+  )
+}

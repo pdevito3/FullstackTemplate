@@ -171,6 +171,31 @@ public class TimeZoneIdTests
         act.ShouldThrow<ValidationException>().Message.ShouldContain("is not a time zone that the server knows");
     }
 
+    /// <summary>
+    /// A browser refuses each of these paths. macOS and Linux find the file of a path with two slashes and keep the ID
+    /// as sent. Each zone here is in the tzdata of each host, so those rows show the fault on each host.
+    /// </summary>
+    [Test]
+    [Arguments("America//Chicago")]
+    [Arguments("America///Chicago")]
+    [Arguments("Etc//GMT+5")]
+    [Arguments("America/Indiana//Indianapolis")]
+    [Arguments("America//Indiana/Indianapolis")]
+    [Arguments("/America/Chicago")]
+    [Arguments("America/Chicago/")]
+    [Arguments("America/./Chicago")]
+    [Arguments("America/../America/Chicago")]
+    public void a_path_to_the_file_of_a_zone_is_refused_as_not_known(string value)
+    {
+        // Act
+        var act = () => TimeZoneId.Of(value);
+
+        // Assert
+        var exception = act.ShouldThrow<ValidationException>();
+        exception.Property.ShouldBe("timeZone");
+        exception.Message.ShouldContain("is not a time zone that the server knows");
+    }
+
     [Test]
     public void the_zone_of_an_unknown_local_time_is_refused_as_not_a_place()
     {

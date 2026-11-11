@@ -72,6 +72,7 @@ export const workshops = (page: Page) => {
     venueName: venueForm.getByRole('textbox', { name: 'Name' }),
     addVenue: venueForm.getByRole('button', { name: 'Add venue' }),
     editForm,
+    editFormAlert: editForm.getByRole('alert'),
     title: editForm.getByRole('textbox', { name: 'Title' }),
     editStart,
     editStartSegments: editStart.getByRole('spinbutton'),

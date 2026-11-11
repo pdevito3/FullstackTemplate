@@ -95,6 +95,21 @@ test.describe('the workshops', () => {
     expect(api.last('put', workshopPaths.one(id))?.body).toMatchObject({ version: 2 })
   })
 
+  test('says what happened and what to do next when the Server fails a save, with no text of the Server', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id } = workshop.build()
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openEditForm(id)
+    await workshops.renameTo('Kubb in depth')
+    api.mock(workshopsApi.updateFails(id, aProblem().saying('Npgsql timeout at WorkshopRepository.Save')))
+
+    await workshops.saveRefused(id)
+
+    await expect(workshops.at.editFormAlert).toHaveText('The server could not complete the request. Try again in a moment.')
+    await expect(workshops.at.title).toHaveValue('Kubb in depth')
+  })
+
   test('the sidebar marks Workshops as the page on the list, and as the current item on a workshop', async ({ page, api }) => {
     const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = workshop.build()

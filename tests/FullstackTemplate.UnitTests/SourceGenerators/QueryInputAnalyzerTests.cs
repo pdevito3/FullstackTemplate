@@ -219,6 +219,9 @@ public class QueryInputAnalyzerTests
     [Arguments("if (request.Ids.Any(id => PostgresText.CanStore(id) == false)) return false;")]
     [Arguments("if (request.Ids.Any(id => false == PostgresText.CanStore(id))) return false;")]
     [Arguments("if (request.Ids.Any(id => PostgresText.CanStore(id) is false)) return false;")]
+    [Arguments("if (request.Ids.Any(id => PostgresText.CanStore(id) != true)) return false;")]
+    [Arguments("if (request.Ids.Any(id => true != PostgresText.CanStore(id))) return false;")]
+    [Arguments("if (request.Ids.Any(id => PostgresText.CanStore(id) is not true)) return false;")]
     public async Task a_request_list_that_a_check_of_each_item_checks_first_has_no_diagnostics(string check)
     {
         // Act
@@ -242,6 +245,8 @@ public class QueryInputAnalyzerTests
     [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) == true)) return false;")]
     [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) is true)) return false;")]
     [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) != false)) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) is not false)) return false;")]
+    [Arguments("if (!request.Ids.Any(id => PostgresText.CanStore(id) || false)) return false;")]
     public async Task a_check_of_one_item_of_a_request_list_gets_fstqry001(string check)
     {
         // Act

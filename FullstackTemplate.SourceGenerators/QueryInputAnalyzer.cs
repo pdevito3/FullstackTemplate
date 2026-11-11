@@ -230,17 +230,19 @@ public sealed class QueryInputAnalyzer : DiagnosticAnalyzer
 	private static bool AsksOfEachItem(IOperation? @delegate)
 		=> @delegate is IDelegateCreationOperation { Parent: IArgumentOperation { Parent: IInvocationOperation { TargetMethod.Name: "All" or "TrueForAll" or "Select" } } };
 
-	// `!check`, `check == false`, and `check is false` each fail when the item fails the check.
+	// `!check`, `check == false`, `check != true`, `check is false`, and `check is not true` each fail when the item fails the check.
 	private static bool IsNegated(IOperation check)
 		=> check.Parent switch
 		{
 			IUnaryOperation { OperatorKind: UnaryOperatorKind.Not } => true,
-			IBinaryOperation { OperatorKind: BinaryOperatorKind.Equals } compare => IsFalse(ReferenceEquals(compare.LeftOperand, check) ? compare.RightOperand : compare.LeftOperand),
-			IIsPatternOperation { Pattern: IConstantPatternOperation { Value: var constant } } => IsFalse(constant),
+			IBinaryOperation { OperatorKind: BinaryOperatorKind.Equals or BinaryOperatorKind.NotEquals } compare
+				=> IsConstant(ReferenceEquals(compare.LeftOperand, check) ? compare.RightOperand : compare.LeftOperand, compare.OperatorKind == BinaryOperatorKind.NotEquals),
+			IIsPatternOperation { Pattern: IConstantPatternOperation { Value: var constant } } => IsConstant(constant, false),
+			IIsPatternOperation { Pattern: INegatedPatternOperation { Pattern: IConstantPatternOperation { Value: var constant } } } => IsConstant(constant, true),
 			_ => false,
 		};
 
-	private static bool IsFalse(IOperation operand) => operand.ConstantValue is { HasValue: true, Value: false };
+	private static bool IsConstant(IOperation operand, bool value) => operand.ConstantValue is { HasValue: true, Value: bool constant } && constant == value;
 
 	private static IOperation? ListThatHoldsItem(IOperation value, IOperation root)
 	{

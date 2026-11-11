@@ -7,10 +7,10 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Shouldly;
 
-public class TimeZoneLinksGeneratorTests
+public class TimeZoneNamesGeneratorTests
 {
     [Test]
-    public void each_link_line_of_the_file_becomes_a_link_and_the_other_lines_do_not()
+    public void each_link_line_becomes_a_link_each_zone_line_becomes_a_zone_and_the_other_lines_do_not()
     {
         // Arrange
         const string backward = """
@@ -19,17 +19,40 @@ public class TimeZoneLinksGeneratorTests
 
             Link Asia/Kolkata Asia/Calcutta
             Zone EST5EDT -5:00 USback E%sT
+            # Zone NAME STDOFF RULES FORMAT
             """;
 
         // Act
-        var links = Links(new FileText("Domain/TimeZones/tzdata/backward", backward));
+        var (links, zones) = Names(new FileText("Domain/TimeZones/tzdata/backward", backward));
 
         // Assert
         links.ShouldBe([("Australia/ACT", "Australia/Sydney"), ("Asia/Calcutta", "Asia/Kolkata")]);
+        zones.ShouldBe(["EST5EDT"]);
     }
 
     [Test]
-    public void a_project_with_no_backward_file_gets_no_links()
+    public void the_names_of_backward_and_etcetera_go_into_one_table()
+    {
+        // Arrange
+        var etcetera = new FileText("Domain/TimeZones/tzdata/etcetera", """
+            Zone Etc/GMT+5 -5 - %z
+            Link Etc/GMT GMT
+            """);
+        var backward = new FileText("Domain/TimeZones/tzdata/backward", """
+            Zone EST5EDT -5:00 USback E%sT
+            Link Asia/Kolkata Asia/Calcutta
+            """);
+
+        // Act
+        var (links, zones) = Names(etcetera, backward);
+
+        // Assert
+        links.ShouldBe([("Asia/Calcutta", "Asia/Kolkata"), ("GMT", "Etc/GMT")]);
+        zones.ShouldBe(["EST5EDT", "Etc/GMT+5"]);
+    }
+
+    [Test]
+    public void a_project_with_no_iana_file_gets_no_names()
     {
         // Act
         var generated = Run(new FileText("BannedSymbols.txt", "Link Asia/Kolkata Asia/Calcutta"));
@@ -38,25 +61,25 @@ public class TimeZoneLinksGeneratorTests
         generated.SyntaxTrees.ShouldBeEmpty();
     }
 
-    private static (string Name, string Target)[] Links(AdditionalText file)
+    private static ((string Name, string Target)[] Links, string[] Zones) Names(params AdditionalText[] files)
     {
         using var image = new MemoryStream();
-        Run(file).Emit(image).Success.ShouldBeTrue();
+        Run(files).Emit(image).Success.ShouldBeTrue();
         image.Position = 0;
         var assembly = new AssemblyLoadContext(null, isCollectible: true).LoadFromStream(image);
-        return ((string, string)[])assembly.GetType("FullstackTemplate.Server.Domain.TimeZones.TimeZoneLinks")!
-            .GetField("All")!.GetValue(null)!;
+        var names = assembly.GetType("FullstackTemplate.Server.Domain.TimeZones.TimeZoneNames")!;
+        return (((string, string)[])names.GetField("Links")!.GetValue(null)!, (string[])names.GetField("Zones")!.GetValue(null)!);
     }
 
-    private static Compilation Run(AdditionalText file)
+    private static Compilation Run(params AdditionalText[] files)
     {
         var compilation = CSharpCompilation.Create(
-            $"TimeZoneLinks{Guid.NewGuid():N}",
+            $"TimeZoneNames{Guid.NewGuid():N}",
             [],
             PlatformReferences.All,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        CSharpGeneratorDriver.Create([new TimeZoneLinksGenerator().AsSourceGenerator()], additionalTexts: [file],
+        CSharpGeneratorDriver.Create([new TimeZoneNamesGenerator().AsSourceGenerator()], additionalTexts: files,
                 parseOptions: new CSharpParseOptions(LanguageVersion.Latest))
             .RunGeneratorsAndUpdateCompilation(compilation, out var generated, out _);
         generated.GetDiagnostics().Where(d => d.Severity >= DiagnosticSeverity.Warning).ShouldBeEmpty();

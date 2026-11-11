@@ -23,7 +23,7 @@ test('says that the page stopped working when the page throws, and shows no text
   // Assert
   const alert = screen.getByRole('alert')
   await expect.element(alert.getByRole('heading', { level: 1, name: 'This page stopped working' })).toBeVisible()
-  await expect.element(alert.getByText('Reload the page to try again.')).toBeVisible()
+  await expect.element(alert.getByText('Reload the page to try again, or choose another page.')).toBeVisible()
   await expect.element(alert.getByRole('button', { name: 'Reload the page' })).toBeVisible()
   await expect.element(alert.getByText(/Cannot read properties of undefined/)).not.toBeInTheDocument()
 })

@@ -81,8 +81,11 @@ public sealed partial class TimeZoneId : ValueObject
 
         // A Windows ID such as "Central Standard Time" also resolves, so the check keeps only IANA IDs.
         var wrongCase = IanaIdsIgnoringCase.TryGetValue(value, out var listed) && listed != value;
+        // The host reads the ID as a path, so it finds "America//Chicago" as America/Chicago and keeps the ID as sent.
+        // An IANA ID has one slash between its parts, and no part is "." or "..".
+        var pathForm = value.Split('/').Any(part => part is "" or "." or "..");
         TimeZoneInfo? zone = null;
-        var found = !wrongCase
+        var found = !wrongCase && !pathForm
             && (TryFindIanaZone(value, out zone)
                 || LinkTargets.TryGetValue(value, out var target) && TryFindIanaZone(target, out zone));
         ValidationException.Must(found, RequestField,

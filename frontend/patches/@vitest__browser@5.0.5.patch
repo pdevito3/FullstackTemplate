@@ -1,5 +1,5 @@
 diff --git a/dist/client/__vitest_browser__/tester-BH7uPfyB.js b/dist/client/__vitest_browser__/tester-BH7uPfyB.js
-index d84a13983c7c610fa4c70f7920fbab84760f84b3..428d7db0d9e9f19b952cb39e1c504fb8bca5edf8 100644
+index d84a13983c7c610fa4c70f7920fbab84760f84b3..11599698d4a50e04c0530f1f8471c5da5f4a102e 100644
 --- a/dist/client/__vitest_browser__/tester-BH7uPfyB.js
 +++ b/dist/client/__vitest_browser__/tester-BH7uPfyB.js
 @@ -907,7 +907,7 @@ function createBrowserRunner(mocker, state, coverageModule) {
@@ -7,7 +7,25 @@ index d84a13983c7c610fa4c70f7920fbab84760f84b3..428d7db0d9e9f19b952cb39e1c504fb8
  					const screenshot = await page.screenshot({
  						timeout: ((_this$config$browser$ = this.config.browser.providerOptions) === null || _this$config$browser$ === void 0 ? void 0 : _this$config$browser$.actionTimeout) ?? 5e3,
 -						path: resolve(this.config.attachmentsDir, "failure-screenshots", basename(task.file.filepath), `${task.fullTestName.replace(/\W/g, "-")}.png`)
-+						path: resolve(this.config.attachmentsDir, "failure-screenshots", task.file.name, `${task.fullTestName.replace(/\W/g, "-")}.png`)
++						path: resolve(this.config.attachmentsDir, "failure-screenshots", task.file.name, `${boundFileName(task.fullTestName.replace(/\W/g, "-"))}.png`)
  					}).catch((err) => {
  						console.error("[vitest] Failed to take a screenshot", err);
  					});
+@@ -1118,7 +1118,16 @@ async function updateTestFilesLocations(files, sourceMaps) {
+ 	await Promise.all(promises);
+ }
+ function getTraceName(task, retryCount, repeatsCount) {
+-	return `${(/* @__PURE__ */ getTestName(task, "-")).replace(/[^a-z0-9]/gi, "-")}-${repeatsCount}-${retryCount}`;
++	return `${boundFileName((/* @__PURE__ */ getTestName(task, "-")).replace(/[^a-z0-9]/gi, "-"))}-${repeatsCount}-${retryCount}`;
++}
++// A file name has at most 255 bytes on macOS and Linux, and a test name has no limit. Playwright adds up to about
++// 60 characters, as in `<session id>-<name>-0-0-pwnetcopy-1.network`. So a long name keeps its start and gets a hash
++// of the full name, which keeps it short, unique, and the same on each run (vitest-dev/vitest#11880).
++function boundFileName(name) {
++	if (name.length <= 100) return name;
++	let hash = 2166136261;
++	for (let i = 0; i < name.length; i++) hash = Math.imul(hash ^ name.charCodeAt(i), 16777619);
++	return `${name.slice(0, 91)}-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+ }
+ 
+ //#endregion

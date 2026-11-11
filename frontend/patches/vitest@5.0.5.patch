@@ -1,0 +1,15 @@
+diff --git a/dist/chunks/cli-api.De07GUeT.js b/dist/chunks/cli-api.De07GUeT.js
+index ff6e63043ff8fa0b821d4b0b382d1fd998d85dbb..1d4979b8433c57ea3c712f043c30505dd51f052b 100644
+--- a/dist/chunks/cli-api.De07GUeT.js
++++ b/dist/chunks/cli-api.De07GUeT.js
+@@ -11880,7 +11880,9 @@ class TestRun {
+ 		if (path && !path.startsWith("http://") && !path.startsWith("https://")) {
+ 			const currentPath = resolve(project.config.root, path);
+ 			const hash = createHash("sha1").update(currentPath).digest("hex");
+-			const newPath = resolve(project.config.attachmentsDir, `${filename ? `${sanitizeFilePath(filename)}-` : ""}${hash}${extname(currentPath)}`);
++			// The file name has the path of the attachment in it, and a file name has at most 255 bytes. The hash keeps the name
++			// unique, so keep only the end of the path, which has the test name (vitest-dev/vitest#9006).
++			const newPath = resolve(project.config.attachmentsDir, `${filename ? `${sanitizeFilePath(filename).slice(-150)}-` : ""}${hash}${extname(currentPath)}`);
+ 			if (!existsSync(project.config.attachmentsDir)) await mkdir(project.config.attachmentsDir, { recursive: true });
+ 			await copyFile(currentPath, newPath);
+ 			attachment.path = newPath;

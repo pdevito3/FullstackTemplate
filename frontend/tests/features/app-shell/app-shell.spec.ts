@@ -209,14 +209,17 @@ test.describe('the focus after a navigation on a phone', () => {
   })
 })
 
-test.describe('a phone that loses the connection just after the page shows', () => {
-  test.use({ viewport: { width: 390, height: 844 } })
+// The layout shows the mobile sidebar first when the window gets as narrow as a phone, so the code of the sheet must
+// be in the app before the connection is lost.
+test.describe('a desktop window that loses the connection and then gets as narrow as a phone', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
 
   test('keeps the page and opens the mobile sidebar', async ({ page }) => {
     const shell = appShellPage(page)
     await shell.openAbout()
-
     await shell.goOffline()
+
+    await shell.narrowToPhone()
     await shell.openMobileSidebar()
 
     await expect(shell.at.aboutNavigationLink).toBeVisible()

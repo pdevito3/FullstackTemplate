@@ -224,6 +224,21 @@ test.describe('the users of a tenant when the Server fails', () => {
   })
 })
 
+test.describe('the page of a user that does not exist', () => {
+  test.use({ actor: as.user('Ana Admin') })
+
+  test('shows the refusal of the Server once, in the alert and in no toast', async ({ page, api }) => {
+    api.mock(usersApi.oneFails('usr_1', aProblem().notFound('User was not found.')))
+    const users = usersPage(page)
+
+    await users.openDetail('usr_1')
+
+    await expect(users.at.userLoadFailure).toContainText('User was not found.')
+    expect(await users.at.sentence('User was not found.').count()).toBe(1)
+    expect(await users.at.toasts.count()).toBe(0)
+  })
+})
+
 test.describe('the users of a tenant, for a member who cannot see them', () => {
   test.use({ actor: as.user('Bob Smith') })
 

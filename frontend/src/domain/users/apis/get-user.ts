@@ -7,7 +7,8 @@ import { UserKeys } from './user.keys'
 export const userQueryOptions = (id: string) =>
   queryOptions({
     queryKey: UserKeys.detail(id),
-    queryFn: ({ signal }) => getUser({ path: { id }, signal }),
+    // The page of the user shows each error in its alert, so the error shows no toast (messages.md, "In the SPA").
+    queryFn: ({ signal }) => getUser({ path: { id }, signal, options: { suppressErrorToast: true } }),
   })
 
 export function useUser(id: string, { enabled = true }: { enabled?: boolean } = {}) {

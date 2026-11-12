@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Starts Docker when the orb starts or wakes. The tests and the Aspire stack run their containers on it.
+set -euo pipefail
+
+if ! systemctl is-active --quiet docker.service; then
+  sudo systemctl start docker.service
+fi

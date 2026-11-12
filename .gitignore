@@ -306,3 +306,6 @@ __pycache__/
 
 # Playwright MCP screenshots and snapshots
 .playwright-mcp/
+
+# Portal files that Amp orbs write
+.amp/portals/*

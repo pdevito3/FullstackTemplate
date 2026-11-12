@@ -1,0 +1,4 @@
+{
+  "worktreeHome": "../fullstacktemplate-worktrees",
+  "stackPacks": ["dotnet", "react"]
+}

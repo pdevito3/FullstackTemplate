@@ -90,7 +90,7 @@ async function readFocusLoss() {
   const el = window.__sweepFocused
   if (!el || !isOnBody()) return null
   const reason = !el.isConnected ? 'was removed' : el.matches(':disabled') ? 'was disabled'
-    : el.closest('[inert]') ? 'became inert' : !el.checkVisibility() ? 'was hidden' : null
+    : el.closest('[inert]') ? 'became inert' : !el.checkVisibility({ visibilityProperty: true }) ? 'was hidden' : null
   if (!reason) return null
   await new Promise((resolve) => setTimeout(resolve, 1000))
   if (!isOnBody()) return null

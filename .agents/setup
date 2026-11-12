@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# Prepares a fresh Amp orb: the .NET SDK and tools, the NuGet and pnpm packages, the Playwright Chromium, the
+# development certificate, and Docker with the images of the default stack and the tests.
+# Amp runs it again on a stale snapshot, so each step skips work that is already done.
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+step() {
+  local name="$1"
+  shift
+  local start=$SECONDS
+  echo "==> $name"
+  "$@"
+  echo "<== $name ($((SECONDS - start)) s)"
+}
+
+# One SDK band, the same as CI (.github/workflows/ci.yml). A new band can add style errors.
+dotnet_channel="10.0.4xx"
+dotnet_root="$HOME/.dotnet"
+
+install_dotnet() {
+  if "$dotnet_root/dotnet" --list-sdks 2>/dev/null | grep -q '^10\.0\.4'; then
+    echo "The .NET SDK $dotnet_channel is installed."
+    return
+  fi
+  local installer
+  installer="$(mktemp)"
+  curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$installer"
+  bash "$installer" --channel "$dotnet_channel" --install-dir "$dotnet_root" --no-path
+  rm -f "$installer"
+}
+
+# Amp and the supervised services start in non-interactive login shells, so the environment goes in ~/.bash_profile.
+# The BFF calls the Server over https with the development certificate. On Linux, OpenSSL trusts it through
+# SSL_CERT_DIR.
+persist_environment() {
+  local marker="# FullstackTemplate .NET environment"
+  if grep -Fqx "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+    echo "~/.bash_profile has the .NET environment."
+    return
+  fi
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$marker
+export DOTNET_ROOT="$dotnet_root"
+case ":\$PATH:" in
+  *":$dotnet_root:"*) ;;
+  *) export PATH="$dotnet_root:$dotnet_root/tools:\$PATH" ;;
+esac
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+export SSL_CERT_DIR="\$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+EOF
+}
+
+export DOTNET_ROOT="$dotnet_root"
+export PATH="$dotnet_root:$dotnet_root/tools:$PATH"
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+
+trust_dev_certificate() {
+  if dotnet dev-certs https --check --trust >/dev/null 2>&1; then
+    echo "The development certificate is trusted."
+    return
+  fi
+  dotnet dev-certs https --trust
+}
+
+# The tests start Postgres and Floci with Testcontainers, and the stack runs its containers on Docker. The orb starts
+# with Docker disabled. The socket is open to the orb user, so that the tests reach it without the docker group.
+configure_docker() {
+  local dropin=/etc/systemd/system/docker.socket.d/orb.conf
+  if [ ! -f "$dropin" ]; then
+    sudo mkdir -p "$(dirname "$dropin")"
+    printf '[Socket]\nSocketMode=0666\n' | sudo tee "$dropin" >/dev/null
+    sudo systemctl daemon-reload
+    # A running socket keeps its old mode until it restarts
+    sudo systemctl stop docker.service docker.socket
+  fi
+  sudo systemctl enable --quiet docker.socket docker.service
+  sudo systemctl start docker.service
+}
+
+# The images of the default stack (AuthProvider ZeroFactor) and of the tests. The tags come from the AppHost, so that
+# a tag bump pulls the new image. A failed pull does not fail setup: the stack and the tests pull a missing image.
+pull_images() {
+  local config=FullstackTemplate.AppHost/Config.cs
+  local postgres_tag floci_tag zerofactor_image
+  postgres_tag="$(sed -n 's/.*PostgresImageTag = "\([^"]*\)".*/\1/p' "$config")"
+  floci_tag="$(sed -n 's/.*FlociImageTag = "\([^"]*\)".*/\1/p' "$config")"
+  zerofactor_image="$(sed -n 's/.*AddContainer("zerofactor", "\([^"]*\)", "\([^"]*\)").*/\1:\2/p' \
+    FullstackTemplate.AppHost/AuthProviders/ZeroFactor/ZeroFactorAuthProvider.cs)"
+  local image
+  for image in "postgres:$postgres_tag" "floci/floci:$floci_tag" "$zerofactor_image"; do
+    case "$image" in
+      *: | :*) echo "Skipped an image whose tag setup could not read: '$image'"; continue ;;
+    esac
+    if docker image inspect "$image" >/dev/null 2>&1; then
+      echo "$image is present."
+    else
+      timeout 5m docker pull --quiet "$image" || echo "Could not pull $image"
+    fi
+  done
+}
+
+install_frontend() {
+  (cd frontend && pnpm install --frozen-lockfile)
+}
+
+# The component tests run in the Playwright Chromium. The install skips a browser that is present.
+install_chromium() {
+  (cd frontend && timeout 5m pnpm exec playwright install chromium)
+}
+
+step "Install the .NET SDK" install_dotnet
+step "Persist the .NET environment" persist_environment
+step "Restore the .NET tools" dotnet tool restore
+step "Restore the NuGet packages" dotnet restore FullstackTemplate.slnx
+step "Trust the development certificate" trust_dev_certificate
+step "Install the frontend packages" install_frontend
+step "Install the Playwright Chromium" install_chromium
+step "Start Docker" configure_docker
+step "Pull the container images" pull_images
+# Stop Docker cleanly before the snapshot. .agents/resume starts it.
+step "Stop Docker" sudo systemctl stop docker.service docker.socket

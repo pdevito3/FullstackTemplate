@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'path'
 import { defineConfig, type Plugin, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -93,16 +94,22 @@ const bffPaths = ['/bff', '/api', '/signin-oidc', '/signout-callback-oidc']
 
 const failBffRequestsWithNoBff: Plugin = {
   name: 'fail-bff-requests-with-no-bff',
+  // `vite preview` resolves the config with the command `serve` too
   apply: (_, { command }) => command === 'serve' && !bffTarget,
   configureServer(server) {
-    server.middlewares.use((req, res, next) => {
-      if (!bffPaths.some((path) => req.url?.startsWith(path))) return next()
-      res.writeHead(502, { 'Content-Type': 'text/plain' }).end(
-        `The dev server has no BFF, so nothing answers ${req.method} ${req.url}. ` +
-          'Start the app with Aspire, or set BFF_HTTPS or BFF_HTTP. In a test, answer the request.',
-      )
-    })
+    server.middlewares.use(failBffRequest)
   },
+  configurePreviewServer(server) {
+    server.middlewares.use(failBffRequest)
+  },
+}
+
+function failBffRequest(req: IncomingMessage, res: ServerResponse, next: () => void) {
+  if (!bffPaths.some((path) => req.url?.startsWith(path))) return next()
+  res.writeHead(502, { 'Content-Type': 'text/plain' }).end(
+    `The Vite server has no BFF, so nothing answers ${req.method} ${req.url}. ` +
+      'Start the app with Aspire, or set BFF_HTTPS or BFF_HTTP. In a test, answer the request.',
+  )
 }
 
 // https://vite.dev/config/

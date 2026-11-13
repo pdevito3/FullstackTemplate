@@ -3,7 +3,7 @@ import type { AttachmentDto } from '@/api/generated/models/types/attachment-dto'
 let seed = 0
 const next = () => ++seed
 
-// The Vite dev server serves this image, so a thumbnail loads with no storage behind it
+// Vite serves this image from public/, so a thumbnail loads with no storage behind it
 const IMAGE_URL = '/Aspire.png'
 
 class WorkshopAttachmentBuilder {

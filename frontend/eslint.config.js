@@ -420,7 +420,7 @@ const specFileRules = [
 
 export default tseslint.config(
   // Kubb writes src/api/generated (and one sibling folder for each other API version). Run `pnpm generate:api` to change it.
-  { ignores: ['dist', 'src/api/generated*'] },
+  { ignores: ['dist', 'dist-functional', 'src/api/generated*'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

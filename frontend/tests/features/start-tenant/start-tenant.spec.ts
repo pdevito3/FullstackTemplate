@@ -3,6 +3,7 @@ import { usersApi } from '@tests/support/api/users-api'
 import { actorSubject, as } from '@tests/support/auth/actors'
 import { aStartedTenant, aUser } from '@tests/support/builders/user-builder'
 import { expect, test } from '@tests/support/fixtures'
+import { aboutPageSource } from '../app-shell/app-shell.locators'
 import { usersPage } from '../users/users.tasks'
 import { startTenantPage } from './start-tenant.tasks'
 
@@ -321,7 +322,7 @@ test.describe('a signed-in user whose lookup the Server refuses', () => {
     const start = startTenantPage(page)
     await start.openAsSignedIn('/start-tenant')
     await expect(start.at.lookupFailure).toContainText(refusal)
-    const loadAbout = await api.holdPageSource(/\/routes\/about\.tsx/)
+    const loadAbout = await api.holdPageSource(aboutPageSource)
 
     await start.goToAbout()
 

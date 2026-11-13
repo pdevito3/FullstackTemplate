@@ -51,7 +51,7 @@ The sweep checks the permission of each endpoint, not of each DTO field. For a f
 
 `pnpm test:e2e` (functional):
 
-- Run it after each change in `frontend/src`. It needs no stack. It takes about five minutes on four cores.
+- Run it after each change in `frontend/src`. It needs no stack. It builds the SPA first, and it takes about two and a half minutes on four cores.
 - CI runs it on each pull request, in the `api-contract` job.
 - It mocks the BFF. Thus it cannot find a fault in the BFF, the Server, or the IdP.
 
@@ -86,7 +86,9 @@ Read `docs/frontend/testing.md` before you write one. Then do these steps:
 
 Obey these rules:
 
-- Each functional test runs in `Pacific/Pago_Pago` (UTC-11). A test tagged `@zone` also runs in `Pacific/Kiritimati` (UTC+14). Tag a test `@zone` when it shows or sends a date or a time. A test of a page with no place sets its clock with `instantIn(wallClock, browserZone())` from `@tests/support/clock`.
+- Each functional test runs in `Pacific/Pago_Pago` (UTC-11). A test tagged `@zone` also runs in `Pacific/Kiritimati` (UTC+14). Tag a test `@zone` when it shows or sends a date or a time.
+- The functional suite runs on a production build. A test of what only a development build has, such as the router devtools, has the tag `@dev-server` and runs on the dev server.
+- A test of a page with no place sets its clock with `instantIn(wallClock, browserZone())` from `@tests/support/clock`.
 - A time of a place shows and reads in the zone of the place (`docs/frontend/code-style.md`, section "Dates and times"). Test it with a place in a zone far from the browser, at an instant at which the date of the place is not the browser date or the UTC date. See "Time zones" in `docs/frontend/testing.md`. `date-filter.test.tsx` and `calendar.test.tsx` check this rule for the controls.
 <!-- example:start -->
 - The test `a date filter of a place in another zone` in `filter-demo.spec.ts` checks the rule for the date filter of a page.

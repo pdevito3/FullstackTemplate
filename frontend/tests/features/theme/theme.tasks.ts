@@ -22,7 +22,7 @@ export function themePage(page: Page) {
 
     /** Loads the page again without the app script, so only index.html can set the theme class. */
     async reloadWithoutTheApp() {
-      await page.route('**/src/main.tsx', (route) => route.abort())
+      await page.route('**/*.js', (route) => route.abort())
       await page.reload()
     },
 

@@ -37,7 +37,7 @@ export function sessionPage(page: Page) {
       await page.goto(blankPage)
     },
 
-    /** The dev server can take more than the 5 s of an assertion to serve the app, so wait for the answer of the login first. */
+    /** The Vite server can take more than the 5 s of an assertion to serve the app, so wait for the answer of the login first. */
     async openDeepLinkAndWaitForLogin(path: string) {
       const login = answered(bffPaths.login)
       await page.goto(path, { waitUntil: 'commit' })

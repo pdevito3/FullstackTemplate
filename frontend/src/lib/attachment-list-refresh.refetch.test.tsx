@@ -29,3 +29,17 @@ it('loads the list again before the URLs expire when a page subscribes some minu
   expect(queryFn).toHaveBeenCalledTimes(1)
   unsubscribe()
 })
+
+it('does not load the list again in a loop when its URLs expire later than a timer can wait', async () => {
+  vi.useFakeTimers({ now: loadedAt })
+  const client = new QueryClient()
+  const queryFn = vi.fn().mockResolvedValue(expiringAt('2099-01-01T00:00:00Z'))
+  const options = queryOptions({ queryKey: ['files'], queryFn, ...refreshBeforeUrlsExpire })
+  client.setQueryData(options.queryKey, expiringAt('2099-01-01T00:00:00Z'), { updatedAt: loadedAt })
+
+  const unsubscribe = new QueryObserver(client, options).subscribe(() => {})
+  await vi.advanceTimersByTimeAsync(1_000)
+
+  expect(queryFn).not.toHaveBeenCalled()
+  unsubscribe()
+})

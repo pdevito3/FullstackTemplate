@@ -23,7 +23,7 @@ Regenerate after a change to any of these:
    - A failed build keeps the old document. Then step 2 gives the old contract and shows no error.
 2. In `frontend/`, run `pnpm generate:api`.
 3. Stage the contract: `git add FullstackTemplate.Server/openapi frontend/src/api`. Run `pnpm generate:api` again. Then `git diff --exit-code -- FullstackTemplate.Server/openapi 'frontend/src/api/generated*'` must show nothing. A diff here means that a generated file changed after step 2, or that two runs give different output.
-4. In `frontend/`, run `pnpm build`, `pnpm lint`, `pnpm test`, and `pnpm test:e2e`. The `api-contract` job runs the same four. `tsc` compiles the generated files, so a renamed or removed field fails at each caller.
+4. In `frontend/`, run `pnpm build`, `pnpm lint`, `pnpm test`, and `pnpm test:e2e`. The `api-contract` job runs the first three, and the `functional` job runs `pnpm test:e2e`. `tsc` compiles the generated files, so a renamed or removed field fails at each caller.
 5. Commit the Server change, the document, and the generated files in one commit.
 
 ## Fix the cause on the Server

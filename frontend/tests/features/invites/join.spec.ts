@@ -23,7 +23,6 @@ const alreadyMember = 'Your account already belongs to a tenant.'
 
 /** `inviteExpiry` of the builder in each zone of the suite. */
 const expiryIn: Record<string, string> = {
-  UTC: 'Jan 15, 2099, 12:00 PM',
   'Pacific/Kiritimati': 'Jan 16, 2099, 2:00 AM',
   'Pacific/Pago_Pago': 'Jan 15, 2099, 1:00 AM',
 }
@@ -66,7 +65,7 @@ test.describe('a visitor with no session opens an invite link', () => {
 test.describe('a signed-in user with no tenant opens an invite link', () => {
   test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
-  test('sees the tenant, the role, and the expiry in the zone of the browser', { tag: '@INV-3' }, async ({ page, api }) => {
+  test('sees the tenant, the role, and the expiry in the zone of the browser', { tag: ['@INV-3', '@zone'] }, async ({ page, api }) => {
     api.mock(invitesApi.previewIs(aPreview({ tenantName: 'Acme', role: 'Admin' })))
     const join = joinPage(page)
 

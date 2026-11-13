@@ -7,7 +7,7 @@ import { expect, test } from '@tests/support/fixtures'
 import { weatherForecastPage } from './weather-forecast.tasks'
 
 test.describe('the weather forecast', () => {
-  test('lists the days that the API returns, in Fahrenheit', async ({ page, api }) => {
+  test('lists the days that the API returns, in Fahrenheit', { tag: '@zone' }, async ({ page, api }) => {
     const warm = aForecast().on('2026-03-14').summarized('Warm').at(25)
     api.mock(weatherApi.listReturns(warm, aForecast().on('2026-03-15').summarized('Chilly')))
 
@@ -21,7 +21,7 @@ test.describe('the weather forecast', () => {
     await expect(weather.at.scale('Sat, Mar 14')).toHaveText('Fahrenheit')
   })
 
-  test('shows the temperatures in Celsius after the switch', async ({ page, api }) => {
+  test('shows the temperatures in Celsius after the switch', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(weatherApi.listReturns(aForecast().on('2026-03-14').at(25)))
     const weather = weatherForecastPage(page)
     await weather.open()
@@ -40,7 +40,7 @@ test.describe('the weather forecast', () => {
     expect(api.last('get', weatherPaths.list)?.headers.get('x-csrf')).toBe('1')
   })
 
-  test('shows the latest forecast after a refresh', async ({ page, api }) => {
+  test('shows the latest forecast after a refresh', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(weatherApi.listReturns(aForecast().on('2026-03-14').summarized('Cool')))
     const weather = weatherForecastPage(page)
     await weather.open()
@@ -52,7 +52,7 @@ test.describe('the weather forecast', () => {
     expect(api.all('get', weatherPaths.list)).toHaveLength(2)
   })
 
-  test('says so when the API has no forecast, and loads it again on Try Again', async ({ page, api }) => {
+  test('says so when the API has no forecast, and loads it again on Try Again', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(weatherApi.listReturns())
     const weather = weatherForecastPage(page)
     await weather.open()
@@ -80,7 +80,7 @@ test.describe('the weather forecast', () => {
     expect(await weather.at.toast('The server could not complete the request. Try again in a moment.').count()).toBe(1)
   })
 
-  test('keeps the last forecast under the error when a refresh fails', async ({ page, api }) => {
+  test('keeps the last forecast under the error when a refresh fails', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(weatherApi.listReturns(aForecast().on('2026-03-14').summarized('Cool')))
     const weather = weatherForecastPage(page)
     await weather.open()
@@ -105,7 +105,7 @@ test.describe('a signed-in user', () => {
     await expect(weather.at.welcome('Bob Smith')).toBeVisible()
   })
 
-  test('sees the secure forecast with the name of the caller', async ({ page, api }) => {
+  test('sees the secure forecast with the name of the caller', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(
       weatherApi.listReturns(aForecast().on('2026-03-14')),
       weatherApi.secureListReturns(aForecast().on('2026-03-14').requestedBy('Bob Smith')),
@@ -174,7 +174,7 @@ const longName = 'Maximilianbartholomewalexandervanderwesthuizenmontgomerysmythe
 test.describe('a signed-in user with a long name on a 320 px phone', () => {
   test.use({ actor: as.user(longName), viewport: { width: 320, height: 640 } })
 
-  test('sees the long name, summary, and caller wrap in the window', async ({ page, api }) => {
+  test('sees the long name, summary, and caller wrap in the window', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(
       weatherApi.listReturns(aForecast().on('2026-03-14')),
       weatherApi.secureListReturns(aForecast().on('2026-03-14').summarized(longName).requestedBy(longName)),

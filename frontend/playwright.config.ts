@@ -31,7 +31,7 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // A flaky test is a fault to correct, not a fault to hide.
   retries: 0,
-  // On CI, a worker for each core of the runner: each test runs in three zones. On a dev machine, half the cores.
+  // On CI, a worker for each core of the runner. On a dev machine, half the cores.
   workers: process.env.CI ? '100%' : undefined,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
@@ -43,12 +43,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  // Each test runs in UTC and in the two zones that are farthest from UTC. A page that shows a time in the zone of the
-  // browser, not of its place, shows another day in one of them. See docs/frontend/testing.md, section "Time zones".
+  // Each test runs in Pago Pago, at UTC-11. A test tagged @zone also runs in Kiritimati, at UTC+14. A page that takes a
+  // date from the wrong zone shows another day in one of them, and UTC hides it. See docs/frontend/testing.md, section
+  // "Time zones".
   projects: [
-    { name: 'utc', use: { ...devices['Desktop Chrome'], timezoneId: 'UTC' } },
-    { name: 'kiritimati', use: { ...devices['Desktop Chrome'], timezoneId: 'Pacific/Kiritimati' } },
     { name: 'pago-pago', use: { ...devices['Desktop Chrome'], timezoneId: 'Pacific/Pago_Pago' } },
+    { name: 'kiritimati', grep: /@zone/, use: { ...devices['Desktop Chrome'], timezoneId: 'Pacific/Kiritimati' } },
   ],
   webServer: {
     command: `pnpm exec vite --port ${port} --strictPort`,

@@ -128,7 +128,7 @@ test.describe('the workshops', () => {
   const now = new Date('2026-08-16T07:00:00Z')
   const harbor = aVenue().named('Harbor Hall').inZone('Pacific/Pago_Pago')
 
-  test('adds a workshop with the start that the user types, read in the time zone of the venue that the user picks', async ({ page, api }) => {
+  test('adds a workshop with the start that the user types, read in the time zone of the venue that the user picks', { tag: '@zone' }, async ({ page, api }) => {
     await page.clock.setFixedTime(now)
     const workshop = aWorkshop().titled('Intro to Kubb').at(harbor)
     const { id } = workshop.build()
@@ -168,7 +168,7 @@ test.describe('the workshops', () => {
     expect(api.last('post', workshopPaths.list)).toBeUndefined()
   })
 
-  test('shows the start in the time zone of the venue, in the list and on the detail', async ({ page, api }) => {
+  test('shows the start in the time zone of the venue, in the list and on the detail', { tag: '@zone' }, async ({ page, api }) => {
     await page.clock.setFixedTime(now)
     const workshop = aWorkshop().titled('Intro to Kubb').at(harbor).startingAt('2026-08-16T07:00:00+00:00').withCapacity(12)
     api.mock(workshopsApi.listReturns([workshop]), workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(harbor))
@@ -184,7 +184,7 @@ test.describe('the workshops', () => {
     await expect(workshops.at.details).toContainText('Harbor Hall')
   })
 
-  test('edits the start in the time zone of the venue', async ({ page, api }) => {
+  test('edits the start in the time zone of the venue', { tag: '@zone' }, async ({ page, api }) => {
     await page.clock.setFixedTime(now)
     const workshop = aWorkshop().titled('Intro to Kubb').at(harbor).startingAt('2026-08-16T07:00:00+00:00')
     const { id } = workshop.build()
@@ -596,7 +596,7 @@ test.describe('a workshop with a long title at a venue with a long name, on a 32
 test.describe('the workshop list on a 320 px phone', () => {
   test.use({ actor: as.user('Ana Admin'), viewport: { width: 320, height: 640 } })
 
-  test('shows the title, the start, the capacity, and the status of each row with no sideways scroll', async ({ page, api }) => {
+  test('shows the title, the start, the capacity, and the status of each row with no sideways scroll', { tag: '@zone' }, async ({ page, api }) => {
     const venue = aVenue().named('Main Hall')
     api.mock(
       workshopsApi.listReturns([

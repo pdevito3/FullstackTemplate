@@ -16,7 +16,6 @@ const token = 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v'
 
 /** `inviteExpiry` of the builder in each zone of the suite. */
 const expiryIn: Record<string, string> = {
-  UTC: 'Jan 15, 2099, 12:00 PM',
   'Pacific/Kiritimati': 'Jan 16, 2099, 2:00 AM',
   'Pacific/Pago_Pago': 'Jan 15, 2099, 1:00 AM',
 }
@@ -60,7 +59,7 @@ test.describe('the invites of a tenant admin', () => {
     api.mock(tenantsApi.oneIs(aTenant().seenByAdmin()), usersApi.listReturns([aUser().named('Grace Hopper')]))
   })
 
-  test('lists the role, the email, the state, and the expiry in the zone of the browser', async ({ page, api }) => {
+  test('lists the role, the email, the state, and the expiry in the zone of the browser', { tag: '@zone' }, async ({ page, api }) => {
     api.mock(invitesApi.listReturns([
       anInvite().forEmail('pending@example.com').inRole('Admin'),
       anInvite().matchingEmail('match@example.com'),
@@ -117,7 +116,7 @@ test.describe('the invites of a tenant admin', () => {
     await expect(users.at.loadFailure).toBeVisible()
   })
 
-  test('creates an invite, and shows the link in its fragment with the only-time sentence', { tag: '@INV-3' }, async ({ page, api, context, baseURL }) => {
+  test('creates an invite, and shows the link in its fragment with the only-time sentence', { tag: ['@INV-3', '@zone'] }, async ({ page, api, context, baseURL }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const invite = anInvite().inRole('Admin').forEmail('new@example.com')
     api.mock(invitesApi.listReturns([]), invitesApi.creates(invite, token))

@@ -152,16 +152,19 @@ A page that shows a time in the zone of the browser, not of its place, shows ano
 |-------|---------------------|--------|
 | unit | `Pacific/Pago_Pago` (UTC-11) | `env.TZ` of the `unit` project in `vite.config.ts` |
 | component | `Pacific/Kiritimati` (UTC+14) | `contextOptions.timezoneId` of the `browser` project in `vite.config.ts` |
-| functional | `UTC`, `Pacific/Kiritimati`, and `Pacific/Pago_Pago` | the projects `utc`, `kiritimati`, and `pago-pago` in `playwright.config.ts` |
+| functional | `Pacific/Pago_Pago`, and `Pacific/Kiritimati` for a test tagged `@zone` | the projects `pago-pago` and `kiritimati` in `playwright.config.ts` |
 
-Each functional test runs once in each project. To run one project, add `--project=kiritimati`.
+Each functional test runs in the `pago-pago` project. A test tagged `@zone` also runs in the `kiritimati` project. To run one project, add `--project=kiritimati`.
+
+- Tag a test `@zone` when it shows or sends a date or a time: `test('...', { tag: '@zone' }, async ...)`. A page that takes the date from the wrong zone shows another day in one of the two zones, and only in one. For example, a `DateOnly` that the page formats as midnight UTC shows the day before in `pago-pago`, and a time that the page shows in UTC, not in the zone of the browser, shows the next day in `kiritimati`. UTC shows neither, so no project runs in UTC.
+- A test with no date or time runs in one zone, because its result is the same in each zone.
 
 - A test of a page with no place sets its clock in the zone of the browser. Use `instantIn(wallClock, browserZone())` from `@tests/support/clock`. Then today is the same date in each project.
 <!-- example:start -->
 - `openOn` in `filter-demo.tasks.ts` sets the clock of a page with no place.
 <!-- example:end -->
 - A test of a time of a place gives the place a zone far from the browser, and sets the clock to an instant at which the date of the place is not the date of the browser or the UTC date. For example, at 07:00 UTC on August 16, it is August 15 in `Pacific/Pago_Pago` and August 16 in UTC and in `Pacific/Kiritimati`. Write the instant in UTC, such as `new Date('2026-08-16T07:00:00Z')`, so that it is the same instant in each project.
-- A test of a zone with a daylight saving time change, such as a time in a spring gap, sets the zone in its describe with `test.use({ timezoneId: 'America/New_York' })`, and runs only in the `utc` project, because the zone of each project is then the same. `browserZone()` gives the zone of the project, not the zone of `test.use`.
+- A test of a zone with a daylight saving time change, such as a time in a spring gap, sets the zone in its describe with `test.use({ timezoneId: 'America/New_York' })`, and has no `@zone` tag, because the zone of each project is then the same. `browserZone()` gives the zone of the project, not the zone of `test.use`.
 - The tests that check this rule are `date-filter.test.tsx`, `date-picker.test.tsx`, `calendar: marks today and opens on today at the place of the date` in `calendar.test.tsx`, `querykit-converter.test.ts`, and `zoned-time.test.ts`.
 <!-- example:start -->
 - `a date filter of a place in another zone` in `filter-demo.spec.ts` also checks it. The forecast specs in `weather-forecast.spec.ts` fail in `pago-pago` when the page formats a `DateOnly` as midnight UTC.

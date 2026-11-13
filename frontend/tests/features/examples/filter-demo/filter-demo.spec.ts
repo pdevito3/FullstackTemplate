@@ -333,7 +333,7 @@ test.describe('the Add Filter menu on a desktop', () => {
     await expect(demo.at.addFilter('Created Date')).toBeInViewport({ ratio: 1 })
   })
 
-  test('edits a date filter in its dialog', async ({ page }) => {
+  test('edits a date filter in its dialog', { tag: '@zone' }, async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.openOn(dayInASixWeekMonth)
     await demo.chooseProperty('Created Date')
@@ -365,7 +365,7 @@ test.describe('the Add Filter menu on a 900 px tall desktop', () => {
 test.describe('typed dates in the Between control on a desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } })
 
-  test('keeps Add Filter off after a typed start date is cleared and an end date is typed', async ({ page }) => {
+  test('keeps Add Filter off after a typed start date is cleared and an end date is typed', { tag: '@zone' }, async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.openOn(dayInASixWeekMonth)
     await demo.chooseProperty('Created Date')
@@ -419,7 +419,7 @@ test.describe('a short year in the date control on a desktop', () => {
     })
   }
 
-  test('takes a quick select that is pressed right after a short year', async ({ page }) => {
+  test('takes a quick select that is pressed right after a short year', { tag: '@zone' }, async ({ page }) => {
     const demo = filterDemoPage(page)
     await demo.openOn(dayInASixWeekMonth)
     await demo.chooseProperty('Created Date')
@@ -564,7 +564,7 @@ test.describe('the Add Filter menu on a short desktop window', () => {
 })
 
 test.describe('a date filter of a place in another zone', () => {
-  test('takes today and reads the typed time in the zone of the place, not of the browser', async ({ page }) => {
+  test('takes today and reads the typed time in the zone of the place, not of the browser', { tag: '@zone' }, async ({ page }) => {
     const demo = filterDemoPage(page)
     // 07:00 UTC on August 16 is 20:00 on August 15 in Pago Pago. In UTC and in Kiritimati, it is August 16.
     await demo.openAt(new Date('2026-08-16T07:00:00Z'))
@@ -593,7 +593,6 @@ test.describe('the filter state card', () => {
 
 test.describe('a date filter with no zone, in a browser in New York', () => {
   test.use({ timezoneId: 'America/New_York' })
-  test.skip(() => test.info().project.name !== 'utc', 'The describe sets its own zone.')
 
   test('takes a local time that the clocks of the browser skip, because the field has no zone', async ({ page }) => {
     const demo = filterDemoPage(page)

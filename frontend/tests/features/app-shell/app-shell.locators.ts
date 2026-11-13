@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 
-// The component of the About page only. The route tree also imports the route file, and a failure there stops the app.
-export const aboutPageSource = /\/routes\/about\.tsx\?tsr-split=component/
+// The split chunk of the About page component. A failure of this chunk stops the page, not the app.
+export const aboutPageSource = /\/assets\/about-[\w-]+\.js$/
 
 export const appShell = (page: Page) => ({
   aboutHeading: page.getByRole('heading', { level: 1, name: 'About' }),

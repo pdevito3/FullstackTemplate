@@ -57,7 +57,7 @@ test.describe('the layout header', () => {
 })
 
 test.describe('the landmarks of the layout', () => {
-  test('the router devtools add no contentinfo landmark', async ({ page }) => {
+  test('the router devtools add no contentinfo landmark', { tag: '@dev-server' }, async ({ page }) => {
     const shell = appShellPage(page)
 
     await shell.openAbout()
@@ -112,7 +112,7 @@ test.describe('wide content next to the open sidebar', () => {
 })
 
 test.describe('an unknown address', () => {
-  test('shows a page not found message in the app layout', async ({ page }) => {
+  test('shows a page not found message in the app layout', { tag: '@dev-server' }, async ({ page }) => {
     const shell = appShellPage(page)
 
     await shell.openMissingPage()

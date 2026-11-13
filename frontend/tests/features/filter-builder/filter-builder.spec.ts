@@ -1,8 +1,8 @@
 import { test, expect } from '@tests/support/fixtures'
 import { filterBuilderDemoPage } from './filter-builder.tasks'
 
-// The date control loads its code when it first shows. Match its source file only.
-const dateControlSource = /\/components\/filter-builder\/controls\/date-filter\.tsx/
+// The date control loads its chunk when it first shows.
+const dateControlSource = /\/assets\/date-filter-[\w-]+\.js$/
 
 for (const screen of [
   { name: 'desktop', viewport: { width: 1280, height: 800 } },

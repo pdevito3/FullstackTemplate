@@ -22,7 +22,7 @@ await commands.answerRequests([
 ])
 ```
 
-A request to `/api/*` or `/bff/*` with no answer fails the test, and the error names the request. The check runs after the test. A request counts only for the test that sent it, so a request that is still on the way as the test ends counts for no test. The setup file adds a header with the test ID to each `XMLHttpRequest`, and the check reads it. A request with no such header, such as an image or a `fetch`, counts for the test that runs when the request arrives. The dev server has no BFF, so it answers a request with no answer with status 502. This is also true for `pnpm dev` when Aspire does not set `BFF_HTTPS` or `BFF_HTTP`.
+A request to `/api/*` or `/bff/*` with no answer fails the test, and the error names the request. The check runs after the test. A request counts only for the test that sent it, so a request that is still on the way as the test ends counts for no test. The setup file adds a header with the test ID to each `XMLHttpRequest`, and the check reads it. A request with no such header, such as an image or a `fetch`, counts for the test that runs when the request arrives. The Vite server of the suite has no BFF, so it answers a request with no answer with status 502. This is also true for `pnpm dev` and `pnpm preview` when Aspire does not set `BFF_HTTPS` or `BFF_HTTP`.
 
 A component that takes a save function as a prop does not need answers. Give it a `vi.fn()` that resolves, or that rejects with a `ProblemDetailsError`.
 
@@ -38,7 +38,9 @@ The workshop example has these component tests: the limits of the contract and t
 
 ## The functional suite
 
-`pnpm test:e2e` starts the Vite dev server on a free port. Then it runs the specs in Chromium. No BFF, Server, or IdP runs. The suite mocks each request to `/api/*` and `/bff/*` in the browser with `page.route`. The hooks, the components, the generated clients, and `apiClient` all run.
+`pnpm test:e2e` builds the SPA with `vite.functional.config.ts` into `dist-functional`, serves it with `vite preview` on a free port, and runs the specs in Chromium. No BFF, Server, or IdP runs. The build takes about 10 s. The dev server serves each module as its own file, so the suite ran about 2.5 times slower on it. The build does not reload when a source file changes, so run `pnpm test:e2e` again after a change.
+
+A test of what only a development build has, such as the router devtools, has the tag `@dev-server`. It runs in the `dev-server` project, on the Vite dev server, which the suite starts on a second free port. Each other test runs on the build. The suite mocks each request to `/api/*` and `/bff/*` in the browser with `page.route`. The hooks, the components, the generated clients, and `apiClient` all run.
 
 ```
 frontend/
@@ -62,7 +64,7 @@ frontend/
       fixtures.ts                # `test` with the `actor` and `api` fixtures
 ```
 
-A test of a shared component, such as the date picker, the overlays, or the toasts, opens `src/test/fixtures/shared-components.html`. This page shows the components in the layout of the app. Do not test a shared component on an example page, because `scripts/remove-examples.cs` deletes the example pages and their tests. Only the Vite dev server serves the page, so it is not in the production build.
+A test of a shared component, such as the date picker, the overlays, or the toasts, opens `src/test/fixtures/shared-components.html`. This page shows the components in the layout of the app. Do not test a shared component on an example page, because `scripts/remove-examples.cs` deletes the example pages and their tests. `vite.functional.config.ts` builds the page at the same path, and `pnpm build` leaves it out, so it is not in the build that ships. A test that needs a module of the page imports it from `/test/notification.js`, an entry of the same build, so it gets the same instance as the page.
 
 ### Mocks
 
@@ -73,7 +75,7 @@ The `api` fixture applies to each test automatically:
 - It answers each request from the mocks of the test. A later mock wins over an earlier one, so a test can change an answer in the middle of a scenario.
 - `api.hold(...routes)` is `api.mock` with answers that wait until the test calls the function that it returns. Use it to act or assert while an answer is on the way. The test does not depend on a time, as it does with `delayMs`.
 - `api.holdPageSource(file)` holds the source file of a page in the same way, so that the navigation to that page stays in progress. Call it after the first open of the app, because a hold before that open blocks the app until the 30 s timeout. The URL changes at the start of a navigation, and the old page stays on the screen until the source file of the next page loads. So a test that must be on the next page waits for something on that page, not for the URL.
-- `api.failPageSource(file)` aborts each request for the source file of a page, as a lost connection does, until the test calls the function that it returns. Match the component file of the page only, such as `/\/routes\/about\.tsx\?tsr-split=component/`. The route tree also imports the route file, and a failure there stops the whole app. The router reloads the page once for a failed source file, so the test waits for the message of the app, not for the URL.
+- `api.failPageSource(file)` aborts each request for the source file of a page, as a lost connection does, until the test calls the function that it returns. Match the chunk of the page component, such as `/\/assets\/about-[\w-]+\.js$/`. The build names each chunk after its module. A failure of this chunk stops the page, not the app. The router reloads the page once for a failed source file, so the test waits for the message of the app, not for the URL.
 - It records each request that it answers. Read a request back with `api.last(method, path)` or `api.all(method, path)`.
 - It fails the test if the page calls a route that has no mock. The failure message names the route.
 
@@ -93,7 +95,7 @@ test.use({ actor: as.userWithNoTenant('Ada Lovelace') })
 
 For an anonymous visitor, use `as.anonymous()`. Then `/bff/user` answers 204, and the SPA goes to the login before it shows a page. Thus a spec of a page needs a signed-in actor. The session spec (`tests/features/session/session.spec.ts`) covers the anonymous visitor and a failed check of the session.
 
-Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back. In a task, wait for the answer of `/bff/login`, and then assert the URL. Do not start with `toHaveURL` or `expect.poll`, because on a slow machine the dev server can take more than the 5 s of an assertion to serve the app before the SPA checks the session. Do not use `page.waitForURL` for the login, because React StrictMode starts the login twice, so the first navigation can abort, and `waitForURL` then fails. See `openLinkAndGoToLogin` in `tests/features/invites/invites.tasks.ts`.
+Login and logout leave the SPA. The browser goes to `/bff/login` or `/bff/logout`. Mock these with `bffApi.loginOpens()` and `bffApi.logoutOpens()`, and read the query of the request back. In a task, wait for the answer of `/bff/login`, and then assert the URL. Do not start with `toHaveURL` or `expect.poll`, because on a slow machine the server can take more than the 5 s of an assertion to serve the app before the SPA checks the session. Do not use `page.waitForURL` for the login, because in a development build React StrictMode starts the login twice, so the first navigation can abort, and `waitForURL` then fails. See `openLinkAndGoToLogin` in `tests/features/invites/invites.tasks.ts`.
 
 ### Builders
 

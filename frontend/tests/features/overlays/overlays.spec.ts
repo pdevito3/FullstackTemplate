@@ -13,7 +13,7 @@ for (const viewport of [
   { width: 320, height: 568 },
   { width: 1280, height: 800 },
 ]) {
-  test.describe(`the router devtools badge at ${viewport.width}x${viewport.height}`, () => {
+  test.describe(`the router devtools badge at ${viewport.width}x${viewport.height}`, { tag: '@dev-server' }, () => {
     test.use({ viewport })
 
     for (const { opens, name, hasCloseButton } of overlays) {

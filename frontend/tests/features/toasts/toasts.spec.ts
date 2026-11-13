@@ -41,7 +41,7 @@ test.describe('the toasts on a phone on its side while a bottom sheet is open', 
     expect(await demo.shownToasts()).toEqual(['A new version is available', 'Something went wrong'])
   })
 
-  test('keep the router devtools badge off the Close button of the toast', async ({ page }) => {
+  test('keep the router devtools badge off the Close button of the toast', { tag: '@dev-server' }, async ({ page }) => {
     const demo = toastDemoPage(page)
     await demo.open()
     await demo.waitForDevtoolsBadge()

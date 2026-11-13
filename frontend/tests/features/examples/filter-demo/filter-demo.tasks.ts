@@ -156,8 +156,8 @@ export function filterDemoPage(page: Page) {
     /** Shows error toasts, as a failed request does while the control is open. The filter demo sends no request. */
     async showToasts(...toasts: ToastText[]) {
       await page.evaluate(async (toasts) => {
-        // The Vite dev server serves each source file at its path.
-        const notificationModule: string = '/src/components/notification.ts'
+        // vite.functional.config.ts builds the module of the toast queue of the page to this path.
+        const notificationModule: string = '/test/notification.js'
         const { Notification } = (await import(/* @vite-ignore */ notificationModule)) as { Notification: typeof AppNotification }
         for (const { message, description } of toasts) Notification.error(message, { description })
       }, toasts)

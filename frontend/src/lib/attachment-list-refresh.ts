@@ -1,6 +1,9 @@
 // The list loads again this long before its URLs expire, so a link on the screen still works when the user clicks it
 const REFRESH_MARGIN_MS = 60_000
 
+// A browser timer fires at once when its delay is longer than this, so a later refresh waits this long and asks again
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1
+
 interface ExpiringUrls {
   urlsExpireAt: string
 }
@@ -15,7 +18,7 @@ export function untilRefresh(attachments: readonly ExpiringUrls[] | undefined, f
     return false
   }
   const earliest = Math.min(...attachments.map((a) => Date.parse(a.urlsExpireAt)))
-  return Math.max(earliest - REFRESH_MARGIN_MS - from, 1_000)
+  return Math.min(Math.max(earliest - REFRESH_MARGIN_MS - from, 1_000), MAX_TIMER_DELAY_MS)
 }
 
 /**

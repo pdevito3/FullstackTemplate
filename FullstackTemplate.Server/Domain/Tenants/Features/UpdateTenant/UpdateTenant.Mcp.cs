@@ -15,7 +15,7 @@ using Resources.Entrypoints.Mcp;
 public static class UpdateTenantTool
 {
     // A rename overwrites the name, so the tool is not additive: the MCP spec says destructive.
-    [McpServerTool(Name = "update_tenant", Destructive = true, Idempotent = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "update_tenant", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [ToolAccess(Permission.Names.ManageTenant)]
     [Description("Renames a tenant. The caller needs the manage_tenant permission in the tenant.")]
     public static Task<TenantDto> Handle(

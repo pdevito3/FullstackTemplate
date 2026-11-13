@@ -1807,7 +1807,7 @@ internal static class Templates
             [McpServerToolType]
             public static class Add{{n.Entity}}Tool
             {
-                [McpServerTool(Name = "add_{{n.Snake}}", Destructive = false, UseStructuredContent = true)]
+                [McpServerTool(Name = "add_{{n.Snake}}", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
                 [Description({{Literal(Texts.AddTool(s))}})]
                 public static Task<{{n.Entity}}Dto> Handle(
@@ -1827,7 +1827,7 @@ internal static class Templates
             [McpServerToolType]
             public static class Get{{n.Entity}}Tool
             {
-                [McpServerTool(Name = "get_{{n.Snake}}", ReadOnly = true, UseStructuredContent = true)]
+                [McpServerTool(Name = "get_{{n.Snake}}", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
                 [Description({{Literal(Texts.GetTool(s))}})]
                 public static Task<{{n.Entity}}Dto> Handle(
@@ -1847,7 +1847,7 @@ internal static class Templates
             [McpServerToolType]
             public static class Get{{n.Entity}}ListTool
             {
-                [McpServerTool(Name = "list_{{n.SnakePlural}}", ReadOnly = true, UseStructuredContent = true)]
+                [McpServerTool(Name = "list_{{n.SnakePlural}}", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
                 [ToolAccess(ToolAccessKind.Read)]
                 [Description({{Literal(Texts.ListTool(s))}})]
                 public static async Task<McpPage<{{n.Entity}}Dto>> Handle(
@@ -1875,7 +1875,7 @@ internal static class Templates
             public static class Update{{n.Entity}}Tool
             {
                 // An update overwrites the values, so the tool is not additive: the MCP spec says destructive.
-                [McpServerTool(Name = "update_{{n.Snake}}", Destructive = true, Idempotent = true, UseStructuredContent = true)]
+                [McpServerTool(Name = "update_{{n.Snake}}", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
                 [ToolAccess(Permission.Names.{{n.Permission}})]
                 [Description({{Literal(Texts.UpdateTool(s))}})]
                 public static Task<{{n.Entity}}Dto> Handle(

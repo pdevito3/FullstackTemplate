@@ -13,7 +13,7 @@ using Resources.Entrypoints.Mcp;
 [McpServerToolType]
 public static class AddTenantTool
 {
-    [McpServerTool(Name = "add_tenant", Destructive = false, UseStructuredContent = true)]
+    [McpServerTool(Name = "add_tenant", Destructive = false, OpenWorld = false, UseStructuredContent = true)]
     [ToolAccess(ToolAccessKind.ManageAllTenants)]
     [Description("Adds a tenant. Only a trusted client that can manage all tenants can do this.")]
     public static Task<TenantDto> Handle(

@@ -13,7 +13,7 @@ using Resources.Entrypoints.Mcp;
 [McpServerToolType]
 public static class GetTenantTool
 {
-    [McpServerTool(Name = "get_tenant", ReadOnly = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "get_tenant", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [ToolAccess(ToolAccessKind.Read)]
     [Description("Gets one tenant by its ID. The caller sees only their own tenant.")]
     public static Task<TenantDto> Handle(

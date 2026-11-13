@@ -86,7 +86,9 @@ public static class EntrypointRegistration
         app.MapVersionedEndpoints();
         app.MapGrpcService<TenantsGrpcService>();
         // new-feature:grpc-services
-        McpToolAccess.Validate(app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection ?? []);
+        var mcpTools = app.Services.GetRequiredService<IOptions<McpServerOptions>>().Value.ToolCollection ?? [];
+        McpToolAccess.Validate(mcpTools);
+        McpToolHints.Validate(mcpTools);
         app.MapMcp(McpPath).RequireAuthorization();
         app.MapMcpResourceMetadata();
     }

@@ -259,7 +259,6 @@ The sweep does not report these faults:
 - A focus that stays on the body until less than 1 s after the end of the step, and then moves to an element that still has it at the end of that 1 s. The element can be the wrong one.
 - A focus that moves to an element in that 1 s and then leaves that element with a blur after the 1 s.
 - A loss after the end of the step. The next step reports it. If the step is the last step of the recipe, the sweep gives no report.
-- A focused element that gets `visibility: hidden`. `checkVisibility()` does not read this property by default.
 
 The sweep can report these forms, which are correct:
 

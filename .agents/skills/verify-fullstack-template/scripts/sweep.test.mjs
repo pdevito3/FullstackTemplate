@@ -305,6 +305,10 @@ test('reports a focus that stays on the body after the focused element is blurre
   assert.deepEqual(await focusFaultsAfterPress(`button.blur(); button.style.display = 'none'`), [{ kind: 'focus goes to the body', how: 'the focused element was hidden' }])
 })
 
+test('reports a focus that stays on the body after the focused element gets visibility: hidden', async () => {
+  assert.deepEqual(await focusFaultsAfterPress(`button.style.visibility = 'hidden'`), [{ kind: 'focus goes to the body', how: 'the focused element was hidden' }])
+})
+
 test('reports a focus that stays on the body after a dialog closes and returns no focus', async () => {
   assert.deepEqual(await focusFaultsAfterPress('button.parentElement.remove()'), removed)
 })

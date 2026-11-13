@@ -177,7 +177,8 @@ export default async ({ page, context, stack, step, capture, settle, expect, log
 
     await step('the link of the admin is gone: the user sees no form, and the page needs a link', async () => {
       await expect(page).toHaveURL(/\/join$/)
-      await expect(page.getByRole('alert')).toHaveText('This page needs an invite link. Open the invite link again.')
+      // The alert waits for the first read of the membership after the login. At a load of about 30 it showed after more than 5 s.
+      await expect(page.getByRole('alert')).toHaveText('This page needs an invite link. Open the invite link again.', { timeout: 15_000 })
       await expect(page.getByRole('form', { name: 'Join the tenant' })).toHaveCount(0)
       expect(await page.evaluate(() => sessionStorage.getItem('invite-token'))).toBeNull()
       expectNoTokenInAUrl(...tokens)

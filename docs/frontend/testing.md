@@ -40,7 +40,9 @@ The workshop example has these component tests: the limits of the contract and t
 
 `pnpm test:e2e` builds the SPA with `vite.functional.config.ts` into `dist-functional`, serves it with `vite preview` on a free port, and runs the specs in Chromium. No BFF, Server, or IdP runs. The build takes about 10 s. The dev server serves each module as its own file, so the suite ran about 2.5 times slower on it. The build does not reload when a source file changes, so run `pnpm test:e2e` again after a change.
 
-A test of what only a development build has, such as the router devtools, has the tag `@dev-server`. It runs in the `dev-server` project, on the Vite dev server, which the suite starts on a second free port. Each other test runs on the build. The suite mocks each request to `/api/*` and `/bff/*` in the browser with `page.route`. The hooks, the components, the generated clients, and `apiClient` all run.
+A test of what only a development build has, such as the router devtools, has the tag `@dev-server`. It runs in the `dev-server` project, on the Vite dev server, which the suite starts on a second free port. Each other test runs on the build.
+
+CI splits the suite into shards with `--shard`. Each shard is a job of the `functional` matrix in `.github/workflows/ci.yml`. When the suite grows, add a shard there. The suite mocks each request to `/api/*` and `/bff/*` in the browser with `page.route`. The hooks, the components, the generated clients, and `apiClient` all run.
 
 ```
 frontend/

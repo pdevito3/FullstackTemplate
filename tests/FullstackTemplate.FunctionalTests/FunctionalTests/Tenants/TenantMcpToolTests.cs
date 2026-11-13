@@ -97,6 +97,35 @@ public class TenantMcpToolTests : TestBase
     ];
 
     [Test]
+    public async Task tools_list_gives_the_client_the_risk_hints_of_each_tool()
+    {
+        // Arrange
+        await SignInAsync("manage-all client");
+        await using var client = await CreateMcpClientAsync();
+
+        // Act
+        var tools = await client.ListToolsAsync();
+
+        // Assert
+        var hints = tools
+            .Where(t => !ToolsOfGeneratedFeatures.Contains(t.Name))
+            .ToDictionary(t => t.Name, t => t.ProtocolTool.Annotations is { } a
+                ? (a.ReadOnlyHint, a.DestructiveHint, a.IdempotentHint, a.OpenWorldHint)
+                : default);
+        hints.ShouldBe(new Dictionary<string, (bool?, bool?, bool?, bool?)>
+        {
+            ["add_tenant"] = (null, false, null, false),
+            ["get_tenant"] = (true, null, null, false),
+            ["list_tenants"] = (true, null, null, false),
+            ["update_tenant"] = (null, true, true, false),
+            // example:start
+            ["cancel_workshop"] = (null, true, true, false),
+            ["list_workshops"] = (true, null, null, false),
+            // example:end
+        }, ignoreOrder: true);
+    }
+
+    [Test]
     public async Task unregistered_client_with_a_user_sub_cannot_read_the_tenant_of_the_user()
     {
         // Arrange

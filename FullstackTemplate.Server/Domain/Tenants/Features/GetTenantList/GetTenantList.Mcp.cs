@@ -13,7 +13,7 @@ using Resources.Entrypoints.Mcp;
 [McpServerToolType]
 public static class GetTenantListTool
 {
-    [McpServerTool(Name = "list_tenants", ReadOnly = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "list_tenants", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [ToolAccess(ToolAccessKind.Read)]
     [Description("Gets one page of the tenants that the caller can see, with the page data.")]
     public static async Task<McpPage<TenantDto>> Handle(

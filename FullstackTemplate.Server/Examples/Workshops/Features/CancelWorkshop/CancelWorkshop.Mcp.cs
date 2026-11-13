@@ -14,7 +14,7 @@ using Resources.Entrypoints.Mcp;
 [McpServerToolType]
 public static class CancelWorkshopTool
 {
-    [McpServerTool(Name = "cancel_workshop", Destructive = true, Idempotent = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "cancel_workshop", Destructive = true, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [ToolAccess(Permission.Names.ManageWorkshops)]
     [Description("Cancels a draft or scheduled workshop. The caller needs the manage_workshops permission in the tenant. Only the organizer of the workshop or a caller with manage_tenant can cancel it, so an agent needs manage_tenant.")]
     public static Task<WorkshopDto> Handle(

@@ -145,7 +145,7 @@ To make a breaking change, add v2 next to v1:
 Each MCP tool is a static class. The example is `Domain/Tenants/Features/AddTenant/AddTenant.Mcp.cs`.
 
 1. Add a `public static class [FeatureName]Tool` with `[McpServerToolType]` in `[FeatureName].Mcp.cs`. Use the namespace of the feature. `WithToolsFromAssembly` finds the class.
-2. Give it one `public static` method with `[McpServerTool(Name = "...", UseStructuredContent = true)]` and a `[Description]`. Set `ReadOnly = true` for a read, and `Destructive = false` for an add.
+2. Give it one `public static` method with `[McpServerTool(Name = "...", OpenWorld = false, UseStructuredContent = true)]` and a `[Description]`. Set `ReadOnly = true` for a read, `Destructive = false` for an add, and `Destructive = true` for a change or a delete. These hints tell the client the risk of a call, so that the client can ask the user before a destructive call. Set `OpenWorld = false` for a tool that uses only the app database. Set `OpenWorld = true` for a tool that calls an outside system. MCP takes a hint that is not set as the worst case. `McpToolHints.Validate` stops startup when a tool sets neither `ReadOnly = true` nor `Destructive`, or does not set `OpenWorld`.
 3. Take `IMediator` and `CancellationToken` as method parameters. The SDK resolves a registered service from the request services, so the service is not in the input schema.
 4. Give each other parameter a `[Description]`. These parameters are the input schema.
 5. Return the DTO. For a list, return `McpPage.From(result)`, so that the result has the page data.

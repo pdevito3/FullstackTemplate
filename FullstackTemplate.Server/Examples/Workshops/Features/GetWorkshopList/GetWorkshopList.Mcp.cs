@@ -13,7 +13,7 @@ using Resources.Entrypoints.Mcp;
 [McpServerToolType]
 public static class GetWorkshopListTool
 {
-    [McpServerTool(Name = "list_workshops", ReadOnly = true, UseStructuredContent = true)]
+    [McpServerTool(Name = "list_workshops", ReadOnly = true, OpenWorld = false, UseStructuredContent = true)]
     [ToolAccess(ToolAccessKind.Read)]
     [Description("Gets one page of the workshops of the caller's tenant, with the page data.")]
     public static async Task<McpPage<WorkshopDto>> Handle(

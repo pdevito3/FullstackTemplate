@@ -40,7 +40,7 @@ test.describe('a visitor with no session opens an invite link', () => {
     expect(join.urlsWith(token)).toEqual([])
 
     const identity = as.userWithNoTenant()
-    api.mock(bffApi.userIs(identity), ...membershipApi.userIs(identity), invitesApi.previewIs(aPreview()))
+    api.mock(bffApi.userIs(identity), ...membershipApi.userIs(identity), ...usersApi.currentOf(identity), invitesApi.previewIs(aPreview()))
     await join.comeBackFromLogin('/join')
 
     await expect(join.at.detail('Acme')).toBeVisible()

@@ -147,6 +147,31 @@ public class AuthProviderCatalogTests
             Directory.Exists(Path.Combine(AppHostSourceDirectory(), seed)).ShouldBeTrue($"The seed folder {seed} does not exist.");
     }
 
+    [Test]
+    [MethodDataSource(nameof(ProviderNames))]
+    public void the_operator_subject_of_a_provider_is_the_id_of_a_user_in_its_realm_seed(string name)
+    {
+        // Arrange
+        var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { DisableDashboard = true });
+        var app = builder.AddContainer("app", "app").WithHttpEndpoint(name: "http");
+        var clientUrls = new AuthClientUrls(app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"), app.GetEndpoint("http"));
+        var subject = AuthProviderCatalog.Select(Settings(name)).AddTo(builder, clientUrls).OperatorSubject;
+        if (subject is null)
+            return;
+
+        // Act
+        var seed = Path.Combine(AppHostSourceDirectory(), "AuthProviders", name, "seed");
+        var userIds = Directory.EnumerateFiles(seed, "*.json")
+            .Select(file => JsonDocument.Parse(File.ReadAllText(file)).RootElement)
+            .Where(realm => realm.TryGetProperty("users", out _))
+            .SelectMany(realm => realm.GetProperty("users").EnumerateArray())
+            .Select(user => user.GetProperty("id").GetString())
+            .ToList();
+
+        // Assert
+        userIds.ShouldContain(subject, $"The OperatorSubject of {name} must be the id of a user in a realm file of AuthProviders/{name}/seed.");
+    }
+
     private static IConfiguration Settings(string? authProvider) => new ConfigurationBuilder()
         .AddInMemoryCollection([new(AuthProviderCatalog.SettingName, authProvider)])
         .Build();

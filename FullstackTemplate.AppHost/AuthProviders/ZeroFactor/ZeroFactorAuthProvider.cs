@@ -42,7 +42,9 @@ public sealed class ZeroFactorAuthProvider : IAuthProvider
             NameClaimType = "email",
             RoleClaimType = "roles",
             AuthResource = zeroFactor,
-            AuthorityPathSuffix = $"/realms/{realmName}"
+            AuthorityPathSuffix = $"/realms/{realmName}",
+            // The ID of admin@example.com in seed/realm.json
+            OperatorSubject = "154c705b-f83d-4657-a9dd-af6ad1d36796"
         };
     }
 }

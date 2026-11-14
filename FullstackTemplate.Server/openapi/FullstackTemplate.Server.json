@@ -3539,7 +3539,8 @@
       },
       "CurrentUserDto": {
         "required": [
-          "identifier"
+          "identifier",
+          "canOpenJobDashboard"
         ],
         "type": "object",
         "properties": {
@@ -3553,6 +3554,10 @@
               "string"
             ],
             "description": "The display name from the token, or null when the identity provider sends no name."
+          },
+          "canOpenJobDashboard": {
+            "type": "boolean",
+            "description": "True when the caller is an operator of the jobs dashboard at `/backwave`."
           }
         },
         "description": "The signed-in caller as the Server sees it in the access token."

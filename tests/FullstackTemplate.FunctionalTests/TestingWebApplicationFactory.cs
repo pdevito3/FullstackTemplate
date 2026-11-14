@@ -52,6 +52,11 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     public const string FirstPartyClientId = "test-app";
 
     /// <summary>
+    /// The <c>sub</c> of the one user that the test server lets open the jobs dashboard.
+    /// </summary>
+    public const string JobOperatorSubject = "job-operator";
+
+    /// <summary>
     /// The origin at which MCP clients reach the test server. The MCP resource metadata names it.
     /// </summary>
     public const string McpPublicOrigin = "https://server.test";
@@ -132,6 +137,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
         Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__0", TrustedMachineClientId);
         Environment.SetEnvironmentVariable("Tenancy__ManageAllTenantsClientIds__1", TelemetryMachineClientId);
         Environment.SetEnvironmentVariable("Tenancy__ReadAllTenantsClientIds__0", ReadOnlyMachineClientId);
+        Environment.SetEnvironmentVariable("BackgroundJobs__OperatorSubjects__0", JobOperatorSubject);
 
         // Aspire sets this on each project in development, so the request spans keep the query as the browser sent it
         Environment.SetEnvironmentVariable("OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION", "true");
@@ -156,6 +162,12 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
     {
         lock (_clientLock)
             return base.CreateClient();
+    }
+
+    public new HttpClient CreateClient(WebApplicationFactoryClientOptions options)
+    {
+        lock (_clientLock)
+            return base.CreateClient(options);
     }
 
     public override async ValueTask DisposeAsync()

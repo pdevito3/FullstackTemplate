@@ -231,9 +231,11 @@ Each command picks a version, a run again, or a lock for a race with another req
 ### Migrations
 
 ```bash
-dotnet ef migrations add MyMigration --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations
-dotnet ef database update --project FullstackTemplate.Server --startup-project FullstackTemplate.Server
+dotnet ef migrations add MyMigration --context AppDbContext --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations
+dotnet ef database update --context AppDbContext --project FullstackTemplate.Server --startup-project FullstackTemplate.Server
 ```
+
+The Server has two contexts, so each `dotnet ef` command needs `--context`. `AppDbContext` has the domain. `DataProtectionKeysDbContext` has only the key ring of Data Protection in the schema `data_protection`, and its migrations are in `Databases/DataProtection/Migrations`.
 
 The server applies migrations at startup, with a Postgres advisory lock.
 

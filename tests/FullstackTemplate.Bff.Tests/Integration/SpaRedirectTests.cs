@@ -62,6 +62,8 @@ public class SpaRedirectTests
     [Arguments("/signout-callback-oidc/nope")]
     [Arguments("/api-docs")]
     [Arguments("/bffx")]
+    [Arguments("/backwavex")]
+    [Arguments("/backwave%2Fx")]
     [Arguments("/api%2Fx")]
     [Arguments("/signin-oidcx")]
     [Arguments("/bff%2Fx")]

@@ -60,6 +60,15 @@ export function RouterLinkPrimitive({
 
 export const Link = createRouterLink(RouterLinkPrimitive)
 
+/**
+ * The React Aria Link for an address that has no route in the SPA, such as a
+ * page of the Server. `HrefRouterProvider` gives such an `href` to the server,
+ * so the browser loads the page. For a route, use `Link`.
+ */
+export function DocumentLinkPrimitive(props: LinkPrimitiveProps) {
+  return <LinkPrimitive {...props} />
+}
+
 interface HrefRouterProviderProps {
   children: React.ReactNode
 }

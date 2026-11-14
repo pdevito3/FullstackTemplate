@@ -2,6 +2,7 @@ namespace FullstackTemplate.UnitTests.Databases;
 
 using System.Reflection;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Databases.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Migrations.Design;
@@ -16,22 +17,37 @@ public class ModelSnapshotTests
     {
         // Arrange
         using var context = new AppDbContextFactory().CreateDbContext([]);
+
+        // Act & Assert
+        SnapshotShouldBeCurrent(context, Path.Combine("Databases", "Migrations", "AppDbContextModelSnapshot.cs"));
+    }
+
+    [Test]
+    public void the_committed_model_snapshot_of_the_data_protection_keys_is_the_snapshot_that_the_next_migration_writes()
+    {
+        // Arrange
+        using var context = new DataProtectionKeysDbContextFactory().CreateDbContext([]);
+
+        // Act & Assert
+        SnapshotShouldBeCurrent(context, Path.Combine("Databases", "DataProtection", "Migrations", "DataProtectionKeysDbContextModelSnapshot.cs"));
+    }
+
+    private static void SnapshotShouldBeCurrent(DbContext context, string snapshotPathInServer)
+    {
         var services = new ServiceCollection()
             .AddEntityFrameworkDesignTimeServices()
             .AddDbContextDesignTimeServices(context);
         ProviderDesignTimeServices().ConfigureDesignTimeServices(services);
         using var provider = services.BuildServiceProvider();
         var scaffolder = provider.GetRequiredService<IMigrationsScaffolder>();
-        var committedPath = Path.Combine(FindRepositoryRoot(), "FullstackTemplate.Server", "Databases", "Migrations", "AppDbContextModelSnapshot.cs");
+        var committedPath = Path.Combine(FindRepositoryRoot(), "FullstackTemplate.Server", snapshotPathInServer);
 
-        // Act
         var scaffolded = ModelLines(scaffolder.ScaffoldMigration("Probe", "FullstackTemplate.Server").SnapshotCode);
         var committed = ModelLines(File.ReadAllText(committedPath));
 
-        // Assert
         var line = committed.Zip(scaffolded).TakeWhile(pair => pair.First == pair.Second).Count();
         committed.SequenceEqual(scaffolded).ShouldBeTrue(
-            $"The committed model snapshot is not current. Line {line + 1} is `{LineAt(committed, line)}`, " +
+            $"The committed model snapshot of {context.GetType().Name} is not current. Line {line + 1} is `{LineAt(committed, line)}`, " +
             $"but the next migration writes `{LineAt(scaffolded, line)}`. " +
             "Add a migration to update the snapshot. See docs/backend.md#migrations.");
     }

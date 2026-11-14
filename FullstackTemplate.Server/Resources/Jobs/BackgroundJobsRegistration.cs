@@ -11,7 +11,8 @@ public static class BackgroundJobsRegistration
 {
     /// <summary>
     /// Adds BackWave over its schema in appdb: the store, the jobs of <see cref="BackWaveJobs.Module"/> and their
-    /// handlers, the client, the monitor, the writer of the jobs that a save queues, and the scope of a job attempt.
+    /// handlers, the client, the monitor, the writer of the jobs that a save queues, the scope of a job attempt, and the
+    /// operators of the jobs dashboard.
     /// When the <paramref name="role"/> runs jobs, it also adds one worker group for each queue, and their check in
     /// <c>/health</c>.
     /// </summary>
@@ -38,6 +39,8 @@ public static class BackgroundJobsRegistration
             services.AddHealthChecks().AddCheck<BackWaveHealthCheck>("backwave");
         services.AddSingleton<IJobWriter, JobWriter>();
         services.AddScoped<JobScope>();
+        services.Configure<BackgroundJobsOptions>(configuration.GetSection(BackgroundJobsOptions.SectionName));
+        services.AddScoped<JobOperators>();
         return services;
     }
 }

@@ -12,6 +12,7 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.ObjectDeletes;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Resources.Entrypoints;
+using FullstackTemplate.Server.Resources.Entrypoints.Jobs;
 using FullstackTemplate.Server.Resources.Extensions;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Builder;
@@ -30,7 +31,7 @@ public class ServerRoleTests
     private static readonly TimeSpan ThreePolls = TimeSpan.FromSeconds(3);
 
     [Test]
-    public async Task a_worker_answers_the_health_probes_and_maps_no_api_and_no_mcp()
+    public async Task a_worker_answers_the_health_probes_and_maps_no_api_no_mcp_and_no_jobs_dashboard()
     {
         // Arrange
         await using var database = await NewDatabaseAsync();
@@ -41,12 +42,14 @@ public class ServerRoleTests
         using var alive = await worker.Client.GetRequestAsync(ApiRoutes.Alive);
         using var api = await worker.Client.GetRequestAsync(ApiRoutes.Users.GetCurrent);
         using var mcp = await worker.Client.PostAsync(EntrypointRegistration.McpPath, null);
+        using var dashboard = await worker.Client.GetRequestAsync(JobsDashboard.Path);
 
         // Assert
         health.StatusCode.ShouldBe(HttpStatusCode.OK);
         alive.StatusCode.ShouldBe(HttpStatusCode.OK);
         api.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         mcp.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        dashboard.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         worker.Output.ShouldContain(line => LogsRole(line, ServerRole.Worker));
     }
 

@@ -8,4 +8,5 @@ import * as z from 'zod'
 export const currentUserDtoSchema = z.object({
   identifier: z.string().describe('The `sub` claim of the token.'),
   name: z.string().nullish().describe('The display name from the token, or null when the identity provider sends no name.'),
+  canOpenJobDashboard: z.boolean().describe('True when the caller is an operator of the jobs dashboard at `/backwave`.'),
 }).describe('The signed-in caller as the Server sees it in the access token.')

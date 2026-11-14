@@ -76,6 +76,12 @@ public sealed record AuthProviderConfig
     public bool EndSessionWithoutIdTokenHint { get; init; }
 
     /// <summary>
+    /// The <c>sub</c> claim of the admin user of the seed, for a local provider whose seed gives that user a fixed ID.
+    /// A local run makes that user an operator of the jobs dashboard of the server.
+    /// </summary>
+    public string? OperatorSubject { get; init; }
+
+    /// <summary>
     /// More environment variables for the BFF only, for a provider that needs a BFF setting that no other provider needs.
     /// </summary>
     public IReadOnlyDictionary<string, string> BffSettings { get; init; } = new Dictionary<string, string>();

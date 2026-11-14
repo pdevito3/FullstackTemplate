@@ -1,6 +1,5 @@
 using System.Globalization;
 using FullstackTemplate.Server.Databases;
-using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
@@ -27,8 +26,6 @@ try
     builder.ConfigureServices();
     builder.AddEntrypoints();
     builder.Services.AddHostedService<MigrationHostedService>();
-    // The host starts its services in order, and the migration ends in its start, so no run reads a missing table
-    builder.Services.AddHostedService<ObjectDeleteWorker>();
     OpenApiBuildTime.RemoveHostedServices(builder.Services);
 
     var app = builder.Build();

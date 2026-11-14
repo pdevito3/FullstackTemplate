@@ -3,7 +3,6 @@ namespace FullstackTemplate.UnitTests.Databases;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
-using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Resources.Jobs;
@@ -20,7 +19,6 @@ public class TenantOwnedRowsTests
     private static readonly Dictionary<Type, string> TypesWhoseRowsOutliveTheirTenant = new()
     {
         [typeof(AuditEntry)] = "The history of a deleted tenant stays readable.",
-        [typeof(ObjectDeleteRequest)] = "The tenant delete adds the request that deletes the objects of the tenant after the commit.",
     };
 
     [Test]

@@ -13,7 +13,7 @@ The detail page of a workshop has a Files section. A user who can change the wor
 - `files-too-large` refuses a file over the largest size of the rules with a 422 toast that names the size.
 - `files-refused-type` refuses a file whose first bytes are no allowed type with a 422 toast that names the types of the rules, also when its name and its type say PNG. It refuses a PNG named `.pdf` with a 422 toast that names `.png`.
 - `files-over-the-body-limit` refuses a file over 30 MB, the request limit of Kestrel, with the 413 toast `The file is too large to send. Choose a smaller file.` The BFF writes that problem.
-- `files-delete` asks `Delete <file name>?`, sends `DELETE /api/v1/workshops/{id}/attachments/{attachmentId}`, shows the toast `File deleted`, and moves the focus to the heading `Files`. Storage gives 404 for the old download URL after the next run of the object delete worker of the Server, at most about 10 seconds later.
+- `files-delete` asks `Delete <file name>?`, sends `DELETE /api/v1/workshops/{id}/attachments/{attachmentId}`, shows the toast `File deleted`, and moves the focus to the heading `Files`. Storage gives 404 for the old download URL after the `DeleteObject` job of the delete runs in a BackWave worker of the Server, about a second later.
 - `files-reader` shows the files and their `Download` links to a member who cannot change the workshop, with no `Upload file` and no `Delete`.
 
 ## How to get to it (user POV)
@@ -38,7 +38,7 @@ Preconditions:
 - **Over the body limit.** Upload a file of 31 MB. The `POST` gives 413, and the toast shows `The file is too large to send. Choose a smaller file.` Do not read the body of that response in the recipe: Chromium does not keep it. Only a `--preview` stack proves this step. See the gotchas.
 - **View.** Click `View <file name>`. The dialog shows the image with a `naturalWidth` above 0. Press Escape.
 - **Download.** Click `Download <file name>` and wait for the `download` event. `suggestedFilename()` is the uploaded name, and the bytes at `download.path()` are the uploaded bytes.
-- **Delete.** Click `Delete <file name>`, then `Delete file` in the dialog. The `DELETE` gives 204, the row goes, and `page.request.get(downloadUrl)` gives 404 within 30 seconds. Poll it: the object delete worker deletes the object after the commit.
+- **Delete.** Click `Delete <file name>`, then `Delete file` in the dialog. The `DELETE` gives 204, the row goes, and `page.request.get(downloadUrl)` gives 404 within 30 seconds. Poll it: the `DeleteObject` job deletes the object after the commit.
 - **Persist.** Reload. The list has the rows that the `GET` gives.
 - **Proof.** Run `node $S/scripts/browse.mjs $S/recipes/examples/workshop-files.mjs`. The captures `files-empty`, `two-files`, `too-large`, `refused-type`, `renamed-file`, `image-dialog`, `delete-dialog`, and `after-reload` show the states.
 

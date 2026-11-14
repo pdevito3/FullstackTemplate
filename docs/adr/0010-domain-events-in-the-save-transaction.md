@@ -1,5 +1,7 @@
 # Domain event handlers run in the save transaction
 
+> Superseded in part by [ADR 0013](0013-background-jobs-on-backwave.md): an effect outside the database, or long work, is a BackWave job that a handler queues with `QueueJob`. The request entity and its hand-built background sender are gone.
+
 `AppDbContext.SaveChangesAsync` runs the handlers of the queued domain events before it sends any SQL. The change and the handler changes commit in one database transaction, or nothing commits. A handler changes entities only through the context of the save, and it cannot call another system. Each handler runs in the tenant of the entity that queued the event. MediatR does not dispatch domain events. The tenant lookup cache is not a handler. The context removes the stale lookups after the commit, before `SaveChangesAsync` returns. Before this decision, the handlers ran after the commit with no retry. Two apps built on this template lost a handler effect after a saved change. One could leave an unsafe vehicle in service, and one lost a no-show fee.
 
 ## Considered options

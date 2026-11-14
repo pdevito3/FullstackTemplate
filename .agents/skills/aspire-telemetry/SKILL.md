@@ -49,7 +49,7 @@ Pick the signal from the question that it answers:
 | How long did this work take? | `using var activity = Telemetry.Trace([("app.tenant_id", id)], "area.operation");` |
 | When did a point inside a span occur? | `Telemetry.AddEvent([], "area.event");` |
 | What did the app decide, and why? | `_logger.Here().Information("Created tenant {TenantId}", tenant.Id);` |
-| Work with no request (startup, a background job) | `using var trace = Telemetry.TraceRoot([], "area.operation");` |
+| Work with no request and no job (startup, a hosted service) | `using var trace = Telemetry.TraceRoot([], "area.operation");` |
 | Which code ran this query? | `.TagWithOperationCallSite("area.operation")` on the EF query |
 | An exception that is a server error | `Telemetry.RecordError(activity, exception);` |
 

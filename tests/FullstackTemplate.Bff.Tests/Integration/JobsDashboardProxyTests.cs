@@ -40,7 +40,8 @@ public class JobsDashboardProxyTests
         // The redirect from the identity provider after the login, and a link in an email, are cross-site. A browser
         // does not send the SameSite=Strict session cookie on them, so the request has no session.
         using var browser = BffApp.Instance.CreateBrowser();
-        var path = $"{JobsDashboardProxy.Prefix}/jobs?state=DeadLettered&tk=tenant&tv={Guid.NewGuid():N}";
+        var tagValue = Guid.NewGuid().ToString("N");
+        var path = $"{JobsDashboardProxy.Prefix}/jobs?state=DeadLettered&tk=tenant&tv={tagValue}";
         using var request = Navigation(HttpMethod.Get, path, site: "cross-site", destination: "document");
 
         // Act
@@ -56,7 +57,7 @@ public class JobsDashboardProxyTests
         WebUtility.HtmlDecode(refresh.Groups[1].Value).ShouldBe(loadAgain);
         var link = Regex.Match(html, """<a href="([^"]*)">""");
         WebUtility.HtmlDecode(link.Groups[1].Value).ShouldBe(loadAgain);
-        BffApp.Instance.Api.Requests.ShouldNotContain(r => r.Path == $"{JobsDashboardProxy.Prefix}/jobs");
+        BffApp.Instance.Api.Requests.ShouldNotContain(r => r.Query.Contains(tagValue));
     }
 
     [Test]

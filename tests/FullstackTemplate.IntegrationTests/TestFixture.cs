@@ -55,7 +55,7 @@ public sealed class TestFixture : IAsyncDisposable
         var provider = AddServices().BuildServiceProvider();
         BaseScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
-        // The startup migration of the Server: the EF Core schemas, then the BackWave schema.
+        // The startup migration of the Server: the BackWave schema, then the EF Core schemas.
         await new MigrationHostedService(BaseScopeFactory, provider.GetRequiredService<IConfiguration>())
             .StartingAsync(CancellationToken.None);
 

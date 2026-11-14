@@ -21,10 +21,19 @@ public static class StoredJobs
     public static async Task<IReadOnlyList<TJob>> QueuedAsync<TJob>(string tenantId)
     {
         await using var scope = TestFixture.BaseScopeFactory.CreateAsyncScope();
-        var monitor = scope.ServiceProvider.GetRequiredService<BackWaveMonitor>();
-        var registration = RegistrationOf<TJob>(scope.ServiceProvider);
+        return await QueuedAsync<TJob>(scope.ServiceProvider, tenantId);
+    }
+
+    /// <summary>
+    /// The payloads of the jobs of <typeparamref name="TJob"/> of the tenant in the job store of
+    /// <paramref name="services"/>, oldest first.
+    /// </summary>
+    public static async Task<IReadOnlyList<TJob>> QueuedAsync<TJob>(IServiceProvider services, string tenantId)
+    {
+        var monitor = services.GetRequiredService<BackWaveMonitor>();
+        var registration = RegistrationOf<TJob>(services);
         List<TJob> jobs = [];
-        foreach (var job in await ListAsync<TJob>(scope.ServiceProvider, tenantId))
+        foreach (var job in await ListAsync<TJob>(services, tenantId))
         {
             var payload = await monitor.GetJobPayloadAsync(job.JobId)
                 ?? throw new InvalidOperationException($"Job {job.JobId} has no payload.");

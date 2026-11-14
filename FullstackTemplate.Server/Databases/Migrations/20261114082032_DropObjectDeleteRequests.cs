@@ -11,12 +11,16 @@ namespace FullstackTemplate.Server.Databases.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // A row is an object in storage that nothing else deletes, so a drop with rows would keep the object
+            // The start of the Server moves the rows onto BackWave before this migration, in ObjectDeleteRequestsDrain.
+            // A row here came after that, from a Server of the previous version, or the migration runs with no start.
+            // A row names objects in storage that nothing else deletes, so a drop with rows would keep them.
+            // The lock waits for each open write of the queue, so the check sees a row of a save that commits late.
             migrationBuilder.Sql("""
+                LOCK TABLE object_delete_requests IN ACCESS EXCLUSIVE MODE;
                 DO $$
                 BEGIN
                     IF EXISTS (SELECT 1 FROM object_delete_requests) THEN
-                        RAISE EXCEPTION 'object_delete_requests has rows. Run the previous version until it drains them, and handle its dead rows.';
+                        RAISE EXCEPTION 'object_delete_requests has rows. Start the Server, which moves them onto BackWave before this migration.';
                     END IF;
                 END
                 $$;

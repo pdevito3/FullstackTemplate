@@ -1,6 +1,6 @@
 # Background jobs run on BackWave and commit with the save
 
-Work outside the request path is a BackWave job. A feature or a domain event handler calls `dbContext.QueueJob(job)`, and the next `SaveChangesAsync` writes the job in the transaction of the save. The job and the change commit together, or neither commits. BackWave keeps its tables in the `backwave` schema of `appdb`, and `MigrationHostedService` migrates that schema after the EF migration.
+Work outside the request path is a BackWave job. A feature or a domain event handler calls `dbContext.QueueJob(job)`, and the next `SaveChangesAsync` writes the job in the transaction of the save. The job and the change commit together, or neither commits. BackWave keeps its tables in the `backwave` schema of `appdb`, and `MigrationHostedService` migrates that schema before the EF migrations.
 
 `JobCommitHook` writes the jobs in `TransactionCommittingAsync` of the transaction that EF begins for the save. No code opens a transaction, so the `SavedChanges` interceptors still run after the commit. A save with jobs and no audit entries also gets a commit check, so a lost reply of the commit writes each job one time.
 
@@ -28,5 +28,6 @@ The object deletes are the first jobs. The save that deletes an attachment queue
 - A handler failure throws. BackWave records the exception on the process span, counts it in `backwave.jobs.failed`, runs the job again after the delay of its worker group, and dead-letters it after the last attempt. The handler does not log the failure itself.
 - A stored payload that does not decode, or that a constructor check refuses, goes to the quarantine, and no handler runs. A delete job with a key of another tenant is such a payload.
 - A job keeps the trace of the save that queued it. BackWave stores the `traceparent`, and the process span of each attempt links to the send span of the save. A job needs no `TraceContext`.
-- The migration `DropObjectDeleteRequests` refuses to drop `object_delete_requests` when it has rows. Run the previous version until it drains the table, and handle its dead rows. A silent drop would leave objects in storage that nothing deletes.
+- The first start of a Server with BackWave moves the rows of the old queue `object_delete_requests` onto BackWave, before the migration `DropObjectDeleteRequests` drops the queue. A prefix row becomes `DeleteTenantObjects`, and each other row becomes `DeleteObject`. A dead row becomes a job too. The delete of the rows and the write of their jobs commit together, in the migration lock. A row that fails the check of its job gets a Warning log and no job, so it does not stop the start. A later template release removes this move, `ObjectDeleteRequestsDrain`.
+- `DropObjectDeleteRequests` still refuses to drop the queue when it has rows. A silent drop would leave objects in storage that nothing deletes. A Server of the previous version can add a row after the move, for example in a rolling deploy. The migration then stops that start, and the next start moves the row.
 - A dead object delete is a dead job in BackWave. A person runs it again with a requeue, not with SQL on a table.

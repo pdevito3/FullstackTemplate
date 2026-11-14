@@ -91,6 +91,13 @@ Run the same image as two groups of processes, to scale the requests and the job
 
 Each process that runs jobs runs a group for each queue. The keys of Data Protection are in the `data_protection` schema of `appdb`, so each Api process reads the dashboard tokens that another process wrote.
 
+In a rolling deploy, processes of the old version and of the new version run at the same time on the same queues. A process of the old version has no handler for a job type that the deploy adds. If it leases a job of that type, the job goes to the quarantine at once, with no retry.
+
+- In a split deploy, deploy the Worker processes first. When all of them run the new version, deploy the Api processes. Then only processes of the new version run the jobs of the new type.
+- With the role `All`, each process queues and runs jobs. A job of the new type can go to the quarantine until the deploy ends.
+- After the deploy, find each quarantined job of the new type in the dashboard, and requeue it (see [Failures, retries, and dead jobs](#failures-retries-and-dead-jobs)).
+- To remove a job type, first deploy a version that does not queue it. Remove the handler in a later deploy, when the queue has no job of that type.
+
 ### Split the local stack
 
 The AppHost runs one Server with the role `All`. To run the split of a deploy on your machine, set `SplitServer=true`:
@@ -126,6 +133,7 @@ Only a process that serves requests serves the dashboard. The metrics panel of t
 - So a handler tags only the IDs of its entities, such as `app.user_id`, and tags each query with `TagWithOperationCallSite`. It writes one `Information` log with the result. It does not call `Telemetry.TraceRoot` or use `TraceContext`. See rules 9 and 10 of [feature-telemetry.md](feature-telemetry.md#rules).
 - The build does not check a job handler for the ID tag and the log (FSTTEL002 checks MediatR handlers only), so add them yourself.
 - BackWave counts the failed attempts in `backwave.jobs.failed` and the dead jobs in `backwave.jobs.dead_lettered`. `backwave.queue.depth` gives the jobs of each queue and state. It writes the logs `Retry scheduled after a failed attempt` and `Job dead-lettered after exhausting its retry ceiling.`.
+- BackWave counts each enqueue in `messaging.client.sent.messages` and in the enqueued count of the metrics panel of the dashboard. It writes the Debug log `Job {job_id} ({wire_name}) enqueued to queue {queue}.` (event 1001). These count a job when the save writes it, before the commit. A save that rolls back, or that runs again after a lost connection, still counted its jobs, so the count is an upper bound of the committed jobs. To count the committed jobs, use `backwave.queue.depth`.
 
 ## Test a job
 

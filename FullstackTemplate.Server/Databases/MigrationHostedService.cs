@@ -54,10 +54,7 @@ public sealed class MigrationHostedService(
             // The lock connects to the database, so the database must exist before the lock.
             var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
             if (!await databaseCreator.ExistsAsync(cancellationToken))
-            {
-                await databaseCreator.CreateAsync(cancellationToken);
-                _logger.Here().Information("Created the database for {DbContext}", nameof(AppDbContext));
-            }
+                await CreateDatabaseAsync(databaseCreator, cancellationToken);
 
             var distributedLock = new PostgresDistributedLock(
                 new PostgresAdvisoryLockKey($"{DatabaseConsts.DatabaseName}_MigrationLock", allowHashing: true),
@@ -90,6 +87,24 @@ public sealed class MigrationHostedService(
             Telemetry.RecordError(trace.Activity, ex);
             _logger.Here().Error(ex, "An error occurred while applying the database migrations.");
             throw;
+        }
+    }
+
+    private async Task CreateDatabaseAsync(IRelationalDatabaseCreator databaseCreator, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await databaseCreator.CreateAsync(cancellationToken);
+            _logger.Here().Information("Created the database for {DbContext}", nameof(AppDbContext));
+        }
+        catch (PostgresException e) when (e.SqlState is PostgresErrorCodes.DuplicateDatabase
+                                              or PostgresErrorCodes.UniqueViolation)
+        {
+            // A Server process that starts at the same time can create the database first, for example the worker of
+            // a split deploy. Postgres then refuses the second create: with 42P04 when the first create committed
+            // before the name check, or with 23505 on the pg_database index when it commits during the second create.
+            if (!await databaseCreator.ExistsAsync(cancellationToken))
+                throw;
         }
     }
 

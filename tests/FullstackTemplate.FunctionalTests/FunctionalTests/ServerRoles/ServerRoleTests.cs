@@ -106,6 +106,25 @@ public class ServerRoleTests
     }
 
     [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task an_api_server_and_a_worker_that_start_at_the_same_time_on_a_new_database_both_start(bool databaseExists)
+    {
+        // Arrange
+        await using var database = new PostgresTestDatabase();
+        await database.StartAsync(createDatabase: databaseExists);
+
+        // Act
+        var servers = await StartAtTheSameTimeAsync(database.ConnectionString, ServerRole.Api, ServerRole.Worker);
+        await using var api = servers[0];
+        await using var worker = servers[1];
+
+        // Assert
+        api.Output.ShouldContain(line => LogsRole(line, ServerRole.Api));
+        worker.Output.ShouldContain(line => LogsRole(line, ServerRole.Worker));
+    }
+
+    [Test]
     public async Task each_job_handler_resolves_without_the_entrypoints_as_in_a_worker()
     {
         // Arrange
@@ -129,6 +148,22 @@ public class ServerRoleTests
     private static bool LogsRole(string line, ServerRole role) => line.Contains($$"""
         "ServerRole":"{{role}}"
         """, StringComparison.Ordinal);
+
+    /// <summary>Starts a process for each role at the same time, and waits until each one is healthy.</summary>
+    private static async Task<ServerProcess[]> StartAtTheSameTimeAsync(string connectionString, params ServerRole[] roles)
+    {
+        var starts = roles.Select(role => ServerProcess.StartAsync(role, connectionString)).ToList();
+        try
+        {
+            return await Task.WhenAll(starts);
+        }
+        catch
+        {
+            foreach (var start in starts.Where(start => start.IsCompletedSuccessfully))
+                await start.Result.DisposeAsync();
+            throw;
+        }
+    }
 
     private static async Task<PostgresTestDatabase> NewDatabaseAsync()
     {

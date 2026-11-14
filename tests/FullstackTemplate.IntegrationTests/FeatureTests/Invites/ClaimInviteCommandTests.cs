@@ -190,6 +190,37 @@ public class ClaimInviteCommandTests : TestBase
         users.ShouldHaveSingleItem().Identifier.ShouldBe(rivalSubject);
     }
 
+    [Test, Property("Rule", "INV-5")]
+    public async Task a_claim_that_a_revoke_beat_after_the_load_fails_with_gone()
+    {
+        // Arrange
+        var pause = PauseAtQuery.After("invites.claim.load");
+        await using var services = pause.BuildServices();
+        var token = InviteToken.New().Value;
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant).AddInvite(out var invite, i => i.Token = token)
+            .BuildAsync();
+        var underTest = new TestingServiceScope(services);
+        underTest.SignInAsNewUser();
+        var rival = new TestingServiceScope();
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
+
+        // Act
+        var claim = underTest.SendAsync(ClaimOf(token));
+        await pause.ReachedAsync();
+        await rival.SendAsync(new RevokeInvite.Command(invite.Id));
+        pause.Release();
+
+        // Assert
+        (await Should.ThrowAsync<GoneException>(claim)).Message.ShouldBe(Invite.UsedOrRevokedMessage);
+        var stored = await InviteAsync(invite.Id);
+        stored.Status.ShouldBe(InviteStatus.Revoked());
+        stored.ClaimedByUserId.ShouldBeNull();
+        (await LiveUsersAsync(tenant.Id)).ShouldHaveSingleItem().Id.ShouldBe(admin.Id);
+    }
+
     [Test, Property("Rule", "INV-6")]
     public async Task two_claims_of_one_sub_at_the_same_time_add_one_user_and_the_second_gets_a_conflict()
     {

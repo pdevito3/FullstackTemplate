@@ -177,9 +177,7 @@ The BackWave job store opens its own connections, which have no command filter. 
 `Telemetry.TraceRoot` starts a span that is the root of a new trace. The span links back to the activity that was current before it. Use it for work that has no request, or for work that is much larger than the request that started it.
 
 ```csharp
-using var trace = Telemetry.TraceRoot(
-    [("app.db_context", typeof(TDbContext).Name)],
-    "database.migrate");
+using var trace = Telemetry.TraceRoot([("db.namespace", database)], "database.migrate");
 ```
 
 `MigrationHostedService` uses this helper, so a startup migration is one `database.migrate` trace. The migration runs in `StartingAsync`, before the hosted service of OpenTelemetry starts. So `TelemetryProvidersStart` builds the tracer in its own `StartingAsync` first. The scope puts the previous activity back when you dispose it. The span gets the same `code.*` tags as a tagged query.

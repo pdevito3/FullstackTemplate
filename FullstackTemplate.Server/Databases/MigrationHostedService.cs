@@ -29,32 +29,30 @@ public sealed class MigrationHostedService(
 
     public async Task StartingAsync(CancellationToken cancellationToken)
     {
+        var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            _logger.Here().Warning(
+                "No connection string found for {DatabaseName}. Skipping migrations",
+                DatabaseConsts.DatabaseName);
+            return;
+        }
+
+        var database = new NpgsqlConnectionStringBuilder(connectionString).Database;
         // Startup has no request to hang this work on. Without a root, each migration query exports as
         // its own rootless trace. With one, the whole run is a single trace named after what it does.
-        using var trace = Telemetry.TraceRoot(
-            [("app.db_context", nameof(AppDbContext))],
-            "database.migrate");
+        using var trace = Telemetry.TraceRoot([("db.namespace", database)], "database.migrate");
 
         try
         {
-            _logger.Here().Information("Applying migrations for {DbContext}", nameof(AppDbContext));
-
-            var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                _logger.Here().Warning(
-                    "No connection string found for {DatabaseName}. Skipping migrations",
-                    DatabaseConsts.DatabaseName);
-                return;
-            }
+            _logger.Here().Information("Applying the migrations of {DatabaseName}", database);
 
             await using var scope = scopeFactory.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             // The lock connects to the database, so the database must exist before the lock.
             var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
             if (!await databaseCreator.ExistsAsync(cancellationToken))
-                await CreateDatabaseAsync(databaseCreator, cancellationToken);
+                await CreateDatabaseAsync(databaseCreator, database, cancellationToken);
 
             var distributedLock = new PostgresDistributedLock(
                 new PostgresAdvisoryLockKey($"{DatabaseConsts.DatabaseName}_MigrationLock", allowHashing: true),
@@ -72,7 +70,7 @@ public sealed class MigrationHostedService(
                 await BackWaveSchema.MigrateAsync(connectionString, cancellationToken);
             }
 
-            _logger.Here().Information("Migrations complete for {DbContext}", nameof(AppDbContext));
+            _logger.Here().Information("Migrations complete for {DatabaseName}", database);
         }
         catch (Exception ex) when (ex is SocketException or NpgsqlException)
         {
@@ -90,12 +88,15 @@ public sealed class MigrationHostedService(
         }
     }
 
-    private async Task CreateDatabaseAsync(IRelationalDatabaseCreator databaseCreator, CancellationToken cancellationToken)
+    private async Task CreateDatabaseAsync(
+        IRelationalDatabaseCreator databaseCreator,
+        string? database,
+        CancellationToken cancellationToken)
     {
         try
         {
             await databaseCreator.CreateAsync(cancellationToken);
-            _logger.Here().Information("Created the database for {DbContext}", nameof(AppDbContext));
+            _logger.Here().Information("Created the database {DatabaseName}", database);
         }
         catch (PostgresException e) when (e.SqlState is PostgresErrorCodes.DuplicateDatabase
                                               or PostgresErrorCodes.UniqueViolation)

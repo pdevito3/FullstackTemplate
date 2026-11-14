@@ -23,8 +23,9 @@ public static class JobsDashboardProxy
     /// guards each post.
     /// <para>
     /// The request transforms: remove the BFF session cookie and keep the other cookies, remove <c>Authorization</c>,
-    /// <c>DPoP</c>, and <see cref="JobsDashboardLogin.LoadedAgainParameter"/>, and attach the user token. The response transform removes a <c>Set-Cookie</c> of the server for
-    /// the BFF session cookie and keeps the others, such as the antiforgery cookie of the dashboard.
+    /// <c>DPoP</c>, and <see cref="JobsDashboardLogin.LoadedAgainParameter"/>, and attach the user token. The response
+    /// transform removes a <c>Set-Cookie</c> of the server for the BFF session cookie and keeps the others, such as the
+    /// antiforgery cookie of the dashboard.
     /// </para>
     /// </summary>
     public static IEndpointConventionBuilder MapJobsDashboardProxy(this IEndpointRouteBuilder endpoints, Uri serverBaseUrl) =>
@@ -36,7 +37,7 @@ public static class JobsDashboardProxy
                 transforms.AddQueryRemoveKey(JobsDashboardLogin.LoadedAgainParameter);
                 // After the removal of Authorization, because it sets the header
                 transforms.AddRequestTransform(ApiProxy.AttachUserAccessTokenAsync);
-                transforms.AddResponseTransform(RemoveSessionSetCookies);
+                transforms.AddResponseTransform(RewriteServerSetCookies);
             })
             .RequireAuthorization()
             .WithMetadata(new JobsDashboardLogin.Marker());
@@ -68,9 +69,10 @@ public static class JobsDashboardProxy
     /// <summary>
     /// Removes each <c>Set-Cookie</c> of the server that names the BFF session cookie. YARP appends the server values to
     /// the values that the BFF wrote in this request, such as a session cookie renewed by a token refresh, so only the
-    /// last equal value is removed.
+    /// last equal value is removed. On an https origin, each other cookie of the server gets <c>Secure</c>. The server
+    /// can get the request over http, and then it does not mark its antiforgery cookie <c>Secure</c>.
     /// </summary>
-    private static ValueTask RemoveSessionSetCookies(ResponseTransformContext context)
+    private static ValueTask RewriteServerSetCookies(ResponseTransformContext context)
     {
         if (context.ProxyResponse is null || !context.ProxyResponse.Headers.TryGetValues(HeaderNames.SetCookie, out var serverValues))
             return ValueTask.CompletedTask;
@@ -79,12 +81,19 @@ public static class JobsDashboardProxy
         var values = headers.SetCookie.ToList();
         foreach (var serverValue in serverValues)
         {
-            if (!SetCookieHeaderValue.TryParse(serverValue, out var cookie) || !IsSessionCookie(cookie.Name.ToString()))
+            var index = values.LastIndexOf(serverValue);
+            if (index < 0 || !SetCookieHeaderValue.TryParse(serverValue, out var cookie))
                 continue;
 
-            var index = values.LastIndexOf(serverValue);
-            if (index >= 0)
+            if (IsSessionCookie(cookie.Name.ToString()))
+            {
                 values.RemoveAt(index);
+            }
+            else if (context.HttpContext.Request.IsHttps && !cookie.Secure)
+            {
+                cookie.Secure = true;
+                values[index] = cookie.ToString();
+            }
         }
 
         headers.SetCookie = values.Count == 0 ? StringValues.Empty : new StringValues(values.ToArray());

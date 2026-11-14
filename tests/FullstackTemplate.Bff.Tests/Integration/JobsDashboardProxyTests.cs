@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using FullstackTemplate.Bff.Management;
 using FullstackTemplate.Bff.Proxy;
 using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.Net.Http.Headers;
 using Shouldly;
 
 public class JobsDashboardProxyTests
@@ -183,7 +184,7 @@ public class JobsDashboardProxyTests
     }
 
     [Test]
-    public async Task a_set_cookie_of_the_server_for_the_session_cookie_is_removed_and_the_others_reach_the_browser()
+    public async Task a_set_cookie_of_the_server_for_the_session_cookie_is_removed_and_the_others_reach_the_browser_with_secure()
     {
         // Arrange
         using var browser = BffApp.Instance.CreateBrowser();
@@ -204,7 +205,13 @@ public class JobsDashboardProxyTests
         BffApp.Instance.IdentityProvider.RefreshCount("user-dashboard-cookie").ShouldBe(1);
         var cookies = response.Headers.GetValues("Set-Cookie").ToList();
         cookies.ShouldNotContain(c => c.StartsWith("__Host-bff", StringComparison.Ordinal) && c.Contains("from-the-server", StringComparison.Ordinal));
-        cookies.ShouldContain(serverCookies[2]);
+        // The server got the request over http, so it did not mark the cookie Secure. The origin of the BFF is https.
+        var antiforgery = SetCookieHeaderValue.ParseList(cookies).Where(c => c.Name == "backwave-antiforgery").ShouldHaveSingleItem();
+        antiforgery.Value.ToString().ShouldBe("from-the-server");
+        antiforgery.Path.ToString().ShouldBe(JobsDashboardProxy.Prefix);
+        antiforgery.SameSite.ShouldBe(SameSiteMode.Strict);
+        antiforgery.HttpOnly.ShouldBeTrue();
+        antiforgery.Secure.ShouldBeTrue();
         BffApp.Instance.SessionKeyIn(response).ShouldNotBeNull();
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }

@@ -52,6 +52,8 @@ The BFF builds `redirect_uri` and `post_logout_redirect_uri` from `Bff:PublicOri
 | `__Host-bff` | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, no `Domain` | The key of the BFF session row, encrypted with Data Protection |
 | The correlation and nonce cookies | `SameSite=Lax` | The login state. The browser sends them on the redirect back from the provider. |
 
+The browser does not send `__Host-bff` on a cross-site navigation, such as the redirect back from the provider or a link in an email. The HTML of the SPA needs no session, and the SPA reads the session with a same-site call. The jobs dashboard at `/backwave` needs the session for its HTML. So the BFF answers a cross-site navigation of the dashboard that has no session with a page that loads the same URL again from the app. That load sends the cookie. Its URL has the parameter `bff_loaded_again`, so a load again with no session gets the login and not a second page. See [the jobs dashboard](backend/background-jobs.md#the-jobs-dashboard).
+
 ### Host trust
 
 The BFF reads `X-Forwarded-For` and `X-Forwarded-Proto`. It does not read `X-Forwarded-Host`. The host filter accepts the host of `Bff:PublicOrigin` and the hosts in `Bff:AdditionalAllowedHosts`, and it gives a 400 for other hosts. In the local stack, the AppHost adds the container host of the BFF, `host.docker.internal`, and `localhost`.

@@ -18,11 +18,12 @@ public static class JobsDashboardProxy
     /// <summary>
     /// Maps the forwarder for the pages, the form posts, and the live stream of the dashboard. It keeps the path, so
     /// the links that the dashboard builds from its path base work. The server decides who is an operator, so the BFF
-    /// checks only that a user signed in, and a browser with no session gets the login. It is not an API endpoint, so
-    /// a navigation needs no <c>X-CSRF</c> header. The antiforgery token of the server guards each post.
+    /// checks only that a user signed in. <see cref="JobsDashboardLogin"/> gives the result of a request with no session.
+    /// It is not an API endpoint, so a navigation needs no <c>X-CSRF</c> header. The antiforgery token of the server
+    /// guards each post.
     /// <para>
-    /// The request transforms: remove the BFF session cookie and keep the other cookies, remove <c>Authorization</c>
-    /// and <c>DPoP</c>, and attach the user token. The response transform removes a <c>Set-Cookie</c> of the server for
+    /// The request transforms: remove the BFF session cookie and keep the other cookies, remove <c>Authorization</c>,
+    /// <c>DPoP</c>, and <see cref="JobsDashboardLogin.LoadedAgainParameter"/>, and attach the user token. The response transform removes a <c>Set-Cookie</c> of the server for
     /// the BFF session cookie and keeps the others, such as the antiforgery cookie of the dashboard.
     /// </para>
     /// </summary>
@@ -32,11 +33,13 @@ public static class JobsDashboardProxy
                 transforms.AddRequestTransform(RemoveSessionCookies);
                 transforms.AddRequestHeaderRemove(HeaderNames.Authorization);
                 transforms.AddRequestHeaderRemove(DPoPHeaderName);
+                transforms.AddQueryRemoveKey(JobsDashboardLogin.LoadedAgainParameter);
                 // After the removal of Authorization, because it sets the header
                 transforms.AddRequestTransform(ApiProxy.AttachUserAccessTokenAsync);
                 transforms.AddResponseTransform(RemoveSessionSetCookies);
             })
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .WithMetadata(new JobsDashboardLogin.Marker());
 
     /// <summary>
     /// True for the BFF session cookie and its chunks. The cookie handler splits a large cookie into <c>__Host-bffC1</c>,

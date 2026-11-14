@@ -3,10 +3,13 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 using System.Net;
 using FullstackTemplate.Bff.Logout;
 using FullstackTemplate.Bff.Tests.Fakes;
+using Microsoft.Extensions.Time.Testing;
 using Shouldly;
 
 public class LogoutEndpointTests
 {
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
+
     [Test]
     [Arguments("")]
     [Arguments("?sid=other")]
@@ -71,6 +74,37 @@ public class LogoutEndpointTests
         (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
         response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
         (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Test]
+    public async Task a_revocation_that_does_not_answer_within_the_limit_does_not_stop_the_logout()
+    {
+        // Arrange
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        await using var provider = await FakeIdentityProvider.StartAsync();
+        await using var app = RefreshLockTests.StartWithClock(clock, provider);
+        var subject = $"user-logout-revoke-hung-{Guid.NewGuid():N}";
+        using var browser = app.CreateBrowser();
+        var key = app.SessionKeyIn(await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}"))!;
+        var gate = provider.HoldRevocations();
+        try
+        {
+            // Act
+            var logout = browser.GetAsync("/bff/logout");
+            await gate.Arrived.Task.WaitAsync(Timeout);
+            clock.Advance(RefreshLockTests.ClockedTokenRequestTimeout);
+            var response = await logout.WaitAsync(Timeout);
+
+            // Assert
+            response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            response.Headers.Location!.GetLeftPart(UriPartial.Path).ShouldBe($"{provider.Issuer}/endsession");
+            (await app.WithStoreAsync(store => store.GetAsync(key, CancellationToken.None))).ShouldBeNull();
+            response.Headers.GetValues("Set-Cookie").ShouldContain(c => c.StartsWith("__Host-bff=;", StringComparison.Ordinal));
+        }
+        finally
+        {
+            gate.Released.TrySetResult();
+        }
     }
 
     [Test]

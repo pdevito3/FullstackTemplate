@@ -76,7 +76,8 @@ public sealed class RefreshIdTokenValidation(
             Fingerprint.Of(idToken.ToString()), sessionKey is null ? null : Fingerprint.Of(sessionKey), failure);
 
         if (token.RefreshToken is { } refreshToken)
-            await RevokeAsync(refreshToken.ToString(), limit);
+            await new RefreshTokenRevocation(features, inner, refreshOptions, timeProvider)
+                .RevokeAsync(refreshToken.ToString(), CancellationToken.None);
 
         return TokenResult.Failure(InvalidIdTokenError, failure);
     }
@@ -97,30 +98,6 @@ public sealed class RefreshIdTokenValidation(
     public Task RevokeRefreshTokenAsync(UserRefreshToken userToken, UserTokenRequestParameters parameters,
         CancellationToken ct = default) =>
         inner.RevokeRefreshTokenAsync(userToken, parameters, ct);
-
-    /// <summary>
-    /// Revokes the refresh token of a rejected refresh response, with a limit of <paramref name="limit"/>. A
-    /// revocation that fails or does not end within the limit is logged and does not change the result of the
-    /// refresh.
-    /// </summary>
-    private async Task RevokeAsync(string refreshToken, TimeSpan limit)
-    {
-        using var timeout = new CancellationTokenSource(limit, timeProvider);
-        try
-        {
-            await new RefreshTokenRevocation(features, inner).RevokeAsync(refreshToken, timeout.Token);
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
-        {
-            Logger.Here().Warning("Could not revoke the refresh token {TokenFingerprint} within {Limit}",
-                Fingerprint.Of(refreshToken), limit);
-        }
-        catch (InvalidOperationException ex)
-        {
-            // Token management throws it when it cannot load the discovery document, also at the limit
-            Logger.Here().Warning(ex, "Could not revoke the refresh token {TokenFingerprint}", Fingerprint.Of(refreshToken));
-        }
-    }
 
     /// <summary>
     /// The checks of <paramref name="idToken"/> against the BFF session <paramref name="session"/>. Null when it

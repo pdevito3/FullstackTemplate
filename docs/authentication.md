@@ -85,7 +85,7 @@ When the access token expires, the BFF refreshes it before it sends the API call
 
 1. The frontend goes to the `bff:logout_url` of `/bff/user`, with a local `returnUrl`. The URL holds the `sid` of the BFF session, and the BFF rejects another `sid`. The BFF applies the `returnUrl` rules of the login.
 2. The BFF deletes the BFF session row.
-3. If the provider has a revocation endpoint, the BFF revokes the refresh token (RFC 7009). An error from the provider does not stop the logout.
+3. If the provider has a revocation endpoint, the BFF revokes the refresh token (RFC 7009). An error from the provider, or no answer within `Bff:Refresh:TokenRequestTimeout`, does not stop the logout.
 4. The BFF deletes the `__Host-bff` cookie.
 5. If the provider has an `end_session_endpoint`, the BFF sends the browser there with `id_token_hint` and `post_logout_redirect_uri`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`.
 6. If the provider has no `end_session_endpoint`, the BFF sends the browser to `returnUrl`.

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using BackWave.Monitor;
 using Shouldly;
 
 public sealed class MigrationHostedServiceTests : IAsyncDisposable
@@ -16,24 +17,26 @@ public sealed class MigrationHostedServiceTests : IAsyncDisposable
     public async ValueTask DisposeAsync() => await _database.DisposeAsync();
 
     [Test]
-    public async Task startup_migration_on_a_missing_database_creates_it_and_logs_no_error()
+    public async Task startup_migration_on_a_missing_database_creates_it_with_both_schemas_and_logs_no_error()
     {
         // Arrange
         await _database.StartAsync(createDatabase: false);
         var logs = new ErrorLogs();
         await using var services = TestFixture.BuildServiceProvider(
             s => s.AddLogging(logging => logging.AddProvider(logs)), _database.ConnectionString);
-        var migrator = new MigrationHostedService<AppDbContext>(
+        var migrator = new MigrationHostedService(
             services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<IConfiguration>());
 
         // Act
-        await migrator.StartAsync(CancellationToken.None);
+        await migrator.StartingAsync(CancellationToken.None);
 
         // Assert
         logs.Errors.ShouldBeEmpty();
         await using var scope = services.CreateAsyncScope();
         var pending = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.GetPendingMigrationsAsync();
         pending.ShouldBeEmpty();
+        var jobs = await services.GetRequiredService<BackWaveMonitor>().ListJobsAsync();
+        jobs.ShouldBeEmpty();
     }
 
     private sealed class ErrorLogs : ILoggerProvider

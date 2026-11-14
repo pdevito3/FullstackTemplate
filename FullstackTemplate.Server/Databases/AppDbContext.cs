@@ -1,6 +1,8 @@
 namespace FullstackTemplate.Server.Databases;
 
+using System.Data.Common;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Auditing;
 using Domain;
 using Domain.Agents;
@@ -23,6 +25,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Resources;
+using Resources.Jobs;
 
 public class AppDbContext(
     DbContextOptions<AppDbContext> options,
@@ -30,7 +33,8 @@ public class AppDbContext(
     ICurrentUserService currentUserService,
     ICallerIdentityResolver callerIdentityResolver,
     ITenantScopeProvider tenantScopeProvider,
-    DomainEventDispatcher domainEventDispatcher) : DbContext(options)
+    DomainEventDispatcher domainEventDispatcher,
+    IJobWriter jobWriter) : DbContext(options)
 {
     private const int MaxDomainEventRounds = 10;
 
@@ -55,6 +59,9 @@ public class AppDbContext(
     private SaveStage _saveStage = SaveStage.Idle;
     private string? _requestName;
     private readonly List<AuditAction> _recordedActions = [];
+    private readonly List<PendingJob> _queuedJobs = [];
+    private bool _jobsArmed;
+    private Guid? _firstWrittenJob;
 
     /// <summary>
     /// The tenants whose rows the current caller can see. The tenant query filter reads it for each query.
@@ -114,6 +121,55 @@ public class AppDbContext(
 
     internal bool HasUnsavedActions => _recordedActions.Count > 0;
 
+    /// <summary>
+    /// Queues <paramref name="job"/> to commit with the next save. BackWave runs it after the commit. If the save fails,
+    /// the job does not exist. Queue it in a handler or a domain event handler, then save, also when the handler changes
+    /// no data. <see cref="Resources.AuditRequestBehavior{TRequest,TResponse}"/> throws when a request queues a job and
+    /// does not save it.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The save is writing, an earlier save failed, or the caller cannot see the tenant of the job.
+    /// </exception>
+    /// <exception cref="ArgumentException">The tenant ID of the job is not a tenant ID.</exception>
+    public void QueueJob<TJob>(TJob job,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerMemberName] string callerMemberName = "",
+        [CallerLineNumber] int callerLineNumber = 0)
+        where TJob : class, ITenantJob
+    {
+        switch (_saveStage)
+        {
+            case SaveStage.Broken:
+                throw new InvalidOperationException(
+                    "An earlier save on this AppDbContext failed, so it cannot queue a job. Use a new DI scope.");
+            case SaveStage.Saving:
+                throw new InvalidOperationException(
+                    "Queue a job before the save writes: in a handler, or in a domain event handler.");
+        }
+
+        if (!EntityId.IsValid(job.TenantId, Tenant.IdPrefix))
+            throw new ArgumentException($"{typeof(TJob).Name} has the tenant ID '{job.TenantId}', which is not a tenant ID.",
+                nameof(job));
+        // In a domain event handler, the scope is the tenant of the event.
+        if (!CurrentTenantScope.Includes(job.TenantId))
+            throw new InvalidOperationException(
+                $"The caller cannot see tenant {job.TenantId}, so it cannot queue {typeof(TJob).Name} for that tenant.");
+
+        _queuedJobs.Add(PendingJob.Of(job, callerFilePath, callerMemberName, callerLineNumber));
+    }
+
+    internal bool HasUnsavedJobs => _queuedJobs.Count > 0;
+
+    /// <summary>
+    /// <see cref="JobCommitHook"/> calls it just before EF commits a transaction of this context. Only the transaction of
+    /// a save with queued jobs writes them.
+    /// </summary>
+    internal async Task WriteQueuedJobsAsync(DbTransaction transaction, CancellationToken cancellationToken)
+    {
+        if (_jobsArmed)
+            _firstWrittenJob = await jobWriter.WriteAsync(_queuedJobs, transaction, cancellationToken);
+    }
+
     /// <summary>True while <see cref="RootLock"/> runs its work, so a save looks for its commit after a lost reply.</summary>
     internal bool InLockedWork { get; set; }
 
@@ -140,7 +196,7 @@ public class AppDbContext(
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.AddInterceptors(WriteGuard.Instance);
+        optionsBuilder.AddInterceptors(WriteGuard.Instance, JobCommitHook.Instance);
     }
 
     /// <summary>
@@ -197,6 +253,11 @@ public class AppDbContext(
             _saveStage = SaveStage.Broken;
             throw;
         }
+        finally
+        {
+            // The save wrote the queued jobs, or it failed, and a failed save ends the context.
+            _queuedJobs.Clear();
+        }
     }
 
     /// <summary>
@@ -212,6 +273,7 @@ public class AppDbContext(
 
         ChangeTracker.Clear();
         _recordedActions.Clear();
+        _queuedJobs.Clear();
         _saveStage = SaveStage.Idle;
     }
 
@@ -222,21 +284,22 @@ public class AppDbContext(
 
         _saveStage = SaveStage.Saving;
         var auditEntries = PrepareWrite(await callerIdentityResolver.GetAsync(cancellationToken));
+        var transactionBehavior = Database.AutoTransactionBehavior;
         try
         {
-            if (auditEntries.Count == 0)
+            if (auditEntries.Count == 0 && _queuedJobs.Count == 0)
                 return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
 
             var written = ChangeTracker.Entries()
                 .Where(e => e.State is not (EntityState.Unchanged or EntityState.Detached))
                 .ToList();
-            var (occurredAt, recordId) = (auditEntries[0].OccurredAt, auditEntries[0].RecordId);
 
             // After a lost reply of the commit, the audit entries tell whether it committed. EF dropped the Version
             // that the failed try read back. Each row that one transaction writes has the same xmin, so the xmin of an
-            // entry gives it.
-            async Task<ExecutionResult<int>> FindCommitAsync(bool accept, CancellationToken ct)
+            // entry gives it. The queued jobs are in the same transaction, so this check covers them too.
+            async Task<ExecutionResult<int>> AuditEntriesCommittedAsync(bool accept, CancellationToken ct)
             {
+                var (occurredAt, recordId) = (auditEntries[0].OccurredAt, auditEntries[0].RecordId);
                 var version = await AuditEntries
                     .TagWithOperationCallSite("audit_entries.save_committed")
                     .IgnoreQueryFilters([QueryFilterNames.Tenant])
@@ -254,13 +317,35 @@ public class AppDbContext(
                 return new ExecutionResult<int>(true, written.Count);
             }
 
+            // A save with jobs and no audit entry looks for its first job. No audit entry gives the xmin of the commit, so
+            // a BaseEntity that the save wrote with no recorded change reads its Version again.
+            async Task<ExecutionResult<int>> JobsCommittedAsync(bool accept, CancellationToken ct)
+            {
+                if (_firstWrittenJob is not { } jobId || !await jobWriter.ExistsAsync(jobId, ct))
+                    return new ExecutionResult<int>(false, 0);
+
+                Telemetry.AddEvent([], "database.save.lost_reply_committed");
+                foreach (var entry in written.Where(e => e.Entity is BaseEntity))
+                {
+                    if (await entry.GetDatabaseValuesAsync(ct) is { } stored)
+                        entry.Property(nameof(BaseEntity.Version)).CurrentValue = stored[nameof(BaseEntity.Version)];
+                }
+                if (accept)
+                    ChangeTracker.AcceptAllChanges();
+                return new ExecutionResult<int>(true, written.Count);
+            }
+
+            Func<bool, CancellationToken, Task<int>> write = written.Count > 0 ? base.SaveChangesAsync : CommitJobsOnlyAsync;
+            Func<bool, CancellationToken, Task<ExecutionResult<int>>> findCommit =
+                auditEntries.Count > 0 ? AuditEntriesCommittedAsync : JobsCommittedAsync;
+
             // EF runs a nested strategy one time and skips its check, so in the work of a RootLock the save looks for
             // the commit itself. Else the lock runs the whole work again, and it finds the saved rows.
             async Task<int> SaveInLockAsync(bool accept, CancellationToken ct)
             {
                 try
                 {
-                    return await base.SaveChangesAsync(accept, ct);
+                    return await write(accept, ct);
                 }
                 // The same test as the Npgsql retrying strategy, whose detector is internal.
                 catch (Exception failure) when (ExecutionStrategy.CallOnWrappedException(
@@ -269,7 +354,7 @@ public class AppDbContext(
                     ExecutionResult<int>? commit = null;
                     try
                     {
-                        commit = await FindCommitAsync(accept, ct);
+                        commit = await findCommit(accept, ct);
                     }
                     catch (Exception)
                     {
@@ -282,11 +367,19 @@ public class AppDbContext(
                 }
             }
 
+            if (_queuedJobs.Count > 0)
+            {
+                // EF opens no transaction for a save of one statement, and with no transaction JobCommitHook does not run.
+                Database.AutoTransactionBehavior = AutoTransactionBehavior.Always;
+                _jobsArmed = true;
+            }
+
             // The audit entries are in the tracker before the execution strategy runs, so a retry sends the same rows.
+            // A retry writes the queued jobs again with new IDs. The jobs of a try that rolled back do not exist.
             return await Database.CreateExecutionStrategy().ExecuteAsync(
                 acceptAllChangesOnSuccess,
-                (_, accept, ct) => InLockedWork ? SaveInLockAsync(accept, ct) : base.SaveChangesAsync(accept, ct),
-                (_, accept, ct) => FindCommitAsync(accept, ct),
+                (_, accept, ct) => InLockedWork ? SaveInLockAsync(accept, ct) : write(accept, ct),
+                (_, accept, ct) => findCommit(accept, ct),
                 cancellationToken) - auditEntries.Count;
         }
         catch (DbUpdateException exception)
@@ -296,6 +389,20 @@ public class AppDbContext(
                 throw conflict;
             throw;
         }
+        finally
+        {
+            _jobsArmed = false;
+            _firstWrittenJob = null;
+            Database.AutoTransactionBehavior = transactionBehavior;
+        }
+    }
+
+    // A save of jobs with no row. It commits an empty transaction, so that JobCommitHook writes the jobs.
+    private async Task<int> CommitJobsOnlyAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+    {
+        await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return 0;
     }
 
     private async Task<int> BulkInsertInStages<TRoot>(IEnumerable<TRoot> roots, CancellationToken cancellationToken)
@@ -373,6 +480,9 @@ public class AppDbContext(
         if (ChangeTracker.HasChanges())
             throw new InvalidOperationException(
                 "BulkInsertAsync writes only the entities that it inserts, but this AppDbContext has pending changes. Save them first.");
+        if (_queuedJobs.Count > 0)
+            throw new InvalidOperationException(
+                "BulkInsertAsync does not write queued jobs. Save them with SaveChangesAsync first.");
     }
 
     // A save takes the queued events and runs their handlers. A bulk insert runs no handler, so it can take only the

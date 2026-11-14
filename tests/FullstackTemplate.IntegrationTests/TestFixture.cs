@@ -1,6 +1,7 @@
 namespace FullstackTemplate.IntegrationTests;
 
 using AutoBogus;
+using FullstackTemplate.IntegrationTests.Jobs;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
@@ -9,7 +10,7 @@ using FullstackTemplate.SharedTestHelpers;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using NSubstitute;
@@ -54,10 +55,13 @@ public sealed class TestFixture : IAsyncDisposable
         var provider = AddServices().BuildServiceProvider();
         BaseScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 
-        // Run migrations and seed in a system scope. With no opt-in, a scope with no HTTP request sees no tenant.
+        // The startup migration of the Server: the EF Core schema, then the BackWave schema.
+        await new MigrationHostedService(BaseScopeFactory, provider.GetRequiredService<IConfiguration>())
+            .StartingAsync(CancellationToken.None);
+
+        // Seed in a system scope. With no opt-in, a scope with no HTTP request sees no tenant.
         await using var scope = BaseScopeFactory.CreateSystemScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await dbContext.Database.MigrateAsync();
 
         // Create the seed once for all tests. The seed user is the current user,
         // so ITenantIdProvider resolves the seed tenant.
@@ -112,6 +116,7 @@ public sealed class TestFixture : IAsyncDisposable
         builder.ConfigureServices();
 
         builder.Services.ReplaceServiceWithScopedMock<ICurrentUserService>();
+        builder.Services.AddSingleton(TestJob.Registration);
 
         return builder.Services;
     }

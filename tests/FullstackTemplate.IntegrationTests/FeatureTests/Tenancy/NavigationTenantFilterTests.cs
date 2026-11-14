@@ -4,6 +4,7 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using FullstackTemplate.SharedTestHelpers.Utilities;
@@ -80,7 +81,7 @@ public sealed class NavigationTenantFilterTests : IAsyncDisposable
     private sealed class NoteContext(DbContextOptions<AppDbContext> options, ITenantScopeProvider scopeProvider)
         : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
             Substitute.For<ICallerIdentityResolver>(), scopeProvider,
-            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>())
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

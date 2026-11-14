@@ -92,3 +92,6 @@ M:System.Activator.CreateInstance(System.Type,System.Boolean);Check docs/backend
 M:System.Activator.CreateInstance``1;Check docs/backend/source-generators.md. A startup scan suppresses RS0030 with the reason.
 M:System.Type.GetProperties;Check docs/backend/source-generators.md. A startup scan or a per-type cache suppresses RS0030 with the reason.
 M:System.Type.GetProperties(System.Reflection.BindingFlags);Check docs/backend/source-generators.md. A startup scan or a per-type cache suppresses RS0030 with the reason.
+// A job that the client writes outside the save can commit without its rows, or the rows without the job.
+// Resources/Jobs/JobWriter.cs writes the queued jobs of each save, and it is the only file that suppresses this ban.
+T:BackWave.BackWaveClient;Queue a job with dbContext.QueueJob, so that it commits with the save.

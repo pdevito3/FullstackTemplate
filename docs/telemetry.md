@@ -164,6 +164,8 @@ The Npgsql command filter exports a query span only when a recorded activity is 
 
 As a result, background work that does queries must start its own trace with `TraceRoot`.
 
+The BackWave job store opens its own connections, which have no command filter. Each poll of a job pump is a Client span with no parent, and each query of the store metrics is too. So the host samples with `ParentBasedSampler(new ParentlessClientSpanSampler())`. It drops a Client span with no parent, and it keeps each other span with no parent, such as a request, a job run, or a `TraceRoot`. A span with a parent follows its parent.
+
 ## TraceRoot
 
 `Telemetry.TraceRoot` starts a span that is the root of a new trace. The span links back to the activity that was current before it. Use it for work that has no request, or for work that is much larger than the request that started it.
@@ -174,7 +176,7 @@ using var trace = Telemetry.TraceRoot(
     "database.migrate");
 ```
 
-`MigrationHostedService` uses this helper, so a startup migration is one `database.migrate` trace. The scope puts the previous activity back when you dispose it. The span gets the same `code.*` tags as a tagged query.
+`MigrationHostedService` uses this helper, so a startup migration is one `database.migrate` trace. The migration runs in `StartingAsync`, before the hosted service of OpenTelemetry starts. So `TelemetryProvidersStart` builds the tracer in its own `StartingAsync` first. The scope puts the previous activity back when you dispose it. The span gets the same `code.*` tags as a tagged query.
 
 ## TraceContext
 

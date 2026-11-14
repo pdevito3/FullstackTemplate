@@ -15,7 +15,7 @@ public class ObjectDeleteWorkerStartTests : TestBase
         var started = TestingWebApplicationFactory.Instance.Services.GetServices<IHostedService>().ToList();
 
         // Assert
-        var migration = started.FindIndex(s => s is MigrationHostedService<AppDbContext>);
+        var migration = started.FindIndex(s => s is MigrationHostedService);
         var worker = started.FindIndex(s => s is ObjectDeleteWorker);
         migration.ShouldBeGreaterThanOrEqualTo(0);
         worker.ShouldBeGreaterThan(migration,

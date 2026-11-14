@@ -72,6 +72,7 @@ test('@INV-3 no cache has the token after a preview and a claim', async () => {
       ],
     },
     { method: 'GET', path: '/api/v1/users/by-identifier/ada', status: 404, body: { type: 'about:blank', title: 'Not found', status: 404 } },
+    { method: 'GET', path: '/api/v1/users/me', body: { identifier: 'ada', name: 'Ada Lovelace', canOpenJobDashboard: false } },
     {
       method: 'POST',
       path: '/api/v1/invites/preview',

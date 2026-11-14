@@ -721,7 +721,8 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
 
         BuildServer("The script changed no files. The Server does not build, so dotnet-ef cannot check its model. "
             + "Correct the errors above, then run the script again.");
-        RunEf(NoChangeFailure, "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
+        RunEf(NoChangeFailure, "migrations", "has-pending-model-changes", "--context", "AppDbContext", "--project", Server,
+            "--startup-project", Server, "--no-build");
     }
 
     public static string UndoAdvice(Spec spec) => $"""
@@ -738,7 +739,8 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
         RunEf($"The script wrote the files below, and the migration {spec.Names.Migration} was in the app already. The model of "
             + "the Server has changes that no migration has, from this run or from other work. Add a migration of the changes, "
             + "or undo the run with git restore and git clean." + written,
-            "migrations", "has-pending-model-changes", "--project", Server, "--startup-project", Server, "--no-build");
+            "migrations", "has-pending-model-changes", "--context", "AppDbContext", "--project", Server, "--startup-project",
+            Server, "--no-build");
     }
 
     private string Server => $"{app}.Server";
@@ -771,8 +773,8 @@ internal sealed partial class Repo(string root, string app, string protoPackage)
             return [];
 
         BuildServer(MigrationFailure);
-        RunEf(MigrationFailure, "migrations", "add", n.Migration, "--project", Server, "--startup-project", Server,
-            "--output-dir", "Databases/Migrations", "--no-build");
+        RunEf(MigrationFailure, "migrations", "add", n.Migration, "--context", "AppDbContext", "--project", Server,
+            "--startup-project", Server, "--output-dir", "Databases/Migrations", "--no-build");
 
         var migration = Directory.GetFiles(folder, $"*_{n.Migration}.cs").Single();
         var text = File.ReadAllText(migration);

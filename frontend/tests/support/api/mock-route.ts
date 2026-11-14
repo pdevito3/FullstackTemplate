@@ -15,7 +15,7 @@ export interface MockRoute {
 
 // The SPA sends these paths to the BFF. The Vite dev server serves the source files of the app under /src,
 // so a source file such as /src/api/generated/... does not match.
-const mockedPrefixes = ['/api/', '/bff/']
+const mockedPrefixes = ['/api/', '/bff/', '/backwave']
 
 export const isMockedPath = (pathname: string) => mockedPrefixes.some((prefix) => pathname.startsWith(prefix))
 

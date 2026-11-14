@@ -95,8 +95,10 @@ try
         ?? "https://localhost:24713";
 
     // The proxy strips the local path prefix when forwarding, so include /api in the remote URL
-    var apiBaseUrl = new Uri(new Uri(serverUrl.TrimEnd('/') + "/"), "api");
-    app.MapApiProxy(apiBaseUrl);
+    var serverBaseUrl = new Uri(serverUrl.TrimEnd('/') + "/");
+    app.MapApiProxy(new Uri(serverBaseUrl, "api"));
+    // This proxy keeps the path, so the remote URL is the server root
+    app.MapJobsDashboardProxy(serverBaseUrl);
 
     app.MapDefaultEndpoints();
 

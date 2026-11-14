@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases;
 
 using System.Net.Sockets;
+using DataProtection;
 using Medallion.Threading.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -11,11 +12,13 @@ using Resources;
 using Serilog;
 
 /// <summary>
-/// Migrates the schemas of appdb: the EF Core schema of <see cref="AppDbContext"/>, then the BackWave schema.
+/// Migrates the schemas of appdb: the EF Core schemas of <see cref="AppDbContext"/> and
+/// <see cref="DataProtectionKeysDbContext"/>, then the BackWave schema.
 /// </summary>
 /// <remarks>
 /// The host runs <see cref="StartingAsync"/> of each lifecycle service before <c>StartAsync</c> of any service. So the
-/// schemas exist before a job pump, the BackWave metrics service, or Kestrel starts.
+/// schemas exist before a job pump, the BackWave metrics service, the load of the Data Protection key ring, or Kestrel
+/// starts.
 /// </remarks>
 public sealed class MigrationHostedService(
     IServiceScopeFactory scopeFactory,
@@ -67,10 +70,8 @@ public sealed class MigrationHostedService(
                 Telemetry.AddEvent([], "migration.lock_acquired");
                 _logger.Here().Information("Starting database migration...");
 
-                // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the
-                // failed read as an error. Create the table first.
-                await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
-                await context.Database.MigrateAsync(cancellationToken);
+                await MigrateAsync(context, cancellationToken);
+                await MigrateAsync(scope.ServiceProvider.GetRequiredService<DataProtectionKeysDbContext>(), cancellationToken);
                 await BackWaveSchema.MigrateAsync(connectionString, cancellationToken);
             }
 
@@ -90,6 +91,14 @@ public sealed class MigrationHostedService(
             _logger.Here().Error(ex, "An error occurred while applying the database migrations.");
             throw;
         }
+    }
+
+    private static async Task MigrateAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the failed
+        // read as an error. Create the table first.
+        await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;

@@ -29,7 +29,7 @@ public static class SpaFallback
                 .Get(OpenIdConnectDefaults.AuthenticationScheme);
             var request = context.Request;
             if (context.GetEndpoint() is not null
-                || !IsPage(request.Method, request.Path, [ApiProxy.Prefix, BffPrefix, oidc.CallbackPath, oidc.SignedOutCallbackPath]))
+                || !IsPage(request.Method, request.Path, [ApiProxy.Prefix, JobsDashboardProxy.Prefix, BffPrefix, oidc.CallbackPath, oidc.SignedOutCallbackPath]))
             {
                 await next(context);
                 return;

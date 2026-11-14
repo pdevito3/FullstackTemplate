@@ -113,6 +113,10 @@ try
     if (AuthProviderDPoP.IsOn(builder))
         authProvider = authProvider.WithDPoP(selectedProvider, builder);
     server.WithServerAuth(authProvider);
+    // In a local run, the admin user of the seed can open the jobs dashboard at /backwave. A published server gets
+    // its operators from its own BackgroundJobs:OperatorSubjects setting.
+    if (builder.ExecutionContext.IsRunMode && authProvider.OperatorSubject is { } operatorSubject)
+        server.WithEnvironment("BackgroundJobs__OperatorSubjects__0", operatorSubject);
     bff.WithBffAuth(authProvider);
     authProvider.ConfigureBff?.Invoke(bff);
 

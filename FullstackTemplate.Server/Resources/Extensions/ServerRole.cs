@@ -36,7 +36,7 @@ public static class ServerRoles
         };
     }
 
-    /// <summary>True when the role maps the HTTP API, gRPC, and MCP.</summary>
+    /// <summary>True when the role maps the HTTP API, gRPC, MCP, and the jobs dashboard.</summary>
     public static bool ServesRequests(this ServerRole role) => role switch
     {
         ServerRole.All or ServerRole.Api => true,

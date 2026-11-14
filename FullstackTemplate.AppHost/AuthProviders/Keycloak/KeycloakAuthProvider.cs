@@ -57,6 +57,8 @@ public sealed class KeycloakAuthProvider : IAuthProvider
             RoleClaimType = "roles",
             AuthResource = keycloak,
             AuthorityPathSuffix = $"/realms/{realmName}",
+            // The ID of admin@example.com in seed/realm-export.json
+            OperatorSubject = "154c705b-f83d-4657-a9dd-af6ad1d36796",
             // Keycloak asks the user to confirm a logout with no id_token_hint, then ends its session
             EndSessionWithoutIdTokenHint = true
         };

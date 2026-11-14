@@ -8,6 +8,7 @@ import {
   composeRenderProps,
   Heading,
   type ButtonProps,
+  type LinkProps,
 } from "react-aria-components"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SidebarLeft01Icon } from "@hugeicons/core-free-icons"
@@ -21,7 +22,11 @@ import { Separator } from "@/components/ui/separator"
 import { Sheet } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createRouterLink } from "@/components/ui/create-router-link"
-import { RouterLinkPrimitive, type RouterLinkHostProps } from "@/components/ui/link"
+import {
+  DocumentLinkPrimitive,
+  RouterLinkPrimitive,
+  type RouterLinkHostProps,
+} from "@/components/ui/link"
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -515,6 +520,31 @@ const SidebarMenuLink = createRouterLink(function SidebarMenuLinkHost({
   )
 })
 
+/**
+ * A sidebar link to an address that has no route in the SPA, such as a page
+ * of the Server. The browser loads the page.
+ */
+function SidebarMenuDocumentLink({
+  variant = "default",
+  size = "default",
+  tooltip,
+  className,
+  ...props
+}: Omit<LinkProps, "className"> &
+  Omit<SidebarMenuButtonOptions, "isActive"> & { className?: string }) {
+  return (
+    <SidebarMenuButtonTooltip tooltip={tooltip}>
+      <DocumentLinkPrimitive
+        data-slot="sidebar-menu-button"
+        data-sidebar="menu-button"
+        data-size={size}
+        {...props}
+        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      />
+    </SidebarMenuButtonTooltip>
+  )
+}
+
 function SidebarMenuAction({
   className,
   showOnHover = false,
@@ -706,6 +736,7 @@ export {
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
+  SidebarMenuDocumentLink,
   SidebarMenuItem,
   SidebarMenuLink,
   SidebarMenuSkeleton,

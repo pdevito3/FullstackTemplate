@@ -2,6 +2,7 @@ namespace FullstackTemplate.IntegrationTests.Databases;
 
 using System.Collections.Concurrent;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Databases.DataProtection;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -17,7 +18,7 @@ public sealed class MigrationHostedServiceTests : IAsyncDisposable
     public async ValueTask DisposeAsync() => await _database.DisposeAsync();
 
     [Test]
-    public async Task startup_migration_on_a_missing_database_creates_it_with_both_schemas_and_logs_no_error()
+    public async Task startup_migration_on_a_missing_database_creates_it_with_each_schema_and_logs_no_error()
     {
         // Arrange
         await _database.StartAsync(createDatabase: false);
@@ -35,6 +36,8 @@ public sealed class MigrationHostedServiceTests : IAsyncDisposable
         await using var scope = services.CreateAsyncScope();
         var pending = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.GetPendingMigrationsAsync();
         pending.ShouldBeEmpty();
+        var pendingKeys = await scope.ServiceProvider.GetRequiredService<DataProtectionKeysDbContext>().Database.GetPendingMigrationsAsync();
+        pendingKeys.ShouldBeEmpty();
         var jobs = await services.GetRequiredService<BackWaveMonitor>().ListJobsAsync();
         jobs.ShouldBeEmpty();
     }

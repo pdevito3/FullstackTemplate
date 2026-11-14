@@ -1,6 +1,7 @@
 import {
   Home01Icon,
   InformationCircleIcon,
+  Queue01Icon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -14,6 +15,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuDocumentLink,
   SidebarMenuItem,
   SidebarMenuLink,
   SidebarRail,
@@ -21,6 +23,7 @@ import {
 import { useSidebar } from "@/components/ui/use-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useCurrentNavItem } from "@/components/current-nav-item"
+import { useCurrentUser } from "@/domain/users/apis/get-current-user"
 // example:start
 import { ExampleNav } from "@/examples/example-nav"
 import { exampleNavUrls } from "@/examples/example-nav-items"
@@ -62,6 +65,7 @@ const navUrls = [
 export function AppSidebar() {
   const current = useCurrentNavItem(navUrls)
   const { setOpenMobile } = useSidebar()
+  const { data: user } = useCurrentUser()
 
   // On mobile the sidebar is a sheet over the page. Close it when a link is
   // pressed, so the user sees the new page. On desktop the sheet is not used.
@@ -104,6 +108,15 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   )
                 })}
+
+                {user?.canOpenJobDashboard && (
+                  <SidebarMenuItem>
+                    <SidebarMenuDocumentLink href="/backwave" tooltip="Background jobs" onPress={closeMobile}>
+                      <HugeiconsIcon icon={Queue01Icon} />
+                      <span>Background jobs</span>
+                    </SidebarMenuDocumentLink>
+                  </SidebarMenuItem>
+                )}
 
                 {/* example:start */}
                 <ExampleNav current={current} onNavigate={closeMobile} />

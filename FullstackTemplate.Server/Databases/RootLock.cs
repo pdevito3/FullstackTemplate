@@ -59,7 +59,7 @@ public sealed class RootLock
     private async Task<T> RunAsync<T>(AppDbContext dbContext, string rootId, Mode mode,
         Func<CancellationToken, Task<T>> work, CancellationToken cancellationToken)
     {
-        if (dbContext.ChangeTracker.HasChanges() || dbContext.HasUnsavedActions)
+        if (dbContext.ChangeTracker.HasChanges() || dbContext.HasUnsavedActions || dbContext.HasUnsavedJobs)
             throw new InvalidOperationException(
                 "Take the lock before the first change. A run again after a transient failure starts with an empty tracker, so it would save without the changes.");
 

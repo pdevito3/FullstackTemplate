@@ -2,10 +2,12 @@ namespace FullstackTemplate.Server.Resources.Extensions;
 
 using System.Diagnostics;
 using Databases;
+using Databases.DataProtection;
 using Domain.Attachments;
-using Domain.ObjectDeleteRequests;
 using Domain.Tenants;
 using Domain.Users;
+using Email;
+using Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Storage;
@@ -14,10 +16,12 @@ using ZiggyCreatures.Caching.Fusion;
 public static class WebAppServiceConfiguration
 {
     /// <summary>
-    /// Adds the core services: the database, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
+    /// Adds the core services: the database, the Data Protection key ring, the background jobs, the email sender, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
     /// The integration tests call only this method. <c>AddEntrypoints</c> adds HTTP, gRPC, and MCP.
+    /// The core has no caller until <c>AddEntrypoints</c> replaces <see cref="NoPrincipalAccessor"/>. The worker groups
+    /// that run the jobs are added only when the <paramref name="role"/> runs jobs.
     /// </summary>
-    public static void ConfigureServices(this WebApplicationBuilder builder)
+    public static void ConfigureServices(this WebApplicationBuilder builder, ServerRole role)
     {
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddFusionCache()
@@ -31,17 +35,10 @@ public static class WebAppServiceConfiguration
         builder.Services.Configure<TenancyOptions>(builder.Configuration.GetSection(TenancyOptions.SectionName));
         builder.Services.AddSingleton(Options.Create(FirstPartyClientOptions.FromConfiguration(builder.Configuration)));
         builder.Services.AddApplicationServices();
-        builder.Services.AddScoped<SystemTenantAccess>();
+        builder.Services.AddSingleton<ICurrentPrincipalAccessor, NoPrincipalAccessor>();
+        builder.Services.AddScoped<ScopeGrant>();
         builder.AddObjectStorage();
         builder.Services.AddScoped<AttachmentStorage>();
-        builder.Services.AddOptions<ObjectDeleteOptions>()
-            .BindConfiguration(ObjectDeleteOptions.SectionName)
-            // A delay of zero would claim a failed request again in the same run, with no end
-            .Validate(o => o.Interval > TimeSpan.Zero && o.FirstRetryDelay > TimeSpan.Zero
-                    && o.MaxRetryDelay >= o.FirstRetryDelay && o.AttemptTimeout > TimeSpan.Zero && o.MaxAttempts > 0,
-                $"{ObjectDeleteOptions.SectionName} needs times over zero, a MaxRetryDelay not under FirstRetryDelay, and MaxAttempts over zero.")
-            .ValidateOnStart();
-        builder.Services.AddScoped<ObjectDeleteRunner>();
         builder.Services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
@@ -72,6 +69,9 @@ public static class WebAppServiceConfiguration
                 .AddInterceptors(serviceProvider.GetRequiredService<TenantLookupInterceptor>());
         });
         builder.EnrichNpgsqlDbContext<AppDbContext>();
+        builder.AddDataProtectionKeyRing();
+        builder.Services.AddBackgroundJobs(builder.Configuration, role);
+        builder.Services.AddSingleton<IEmailSender, LogEmailSender>();
 
         builder.Services.AddDomainEvents(typeof(Program).Assembly);
     }

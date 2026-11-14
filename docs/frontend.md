@@ -276,6 +276,8 @@ ESLint does not let you import `Link` from `react-aria-components`, `@animate-ui
 
 Other React Aria components take a plain `href`, for example `MenuItem` and `Tab`. The root route wraps the app in `HrefRouterProvider` from `@/components/ui/link`, so the router goes to the `href` with no page load. TypeScript does not check a plain `href`, so for a link to a route, prefer a typed wrapper made with `createRouterLink`. An `href` that has no route in the SPA, such as `/bff/login`, loads the page from the server.
 
+To link to a page of the Server, such as the jobs dashboard at `/backwave`, render `DocumentLinkPrimitive` from `@/components/ui/link`. In the sidebar, use `SidebarMenuDocumentLink`. The Vite dev server must send the path to the BFF (`bffPaths` in `vite.config.ts`), and the BFF must send it to the Server (`JobsDashboardProxy` in `FullstackTemplate.Bff/Proxy`).
+
 ## Theme
 
 `useTheme()` from `@/components/theme-context` returns `theme` and `setTheme`. The values are `'light'`, `'dark'`, and `'system'`. The theme persists in localStorage.

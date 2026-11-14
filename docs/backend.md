@@ -37,6 +37,7 @@ Keep each C# file at 1000 lines or less. This rule covers all C# files in the so
 - **Value objects** (`EmailAddress`, `UserRole`, and more) use SmartEnum when they have fixed options.
 - **Domain events** queue in the entity. `SaveChangesAsync` runs their handlers in the save transaction. See [domain-events.md](backend/domain-events.md).
 - **Audit log**: each save writes an audit entry for each data change and each recorded action, in the save transaction. See [audit-log.md](backend/audit-log.md).
+- **Background jobs**: a handler queues a job with `QueueJob`, and the job commits with the save. BackWave runs it after the commit, at least one time, as the tenant of the job. See [background-jobs.md](backend/background-jobs.md).
 - **Attachments**: an entity keeps each file as a `StoredFile` in object storage, and declares the types and the size that it takes in its `UploadRules`. See [attachments.md](backend/attachments.md).
 - **Prefixed string IDs**: each entity has a `public const string IdPrefix`, for example `usr`. `EntityId.New` makes IDs like `usr_0199f0c1a2b37c4d8e9f0a1b2c3d4e5f` (the prefix and a UUIDv7). The build gives an error when an entity has no prefix, an invalid prefix, or a prefix that another entity uses. It also gives an error when a constructor does not call `base(IdPrefix)` with the prefix of its own type, or when an entity derives from another entity. A UUIDv7 ID shows the creation time to the millisecond, so the creation time of a record is not secret.
 
@@ -51,7 +52,7 @@ For another change, do these steps in sequence. Each step has a doc in `docs/bac
 3. Create the DTOs and the Mapperly mapper ([dtos-and-mappings.md](backend/dtos-and-mappings.md)).
 4. Add the commands and queries ([features-and-cqrs.md](backend/features-and-cqrs.md)). Give each command a permission check. Also give a permission check to each query that reads data that needs a permission. If no permission fits, add one (see [Permissions](#permissions)).
 5. Add the endpoint, and the gRPC method and the MCP tool if the feature needs them ([endpoints.md](backend/endpoints.md)).
-6. Add the domain events and their handlers ([domain-events.md](backend/domain-events.md)).
+6. Add the domain events and their handlers ([domain-events.md](backend/domain-events.md)), and the jobs for the work after the commit ([background-jobs.md](backend/background-jobs.md)).
 7. Add the telemetry that production support needs: query tags, id tags on the feature span, logs, and metrics ([feature-telemetry.md](backend/feature-telemetry.md)).
 8. Regenerate the API contract with the `api-contract` skill (see [OpenAPI document](#openapi-document)).
 
@@ -231,11 +232,13 @@ Each command picks a version, a run again, or a lock for a race with another req
 ### Migrations
 
 ```bash
-dotnet ef migrations add MyMigration --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations
-dotnet ef database update --project FullstackTemplate.Server --startup-project FullstackTemplate.Server
+dotnet ef migrations add MyMigration --context AppDbContext --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations
+dotnet ef database update --context AppDbContext --project FullstackTemplate.Server --startup-project FullstackTemplate.Server
 ```
 
-The server applies migrations at startup, with a Postgres advisory lock.
+The Server has two contexts, so each `dotnet ef` command needs `--context`. `AppDbContext` has the domain. `DataProtectionKeysDbContext` has only the key ring of Data Protection in the schema `data_protection`, and its migrations are in `Databases/DataProtection/Migrations`.
+
+The server applies migrations at startup, with a Postgres advisory lock. Under the lock, the migrator of BackWave first updates the schema `backwave` of the job store. That schema has no EF context and no EF migrations. Then `ObjectDeleteRequestsDrain` moves the rows of the old object delete queue onto BackWave, and then the EF Core migrations run. Keep the lock. Without it, two Server processes that start at the same time apply the same EF Core migration, and one of them stops. `ServerRoleTests` starts two processes at the same time to prove it.
 
 `ModelSnapshotTests` fails when the committed model snapshot is not the snapshot that the next migration writes. This includes a model change with no DDL, such as a new navigation, which `dotnet ef migrations has-pending-model-changes` does not find. The test ignores the `using` lines and the `ProductVersion` annotation. To correct the failure, add a migration in the change that changed the model. For a change with no DDL, the `Up` and `Down` of the migration are empty. An update of EF Core or Npgsql that changes the generated code also fails the test. Correct it the same way.
 

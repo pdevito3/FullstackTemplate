@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Features;
 using FullstackTemplate.Server.Exceptions;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +37,8 @@ public sealed class ManageAllTenantsCapabilityTests : IDisposable
             .UseSnakeCaseNamingConvention()
             .Options;
         _dbContext = new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
-            Substitute.For<ICallerIdentityResolver>(), _tenantScopeProvider, new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            Substitute.For<ICallerIdentityResolver>(), _tenantScopeProvider, new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()),
+            Substitute.For<IJobWriter>());
     }
 
     public void Dispose() => _dbContext.Dispose();

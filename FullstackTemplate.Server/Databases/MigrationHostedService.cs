@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Server.Databases;
 
 using System.Net.Sockets;
+using DataProtection;
 using Medallion.Threading.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -8,50 +9,52 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Resources;
+using Resources.Jobs;
 using Serilog;
-using Serilog.Core;
 
-public class MigrationHostedService<TDbContext>(
+/// <summary>
+/// Migrates the schemas of appdb: the BackWave schema, then the EF Core schemas of <see cref="AppDbContext"/> and
+/// <see cref="DataProtectionKeysDbContext"/>. Between them, <see cref="ObjectDeleteRequestsDrain"/> moves the rows of the
+/// old object delete queue onto BackWave, before the EF Core migration that drops the queue.
+/// </summary>
+/// <remarks>
+/// The host runs <see cref="StartingAsync"/> of each lifecycle service before <c>StartAsync</c> of any service. So the
+/// schemas exist before a job pump, the BackWave metrics service, the load of the Data Protection key ring, or Kestrel
+/// starts.
+/// </remarks>
+public sealed class MigrationHostedService(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration)
-    : IHostedService
-    where TDbContext : DbContext
+    : IHostedLifecycleService
 {
-    // ForContext<T> names a generic type with its assembly-qualified arguments, which fills a console line.
-    private readonly ILogger _logger = Log.ForContext(
-        Constants.SourceContextPropertyName, $"{typeof(MigrationHostedService<>).Namespace}.MigrationHostedService");
+    private readonly ILogger _logger = Log.ForContext<MigrationHostedService>();
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartingAsync(CancellationToken cancellationToken)
     {
+        var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            _logger.Here().Warning(
+                "No connection string found for {DatabaseName}. Skipping migrations",
+                DatabaseConsts.DatabaseName);
+            return;
+        }
+
+        var database = new NpgsqlConnectionStringBuilder(connectionString).Database;
         // Startup has no request to hang this work on. Without a root, each migration query exports as
         // its own rootless trace. With one, the whole run is a single trace named after what it does.
-        using var trace = Telemetry.TraceRoot(
-            [("app.db_context", typeof(TDbContext).Name)],
-            "database.migrate");
+        using var trace = Telemetry.TraceRoot([("db.namespace", database)], "database.migrate");
 
         try
         {
-            _logger.Here().Information("Applying migrations for {DbContext}", typeof(TDbContext).Name);
-
-            var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                _logger.Here().Warning(
-                    "No connection string found for {DatabaseName}. Skipping migrations",
-                    DatabaseConsts.DatabaseName);
-                return;
-            }
+            _logger.Here().Information("Applying the migrations of {DatabaseName}", database);
 
             await using var scope = scopeFactory.CreateAsyncScope();
-            var context = scope.ServiceProvider.GetRequiredService<TDbContext>();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             // The lock connects to the database, so the database must exist before the lock.
             var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
             if (!await databaseCreator.ExistsAsync(cancellationToken))
-            {
-                await databaseCreator.CreateAsync(cancellationToken);
-                _logger.Here().Information("Created the database for {DbContext}", typeof(TDbContext).Name);
-            }
+                await CreateDatabaseAsync(databaseCreator, database, cancellationToken);
 
             var distributedLock = new PostgresDistributedLock(
                 new PostgresAdvisoryLockKey($"{DatabaseConsts.DatabaseName}_MigrationLock", allowHashing: true),
@@ -64,13 +67,14 @@ public class MigrationHostedService<TDbContext>(
                 Telemetry.AddEvent([], "migration.lock_acquired");
                 _logger.Here().Information("Starting database migration...");
 
-                // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the
-                // failed read as an error. Create the table first.
-                await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
-                await context.Database.MigrateAsync(cancellationToken);
+                await BackWaveSchema.MigrateAsync(connectionString, cancellationToken);
+                await ObjectDeleteRequestsDrain.DrainAsync(
+                    connectionString, scope.ServiceProvider.GetRequiredService<IJobWriter>(), cancellationToken);
+                await MigrateAsync(context, cancellationToken);
+                await MigrateAsync(scope.ServiceProvider.GetRequiredService<DataProtectionKeysDbContext>(), cancellationToken);
             }
 
-            _logger.Here().Information("Migrations complete for {DbContext}", typeof(TDbContext).Name);
+            _logger.Here().Information("Migrations complete for {DatabaseName}", database);
         }
         catch (Exception ex) when (ex is SocketException or NpgsqlException)
         {
@@ -88,8 +92,42 @@ public class MigrationHostedService<TDbContext>(
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    private async Task CreateDatabaseAsync(
+        IRelationalDatabaseCreator databaseCreator,
+        string? database,
+        CancellationToken cancellationToken)
     {
-        return Task.CompletedTask;
+        try
+        {
+            await databaseCreator.CreateAsync(cancellationToken);
+            _logger.Here().Information("Created the database {DatabaseName}", database);
+        }
+        catch (PostgresException e) when (e.SqlState is PostgresErrorCodes.DuplicateDatabase
+                                              or PostgresErrorCodes.UniqueViolation)
+        {
+            // A Server process that starts at the same time can create the database first, for example the worker of
+            // a split deploy. Postgres then refuses the second create: with 42P04 when the first create committed
+            // before the name check, or with 23505 on the pg_database index when it commits during the second create.
+            if (!await databaseCreator.ExistsAsync(cancellationToken))
+                throw;
+        }
     }
+
+    private static async Task MigrateAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        // On a new database, MigrateAsync reads the history table before it creates it, and EF Core logs the failed
+        // read as an error. Create the table first.
+        await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
+    }
+
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StartedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StoppingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

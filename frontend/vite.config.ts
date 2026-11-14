@@ -87,8 +87,9 @@ const failStalledBffRequests: ProxyOptions['configure'] = (proxy) => {
   })
 }
 
-// The paths that the dev server sends to the BFF: the BFF endpoints (login, logout, user), the API, and the OIDC callbacks.
-const bffPaths = ['/bff', '/api', '/signin-oidc', '/signout-callback-oidc']
+// The paths that the dev server sends to the BFF: the BFF endpoints (login, logout, user), the API, the jobs dashboard
+// of the Server, and the OIDC callbacks.
+const bffPaths = ['/bff', '/api', '/backwave', '/signin-oidc', '/signout-callback-oidc']
 
 // With no BFF, Vite answers each path with its index.html, so a request of the app gets HTML and no error.
 

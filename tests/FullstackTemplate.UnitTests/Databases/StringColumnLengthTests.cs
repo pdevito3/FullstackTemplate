@@ -84,13 +84,6 @@ public class StringColumnLengthTests
         "audit_entries.trace_id",
         // The hex of the SHA-256 hash of the token
         "invites.token_hash",
-        // The save copies the key and the tenant from the deleted row, and the runner writes the error of storage
-        "object_delete_requests.key",
-        "object_delete_requests.last_error",
-        "object_delete_requests.tenant_id",
-        // The save copies the trace context of its activity, and drops a context that does not fit
-        "object_delete_requests.trace_parent",
-        "object_delete_requests.trace_state",
         // example:start
         "workshops.organizer_id",
         // The type comes from the file type registry, and the entity builds the key

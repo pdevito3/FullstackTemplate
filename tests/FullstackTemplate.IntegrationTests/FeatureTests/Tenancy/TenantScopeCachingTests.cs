@@ -3,6 +3,7 @@ namespace FullstackTemplate.IntegrationTests.FeatureTests.Tenancy;
 using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -83,5 +84,6 @@ public class TenantScopeCachingTests : TestBase
             services.GetRequiredService<ICurrentUserService>(),
             services.GetRequiredService<ICallerIdentityResolver>(),
             tenantScopeProvider,
-            services.GetRequiredService<DomainEventDispatcher>());
+            services.GetRequiredService<DomainEventDispatcher>(),
+            services.GetRequiredService<IJobWriter>());
 }

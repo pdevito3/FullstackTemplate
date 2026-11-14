@@ -65,13 +65,17 @@ public static class HostExtensions
                     .AddMeter(FrameworkMeters)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    .AddBackWaveInstrumentation()
+                    .AddBackWavePostgresInstrumentation();
             })
             .WithTracing(tracing =>
             {
                 tracing
+                    .SetSampler(new ParentBasedSampler(new ParentlessClientSpanSampler()))
                     .AddSource(Telemetry.Source.Name)
                     .AddSource(serviceName)
+                    .AddBackWaveInstrumentation()
                     .AddAspNetCoreInstrumentation(opts =>
                     {
                         opts.Filter = ctx => !IsHealthProbe(ctx.Request.Path);
@@ -86,6 +90,7 @@ public static class HostExtensions
             });
 
         builder.AddOpenTelemetryExporters();
+        builder.Services.AddHostedService<TelemetryProvidersStart>();
 
         return builder;
     }

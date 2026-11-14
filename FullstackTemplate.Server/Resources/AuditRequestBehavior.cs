@@ -6,7 +6,7 @@ using MediatR;
 /// <summary>
 /// The innermost behavior. It names the request of each save of the context of the scope, so each audit entry shows
 /// the request that wrote it. After the outermost request of the scope succeeds, it throws when an audit action was
-/// recorded and not saved. It reads no property of the request.
+/// recorded or a job was queued, and not saved. It reads no property of the request.
 /// </summary>
 public sealed class AuditRequestBehavior<TRequest, TResponse>(AppDbContext dbContext)
     : IPipelineBehavior<TRequest, TResponse>
@@ -20,6 +20,10 @@ public sealed class AuditRequestBehavior<TRequest, TResponse>(AppDbContext dbCon
         if (entered.IsOutermost && dbContext.HasUnsavedActions)
             throw new InvalidOperationException(
                 $"{RequestName<TRequest>.Value} recorded an audit action and did not call SaveChangesAsync. " +
+                "Save it, also when the handler changes no data.");
+        if (entered.IsOutermost && dbContext.HasUnsavedJobs)
+            throw new InvalidOperationException(
+                $"{RequestName<TRequest>.Value} queued a job and did not call SaveChangesAsync. " +
                 "Save it, also when the handler changes no data.");
 
         return response;

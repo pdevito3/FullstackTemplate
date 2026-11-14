@@ -34,6 +34,7 @@ public sealed class PermissionGuard(
         => await callerIdentityResolver.GetAsync(cancellationToken) switch
         {
             { CanManageAllTenants: true } => Caller.AllTenantsManager.Instance,
+            CallerIdentity.TenantJob job => new Caller.TenantJob(job.TenantId),
             CallerIdentity.AllTenantsClient => new Caller.Outsider(OutsiderKind.MachineClient),
             CallerIdentity.User user => await LoadUserAsync(user.Subject, cancellationToken) is { } member
                 ? new Caller.Member(member.Id, member.UserPermissions.Select(p => p.Permission))

@@ -147,7 +147,8 @@ internal sealed partial class AppRepo(string root)
         Run(root, "dotnet", "restore", Path.Combine(server, $"{server}.csproj"));
         try
         {
-            RunEf("migrations", "has-pending-model-changes", "--project", server, "--startup-project", server);
+            RunEf("migrations", "has-pending-model-changes", "--context", "AppDbContext", "--project", server,
+                "--startup-project", server);
         }
         catch (RemovalException)
         {
@@ -160,7 +161,7 @@ internal sealed partial class AppRepo(string root)
     public void WriteModelSnapshot()
     {
         var server = $"{Name}.Server";
-        RunEf("migrations", "add", SnapshotMigration,
+        RunEf("migrations", "add", SnapshotMigration, "--context", "AppDbContext",
             "--project", server, "--startup-project", server, "--output-dir", "Databases/Migrations");
 
         var migrations = Path.Combine(root, server, "Databases", "Migrations");

@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -157,7 +158,7 @@ public sealed class DerivedEntityTests : IAsyncDisposable
     private abstract class PetContext(DbContextOptions<AppDbContext> options, ITenantScopeProvider scopeProvider)
         : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
             Substitute.For<ICallerIdentityResolver>(), scopeProvider,
-            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>())
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

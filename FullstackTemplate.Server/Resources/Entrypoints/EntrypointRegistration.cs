@@ -6,14 +6,16 @@ using Domain.Users;
 using Grpc;
 using Http;
 using Http.OpenApi;
+using Jobs;
 using Mcp;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using Serilog.Core;
 
 /// <summary>
-/// Adds and maps the external entrypoints: the HTTP API, gRPC, and MCP. All three use the same JWT bearer
-/// authentication, so each one sees the same caller and the same tenant scope. The core services come from
+/// Adds and maps the external entrypoints: the HTTP API, gRPC, MCP, and the jobs dashboard. All of them use the same
+/// JWT bearer authentication, so each one sees the same caller and the same tenant scope. The core services come from
 /// <c>ConfigureServices</c>.
 /// </summary>
 public static class EntrypointRegistration
@@ -25,7 +27,7 @@ public static class EntrypointRegistration
     {
         builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<ICurrentPrincipalAccessor, HttpContextPrincipalAccessor>();
+        builder.Services.Replace(ServiceDescriptor.Scoped<ICurrentPrincipalAccessor, HttpContextPrincipalAccessor>());
 
         // HTTP
         builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = DomainProblemDetails.Customize);
@@ -53,11 +55,13 @@ public static class EntrypointRegistration
             });
         // ReadFrom.Services in HostExtensions adds each ILogEventFilter of the services to the logger
         builder.Services.AddSingleton<ILogEventFilter, McpProtocolErrorLogFilter>();
+
+        builder.Services.AddJobsDashboard();
     }
 
     /// <summary>
     /// Adds the middleware of the entrypoints: the problem details of HTTP errors, the OpenAPI document in
-    /// Development, and authentication.
+    /// Development, authentication, and the jobs dashboard.
     /// </summary>
     public static void UseEntrypoints(this WebApplication app)
     {
@@ -79,6 +83,7 @@ public static class EntrypointRegistration
 
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseJobsDashboard();
     }
 
     public static void MapEntrypoints(this WebApplication app)

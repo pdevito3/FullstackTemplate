@@ -55,7 +55,7 @@ Write telemetry to answer a question that a person asks during an incident. If n
 | What happened to entity X yesterday? | Logs with the id as a property | Log each state change (rule 3). |
 | Did the code take a fallback, skip an item, or return a partial result? | `Warning` log, span event | Log each degraded path (rule 4). |
 | Did the rate of an outcome change after a deploy? | A metric, compared by `service.version` | Add a business metric (rule 8). |
-| Did the background job run, and what did it do? | A `TraceRoot` trace and its logs | Give the job its own trace (rule 9). |
+| Did the background job run, and what did it do? | The trace of each attempt and its logs, and the job in the jobs dashboard | Tag the ids and write one log (rule 9). |
 
 ## Rules
 
@@ -93,11 +93,11 @@ Write telemetry to answer a question that a person asks during an incident. If n
    - Declare the instrument in `Domain/[EntityName]s/[EntityName]Metrics.cs`, on `Telemetry.Meter`. The host already exports this meter.
    - Name it `app.[entities].[past-tense verb]`, for example `app.users.role_changed`. Give the unit in braces, for example `{user}`.
    - Give it tags from a small fixed set of values only, such as a role, a reason, or an outcome.
-9. Give background work its own trace with `Telemetry.TraceRoot`.
-   - Write one `Information` log with the result and the counts, for example "Deleted {Count} expired proofs".
-   - Catch the exception at the top of the job. Call `Telemetry.RecordError` and write an `Error` log. A background job has no `RequestTracingBehavior` to record it.
-   - See `MigrationHostedService.cs` and the DPoP replay cache cleanup in `DPoPAuthentication.cs`.
-10. If a trace must cross a hop that has no `traceparent` header, carry it with `TraceContext`. Examples are a queued message, a stored job row, and a redirect.
+9. Give background work its own trace.
+   - A BackWave job gets its trace with no code. The root of each attempt is the `process {queue}` span, and `JobHandler` puts the `app.caller.*` tags on it. In the handler, tag the ids of the entities on `Activity.Current`, which is the process span. Write one `Information` log with the result. Let an exception propagate, because BackWave records it, counts it, and runs the job again. See [background-jobs.md](background-jobs.md#telemetry).
+   - The build does not check a job handler for the id tag and the log. FSTTEL002 checks MediatR handlers only.
+   - Start other background work, such as a hosted service, with `Telemetry.TraceRoot`. Write one `Information` log with the result and the counts, for example "Deleted {Count} expired proofs". Catch the exception at the top of the work. Call `Telemetry.RecordError` and write an `Error` log, because no `RequestTracingBehavior` records it. See `MigrationHostedService.cs` and the DPoP replay cache cleanup in `DPoPAuthentication.cs`.
+10. If a trace must cross a hop that has no `traceparent` header, carry it with `TraceContext`. Examples are a message on a queue that is not BackWave, and a redirect. A BackWave job needs no `TraceContext`, because BackWave stores the context with the job and links each attempt to the save.
     - If the work on the other side continues the same story, make the context the parent of the new span.
     - If the work is a different story with a cause between the two, add the context as a link. `LoginTraceLink.cs` in the BFF uses a link.
 11. Obey the privacy rule. Telemetry carries ids, operation names, counts, and values from a fixed set.
@@ -243,7 +243,7 @@ Do these steps after each change to the telemetry of a feature. The `aspire-tele
 | A SQL span has the name of the database, not `SQL: ...` | The query has no tag, or the tag is after the materialization | Put `TagWithOperationCallSite` on the `IQueryable`, directly after the `DbSet` |
 | Each span or query has a different name | The name has an id or a value in it | Use a constant name. Put the id in a tag. |
 | The id tag is on a child span, not on the feature span | `SetTag` ran inside a `Telemetry.Trace` scope | Tag `Activity.Current` before you start the child span |
-| A background job has no spans for its queries | No activity is current, so the Npgsql filter drops the queries | Start the job with `Telemetry.TraceRoot` |
+| A hosted service has no spans for its queries | No activity is current, so the Npgsql filter drops the queries | Start the work with `Telemetry.TraceRoot`. A BackWave job does not need it. |
 | A log has no `CallSite` | The log did not go through `Here()` | Write `_logger.Here().Information(...)` |
 | A 404 shows as a server error | The code caught a client error and called `RecordError` | Let the domain exception propagate |
 | `app.errors` counts one failure two times | Two spans called `RecordError` for one exception | Call `MarkFailed` on the inner span |
@@ -256,4 +256,4 @@ The trace backend and the log backend charge for each span, each log, or each gi
 
 - Constant names for spans, events, and queries.
 - No log that repeats a span.
-- Sampling. The host sets no sampler, so it exports each span. A production deployment can add head sampling in the SDK, or tail sampling in an OpenTelemetry Collector. Neither change needs a change to feature code.
+- Sampling. The host drops only a Client span with no parent, such as a poll of a job pump. It exports each other span. A production deployment can add head sampling in the SDK, or tail sampling in an OpenTelemetry Collector. A head sampler that replaces it must also drop these spans. Neither change needs a change to feature code.

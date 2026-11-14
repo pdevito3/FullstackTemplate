@@ -71,7 +71,7 @@ All rows need `--apphost FullstackTemplate.AppHost` (see [Select the AppHost](#s
 | Rebuild a .NET project and restart it | `dotnet aspire resource <resource> rebuild` |
 | Stop the stack | `dotnet aspire stop` |
 
-The resource names are the names in `FullstackTemplate.AppHost/AppHost.cs`: `server`, `bff`, `webfrontend`, `postgres`, `appdb`, and `tests` (the Labcoat test UI).
+The resource names are the names in `FullstackTemplate.AppHost/AppHost.cs`: `server`, `bff`, `webfrontend`, `postgres`, `appdb`, and `tests` (the Labcoat test UI). With `SplitServer=true`, `server` serves the requests only, and `server-worker` runs the jobs. See "Split the local stack" in `docs/backend/background-jobs.md`.
 
 ## Code changes
 

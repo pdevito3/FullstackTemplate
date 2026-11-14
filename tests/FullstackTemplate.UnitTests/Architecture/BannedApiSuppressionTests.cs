@@ -13,13 +13,15 @@ public class BannedApiSuppressionTests
 {
     private static readonly string[] FilesThatSuppressTheBan =
     [
+        "FullstackTemplate.Server/Databases/BackWaveSchema.cs",
+        "FullstackTemplate.Server/Databases/ObjectDeleteRequestsDrain.cs",
         "FullstackTemplate.Server/Databases/PostgresCopy.cs",
         "FullstackTemplate.Server/Databases/RootLock.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/DeleteExpiredDPoPProofs/DeleteExpiredDPoPProofs.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/RegisterDPoPProof/RegisterDPoPProof.cs",
-        "FullstackTemplate.Server/Domain/ObjectDeleteRequests/ObjectDeleteRunner.cs",
         "FullstackTemplate.Server/Databases/Auditing/AuditVocabulary.cs",
         "FullstackTemplate.Server/Resources/Entrypoints/Http/EndpointDiscovery.cs",
+        "FullstackTemplate.Server/Resources/Jobs/JobWriter.cs",
         "FullstackTemplate.Server/Resources/RequestValidationBehavior.cs",
     ];
 

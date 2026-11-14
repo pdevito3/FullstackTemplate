@@ -168,6 +168,7 @@ public class QueueJobLostCommitReplyTests : TestBase
         var user = await db.Users.SingleAsync(u => u.Id == scenario.FirstUser.Id);
         user.UpdateFromIdp($"{user.FirstName}x", user.LastName, user.Email, user.Username);
         db.QueueJob(new TestJob(scenario.Tenant.Id, "after the job write"));
+        writer.Arm();
 
         // Act
         await db.SaveChangesAsync();
@@ -191,6 +192,7 @@ public class QueueJobLostCommitReplyTests : TestBase
         var db = scope.GetService<AppDbContext>();
         db.QueueJob(new TestJob(scenario.Tenant.Id, "first"));
         db.QueueJob(new TestJob(scenario.Tenant.Id, "second"));
+        writer.Arm();
 
         // Act
         await db.SaveChangesAsync();

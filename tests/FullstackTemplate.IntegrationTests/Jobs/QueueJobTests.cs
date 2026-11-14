@@ -127,10 +127,12 @@ public class QueueJobTests : TestBase
     {
         // Arrange
         await using var services = FailAfterJobWrite.Around(new InvalidOperationException("The job write failed."));
+        var writer = (FailAfterJobWrite)services.GetRequiredService<IJobWriter>();
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
         var db = scope.GetService<AppDbContext>();
         var user = await db.Users.SingleAsync(u => u.Id == scenario.FirstUser.Id);
+        writer.Arm();
 
         // Act
         user.UpdateFromIdp($"{user.FirstName}x", user.LastName, user.Email, user.Username);

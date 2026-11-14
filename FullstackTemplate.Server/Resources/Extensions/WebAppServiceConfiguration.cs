@@ -38,6 +38,7 @@ public static class WebAppServiceConfiguration
         builder.Services.AddSingleton<ICurrentPrincipalAccessor, NoPrincipalAccessor>();
         builder.Services.AddScoped<ScopeGrant>();
         builder.AddObjectStorage();
+        builder.Services.AddSingleton(Options.Create(AttachmentOptions.From(builder.Configuration)));
         builder.Services.AddScoped<AttachmentStorage>();
         builder.Services.AddMediatR(cfg =>
         {

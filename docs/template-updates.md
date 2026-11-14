@@ -149,6 +149,12 @@ The Server now runs background jobs on BackWave (see [background-jobs.md](backen
 - The first start of the new Server moves the rows of the old queue `object_delete_requests` onto BackWave, also the dead rows, and then drops the queue. A row that fails the check of its job gets the Warning log `Dropped object delete request {ObjectDeleteRequestId} ...` and no job. If the object of that row exists, delete it by hand.
 - After the drop, a Server of the previous version cannot delete an attachment or a tenant, because its save writes a row of the queue. Stop the previous version before the update, or accept that these deletes fail until the deploy ends. A row that the previous version adds after the move and before the drop stops that start, and the next start moves the row.
 
+### The update that adds the sweep of the bucket
+
+A recurring job now deletes each object in storage that no live row names (see [attachments.md](backend/attachments.md#the-order-of-the-writes)).
+
+- `AttachmentStorage.AddAsync` now gives the save of the row a token, and stops the put and the save after `Attachments:AddTimeout`. The build fails at each add of an attachment entity of the app. Change `async () =>` to `async addToken =>`, and give `addToken` to `RootLock.Tenant.RunSharedAsync` in place of the token of the request.
+
 ## Keep the next update small
 
 - When you find a fault in the template, report it as an issue of the template, and get the fix with the next update. A fix that you copy by hand gives a conflict when the fix of the template comes.

@@ -94,7 +94,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    }
    ```
 
-4. **The add.** The command takes a `ReceivedFile`, not an `IFormFile`. Call `GuardCaller` of the action before the load of the owner, and the access check of the owner, such as `GuardChangeBy`, after it. Then read the first bytes and make the entity. Give the save of the row to `AttachmentStorage.AddAsync`. The save takes the shared lock of the tenant, as each add of a tenant-owned root does ([concurrency.md](concurrency.md#lock)).
+4. **The add.** The command takes a `ReceivedFile`, not an `IFormFile`. Call `GuardCaller` of the action before the load of the owner, and the access check of the owner, such as `GuardChangeBy`, after it. Then read the first bytes and make the entity. Give the save of the row to `AttachmentStorage.AddAsync`. The save takes the shared lock of the tenant, as each add of a tenant-owned root does ([concurrency.md](concurrency.md#lock)). Give the lock the token that `AddAsync` gives the save, not the token of the request, so that the add stops at its time limit.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
@@ -108,7 +108,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    var photo = RepairPhoto.Create(repair, upload, timeProvider.GetUtcNow());
 
    // The upload is before the lock, because the work of the lock can run more than one time
-   await attachments.AddAsync(photo, request.File, async () =>
+   await attachments.AddAsync(photo, request.File, async addToken =>
        await RootLock.Tenant.RunSharedAsync(dbContext, repair.TenantId, async ct =>
        {
            await dbContext.Set<Repair>()
@@ -119,7 +119,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
            await dbContext.Set<RepairPhoto>().AddAsync(photo, ct);
            await dbContext.SaveChangesAsync(ct);
            return photo;
-       }, cancellationToken), cancellationToken);
+       }, addToken), cancellationToken);
 
    return await photo.ToAttachmentDtoAsync(storage, timeProvider.GetUtcNow());
    ```
@@ -242,7 +242,7 @@ A presigned URL works only while the credentials that signed it are valid. When 
 
 A row with no object is a file that no one can download. An object with no row costs only its storage. So `AttachmentStorage` writes in this order:
 
-- **Add.** It puts the object, then runs the save of the row. If the put or the save throws, it deletes the object only when no row with its ID exists. A put can store the bytes and still throw, and a save can commit and still throw, for example after a lost reply. If that check fails, it keeps the object. The delete of the object stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute), so a hung storage does not hold the request.
+- **Add.** It puts the object, then runs the save of the row. The put and the save together stop after `Attachments:AddTimeout` (5 minutes), also when the caller does not cancel, and the add then throws a `TimeoutException`. If the put or the save throws, it deletes the object only when no row with its ID exists. A put can store the bytes and still throw, and a save can commit and still throw, for example after a lost reply. If that check fails, it keeps the object. The delete of the object stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute), so a hung storage does not hold the request.
 - **Delete.** It saves the delete of the row. It does not call storage. The save also queues a `DeleteObject` job for the object, so the job commits with the row delete, or neither commits.
 - **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes an object that no row names, such as an object that a failed add left.
 

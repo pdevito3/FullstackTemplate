@@ -13,7 +13,8 @@ using Serilog;
 /// Keeps the row of each attachment and its object in storage in step. A row with no object is a file that no one can
 /// download, so the object goes first on an add and last on a delete. An object with no row costs only its storage.
 /// </summary>
-public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage storage, IOptions<ObjectDeleteOptions> deleteOptions)
+public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage storage, IOptions<AttachmentOptions> options,
+    IOptions<ObjectDeleteOptions> deleteOptions)
 {
     private readonly ILogger _logger = Log.ForContext<AttachmentStorage>();
 
@@ -24,19 +25,19 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
     /// </summary>
     /// <param name="attachment">The new attachment, which passed the upload rules of its use.</param>
     /// <param name="file">The file that the attachment came from. The put sends all of its bytes.</param>
-    /// <param name="saveRow">Adds the row and saves it. The put is already done, so the save can run in a lock that
-    /// runs its work again.</param>
+    /// <param name="saveRow">Adds the row and saves it, and stops on the token that it gets. The put is already done, so
+    /// the save can run in a lock that runs its work again.</param>
     /// <param name="cancellationToken">Stops the put and the save. The cleanup after a failed put or save does not stop on
     /// it, and its delete stops after <see cref="ObjectDeleteOptions.AttemptTimeout"/>.</param>
-    public async Task AddAsync<TAttachment>(TAttachment attachment, ReceivedFile file, Func<Task> saveRow,
+    /// <exception cref="TimeoutException">The put and the save took longer than <see cref="AttachmentOptions.AddTimeout"/>.</exception>
+    public async Task AddAsync<TAttachment>(TAttachment attachment, ReceivedFile file, Func<CancellationToken, Task> saveRow,
         CancellationToken cancellationToken)
         where TAttachment : BaseEntity, IAttachment
     {
         file.Content.Position = 0;
         try
         {
-            await storage.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, cancellationToken);
-            await saveRow();
+            await PutAndSaveInAddTimeAsync(attachment, file, saveRow, cancellationToken);
         }
         catch
         {
@@ -57,6 +58,27 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
         dbContext.Remove(attachment);
         await dbContext.SaveChangesAsync(cancellationToken);
         AttachmentMetrics.RecordDeleted<TAttachment>();
+    }
+
+    // The sweep of the bucket keeps an object only while it is younger than the time limit and a margin, so an add must
+    // end within the limit, also when its caller does not cancel it.
+    private async Task PutAndSaveInAddTimeAsync<TAttachment>(TAttachment attachment, ReceivedFile file,
+        Func<CancellationToken, Task> saveRow, CancellationToken cancellationToken)
+        where TAttachment : BaseEntity, IAttachment
+    {
+        var addTimeout = options.Value.AddTimeout;
+        using var add = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        add.CancelAfter(addTimeout);
+        try
+        {
+            await storage.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, add.Token);
+            await saveRow(add.Token);
+        }
+        catch (OperationCanceledException exception)
+            when (add.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"The add of attachment {attachment.Id} took more than {addTimeout}.", exception);
+        }
     }
 
     // A save can commit and still throw, for example when the reply of the commit is lost and the run again finds the

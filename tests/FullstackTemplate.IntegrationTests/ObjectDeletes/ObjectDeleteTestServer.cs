@@ -6,6 +6,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using FullstackTemplate.IntegrationTests.Jobs;
+using FullstackTemplate.Server.Domain.Attachments;
 using FullstackTemplate.Server.Domain.ObjectDeletes;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.Server.Domain.Users;
@@ -55,9 +56,10 @@ public static class ObjectDeleteTestServer
 
     /// <summary>
     /// A Server whose S3 client calls a port that takes each connection and never answers, as a paused storage does.
-    /// The client waits 10 minutes, so only <see cref="ObjectDeleteOptions.AttemptTimeout"/> ends an attempt soon.
+    /// The client waits 10 minutes, so only <see cref="ObjectDeleteOptions.AttemptTimeout"/> ends an attempt soon, and
+    /// only <see cref="AttachmentOptions.AddTimeout"/> ends an add soon.
     /// </summary>
-    public static HungStorage WithStorageHung(ObjectDeleteOptions options)
+    public static HungStorage WithStorageHung(ObjectDeleteOptions options, AttachmentOptions? attachments = null)
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -75,6 +77,8 @@ public static class ObjectDeleteTestServer
                 Timeout = TimeSpan.FromMinutes(10),
             }));
             UseOptions(services, options);
+            if (attachments is not null)
+                services.Replace(ServiceDescriptor.Singleton(Options.Create(attachments)));
         });
         return new HungStorage(server, listener);
     }

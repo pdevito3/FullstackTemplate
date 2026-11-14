@@ -16,4 +16,7 @@ public class CustomQueryKitConfiguration(Action<QueryKitSettings>? configureSett
 {
     public const int FilterMaxLength = 2000;
     public const int FilterMaxNestingDepth = 10;
+    // Each field of a sort nests one more ThenBy, and EF compiles the nesting with recursion. About two thousand fields overflow the
+    // stack of the request thread, which ends the process, so QueryKitInputExtensions refuses a longer sort with 400.
+    public const int SortOrderMaxFields = 10;
 }

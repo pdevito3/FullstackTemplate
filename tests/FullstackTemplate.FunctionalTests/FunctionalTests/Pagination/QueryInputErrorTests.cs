@@ -38,6 +38,8 @@ public class QueryInputErrorTests : TestBase
             """),
         ("sortOrder", "Unknown desc,,"),
         ("sortOrder", "Name foo"),
+        // Each field of a sort nests a ThenBy, and about two thousand fields overflow the stack when EF compiles the query
+        ("sortOrder", string.Join(",", Enumerable.Repeat("Name", CustomQueryKitConfiguration.SortOrderMaxFields + 1))),
         // A version is opaque, so a list cannot filter or sort on it
         ("filters", "version > 5"),
         ("filters", "Version == 5"),

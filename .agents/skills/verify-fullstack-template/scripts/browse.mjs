@@ -213,14 +213,15 @@ function settle() {
 
 // A full-page screenshot resizes the viewport to the page height. A React Aria Sheet (the Drawer)
 // closes on that resize, so capture an open overlay with { fullPage: false }.
-async function capture(name, { fullPage = true } = {}) {
+// { sweep: false } is for a page that a library makes, such as the BackWave dashboard. The app cannot change its layout.
+async function capture(name, { fullPage = true, sweep: sweepPage = true } = {}) {
   await settle()
   const base = `${String(++captureCount).padStart(2, '0')}-${name}`
   await page.screenshot({ path: path.join(outDir, `${base}.png`), fullPage })
   const aria = await page.locator('body').ariaSnapshot()
   writeFileSync(path.join(outDir, `${base}.aria.txt`), `# ${page.url()}\n${aria}\n`)
   log('steps.log', `cap   ${base} ${page.url()}`)
-  if (sweep && name !== 'failure') await sweepCapture({ page, cdp, settle, outDir, capture: base, faults: sweepFaults, holdsOverlay: !fullPage })
+  if (sweep && sweepPage && name !== 'failure') await sweepCapture({ page, cdp, settle, outDir, capture: base, faults: sweepFaults, holdsOverlay: !fullPage })
 }
 
 // Logs in through the real BFF and the IdP of the stack, then returns the user's `name` claim from the BFF.

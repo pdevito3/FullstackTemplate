@@ -1,5 +1,7 @@
 namespace FullstackTemplate.UnitTests.Domain.Users;
 
+using FullstackTemplate.Server.Domain;
+using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
 using Shouldly;
@@ -153,6 +155,7 @@ public class CallerTests
     public static IEnumerable<Func<(string Case, Caller Caller, Permission[] Held)>> PermissionSetCases()
     {
         yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, [.. Permission.GetAll()]);
+        yield return () => ("job of a tenant", new Caller.TenantJob(EntityId.New(Tenant.IdPrefix)), [.. Permission.GetAll()]);
         yield return () => ("member", MemberWith(Permission.ManageUsers(), Permission.ManageTenant()),
             [Permission.ManageUsers(), Permission.ManageTenant()]);
         yield return () => ("member with no permission", MemberWith(), []);
@@ -215,6 +218,7 @@ public class CallerTests
     public static IEnumerable<Func<(string Case, Caller Caller, bool Manages)>> ManagesAllTenantsCases()
     {
         yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, true);
+        yield return () => ("job of a tenant", new Caller.TenantJob(EntityId.New(Tenant.IdPrefix)), false);
         yield return () => ("member with every permission", MemberWith([.. Permission.GetAll()]), false);
         yield return () => ("read-only machine client", new Caller.Outsider(OutsiderKind.MachineClient), false);
         yield return () => ("unknown client", new Caller.Outsider(OutsiderKind.UnknownClient), false);
@@ -236,6 +240,7 @@ public class CallerTests
     public static IEnumerable<Func<(string Case, Caller Caller, string? Denial)>> RecognizedCases()
     {
         yield return () => ("all tenants manager", Caller.AllTenantsManager.Instance, null);
+        yield return () => ("job of a tenant", new Caller.TenantJob(EntityId.New(Tenant.IdPrefix)), null);
         yield return () => ("member with no permission", MemberWith(), null);
         yield return () => ("read-only machine client", new Caller.Outsider(OutsiderKind.MachineClient), null);
         yield return () => ("no user record", new Caller.Outsider(OutsiderKind.NoUserRecord), null);

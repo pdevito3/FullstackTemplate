@@ -3,6 +3,7 @@ namespace FullstackTemplate.IntegrationTests.Databases;
 using System.Text.Json;
 using FullstackTemplate.IntegrationTests.DomainEvents;
 using FullstackTemplate.Server.Databases;
+using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
@@ -11,6 +12,7 @@ using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shouldly;
 using static FullstackTemplate.IntegrationTests.DomainEvents.DomainEventTestServices;
 
@@ -20,7 +22,8 @@ public class BulkInsertTests : TestBase
     public async Task bulk_insert_writes_each_user_with_its_permissions_and_a_created_entry_for_each_row()
     {
         // Arrange
-        var scope = new TestingServiceScope();
+        await using var services = WithNoUserCreatedHandler();
+        var scope = new TestingServiceScope(services);
         var users = Enumerable.Range(0, 3).Select(_ => NewAdmin()).ToList();
         var allPermissions = Permission.GetAll().Select(p => p.Value).ToList();
 
@@ -55,7 +58,8 @@ public class BulkInsertTests : TestBase
     public async Task bulk_inserted_user_is_tracked_with_its_version_so_a_later_save_changes_it()
     {
         // Arrange
-        var db = new TestingServiceScope().GetService<AppDbContext>();
+        await using var services = WithNoUserCreatedHandler();
+        var db = new TestingServiceScope(services).GetService<AppDbContext>();
         var user = NewAdmin();
         await db.BulkInsertAsync([user]);
 
@@ -73,7 +77,8 @@ public class BulkInsertTests : TestBase
     public async Task bulk_inserted_user_ends_a_cached_miss_of_the_tenant_lookup()
     {
         // Arrange
-        var scope = new TestingServiceScope();
+        await using var services = WithNoUserCreatedHandler();
+        var scope = new TestingServiceScope(services);
         var lookup = scope.GetService<ITenantIdProvider>();
         var user = NewAdmin();
         (await lookup.FindLiveUserAsync(user.Identifier)).ShouldBeNull();
@@ -92,7 +97,7 @@ public class BulkInsertTests : TestBase
     {
         // Arrange
         var failCommit = new FailFirstCommit(afterCommit);
-        await using var services = TestFixture.BuildServiceProvider(s => s
+        await using var services = WithNoUserCreatedHandler(s => s
             .ConfigureDbContext<AppDbContext>((_, options) => options.AddInterceptors(failCommit)));
         var db = new TestingServiceScope(services).GetService<AppDbContext>();
         var user = NewAdmin();
@@ -179,6 +184,15 @@ public class BulkInsertTests : TestBase
             .ShouldStartWith("BulkInsertAsync runs no domain event handlers, but UserCreated has a handler.");
         (await ReadAsync(read => read.Users.AnyAsync(u => u.Id == user.Id))).ShouldBeFalse();
     }
+
+    // BulkInsertAsync refuses an event that has a handler, and an app can handle UserCreated. These tests insert users,
+    // so they run on a Server with no handler of it.
+    private static ServiceProvider WithNoUserCreatedHandler(Action<IServiceCollection>? addTestServices = null)
+        => TestFixture.BuildServiceProvider(s =>
+        {
+            s.RemoveAll<IDomainEventHandler<UserCreated>>();
+            addTestServices?.Invoke(s);
+        });
 
     private static User NewAdmin() => User.Create(new FakeUserForCreation()
         .RuleFor(u => u.TenantId, _ => TestFixture.DefaultTenant.Id)

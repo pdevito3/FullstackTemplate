@@ -241,43 +241,33 @@ A presigned URL works only while the credentials that signed it are valid. When 
 A row with no object is a file that no one can download. An object with no row costs only its storage. So `AttachmentStorage` writes in this order:
 
 - **Add.** It puts the object, then runs the save of the row. If the save throws, it deletes the object only when no row with its ID exists, because a save can commit and still throw, for example after a lost reply of the commit. If that check fails, it keeps the object.
-- **Delete.** It saves the delete of the row. It does not call storage. The save also adds an `ObjectDeleteRequest` for the object, so the request commits with the row delete, or neither commits.
-- **Tenant delete.** The save of `DeleteTenant` adds one `ObjectDeleteRequest` for the prefix `StoredFile.TenantPrefix` of the tenant. The request covers each object under the prefix. The attachments of the tenant get no request of their own. The request also deletes an object that no row names, such as an object that a failed add left.
+- **Delete.** It saves the delete of the row. It does not call storage. The save also queues a `DeleteObject` job for the object, so the job commits with the row delete, or neither commits.
+- **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes an object that no row names, such as an object that a failed add left.
 
-`AppDbContext` adds the requests in each save, for each deleted `IAttachment` and each deleted `Tenant`, so a new delete path needs no code for its objects. `ObjectDeleteWorker` runs in each Server instance, and it starts after the migration. Every `ObjectStorage:Deletes:Interval` (10 seconds), it claims the due requests one at a time with `FOR UPDATE SKIP LOCKED`, and deletes their objects. So two instances never run the same request at the same time.
+`AppDbContext` queues the jobs in each save, for each deleted `IAttachment` and each deleted `Tenant`, so a new delete path needs no code for its objects. The jobs are BackWave jobs on the queue `object-deletes` (see [ADR 0013](../adr/0013-background-jobs-on-backwave.md)). The Server runs a worker group for this queue only, so a storage outage does not hold up the jobs of other queues. A worker claims a job soon after the commit, and BackWave gives each job to one worker at a time.
 
-- A delete of an object that is gone succeeds, so a request that runs two times does no harm.
-- A failed attempt waits `FirstRetryDelay` (30 seconds), and the delay doubles with each attempt up to `MaxRetryDelay` (1 hour). The worker writes a warning log and the span event `object_delete.failed`.
-- After `MaxAttempts` (10) failed attempts, the request is dead: `dead_at` is set, and no worker claims it again. The worker writes an error log, marks the `object_delete.run` span as an error, and counts the attempt with the outcome `dead` in the metric `app.object_deletes.attempted`. A person must correct the cause and run the request again. See [Find and run again a dead request](#find-and-run-again-a-dead-request).
-- The claim counts the attempt before the work, and gives the request back after twice `AttemptTimeout` (1 minute). So a request whose worker stopped runs again, and also counts toward the dead state.
-- The request keeps the trace context of the save that made it. Each attempt is a trace of its own, and its `object_delete.run` span links to the trace of the delete.
+- A delete of an object that is gone succeeds, so a job that runs two times does no harm.
+- `DeleteObject` refuses a key that is not under the prefix of its tenant. `DeleteTenantObjects` builds its prefix from the tenant ID only. So a job cannot delete an object of another tenant. A stored job that fails these checks goes to the quarantine of BackWave and does not run.
+- One attempt calls storage for at most `ObjectStorage:Deletes:AttemptTimeout` (1 minute). A storage that does not answer then fails the attempt with a `TimeoutException`.
+- A failed attempt waits `FirstRetryDelay` (30 seconds), and the delay doubles with each attempt up to `MaxRetryDelay` (1 hour). BackWave records the exception on the process span of the attempt, counts it in `backwave.jobs.failed`, and writes the log `Retry scheduled after a failed attempt`.
+- After `MaxAttempts` (10) failed attempts, the job is dead-lettered, and no worker runs it again. BackWave writes the error log `Job dead-lettered after exhausting its retry ceiling.` and counts the job in `backwave.jobs.dead_lettered`. A person must correct the cause and requeue the job. See [Find and run again a dead job](#find-and-run-again-a-dead-job).
+- The job keeps the trace context of the save that queued it. Each attempt is a trace of its own, and its process span links to the trace of the delete.
 
-The object stays until the next run of the worker. A presigned URL that the Server signed before the delete reads the object until then. While storage fails, it reads the object until the object goes or the URL expires, at most 15 minutes (`StoredFile.UrlLifetime`).
+The object stays until the job deletes it. A presigned URL that the Server signed before the delete reads the object until then. While storage fails, it reads the object until the object goes or the URL expires, at most 15 minutes (`StoredFile.UrlLifetime`).
 
 Give the save to `AddAsync` as a function, so that the put runs one time, also when the lock runs its work again.
 
-### Find and run again a dead request
+### Find and run again a dead job
 
-Nothing pages a person for a dead request. Watch the error log `Object delete request {ObjectDeleteRequestId} of tenant {TenantId} is dead`, or the metric `app.object_deletes.attempted` with the tag `app.object_delete.outcome` = `dead`. With the defaults, a request is dead about 3 hours after its first failure. So a storage outage of more than 3 hours makes the requests of that time dead.
+Nothing pages a person for a dead job. Watch the error log `Job dead-lettered after exhausting its retry ceiling.` with the `wire_name` `delete-object` or `delete-tenant-objects`, or the metric `backwave.jobs.dead_lettered` with the tag `messaging.destination.name` = `object-deletes`. With the defaults, a job is dead about 3 hours after its first failure. So a storage outage of more than 3 hours makes the jobs of that time dead.
 
-To find the dead requests, run this SQL on the database of the Server:
+1. Open the BackWave dashboard at `/backwave` of the app, as an operator.
+2. Filter the jobs on the queue `object-deletes` and the state `DeadLettered`. The tag `tenant` gives the tenant of each job.
+3. Open a job. Its failure detail gives the cause. Its trace link gives the trace of the delete.
+4. Correct the cause first, for example the credentials or the bucket policy.
+5. Requeue the job. It gets all its attempts again.
 
-```sql
-SELECT id, tenant_id, key, is_prefix, attempts, last_error, dead_at, trace_parent
-FROM object_delete_requests
-WHERE dead_at IS NOT NULL
-ORDER BY dead_at;
-```
-
-`last_error` gives the cause. The second field of `trace_parent` is the trace ID of the delete. Correct the cause first, for example the credentials or the bucket policy. Then give the request all its attempts again:
-
-```sql
-UPDATE object_delete_requests
-SET dead_at = NULL, attempts = 0, due_at = now()
-WHERE id = 'objdel_...';
-```
-
-The worker claims the request at its next run, and deletes the row when the objects are gone. To run all the dead requests again, change the `WHERE` clause to `WHERE dead_at IS NOT NULL`. A run again is safe, because a delete of an object that is gone succeeds.
+A requeue is safe, because a delete of an object that is gone succeeds.
 
 ## Tenant isolation
 
@@ -287,9 +277,9 @@ The worker claims the request at its next run, and deletes the row when the obje
 
 ## Limits
 
-- The object of a deleted row is readable through an old URL until the worker deletes it. See [The order of the writes](#the-order-of-the-writes).
-- The objects of a dead request stay until a person runs the request again. No alert or health check shows a dead request.
-- An add whose save fails deletes its object at once, and does not use a request. If that delete fails, the object stays until the tenant delete.
+- The object of a deleted row is readable through an old URL until its job deletes it. See [The order of the writes](#the-order-of-the-writes).
+- The objects of a dead job stay until a person requeues the job. No alert or health check shows a dead job.
+- An add whose save fails deletes its object at once, and does not use a job. If that delete fails, the object stays until the tenant delete.
 - A URL stops before `urlsExpireAt` when the credentials that signed it expire. See [Presigned URLs](#presigned-urls).
 
 <!-- example:start -->

@@ -14,6 +14,12 @@ public abstract record CallerIdentity
     public sealed record System : CallerIdentity;
 
     /// <summary>
+    /// A BackWave job of one tenant, in the DI scope of one attempt. It sees and changes the rows of that tenant only.
+    /// <see cref="Resources.Jobs.JobHandler{TJob}"/> grants it from the tenant in the payload.
+    /// </summary>
+    public sealed record TenantJob(string TenantId) : CallerIdentity;
+
+    /// <summary>
     /// A client on <see cref="TenancyOptions.ReadAllTenantsClientIds"/> or
     /// <see cref="TenancyOptions.ManageAllTenantsClientIds"/>, whatever the <c>sub</c> of the token.
     /// </summary>
@@ -54,6 +60,7 @@ public abstract record CallerIdentity
         User { LiveUser: { } liveUser } => TenantScope.ForTenant(liveUser.TenantId),
         DelegatedAgent agent => TenantScope.ForTenant(agent.LiveUser.TenantId),
         MachineAgent agent => TenantScope.ForTenant(agent.TenantId),
+        TenantJob job => TenantScope.ForTenant(job.TenantId),
         _ => TenantScope.NoTenant,
     };
 

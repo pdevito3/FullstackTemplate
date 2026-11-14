@@ -53,6 +53,7 @@ MyProject/
 - **Rich Domain Entities** - DDD patterns with value objects
 - **Multi-tenancy** - Automatic tenant isolation
 - **Audit Log and Soft Delete** - An append-only log of each change, and soft delete built-in
+- **Background Jobs** - BackWave jobs that commit with the save, retries, and a jobs dashboard for operators. `Server__Role` runs the API and the workers in one process or apart
 - **API Versioning** - URL segment versioning (`/api/v1/...`)
 - **OpenTelemetry** - Distributed tracing and metrics
 - **PostgreSQL** - With EF Core and migrations
@@ -114,6 +115,9 @@ A normal run uses the same ports at each start. All of them are in the block 247
 | 24713 | `server` | https |
 | 24714 | `server` | http |
 | 24715 | `server` | grpc |
+| 24716 | `server-worker` (only with `SplitServer=true`) | https |
+| 24717 | `server-worker` | http |
+| 24718 | `server-worker` | grpc |
 | 24720 | `postgres` | tcp |
 | 24730 | `keycloak` | http |
 | 24731 | `keycloak-postgres` | tcp |

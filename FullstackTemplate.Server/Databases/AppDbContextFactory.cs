@@ -5,6 +5,7 @@ using Domain.Tenants;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Resources.Jobs;
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
@@ -20,7 +21,8 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             new DesignTimeCurrentUserService(),
             new DesignTimeCallerIdentityResolver(),
             new DesignTimeTenantScopeProvider(),
-            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()),
+            NoJobWriter.Instance);
     }
 
     private sealed class DesignTimeCurrentUserService : ICurrentUserService

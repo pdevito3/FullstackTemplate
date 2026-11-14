@@ -92,15 +92,16 @@ A `TenantScope` has one of three values. The filter makes the decision for each 
 | A user of a first-party client with a user record | `TenantScope.ForTenant(id)` | The rows of this user's tenant |
 | A delegated agent (see [Agents](authentication.md#agents)) | `TenantScope.ForTenant(id)` | The rows of the tenant of its user |
 | A machine agent | `TenantScope.ForTenant(id)` | The rows of the tenant of its agent record |
+| An attempt of a background job (see [Jobs](#jobs)) | `TenantScope.ForTenant(id)` | The rows of the tenant of the job |
 | A user of a first-party client with no user record | `TenantScope.NoTenant` | No rows |
-| No HTTP request and no system scope | `TenantScope.NoTenant` | No rows |
+| Other work with no HTTP request and no system scope | `TenantScope.NoTenant` | No rows |
 | Any other caller (an unknown client, an anonymous request) | `TenantScope.NoTenant` | No rows |
 
 `CallerIdentityResolver` decides the caller once for each DI scope. `TenantScopeProvider`, the permission guard, and `InitiateUserAndTenant` read the same answer. EF Core reads the tenant filter synchronously, so `CallerIdentityBehavior` resolves the caller before each MediatR handler. A query outside a MediatR request blocks a thread on the lookups if it is the first read in its scope.
 
 ## System work
 
-Work with no HTTP request gets `TenantScope.NoTenant` by default. Examples are a hosted service, a background job, and fire-and-forget work that lost its request. This default fails closed.
+Work with no HTTP request gets `TenantScope.NoTenant` by default. Examples are a hosted service and fire-and-forget work that lost its request. This default fails closed. A background job is not system work. It runs in its tenant (see [Jobs](#jobs)).
 
 If system work must see all tenants, it must opt in. Create the DI scope with `CreateSystemScope()`:
 
@@ -124,6 +125,12 @@ The migration hosted service does not use a system scope. Migrations do not read
 
 A domain event handler runs in the tenant of the `ITenantable` entity or the `Tenant` that queued the event. While the handler runs, the scope of the context is `TenantScope.ForTenant` of that tenant, so the filter shows the rows of this tenant only. This is also true when the caller has `TenantScope.AllTenants` or `TenantScope.NoTenant`. After the handler, the context uses the scope of the caller again. The handler of an event from an entity with no tenant runs in the scope of the save: the scope of the caller, or the scope of one tenant when the Server code runs the save in a narrowed scope of that tenant. See [domain-events.md](backend/domain-events.md#handlers).
 
+## Jobs
+
+A background job carries the ID of its tenant, and each attempt runs in that tenant only. Before the first query, `JobHandler` calls `ScopeGrant.GrantTenantJob` with the tenant of the job. The caller of the attempt is then `CallerIdentity.TenantJob`, and the scope is `TenantScope.ForTenant` of that tenant. The caller holds each permission in its tenant. `ManagesAllTenants` is false for it.
+
+`QueueJob` refuses a job of a tenant that the scope of the caller does not include. So a user queues jobs of their own tenant only, and a domain event handler queues jobs of the tenant of its event. See [background-jobs.md](backend/background-jobs.md).
+
 ## Row scope and capability
 
 The scope tells which rows a caller sees. It does not tell what a caller can do. For an access decision, load the caller with `IPermissionGuard.GetCallerAsync` and use `Caller.ManagesAllTenants` or `Caller.RequireManagesAllTenants()`, not `TenantScope.IncludesAllTenants`.
@@ -143,9 +150,9 @@ These rules stop a caller from joining a tenant that is not theirs:
 
 ## Delete a tenant
 
-`DELETE /api/v1/tenants/{id}` deletes the tenant and each row that it owns, in one save. A row that the tenant owns is a row of an entity type that the tenant filter covers: an agent, a user, the permissions of each, and each tenant-owned entity of your app. `TenantOwnedRows` in `Databases/` finds these types in the EF model, so a new tenant-owned entity needs no change in `DeleteTenant`. The delete covers only `BaseEntity` types. The audit log, a read model, and each other tenant-owned table that is not a `BaseEntity` keep their rows. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete. The save also adds one request that deletes each object in storage under `tenants/{tenantId}/`, the bytes of the files of the tenant. The worker deletes these objects at a later run, not at the commit (see [attachments.md](backend/attachments.md#the-order-of-the-writes)).
+`DELETE /api/v1/tenants/{id}` deletes the tenant and each row that it owns, in one save. A row that the tenant owns is a row of an entity type that the tenant filter covers: an agent, a user, the permissions of each, and each tenant-owned entity of your app. `TenantOwnedRows` in `Databases/` finds these types in the EF model, so a new tenant-owned entity needs no change in `DeleteTenant`. The delete covers only `BaseEntity` types. The audit log, a read model, and each other tenant-owned table that is not a `BaseEntity` keep their rows. Each delete is a soft delete. The rows stay, and the audit log has a `Deleted` entry for each row, with the request and the actor of the tenant delete. The save also queues one `DeleteTenantObjects` job, which deletes each object in storage under `tenants/{tenantId}/`, the bytes of the files of the tenant. A worker runs the job after the commit (see [attachments.md](backend/attachments.md#the-order-of-the-writes)).
 
-`TenantOwnedRowsTests` finds each entity type with a `TenantId` property or the tenant filter. The test fails if a type with a `TenantId` has no tenant filter, or if a type has a table that the delete skips. A type with a `TenantId` always needs the tenant filter. The delete deletes only `BaseEntity` rows, so make a type whose rows go with their tenant a `BaseEntity`. The audit log and `ObjectDeleteRequest` are on the list of the test that keeps their rows after the delete. The tenant delete adds the request that deletes the objects of the tenant in storage after the commit, so the request must stay. To keep the rows of another type, add the type to that list with the reason.
+`TenantOwnedRowsTests` finds each entity type with a `TenantId` property or the tenant filter. The test fails if a type with a `TenantId` has no tenant filter, or if a type has a table that the delete skips. A type with a `TenantId` always needs the tenant filter. The delete deletes only `BaseEntity` rows, so make a type whose rows go with their tenant a `BaseEntity`. The audit log is on the list of the test that keeps its rows after the delete. To keep the rows of another type, add the type to that list with the reason. The objects of the tenant in storage go with a job that the tenant delete queues (see [attachments.md](backend/attachments.md#the-order-of-the-writes)).
 
 The delete loads all the rows into memory and saves them in one transaction, while it holds the exclusive lock of the tenant. The cost grows with the number of rows. The test users had a random role, so some had permission rows too, and each deleted row writes an audit entry. In a Debug build on a busy machine, the delete of a tenant with 20,000 users took 17 s and 39 s in two runs, and the heap grew by about 1.8 GB. The delete of 50,000 users took 43 s, and the heap grew by about 4 GB in one run. That is 1 ms to 2 ms and about 80 KB of heap for each user. The heap growth is the peak managed heap of the test process during the delete, less the heap before the delete. The peak is a sample every 20 ms, so it can miss a short peak. The test process also runs the server, so the heap is that of the test and the server together. A Release build and another machine give other numbers.
 

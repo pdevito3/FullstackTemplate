@@ -14,6 +14,7 @@ public static class CallerTelemetry
         (string Kind, string? Subject, string? ClientId, string? AgentId, string? TenantId) values = caller switch
         {
             CallerIdentity.System => ("system", null, null, null, null),
+            CallerIdentity.TenantJob job => ("tenant_job", null, null, null, job.TenantId),
             CallerIdentity.AllTenantsClient client => ("all_tenants_client", null, client.ClientId, null, null),
             CallerIdentity.User user => ("user", user.Subject, null, null, user.LiveUser?.TenantId),
             CallerIdentity.DelegatedAgent agent => ("delegated_agent", agent.Subject, agent.ClientId, agent.AgentId, agent.LiveUser.TenantId),

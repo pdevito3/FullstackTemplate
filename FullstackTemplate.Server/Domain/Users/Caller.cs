@@ -11,6 +11,8 @@ using Exceptions;
 /// </summary>
 public abstract record Caller
 {
+    private static readonly FrozenSet<Permission> Every = Permission.GetAll().ToFrozenSet();
+
     private Caller() { }
 
     /// <summary>
@@ -40,12 +42,19 @@ public abstract record Caller
     /// </summary>
     public sealed record AllTenantsManager : Caller
     {
-        private static readonly FrozenSet<Permission> Every = Permission.GetAll().ToFrozenSet();
-
         private AllTenantsManager() { }
 
         public static AllTenantsManager Instance { get; } = new();
 
+        public override IReadOnlySet<Permission> Permissions => Every;
+    }
+
+    /// <summary>
+    /// A BackWave job of one tenant. It holds every permission, and the tenant filter limits it to the rows of its
+    /// tenant. It cannot act outside its tenant.
+    /// </summary>
+    public sealed record TenantJob(string TenantId) : Caller
+    {
         public override IReadOnlySet<Permission> Permissions => Every;
     }
 

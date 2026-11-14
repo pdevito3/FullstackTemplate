@@ -33,6 +33,10 @@ const databases = (container) =>
   psql(container, 'postgres', `SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres' ORDER BY 1;`)
     .split('\n').filter(Boolean)
 
+// The workers of BackWave write the job store in the schema backwave at any time, also while a restore runs. So the
+// copy and the restore skip it, and the jobs of a recipe stay. A recipe finds its jobs by the tenant that it made.
+const skippedSchemas = ['pg_catalog', 'information_schema', 'backwave']
+
 function tablesOf(container, database) {
   const json = psql(container, database, `
     SELECT coalesce(json_agg(json_build_object(
@@ -46,7 +50,7 @@ function tablesOf(container, database) {
                     WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped AND a.attgenerated = '')
     ) ORDER BY n.nspname, c.relname), '[]')
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog', 'information_schema') AND n.nspname NOT LIKE 'pg_toast%';`)
+    WHERE c.relkind = 'r' AND n.nspname NOT IN (${skippedSchemas.map(literal).join(', ')}) AND n.nspname NOT LIKE 'pg_toast%';`)
   const tables = JSON.parse(json)
   const keyless = tables.filter((table) => !table.key)
   if (keyless.length) {

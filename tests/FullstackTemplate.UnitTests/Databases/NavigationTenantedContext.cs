@@ -4,6 +4,7 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +13,7 @@ using NSubstitute;
 internal sealed class NavigationTenantedContext() : AppDbContext(TestModelOptions.Options, TimeProvider.System,
     Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
     Substitute.For<ITenantScopeProvider>(),
-    new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+    new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>())
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

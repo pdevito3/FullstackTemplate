@@ -18,4 +18,9 @@ export type CurrentUserDto = {
      * @type string | undefined
     */
     name?: string | null;
+    /**
+     * @description True when the caller is an operator of the jobs dashboard at `/backwave`.
+     * @type boolean
+    */
+    canOpenJobDashboard: boolean;
 };

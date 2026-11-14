@@ -1,3 +1,6 @@
+import { actorSubject } from '@tests/support/auth/actors'
+import { jobsDashboardApi, jobsDashboardPath } from '@tests/support/api/jobs-dashboard-api'
+import { usersApi } from '@tests/support/api/users-api'
 import { expect, test } from '@tests/support/fixtures'
 import { useDefaultFontSize } from '@tests/support/screen'
 import { homePage } from '../home/home.tasks'
@@ -94,6 +97,29 @@ test.describe('the current item of the sidebar', () => {
 
     await expect(shell.at.aboutNavigationLink).toBeVisible()
     await expect(shell.at.currentNavigationItems).toHaveCount(0)
+  })
+})
+
+test.describe('the link to the jobs dashboard', () => {
+  test('an operator opens the dashboard page of the Server, not a page of the app', async ({ page, api }) => {
+    api.mock(usersApi.currentIs({ identifier: actorSubject, name: 'Bob Smith', canOpenJobDashboard: true }), jobsDashboardApi.opens())
+    const shell = appShellPage(page)
+    await homePage(page).open()
+
+    await shell.openJobsDashboard()
+
+    expect(api.all('get', jobsDashboardPath)).toHaveLength(1)
+    await expect(shell.at.navigation).toHaveCount(0)
+  })
+
+  test('a user who is not an operator sees no link', async ({ page }) => {
+    const home = homePage(page)
+
+    await home.open()
+
+    // The name and the link come from the same answer of the Server.
+    await expect(home.at.signedInAs('Bob Smith')).toBeVisible()
+    await expect(appShellPage(page).at.jobsDashboardLink).toHaveCount(0)
   })
 })
 

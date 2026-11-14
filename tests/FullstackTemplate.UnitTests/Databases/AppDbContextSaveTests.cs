@@ -7,6 +7,7 @@ using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Tenant;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
@@ -121,7 +122,7 @@ public sealed class AppDbContextSaveTests
     private sealed class NoteContext(ITenantScopeProvider tenantScopes, DomainEventDispatcher dispatcher) : AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
         TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
-        tenantScopes, dispatcher)
+        tenantScopes, dispatcher, Substitute.For<IJobWriter>())
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -148,6 +149,6 @@ public sealed class AppDbContextSaveTests
             .Options;
         return new AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
             Substitute.For<ICallerIdentityResolver>(), Substitute.For<ITenantScopeProvider>(),
-            dispatcher ?? new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()));
+            dispatcher ?? new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>());
     }
 }

@@ -14,6 +14,7 @@ public sealed class CallerIdentityTests
     public static IEnumerable<Func<(string Case, CallerIdentity Identity, bool CanManage)>> ManageAllTenantsCases()
     {
         yield return () => ("system work", new CallerIdentity.System(), true);
+        yield return () => ("job of a tenant", new CallerIdentity.TenantJob(TenantId), false);
         yield return () => ("client on the manage list", new CallerIdentity.AllTenantsClient("sync", CanManage: true), true);
         yield return () => ("client on the read list", new CallerIdentity.AllTenantsClient("report", CanManage: false), false);
         yield return () => ("user", new CallerIdentity.User("user-1", new LiveUser("usr_1", TenantId)), false);

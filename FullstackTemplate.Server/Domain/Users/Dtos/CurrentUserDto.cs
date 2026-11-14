@@ -11,4 +11,7 @@ public sealed record CurrentUserDto
 
     /// <summary>The display name from the token, or null when the identity provider sends no name.</summary>
     public string? Name { get; init; }
+
+    /// <summary>True when the caller is an operator of the jobs dashboard at <c>/backwave</c>.</summary>
+    public bool CanOpenJobDashboard { get; init; }
 }

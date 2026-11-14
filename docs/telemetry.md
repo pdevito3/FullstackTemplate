@@ -119,7 +119,7 @@ The behavior tags an exception type as `error.type`. A client error does not mar
 
 | Span tag | Log property | Value |
 |---|---|---|
-| `app.caller.kind` | `CallerKind` | `user`, `delegated_agent`, `machine_agent`, `all_tenants_client`, `unknown_client`, `anonymous`, or `system` |
+| `app.caller.kind` | `CallerKind` | `user`, `delegated_agent`, `machine_agent`, `all_tenants_client`, `unknown_client`, `anonymous`, `system`, or `tenant_job` |
 | `app.caller.subject` | `CallerSubject` | The `sub` claim of a user, also the user for whom a delegated agent acts |
 | `app.caller.client_id` | `CallerClientId` | The client of an agent or of a machine client |
 | `app.caller.agent_id` | `CallerAgentId` | The id of the registered agent |
@@ -132,6 +132,12 @@ The values are ids only. An MCP tool call can fail before its feature runs, so `
 `AppDbContext.SaveChangesAsync` runs each domain event handler in a `domain_event.handle` span. The span is a child of the current activity, which is the feature slice span in a request. The tags are `app.domain_event.type` and `app.domain_event.handler`. They have the type names only, never the data of the event.
 
 The handler span tags the type of an exception as `error.type`, the same as the feature slice span. A server error also marks the span with the `Error` status and adds the exception. The handler span writes no log and does not increment `app.errors`. The exception fails the save, and the code that called the save counts it one time. In a request, the feature slice span counts it.
+
+## Job spans
+
+BackWave traces each job. The save that queues a job has a `send {queue}` span for each job, in the trace of the save. The `code.*` tags of the span give the `QueueJob` call. Each attempt of the job is a new trace. Its root is a `process {queue}` span, which links to the `send {queue}` span. The queries of the handler are children of the process span.
+
+`JobScope` puts the caller on the process span (`app.caller.kind` = `tenant_job` and `app.caller.tenant_id`) and on each log of the attempt. So a job needs no `TraceRoot` and no `TraceContext`. BackWave records a thrown exception on the process span. See [background-jobs.md](backend/background-jobs.md#telemetry).
 
 ## Named queries
 
@@ -162,19 +168,19 @@ The Npgsql command filter exports a query span only when a recorded activity is 
 - Queries that run with no activity at all.
 - Queries under a request that the ASP.NET Core filter dropped, such as `/health`.
 
-As a result, background work that does queries must start its own trace with `TraceRoot`.
+As a result, background work that does queries, such as a hosted service, must start its own trace with `TraceRoot`. A BackWave job has the process span (see [Job spans](#job-spans)).
+
+The BackWave job store opens its own connections, which have no command filter. Each poll of a job pump is a Client span with no parent, and each query of the store metrics is too. So the host samples with `ParentBasedSampler(new ParentlessClientSpanSampler())`. It drops a Client span with no parent, and it keeps each other span with no parent, such as a request, a job run, or a `TraceRoot`. A span with a parent follows its parent.
 
 ## TraceRoot
 
 `Telemetry.TraceRoot` starts a span that is the root of a new trace. The span links back to the activity that was current before it. Use it for work that has no request, or for work that is much larger than the request that started it.
 
 ```csharp
-using var trace = Telemetry.TraceRoot(
-    [("app.db_context", typeof(TDbContext).Name)],
-    "database.migrate");
+using var trace = Telemetry.TraceRoot([("db.namespace", database)], "database.migrate");
 ```
 
-`MigrationHostedService` uses this helper, so a startup migration is one `database.migrate` trace. The scope puts the previous activity back when you dispose it. The span gets the same `code.*` tags as a tagged query.
+`MigrationHostedService` uses this helper, so a startup migration is one `database.migrate` trace. The migration runs in `StartingAsync`, before the hosted service of OpenTelemetry starts. So `TelemetryProvidersStart` builds the tracer in its own `StartingAsync` first. The scope puts the previous activity back when you dispose it. The span gets the same `code.*` tags as a tagged query.
 
 ## TraceContext
 

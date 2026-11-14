@@ -15,9 +15,10 @@ import { commands, userEvent } from 'vitest/browser'
 import { Link } from '@/components/ui/link'
 import { AuthKeys } from '@/domain/auth/apis/auth.keys'
 import { MembershipKeys } from '@/domain/membership/apis/membership.keys'
+import { UserKeys } from '@/domain/users/apis/user.keys'
 import { Route as RootRoute } from '@/routes/__root'
 import { routeTree } from '@/routeTree.gen'
-import { member, memberClaims } from '@/test/session'
+import { currentMember, member, memberClaims } from '@/test/session'
 
 let showLateHeading = () => {}
 
@@ -84,10 +85,11 @@ async function renderLayoutAt(path: string) {
     routeTree: rootRoute.addChildren([userRoute, linksRoute, headingRoute, noHeadingRoute, lateHeadingRoute]),
     history: createMemoryHistory({ initialEntries: [path] }),
   })
-  // With staleTime Infinity, the seeded session and membership send no request.
+  // With staleTime Infinity, the seeded session, membership, and current user send no request.
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
   queryClient.setQueryData(AuthKeys.user(), memberClaims)
   queryClient.setQueryData(MembershipKeys.of(member.identifier), member)
+  queryClient.setQueryData(UserKeys.current(), currentMember)
   const screen = await render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

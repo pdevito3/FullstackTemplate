@@ -28,8 +28,10 @@ export const usersApi = {
     return [usersApi.currentIs({ identifier: actorSubject, name })]
   },
 
-  currentIs(user: CurrentUserDto): MockRoute {
-    return { method: 'get', path: usersPaths.current, status: 200, body: user }
+  /** The current user. The user is not an operator of the jobs dashboard unless the test says so. */
+  currentIs({ canOpenJobDashboard = false, ...user }: Omit<CurrentUserDto, 'canOpenJobDashboard'> & Partial<Pick<CurrentUserDto, 'canOpenJobDashboard'>>): MockRoute {
+    const body: CurrentUserDto = { ...user, canOpenJobDashboard }
+    return { method: 'get', path: usersPaths.current, status: 200, body }
   },
 
   currentFails(problem: Buildable<ProblemDetails>): MockRoute {

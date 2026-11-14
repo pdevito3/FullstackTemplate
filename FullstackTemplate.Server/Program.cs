@@ -1,6 +1,5 @@
 using System.Globalization;
 using FullstackTemplate.Server.Databases;
-using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.Server.Resources.Entrypoints;
 using FullstackTemplate.Server.Resources.Entrypoints.Http.OpenApi;
@@ -23,15 +22,17 @@ try
     var builder = WebApplication.CreateBuilder(OpenApiBuildTime.WithHostArgs(args));
     CSharpReplGuard.ThrowIfLoadedOutsideDevelopment(builder.Environment);
 
+    var role = ServerRoles.From(builder.Configuration);
+
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
-    builder.ConfigureServices();
-    builder.AddEntrypoints();
-    builder.Services.AddHostedService<MigrationHostedService<AppDbContext>>();
-    // The host starts its services in order, and the migration ends in its start, so no run reads a missing table
-    builder.Services.AddHostedService<ObjectDeleteWorker>();
+    builder.ConfigureServices(role);
+    if (role.ServesRequests())
+        builder.AddEntrypoints();
+    builder.Services.AddHostedService<MigrationHostedService>();
     OpenApiBuildTime.RemoveHostedServices(builder.Services);
 
     var app = builder.Build();
+    Log.Information("Server role {ServerRole}", role);
 
     app.UseSerilogRequestLogging(options =>
     {
@@ -44,8 +45,11 @@ try
         };
     });
 
-    app.UseEntrypoints();
-    app.MapEntrypoints();
+    if (role.ServesRequests())
+    {
+        app.UseEntrypoints();
+        app.MapEntrypoints();
+    }
 
     app.MapDefaultEndpoints();
 

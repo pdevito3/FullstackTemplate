@@ -7,6 +7,7 @@ using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Tenants.DomainEvents;
 using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Shouldly;
@@ -223,7 +224,8 @@ public class WriteGuardTests : TestBase
             .UseSnakeCaseNamingConvention()
             .Options;
         await using var db = new AppDbContext(options, TimeProvider.System, scope.GetService<ICurrentUserService>(),
-            scope.GetService<ICallerIdentityResolver>(), scope.GetService<ITenantScopeProvider>(), scope.GetService<DomainEventDispatcher>());
+            scope.GetService<ICallerIdentityResolver>(), scope.GetService<ITenantScopeProvider>(), scope.GetService<DomainEventDispatcher>(),
+            scope.GetService<IJobWriter>());
         var tenant = await db.Tenants.SingleAsync(t => t.Id == scenario.Tenant.Id);
 
         // Act

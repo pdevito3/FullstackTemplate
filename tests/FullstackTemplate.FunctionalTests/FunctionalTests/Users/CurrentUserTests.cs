@@ -41,6 +41,27 @@ public class CurrentUserTests : TestBase
     }
 
     [Test]
+    [Arguments(TestingWebApplicationFactory.JobOperatorSubject, true)]
+    [Arguments("not-an-operator", false)]
+    public async Task the_user_can_open_the_jobs_dashboard_only_when_the_subject_is_an_operator(string subject, bool canOpen)
+    {
+        // Arrange
+        FactoryClient.SetFakeBearerToken(new Dictionary<string, object>
+        {
+            ["sub"] = subject,
+            ["azp"] = TestingWebApplicationFactory.FirstPartyClientId,
+        });
+
+        // Act
+        var result = await FactoryClient.GetRequestAsync(ApiRoutes.Users.GetCurrent);
+
+        // Assert
+        result.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var user = (await result.Content.ReadFromJsonAsync<CurrentUserDto>()).ShouldNotBeNull();
+        user.CanOpenJobDashboard.ShouldBe(canOpen);
+    }
+
+    [Test]
     public async Task a_machine_client_with_no_subject_is_forbidden()
     {
         // Arrange

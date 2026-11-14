@@ -91,7 +91,7 @@ Rules:
 - A new required parameter of an MCP tool that exists needs a new tool name. To keep the name, add an optional parameter with the default `null` after `CancellationToken` ("MCP versions" in `docs/backend/endpoints.md`).
 - A gRPC field that can have no value is `optional`. Read `Has<Field>`, and set the response field only when the value is not null.
 - Give each new text value a rule in `<Entity>Rules` that fits the max length. Otherwise `AutoFaker` makes text that is too long, and unrelated tests fail at random.
-- Add a migration: `dotnet tool exec dotnet-ef@<version> --yes -- migrations add Add<Property>To<Entity> --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations`. The version is the `Microsoft.EntityFrameworkCore.Design` version in `Directory.Packages.props`.
+- Add a migration: `dotnet tool exec dotnet-ef@<version> --yes -- migrations add Add<Property>To<Entity> --context AppDbContext --project FullstackTemplate.Server --startup-project FullstackTemplate.Server --output-dir Databases/Migrations`. The version is the `Microsoft.EntityFrameworkCore.Design` version in `Directory.Packages.props`.
 - Regenerate and commit the API contract with the `api-contract` skill.
 
 ## 3. New Operation

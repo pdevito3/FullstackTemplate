@@ -31,6 +31,11 @@ export function appShellPage(page: Page) {
       await page.setViewportSize({ width: 390, height: 844 })
     },
 
+    async openJobsDashboard() {
+      await at.jobsDashboardLink.click()
+      await page.waitForURL('**/backwave')
+    },
+
     async openMissingPage() {
       await page.goto('/no-such-page')
       await expect(at.currentPage).toBeVisible()

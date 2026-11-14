@@ -37,19 +37,34 @@ public partial class PortTableTests
     [MethodDataSource(nameof(ProviderNames))]
     public async Task each_endpoint_of_a_normal_run_has_its_port_from_the_port_table(string name)
     {
-        // Arrange
-        var table = ReadmePortTable().ToDictionary(row => (row.Resource, row.Endpoint), row => row.Port);
-
         // Act
+        var endpoints = await EndpointsOfANormalRunAsync(name);
+
+        // Assert
+        ShouldHaveTheirPortsFromThePortTable(endpoints);
+    }
+
+    [Test]
+    public async Task each_endpoint_of_a_split_server_run_has_its_port_from_the_port_table()
+    {
+        // Act
+        var endpoints = await EndpointsOfANormalRunAsync(ProviderNames.First(), $"--{SplitServer.SettingName}=true");
+
+        // Assert
+        endpoints.ShouldContain(endpoint => endpoint.Resource == SplitServer.WorkerName);
+        ShouldHaveTheirPortsFromThePortTable(endpoints);
+    }
+
+    private static async Task<List<(string Resource, string Endpoint, int? Port)>> EndpointsOfANormalRunAsync(string name, params string[] args)
+    {
         // A normal run starts the AppHost in Development (its launchSettings.json). See TestConstraints.HostEnvironment.
         var environmentBefore = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
-        List<(string Resource, string Endpoint, int? Port)> endpoints;
         try
         {
             await using var builder = await DistributedApplicationTestingBuilder.CreateAsync(
-                typeof(Isolation), [$"--AuthProvider={name}"], (options, _) => options.DisableDashboard = true);
-            endpoints = builder.Resources
+                typeof(Isolation), [$"--AuthProvider={name}", .. args], (options, _) => options.DisableDashboard = true);
+            return builder.Resources
                 .SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>(), (resource, endpoint) => (Resource: resource.Name, Endpoint: endpoint.Name, endpoint.Port))
                 .Where(endpoint => !NoFixedPort.Contains((name, endpoint.Resource, endpoint.Endpoint)))
                 .ToList();
@@ -58,8 +73,11 @@ public partial class PortTableTests
         {
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", environmentBefore);
         }
+    }
 
-        // Assert
+    private static void ShouldHaveTheirPortsFromThePortTable(List<(string Resource, string Endpoint, int? Port)> endpoints)
+    {
+        var table = ReadmePortTable().ToDictionary(row => (row.Resource, row.Endpoint), row => row.Port);
         endpoints.ShouldNotBeEmpty();
         foreach (var (resource, endpoint, port) in endpoints)
         {

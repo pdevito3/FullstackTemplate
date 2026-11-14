@@ -59,8 +59,10 @@ public partial class UserAction : ValueObject, IFixedNames
         public static readonly UserActionEnum AddPermission = new(nameof(AddPermission), 2,
             always: [Permission.ManageUserAccess()], unlessOwnRecord: [Permission.ReadUsers()], revokesUserPermissions: false);
 
+        // The caller must hold each permission of the user, as for UpdateRole and Delete. Otherwise a user with only
+        // manage_user_access could take it away from each admin, and no admin could then take it away from that user (ADR 0009).
         public static readonly UserActionEnum RemovePermission = new(nameof(RemovePermission), 3,
-            always: [Permission.ManageUserAccess()], unlessOwnRecord: [Permission.ReadUsers()], revokesUserPermissions: false);
+            always: [Permission.ManageUserAccess()], unlessOwnRecord: [Permission.ReadUsers()], revokesUserPermissions: true);
 
         public static readonly UserActionEnum Delete = new(nameof(Delete), 4,
             always: [Permission.ManageUsers()], unlessOwnRecord: [], revokesUserPermissions: true);

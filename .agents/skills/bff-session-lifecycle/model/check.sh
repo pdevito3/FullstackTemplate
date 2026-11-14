@@ -45,6 +45,8 @@ check() {
 
 check Refresh.cfg
 check RefreshLiveness.cfg
-check BackChannel.cfg BackChannelLogoutEndsSessions
+check BackChannel.cfg
+check BackChannelNoLock.cfg BackChannelLogoutEndsSessions
+check BackChannelNoDeadline.cfg BackChannelLogoutEndsSessions
 check BffSessionChart.cfg
 exit $failed

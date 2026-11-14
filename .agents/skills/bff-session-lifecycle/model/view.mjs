@@ -32,7 +32,7 @@ export const state = (v) => {
   const r = refresh(v);
   if (signedIn(v)) return r ? `Signed in, ${r}` : "Signed in";
   if (v.logins > 0) return r ? `Signed out, ${r}` : "Signed out";
-  if (v.lpc === "exchanged") return "Tokens issued, no row yet";
+  if (["exchanged", "txn", "checked"].includes(v.lpc)) return "Tokens issued, no row yet";
   if (v.lpc === "authorized") return "At the IdP login";
   return "Not signed in";
 };
@@ -44,10 +44,13 @@ export const title = "BFF session: login, the refresh lock, and a crash";
 const labels = {
   IdpEndsSession: "the IdP session ends",
   LoginAuthorize: "you sign in at the IdP",
+  LoginDeadlinePasses: "the deadline of the login passes",
   LoginExchange: "the code exchange gives tokens",
   LoginExchangeFails: "the code exchange fails",
   LoginEndsOldSession: "the new login deletes the old row",
-  LoginCreatesRow: "the BFF writes the session row",
+  LoginBegins: "the login transaction starts",
+  LoginChecksRecord: "the login reads the logout records",
+  LoginCommits: "the login commits the row, or fails",
   ReqReads: "an API call reads the session",
   ReqJoinsInFlight: "the call starts the refresh",
   ReqWaiterEnds: "the waiting call gets the result",
@@ -72,6 +75,7 @@ const labels = {
   LogoutRevokes: "logout revokes the refresh token",
   LogoutSignsOut: "logout clears the cookie",
   BcDelivered: "the IdP sends the logout token",
+  BcLocks: "the BFF takes the lock of the sid",
   BcInsertsJti: "the BFF writes the jti, or refuses a replay",
   BcInsertFails: "the jti write fails",
   BcFindsRows: "the BFF finds the rows of the sid",
@@ -80,6 +84,7 @@ const labels = {
   BcAnswers200: "the BFF answers 200",
   RowExpires: "the session expires",
   CleanupDeletes: "the cleanup deletes the row",
+  RecordExpires: "the cleanup deletes the logout record",
   Crash: "the BFF instance crashes",
   Finished: null,
 };

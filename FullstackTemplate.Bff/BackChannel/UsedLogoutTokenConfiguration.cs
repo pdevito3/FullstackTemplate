@@ -1,3 +1,4 @@
+using FullstackTemplate.Bff.Sessions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,6 +18,13 @@ public sealed class UsedLogoutTokenConfiguration : IEntityTypeConfiguration<Used
             .HasMaxLength(JtiMaxLength)
             .UseCollation("C");
 
+        builder.Property(e => e.SessionId)
+            .HasMaxLength(BffSessionConfiguration.IdentifierMaxLength);
+        builder.Property(e => e.Subject)
+            .HasMaxLength(BffSessionConfiguration.IdentifierMaxLength);
+
+        builder.HasIndex(e => e.SessionId);
+        builder.HasIndex(e => e.Subject);
         // The cleanup deletes on this column
         builder.HasIndex(e => e.Expires);
     }

@@ -102,7 +102,7 @@ public class ManagementEndpointUnitTests
 
     private static Task HandleInvalidBackChannelAsync(HttpContext context, OpenIdConnectOptions options) =>
         BackChannelLogoutEndpoint.HandleAsync(context, new FixedOptionsMonitor<OpenIdConnectOptions>(options),
-            dbContext: null!, replayCache: null!, store: null!, BackChannelLogoutEnabled());
+            dbContext: null!, replayCache: null!, store: null!, BackChannelLogoutEnabled(), TimeProvider.System);
 
     private static ProviderFeatures BackChannelLogoutEnabled()
     {

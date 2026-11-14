@@ -20,7 +20,8 @@ namespace FullstackTemplate.Bff.BackChannel;
 /// <para>
 /// The endpoint validates the logout token, rejects a replay of its <c>jti</c>, and ends the BFF sessions of the
 /// IdP session: the rows with the <c>sid</c> of the token, or all the rows of its <c>sub</c> when it has no
-/// <c>sid</c>. It answers 200, or 400 for a missing, invalid, or replayed token, or when the replay cache cannot
+/// <c>sid</c>. The record of the token in the replay cache also ends each login of the IdP session that writes its
+/// row later. It answers 200, or 400 for a missing, invalid, or replayed token, or when the replay cache cannot
 /// take the <c>jti</c>. It answers 500, and keeps no <c>jti</c> and ends no BFF session, when a row delete fails.
 /// </para>
 /// </summary>
@@ -30,8 +31,6 @@ public static class BackChannelLogoutEndpoint
 
     private const string BackChannelLogoutEvent = "http://schemas.openid.net/event/backchannel-logout";
 
-    private static readonly TimeSpan IdleInTransactionLimit = TimeSpan.FromSeconds(2);
-
     private static readonly ILogger Logger = Log.ForContext(typeof(BackChannelLogoutEndpoint));
 
     public static async Task HandleAsync(
@@ -40,7 +39,8 @@ public static class BackChannelLogoutEndpoint
         BffDbContext dbContext,
         LogoutTokenReplayCache replayCache,
         IBffSessionStore store,
-        ProviderFeatures features)
+        ProviderFeatures features,
+        TimeProvider timeProvider)
     {
         context.Response.Headers.Append("Cache-Control", "no-cache, no-store");
         context.Response.Headers.Append("Pragma", "no-cache");
@@ -72,6 +72,8 @@ public static class BackChannelLogoutEndpoint
         // From here on, the work does not stop when the identity provider drops the request. A logout that stops
         // half way leaves BFF sessions alive that the identity provider thinks have ended.
 
+        var record = UsedLogoutToken.Of(token, timeProvider.GetUtcNow(),
+            oidcOptions.Get(OpenIdConnectDefaults.AuthenticationScheme).RemoteAuthenticationTimeout);
         var jtiWritten = false;
         var transactionId = "";
         List<BffSession>? deleted;
@@ -81,9 +83,9 @@ public static class BackChannelLogoutEndpoint
                 async ct =>
                 {
                     jtiWritten = false;
-                    await LimitIdleTimeAsync(dbContext, ct);
+                    await IdpSessionLock.TakeForLogoutAsync(dbContext, token.Subject, token.SessionId, ct);
                     transactionId = await TransactionIdAsync(dbContext, ct);
-                    if (!await replayCache.TryAddAsync(token.Jti, token.Expires, ct))
+                    if (!await replayCache.TryAddAsync(record, ct))
                         return null;
 
                     jtiWritten = true;
@@ -149,14 +151,6 @@ public static class BackChannelLogoutEndpoint
             return null;
         }
     }
-
-    private static Task<int> LimitIdleTimeAsync(BffDbContext dbContext, CancellationToken ct) =>
-        dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-            -- bff_backchannel_logout.limit_idle_time
-            SELECT set_config('idle_in_transaction_session_timeout', {$"{(long)IdleInTransactionLimit.TotalMilliseconds}ms"}, true)
-            """,
-            ct);
 
     private static Task<string> TransactionIdAsync(BffDbContext dbContext, CancellationToken ct) =>
         dbContext.Database.SqlQuery<string>(
@@ -251,6 +245,7 @@ public static class BackChannelLogoutEndpoint
             Jti: identity.FindFirst("jti")!.Value,
             Subject: NullIfBlank(identity.FindFirst("sub")?.Value),
             SessionId: NullIfBlank(identity.FindFirst("sid")?.Value),
+            IssuedAt: new DateTimeOffset(token.IssuedAt, TimeSpan.Zero),
             // A token stays valid for the clock skew after its exp, so the replay cache keeps it as long
             Expires: new DateTimeOffset(token.ValidTo, TimeSpan.Zero) + parameters.ClockSkew);
     }
@@ -278,6 +273,10 @@ public static class BackChannelLogoutEndpoint
 
         if (string.IsNullOrWhiteSpace(identity.FindFirst("sub")?.Value) && string.IsNullOrWhiteSpace(identity.FindFirst("sid")?.Value))
             return "the sub and sid claims are both missing";
+
+        foreach (var claim in new[] { "sub", "sid" })
+            if (identity.FindFirst(claim)?.Value.Length > BffSessionConfiguration.IdentifierMaxLength)
+                return $"the {claim} claim is longer than {BffSessionConfiguration.IdentifierMaxLength} characters";
 
         if (!string.IsNullOrWhiteSpace(identity.FindFirst("nonce")?.Value))
             return "the token has a nonce claim";
@@ -308,5 +307,6 @@ public static class BackChannelLogoutEndpoint
 /// <param name="Jti">The <c>jti</c> claim, for the replay check.</param>
 /// <param name="Subject">The <c>sub</c> claim.</param>
 /// <param name="SessionId">The <c>sid</c> claim.</param>
+/// <param name="IssuedAt">The <c>iat</c> claim.</param>
 /// <param name="Expires">The time after which the token cannot pass the checks again.</param>
-public sealed record LogoutToken(string Jti, string? Subject, string? SessionId, DateTimeOffset Expires);
+public sealed record LogoutToken(string Jti, string? Subject, string? SessionId, DateTimeOffset IssuedAt, DateTimeOffset Expires);

@@ -86,6 +86,7 @@ try
     }
 
     app.UseCallbackMethodGuard();
+    app.UseLoginRefusedProblem();
     // Also answers the OIDC callbacks, /signin-oidc and /signout-callback-oidc
     app.UseAuthentication();
     app.UseRouting();

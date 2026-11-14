@@ -19,7 +19,9 @@ CONSTANTS
     MaxDeliveries,        \* deliveries of the logout token by the identity provider
     WithExpiry,           \* rows can expire, and the cleanup deletes them
     WithRenewal,          \* a request can renew only the expiry (RenewExpiryAsync), which moves xmin
-    WithLogout            \* the browser calls /bff/logout one time
+    WithLogout,           \* the browser calls /bff/logout one time
+    LoginLock,            \* TRUE: the login and the logout transactions take the lock of the sid (and the sub)
+    LoginDeadline         \* TRUE: a login past its deadline (challenge + RemoteAuthenticationTimeout) writes no row
 
 Reqs     == 1..NReqs
 Keys     == 1..Logins
@@ -42,12 +44,14 @@ VARIABLES
     row,        \* row[k]: the committed sessions row of key k. ver is xmin.
     rowLock,    \* rowLock[k]: the transaction that holds the Postgres row lock of k (an uncommitted UPDATE or DELETE), or 0
     lock,       \* lock[k]: the request that holds pg_advisory_xact_lock of k, or 0
-    jtiUsed,    \* the committed used_logout_tokens row of the jti of S
+    jtiUsed,
+    idpLock,
     \* instances
     inflight,   \* inflight[i][t]: the leader request of RefreshLock._inFlight for refresh token t on instance i, or 0
     crashes,
     \* the login callback (OIDC handler, NewLogin, BffTicketStore.StoreAsync)
     lpc, ltok, cookie, logins,
+    pastDeadline,
     \* API requests (ApiProxy -> token management -> RefreshLock -> BffTicketStore.RenewAsync)
     pc, key, start, ver, newTok, tries, pend,
     \* /bff/logout (LogoutEndpoint)
@@ -59,8 +63,8 @@ VARIABLES
     refusedWithRows   \* the BFF refused the logout token as a replay while a readable row of S existed
 
 idpVars == <<idp, rt, nextRt>>
-dbVars  == <<row, rowLock, lock, jtiUsed>>
-lVars   == <<lpc, ltok, cookie, logins>>
+dbVars  == <<row, rowLock, lock, jtiUsed, idpLock>>
+lVars   == <<lpc, ltok, cookie, logins, pastDeadline>>
 rVars   == <<pc, key, start, ver, newTok, tries, pend>>
 oVars   == <<opc, okey, otok, loggedOut>>
 bVars   == <<bpc, found, bcDel, jtiPend, deliveries, bcOk>>
@@ -72,12 +76,17 @@ LiveRt(t) == t \in Tokens /\ rt[t] = "live"
 Excuse(t, reason) == IF LiveRt(t) /\ why[t] = "none" THEN [why EXCEPT ![t] = reason] ELSE why
 Revoke(t) == IF LiveRt(t) THEN [rt EXCEPT ![t] = "revoked"] ELSE rt   \* RefreshTokenRevocation.RevokeAsync
 Issue == [rt EXCEPT ![nextRt] = "live"]
+ReleaseIdpLock(holder) == IF idpLock = holder THEN "none" ELSE idpLock
+LoginTxn == {"txn", "checked"}
 
 TypeOK ==
     /\ idp \in {"none", "live", "ended"}
     /\ rt \in [Tokens -> {"unissued", "live", "used", "revoked", "dead"}]
     /\ row \in [Keys -> [exists : BOOLEAN, rt : 0..MaxTokens, ver : Nat, expired : BOOLEAN]]
     /\ rowLock \in [Keys -> 0..BC]
+    /\ idpLock \in {"none", "login", "bc"}
+    /\ lpc \in {"start", "authorized", "exchanged"} \cup LoginTxn
+    /\ pastDeadline \in BOOLEAN
     /\ lock \in [Keys -> 0..NReqs]
     /\ inflight \in [{1, 2} -> [Tokens -> 0..NReqs]]
     /\ pc \in [Reqs -> {"idle", "refresh", "waiter", "lockwait", "locked", "calling", "write",
@@ -86,9 +95,9 @@ TypeOK ==
 Init ==
     /\ idp = "none" /\ rt = [t \in Tokens |-> "unissued"] /\ nextRt = 1
     /\ row = [k \in Keys |-> NoRow] /\ rowLock = [k \in Keys |-> 0] /\ lock = [k \in Keys |-> 0]
-    /\ jtiUsed = FALSE
+    /\ jtiUsed = FALSE /\ idpLock = "none"
     /\ inflight = [i \in {1, 2} |-> [t \in Tokens |-> 0]] /\ crashes = 0
-    /\ lpc = "start" /\ ltok = 0 /\ cookie = 0 /\ logins = 0
+    /\ lpc = "start" /\ ltok = 0 /\ cookie = 0 /\ logins = 0 /\ pastDeadline = FALSE
     /\ pc = [r \in Reqs |-> "idle"] /\ key = [r \in Reqs |-> 0] /\ start = [r \in Reqs |-> 0]
     /\ ver = [r \in Reqs |-> 0] /\ newTok = [r \in Reqs |-> 0] /\ tries = [r \in Reqs |-> 0]
     /\ pend = [r \in Reqs |-> "none"]
@@ -111,21 +120,29 @@ IdpEndsSession ==
 (* Login: the OIDC handler, NewLogin.EndExistingSessionAsync, BffTicketStore.StoreAsync *)
 
 \* The user signs in at the IdP (/bff/login, then the authorize page). A second login joins S (SSO, same sid).
+\* AuthExtensions.cs:151 OnRedirectToIdentityProvider: LoginTimes.CaptureDeadline puts the challenge plus
+\* RemoteAuthenticationTimeout in the protected state, so the deadline of the login starts here.
 LoginAuthorize ==
     /\ lpc = "start" /\ logins < Logins /\ idp \in {"none", "live"}
-    /\ idp' = "live" /\ lpc' = "authorized"
+    /\ idp' = "live" /\ lpc' = "authorized" /\ pastDeadline' = FALSE
     /\ UNCHANGED <<rt, nextRt, dbVars, inflight, crashes, ltok, cookie, logins, rVars, oVars, bVars, why, refusedWithRows>>
+
+\* Time passes beyond the deadline of the login in flight: the challenge plus RemoteAuthenticationTimeout.
+LoginDeadlinePasses ==
+    /\ lpc # "start" /\ ~pastDeadline
+    /\ pastDeadline' = TRUE
+    /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, lpc, ltok, cookie, logins, rVars, oVars, bVars, why, refusedWithRows>>
 
 \* /signin-oidc: the code exchange. The IdP issues the first refresh token of the login.
 LoginExchange ==
     /\ lpc = "authorized" /\ idp = "live" /\ nextRt <= MaxTokens
     /\ rt' = Issue /\ nextRt' = nextRt + 1 /\ ltok' = nextRt /\ lpc' = "exchanged"
-    /\ UNCHANGED <<idp, dbVars, inflight, crashes, cookie, logins, rVars, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idp, dbVars, inflight, crashes, cookie, logins, pastDeadline, rVars, oVars, bVars, why, refusedWithRows>>
 
 \* The code exchange fails, because S ended. No row.
 LoginExchangeFails ==
     /\ lpc = "authorized" /\ idp = "ended"
-    /\ lpc' = "start"
+    /\ lpc' = "start" /\ pastDeadline' = FALSE
     /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, ltok, cookie, logins, rVars, oVars, bVars, why, refusedWithRows>>
 
 \* NewLogin.cs:37 DeleteAsync of the old row. The new login has the same sid, so RevokeRefreshTokenAsync
@@ -135,16 +152,44 @@ LoginEndsOldSession ==
     /\ row' = [row EXCEPT ![cookie].exists = FALSE]
     /\ why' = IF row[cookie].exists THEN Excuse(row[cookie].rt, "a same-sid login keeps the old token") ELSE why
     /\ cookie' = 0
-    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, lpc, ltok, logins, rVars, oVars, bVars, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, idpLock, inflight, crashes, lpc, ltok, logins, pastDeadline, rVars, oVars, bVars, refusedWithRows>>
 
-\* BffTicketStore.cs:69 CreateAsync. With a cross-site IdP the cookie does not come, so the old row can stay.
-LoginCreatesRow ==
+\* BffTicketStore.StoreAsync: one bffdb transaction (EfBffSessionStore.CreateAsync). LoginLock: IdpSessionLock takes
+\* pg_advisory_xact_lock of the sub and then of the sid of the login, so that it waits for a logout transaction of S,
+\* and a logout transaction of S waits for it. The insert of the row is no step of its own: no other transaction
+\* sees the row before the commit.
+LoginBegins ==
     /\ lpc = "exchanged"
-    /\ LET k == logins + 1 IN
-         /\ row' = [row EXCEPT ![k] = [exists |-> TRUE, rt |-> ltok, ver |-> 0, expired |-> FALSE]]
-         /\ cookie' = k
-    /\ logins' = logins + 1 /\ ltok' = 0 /\ lpc' = "start"
-    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, rVars, oVars, bVars, why, refusedWithRows>>
+    /\ IF LoginLock THEN idpLock = "none" /\ idpLock' = "login" ELSE UNCHANGED idpLock
+    /\ lpc' = "txn"
+    /\ UNCHANGED <<idpVars, row, rowLock, lock, jtiUsed, inflight, crashes, ltok, cookie, logins, pastDeadline, rVars, oVars, bVars, why, refusedWithRows>>
+
+\* The read of the logout records (LogoutTokenReplayCache.EndsLoginAsync): a committed record with the sid of the
+\* login, or with no sid and its sub, issued at or after the tokens of the login, less the clock skew of the IdP
+\* (LoginTimes.EndedByLogoutsFrom). The record of S ends the login: a rollback,
+\* and the callback fails. Only a commit makes a record visible. The IdP ended S, so the token of the login is dead.
+LoginChecksRecord ==
+    /\ lpc = "txn"
+    /\ IF jtiUsed
+         THEN /\ lpc' = "start" /\ ltok' = 0 /\ pastDeadline' = FALSE /\ idpLock' = ReleaseIdpLock("login")
+         ELSE /\ lpc' = "checked" /\ UNCHANGED <<ltok, pastDeadline, idpLock>>
+    /\ UNCHANGED <<idpVars, row, rowLock, lock, jtiUsed, inflight, crashes, cookie, logins, rVars, oVars, bVars, why, refusedWithRows>>
+
+\* After the read, the deadline (LoginTimes.ThrowIfPastDeadline, LoginDeadline): a login past it fails, with a
+\* rollback. Its token can be live, and no row holds it. Else the commit: the row is visible, and the callback sets
+\* the cookie. With a cross-site IdP the cookie of the old row does not come, so the old row can stay.
+LoginCommits ==
+    /\ lpc = "checked"
+    /\ IF LoginDeadline /\ pastDeadline
+         THEN /\ why' = Excuse(ltok, "a login past its deadline ends before its row")
+              /\ UNCHANGED <<row, cookie, logins>>
+         ELSE /\ LET k == logins + 1 IN
+                   /\ row' = [row EXCEPT ![k] = [exists |-> TRUE, rt |-> ltok, ver |-> 0, expired |-> FALSE]]
+                   /\ cookie' = k
+              /\ logins' = logins + 1
+              /\ UNCHANGED why
+    /\ lpc' = "start" /\ ltok' = 0 /\ pastDeadline' = FALSE /\ idpLock' = ReleaseIdpLock("login")
+    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, rVars, oVars, bVars, refusedWithRows>>
 
 -----------------------------------------------------------------------------
 (* API requests: ApiProxy.cs:112 GetUserAccessTokenAsync, RefreshLock, BffTicketStore.RenewAsync *)
@@ -182,7 +227,7 @@ ReqTakesLock(r) ==
     /\ pc[r] = "lockwait" /\ lock[key[r]] = 0
     /\ lock' = [lock EXCEPT ![key[r]] = r]
     /\ pc' = [pc EXCEPT ![r] = "locked"]
-    /\ UNCHANGED <<idpVars, row, rowLock, jtiUsed, inflight, crashes, lVars, key, start, ver, newTok, tries, pend, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, row, rowLock, jtiUsed, idpLock, inflight, crashes, lVars, key, start, ver, newTok, tries, pend, oVars, bVars, why, refusedWithRows>>
 
 \* lock_timeout = LockTimeout: a temporary failure (Outcome.LockTimeout).
 ReqLockTimesOut(r) ==
@@ -258,7 +303,7 @@ ReqDeletesRow(r) ==
               /\ pend' = [pend EXCEPT ![r] = "delete"]
               /\ pc' = [pc EXCEPT ![r] = "commit"]
          ELSE /\ pc' = [pc EXCEPT ![r] = "end"] /\ UNCHANGED <<rowLock, pend>>
-    /\ UNCHANGED <<idpVars, row, lock, jtiUsed, inflight, crashes, lVars, key, start, ver, newTok, tries, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, row, lock, jtiUsed, idpLock, inflight, crashes, lVars, key, start, ver, newTok, tries, oVars, bVars, why, refusedWithRows>>
 
 \* BffTicketStore.RenewTokensAsync, inside the lock transaction: UPDATE ... WHERE key AND xmin = ver.
 \* It waits for the row lock of another transaction. Written, Missing (revoke), or Conflict.
@@ -271,18 +316,18 @@ ReqWritesTokens(r) ==
               /\ pc' = [pc EXCEPT ![r] = "commit"]
               /\ UNCHANGED <<ver, tries>>
        ELSE IF ~Readable(k)
-         THEN /\ pc' = [pc EXCEPT ![r] = "revokeNew"]          \* BffTicketStore.cs:182 Missing
+         THEN /\ pc' = [pc EXCEPT ![r] = "revokeNew"]          \* BffTicketStore.cs:183 Missing
               /\ UNCHANGED <<rowLock, pend, ver, tries>>
        ELSE IF row[k].rt # start[r]
-         THEN /\ pc' = [pc EXCEPT ![r] = "fault"]              \* BffTicketStore.cs:198 a conflict with other tokens throws
+         THEN /\ pc' = [pc EXCEPT ![r] = "fault"]              \* BffTicketStore.cs:199 a conflict with other tokens throws
               /\ UNCHANGED <<rowLock, pend, ver, tries>>
        ELSE IF tries[r] + 1 < WriteAttempts                    \* a conflict with an expiry renewal: try again
          THEN /\ ver' = [ver EXCEPT ![r] = row[k].ver]
               /\ tries' = [tries EXCEPT ![r] = tries[r] + 1]
               /\ UNCHANGED <<rowLock, pend, pc>>
-         ELSE /\ pc' = [pc EXCEPT ![r] = "revokeNew"]          \* BffTicketStore.cs:208 dropped after 3 conflicts
+         ELSE /\ pc' = [pc EXCEPT ![r] = "revokeNew"]          \* BffTicketStore.cs:209 dropped after 3 conflicts
               /\ UNCHANGED <<rowLock, pend, ver, tries>>
-    /\ UNCHANGED <<idpVars, row, lock, jtiUsed, inflight, crashes, lVars, key, start, newTok, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, row, lock, jtiUsed, idpLock, inflight, crashes, lVars, key, start, newTok, oVars, bVars, why, refusedWithRows>>
 
 \* BffTicketStore.RevokeNewRefreshTokenAsync: no row holds the new token.
 ReqRevokesNew(r) ==
@@ -307,7 +352,7 @@ ReqCommits(r) ==
     /\ newTok' = [newTok EXCEPT ![r] = 0]
     /\ pend' = [pend EXCEPT ![r] = "none"]
     /\ pc' = [pc EXCEPT ![r] = "done"]
-    /\ UNCHANGED <<idpVars, jtiUsed, crashes, lVars, key, start, ver, tries, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, jtiUsed, idpLock, crashes, lVars, key, start, ver, tries, oVars, bVars, why, refusedWithRows>>
 
 \* The end of a lock transaction with no row change: commit or rollback, then the finally.
 ReqEnds(r) ==
@@ -315,7 +360,7 @@ ReqEnds(r) ==
     /\ lock' = [lock EXCEPT ![key[r]] = IF @ = r THEN 0 ELSE @]
     /\ inflight' = [inflight EXCEPT ![Inst(r)][start[r]] = IF @ = r THEN 0 ELSE @]
     /\ pc' = [pc EXCEPT ![r] = "done"]
-    /\ UNCHANGED <<idpVars, row, rowLock, jtiUsed, crashes, lVars, key, start, ver, newTok, tries, pend, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, row, rowLock, jtiUsed, idpLock, crashes, lVars, key, start, ver, newTok, tries, pend, oVars, bVars, why, refusedWithRows>>
 
 \* A database failure after the IdP call: the transaction rolls back, and the execution strategy returns
 \* RetryAfterRefresh (RefreshLock.cs:181). The rotated token is in no row (spec 3.7, Cancellation). A live
@@ -330,7 +375,7 @@ ReqDbFailsAfterCall(r) ==
     /\ newTok' = [newTok EXCEPT ![r] = 0]
     /\ pend' = [pend EXCEPT ![r] = "none"]
     /\ pc' = [pc EXCEPT ![r] = "done"]
-    /\ UNCHANGED <<idpVars, row, jtiUsed, crashes, lVars, key, start, ver, tries, oVars, bVars, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, row, jtiUsed, idpLock, crashes, lVars, key, start, ver, tries, oVars, bVars, refusedWithRows>>
 
 \* BffTicketStore.RenewExpiryAsync, in autocommit and with no lock: UPDATE ... WHERE key AND xmin = ver.
 ReqRenewsExpiry(r) ==
@@ -346,7 +391,7 @@ ReqRenewsExpiry(r) ==
               /\ UNCHANGED <<row, pc>>
          ELSE /\ pc' = [pc EXCEPT ![r] = "done"]
               /\ UNCHANGED <<row, ver, tries>>
-    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, lVars, key, start, newTok, pend, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, idpLock, inflight, crashes, lVars, key, start, newTok, pend, oVars, bVars, why, refusedWithRows>>
 
 -----------------------------------------------------------------------------
 (* /bff/logout: LogoutEndpoint.HandleAsync *)
@@ -365,7 +410,7 @@ LogoutDeletes ==
               /\ otok' = row[okey].rt
               /\ opc' = "revoke"
          ELSE /\ opc' = "signout" /\ UNCHANGED <<row, otok>>
-    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, lVars, rVars, okey, loggedOut, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, idpLock, inflight, crashes, lVars, rVars, okey, loggedOut, bVars, why, refusedWithRows>>
 
 \* LogoutEndpoint.cs:64: revoke the token of the deleted row. An IdP error is logged, and the logout goes on.
 LogoutRevokes ==
@@ -380,7 +425,7 @@ LogoutSignsOut ==
     /\ opc = "signout"
     /\ cookie' = IF cookie = okey THEN 0 ELSE cookie
     /\ loggedOut' = okey /\ opc' = "done"
-    /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, lpc, ltok, logins, rVars, okey, otok, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, lpc, ltok, logins, pastDeadline, rVars, okey, otok, bVars, why, refusedWithRows>>
 
 -----------------------------------------------------------------------------
 (* /bff/backchannel: BackChannelLogoutEndpoint.HandleAsync *)
@@ -388,36 +433,44 @@ LogoutSignsOut ==
 \* The IdP sends the logout token of S, again after a crash, a 400, or a 500, until it gets a 200.
 BcDelivered ==
     /\ bpc = "idle" /\ idp = "ended" /\ ~bcOk /\ deliveries < MaxDeliveries
-    /\ deliveries' = deliveries + 1 /\ bpc' = "insert"
+    /\ deliveries' = deliveries + 1 /\ bpc' = IF LoginLock THEN "lock" ELSE "insert"
     /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, lVars, rVars, oVars, found, bcDel, jtiPend, bcOk, why, refusedWithRows>>
 
-\* BackChannelLogoutEndpoint.cs:86 replayCache.TryAddAsync: INSERT ... ON CONFLICT DO NOTHING, in the logout
+\* BackChannelLogoutEndpoint.cs:86 the first statement of the logout transaction: IdpSessionLock takes
+\* pg_advisory_xact_lock of the sid of the token, or of its sub when it has no sid. It waits for a login transaction
+\* of S.
+BcLocks ==
+    /\ bpc = "lock" /\ idpLock = "none"
+    /\ idpLock' = "bc" /\ bpc' = "insert"
+    /\ UNCHANGED <<idpVars, row, rowLock, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, found, bcDel, jtiPend, deliveries, bcOk, why, refusedWithRows>>
+
+\* BackChannelLogoutEndpoint.cs:88 replayCache.TryAddAsync: INSERT ... ON CONFLICT DO NOTHING, in the logout
 \* transaction. The jti commits with the deletes (BcAnswers200).
 BcInsertsJti ==
     /\ bpc = "insert"
     /\ IF jtiUsed
          THEN /\ refusedWithRows' = (refusedWithRows \/ \E k \in Keys : Readable(k))   \* 400, a replay
-              /\ bpc' = "idle"
+              /\ bpc' = "idle" /\ idpLock' = ReleaseIdpLock("bc")
               /\ UNCHANGED jtiPend
          ELSE /\ jtiPend' = TRUE
               /\ bpc' = "find"
-              /\ UNCHANGED refusedWithRows
+              /\ UNCHANGED <<refusedWithRows, idpLock>>
     /\ UNCHANGED <<idpVars, row, rowLock, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, found, bcDel, deliveries, bcOk, why>>
 
-\* The insert fails: 400, and no session ends (BackChannelLogoutEndpoint.cs:97).
+\* The lock or the insert fails: a rollback, 400, and no session ends (BackChannelLogoutEndpoint.cs:99).
 BcInsertFails ==
-    /\ bpc = "insert"
-    /\ bpc' = "idle"
-    /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, lVars, rVars, oVars, found, bcDel, jtiPend, deliveries, bcOk, why, refusedWithRows>>
+    /\ bpc \in {"lock", "insert"}
+    /\ bpc' = "idle" /\ idpLock' = ReleaseIdpLock("bc")
+    /\ UNCHANGED <<idpVars, row, rowLock, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, found, bcDel, jtiPend, deliveries, bcOk, why, refusedWithRows>>
 
-\* BackChannelLogoutEndpoint.cs:179 FindBySessionIdAsync (or FindBySubjectAsync): the readable rows of S.
+\* BackChannelLogoutEndpoint.cs:173 FindBySessionIdAsync (or FindBySubjectAsync): the readable rows of S.
 BcFindsRows ==
     /\ bpc = "find"
     /\ found' = {k \in Keys : Readable(k)}
     /\ bpc' = "delete"
     /\ UNCHANGED <<idpVars, dbVars, inflight, crashes, lVars, rVars, oVars, bcDel, jtiPend, deliveries, bcOk, why, refusedWithRows>>
 
-\* BackChannelLogoutEndpoint.cs:189 DeleteAsync of one found row, in the logout transaction. It waits for the row
+\* BackChannelLogoutEndpoint.cs:183 DeleteAsync of one found row, in the logout transaction. It waits for the row
 \* lock of a refresh, and it holds the row lock until the commit.
 BcDeletesRow ==
     /\ bpc = "delete"
@@ -426,27 +479,27 @@ BcDeletesRow ==
          /\ found' = found \ {k}
          /\ IF row[k].exists THEN rowLock' = [rowLock EXCEPT ![k] = BC] /\ bcDel' = bcDel \cup {k}
                               ELSE UNCHANGED <<rowLock, bcDel>>
-    /\ UNCHANGED <<idpVars, row, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, bpc, jtiPend, deliveries, bcOk, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, row, lock, jtiUsed, idpLock, inflight, crashes, lVars, rVars, oVars, bpc, jtiPend, deliveries, bcOk, why, refusedWithRows>>
 
 ReleaseBc == [k \in Keys |-> IF rowLock[k] = BC THEN 0 ELSE rowLock[k]]
 
-\* A row delete throws, after the retries of the execution strategy: a rollback, then 500 (BackChannelLogoutEndpoint.cs:104).
+\* A row delete throws, after the retries of the execution strategy: a rollback, then 500 (BackChannelLogoutEndpoint.cs:106).
 \* No row ends, and the jti goes with the rollback, so the IdP can send the token again.
 BcDeleteFails ==
     /\ bpc = "delete" /\ found # {}
     /\ rowLock' = ReleaseBc /\ bcDel' = {} /\ jtiPend' = FALSE /\ found' = {}
-    /\ bpc' = "idle"
+    /\ bpc' = "idle" /\ idpLock' = ReleaseIdpLock("bc")
     /\ UNCHANGED <<idpVars, row, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, deliveries, bcOk, why, refusedWithRows>>
 
 \* All found rows are gone: the jti and the deletes commit, then 200. If the answer to the commit gets lost,
 \* verifySucceeded of ExecuteInTransactionAsync asks Postgres if this transaction committed, and the answer is
-\* 200 too (BackChannelLogoutEndpoint.cs:94).
+\* 200 too (BackChannelLogoutEndpoint.cs:96).
 BcAnswers200 ==
     /\ bpc = "delete" /\ found = {}
     /\ row' = [k \in Keys |-> IF k \in bcDel THEN [row[k] EXCEPT !.exists = FALSE] ELSE row[k]]
     /\ rowLock' = ReleaseBc /\ bcDel' = {}
     /\ jtiUsed' = (jtiUsed \/ jtiPend) /\ jtiPend' = FALSE
-    /\ bcOk' = TRUE /\ bpc' = "idle"
+    /\ bcOk' = TRUE /\ bpc' = "idle" /\ idpLock' = ReleaseIdpLock("bc")
     /\ UNCHANGED <<idpVars, lock, inflight, crashes, lVars, rVars, oVars, found, deliveries, why, refusedWithRows>>
 
 -----------------------------------------------------------------------------
@@ -455,21 +508,30 @@ BcAnswers200 ==
 RowExpires(k) ==
     /\ WithExpiry /\ row[k].exists /\ ~row[k].expired
     /\ row' = [row EXCEPT ![k].expired = TRUE]
-    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, bVars, why, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, idpLock, inflight, crashes, lVars, rVars, oVars, bVars, why, refusedWithRows>>
 
 \* EfBffSessionStore.DeleteEndedAsync. It does not revoke the refresh token.
 CleanupDeletes(k) ==
     /\ row[k].exists /\ row[k].expired /\ rowLock[k] = 0
     /\ row' = [row EXCEPT ![k].exists = FALSE]
     /\ why' = Excuse(row[k].rt, "the cleanup deleted an expired row")
-    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, inflight, crashes, lVars, rVars, oVars, bVars, refusedWithRows>>
+    /\ UNCHANGED <<idpVars, rowLock, lock, jtiUsed, idpLock, inflight, crashes, lVars, rVars, oVars, bVars, refusedWithRows>>
+
+\* LogoutTokenReplayCache.DeleteExpiredAsync deletes the logout record after its Expires: the later of the exp of
+\* the token and the receipt plus RemoteAuthenticationTimeout, plus the clock skew (UsedLogoutToken.Of).
+\* Each login of S had its challenge before S ended, so before the receipt. Thus at Expires the deadline of each
+\* login in flight passed.
+RecordExpires ==
+    /\ jtiUsed /\ (lpc = "start" \/ pastDeadline)
+    /\ jtiUsed' = FALSE
+    /\ UNCHANGED <<idpVars, row, rowLock, lock, idpLock, inflight, crashes, lVars, rVars, oVars, bVars, why, refusedWithRows>>
 
 -----------------------------------------------------------------------------
 (* A crash of instance i: its requests stop, Postgres rolls back their transactions and frees their locks,
    and _inFlight starts empty. Requests that did not start yet run after the restart. An instance that stops
-   with its connection open is the same crash: the refresh lock transaction (RefreshLock.TryLockAsync) and the
-   logout transaction (BackChannelLogoutEndpoint.LimitIdleTimeAsync) set idle_in_transaction_session_timeout,
-   so Postgres ends its session at the limit. *)
+   with its connection open is the same crash: the refresh lock transaction (RefreshLock.TryLockAsync), and the
+   login and logout transactions (IdpSessionLock), set idle_in_transaction_session_timeout, so Postgres ends its
+   session at the limit. *)
 
 Dies(r, i) == Inst(r) = i /\ pc[r] \notin {"idle", "done"}
 
@@ -493,6 +555,8 @@ Crash(i) ==
                                    THEN "a crash before the row write or the revocation" ELSE why[t]]
     /\ lpc' = IF i = LoginInst THEN "start" ELSE lpc
     /\ ltok' = IF i = LoginInst THEN 0 ELSE ltok
+    /\ pastDeadline' = IF i = LoginInst THEN FALSE ELSE pastDeadline
+    /\ idpLock' = IF (idpLock = "login" /\ i = LoginInst) \/ (idpLock = "bc" /\ i = BcInst) THEN "none" ELSE idpLock
     /\ opc' = IF i = LogoutInst /\ opc \notin {"idle", "done"} THEN "done" ELSE opc
     /\ otok' = IF i = LogoutInst THEN 0 ELSE otok
     /\ bpc' = IF i = BcInst THEN "idle" ELSE bpc
@@ -521,9 +585,11 @@ ReqNext(r) ==
     \/ ReqWritesTokens(r) \/ ReqRevokesNew(r) \/ ReqCommits(r) \/ ReqEnds(r) \/ ReqDbFailsAfterCall(r)
     \/ ReqRenewsExpiry(r)
 
-LoginNext == LoginAuthorize \/ LoginExchange \/ LoginExchangeFails \/ LoginEndsOldSession \/ LoginCreatesRow
+LoginTxnNext == LoginBegins \/ LoginChecksRecord \/ LoginCommits
+LoginNext == LoginAuthorize \/ LoginDeadlinePasses \/ LoginExchange \/ LoginExchangeFails \/ LoginEndsOldSession
+             \/ LoginTxnNext
 LogoutNext == LogoutReads \/ LogoutDeletes \/ LogoutRevokes \/ LogoutSignsOut
-BcNext == BcDelivered \/ BcInsertsJti \/ BcInsertFails \/ BcFindsRows \/ BcDeletesRow \/ BcDeleteFails
+BcNext == BcDelivered \/ BcLocks \/ BcInsertsJti \/ BcInsertFails \/ BcFindsRows \/ BcDeletesRow \/ BcDeleteFails
           \/ BcAnswers200
 
 Next ==
@@ -533,14 +599,14 @@ Next ==
     \/ LogoutNext
     \/ BcNext
     \/ \E k \in Keys : RowExpires(k) \/ CleanupDeletes(k)
+    \/ RecordExpires
     \/ \E i \in {1, 2} : Crash(i)
     \/ Finished
 
-\* Each request and each back-channel handling keeps moving while it can. Crashes, expiry, the IdP, and the
-\* user need no fairness.
 Fairness ==
     /\ \A r \in Reqs : WF_vars(ReqNext(r))
-    /\ WF_vars(BcInsertsJti \/ BcInsertFails \/ BcFindsRows \/ BcDeletesRow \/ BcDeleteFails \/ BcAnswers200)
+    /\ WF_vars(LoginTxnNext)
+    /\ WF_vars(BcLocks \/ BcInsertsJti \/ BcInsertFails \/ BcFindsRows \/ BcDeletesRow \/ BcDeleteFails \/ BcAnswers200)
     /\ WF_vars(LogoutDeletes \/ LogoutRevokes \/ LogoutSignsOut)
 
 Spec == Init /\ [][Next]_vars /\ Fairness
@@ -567,7 +633,7 @@ BackChannelLogoutEndsSessions == bcOk => \A k \in Keys : ~Readable(k)
 \* The BFF refuses a logout token as a replay only when no readable row of its sid is left.
 ReplayRefusedOnlyWhenEnded == ~refusedWithRows
 
-\* A token write inside the lock never meets other tokens (BffTicketStore.cs:198 throws).
+\* A token write inside the lock never meets other tokens (BffTicketStore.cs:199 throws).
 NoTokenWriteConflict == \A r \in Reqs : pc[r] # "fault"
 
 LeaderPhases == {"lockwait", "locked", "calling", "write", "revokeNew", "rejectRevoke", "permdelete", "commit", "end"}
@@ -582,12 +648,16 @@ NoStaleLock ==
     /\ \A k \in Keys : lock[k] # 0 => pc[lock[k]] \in LeaderPhases \ {"lockwait"}
     /\ \A k \in Keys : rowLock[k] \in Reqs => pc[rowLock[k]] = "commit"
     /\ \A k \in Keys : rowLock[k] = BC => bpc = "delete"
+    /\ idpLock = "login" => lpc \in LoginTxn
+    /\ idpLock = "bc" => bpc \in {"insert", "find", "delete"}
 
 \* Every refresh in flight ends: a success, a temporary failure, a permanent failure, or the crash of its instance.
 RefreshEnds == \A r \in Reqs : (pc[r] \notin {"idle", "done"}) ~> (pc[r] = "done")
 
 \* Every back-channel handling ends with an answer, or with the crash of its instance.
 BackChannelEnds == (bpc # "idle") ~> (bpc = "idle")
+
+LoginEnds == (lpc \in {"exchanged"} \cup LoginTxn) ~> (lpc = "start")
 
 \* Symmetry is not used: the requests run on different instances.
 =============================================================================

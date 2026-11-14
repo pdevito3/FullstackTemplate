@@ -96,7 +96,7 @@ function WorkshopRows({ list, search, page, onPageChange }: WorkshopRowsProps) {
     return <p role="status" aria-label="Loading workshops" className="text-muted-foreground">Loading workshops</p>
   }
 
-  if (list.isError) {
+  if (list.isLoadingError) {
     return <QueryError title="The workshops did not load." error={list.error} onRetry={() => list.refetch()} />
   }
 

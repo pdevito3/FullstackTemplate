@@ -72,7 +72,7 @@ function UserRows({ list, page, onPageChange }: UserRowsProps) {
     return <p role="status" aria-label="Loading users" className="text-muted-foreground">Loading users</p>
   }
 
-  if (list.isError) {
+  if (list.isLoadingError) {
     return <QueryError title="The users did not load." error={list.error} onRetry={() => list.refetch()} />
   }
 

@@ -45,7 +45,7 @@ function UserPage() {
     return <p role="status" aria-label="Loading user" className="px-4 py-8 text-muted-foreground">Loading user</p>
   }
 
-  if (user.isError) {
+  if (user.isLoadingError) {
     return (
       <div className="mx-auto w-full max-w-4xl px-4 py-8">
         <QueryError title="The user did not load." error={user.error} onRetry={() => user.refetch()} />
@@ -75,6 +75,9 @@ function UserPage() {
       <Link to="/users" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         All users
       </Link>
+      {user.isRefetchError && (
+        <QueryError title="The latest user did not load." error={user.error} onRetry={() => user.refetch()} />
+      )}
       <PageHeading ref={headingRef}>{fullName}</PageHeading>
       <section aria-label="Details">
         <dl className="grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm wrap-anywhere">

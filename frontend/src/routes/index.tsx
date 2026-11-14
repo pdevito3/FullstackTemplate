@@ -45,12 +45,12 @@ function Home() {
 }
 
 function SignedInUser() {
-  const { data: user, isLoading, isError } = useCurrentUser()
+  const { data: user, isLoading } = useCurrentUser()
 
   if (isLoading) {
     return <Skeleton className="h-5 w-48" aria-label="Loading your user" />
   }
-  if (isError || !user) {
+  if (!user) {
     return <p className="text-sm text-destructive">The Server could not load your user.</p>
   }
   return (

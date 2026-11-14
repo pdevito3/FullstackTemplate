@@ -34,7 +34,7 @@ function valuesOf(workshop: WorkshopDto) {
 interface WorkshopEditFormProps {
   workshop: WorkshopDto
   onSave: (body: WorkshopForUpdateDto) => Promise<unknown>
-  onLoadLatest: () => Promise<WorkshopDto | undefined>
+  onLoadLatest: () => Promise<WorkshopDto>
 }
 
 export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEditFormProps) {
@@ -59,10 +59,7 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
   }, focusFirstError(form, WORKSHOP_FIELD_NAMES))
 
   const handleLoadLatest = async () => {
-    const loaded = await latest.load(async () => {
-      const record = await onLoadLatest()
-      return record && valuesOf(record)
-    })
+    const loaded = await latest.load(async () => valuesOf(await onLoadLatest()))
     if (loaded) serverErrors.clear()
   }
 
@@ -75,6 +72,7 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
           noun="workshop"
           problem={serverErrors.problem}
           isLoadingLatest={latest.isLoading}
+          loadFailure={latest.failure}
           onLoadLatest={handleLoadLatest}
         />
         <LatestLoadedNote noun="workshop" changed={latest.changed} labels={FIELD_LABELS} />

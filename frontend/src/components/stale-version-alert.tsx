@@ -6,10 +6,11 @@ interface StaleVersionAlertProps {
   noun: string
   problem: SaveProblem | null
   isLoadingLatest: boolean
+  loadFailure: string | null
   onLoadLatest: () => void
 }
 
-export function StaleVersionAlert({ noun, problem, isLoadingLatest, onLoadLatest }: StaleVersionAlertProps) {
+export function StaleVersionAlert({ noun, problem, isLoadingLatest, loadFailure, onLoadLatest }: StaleVersionAlertProps) {
   if (problem?.kind !== 'stale') {
     return null
   }
@@ -21,6 +22,11 @@ export function StaleVersionAlert({ noun, problem, isLoadingLatest, onLoadLatest
         Your edits are still in the form, and they are not saved. Load the latest to see what changed. The form keeps
         your edits to each field that the latest save did not change.
       </p>
+      {loadFailure !== null && (
+        <p className="text-destructive wrap-anywhere">
+          The latest {noun} did not load. {loadFailure}
+        </p>
+      )}
       <Button variant="outline" className="self-start" onPress={onLoadLatest} isPending={isLoadingLatest}>
         Load the latest
       </Button>

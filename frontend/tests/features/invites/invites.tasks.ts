@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { nextFrames } from '@tests/support/answers'
 import { bffPaths } from '@tests/support/api/bff-api'
 import { invitesPaths } from '@tests/support/api/invites-api'
 import { tenantsPaths } from '@tests/support/api/tenants-api'
@@ -10,10 +11,6 @@ const answeredBy = (page: Page) => (method: string, path: string) =>
 async function pageOverflow(page: Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
 }
-
-/** Two frames, so that the page has rendered each answer that it got. */
-const nextFrames = (page: Page) =>
-  page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
 
 export function usersWithInvites(page: Page) {
   const at = invites(page)

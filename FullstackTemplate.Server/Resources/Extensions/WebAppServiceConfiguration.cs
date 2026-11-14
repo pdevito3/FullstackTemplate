@@ -16,8 +16,10 @@ public static class WebAppServiceConfiguration
     /// <summary>
     /// Adds the core services: the database, the background jobs, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
     /// The integration tests call only this method. <c>AddEntrypoints</c> adds HTTP, gRPC, and MCP.
+    /// The core has no caller until <c>AddEntrypoints</c> replaces <see cref="NoPrincipalAccessor"/>. The worker groups
+    /// that run the jobs are added only when the <paramref name="role"/> runs jobs.
     /// </summary>
-    public static void ConfigureServices(this WebApplicationBuilder builder)
+    public static void ConfigureServices(this WebApplicationBuilder builder, ServerRole role)
     {
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddFusionCache()
@@ -31,6 +33,7 @@ public static class WebAppServiceConfiguration
         builder.Services.Configure<TenancyOptions>(builder.Configuration.GetSection(TenancyOptions.SectionName));
         builder.Services.AddSingleton(Options.Create(FirstPartyClientOptions.FromConfiguration(builder.Configuration)));
         builder.Services.AddApplicationServices();
+        builder.Services.AddSingleton<ICurrentPrincipalAccessor, NoPrincipalAccessor>();
         builder.Services.AddScoped<ScopeGrant>();
         builder.AddObjectStorage();
         builder.Services.AddScoped<AttachmentStorage>();
@@ -64,7 +67,7 @@ public static class WebAppServiceConfiguration
                 .AddInterceptors(serviceProvider.GetRequiredService<TenantLookupInterceptor>());
         });
         builder.EnrichNpgsqlDbContext<AppDbContext>();
-        builder.Services.AddBackgroundJobs(builder.Configuration);
+        builder.Services.AddBackgroundJobs(builder.Configuration, role);
 
         builder.Services.AddDomainEvents(typeof(Program).Assembly);
     }

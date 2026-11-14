@@ -7,6 +7,7 @@ using Grpc;
 using Http;
 using Http.OpenApi;
 using Mcp;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using Serilog.Core;
@@ -25,7 +26,7 @@ public static class EntrypointRegistration
     {
         builder.Services.AddJwtBearerAuthentication(builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<ICurrentPrincipalAccessor, HttpContextPrincipalAccessor>();
+        builder.Services.Replace(ServiceDescriptor.Scoped<ICurrentPrincipalAccessor, HttpContextPrincipalAccessor>());
 
         // HTTP
         builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = DomainProblemDetails.Customize);

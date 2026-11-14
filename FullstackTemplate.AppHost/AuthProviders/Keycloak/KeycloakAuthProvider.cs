@@ -51,7 +51,9 @@ public sealed class KeycloakAuthProvider : IAuthProvider
         {
             ClientId = clientId,
             ClientSecret = "super-secret-client-secret-change-in-production",
-            Audience = clientId,
+            // Not the client ID: each ID token of the client has the client ID as its aud, so the API would take an ID token
+            // as an access token. The audience mappers in seed/realm-export.json add this audience to access tokens only.
+            Audience = "fullstacktemplate-api",
             RequireHttpsMetadata = false,
             NameClaimType = "email",
             RoleClaimType = "roles",

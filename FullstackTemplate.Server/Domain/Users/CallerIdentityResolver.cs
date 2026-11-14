@@ -25,7 +25,8 @@ public interface ICallerIdentityResolver
 /// <summary>
 /// The one place that reads a token as an identity. The rule, in order:
 /// <list type="number">
-/// <item>A system scope is <see cref="CallerIdentity.System"/>.</item>
+/// <item>A scope that Server code granted an identity is that identity: a system scope is
+/// <see cref="CallerIdentity.System"/>, and the scope of a job attempt is a <see cref="CallerIdentity.TenantJob"/>.</item>
 /// <item>A request with no authenticated principal is <see cref="CallerIdentity.Anonymous"/>.</item>
 /// <item>A token with no client claim is an <see cref="CallerIdentity.UnknownClient"/> with no client ID.</item>
 /// <item>A token from a first-party client with a <c>sub</c> is <see cref="CallerIdentity.User"/>.</item>
@@ -48,7 +49,7 @@ public sealed class CallerIdentityResolver(
     IOptions<TenancyOptions> tenancyOptions,
     IOptions<FirstPartyClientOptions> firstPartyClients,
     IAgentDirectory agentDirectory,
-    SystemTenantAccess systemTenantAccess) : ICallerIdentityResolver
+    ScopeGrant scopeGrant) : ICallerIdentityResolver
 {
     private (Token Token, Task<CallerIdentity> Resolution)? _kept;
 
@@ -60,7 +61,7 @@ public sealed class CallerIdentityResolver(
     private Task<CallerIdentity> Resolution(CancellationToken cancellationToken)
     {
         var token = new Token(
-            systemTenantAccess.IsGranted,
+            scopeGrant.Identity,
             currentUserService.IsAuthenticated,
             currentUserService.UserIdentifier,
             currentUserService.ClientId);
@@ -76,8 +77,8 @@ public sealed class CallerIdentityResolver(
 
     private async Task<CallerIdentity> ResolveAsync(Token token, CancellationToken cancellationToken)
     {
-        if (token.IsSystem)
-            return new CallerIdentity.System();
+        if (token.Granted is { } granted)
+            return granted;
 
         if (!token.IsAuthenticated)
             return new CallerIdentity.Anonymous();
@@ -106,5 +107,5 @@ public sealed class CallerIdentityResolver(
         return new CallerIdentity.UnknownClient(clientId);
     }
 
-    private sealed record Token(bool IsSystem, bool IsAuthenticated, string? Subject, string? ClientId);
+    private sealed record Token(CallerIdentity? Granted, bool IsAuthenticated, string? Subject, string? ClientId);
 }

@@ -32,7 +32,7 @@ public static class WebAppServiceConfiguration
         builder.Services.Configure<TenancyOptions>(builder.Configuration.GetSection(TenancyOptions.SectionName));
         builder.Services.AddSingleton(Options.Create(FirstPartyClientOptions.FromConfiguration(builder.Configuration)));
         builder.Services.AddApplicationServices();
-        builder.Services.AddScoped<SystemTenantAccess>();
+        builder.Services.AddScoped<ScopeGrant>();
         builder.AddObjectStorage();
         builder.Services.AddScoped<AttachmentStorage>();
         builder.Services.AddOptions<ObjectDeleteOptions>()

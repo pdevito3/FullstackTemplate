@@ -66,7 +66,7 @@ public sealed class CallerIdentityResolverTests : IDisposable
             ClientIds = new HashSet<string> { AppClientId, SwaggerClientId }
         }));
         services.AddScoped<ICurrentUserService, CurrentUserService>();
-        services.AddScoped<SystemTenantAccess>();
+        services.AddScoped<ScopeGrant>();
         services.AddScoped<ICallerIdentityResolver, CallerIdentityResolver>();
         _services = services.BuildServiceProvider();
 
@@ -189,6 +189,33 @@ public sealed class CallerIdentityResolverTests : IDisposable
 
         // Assert
         identity.ShouldBe(new CallerIdentity.System());
+    }
+
+    [Test]
+    public void scope_of_a_job_is_the_job_of_its_tenant_whatever_the_token()
+    {
+        // Arrange
+        var tenantId = EntityId.New(Tenant.IdPrefix);
+        SetCaller(new Claim("client_id", ManageClientId));
+        _scope.ServiceProvider.GetRequiredService<ScopeGrant>().GrantTenantJob(tenantId);
+
+        // Act & Assert
+        _sut.Current.ShouldBe(new CallerIdentity.TenantJob(tenantId));
+    }
+
+    [Test]
+    public void grant_after_the_first_read_gives_a_new_identity()
+    {
+        // Arrange
+        var tenantId = EntityId.New(Tenant.IdPrefix);
+        _principalAccessor.Principal.Returns((ClaimsPrincipal?)null);
+        _sut.Current.ShouldBe(new CallerIdentity.Anonymous());
+
+        // Act
+        _scope.ServiceProvider.GetRequiredService<ScopeGrant>().GrantTenantJob(tenantId);
+
+        // Assert
+        _sut.Current.ShouldBe(new CallerIdentity.TenantJob(tenantId));
     }
 
     [Test]

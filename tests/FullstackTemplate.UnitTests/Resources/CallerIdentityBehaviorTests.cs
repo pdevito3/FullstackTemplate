@@ -43,7 +43,7 @@ public sealed class CallerIdentityBehaviorTests
             Options.Create(new TenancyOptions()),
             Options.Create(new FirstPartyClientOptions { ClientIds = new HashSet<string> { AppClientId } }),
             Substitute.For<IAgentDirectory>(),
-            new SystemTenantAccess());
+            new ScopeGrant());
     }
 
     [Test]

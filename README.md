@@ -115,6 +115,9 @@ A normal run uses the same ports at each start. All of them are in the block 247
 | 24713 | `server` | https |
 | 24714 | `server` | http |
 | 24715 | `server` | grpc |
+| 24716 | `server-worker` (only with `SplitServer=true`) | https |
+| 24717 | `server-worker` | http |
+| 24718 | `server-worker` | grpc |
 | 24720 | `postgres` | tcp |
 | 24730 | `keycloak` | http |
 | 24731 | `keycloak-postgres` | tcp |

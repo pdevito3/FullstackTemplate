@@ -87,9 +87,23 @@ Run the same image as two groups of processes, to scale the requests and the job
 
 1. Run the processes that serve the requests with `Server__Role=Api`. Send the traffic of the BFF to these processes only.
 2. Run the processes that run the jobs with `Server__Role=Worker`. They serve only `/health` and `/alive`, so they need no ingress.
-3. Give each process the same settings: the connection string of `appdb`, the object storage, and `BackgroundJobs:OperatorSubjects`.
+3. Give each process the settings of a Server with the role `All`. A Worker needs only the connection string of `appdb`, the object storage, and `Auth:ClientId`. An Api process also needs the other auth settings and `BackgroundJobs:OperatorSubjects`.
 
-Each process that runs jobs runs a group for each queue. The keys of Data Protection are in the `data_protection` schema of `appdb`, so each Api process reads the dashboard tokens that another process wrote. The AppHost runs one Server with the role `All`.
+Each process that runs jobs runs a group for each queue. The keys of Data Protection are in the `data_protection` schema of `appdb`, so each Api process reads the dashboard tokens that another process wrote.
+
+### Split the local stack
+
+The AppHost runs one Server with the role `All`. To run the split of a deploy on your machine, set `SplitServer=true`:
+
+```bash
+SplitServer=true dotnet aspire start --isolated --non-interactive --apphost FullstackTemplate.AppHost
+```
+
+- The resource `server` gets the role `Api`. The BFF and each other caller still call `server`.
+- The resource `server-worker` gets the role `Worker`. It gets `appdb`, the object storage, and `Auth:ClientId`, and no other auth setting. Its fixed ports are in the port table of the README.
+- Each job runs in `server-worker`. In the Aspire dashboard, the logs of a job and its `process {queue}` span are on that resource.
+- To patch a job handler with CSharpRepl, connect to the process of `server-worker`. A patch in `server` does not change a job.
+- The flag changes only a local run. A publish with `SplitServer=true` stops with an error, because a deploy sets `Server__Role` on each process itself.
 
 ## The jobs dashboard
 

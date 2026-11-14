@@ -35,15 +35,34 @@ try
     // The BFF sessions and the Data Protection keys of the BFF
     var bffDb = postgres.AddDatabase("bffdb");
 
-    var server = builder.AddProject<Projects.FullstackTemplate_Server>("server")
+    // Each Server process migrates appdb at its start, so each one gets the database.
+    IResourceBuilder<ProjectResource> AddServer(string name) => builder.AddProject<Projects.FullstackTemplate_Server>(name)
         .WithReference(appDb)
         .WaitFor(appDb)
         .WithHttpHealthCheck("/health")
-        .WithExternalHttpEndpoints()
         // The endpoints come from Kestrel:Endpoints in the appsettings of the Server, with the HTTP/2-only "grpc"
         // endpoint. Aspire makes one endpoint for each name and sets its Url.
         .WithCSharpRepl();
+
+    var server = AddServer("server")
+        .WithExternalHttpEndpoints();
     postgres.WithParentRelationship(server);
+
+    // SplitServer=true runs the jobs in a second Server process, as a split deploy does. The BFF and the other callers
+    // keep calling server, which now serves the requests only.
+    IResourceBuilder<ProjectResource>? worker = null;
+    if (SplitServer.IsOn(builder))
+    {
+        server.WithEnvironment("Server__Role", "Api");
+        worker = AddServer(SplitServer.WorkerName)
+            .WithEnvironment("Server__Role", "Worker")
+            // The worker serves only /health and /alive, but Kestrel:Endpoints gives it the endpoints of the server
+            .WithEndpoint("https", endpoint => endpoint.Port = 24716, createIfNotExists: false)
+            .WithEndpoint("http", endpoint => endpoint.Port = 24717, createIfNotExists: false)
+            .WithEndpoint("grpc", endpoint => endpoint.Port = 24718, createIfNotExists: false)
+            .WithParentRelationship(server);
+    }
+    IResourceBuilder<ProjectResource>[] servers = worker is null ? [server] : [server, worker];
 
     // S3 object storage. Floci emulates S3 in a local run only. A published server gets the S3 of its cloud and its
     // bucket from the deploy, not an emulator with test credentials. The browser loads the presigned URLs of the
@@ -60,9 +79,11 @@ try
             .WithDataVolumeUnlessIsolated();
         // A path-style GET of the bucket gives 404 until the hook created it
         storage.WithHttpHealthCheck($"/{storageBucket}", endpointName: storage.Resource.PrimaryEndpoint.EndpointName);
-        server.WithReference(storage)
-            .WaitFor(storage)
-            .WithEnvironment("ObjectStorage__BucketName", storageBucket);
+        // The requests sign the URLs of the files, and the jobs delete the objects
+        foreach (var process in servers)
+            process.WithReference(storage)
+                .WaitFor(storage)
+                .WithEnvironment("ObjectStorage__BucketName", storageBucket);
         storage.WithParentRelationship(server);
     }
 
@@ -113,6 +134,9 @@ try
     if (AuthProviderDPoP.IsOn(builder))
         authProvider = authProvider.WithDPoP(selectedProvider, builder);
     server.WithServerAuth(authProvider);
+    // The core of the Server reads the client of the app at its start. A worker checks no token, so it gets no other
+    // auth setting and does not wait for the provider.
+    worker?.WithEnvironment("Auth__ClientId", authProvider.ClientId);
     // In a local run, the admin user of the seed can open the jobs dashboard at /backwave. A published server gets
     // its operators from its own BackgroundJobs:OperatorSubjects setting.
     if (builder.ExecutionContext.IsRunMode && authProvider.OperatorSubject is { } operatorSubject)

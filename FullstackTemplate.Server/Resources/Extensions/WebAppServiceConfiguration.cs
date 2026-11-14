@@ -6,6 +6,7 @@ using Databases.DataProtection;
 using Domain.Attachments;
 using Domain.Tenants;
 using Domain.Users;
+using Email;
 using Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,7 +16,7 @@ using ZiggyCreatures.Caching.Fusion;
 public static class WebAppServiceConfiguration
 {
     /// <summary>
-    /// Adds the core services: the database, the Data Protection key ring, the background jobs, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
+    /// Adds the core services: the database, the Data Protection key ring, the background jobs, the email sender, the domain event handlers, MediatR, the caches, and the tenant scope. It adds no transport.
     /// The integration tests call only this method. <c>AddEntrypoints</c> adds HTTP, gRPC, and MCP.
     /// The core has no caller until <c>AddEntrypoints</c> replaces <see cref="NoPrincipalAccessor"/>. The worker groups
     /// that run the jobs are added only when the <paramref name="role"/> runs jobs.
@@ -70,6 +71,7 @@ public static class WebAppServiceConfiguration
         builder.EnrichNpgsqlDbContext<AppDbContext>();
         builder.AddDataProtectionKeyRing();
         builder.Services.AddBackgroundJobs(builder.Configuration, role);
+        builder.Services.AddSingleton<IEmailSender, LogEmailSender>();
 
         builder.Services.AddDomainEvents(typeof(Program).Assembly);
     }

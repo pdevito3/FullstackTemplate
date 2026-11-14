@@ -5,14 +5,17 @@ using FullstackTemplate.Server.Resources.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// Writes the jobs of the first save in its transaction, then throws the failure, so that transaction does not commit.
-/// A transient failure makes the save run again.
+/// Writes the jobs of the first save after <see cref="Arm"/> in its transaction, then throws the failure, so that
+/// transaction does not commit. A transient failure makes the save run again.
 /// </summary>
 internal sealed class FailAfterJobWrite(IJobWriter writer, Exception failure) : IJobWriter
 {
-    private int _writes;
+    private int _armed;
 
     public int Failures { get; private set; }
+
+    /// <summary>Arm it after the arrange. A save of the arrange can write jobs too, as a domain event handler does.</summary>
+    public void Arm() => Interlocked.Exchange(ref _armed, 1);
 
     /// <summary>The services of the tests, with this writer around the job writer of the Server.</summary>
     public static ServiceProvider Around(Exception failure) => TestFixture.BuildServiceProvider(services =>
@@ -27,7 +30,7 @@ internal sealed class FailAfterJobWrite(IJobWriter writer, Exception failure) : 
         CancellationToken cancellationToken)
     {
         var first = await writer.WriteAsync(jobs, transaction, cancellationToken);
-        if (Interlocked.Increment(ref _writes) > 1)
+        if (Interlocked.Exchange(ref _armed, 0) == 0)
             return first;
 
         Failures++;

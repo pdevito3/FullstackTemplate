@@ -19,7 +19,7 @@ if (args.Length > 0)
     return 1;
 }
 
-const string ExampleNames = "weather|forecast|filter-demo|components-showcase|workshop|wkatt|(^|[^e])venue|example:(start|end)";
+const string ExampleNames = "weather|forecast|filter-demo|components-showcase|workshop|wkatt|(^|[^e])venue|welcome.?email|example:(start|end)";
 string[] exampleFolders = ["Examples", "examples", "(examples)"];
 
 return Job.Run("without-examples",

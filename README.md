@@ -53,6 +53,7 @@ MyProject/
 - **Rich Domain Entities** - DDD patterns with value objects
 - **Multi-tenancy** - Automatic tenant isolation
 - **Audit Log and Soft Delete** - An append-only log of each change, and soft delete built-in
+- **Background Jobs** - BackWave jobs that commit with the save, retries, and a jobs dashboard for operators. `Server__Role` runs the API and the workers in one process or apart
 - **API Versioning** - URL segment versioning (`/api/v1/...`)
 - **OpenTelemetry** - Distributed tracing and metrics
 - **PostgreSQL** - With EF Core and migrations

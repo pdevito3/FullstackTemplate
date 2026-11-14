@@ -41,6 +41,7 @@ Read the doc for an area before you change code in that area.
 | [docs/backend/source-generators.md](docs/backend/source-generators.md) | When to use a source generator and when reflection is allowed |
 | [docs/backend/code-style.md](docs/backend/code-style.md) | The C# style rules that the build enforces in each project and script, such as raw string literals (FSTSTR001) |
 | [docs/backend/attachments.md](docs/backend/attachments.md) | Files on an entity: the upload rules, the type check, the presigned URLs, the order of the writes, and the steps to add attachments in the Server and the SPA |
+| [docs/backend/background-jobs.md](docs/backend/background-jobs.md) | Work after the commit of a save: a job and its handler, `QueueJob`, idempotency, retries, queues and noisy neighbors, the `Server:Role` setting and a split deploy, and the jobs dashboard |
 | [docs/telemetry.md](docs/telemetry.md) | Traces, metrics, logs, `Trace`, `AddEvent`, `Here()`, `TraceRoot`, `TraceContext`, named queries |
 | [docs/messages.md](docs/messages.md) | The text of error messages, alerts, toasts, and labels |
 | [docs/multi-tenancy.md](docs/multi-tenancy.md) | Tenant isolation |

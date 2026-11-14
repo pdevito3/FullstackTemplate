@@ -113,7 +113,8 @@ public sealed class TestFixture : IAsyncDisposable
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ReadAllTenantsClientIds)}:0"] = ReadOnlyMachineClientId;
 
-        builder.ConfigureServices();
+        // The tests run the handlers on their own and start no hosted service, so no worker group is needed
+        builder.ConfigureServices(ServerRole.Api);
 
         builder.Services.ReplaceServiceWithScopedMock<ICurrentUserService>();
         builder.Services.AddSingleton(TestJob.Registration);

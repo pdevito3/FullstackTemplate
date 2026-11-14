@@ -5,7 +5,7 @@ using BackWave.Postgres;
 using Npgsql;
 
 /// <summary>The BackWave job store, in its own schema of appdb, and the migration of that schema.</summary>
-internal static class BackWaveSchema
+public static class BackWaveSchema
 {
     public const string SchemaName = "backwave";
 

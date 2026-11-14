@@ -333,6 +333,8 @@ A `Location` header can hold only ASCII. Thus the BFF percent-encodes each non-A
    - If it has only a `sub`, delete all the rows of that `sub`.
    - The BFF does not revoke the refresh tokens of the deleted rows. The provider already ended its session. With Keycloak, a revoke of one refresh token also ends the other sessions of the user for the client, and Keycloak sends no logout token for them, so their BFF sessions would stay signed in until the next refresh fails.
    - The `jti` write of step 5 and the row deletes commit in one `bffdb` transaction. If a row delete fails, or the BFF stops before the commit, no row ends and the replay cache does not keep the `jti`. A failed delete returns 500. The provider can then send the same token again. A second request with the same `jti` waits for the transaction, and gets 400 after a commit.
+   - The transaction sets `idle_in_transaction_session_timeout` to 2 s. A BFF instance can stop with its connection open, for example when its host goes away. Then Postgres ends its session at the limit, and a second request with the same `jti` does not wait longer than that.
+   - If the commit fails, the BFF asks Postgres if that transaction committed (`pg_xact_status`). If it did, the BFF returns 200 for the rows of that commit. If not, the BFF runs the transaction again. A `jti` that a resend wrote in the meantime then gives 400, so only one request counts the rows.
    - After the commit, add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
 7. Return 200. Any failure in steps 2 to 5 returns 400.
 

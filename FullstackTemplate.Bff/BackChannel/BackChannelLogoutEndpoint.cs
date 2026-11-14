@@ -30,6 +30,8 @@ public static class BackChannelLogoutEndpoint
 
     private const string BackChannelLogoutEvent = "http://schemas.openid.net/event/backchannel-logout";
 
+    private static readonly TimeSpan IdleInTransactionLimit = TimeSpan.FromSeconds(2);
+
     private static readonly ILogger Logger = Log.ForContext(typeof(BackChannelLogoutEndpoint));
 
     public static async Task HandleAsync(
@@ -70,25 +72,26 @@ public static class BackChannelLogoutEndpoint
         // From here on, the work does not stop when the identity provider drops the request. A logout that stops
         // half way leaves BFF sessions alive that the identity provider thinks have ended.
 
-        // The Aspire integration turns on EF retries, and a retrying strategy runs a user transaction only as one
-        // unit, so a retry starts again with the jti.
         var jtiWritten = false;
+        var transactionId = "";
         List<BffSession>? deleted;
         try
         {
-            deleted = await dbContext.Database.CreateExecutionStrategy().ExecuteAsync<List<BffSession>?>(
+            deleted = await dbContext.Database.CreateExecutionStrategy().ExecuteInTransactionAsync<List<BffSession>?>(
                 async ct =>
                 {
                     jtiWritten = false;
-                    await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
+                    await LimitIdleTimeAsync(dbContext, ct);
+                    transactionId = await TransactionIdAsync(dbContext, ct);
                     if (!await replayCache.TryAddAsync(token.Jti, token.Expires, ct))
                         return null;
 
                     jtiWritten = true;
-                    var rows = await DeleteSessionsAsync(token, store, ct);
-                    await transaction.CommitAsync(ct);
-                    return rows;
+                    return await DeleteSessionsAsync(token, store, ct);
                 },
+                // A found jti does not prove that this commit applied. A resend can write the jti after Postgres
+                // rolled this transaction back.
+                ct => CommittedAsync(dbContext, transactionId, ct),
                 CancellationToken.None);
         }
         catch (Exception ex) when (!jtiWritten)
@@ -146,6 +149,28 @@ public static class BackChannelLogoutEndpoint
             return null;
         }
     }
+
+    private static Task<int> LimitIdleTimeAsync(BffDbContext dbContext, CancellationToken ct) =>
+        dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            -- bff_backchannel_logout.limit_idle_time
+            SELECT set_config('idle_in_transaction_session_timeout', {$"{(long)IdleInTransactionLimit.TotalMilliseconds}ms"}, true)
+            """,
+            ct);
+
+    private static Task<string> TransactionIdAsync(BffDbContext dbContext, CancellationToken ct) =>
+        dbContext.Database.SqlQuery<string>(
+            $"""
+            -- bff_backchannel_logout.transaction_id
+            SELECT pg_current_xact_id()::text AS "Value"
+            """).SingleAsync(ct);
+
+    private static Task<bool> CommittedAsync(BffDbContext dbContext, string transactionId, CancellationToken ct) =>
+        dbContext.Database.SqlQuery<bool>(
+            $"""
+            -- bff_backchannel_logout.committed
+            SELECT pg_xact_status({transactionId}::xid8) = 'committed' AS "Value"
+            """).SingleAsync(ct);
 
     private static async Task<List<BffSession>> DeleteSessionsAsync(LogoutToken token, IBffSessionStore store,
         CancellationToken ct)

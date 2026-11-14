@@ -5,6 +5,7 @@ using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Exceptions;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -113,7 +114,7 @@ public sealed class LateConfiguredEntityTests : IAsyncDisposable
     private sealed class MemoContext(DbContextOptions<AppDbContext> options, ITenantScopeProvider scopeProvider)
         : AppDbContext(options, TimeProvider.System, Substitute.For<ICurrentUserService>(),
             Substitute.For<ICallerIdentityResolver>(), scopeProvider,
-            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+            new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>())
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

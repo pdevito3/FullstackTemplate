@@ -4,6 +4,7 @@ using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -146,7 +147,7 @@ public class BaseEntityShapeTests
 
     private abstract class ShapeContext() : AppDbContext(Options, TimeProvider.System,
         Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(), OneTenant(),
-        new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+        new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>())
     {
         private static readonly DbContextOptions<AppDbContext> Options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql("Host=unused")

@@ -256,4 +256,4 @@ The trace backend and the log backend charge for each span, each log, or each gi
 
 - Constant names for spans, events, and queries.
 - No log that repeats a span.
-- Sampling. The host sets no sampler, so it exports each span. A production deployment can add head sampling in the SDK, or tail sampling in an OpenTelemetry Collector. Neither change needs a change to feature code.
+- Sampling. The host drops only a Client span with no parent, such as a poll of a job pump. It exports each other span. A production deployment can add head sampling in the SDK, or tail sampling in an OpenTelemetry Collector. A head sampler that replaces it must also drop these spans. Neither change needs a change to feature code.

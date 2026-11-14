@@ -100,7 +100,7 @@ public sealed class TestingWebApplicationFactory : WebApplicationFactory<Program
             }).AddFakeJwtBearer();
 
             // Add migration hosted service
-            services.AddHostedService<MigrationHostedService<AppDbContext>>();
+            services.AddHostedService<MigrationHostedService>();
 
             services.AddScoped<IDomainEventHandler<TenantUpdated>>(_ => new NoOpTenantUpdatedHandler());
 

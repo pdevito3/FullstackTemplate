@@ -9,29 +9,32 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Resources;
 using Serilog;
-using Serilog.Core;
 
-public class MigrationHostedService<TDbContext>(
+/// <summary>
+/// Migrates the schemas of appdb: the EF Core schema of <see cref="AppDbContext"/>, then the BackWave schema.
+/// </summary>
+/// <remarks>
+/// The host runs <see cref="StartingAsync"/> of each lifecycle service before <c>StartAsync</c> of any service. So the
+/// schemas exist before a job pump, the BackWave metrics service, or Kestrel starts.
+/// </remarks>
+public sealed class MigrationHostedService(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration)
-    : IHostedService
-    where TDbContext : DbContext
+    : IHostedLifecycleService
 {
-    // ForContext<T> names a generic type with its assembly-qualified arguments, which fills a console line.
-    private readonly ILogger _logger = Log.ForContext(
-        Constants.SourceContextPropertyName, $"{typeof(MigrationHostedService<>).Namespace}.MigrationHostedService");
+    private readonly ILogger _logger = Log.ForContext<MigrationHostedService>();
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartingAsync(CancellationToken cancellationToken)
     {
         // Startup has no request to hang this work on. Without a root, each migration query exports as
         // its own rootless trace. With one, the whole run is a single trace named after what it does.
         using var trace = Telemetry.TraceRoot(
-            [("app.db_context", typeof(TDbContext).Name)],
+            [("app.db_context", nameof(AppDbContext))],
             "database.migrate");
 
         try
         {
-            _logger.Here().Information("Applying migrations for {DbContext}", typeof(TDbContext).Name);
+            _logger.Here().Information("Applying migrations for {DbContext}", nameof(AppDbContext));
 
             var connectionString = configuration.GetConnectionString(DatabaseConsts.DatabaseName);
 
@@ -44,13 +47,13 @@ public class MigrationHostedService<TDbContext>(
             }
 
             await using var scope = scopeFactory.CreateAsyncScope();
-            var context = scope.ServiceProvider.GetRequiredService<TDbContext>();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             // The lock connects to the database, so the database must exist before the lock.
             var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
             if (!await databaseCreator.ExistsAsync(cancellationToken))
             {
                 await databaseCreator.CreateAsync(cancellationToken);
-                _logger.Here().Information("Created the database for {DbContext}", typeof(TDbContext).Name);
+                _logger.Here().Information("Created the database for {DbContext}", nameof(AppDbContext));
             }
 
             var distributedLock = new PostgresDistributedLock(
@@ -68,9 +71,10 @@ public class MigrationHostedService<TDbContext>(
                 // failed read as an error. Create the table first.
                 await context.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
                 await context.Database.MigrateAsync(cancellationToken);
+                await BackWaveSchema.MigrateAsync(connectionString, cancellationToken);
             }
 
-            _logger.Here().Information("Migrations complete for {DbContext}", typeof(TDbContext).Name);
+            _logger.Here().Information("Migrations complete for {DbContext}", nameof(AppDbContext));
         }
         catch (Exception ex) when (ex is SocketException or NpgsqlException)
         {
@@ -88,8 +92,13 @@ public class MigrationHostedService<TDbContext>(
         }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StartedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StoppingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

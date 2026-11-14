@@ -6,6 +6,7 @@ using FullstackTemplate.Server.Domain.AuditEntries;
 using FullstackTemplate.Server.Domain.ObjectDeleteRequests;
 using FullstackTemplate.Server.Domain.Tenants;
 using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Resources.Jobs;
 using FullstackTemplate.Server.Resources;
 using FullstackTemplate.SharedTestHelpers.Utilities;
 using Microsoft.EntityFrameworkCore;
@@ -150,7 +151,7 @@ public class TenantOwnedRowsTests
     private sealed class ShippingContext() : AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").UseSnakeCaseNamingConvention().Options,
         TimeProvider.System, Substitute.For<ICurrentUserService>(), Substitute.For<ICallerIdentityResolver>(),
-        Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()))
+        Substitute.For<ITenantScopeProvider>(), new DomainEventDispatcher(new ServiceCollection().BuildServiceProvider()), Substitute.For<IJobWriter>())
     {
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

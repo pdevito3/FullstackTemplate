@@ -279,10 +279,11 @@ public class RefreshLockTests
         var (cookie, key) = await SignInAsync(app, $"test_sub={subject}&test_expires_in=60");
         var gate = app.IdentityProvider.HoldRefreshes(subject);
         using var browser = Cookieless(app);
+        Task<HttpResponseMessage>? call = null;
         try
         {
             // Act
-            var call = browser.SendAsync(ApiRequest(cookie));
+            call = browser.SendAsync(ApiRequest(cookie));
             await gate.Arrived.Task.WaitAsync(Timeout);
             (await LockCountAsync(key, granted: true)).ShouldBe(1);
 
@@ -296,6 +297,9 @@ public class RefreshLockTests
         {
             gate.Released.TrySetResult();
         }
+
+        // The call ends after the release. Wait for it, so that its refresh failure does not reach the metrics of a later test.
+        (await call.WaitAsync(Timeout)).Dispose();
     }
 
     [Test]

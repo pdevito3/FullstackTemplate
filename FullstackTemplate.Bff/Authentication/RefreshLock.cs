@@ -174,8 +174,6 @@ public sealed class RefreshLock(
         var idleLimit = options.CurrentValue.IdleInLockLimit;
         var refreshCalled = false;
 
-        // The Aspire integration turns on EF retries, and a retrying strategy runs a user transaction only as one
-        // unit. A retry starts again with the lock and the reread. No cancellation: see the remarks of the class.
         var outcome = await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(
             async cancellation =>
             {

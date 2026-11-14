@@ -372,6 +372,28 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task a_database_that_goes_away_at_the_session_delete_keeps_no_jti()
+    {
+        // Arrange
+        await using var app = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(new LostDatabaseInterceptor("bff_sessions.delete"))));
+        var subject = NewSubject();
+        var jti = Guid.NewGuid().ToString();
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; });
+        using var browser = app.CreateBrowser();
+        await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        // Act
+        var response = await PostAsync(app, logoutToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        (await UsedLogoutTokenAsync(jti)).ShouldBeNull();
+        (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await BffApp.Instance.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
     public async Task a_request_that_aborts_during_the_logout_still_ends_all_the_sessions()
     {
         // Arrange

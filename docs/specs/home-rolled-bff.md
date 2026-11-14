@@ -332,8 +332,8 @@ A `Location` header can hold only ASCII. Thus the BFF percent-encodes each non-A
    - If the token has a `sid`, delete the rows with that `sid`.
    - If it has only a `sub`, delete all the rows of that `sub`.
    - The BFF does not revoke the refresh tokens of the deleted rows. The provider already ended its session. With Keycloak, a revoke of one refresh token also ends the other sessions of the user for the client, and Keycloak sends no logout token for them, so their BFF sessions would stay signed in until the next refresh fails.
-   - If a row delete fails, the BFF removes the `jti` and returns 500. The provider can then send the same token again.
-   - Add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
+   - The `jti` write of step 5 and the row deletes commit in one `bffdb` transaction. If a row delete fails, or the BFF stops before the commit, no row ends and the replay cache does not keep the `jti`. A failed delete returns 500. The provider can then send the same token again. A second request with the same `jti` waits for the transaction, and gets 400 after a commit.
+   - After the commit, add to `bff.sessions.ended` with `reason=backchannel_logout`, one for each row.
 7. Return 200. Any failure in steps 2 to 5 returns 400.
 
 If `Auth:Features:BackChannelLogout` is `Require`, the BFF stops at startup when `backchannel_logout_supported` is missing or `false`.

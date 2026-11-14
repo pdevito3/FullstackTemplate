@@ -2,10 +2,14 @@ namespace FullstackTemplate.FunctionalTests.FunctionalTests.Telemetry;
 
 using System.Diagnostics;
 using System.Net;
+using FullstackTemplate.Server.Databases;
 using FullstackTemplate.Server.Domain.Tenants.Dtos;
 using FullstackTemplate.Server.Domain.Tenants.Features;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Serilog.Events;
 using Shouldly;
 using TestUtilities;
@@ -23,7 +27,9 @@ public class TracingTests : TestBase
         // Act & Assert
         var root = AllExportedSpans().Where(a => a.DisplayName == "database.migrate").ShouldHaveSingleItem();
         root.ParentSpanId.ShouldBe(default);
-        root.GetTagItem("app.db_context").ShouldBe("AppDbContext");
+        var connectionString = TestingWebApplicationFactory.Instance.Services.GetRequiredService<IConfiguration>()
+            .GetConnectionString(DatabaseConsts.DatabaseName);
+        root.GetTagItem("db.namespace").ShouldBe(new NpgsqlConnectionStringBuilder(connectionString).Database);
 
         AllExportedSpans()
             .Where(a => a.Source.Name == NpgsqlSource && a.TraceId == root.TraceId)

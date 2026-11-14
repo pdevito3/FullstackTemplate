@@ -13,7 +13,7 @@ CSharpRepl loads into the server as a .NET startup hook. The hook opens a local 
 | Part | File | What it does |
 |------|------|--------------|
 | Tool version | `dotnet-tools.json` | Pins `csharprepl` as a local .NET tool |
-| AppHost | `FullstackTemplate.AppHost/CSharpRepl.cs` | `WithCSharpRepl()` sets `DOTNET_STARTUP_HOOKS` and `ASPNETCORE_HOSTINGSTARTUPASSEMBLIES` on the `server` resource |
+| AppHost | `FullstackTemplate.AppHost/CSharpRepl.cs` | `WithCSharpRepl()` sets `DOTNET_STARTUP_HOOKS` and `ASPNETCORE_HOSTINGSTARTUPASSEMBLIES` on each Server resource |
 | Non-Debug builds | `FullstackTemplate.Server/FullstackTemplate.Server.csproj` | `StartupHookSupport` is `false` for every configuration except `Debug` |
 | Server guard | `FullstackTemplate.Server/Resources/CSharpReplGuard.cs` | Stops the server if the hook is loaded outside `Development` |
 | Build test | `tests/FullstackTemplate.UnitTests/Resources/StartupHookSupportTests.cs` | Fails if a non-Debug build turns startup hooks on |
@@ -21,7 +21,7 @@ CSharpRepl loads into the server as a .NET startup hook. The hook opens a local 
 
 When the `server` resource starts, `WithCSharpRepl()` runs `dotnet tool run csharprepl connect init`. It sets each variable that this command exports on the server. If the tool is not installed, the AppHost logs a warning and starts the server without the hook.
 
-Only the `server` resource gets the hook. The `dotnet run` process that starts the server inherits the variables, so `connect list` also shows a `dotnet` row.
+The `server` resource gets the hook. With `SplitServer=true`, `server-worker` also gets it. The jobs then run in `server-worker`, so connect to that process to patch a job. The `dotnet run` process that starts the server inherits the variables, so `connect list` also shows a `dotnet` row.
 
 ## Development only
 

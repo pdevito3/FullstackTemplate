@@ -22,7 +22,7 @@ An operator opens the BackWave dashboard of the background jobs at `/backwave`. 
 Preconditions:
 
 - `doctor.sh` exits with 0, and the stack uses ZeroFactor. The recipe signs in on the ZeroFactor page itself, because `login()` expects the SPA after the login.
-- The Server has the role `All`, the default. Only a role that serves requests serves the dashboard.
+- The `server` resource serves requests: the role `All`, the default, or `Api` in a stack with `SplitServer=true`. Only a role that serves requests serves the dashboard.
 
 - **Login.** Run `page.goto('/backwave', { waitUntil: 'commit' })`. The browser goes to the IdP. Click `[data-testid="user-admin@example.com"]`. The browser comes back to `/backwave`, and the heading `Overview` shows.
 - **Live.** Wait for the response of `/backwave?live=1` before the click of the login. It gives 200 with `text/event-stream`.
@@ -39,5 +39,5 @@ Preconditions:
 - Only a user who signs in through the BFF can be an operator. An agent or a client for all tenants is never an operator.
 - In a dev stack, the IdP and the Vite origin are both `http://localhost`, so the browser sends the session cookie on the redirect after the login. Only the cross-site step shows the page that loads the URL again. With `launch.sh --preview`, the app is on the https origin of the BFF, so the redirect after the login is cross-site and also gets that page.
 - BackWave makes the pages of the dashboard, so the recipe gives each capture of a dashboard page `{ sweep: false }`. The sweep still measures the sidebar of the SPA.
-- The metrics panel of the dashboard shows the jobs that the process of the page ran. In a stack with one Server of the role `All`, that is each job.
+- The metrics panel of the dashboard shows the jobs that the process of the page ran. In a stack with one Server of the role `All`, that is each job. With `SplitServer=true`, `server-worker` runs the jobs, so the panel shows no job metrics.
 - The restore of `browse.mjs` skips the job store, so the dashboard keeps the jobs of each earlier run. Find the jobs of a recipe by the `tenant` tag of a tenant that the recipe made: `/backwave/jobs?tk=tenant&tv=<tenant ID>`. Do not count all the jobs of a queue.

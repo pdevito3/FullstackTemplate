@@ -240,7 +240,7 @@ A presigned URL works only while the credentials that signed it are valid. When 
 
 A row with no object is a file that no one can download. An object with no row costs only its storage. So `AttachmentStorage` writes in this order:
 
-- **Add.** It puts the object, then runs the save of the row. If the save throws, it deletes the object only when no row with its ID exists, because a save can commit and still throw, for example after a lost reply of the commit. If that check fails, it keeps the object.
+- **Add.** It puts the object, then runs the save of the row. If the put or the save throws, it deletes the object only when no row with its ID exists. A put can store the bytes and still throw, and a save can commit and still throw, for example after a lost reply. If that check fails, it keeps the object. The delete of the object stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute), so a hung storage does not hold the request.
 - **Delete.** It saves the delete of the row. It does not call storage. The save also queues a `DeleteObject` job for the object, so the job commits with the row delete, or neither commits.
 - **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes an object that no row names, such as an object that a failed add left.
 
@@ -279,7 +279,7 @@ A requeue is safe, because a delete of an object that is gone succeeds.
 
 - The object of a deleted row is readable through an old URL until its job deletes it. See [The order of the writes](#the-order-of-the-writes).
 - The objects of a dead job stay until a person requeues the job. No alert or health check shows a dead job.
-- An add whose save fails deletes its object at once, and does not use a job. If that delete fails, the object stays until the tenant delete.
+- An add whose put or save fails deletes its object at once, and does not use a job. The object stays until the tenant delete in three cases: that delete fails, the process stops between the put and the save, or a put that the client stopped lands in storage after the delete.
 - A URL stops before `urlsExpireAt` when the credentials that signed it expire. See [Presigned URLs](#presigned-urls).
 
 <!-- example:start -->

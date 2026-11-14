@@ -3,6 +3,8 @@ namespace FullstackTemplate.Server.Domain.Attachments;
 using System.Diagnostics;
 using Databases;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using ObjectDeletes;
 using Resources;
 using Resources.Storage;
 using Serilog;
@@ -11,27 +13,29 @@ using Serilog;
 /// Keeps the row of each attachment and its object in storage in step. A row with no object is a file that no one can
 /// download, so the object goes first on an add and last on a delete. An object with no row costs only its storage.
 /// </summary>
-public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage storage)
+public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage storage, IOptions<ObjectDeleteOptions> deleteOptions)
 {
     private readonly ILogger _logger = Log.ForContext<AttachmentStorage>();
 
     /// <summary>
-    /// Puts the bytes of a new attachment in storage, then runs the save of its row. When the save throws, the object
-    /// goes only when no row names it, and the exception goes on to the caller.
+    /// Puts the bytes of a new attachment in storage, then runs the save of its row. When the put or the save throws,
+    /// the object goes only when no row names it, and the exception goes on to the caller. A put that throws can still
+    /// have stored the bytes, for example when its reply is lost.
     /// </summary>
     /// <param name="attachment">The new attachment, which passed the upload rules of its use.</param>
     /// <param name="file">The file that the attachment came from. The put sends all of its bytes.</param>
     /// <param name="saveRow">Adds the row and saves it. The put is already done, so the save can run in a lock that
     /// runs its work again.</param>
-    /// <param name="cancellationToken">Stops the put and the save. The cleanup after a failed save does not stop.</param>
+    /// <param name="cancellationToken">Stops the put and the save. The cleanup after a failed put or save does not stop on
+    /// it, and its delete stops after <see cref="ObjectDeleteOptions.AttemptTimeout"/>.</param>
     public async Task AddAsync<TAttachment>(TAttachment attachment, ReceivedFile file, Func<Task> saveRow,
         CancellationToken cancellationToken)
         where TAttachment : BaseEntity, IAttachment
     {
         file.Content.Position = 0;
-        await storage.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, cancellationToken);
         try
         {
+            await storage.PutAsync(attachment.File.StorageKey, file.Content, attachment.File.MediaType, cancellationToken);
             await saveRow();
         }
         catch
@@ -44,7 +48,7 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
     }
 
     /// <summary>
-    /// Deletes the row of the attachment. The save also queues the <see cref="ObjectDeletes.DeleteObject"/> job of its
+    /// Deletes the row of the attachment. The save also queues the <see cref="DeleteObject"/> job of its
     /// object, and BackWave runs the job after the commit.
     /// </summary>
     public async Task DeleteAsync<TAttachment>(TAttachment attachment, CancellationToken cancellationToken)
@@ -87,7 +91,11 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
 
         try
         {
-            await storage.DeleteAsync(attachment.File.StorageKey, CancellationToken.None);
+            await ObjectDeletes.InAttemptTimeAsync(deleteOptions.Value.AttemptTimeout, async attempt =>
+            {
+                await storage.DeleteAsync(attachment.File.StorageKey, attempt);
+                return 1;
+            }, CancellationToken.None);
         }
         catch (Exception ex)
         {

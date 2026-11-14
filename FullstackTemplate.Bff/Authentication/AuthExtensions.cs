@@ -82,7 +82,8 @@ public static class AuthExtensions
                 options.Cookie.Name = SessionCookieName;
                 options.Cookie.HttpOnly = true;
                 // Each call that needs the BFF session is same-site. The first page load after the redirect from the
-                // identity provider is cross-site, so it has no cookie, but its HTML needs none.
+                // identity provider is cross-site, so it has no cookie, but its HTML needs none. The jobs dashboard needs
+                // the session in its HTML, so JobsDashboardLogin loads it again from its own origin.
                 options.Cookie.SameSite = SameSiteMode.Strict;
                 // Also in development: browsers treat http://localhost as a secure context
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always;

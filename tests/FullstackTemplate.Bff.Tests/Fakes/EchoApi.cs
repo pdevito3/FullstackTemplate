@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// A stand-in for the server API on a real port. Each request gets its method, path, and headers back as JSON,
+/// A stand-in for the server API on a real port. Each request gets its method, path, query, and headers back as JSON,
 /// so a test sees exactly what the BFF proxy forwarded. The query parameter <see cref="SetCookieParameter"/> makes the
 /// response set cookies. The query parameter <see cref="RequireNonceParameter"/> makes a request with
 /// <c>Authorization: DPoP</c> get <c>401 use_dpop_nonce</c> until its proof has that nonce (RFC 9449 section 9). With
@@ -81,7 +81,8 @@ public sealed class EchoApi : IAsyncDisposable
             var echoed = new EchoedRequest(
                 request.Method,
                 request.Path.Value ?? "",
-                request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase));
+                request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase),
+                request.QueryString.Value ?? "");
             api.Requests.Enqueue(echoed);
 
             if (request.Query[RequireNonceParameter].FirstOrDefault() is { } nonce
@@ -125,4 +126,4 @@ public sealed class EchoApi : IAsyncDisposable
     public ValueTask DisposeAsync() => _app.DisposeAsync();
 }
 
-public sealed record EchoedRequest(string Method, string Path, Dictionary<string, string> Headers);
+public sealed record EchoedRequest(string Method, string Path, Dictionary<string, string> Headers, string Query);

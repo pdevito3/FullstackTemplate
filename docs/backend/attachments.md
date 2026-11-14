@@ -66,7 +66,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    }
    ```
 
-2. **The configuration and the migration.** Map the tenant and the owner as each tenant-owned root does ([entity-configurations.md](entity-configurations.md)). Map the file with `MapStoredFile`, and index the order of the list. Add the `DbSet` and a migration. Done when `ModelSnapshotTests` passes.
+2. **The configuration and the migration.** Map the tenant and the owner as each tenant-owned root does ([entity-configurations.md](entity-configurations.md)). Map the file with `MapStoredFile`, and index the order of the list. Add the `DbSet` and a migration. In the migration, also index the column `storage_key`, because the sweep of the bucket looks up its keys in each attachment table. EF Core 10 cannot index a column of a value object, so create the index with `migrationBuilder.CreateIndex`, as [Index a column of a value object](entity-configurations.md#index-a-column-of-a-value-object) shows. Done when `ModelSnapshotTests` and `AttachmentStorageKeyIndexTests` pass.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp

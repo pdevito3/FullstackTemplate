@@ -244,6 +244,8 @@ An agent is an OAuth client other than this app that calls the server, usually t
 
 ### How the server identifies the caller
 
+The server takes only access tokens. An ID token of the BFF has the client ID as its `aud`, and the browser sees it in the `id_token_hint` of the logout. So the Keycloak seed gives the API its own audience, `fullstacktemplate-api`, in the access token only. Some providers can give the API only the client ID, so the server also refuses a token that names itself an ID token or a logout token: `typ` `ID`, `Logout`, or `Refresh` (Keycloak), `tty` `idt` (FusionAuth), `token_use` `id` (Cognito), or an `events` claim. An Authentik ID token has no such claim, but it also has no `azp`, so the server takes it as a token of an unknown client.
+
 The server reads the client ID of the token from `client_id`, then `azp`, then `applicationId` (FusionAuth). It never takes a missing `sub` to mean a machine. `CallerIdentityResolver` decides the caller once for each request:
 
 | Token | Caller | Permissions | Rows |
@@ -290,7 +292,7 @@ Each audit entry of a save records the `sub` of the token, its client ID, and th
 Agents need a provider that can give a client other than the first-party client a token with the API audience.
 
 - ZeroFactor: the seed has the delegated client `clinic-assistant` and the machine client `fleet-sync`. Both get the `aspire-app` audience. Send a token request to `{zerofactor}/realms/aspire/protocol/openid-connect/token`. For `clinic-assistant`, use `grant_type=password` with `username=admin@example.com` and any password. For `fleet-sync`, use `grant_type=client_credentials` with any client secret.
-- Keycloak: give the client an `oidc-audience-mapper` that includes the client `aspire-app`, as the seed in `realm-export.json` does for `aspire-app`. For a machine client, set `serviceAccountsEnabled`.
+- Keycloak: give the client an `oidc-audience-mapper` that includes the custom audience `fullstacktemplate-api` in the access token only, as the seed in `realm-export.json` does for `aspire-app`. For a machine client, set `serviceAccountsEnabled`.
 - Cognito: agents do not work. The server checks the audience in `client_id`, so it accepts only the first-party client.
 
 ### How an MCP client finds the provider

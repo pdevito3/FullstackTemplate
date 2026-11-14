@@ -99,7 +99,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "aspire-app",
+            "included.custom.audience": "fullstacktemplate-api",
             "id.token.claim": "false",
             "access.token.claim": "true"
           }
@@ -325,8 +325,8 @@
       ]
     },
     {
-      "name": "aspire-app",
-      "description": "Audience scope for aspire-app client",
+      "name": "fullstacktemplate-api",
+      "description": "Adds the audience of the Server API to the access token, and not to the ID token",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -334,12 +334,12 @@
       },
       "protocolMappers": [
         {
-          "name": "aspire-app-audience",
+          "name": "fullstacktemplate-api-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "aspire-app",
+            "included.custom.audience": "fullstacktemplate-api",
             "id.token.claim": "false",
             "access.token.claim": "true"
           }
@@ -354,7 +354,7 @@
     "roles",
     "web-origins",
     "acr",
-    "aspire-app"
+    "fullstacktemplate-api"
   ],
   "defaultOptionalClientScopes": [
     "offline_access"

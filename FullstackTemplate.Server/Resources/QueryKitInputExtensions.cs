@@ -23,6 +23,7 @@ public static class QueryKitInputExtensions
     public const string SortOrderNotReadMessage = "The sort order could not be read. Change the sort, then try again.";
     public const string FilterTooLongMessage = "The filter is too long. Remove a condition or shorten a value, then try again.";
     public const string FilterCharacterMessage = "The filter has a character that is not allowed. Remove it, then try again.";
+    public const string SortOrderTooLongMessage = "The sort order has too many fields. Remove a field, then try again.";
     public const string FilterTooDeepMessage = "The filter has too many nested groups. Remove a group, then try again.";
     public const string SoundsLikeMessage =
         "This list cannot filter with the sounds-like operators ~~ and !~. Choose another operator, then try again.";
@@ -51,6 +52,9 @@ public static class QueryKitInputExtensions
     public static IOrderedQueryable<T> ApplySortOrder<T>(this IQueryable<T> query, string sortOrder, IQueryKitConfiguration config)
         => Apply<T, IOrderedQueryable<T>>(SortOrderParameter, () =>
         {
+            // QueryKit splits a sort at each comma, so this counts the fields before the parse builds an expression for each one
+            if (sortOrder.Count(c => c == ',') >= CustomQueryKitConfiguration.SortOrderMaxFields)
+                throw new QueryInputException(SortOrderParameter, SortOrderTooLongMessage);
             foreach (var sort in SortParser.ParseSort<T>(sortOrder, config))
             {
                 RefuseFieldsOutsideTheQuery<T>(SortOrderParameter, sort.Expression);

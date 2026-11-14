@@ -65,6 +65,33 @@ public class QueryKitInputExtensionsTests : IDisposable
     }
 
     [Test]
+    public void sort_with_more_fields_than_the_limit_gets_the_too_long_message()
+    {
+        // Arrange
+        var sortOrder = string.Join(", ", Enumerable.Repeat("Name", CustomQueryKitConfiguration.SortOrderMaxFields + 1));
+
+        // Act
+        var exception = Should.Throw<QueryInputException>(() => Rows.ApplySortOrder(sortOrder, new CustomQueryKitConfiguration()));
+
+        // Assert
+        exception.Parameter.ShouldBe("sortOrder");
+        exception.Message.ShouldBe("The sort order has too many fields. Remove a field, then try again.");
+    }
+
+    [Test]
+    public void sort_with_as_many_fields_as_the_limit_applies()
+    {
+        // Arrange
+        var sortOrder = string.Join(", ", Enumerable.Repeat("-Seats", CustomQueryKitConfiguration.SortOrderMaxFields));
+
+        // Act
+        var rows = Rows.ApplySortOrder(sortOrder, new CustomQueryKitConfiguration()).ToList();
+
+        // Assert
+        rows.ShouldHaveSingleItem().Name.ShouldBe("a");
+    }
+
+    [Test]
     public void bad_sort_direction_gets_the_sort_order_message()
     {
         // Act

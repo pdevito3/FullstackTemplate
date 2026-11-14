@@ -2,6 +2,7 @@ namespace FullstackTemplate.Server.Resources.Jobs;
 
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using BackWave;
 using BackWave.Monitor;
 using BackWave.Storage;
@@ -16,7 +17,10 @@ public interface IJobWriter
     Task<bool> ExistsAsync(Guid jobId, CancellationToken cancellationToken);
 }
 
-/// <summary>A job that waits for the commit of its save. Only <see cref="AppDbContext.QueueJob{TJob}"/> makes one.</summary>
+/// <summary>
+/// A job that waits for the commit of its save. <see cref="AppDbContext.QueueJob{TJob}"/> makes one, and so does the save
+/// for the object deletes of its deleted rows.
+/// </summary>
 [SuppressMessage("ApiDesign", "RS0030:Do not use banned APIs",
     Justification = "The save writes each queued job in its own transaction, so that the job commits with the rows.")]
 public sealed class PendingJob
@@ -26,14 +30,20 @@ public sealed class PendingJob
 
     private readonly Func<BackWaveClient, DbTransaction, DateTimeOffset, CancellationToken, ValueTask<Guid>> _enqueue;
 
-    private PendingJob(Func<BackWaveClient, DbTransaction, DateTimeOffset, CancellationToken, ValueTask<Guid>> enqueue)
-        => _enqueue = enqueue;
+    private PendingJob(ITenantJob job,
+        Func<BackWaveClient, DbTransaction, DateTimeOffset, CancellationToken, ValueTask<Guid>> enqueue)
+        => (Job, _enqueue) = (job, enqueue);
+
+    internal ITenantJob Job { get; }
 
     // BackWave finds the registration of a job by its static type, so the closure keeps TJob. The call site of the
     // queue goes on the send span, not the call site in this file.
-    internal static PendingJob Of<TJob>(TJob job, string callerFilePath, string callerMemberName, int callerLineNumber)
+    internal static PendingJob Of<TJob>(TJob job,
+        [CallerFilePath] string callerFilePath = "",
+        [CallerMemberName] string callerMemberName = "",
+        [CallerLineNumber] int callerLineNumber = 0)
         where TJob : class, ITenantJob
-        => new((client, transaction, now, ct) => client.EnqueueAsync(job, now,
+        => new(job, (client, transaction, now, ct) => client.EnqueueAsync(job, now,
             tags: JobTags.From([JobTag.Keyed(TenantTag, job.TenantId)]), transaction: transaction,
             cancellationToken: ct, callerFilePath: callerFilePath, callerMemberName: callerMemberName,
             callerLineNumber: callerLineNumber));

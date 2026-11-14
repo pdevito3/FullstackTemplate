@@ -10,7 +10,7 @@ using Domain.AuditEntries;
 using Domain.Tenants;
 using Domain.Users;
 using Domain.Invites;
-using Domain.ObjectDeleteRequests;
+using Domain.ObjectDeletes;
 // new-feature:db-usings
 using EntityConfigurations;
 // example:start
@@ -559,9 +559,9 @@ public class AppDbContext(
     }
 
     /// <summary>
-    /// The steps before the write of a save and of a bulk insert. It touches the owners of changed children, adds the
-    /// object delete requests of the deleted rows, stamps the entities, turns deletes into soft deletes, and adds the
-    /// audit entries of the changes and the recorded actions to the tracker. Returns the audit entries.
+    /// The steps before the write of a save and of a bulk insert. It touches the owners of changed children, queues the
+    /// object deletes of the deleted rows, stamps the entities, turns deletes into soft deletes, and adds the audit
+    /// entries of the changes and the recorded actions to the tracker. Returns the audit entries.
     /// </summary>
     private IReadOnlyList<AuditEntry> PrepareWrite(CallerIdentity caller)
     {
@@ -574,11 +574,10 @@ public class AppDbContext(
         aggregates.GuardRootsOf(_recordedActions);
         TouchOwnersOfChangedChildren(aggregates);
 
+        // Before the stamp turns the deletes into soft deletes
+        _queuedJobs.AddRange(ObjectDeletes.ForDeleted(
+            ChangeTracker.Entries().Where(e => e.State == EntityState.Deleted).Select(e => e.Entity)));
         var now = timeProvider.GetUtcNow();
-        // The objects of the deleted rows go after the commit, so the requests for them commit with the delete
-        Set<ObjectDeleteRequest>().AddRange(ObjectDeleteRequest.ForDeleted(
-            ChangeTracker.Entries().Where(e => e.State == EntityState.Deleted).Select(e => e.Entity), now,
-            Telemetry.CaptureCurrentTraceContext()));
         StampEntities(now);
 
         var actor = AuditActor.Of(currentUserService.UserIdentifier, currentUserService.ClientId, caller);

@@ -44,8 +44,8 @@ public sealed class AttachmentStorage(AppDbContext dbContext, ObjectStorage stor
     }
 
     /// <summary>
-    /// Deletes the row of the attachment. The save also adds the request for the delete of its object, and
-    /// <see cref="ObjectDeleteRequests.ObjectDeleteWorker"/> deletes the object after the commit.
+    /// Deletes the row of the attachment. The save also queues the <see cref="ObjectDeletes.DeleteObject"/> job of its
+    /// object, and BackWave runs the job after the commit.
     /// </summary>
     public async Task DeleteAsync<TAttachment>(TAttachment attachment, CancellationToken cancellationToken)
         where TAttachment : BaseEntity, IAttachment

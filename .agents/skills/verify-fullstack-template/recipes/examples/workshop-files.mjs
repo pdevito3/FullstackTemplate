@@ -217,8 +217,8 @@ export default async ({ page, step, capture, settle, expect, login, stack }) => 
       await expect(files.getByRole('heading', { name: 'Files' })).toBeFocused()
     })
 
-    // The object delete worker of the Server deletes the object at its next run, 10 seconds apart
-    await step('storage no longer serves the deleted PDF after the next run of the delete worker', async () => {
+    // The DeleteObject job of the delete runs in a BackWave worker of the Server soon after the commit
+    await step('storage no longer serves the deleted PDF after its delete job runs', async () => {
       await expect.poll(async () => (await page.request.get(handout.downloadUrl)).status(), { timeout: 30_000 }).toBe(404)
     })
 

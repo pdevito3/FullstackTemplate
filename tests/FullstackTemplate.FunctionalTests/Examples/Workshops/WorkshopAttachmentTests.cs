@@ -282,7 +282,7 @@ public class WorkshopAttachmentTests : TestBase
     }
 
     [Test]
-    public async Task a_failed_save_deletes_the_uploaded_object()
+    public async Task a_failed_save_shows_no_file_and_leaves_its_object_to_the_sweep()
     {
         // Arrange
         var (tenant, workshop) = await AddWorkshopAndSignInAsync("Admin");
@@ -294,8 +294,9 @@ public class WorkshopAttachmentTests : TestBase
 
         // Assert
         result.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        (await ObjectKeysOfAsync(tenant, workshop)).ShouldBeEmpty();
         (await ListAsync(workshop.Id)).Attachments.ShouldBeEmpty();
+        (await ObjectKeysOfAsync(tenant, workshop)).ShouldHaveSingleItem(
+            "A save can throw while its COMMIT lands, so only the sweep of the bucket deletes an object that no row names.");
     }
 
     [Test]

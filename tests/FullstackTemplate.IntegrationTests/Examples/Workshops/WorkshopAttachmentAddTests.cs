@@ -15,12 +15,13 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Shouldly;
+using FullstackTemplate.IntegrationTests.ObjectDeletes;
 using static FullstackTemplate.IntegrationTests.ObjectDeletes.ObjectDeleteTestServer;
 
 public class WorkshopAttachmentAddTests : TestBase
 {
     [Test]
-    public async Task a_put_whose_reply_is_lost_after_storage_kept_the_bytes_leaves_no_object()
+    public async Task a_put_whose_reply_is_lost_after_storage_kept_the_bytes_leaves_its_object_to_the_sweep()
     {
         // Arrange
         await new TestingServiceScope().StartGraph(out _)
@@ -28,7 +29,8 @@ public class WorkshopAttachmentAddTests : TestBase
             .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
             .Under(tenant).AddVenue(out _).AddWorkshop(out var workshop)
             .BuildAsync();
-        await using var server = TestFixture.BuildServiceProvider(services =>
+        await using var bucket = await SweepBucket.CreateAsync();
+        var server = bucket.Server(configure: services =>
         {
             services.RemoveAll<IAmazonS3>();
             services.AddSingleton<IAmazonS3>(new AmazonS3Client(new BasicAWSCredentials("test", "test"), new AmazonS3Config
@@ -40,22 +42,22 @@ public class WorkshopAttachmentAddTests : TestBase
                 HttpClientFactory = new LostPutReplyClientFactory(),
             }));
         });
-        var underTest = new TestingServiceScope(server);
-        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        var adder = new TestingServiceScope(server);
+        adder.SetUserWithDefaults(identifier: admin.Identifier);
         await using var file = new ReceivedFile(
             new MemoryStream(SampleFiles.OfLength(SampleFiles.Pdf, 100)), "notes.pdf", "application/pdf");
+        await Should.ThrowAsync<HttpRequestException>(() => adder.SendAsync(new AddWorkshopAttachment.Command(workshop.Id, file)));
+        var kept = (await bucket.ObjectsAsync()).ShouldHaveSingleItem("The add failed, and it left the object that storage kept.");
 
         // Act
-        var act = () => underTest.SendAsync(new AddWorkshopAttachment.Command(workshop.Id, file));
+        await bucket.SweepAsync(kept.LastModified + SweepBucket.Grace + TimeSpan.FromSeconds(1));
 
         // Assert
-        await act.ShouldThrowAsync<Exception>();
-        (await KeysUnderAsync($"tenants/{tenant.Id}/workshops/{workshop.Id}/"))
-            .ShouldBeEmpty("The add failed, so the object that storage kept was deleted.");
+        (await bucket.KeysAsync()).ShouldBeEmpty("No row names the object, so the sweep deleted it after its grace.");
     }
 
     [Test]
-    public async Task a_canceled_add_on_a_hung_storage_ends_after_the_attempt_timeout_of_its_cleanup()
+    public async Task a_canceled_add_on_a_hung_storage_ends_on_the_cancel()
     {
         // Arrange
         await new TestingServiceScope().StartGraph(out _)
@@ -63,7 +65,7 @@ public class WorkshopAttachmentAddTests : TestBase
             .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
             .Under(tenant).AddVenue(out _).AddWorkshop(out var workshop)
             .BuildAsync();
-        await using var hung = WithStorageHung(new ObjectDeleteOptions { AttemptTimeout = TimeSpan.FromSeconds(1) });
+        await using var hung = WithStorageHung(new ObjectDeleteOptions());
         var underTest = new TestingServiceScope(hung.Server);
         underTest.SetUserWithDefaults(identifier: admin.Identifier);
         await using var file = new ReceivedFile(
@@ -76,8 +78,7 @@ public class WorkshopAttachmentAddTests : TestBase
             .WaitAsync(TimeSpan.FromSeconds(30));
 
         // Assert
-        await act.ShouldThrowAsync<OperationCanceledException>(
-            "The put stopped on the cancel, and the cleanup delete stopped after its attempt timeout.");
+        await act.ShouldThrowAsync<OperationCanceledException>("The put stopped on the cancel.");
     }
 
     [Test]

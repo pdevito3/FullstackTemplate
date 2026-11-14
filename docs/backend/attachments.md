@@ -242,9 +242,9 @@ A presigned URL works only while the credentials that signed it are valid. When 
 
 A row with no object is a file that no one can download. An object with no row costs only its storage. So `AttachmentStorage` writes in this order:
 
-- **Add.** It puts the object, then runs the save of the row. The put and the save together stop after `Attachments:AddTimeout` (5 minutes), also when the caller does not cancel, and the add then throws a `TimeoutException`. If the put or the save throws, it deletes the object only when no row with its ID exists. A put can store the bytes and still throw, and a save can commit and still throw, for example after a lost reply. If that check fails, it keeps the object. The delete of the object stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute), so a hung storage does not hold the request.
+- **Add.** It puts the object, then runs the save of the row. The put and the save together stop after `Attachments:AddTimeout` (5 minutes), also when the caller does not cancel, and the add then throws a `TimeoutException`. If the put or the save throws, the add keeps the object, and [the sweep of the bucket](#the-sweep-of-the-bucket) deletes it if no row names it. A put can store the bytes and still throw, for example after a lost reply. A save can throw while its COMMIT is still in flight, and the COMMIT can then land. A check for the row at once does not see such a row, and its delete would take the object of a file that is in the list. The sweep waits for the grace, so it sees the row.
 - **Delete.** It saves the delete of the row. It does not call storage. The save also queues a `DeleteObject` job for the object, so the job commits with the row delete, or neither commits.
-- **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes an object that no row names, such as an object that a failed add left. A put that lands after the job stays until [the sweep of the bucket](#the-sweep-of-the-bucket).
+- **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes each object of the tenant that no row names. A put that lands after the job stays until [the sweep of the bucket](#the-sweep-of-the-bucket).
 
 `AppDbContext` queues the jobs in each save, for each deleted `IAttachment` and each deleted `Tenant`, so a new delete path needs no code for its objects. The jobs are BackWave jobs on the queue `object-deletes` (see [ADR 0013](../adr/0013-background-jobs-on-backwave.md)). The Server runs a worker group for this queue only, so a storage outage does not hold up the jobs of other queues. A worker claims a job soon after the commit, and BackWave gives each job to one worker at a time.
 
@@ -273,7 +273,7 @@ A requeue is safe, because a delete of an object that is gone succeeds.
 
 ### The sweep of the bucket
 
-Each object under `tenants/` must belong to a row of an `IAttachment` entity. An add can leave an object that no row names: the process stops between the put and the save, the delete of a failed add fails, or a put that the client stopped lands after the delete of the objects of its tenant. The recurring job `SweepObjects` in `Domain/ObjectDeletes/` deletes these objects.
+Each object under `tenants/` must be the `StoredFile` of a row. An add can leave an object that no row names: the put or the save throws, the process stops between the put and the save, or a put that the client stopped lands after the delete of the objects of its tenant. The recurring job `SweepObjects` in `Domain/ObjectDeletes/` deletes these objects.
 
 - BackWave runs the job each day at 03:00 UTC (`ObjectStorage:Sweep:Schedule`, a cron expression in UTC), on the queue `object-sweep`. Each start of the Server defines the schedule after the migrations. After a stop of all workers, the missed days give one run. A run does not start while the last run still runs.
 - A run lists each object under `tenants/`, 1000 keys at a time. For each page, it loads the tenants of the keys and the keys that a live row names in a `StoredFile` column. Then it deletes each other object of the page. `StoredFileMapping.StorageKeyColumns` finds each such column in the EF model, also on a derived entity type and inside another value object, so a new stored file needs no change in the sweep. A collection of stored files stops the sweep, because it cannot read their keys.
@@ -294,8 +294,8 @@ Do not put an object under `tenants/` that no `StoredFile` of a row names, becau
 
 ## Limits
 
-- The object of a deleted row is readable through an old URL until its job deletes it. See [The order of the writes](#the-order-of-the-writes).
-- The objects of a dead job stay until a person requeues the job. No alert or health check shows a dead job.
+- The object of a deleted row is readable through an old URL until its job deletes it. See [The order of the writes](#the-order-of-the-writes). A `StoredFile` that is not the `File` of an `IAttachment` gets no job, so its object stays until the sweep deletes it.
+- The objects of a dead job stay until the next run of the sweep after their grace, or until a person requeues the job. No alert or health check shows a dead job.
 - An object that no row names stays until the next run of [the sweep of the bucket](#the-sweep-of-the-bucket) after its grace, at most about a day and an hour. This is the object of an add that fails, of a dead job, or of a put that lands after the delete of its tenant.
 - Each run of the sweep lists the whole bucket under `tenants/`: one LIST request for each 1000 objects, and one look-up in each storage key column for each page.
 - A COMMIT that stays in flight longer than `ObjectStorage:Sweep:Margin`, for example on a synchronous standby that is down, can land after the sweep deleted its object. The list then shows a file that no one can download.

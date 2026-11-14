@@ -37,9 +37,12 @@ public sealed class SweepBucket : IAsyncDisposable
     }
 
     /// <summary>A Server that keeps its objects in this bucket, on the database of the tests or on another one.</summary>
-    public ServiceProvider Server(string? connectionString = null) => Track(TestFixture.BuildServiceProvider(
-        services => services.AddSingleton(Options.Create(new ObjectStorageOptions { BucketName = Name })),
-        connectionString));
+    public ServiceProvider Server(string? connectionString = null, Action<IServiceCollection>? configure = null)
+        => Track(TestFixture.BuildServiceProvider(services =>
+        {
+            services.AddSingleton(Options.Create(new ObjectStorageOptions { BucketName = Name }));
+            configure?.Invoke(services);
+        }, connectionString));
 
     /// <summary>Runs one sweep on a Server of this bucket whose clock reads <paramref name="now"/>.</summary>
     public async Task SweepAsync(DateTimeOffset now, string? connectionString = null)

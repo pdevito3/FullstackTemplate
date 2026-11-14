@@ -44,7 +44,12 @@ function WorkshopPage() {
         All workshops
       </Link>
       {workshop.isRefetchError && (
-        <QueryError title="The latest workshop did not load." error={workshop.error} onRetry={() => workshop.refetch()} />
+        <QueryError
+          title="The latest workshop did not load."
+          error={workshop.error}
+          isRetrying={workshop.isFetching}
+          onRetry={() => workshop.refetch()}
+        />
       )}
       <div className="flex flex-wrap items-center gap-3">
         <PageHeading ref={headingRef}>

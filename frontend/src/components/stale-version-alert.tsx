@@ -52,7 +52,7 @@ export function LatestLoadedNote<F extends string>({ noun, changed, labels }: La
     <p role="status" className="rounded-lg border p-4 text-sm">
       {changed.length > 0
         ? `A save after you opened this ${noun} changed ${listFormat.format(changed.map((field) => labels[field]))}. The form shows the saved values of these fields. Your edits to the other fields are still in the form. Check the form, then save.`
-        : `The latest ${noun} has no change to the fields of this form. Your edits are still in the form. Save again to keep them.`}
+        : `The latest ${noun} has no change to the fields of this form. Check the form, then save.`}
     </p>
   )
 }

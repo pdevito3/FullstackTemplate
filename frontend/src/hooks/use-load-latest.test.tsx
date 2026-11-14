@@ -25,7 +25,6 @@ function RoomForm({ latest }: { latest: RoomValues | Error }) {
       <label>Capacity <input type="number" {...form.register('capacity', { valueAsNumber: true })} /></label>
       <output aria-label="Version">{form.watch('version')}</output>
       <output aria-label="Changed">{loadLatest.changed?.join(', ') ?? 'none'}</output>
-      <output aria-label="Failure">{loadLatest.failure ?? 'none'}</output>
       <button type="button" onClick={() => loadLatest.load(read)}>Load the latest</button>
     </form>
   )
@@ -65,7 +64,7 @@ test('names no field and focuses the first field when the latest save changed no
   await expect.element(screen.getByRole('status', { name: 'Changed' })).toHaveTextContent('')
 })
 
-test('keeps each edit and gives the message of the read when the read fails', async () => {
+test('keeps each edit when the read fails', async () => {
   // Arrange
   const screen = await render(<RoomForm latest={new Error('The app could not reach the server.')} />)
   const name = screen.getByRole('textbox', { name: 'Name' })
@@ -75,7 +74,6 @@ test('keeps each edit and gives the message of the read when the read fails', as
   await userEvent.click(screen.getByRole('button', { name: 'Load the latest' }))
 
   // Assert
-  await expect.element(screen.getByRole('status', { name: 'Failure' })).toHaveTextContent('The app could not reach the server.')
   await expect.element(name).toHaveValue('Green Room')
   await expect.element(screen.getByRole('status', { name: 'Version' })).toHaveTextContent('1')
   await expect.element(screen.getByRole('status', { name: 'Changed' })).toHaveTextContent('none')

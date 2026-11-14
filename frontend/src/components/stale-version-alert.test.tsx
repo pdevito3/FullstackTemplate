@@ -64,6 +64,6 @@ test('says when the latest save changed no field of the form', async () => {
 
   // Assert
   await expect.element(screen.getByRole('status')).toHaveTextContent(
-    'The latest room has no change to the fields of this form. Your edits are still in the form. Save again to keep them.',
+    'The latest room has no change to the fields of this form. Check the form, then save.',
   )
 })

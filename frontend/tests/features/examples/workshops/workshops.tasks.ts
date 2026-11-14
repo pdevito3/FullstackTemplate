@@ -201,6 +201,20 @@ export function workshopsPage(page: Page) {
       await expect(at.editForm).toBeVisible()
     },
 
+    async editWithAFailedLoad(title: string, id: string) {
+      const settled = failedLoad(page, workshopPaths.one(id))
+      await at.editLink(title).click()
+      await expect(at.editForm).toBeVisible()
+      await settled
+      await nextFrames(page)
+    },
+
+    async tryAgain(title: string, id: string) {
+      const settled = answered('GET', workshopPaths.one(id))
+      await at.tryAgain(title).click()
+      await settled
+    },
+
     async renameTo(title: string) {
       await at.title.fill(title)
     },

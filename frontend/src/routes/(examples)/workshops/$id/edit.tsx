@@ -51,7 +51,12 @@ function EditWorkshopPage() {
       </Link>
       <PageHeading>Edit workshop</PageHeading>
       {workshop.data.allowedActions.includes('Update') ? (
-        <WorkshopEditForm workshop={workshop.data} onSave={handleSave} onLoadLatest={handleLoadLatest} />
+        <WorkshopEditForm
+          workshop={workshop.data}
+          refetchError={workshop.isRefetchError ? workshop.error : null}
+          onSave={handleSave}
+          onLoadLatest={handleLoadLatest}
+        />
       ) : (
         <p className="text-muted-foreground">
           {workshop.data.status === 'Draft'

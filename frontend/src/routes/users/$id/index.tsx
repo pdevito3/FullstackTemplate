@@ -76,7 +76,7 @@ function UserPage() {
         All users
       </Link>
       {user.isRefetchError && (
-        <QueryError title="The latest user did not load." error={user.error} onRetry={() => user.refetch()} />
+        <QueryError title="The latest user did not load." error={user.error} isRetrying={user.isFetching} onRetry={() => user.refetch()} />
       )}
       <PageHeading ref={headingRef}>{fullName}</PageHeading>
       <section aria-label="Details">

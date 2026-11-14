@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import type { WorkshopDto } from '@/api/generated/models/types/workshop-dto'
 import type { WorkshopForUpdateDto } from '@/api/generated/models/types/workshop-for-update-dto'
 import { workshopForUpdateDtoSchema } from '@/api/generated/models/zod/workshop-for-update-dto'
+import { QueryError } from '@/components/query-error'
 import { RefusedSaveAlert } from '@/components/refused-save-alert'
 import { LatestLoadedNote, StaleVersionAlert } from '@/components/stale-version-alert'
 import { Button } from '@/components/ui/button'
@@ -33,11 +34,12 @@ function valuesOf(workshop: WorkshopDto) {
 
 interface WorkshopEditFormProps {
   workshop: WorkshopDto
+  refetchError: Error | null
   onSave: (body: WorkshopForUpdateDto) => Promise<unknown>
   onLoadLatest: () => Promise<WorkshopDto>
 }
 
-export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEditFormProps) {
+export function WorkshopEditForm({ workshop, refetchError, onSave, onLoadLatest }: WorkshopEditFormProps) {
   const form = useForm({ resolver: zodResolver(schema), defaultValues: valuesOf(workshop), shouldFocusError: false })
   const serverErrors = useServerErrors(form, WORKSHOP_FIELD_NAMES)
   const latest = useLoadLatest(form, WORKSHOP_FIELD_NAMES)
@@ -66,13 +68,21 @@ export function WorkshopEditForm({ workshop, onSave, onLoadLatest }: WorkshopEdi
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit} noValidate aria-label="Edit workshop" className="flex max-w-lg flex-col gap-5">
+        {refetchError && serverErrors.problem?.kind !== 'stale' && !form.formState.isSubmitting && (
+          <QueryError
+            title="The latest workshop did not load."
+            error={refetchError}
+            isRetrying={latest.isLoading}
+            onRetry={handleLoadLatest}
+          />
+        )}
         <WorkshopFields limits={limits} zone={zone} />
         <RefusedSaveAlert problem={serverErrors.problem} />
         <StaleVersionAlert
           noun="workshop"
           problem={serverErrors.problem}
           isLoadingLatest={latest.isLoading}
-          loadFailure={latest.failure}
+          loadFailure={refetchError?.message ?? null}
           onLoadLatest={handleLoadLatest}
         />
         <LatestLoadedNote noun="workshop" changed={latest.changed} labels={FIELD_LABELS} />

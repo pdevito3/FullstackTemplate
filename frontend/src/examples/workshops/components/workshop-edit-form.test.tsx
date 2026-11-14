@@ -28,7 +28,7 @@ const stale = new ProblemDetailsError({
 })
 
 async function renderForm(onSave = vi.fn().mockResolvedValue(undefined), onLoadLatest = vi.fn()) {
-  const screen = await render(<WorkshopEditForm workshop={workshop} onSave={onSave} onLoadLatest={onLoadLatest} />)
+  const screen = await render(<WorkshopEditForm workshop={workshop} refetchError={null} onSave={onSave} onLoadLatest={onLoadLatest} />)
   return {
     screen,
     onSave,
@@ -44,7 +44,7 @@ test('the Tab key goes through the fields in the order of the form: Title, Start
   const screen = await render(
     <>
       <button type="button">Before the form</button>
-      <WorkshopEditForm workshop={workshop} onSave={vi.fn()} onLoadLatest={vi.fn()} />
+      <WorkshopEditForm workshop={workshop} refetchError={null} onSave={vi.fn()} onLoadLatest={vi.fn()} />
     </>,
   )
   const save = screen.getByRole('button', { name: 'Save' })
@@ -140,6 +140,23 @@ test('after a stale save, keeps each edit that the latest save did not change, a
   await userEvent.click(form.save)
 
   await expect.poll(() => form.onSave).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Kubb in depth', capacity: 30, version: 4 }))
+})
+
+test('shows a failed read of the workshop once, in the stale alert after a stale save', async () => {
+  const refetchError = new Error('The server could not complete the request. Try again in a moment.')
+  const screen = await render(
+    <WorkshopEditForm workshop={workshop} refetchError={refetchError} onSave={vi.fn().mockRejectedValue(stale)} onLoadLatest={vi.fn()} />,
+  )
+  const failure = screen.getByText(/^The latest workshop did not load\./)
+
+  await expect.element(failure).toBeVisible()
+  await expect.element(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+  await expect.element(screen.getByRole('alert').filter({ hasText: 'This workshop changed after you opened it.' })).toContainElement(failure.element())
+  expect(failure.elements()).toHaveLength(1)
+  await expect.element(screen.getByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
 })
 
 test('shows each validation message of the Server on its field', async () => {

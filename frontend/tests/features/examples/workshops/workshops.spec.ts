@@ -121,6 +121,31 @@ test.describe('the workshops', () => {
     await expect(workshops.at.editCapacity).toHaveValue('30')
   })
 
+  test('keeps the typed edits and says why when the edit page fails to load the latest, and loads it on Try again', async ({ page, api }) => {
+    const workshop = aWorkshop().titled('Intro to Kubb').at(venue)
+    const { id, venueId } = workshop.build()
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.attachmentsReturn(workshop), workshopsApi.venueIs(venue))
+    const workshops = workshopsPage(page)
+    await workshops.openDetail(id, venueId)
+    api.mock(workshopsApi.oneFails(id, aProblem()))
+
+    await workshops.editWithAFailedLoad('Intro to Kubb', id)
+
+    await expect(workshops.at.loadError('The latest workshop did not load.')).toContainText(
+      'The server could not complete the request. Try again in a moment.',
+    )
+    await expect(workshops.at.tryAgain('The latest workshop did not load.')).toBeEnabled()
+    await expect(workshops.at.title).toHaveValue('Intro to Kubb')
+
+    await workshops.renameTo('Kubb in depth')
+    api.mock(workshopsApi.oneIs(workshop.savedAgain({ capacity: 30 })))
+    await workshops.tryAgain('The latest workshop did not load.', id)
+
+    await expect(workshops.at.loadError('The latest workshop did not load.')).toBeHidden()
+    await expect(workshops.at.title).toHaveValue('Kubb in depth')
+    await expect(workshops.at.editCapacity).toHaveValue('30')
+  })
+
   test('keeps the workshop on the page when a refused action reads it again and that read fails', async ({ page, api }) => {
     const draft = aWorkshop().titled('Intro to Kubb').at(venue)
     const { id, venueId } = draft.build()

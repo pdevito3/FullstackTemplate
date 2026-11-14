@@ -46,6 +46,7 @@ export const workshops = (page: Page) => {
     details: page.getByRole('region', { name: 'Details' }),
     status: (status: string) => page.getByText(status, { exact: true }),
     loadError: (title: string) => page.getByRole('alert').filter({ hasText: title }),
+    tryAgain: (title: string) => page.getByRole('alert').filter({ hasText: title }).getByRole('button', { name: 'Try again' }),
     toast: (text: string) => page.getByRole('alertdialog').filter({ hasText: text }),
     toasts: page.getByRole('alertdialog'),
     emptyPage: page.getByText(/^There are no workshops on page \d+\./),

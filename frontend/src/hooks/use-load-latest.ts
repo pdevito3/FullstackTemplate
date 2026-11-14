@@ -8,14 +8,13 @@ type TextField<T extends FieldValues> = { [K in Path<T>]: PathValue<T, K> extend
 type LoadLatest<F> =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'failed'; message: string }
   | { kind: 'loaded'; changed: F[] }
 
 /**
  * The Load the latest button of an edit form after a stale save. `load` reads the record again and gives its form
  * values, or throws when the read fails. Each field that the latest save changed takes the saved value, each other
  * field keeps the edit of the user, and the focus goes to the first changed field. `changed` names those fields for
- * `LatestLoadedNote`. A failed read changes no field, and `failure` gives its message for `StaleVersionAlert`.
+ * `LatestLoadedNote`. A failed read changes no field and returns false, so the caller shows the error of its query.
  */
 export function useLoadLatest<T extends FieldValues, F extends TextField<T>>(
   form: UseFormReturn<T>,
@@ -29,8 +28,8 @@ export function useLoadLatest<T extends FieldValues, F extends TextField<T>>(
     let latest: T
     try {
       latest = await read()
-    } catch (error) {
-      setState({ kind: 'failed', message: error instanceof Error && error.message ? error.message : 'Try again.' })
+    } catch {
+      setState({ kind: 'idle' })
       return false
     }
     try {
@@ -51,7 +50,6 @@ export function useLoadLatest<T extends FieldValues, F extends TextField<T>>(
   return {
     isLoading: state.kind === 'loading',
     changed: state.kind === 'loaded' ? state.changed : null,
-    failure: state.kind === 'failed' ? state.message : null,
     load,
     clear: () => setState({ kind: 'idle' }),
   }

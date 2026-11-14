@@ -68,8 +68,12 @@ public class UserActionTests
             _ => MemberWith(Permission.ManageUserAccess(), Permission.ReadUsers()), null);
         yield return () => ("access manager without read_users", "User", UserAction.RemovePermission(),
             _ => MemberWith(Permission.ManageUserAccess()), readUsersDenial);
-        yield return () => ("access manager on an admin", "Admin", UserAction.RemovePermission(),
+        yield return () => ("access manager on a user", "User", UserAction.RemovePermission(),
             _ => MemberWith(Permission.ManageUserAccess(), Permission.ReadUsers()), null);
+        yield return () => ("access manager on an admin", "Admin", UserAction.RemovePermission(),
+            _ => MemberWith(Permission.ManageUserAccess(), Permission.ReadUsers()), adminPermissionDenial);
+        yield return () => ("admin on an admin", "Admin", UserAction.RemovePermission(),
+            _ => MemberWith([.. Permission.GetAll()]), null);
 
         yield return () => ("user on their own record", "User", UserAction.Delete(), OwnRecord, manageUsersDenial);
         yield return () => ("manager without read_users", "User", UserAction.Delete(),

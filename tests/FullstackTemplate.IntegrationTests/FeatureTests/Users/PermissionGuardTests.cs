@@ -332,17 +332,33 @@ public class PermissionGuardTests : TestBase
     }
 
     [Test]
-    public async Task holder_of_only_manage_user_access_and_read_users_can_take_manage_user_access_away()
+    public async Task holder_of_only_manage_user_access_and_read_users_cannot_take_manage_user_access_away_from_an_admin()
     {
         // Arrange
         var (scope, _, _) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
         var admin = await AddAdminAsync();
 
         // Act
-        var updated = await scope.SendAsync(new RemoveUserPermission.Command(admin.Id, "manage_user_access"));
+        // Without the rule, the caller could take it away from each admin, and no admin could take it away from the caller
+        var act = () => scope.SendAsync(new RemoveUserPermission.Command(admin.Id, "manage_user_access"));
 
         // Assert
-        updated.Permissions.ShouldBe(Permission.ListNames().Except(["manage_user_access"]), ignoreOrder: true);
+        await act.ShouldThrowAsync<ForbiddenAccessException>();
+        (await PermissionsOfAsync(admin.Id)).ShouldBe(Permission.ListNames(), ignoreOrder: true);
+    }
+
+    [Test]
+    public async Task holder_of_only_manage_user_access_and_read_users_can_take_manage_user_access_away_from_a_peer()
+    {
+        // Arrange
+        var (scope, _, target) = await ArrangeCallerWithOnlyAsync("User", Permission.ManageUserAccess(), Permission.ReadUsers());
+        await new TestingServiceScope().SendAsync(new AddUserPermission.Command(target.Id, "manage_user_access"));
+
+        // Act
+        var updated = await scope.SendAsync(new RemoveUserPermission.Command(target.Id, "manage_user_access"));
+
+        // Assert
+        updated.Permissions.ShouldBeEmpty();
     }
 
     [Test]

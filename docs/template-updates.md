@@ -140,6 +140,15 @@ If you commit the rewrite alone, you can check it again. This command compares e
 dotnet run scripts/raw-strings.cs -- --check HEAD~1
 ```
 
+### The update that adds BackWave
+
+The Server now runs background jobs on BackWave (see [background-jobs.md](backend/background-jobs.md)), and the deletes of the objects in storage are jobs.
+
+- The Server now has two EF Core contexts, so each `dotnet ef` command needs `--context AppDbContext`. For the key ring of Data Protection, use `--context DataProtectionKeysDbContext`. A command with no `--context` stops with an error. Add the option to each script and CI step of the app that runs `dotnet ef`.
+- `ObjectStorage:Deletes:Interval` has no effect now, because a worker group of BackWave polls its queue each second. Remove the setting from the configuration of the app. The other settings of `ObjectStorage:Deletes` still give the attempts, the delays, and the timeout.
+- The first start of the new Server moves the rows of the old queue `object_delete_requests` onto BackWave, also the dead rows, and then drops the queue. A row that fails the check of its job gets the Warning log `Dropped object delete request {ObjectDeleteRequestId} ...` and no job. If the object of that row exists, delete it by hand.
+- After the drop, a Server of the previous version cannot delete an attachment or a tenant, because its save writes a row of the queue. Stop the previous version before the update, or accept that these deletes fail until the deploy ends. A row that the previous version adds after the move and before the drop stops that start, and the next start moves the row.
+
 ## Keep the next update small
 
 - When you find a fault in the template, report it as an issue of the template, and get the fix with the next update. A fix that you copy by hand gives a conflict when the fix of the template comes.

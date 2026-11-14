@@ -411,7 +411,7 @@ Each failed refresh adds to `bff.refresh.failures` with `kind=permanent` or `kin
    - If it is the same, run the refresh. The delegate of `ExecuteWithConcurrencyControlAsync` runs `RefreshAccessTokenAsync` and then `StoreTokenAsync`, so the lock wraps the refresh and the write. The write uses the `xmin` of the row that the lock read. Thus a waiter always reads the new tokens.
    - The BFF session store and the lock use the same scoped `DbContext` and the same connection, so that the write is inside the lock transaction.
 
-The lock releases itself when the transaction ends, also if the instance stops. It does not block a plain read of the row.
+The lock releases itself when the transaction ends, also if the instance stops. It does not block a plain read of the row. An instance can also stop with its connection open, for example when its host goes away. Thus the lock transaction sets `idle_in_transaction_session_timeout` to 3 times `Bff:Refresh:TokenRequestTimeout` plus 2 s: the token request, the ID token checks, and the revocation, each with its own limit, and then the write and the commit. At that limit, Postgres ends the session, and the lock is free. The lock wait does not count, because Postgres runs the lock statement during the wait.
 
 **The wait.** `Bff:Refresh:LockTimeout`, default 10 s. If the wait reaches the limit, the BFF treats it as a temporary failure.
 

@@ -171,6 +171,7 @@ public sealed class RefreshLock(
         var store = services.GetRequiredService<IBffSessionStore>();
         var startTokens = request.Tokens;
         var lockTimeout = options.CurrentValue.LockTimeout;
+        var idleLimit = options.CurrentValue.IdleInLockLimit;
         var refreshCalled = false;
 
         // The Aspire integration turns on EF retries, and a retrying strategy runs a user transaction only as one
@@ -182,7 +183,7 @@ public sealed class RefreshLock(
                     return Outcome.RetryAfterRefresh;
 
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellation);
-                if (!await TryLockAsync(dbContext, transaction, sessionKey, lockTimeout, cancellation))
+                if (!await TryLockAsync(dbContext, transaction, sessionKey, lockTimeout, idleLimit, cancellation))
                     return Outcome.LockTimeout;
 
                 var row = await store.GetAsync(sessionKey, cancellation);
@@ -283,16 +284,22 @@ public sealed class RefreshLock(
     /// Takes the advisory lock of the BFF session in <paramref name="transaction"/>. Returns false when the wait
     /// reaches <paramref name="lockTimeout"/>. The commands go straight to the connection of the transaction, so
     /// that EF Core does not log the expected lock timeout as a failed command. The <c>lock_timeout</c> setting
-    /// stays for the rest of the transaction, so that no later lock wait in it is longer.
+    /// stays for the rest of the transaction, so that no later lock wait in it is longer. The
+    /// <c>idle_in_transaction_session_timeout</c> of <paramref name="idleLimit"/> also stays for the transaction, so
+    /// that Postgres ends the session, and frees the lock, of a host that stops with its connection open.
     /// </summary>
     private static async Task<bool> TryLockAsync(BffDbContext dbContext, IDbContextTransaction transaction,
-        string sessionKey, TimeSpan lockTimeout, CancellationToken ct)
+        string sessionKey, TimeSpan lockTimeout, TimeSpan idleLimit, CancellationToken ct)
     {
         await using var command = dbContext.Database.GetDbConnection().CreateCommand();
         command.Transaction = transaction.GetDbTransaction();
         // Two statements, because Postgres does not promise the order in which it runs the parts of one SELECT
-        command.CommandText = "SELECT set_config('lock_timeout', @timeout, true); SELECT pg_advisory_xact_lock(@lockId)";
+        command.CommandText = """
+            SELECT set_config('lock_timeout', @timeout, true), set_config('idle_in_transaction_session_timeout', @idleLimit, true);
+            SELECT pg_advisory_xact_lock(@lockId)
+            """;
         AddParameter(command, "timeout", $"{(long)lockTimeout.TotalMilliseconds}ms");
+        AddParameter(command, "idleLimit", $"{(long)idleLimit.TotalMilliseconds}ms");
         AddParameter(command, "lockId", LockIdOf(sessionKey));
 
         try

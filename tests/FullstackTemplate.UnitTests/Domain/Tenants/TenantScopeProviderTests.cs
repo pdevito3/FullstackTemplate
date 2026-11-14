@@ -41,7 +41,7 @@ public sealed class TenantScopeProviderTests : IDisposable
         }));
         services.AddSingleton(Options.Create(new FirstPartyClientOptions { ClientIds = new HashSet<string> { FirstPartyClientId } }));
         services.AddScoped<ICurrentUserService, CurrentUserService>();
-        services.AddScoped<SystemTenantAccess>();
+        services.AddScoped<ScopeGrant>();
         services.AddScoped<ICallerIdentityResolver, CallerIdentityResolver>();
         services.AddScoped<ITenantScopeProvider, TenantScopeProvider>();
         _services = services.BuildServiceProvider();
@@ -119,6 +119,18 @@ public sealed class TenantScopeProviderTests : IDisposable
 
         // Assert
         _sut.GetCurrentScope().ShouldBe(TenantScope.NoTenant);
+    }
+
+    [Test]
+    public void scope_of_a_job_gets_only_the_tenant_of_the_job_whatever_the_token()
+    {
+        // Arrange
+        var tenantId = EntityId.New(Tenant.IdPrefix);
+        SetCaller(new Claim("client_id", TrustedClientId));
+        _scope.ServiceProvider.GetRequiredService<ScopeGrant>().GrantTenantJob(tenantId);
+
+        // Act & Assert
+        _sut.GetCurrentScope().ShouldBe(TenantScope.ForTenant(tenantId));
     }
 
     [Test]

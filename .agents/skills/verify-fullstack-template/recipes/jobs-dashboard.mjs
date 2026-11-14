@@ -38,7 +38,10 @@ export default async ({ page, step, capture, expect, login, logout, stack }) => 
     )
     await page.goto('http://mail.example.test/inbox')
     const loads = []
-    const onRequest = (r) => r.frame() === page.mainFrame() && r.url() === target && loads.push(r)
+    // The load again adds the marker bff_loaded_again=1, and the live stream of the page is a request of the frame too
+    const isLoad = (r) =>
+      r.frame() === page.mainFrame() && r.resourceType() === 'document' && new URL(r.url()).pathname === '/backwave/queues'
+    const onRequest = (r) => isLoad(r) && loads.push(r)
     page.on('request', onRequest)
     await page.getByRole('link', { name: 'Open the queues' }).click()
     await expect(page.getByRole('heading', { name: 'Queues', level: 1 })).toBeVisible()
@@ -48,6 +51,7 @@ export default async ({ page, step, capture, expect, login, logout, stack }) => 
     expect(loads).toHaveLength(2)
     expect(await hasSession(loads[0])).toBe(false)
     expect((await loads[0].response()).status()).toBe(200)
+    expect(new URL(loads[1].url()).searchParams.get('bff_loaded_again')).toBe('1')
     expect(await hasSession(loads[1])).toBe(true)
     await page.unroute('http://mail.example.test/**')
   })

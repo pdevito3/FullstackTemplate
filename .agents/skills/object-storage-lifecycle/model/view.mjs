@@ -16,7 +16,7 @@ export const state = (v) => {
   if (v.row[a] === "live") return "File in the list";
   if (v.obj[a] && queued(v)) return deleting(v) ? "Object delete running" : "Object delete queued";
   if (v.obj[a] && (v.req[a].st === "dead" || v.req.tenant.st === "dead")) return "Object delete dead, a person must run it";
-  if (v.obj[a]) return "Object left that no code will delete";
+  if (v.obj[a]) return v.old[a] ? "Object left, old enough for the sweep" : "Object left, younger than the grace";
   if (v.row[a] === "deleted") return "File deleted";
   if (apc === "done") return tag("Add failed, no object");
   return tag("No file");
@@ -47,6 +47,11 @@ const labels = {
   Fail: "the attempt fails",
   LeaseExpires: "the lease runs out",
   CrashRunner: "the process dies",
+  Age: "the grace passes",
+  SweepList: "the sweep lists the bucket",
+  SweepCheck: "the sweep reads the live rows",
+  SweepDelete: "the sweep deletes the objects with no row",
+  SweepFail: "a delete of the sweep fails",
   Done: null,
 };
 

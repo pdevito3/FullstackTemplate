@@ -13,8 +13,9 @@ out=$(mktemp -d)
 expected() {
   case $1 in
     ObjectStorage | Liveness | Chart) echo "pass" ;;
-    OrphansCrashOnly | OrphansNoCrash) echo "EveryObjectAccounted NoObjectLeftInDeletedTenant" ;;
-    LateCommit) echo "NoLiveRowWithoutObject" ;;
+    LateCommit | GraceNone | GraceLimit) echo "NoLiveRowWithoutObject" ;;
+    SoftDeletedNames) echo "liveness" ;;
+    DeletedTenantOrphan) echo "NoObjectLeftInDeletedTenant" ;;
     *) echo "unknown config $1" >&2; exit 2 ;;
   esac
 }
@@ -54,7 +55,7 @@ result() {
   [ $# -gt 0 ] && echo "$@" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//' || echo "pass"
 }
 
-configs=${*:-"ObjectStorage Liveness Chart OrphansCrashOnly OrphansNoCrash LateCommit"}
+configs=${*:-"ObjectStorage Liveness Chart LateCommit GraceNone GraceLimit SoftDeletedNames DeletedTenantOrphan"}
 status=0
 for cfg in $configs; do
   want=$(expected "$cfg")

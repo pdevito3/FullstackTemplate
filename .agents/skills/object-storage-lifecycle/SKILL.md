@@ -1,11 +1,11 @@
 ---
 name: object-storage-lifecycle
-description: Model-checks the life of an attachment row, its object in the bucket, and the BackWave jobs that delete objects, with TLA+ and TLC. Use when you change AttachmentStorage, an add or delete of an attachment, DeleteTenant, RootLock, AppDbContext.PrepareWrite, ObjectDeletes, the DeleteObject or DeleteTenantObjects job, ObjectDeleteOptions, or ObjectStorage, or when you ask whether an object can outlive its row or a row can lose its object.
+description: Model-checks the life of an attachment row, its object in the bucket, the BackWave jobs that delete objects, and the sweep of the objects that no row names, with TLA+ and TLC. Use when you change AttachmentStorage, an add or delete of an attachment, DeleteTenant, RootLock, AppDbContext.PrepareWrite, ObjectDeletes, the DeleteObject, DeleteTenantObjects, or SweepObjects job, ObjectDeleteOptions, ObjectSweepOptions, AttachmentOptions, or ObjectStorage, or when you ask whether an object can outlive its row or a row can lose its object.
 ---
 
 # Object storage lifecycle
 
-A TLA+ model of the writes that keep an attachment row and its object in step, checked with TLC over every order of steps in a small scope. It covers crashes and restarts between any two steps, lost commit replies, a canceled upload, a lease that runs out while its worker still works, failed storage calls, and a prefix delete that races an add.
+A TLA+ model of the writes that keep an attachment row and its object in step, checked with TLC over every order of steps in a small scope. It covers crashes and restarts between any two steps, lost commit replies, a canceled upload, a lease that runs out while its worker still works, failed storage calls, a prefix delete that races an add, and a sweep that races an add.
 
 ## The rules
 
@@ -20,10 +20,13 @@ Liveness. Each state that is not an end state has a way out.
 - `AddsSettle`. Each add returns, throws, or dies with its process. It never waits forever.
 - `CommitsSettle` and `TenantDeleteSettles`. A COMMIT in flight ends, and a tenant delete that holds the exclusive lock ends.
 
-Coverage. The harm is storage that is paid for and that no code will ever delete. These rules break today (finding F1).
+Coverage. The harm is storage that is paid for and that no code will ever delete.
 
-- `EveryObjectAccounted`. Each object has a live row, or an add that still owns it, or a job that will delete it, or a dead job that a person can see.
-- `NoObjectLeftInDeletedTenant`. After the `DeleteTenantObjects` job of a deleted tenant succeeds, no object of the tenant stays, except one that an add still owns.
+- `OrphansGo`. Each object that no live row names, and that no add can still save a row for, is deleted. This is a liveness rule: it holds when the schedule starts the sweep again and a storage that fails works again at some time.
+
+A witness, which is not a rule:
+
+- `NoObjectLeftInDeletedTenant`. It breaks when an object stays under a deleted tenant after its `DeleteTenantObjects` job succeeded, so TLC shows that path. `DeletedTenantOrphan.cfg` checks `OrphansGo` on the same scope, which shows that the sweep deletes that object.
 
 ## Run
 
@@ -31,22 +34,24 @@ Coverage. The harm is storage that is paid for and that no code will ever delete
 sh .agents/skills/object-storage-lifecycle/check.sh
 ```
 
-The first run installs the pinned TLC (tla2tools 1.7.4) and Java (temurin-25) with mise from `model/mise.toml`, so it needs the network once. The run takes about 2 minutes on an idle laptop. `check.sh Liveness LateCommit` runs only the configs that you name. Each line says `baseline` when the config gives its expected result, and `CHANGED` with the folder of the TLC output when it does not. The exit code is 0 only when every config is at its baseline.
+The first run installs the pinned TLC (tla2tools 1.7.4) and Java (temurin-25) with mise from `model/mise.toml`, so it needs the network once. The run takes about 1.5 minutes on an idle laptop. `check.sh Liveness LateCommit` runs only the configs that you name. Each line says `baseline` when the config gives its expected result, and `CHANGED` with the folder of the TLC output when it does not. The exit code is 0 only when every config is at its baseline.
 
 | Config | Scope | Expected |
 |---|---|---|
-| `ObjectStorage.cfg` | 2 uploads, 2 workers, 1 attempt, 1 crash, cleanup failures. About 130,000 states | pass |
-| `Liveness.cfg` | 1 upload, 2 workers, 2 attempts, 1 crash, cleanup failures, late commits | pass |
+| `ObjectStorage.cfg` | 2 uploads, 2 workers, 1 attempt, 1 crash, late commits, the sweep. About 900,000 states | pass |
+| `Liveness.cfg` | 1 upload, 2 workers, 2 attempts, 1 crash, late commits, the sweep | pass |
 | `Chart.cfg` | 1 upload, 1 worker, 1 attempt, no crash. Small enough for a chart | pass |
-| `OrphansCrashOnly.cfg` | 1 upload, 1 crash, cleanup always works | `EveryObjectAccounted`, `NoObjectLeftInDeletedTenant` break (F1) |
-| `OrphansNoCrash.cfg` | 1 upload, no crash, cleanup failures | `EveryObjectAccounted`, `NoObjectLeftInDeletedTenant` break (F1) |
-| `LateCommit.cfg` | 1 upload, a save that throws while its COMMIT is in flight | `NoLiveRowWithoutObject` breaks (F2) |
+| `DeletedTenantOrphan.cfg` | 1 upload, 1 crash. The witness and `OrphansGo` | `NoObjectLeftInDeletedTenant` breaks, `OrphansGo` holds |
+| `LateCommit.cfg` | The cleanup at once of a failed add (`Cleanup = TRUE`, `DeleteObjectWithNoRowAsync`), and late commits | `NoLiveRowWithoutObject` breaks (F2) |
+| `GraceNone.cfg` | A grace shorter than the time limit of an add | `NoLiveRowWithoutObject` breaks |
+| `GraceLimit.cfg` | A grace of the time limit with no margin, and late commits | `NoLiveRowWithoutObject` breaks |
+| `SoftDeletedNames.cfg` | A sweep that keeps the object of a soft-deleted row | `OrphansGo` breaks |
 
 Read each result with the pstack `/statechart` skill, with `model/ObjectStorage.tla`, the config, and `model/view.mjs` as the view. For a rule that breaks, its report gives the shortest path in the words of a user. For `Chart.cfg`, it draws how one attachment moves between states.
 
 ## Does your change touch the verified code
 
-The coverage record. The sync commit is `80d9f8f4`: at that commit the model describes this code.
+The coverage record. The sync commit is `80d9f8f4`: at that commit the model with `Cleanup = TRUE` describes this code. The sweep (`Age`, `SweepList`, `SweepCheck`, `SweepDelete`, `SweepFail`) and `Cleanup = FALSE` are the design of the change that follows. The code does not have them yet.
 
 | Model | Code |
 |---|---|
@@ -83,9 +88,13 @@ When a config leaves its baseline, get the path from `/statechart`, then replay 
 - One tenant. Each upload has its own key, so a key is never used two times. The `DeleteObject` constructor refuses a key of another tenant, so one tenant shows each race.
 - The delay of a retry only delays a claim, so the model lets a due job be claimed at any time. A lease can run out at any time, which covers a worker slower than its lease and a heartbeat that stops. BackWave counts the expired claim as an attempt.
 - A shutdown that gives a job back with no failed attempt is a crash in the model, which counts the attempt. That only makes a job dead sooner in the model.
-- The prefix delete lists one page. A list that a later page gives is the same race as a list that runs later.
+- The prefix delete and the sweep list one page. A list that a later page gives is the same race as a list that runs later.
+- `Grace = "add"` stands for a grace of `AttachmentOptions.AddTimeout` plus `ObjectSweepOptions.Margin`. It needs these facts: S3 sets `LastModified` at or after the start of the put, `AddAsync` stops the put and the save at `AddTimeout`, the clocks of the Server and of S3 differ by at most 15 minutes (SigV4 refuses a request with more skew), and a COMMIT that is in flight at the cancel ends within the rest of the margin. A COMMIT that stays in flight longer, for example on a synchronous standby that is down while the cancel cannot reach Postgres, breaks the last fact. `GraceLimit.cfg` shows the harm.
+- The sweep reads `now` before it reads the rows, so an object is old before the row check. The model decides the age at `SweepList`.
+- One sweep runs at a time (the schedule skips a tick while a run runs). Two sweeps that overlap each make a safe decision alone, so one sweep shows each race. A process death of the sweep is `SweepFail` with no key deleted.
+- No code restores a soft-deleted row, so a sweep that deletes the object of a soft-deleted row takes no file from the list.
 - A retry of the execution strategy in `RootLock.RunAsync` ends in one of the outcomes of `CommitRow`, so the model does not show it as its own steps.
-- Out of scope: a PUT to S3 that lands after the client gave up on it (the same harm as F1), the presigned URLs, a dead job that a person runs again from the jobs dashboard, the frontend, and more than one tenant.
+- Out of scope: a PUT to S3 that lands after the client gave up on it (an object with no row, as in F1, which the sweep deletes as any other), the presigned URLs, a dead job that a person runs again from the jobs dashboard, the frontend, and more than one tenant.
 - A pass covers the configs in the table, not all sizes.
 - The check does not catch a removed lease fence of BackWave (`Fenced`). With it gone, every config stays at its baseline. A stale outcome only picks which of two attempts sets the state of the job, and both outcomes keep each rule here, because a delete of a gone object succeeds and a key is never used again.
 
@@ -95,17 +104,21 @@ Each break below was made in the real code and in the model, and then both were 
 
 - `DeleteObjectWithNoRowAsync` with no `if (saved)` return, so the cleanup deletes the object of a row that committed. `ObjectStorage.cfg` breaks `NoLiveRowWithoutObject`: the put returns, the save takes the tenant lock, the save checks the workshop, the save commits and throws, the cleanup checks for the row, and the cleanup deletes the object of a file that is in the list.
 - `AddWorkshopAttachment` with no `RootLock.Tenant.RunSharedAsync` around the save. `ObjectStorage.cfg` breaks `NoLiveRowInDeletedTenant`: the save checks the workshop, a tenant delete takes the lock and commits, and then the save commits a live row in the deleted tenant, whose object the prefix delete then takes.
+- A sweep with no row check, in the model only. `Chart.cfg` and `ObjectStorage.cfg` break `NoLiveRowWithoutObject`: the put returns, the save commits, the grace passes, the sweep lists the object, and it deletes the object of a file that is in the list.
+- A sweep that reads `now` after the row check, in the model only. `Chart.cfg` breaks `NoLiveRowWithoutObject`: the sweep lists the object while the save still runs, reads no row, the save commits, the grace passes, and the sweep deletes the object.
+- A sweep that can fail forever, with no strong fairness on `SweepDelete`, in the model only. `Liveness.cfg` and `DeletedTenantOrphan.cfg` break `OrphansGo`.
 - A claim that adds no attempt, in the model only. `Liveness.cfg` breaks `RequestsSettle`: a worker claims the `DeleteTenantObjects` job, its storage call fails, and the job is due again with the same count, so it never goes dead.
 
 A run that ends in `error`, with a TLC log that stops with no TLC error and no `TLC exit code` line, means that the JVM was stopped from outside, for example by memory pressure. Run the config again.
 
-## Findings
+## Findings and decisions
 
-F1. An object can stay in the bucket with no row and no job, and no code deletes it. Two causes:
+F1. An object stayed in the bucket with no row and no job, and no code deleted it. The causes: a process that dies after `PutAsync` and before the save or the cleanup ends, a cleanup whose row check or delete fails, and, as the worst case, a put that lands under a deleted tenant after its `DeleteTenantObjects` job listed the prefix. The sweep fixes F1: `OrphansGo` holds in `Liveness.cfg` and in `DeletedTenantOrphan.cfg`. In `DeletedTenantOrphan.cfg`, the witness gives the worst case: a user starts an upload, the tenant delete commits, the job lists the prefix, the put lands and throws, and the job succeeds.
 
-- A crash. `OrphansCrashOnly.cfg`: a user uploads a file, and the process dies after `PutAsync` and before the save or the cleanup ends. The object stays until a tenant delete. The worst case: a user starts an upload, `DeleteTenant` commits, a worker claims the `DeleteTenantObjects` job and lists the prefix while the put is still in flight, the process dies, the put lands, and the job succeeds. The object stays under the prefix of the deleted tenant, and no job covers it.
-- A failed cleanup, with no crash. `OrphansNoCrash.cfg`: the put fails after storage kept the bytes (or the save fails), and the `AnyAsync` row check of `DeleteObjectWithNoRowAsync` throws, or its `DeleteAsync` throws. The code logs an error and keeps the object.
+F2. A live row could lose its object (`LateCommit.cfg`). The save of the row throws while its COMMIT is still in flight on the backend, for example after a user cancels the upload and Npgsql gives up on the cancel of a slow COMMIT (synchronous replication, a slow fsync). The cleanup at once checks for the row on a new connection and does not see it, the COMMIT then lands, and the cleanup deletes the object. The list then shows a file that no one can download. With the sweep and no cleanup at once (`Cleanup = FALSE`), `ObjectStorage.cfg` passes with late commits on, so the sweep removes F2. It is found in the model, not reproduced in the real app.
 
-A fix needs a durable intent before the put, such as a job for the key that the save of the row deletes, or a sweeper that deletes keys with no row.
+The decisions of the sweep, each with its evidence:
 
-F2. A live row can lose its object (`LateCommit.cfg`). The save of the row throws while its COMMIT is still in flight on the backend, for example after a user cancels the upload and Npgsql gives up on the cancel of a slow COMMIT (synchronous replication, a slow fsync). The cleanup checks for the row on a new connection and does not see it, the COMMIT then lands, and the cleanup deletes the object. The list then shows a file that no one can download. This needs a COMMIT that ends after the cleanup check, so it is rare. It is found in the model, not reproduced in the real app.
+- The grace is `AttachmentOptions.AddTimeout` plus `ObjectSweepOptions.Margin`. A grace shorter than the time limit (`GraceNone.cfg`) deletes the object of an add that still saves its row. A grace of the time limit with no margin (`GraceLimit.cfg`) deletes the object while a COMMIT is in flight, and the COMMIT then lands.
+- A soft-deleted row does not name its key. With it (`SoftDeletedNames.cfg`), the object of a deleted file whose delete job is dead stays, and so does the object of a deleted tenant.
+- The add has no cleanup at once. The cleanup is the cause of F2, and the sweep deletes each object that it deleted.

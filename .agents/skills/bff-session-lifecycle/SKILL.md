@@ -68,7 +68,7 @@ When you change the code on purpose, change the model in the same commit. Then r
 
 ## Coverage
 
-Sync commit: `b43c7779`. The model describes these files at this commit:
+Sync commit: `567e2e02`. The model describes these files at this commit:
 
 - `FullstackTemplate.Bff/Sessions/NewLogin.cs`: `EndExistingSessionAsync`, `RevokeRefreshTokenAsync`
 - `FullstackTemplate.Bff/Authentication/AuthExtensions.cs`: `OnRedirectToIdentityProvider` (the deadline of the login)
@@ -86,7 +86,7 @@ Sync commit: `b43c7779`. The model describes these files at this commit:
 - `FullstackTemplate.Bff/BackChannel/UsedLogoutToken.cs`: `Of`
 - `FullstackTemplate.Bff/Sessions/BffSessionExtensions.cs`: `AddBffSessions` (the retry of `25P03`)
 
-To see if the model needs another look, run `git log --oneline b43c7779..HEAD -- <the files above>`. Move the sync commit forward only after you confirm that the model describes the code at the new commit. The `/maintain-formal-verification-skill` skill does this work.
+To see if the model needs another look, run `git log --oneline 567e2e02..HEAD -- <the files above>`. Move the sync commit forward only after you confirm that the model describes the code at the new commit. The `/maintain-formal-verification-skill` skill does this work.
 
 The model leaves out: the token values, the cookie chunks, the CSRF and `sid` checks of `/bff/logout`, the validation of the logout token, the `iat` match (each logout of S ends each login of S), an IdP that keeps S after it sends its logout token, an IdP that redeems a code of S after S ended (`LoginExchangeFails` assumes that it does not), a login with no deadline in its `state` (a deploy), DPoP, the clock (expiry is one event per row, and the deadline of a login is one event), a login with a new `sid` (so the revoke branch of `NewLogin` is not checked), a second delivery of the logout token while the first runs, and a second crash. A pass covers only these bounds.
 

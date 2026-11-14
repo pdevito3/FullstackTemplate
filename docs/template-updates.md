@@ -151,8 +151,15 @@ The Server now runs background jobs on BackWave (see [background-jobs.md](backen
 
 ### The update that adds the sweep of the bucket
 
-A recurring job now deletes each object in storage that no live row names (see [attachments.md](backend/attachments.md#the-order-of-the-writes)).
+A recurring job now deletes each object in storage that no live row names (see [attachments.md](backend/attachments.md#the-sweep-of-the-bucket)).
 
+- Before the update, check that each object of the app under `tenants/` is the `StoredFile` of a row. The first run of the sweep deletes each other object of a tenant of the database that is older than the grace. Move other files under another prefix first.
+- Give each database its own bucket. A staging copy of the database that uses the bucket of production deletes the objects of the rows that the copy does not have.
+- Add a migration that indexes each storage key column of the app (`storage_key` with `MapStoredFile`), as [Index a column of a value object](backend/entity-configurations.md#index-a-column-of-a-value-object) shows. `StorageKeyIndexTests` fails for a column with no such index.
+- Give the credentials of each process that runs jobs `s3:ListBucket` on the bucket, if they do not have it.
+- The S3 client no longer corrects a clock that is off. Storage refuses each call of a process whose clock is more than 15 minutes off, so keep the clock of each host in sync, for example with NTP.
+- The new settings are `ObjectStorage:Sweep:Schedule` (`0 3 * * *`, in UTC), `ObjectStorage:Sweep:Margin` (1 hour, more than 15 minutes), and `Attachments:AddTimeout` (5 minutes).
+- The sweep does not run while the database has a migration that the Server does not know. If the app deleted a migration that its database ran, for example with `scripts/remove-examples.cs`, delete the row of that migration from `__EFMigrationsHistory`. The Warning log `Skipped the sweep of the bucket` names each such migration.
 - `AttachmentStorage.AddAsync` now gives the save of the row a token, and stops the put and the save after `Attachments:AddTimeout`. The build fails at each add of an attachment entity of the app. Change `async () =>` to `async addToken =>`, and give `addToken` to `RootLock.Tenant.RunSharedAsync` in place of the token of the request.
 
 ## Keep the next update small

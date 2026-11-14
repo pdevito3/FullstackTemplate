@@ -147,7 +147,7 @@ public class ObjectDeleteJobTests : TestBase
             j => j.State.ShouldBe(JobState.Scheduled),
             j => j.Attempt.ShouldBe(1));
         (await harness.FailuresOfAsync(jobId)).ShouldHaveSingleItem()
-            .ShouldContain("System.TimeoutException: The object delete took more than 00:00:01.");
+            .ShouldContain("System.TimeoutException: The call to storage took more than 00:00:01.");
         (await KeysUnderAsync(key)).ShouldBe([key]);
     }
 

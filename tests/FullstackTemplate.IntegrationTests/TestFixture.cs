@@ -92,14 +92,15 @@ public sealed class TestFixture : IAsyncDisposable
     public static string UnpooledConnectionString
         => new NpgsqlConnectionStringBuilder(_connectionString) { Pooling = false }.ConnectionString;
 
-    public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices, string? connectionString = null)
+    public static ServiceProvider BuildServiceProvider(Action<IServiceCollection> addTestServices, string? connectionString = null,
+        IReadOnlyDictionary<string, string?>? settings = null)
     {
-        var services = AddServices(connectionString);
+        var services = AddServices(connectionString, settings);
         addTestServices(services);
         return services.BuildServiceProvider();
     }
 
-    private static IServiceCollection AddServices(string? connectionString = null)
+    private static IServiceCollection AddServices(string? connectionString = null, IReadOnlyDictionary<string, string?>? settings = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -112,6 +113,8 @@ public sealed class TestFixture : IAsyncDisposable
         builder.Configuration["Auth:ClientId"] = FirstPartyClientId;
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ManageAllTenantsClientIds)}:0"] = TrustedMachineClientId;
         builder.Configuration[$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.ReadAllTenantsClientIds)}:0"] = ReadOnlyMachineClientId;
+        if (settings is not null)
+            builder.Configuration.AddInMemoryCollection(settings);
 
         // The tests run the handlers on their own and start no hosted service, so no worker group is needed
         builder.ConfigureServices(ServerRole.Api);

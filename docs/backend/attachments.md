@@ -66,7 +66,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
    }
    ```
 
-2. **The configuration and the migration.** Map the tenant and the owner as each tenant-owned root does ([entity-configurations.md](entity-configurations.md)). Map the file with `MapStoredFile`, and index the order of the list. Add the `DbSet` and a migration. In the migration, also index the column `storage_key`, because the sweep of the bucket looks up its keys in each attachment table. EF Core 10 cannot index a column of a value object, so create the index with `migrationBuilder.CreateIndex`, as [Index a column of a value object](entity-configurations.md#index-a-column-of-a-value-object) shows. Done when `ModelSnapshotTests` and `AttachmentStorageKeyIndexTests` pass.
+2. **The configuration and the migration.** Map the tenant and the owner as each tenant-owned root does ([entity-configurations.md](entity-configurations.md)). Map the file with `MapStoredFile`, and index the order of the list. Add the `DbSet` and a migration. In the migration, also index the column `storage_key`, because the sweep of the bucket looks up its keys in each storage key column. EF Core 10 cannot index a column of a value object, so create the index with `migrationBuilder.CreateIndex`, as [Index a column of a value object](entity-configurations.md#index-a-column-of-a-value-object) shows. Done when `ModelSnapshotTests` and `StorageKeyIndexTests` pass.
 
    <!-- code: tests/FullstackTemplate.UnitTests/Docs/AttachmentExampleTests.cs -->
    ```csharp
@@ -244,7 +244,7 @@ A row with no object is a file that no one can download. An object with no row c
 
 - **Add.** It puts the object, then runs the save of the row. The put and the save together stop after `Attachments:AddTimeout` (5 minutes), also when the caller does not cancel, and the add then throws a `TimeoutException`. If the put or the save throws, it deletes the object only when no row with its ID exists. A put can store the bytes and still throw, and a save can commit and still throw, for example after a lost reply. If that check fails, it keeps the object. The delete of the object stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute), so a hung storage does not hold the request.
 - **Delete.** It saves the delete of the row. It does not call storage. The save also queues a `DeleteObject` job for the object, so the job commits with the row delete, or neither commits.
-- **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes an object that no row names, such as an object that a failed add left.
+- **Tenant delete.** The save of `DeleteTenant` queues one `DeleteTenantObjects` job. The job deletes each object under the prefix `StoredFile.TenantPrefix` of the tenant. The attachments of the tenant get no job of their own. The job also deletes an object that no row names, such as an object that a failed add left. A put that lands after the job stays until [the sweep of the bucket](#the-sweep-of-the-bucket).
 
 `AppDbContext` queues the jobs in each save, for each deleted `IAttachment` and each deleted `Tenant`, so a new delete path needs no code for its objects. The jobs are BackWave jobs on the queue `object-deletes` (see [ADR 0013](../adr/0013-background-jobs-on-backwave.md)). The Server runs a worker group for this queue only, so a storage outage does not hold up the jobs of other queues. A worker claims a job soon after the commit, and BackWave gives each job to one worker at a time.
 
@@ -271,6 +271,21 @@ Nothing pages a person for a dead job. Watch the error log `Job dead-lettered af
 
 A requeue is safe, because a delete of an object that is gone succeeds.
 
+### The sweep of the bucket
+
+Each object under `tenants/` must belong to a row of an `IAttachment` entity. An add can leave an object that no row names: the process stops between the put and the save, the delete of a failed add fails, or a put that the client stopped lands after the delete of the objects of its tenant. The recurring job `SweepObjects` in `Domain/ObjectDeletes/` deletes these objects.
+
+- BackWave runs the job each day at 03:00 UTC (`ObjectStorage:Sweep:Schedule`, a cron expression in UTC), on the queue `object-sweep`. Each start of the Server defines the schedule after the migrations. After a stop of all workers, the missed days give one run. A run does not start while the last run still runs.
+- A run lists each object under `tenants/`, 1000 keys at a time. For each page, it loads the tenants of the keys and the keys that a live row names in a `StoredFile` column. Then it deletes each other object of the page. `StoredFileMapping.StorageKeyColumns` finds each such column in the EF model, also on a derived entity type and inside another value object, so a new stored file needs no change in the sweep. A collection of stored files stops the sweep, because it cannot read their keys.
+- It keeps an object that is not older than the grace: `Attachments:AddTimeout` (5 minutes) plus `ObjectStorage:Sweep:Margin` (1 hour). An add stops its put and its save at `AddTimeout`. The margin covers a difference of the clocks of the Server and of storage, and a COMMIT that is still in flight when the add stops. It must be more than 15 minutes. The S3 client of the Server does not set its clock to the clock of storage, so storage refuses each call of a Server whose clock is more than 15 minutes off. Give each process the same `Attachments:AddTimeout`, because the process that runs the sweep takes the grace from its own settings.
+- A soft-deleted row does not name its key. So the sweep also deletes the object of a deleted row whose job did not delete it, for example a dead job, and the object of a deleted row that had no job. Only the `File` of an `IAttachment` gets a job.
+- It keeps an object whose key names no tenant of the database, and writes the Warning log `Kept {ObjectCount} objects whose keys name no tenant of this database`. A deleted tenant is a tenant of the database. Give each database its own bucket: a copy of the database that uses the same bucket, such as a staging copy, deletes each object of a row that the copy does not have.
+- It does not run when the database has a migration that the Server does not know, for example while an older Server runs during a deploy or after a rollback. An older Server does not see the storage key columns of a newer one. It then writes the Warning log `Skipped the sweep of the bucket` with the names of the migrations.
+- Each run is a trace of its own. Its process span has the tags `app.object_sweep.listed_count`, `app.object_sweep.kept_count`, and `app.object_sweep.deleted_count`. The run ends with the Information log `Swept the bucket`, and the metric `app.objects.swept` counts the deleted objects.
+- One call to storage stops after `ObjectStorage:Deletes:AttemptTimeout` (1 minute). A failed run runs again with the policy of its worker group, and a run that deleted some objects does no harm when it runs again.
+
+Do not put an object under `tenants/` that no `StoredFile` of a row names, because the sweep deletes it. Put other files under another prefix.
+
 ## Tenant isolation
 
 - Make the key from IDs only. Do not put a file name in a key, because the user types it. `StoredFile.Accept` starts the key with `tenants/{tenantId}/`, so a tenant delete finds each file of the tenant.
@@ -281,7 +296,10 @@ A requeue is safe, because a delete of an object that is gone succeeds.
 
 - The object of a deleted row is readable through an old URL until its job deletes it. See [The order of the writes](#the-order-of-the-writes).
 - The objects of a dead job stay until a person requeues the job. No alert or health check shows a dead job.
-- An add whose put or save fails deletes its object at once, and does not use a job. The object stays until the tenant delete in three cases: that delete fails, the process stops between the put and the save, or a put that the client stopped lands in storage after the delete.
+- An object that no row names stays until the next run of [the sweep of the bucket](#the-sweep-of-the-bucket) after its grace, at most about a day and an hour. This is the object of an add that fails, of a dead job, or of a put that lands after the delete of its tenant.
+- Each run of the sweep lists the whole bucket under `tenants/`: one LIST request for each 1000 objects, and one look-up in each storage key column for each page.
+- A COMMIT that stays in flight longer than `ObjectStorage:Sweep:Margin`, for example on a synchronous standby that is down, can land after the sweep deleted its object. The list then shows a file that no one can download.
+- The sweep keeps each object while the database has a migration that the Server does not know. A database that ran a migration that the app later deleted, such as the migrations of the examples, stops the sweep until a person deletes the row of that migration from `__EFMigrationsHistory`.
 - A URL stops before `urlsExpireAt` when the credentials that signed it expire. See [Presigned URLs](#presigned-urls).
 - A cancel or a time limit stops the wait of the SPA, not the work of the Server. If all the bytes arrived, the Server can still store the file, and a second try then adds a second file. The list shows it at its next load.
 

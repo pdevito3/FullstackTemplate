@@ -3,11 +3,14 @@ namespace FullstackTemplate.Server.Resources.Jobs;
 using System.Diagnostics;
 using Databases;
 using Domain.Tenants;
+using Domain.Users;
 using Serilog.Context;
 using Serilog.Core;
 using Serilog.Core.Enrichers;
 
-/// <summary>The DI scope of one job attempt. Only <see cref="JobHandler{TJob}"/> uses it.</summary>
+/// <summary>
+/// The DI scope of one job attempt. Only <see cref="JobHandler{TJob}"/> and <see cref="SystemJobHandler{TJob}"/> use it.
+/// </summary>
 public sealed class JobScope(ScopeGrant grant, AppDbContext dbContext)
 {
     /// <summary>
@@ -15,9 +18,14 @@ public sealed class JobScope(ScopeGrant grant, AppDbContext dbContext)
     /// span and on each log of the job, as <see cref="CallerIdentityBehavior{TRequest,TResponse}"/> does for a request.
     /// Each save of the job then has the job as its audit request.
     /// </summary>
-    internal IDisposable Enter(ITenantJob job)
+    internal IDisposable Enter(ITenantJob job) => Enter(grant.GrantTenantJob(job.TenantId), job);
+
+    /// <summary>As <see cref="Enter(ITenantJob)"/>, with the caller <see cref="CallerIdentity.System"/>.</summary>
+    internal IDisposable Enter(ISystemJob job) => Enter(grant.GrantSystem(), job);
+
+    private Entered Enter(CallerIdentity caller, object job)
     {
-        var properties = CallerTelemetry.Properties(grant.GrantTenantJob(job.TenantId));
+        var properties = CallerTelemetry.Properties(caller);
         // BackWave makes the process span current while the handler runs.
         foreach (var (tag, _, value) in properties)
             Activity.Current?.SetTag(tag, value);
@@ -27,7 +35,7 @@ public sealed class JobScope(ScopeGrant grant, AppDbContext dbContext)
     }
 
     /// <exception cref="InvalidOperationException">The job left a change, an audit action, or a job unsaved.</exception>
-    internal void RefuseUnsavedWork(ITenantJob job)
+    internal void RefuseUnsavedWork(object job)
     {
         if (dbContext.HasUnsavedJobs || dbContext.HasUnsavedActions || dbContext.ChangeTracker.HasChanges())
             throw new InvalidOperationException(

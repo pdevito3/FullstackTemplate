@@ -24,32 +24,53 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
         => await s3.DeleteObjectAsync(new DeleteObjectRequest { BucketName = BucketName, Key = key }, cancellationToken);
 
     /// <summary>
+    /// Deletes the objects, at most 1000. S3 gives success for a key that does not exist, so a second delete is a no-op.
+    /// </summary>
+    /// <exception cref="DeleteObjectsException">A key failed to delete.</exception>
+    public async Task DeleteAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken)
+        => await s3.DeleteObjectsAsync(new DeleteObjectsRequest
+        {
+            BucketName = BucketName,
+            Objects = [.. keys.Select(key => new KeyVersion { Key = key })],
+            Quiet = true,
+        }, cancellationToken);
+
+    /// <summary>
     /// Deletes each object whose key starts with the prefix, one page of keys at a time, and gives the number of keys.
     /// A key that fails to delete throws a <see cref="DeleteObjectsException"/>, and the keys of the pages after it stay.
     /// </summary>
     public async Task<int> DeleteUnderAsync(string prefix, CancellationToken cancellationToken)
     {
-        var list = new ListObjectsV2Request { BucketName = BucketName, Prefix = prefix };
         var deleted = 0;
-        ListObjectsV2Response page;
+        string? continuationToken = null;
         do
         {
-            page = await s3.ListObjectsV2Async(list, cancellationToken);
-            if (page.S3Objects is { Count: > 0 } objects)
-            {
-                await s3.DeleteObjectsAsync(new DeleteObjectsRequest
-                {
-                    BucketName = BucketName,
-                    Objects = [.. objects.Select(o => new KeyVersion { Key = o.Key })],
-                    Quiet = true,
-                }, cancellationToken);
-                deleted += objects.Count;
-            }
-
-            list.ContinuationToken = page.NextContinuationToken;
-        } while (page.IsTruncated == true);
+            var page = await ListPageAsync(prefix, continuationToken, cancellationToken);
+            if (page.Objects.Count > 0)
+                await DeleteAsync([.. page.Objects.Select(o => o.Key)], cancellationToken);
+            deleted += page.Objects.Count;
+            continuationToken = page.NextToken;
+        } while (continuationToken is not null);
 
         return deleted;
+    }
+
+    /// <summary>
+    /// One page of the objects whose key starts with the prefix, at most 1000, in the order of their keys. Give the
+    /// <see cref="ObjectPage.NextToken"/> of a page to get the page after it.
+    /// </summary>
+    public async Task<ObjectPage> ListPageAsync(string prefix, string? continuationToken, CancellationToken cancellationToken)
+    {
+        var page = await s3.ListObjectsV2Async(new ListObjectsV2Request
+        {
+            BucketName = BucketName,
+            Prefix = prefix,
+            ContinuationToken = continuationToken,
+        }, cancellationToken);
+        return new ObjectPage(
+            [.. (page.S3Objects ?? []).Select(o => new StoredObject(o.Key, new DateTimeOffset(o.LastModified
+                ?? throw new InvalidOperationException($"S3 listed the object {o.Key} with no LastModified."))))],
+            page.IsTruncated == true ? page.NextContinuationToken : null);
     }
 
     /// <summary>
@@ -74,3 +95,9 @@ public sealed class ObjectStorage(IAmazonS3 s3, IOptions<ObjectStorageOptions> o
         return s3.GetPreSignedURLAsync(request);
     }
 }
+
+/// <summary>An object in the bucket, and the time that S3 stored it, by the clock of S3.</summary>
+public sealed record StoredObject(string Key, DateTimeOffset LastModified);
+
+/// <summary>One page of a list of the bucket. <see cref="NextToken"/> is null on the last page.</summary>
+public sealed record ObjectPage(IReadOnlyList<StoredObject> Objects, string? NextToken);

@@ -137,7 +137,7 @@ The handler span tags the type of an exception as `error.type`, the same as the 
 
 BackWave traces each job. The save that queues a job has a `send {queue}` span for each job, in the trace of the save. The `code.*` tags of the span give the `QueueJob` call. Each attempt of the job is a new trace. Its root is a `process {queue}` span, which links to the `send {queue}` span. The queries of the handler are children of the process span.
 
-`JobScope` puts the caller on the process span (`app.caller.kind` = `tenant_job` and `app.caller.tenant_id`) and on each log of the attempt. So a job needs no `TraceRoot` and no `TraceContext`. BackWave records a thrown exception on the process span. See [background-jobs.md](backend/background-jobs.md#telemetry).
+`JobScope` puts the caller on the process span (`app.caller.kind` = `tenant_job` and `app.caller.tenant_id`, or `system` for a system job) and on each log of the attempt. So a job needs no `TraceRoot` and no `TraceContext`. BackWave records a thrown exception on the process span. See [background-jobs.md](backend/background-jobs.md#telemetry).
 
 ## Named queries
 

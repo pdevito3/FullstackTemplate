@@ -31,23 +31,23 @@ public static class ObjectDeletes
 
     internal static bool IsTenantId(string? tenantId) => tenantId is not null && EntityId.IsValid(tenantId, Tenant.IdPrefix);
 
-    /// <summary>Runs the storage call of one attempt, and stops it after <paramref name="timeout"/>.</summary>
+    /// <summary>Runs one call to storage, and stops it after <paramref name="timeout"/>.</summary>
     /// <exception cref="TimeoutException">The call took longer than <paramref name="timeout"/>.</exception>
-    internal static async Task<int> InAttemptTimeAsync(TimeSpan timeout, Func<CancellationToken, Task<int>> delete,
+    internal static async Task<T> InAttemptTimeAsync<T>(TimeSpan timeout, Func<CancellationToken, Task<T>> call,
         CancellationToken cancellationToken)
     {
         using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         attempt.CancelAfter(timeout);
         try
         {
-            return await delete(attempt.Token);
+            return await call(attempt.Token);
         }
         // The failure detail of the job then names the timeout, not "A task was canceled". A cancel of BackWave, such as
         // a shutdown, stays a cancel, and BackWave gives the job back with no failed attempt.
         catch (OperationCanceledException exception)
             when (attempt.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"The object delete took more than {timeout}.", exception);
+            throw new TimeoutException($"The call to storage took more than {timeout}.", exception);
         }
     }
 }

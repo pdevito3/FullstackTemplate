@@ -9,11 +9,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Resources;
+using Resources.Jobs;
 using Serilog;
 
 /// <summary>
-/// Migrates the schemas of appdb: the EF Core schemas of <see cref="AppDbContext"/> and
-/// <see cref="DataProtectionKeysDbContext"/>, then the BackWave schema.
+/// Migrates the schemas of appdb: the BackWave schema, then the EF Core schemas of <see cref="AppDbContext"/> and
+/// <see cref="DataProtectionKeysDbContext"/>. Between them, <see cref="ObjectDeleteRequestsDrain"/> moves the rows of the
+/// old object delete queue onto BackWave, before the EF Core migration that drops the queue.
 /// </summary>
 /// <remarks>
 /// The host runs <see cref="StartingAsync"/> of each lifecycle service before <c>StartAsync</c> of any service. So the
@@ -65,9 +67,11 @@ public sealed class MigrationHostedService(
                 Telemetry.AddEvent([], "migration.lock_acquired");
                 _logger.Here().Information("Starting database migration...");
 
+                await BackWaveSchema.MigrateAsync(connectionString, cancellationToken);
+                await ObjectDeleteRequestsDrain.DrainAsync(
+                    connectionString, scope.ServiceProvider.GetRequiredService<IJobWriter>(), cancellationToken);
                 await MigrateAsync(context, cancellationToken);
                 await MigrateAsync(scope.ServiceProvider.GetRequiredService<DataProtectionKeysDbContext>(), cancellationToken);
-                await BackWaveSchema.MigrateAsync(connectionString, cancellationToken);
             }
 
             _logger.Here().Information("Migrations complete for {DatabaseName}", database);

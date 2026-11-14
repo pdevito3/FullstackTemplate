@@ -14,6 +14,7 @@ public class BannedApiSuppressionTests
     private static readonly string[] FilesThatSuppressTheBan =
     [
         "FullstackTemplate.Server/Databases/BackWaveSchema.cs",
+        "FullstackTemplate.Server/Databases/ObjectDeleteRequestsDrain.cs",
         "FullstackTemplate.Server/Databases/PostgresCopy.cs",
         "FullstackTemplate.Server/Databases/RootLock.cs",
         "FullstackTemplate.Server/Domain/DPoPProofs/Features/DeleteExpiredDPoPProofs/DeleteExpiredDPoPProofs.cs",

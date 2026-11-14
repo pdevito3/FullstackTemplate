@@ -238,7 +238,7 @@ dotnet ef database update --context AppDbContext --project FullstackTemplate.Ser
 
 The Server has two contexts, so each `dotnet ef` command needs `--context`. `AppDbContext` has the domain. `DataProtectionKeysDbContext` has only the key ring of Data Protection in the schema `data_protection`, and its migrations are in `Databases/DataProtection/Migrations`.
 
-The server applies migrations at startup, with a Postgres advisory lock. Under the same lock, the migrator of BackWave updates the schema `backwave` of the job store. That schema has no EF context and no EF migrations.
+The server applies migrations at startup, with a Postgres advisory lock. Under the same lock, the migrator of BackWave updates the schema `backwave` of the job store. That schema has no EF context and no EF migrations. Keep the lock. Without it, two Server processes that start at the same time apply the same EF Core migration, and one of them stops. `ServerRoleTests` starts two processes at the same time to prove it.
 
 `ModelSnapshotTests` fails when the committed model snapshot is not the snapshot that the next migration writes. This includes a model change with no DDL, such as a new navigation, which `dotnet ef migrations has-pending-model-changes` does not find. The test ignores the `using` lines and the `ProductVersion` annotation. To correct the failure, add a migration in the change that changed the model. For a change with no DDL, the `Up` and `Down` of the migration are empty. An update of EF Core or Npgsql that changes the generated code also fails the test. Correct it the same way.
 

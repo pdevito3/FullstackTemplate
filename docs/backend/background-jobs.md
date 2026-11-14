@@ -77,7 +77,7 @@ One setting tells a Server process what work to do: `Server:Role` (env `Server__
 | `Worker` | No | Yes |
 
 - Each role serves `/health` and `/alive`. In a role that runs jobs, `/health` also checks that no worker group stopped on a fault of the store.
-- Each role queues the jobs of its saves, and each role migrates the database at its start. The migration lock lets one process migrate at a time.
+- Each role queues the jobs of its saves, and each role migrates the database at its start. Processes can start at the same time on a new database. If the database does not exist, the first process creates it. The migration lock lets one process migrate at a time.
 - The start log `Server role {ServerRole}` gives the role of the process.
 - A value that is not a role stops the start with exit code 1. The fatal log `Application terminated unexpectedly` has the message `Server:Role is 'workr'. Use All, Api, or Worker.`
 

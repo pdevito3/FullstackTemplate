@@ -49,6 +49,7 @@ Write telemetry to answer a question that a person asks during an incident. If n
 |---|---|---|
 | Why did this request fail? | The trace of the request | Nothing for a thrown exception. If you catch an exception, see rule 6. |
 | Which line of code failed or was slow? | `code.file.path` and `code.line.number` | Tag each query (rule 1). Write each log through `Here()`. |
+| Which requests of a feature were slow, and why? | The exemplars of `app.request.duration`, then their traces. See [Exemplars](../telemetry.md#exemplars). | Nothing for the exemplars. Tag the ids (rule 2) and the queries (rule 1), so that the trace tells why. |
 | Which tenants, users, or agents had this error? | The `app.caller.*` tags | Nothing. `CallerIdentityBehavior` adds them. |
 | Which entities had this error? | Span tags such as `app.user_id` | Tag the feature span with the ids (rule 2). |
 | What did tenant X do in the last hour? | A search for the tenant id: `dotnet aspire otel spans server --search <id>` | Nothing for the caller tags. Tag the entity ids (rule 2). |
@@ -93,6 +94,7 @@ Write telemetry to answer a question that a person asks during an incident. If n
    - Declare the instrument in `Domain/[EntityName]s/[EntityName]Metrics.cs`, on `Telemetry.Meter`. The host already exports this meter.
    - Name it `app.[entities].[past-tense verb]`, for example `app.users.role_changed`. Give the unit in braces, for example `{user}`.
    - Give it tags from a small fixed set of values only, such as a role, a reason, or an outcome.
+   - Call `Add` or `Record` while the span that explains the measurement is current, for example in the handler or inside a `Telemetry.Trace` scope. Then each exemplar of the metric leads to that span. See [Exemplars](../telemetry.md#exemplars).
 9. Give background work its own trace.
    - A BackWave job gets its trace with no code. The root of each attempt is the `process {queue}` span, and `JobHandler` puts the `app.caller.*` tags on it. In the handler, tag the ids of the entities on `Activity.Current`, which is the process span. Write one `Information` log with the result. Let an exception propagate, because BackWave records it, counts it, and runs the job again. See [background-jobs.md](background-jobs.md#telemetry).
    - The build does not check a job handler for the id tag and the log. FSTTEL002 checks MediatR handlers only.
@@ -234,7 +236,7 @@ Do these steps after each change to the telemetry of a feature. The `aspire-tele
 3. Find the trace with `dotnet aspire otel traces server`. Get its trace id.
 4. Read the spans with `dotnet aspire otel spans --trace-id <id>`. Make sure that the feature span has the id tags, and that each SQL span has a `SQL:` name.
 5. Read the logs with `dotnet aspire otel logs --trace-id <id>`. Make sure that each log has a `CallSite` and has no personal data.
-6. For a metric, open the Metrics page of the Aspire dashboard. The `dotnet aspire otel` CLI has no metrics command.
+6. For a metric, open the Metrics page of the Aspire dashboard. The `dotnet aspire otel` CLI has no metrics command. For a histogram, make sure that the metric has exemplars, and that the exemplar of your request opens its trace. The dashboard shows no exemplars for a counter, so for a counter make sure instead that the span that explains the measurement is in the trace of your request.
 
 ## Pitfalls
 
@@ -248,6 +250,7 @@ Do these steps after each change to the telemetry of a feature. The `aspire-tele
 | A 404 shows as a server error | The code caught a client error and called `RecordError` | Let the domain exception propagate |
 | `app.errors` counts one failure two times | Two spans called `RecordError` for one exception | Call `MarkFailed` on the inner span |
 | The metric has too many time series | A metric tag has an id | Remove the id. Put it on the span. |
+| A histogram has no exemplars in the dashboard, or its exemplars point at the parent span | The code recorded the measurement with no sampled span current, or after the `Telemetry.Trace` scope ended | Record the measurement inside the span that explains it. |
 | A log line is in the dashboard but not in production | The log is at `Debug` | Use `Information` for a state change |
 
 ## Cost

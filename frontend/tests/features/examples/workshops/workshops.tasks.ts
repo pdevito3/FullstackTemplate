@@ -295,8 +295,7 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
-    /** Starts an upload whose answer the test holds, and waits until the request is on the way. */
-    async startUpload(id: string, file: { name: string; mimeType: string; buffer: Buffer }) {
+    async startHeldUpload(id: string, file: { name: string; mimeType: string; buffer: Buffer }) {
       const chooser = page.waitForEvent('filechooser')
       const sent = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === workshopPaths.attachments(id))
       await at.uploadFile.click()

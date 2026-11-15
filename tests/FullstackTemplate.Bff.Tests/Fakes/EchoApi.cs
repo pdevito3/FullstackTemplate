@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 /// <c>Authorization: DPoP</c> get <c>401 use_dpop_nonce</c> until its proof has that nonce (RFC 9449 section 9). With
 /// <see cref="RejectNonceParameter"/> as well, the API never accepts the proof.
 /// <para>
-/// Four paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away,
+/// Four paths are slow or fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away,
 /// <see cref="SlowPath"/> answers 200 after <see cref="SlowDelay"/>,
 /// <c>/api/test/drop/{id}</c> counts the request and then drops the connection with no response, and
 /// <c>/api/test/too-large</c> answers 413 with the text <see cref="TooLargeText"/>.

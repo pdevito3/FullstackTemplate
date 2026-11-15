@@ -36,7 +36,6 @@ export function AttachmentsSection({ list, upload, remove, canManage, emptyText 
   const hintId = useId()
   // A delete removes the focused row, so the focus goes to the heading of the section
   const headingRef = useRef<HTMLHeadingElement>(null)
-  // The Cancel button disappears, so the focus goes back to the upload button
   const uploadButtonRef = useRef<HTMLButtonElement>(null)
   const uploadAbort = useRef<AbortController | null>(null)
   const rules = list.data?.uploadRules
@@ -49,7 +48,6 @@ export function AttachmentsSection({ list, upload, remove, canManage, emptyText 
     }
   }
 
-  // A cancel is not a failure, so it shows no message. The Server can still store a file whose bytes all arrived.
   const handleCancelUpload = () => {
     uploadAbort.current?.abort()
     upload.reset()

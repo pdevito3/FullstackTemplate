@@ -295,7 +295,6 @@ export function joinPage(page: Page) {
       await settled
     },
 
-    /** The claim gets no answer, so the app stops the wait at its time limit of about 35 s. */
     async claimAndWaitForTheTimeLimit() {
       const stopped = page.waitForEvent('requestfailed', {
         predicate: (r) => r.method() === 'POST' && new URL(r.url()).pathname === invitesPaths.claim,

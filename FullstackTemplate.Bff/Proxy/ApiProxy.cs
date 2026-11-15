@@ -26,10 +26,6 @@ public static class ApiProxy
 
     private static readonly ILogger Logger = Log.ForContext(typeof(ApiProxy));
 
-    /// <summary>
-    /// The activity timeout of a request with each type of body, in place of <see cref="ProxyOptions.ActivityTimeout"/>.
-    /// Each row gets its own forwarder, and routing picks it by the <c>Content-Type</c> of the request.
-    /// </summary>
     private static Dictionary<string, TimeSpan> ActivityTimeoutsByContentType(ProxyOptions options) =>
         new() { ["multipart/form-data"] = options.UploadActivityTimeout };
 
@@ -49,12 +45,7 @@ public static class ApiProxy
         var options = endpoints.ServiceProvider.GetRequiredService<IOptions<ProxyOptions>>().Value;
         endpoints.MapApiForwarder(apiBaseUrl, options.ActivityTimeout);
         foreach (var (contentType, activityTimeout) in ActivityTimeoutsByContentType(options))
-        {
-            endpoints.MapApiForwarder(apiBaseUrl, activityTimeout)
-                .WithMetadata(new AcceptsMetadata([contentType]))
-                // A request with this body type also matches the forwarder for each body, so this one goes first
-                .WithOrder(-1);
-        }
+            endpoints.MapApiForwarder(apiBaseUrl, activityTimeout).WithMetadata(new AcceptsMetadata([contentType]));
     }
 
     private static IEndpointConventionBuilder MapApiForwarder(this IEndpointRouteBuilder endpoints, Uri apiBaseUrl, TimeSpan activityTimeout) =>

@@ -48,16 +48,9 @@ export const apiClient = axios.create({
   transitional: { clarifyTimeoutError: true },
 })
 
-/**
- * The time limit of a request, so that a dropped network or a hung BFF does not leave a page pending with no end. It is
- * a few seconds over `Bff:Proxy:ActivityTimeout` (30 s), so that the 504 of the BFF comes first.
- */
+// Over Bff:Proxy:ActivityTimeout (30 s) and Bff:Proxy:UploadActivityTimeout (5 min), so that the 504 of the BFF comes
+// first. The upload limit also counts the time to send the file.
 export const requestTimeoutMs = 35_000
-
-/**
- * The time limit of an upload, a request with a `FormData` body. It also counts the time to send the file, which takes
- * minutes on a slow link, and then the BFF waits up to `Bff:Proxy:UploadActivityTimeout` (5 minutes) for the Server.
- */
 export const uploadTimeoutMs = 10 * 60_000
 
 apiClient.interceptors.request.use((config) => {
@@ -88,7 +81,6 @@ const signInRejectedMessage =
 const messageOfEmptyAnswer: Partial<Record<number, string>> = {
   // The Server answers 401 with no body to a call that needs a user.
   401: signInRejectedMessage,
-  // The BFF answers 504 with no body when the Server does not answer within its time limit.
   504: timedOutMessage,
 }
 

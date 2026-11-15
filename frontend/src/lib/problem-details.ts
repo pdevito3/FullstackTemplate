@@ -22,10 +22,6 @@ export const serverFaultMessage = 'The server could not complete the request. Tr
 /** The text for a request that got no answer. */
 export const noAnswerMessage = 'The app could not reach the server. Check your connection, then try again.'
 
-/**
- * The text for a request that the BFF (a 504) or the app stopped at its time limit. The Server can still have done the
- * work, so the user reloads to see it.
- */
 export const timedOutMessage = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
 
 // A refusal (a 4xx) has a text for the user. The text of a 5xx is the default title of ASP.NET or a detail for a

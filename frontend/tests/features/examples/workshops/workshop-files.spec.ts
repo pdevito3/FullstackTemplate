@@ -73,7 +73,7 @@ test.describe('the files of a workshop', () => {
     const workshops = workshopsPage(page)
     await workshops.openDetailWithFiles(id, venueId)
     api.hold(workshopsApi.attachmentUploads(workshop, aWorkshopAttachment().named('notes.pdf', 'application/pdf')))
-    await workshops.startUpload(id, { name: 'notes.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 Bring an apron.') })
+    await workshops.startHeldUpload(id, { name: 'notes.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 Bring an apron.') })
 
     await workshops.cancelUpload(id)
 

@@ -28,7 +28,6 @@ export interface AttachmentList {
   attachments: Attachment[]
 }
 
-/** The variables of an upload mutation. The Cancel button of the Files section aborts the signal. */
 export interface Upload {
   file: File
   signal: AbortSignal

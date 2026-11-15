@@ -8,6 +8,7 @@ using FullstackTemplate.Server.Domain.Tenants.Models;
 using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.DomainEvents;
 using FullstackTemplate.Server.Exceptions;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using static DomainEventTestServices;
@@ -50,7 +51,7 @@ public class DomainEventSaveTests : TestBase
         await using var services = TestFixture.BuildServiceProvider(s => s.AddTestHandler<TenantUpdated>(async (_, db, ct) =>
         {
             var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
-            user.UpdateRole(UserRole.Admin());
+            user.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
             if (failures-- > 0)
                 throw new InvalidOperationException("The handler failed.");
         }));
@@ -121,7 +122,7 @@ public class DomainEventSaveTests : TestBase
             .AddTestHandler<TenantUpdated>(async (e, db, ct) =>
             {
                 runs.Add($"{nameof(TenantUpdated)}:{e.Id}");
-                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).UpdateRole(UserRole.User());
+                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).ChangeRoleIgnoringLastAdmin(UserRole.User());
             }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
@@ -132,9 +133,9 @@ public class DomainEventSaveTests : TestBase
         var secondUser = await db.Users.SingleAsync(u => u.Id == scenario.SecondUser.Id);
 
         // Act
-        secondUser.UpdateRole(UserRole.Admin());
+        secondUser.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
         tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
-        firstUser.UpdateRole(UserRole.Admin());
+        firstUser.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
         await db.SaveChangesAsync();
 
         // Assert

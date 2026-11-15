@@ -3,6 +3,7 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 using System.Diagnostics;
 using Databases;
 using Dtos;
+using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -28,40 +29,57 @@ public static class UpdateUserRole
             Activity.Current?.SetTag("app.user.role", newRole.Value);
             caller.Require(newRole.GetDefaultPermissions());
 
-            var user = await dbContext.Users
-                .TagWithOperationCallSite("users.update_role.load")
-                .Include(u => u.UserPermissions)
-                .GetById(request.Id, cancellationToken);
-            user.GuardAllows(UserAction.UpdateRole(), caller);
+            var tenantId = (await dbContext.Users
+                .TagWithOperationCallSite("users.update_role.find_tenant")
+                .AsNoTracking()
+                .GetById(request.Id, cancellationToken)).TenantId;
 
-            var existingPermissions = user.UserPermissions.ToList();
-            var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
-
-            var oldRole = user.Role;
-            user.UpdateRole(newRole);
-
-            // Handle permission changes: remove old, add new
-            var remainingIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
-
-            // Remove permissions that were removed from the collection
-            foreach (var existingPermission in existingPermissions)
+            var (user, oldRole) = await RootLock.Tenant.RunExclusiveAsync(dbContext, tenantId, async ct =>
             {
-                if (!remainingIds.Contains(existingPermission.Id))
-                {
-                    dbContext.UserPermissions.Remove(existingPermission);
-                }
-            }
+                var user = await dbContext.Users
+                    .TagWithOperationCallSite("users.update_role.load")
+                    .Include(u => u.UserPermissions)
+                    .GetById(request.Id, ct);
+                user.GuardAllows(UserAction.UpdateRole(), caller);
 
-            // Add new permissions that weren't already tracked
-            foreach (var permission in user.UserPermissions)
-            {
-                if (!existingPermissionIds.Contains(permission.Id))
+                var admins = await dbContext.LoadAdminCaseAsync(user, new AdminChange.NewRole(newRole), ct);
+                var kept = TenantAdmins.Decide(admins) switch
                 {
-                    dbContext.UserPermissions.Add(permission);
-                }
-            }
+                    AdminDecision.Kept k => k.Proof,
+                    AdminDecision.Refused { Refusal: AdminRefusal.LastAdmin lastAdmin } => throw Refuse(lastAdmin),
+                    _ => throw new UnreachableException(),
+                };
 
-            await dbContext.SaveChangesAsync(cancellationToken);
+                var existingPermissions = user.UserPermissions.ToList();
+                var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
+
+                var oldRole = user.Role;
+                user.UpdateRole(kept);
+
+                // Handle permission changes: remove old, add new
+                var remainingIds = user.UserPermissions.Select(p => p.Id).ToHashSet();
+
+                // Remove permissions that were removed from the collection
+                foreach (var existingPermission in existingPermissions)
+                {
+                    if (!remainingIds.Contains(existingPermission.Id))
+                    {
+                        dbContext.UserPermissions.Remove(existingPermission);
+                    }
+                }
+
+                // Add new permissions that weren't already tracked
+                foreach (var permission in user.UserPermissions)
+                {
+                    if (!existingPermissionIds.Contains(permission.Id))
+                    {
+                        dbContext.UserPermissions.Add(permission);
+                    }
+                }
+
+                await dbContext.SaveChangesAsync(ct);
+                return (user, oldRole);
+            }, cancellationToken);
 
             if (newRole != oldRole)
             {
@@ -70,6 +88,12 @@ public static class UpdateUserRole
             }
 
             return user.ToUserDto(caller);
+        }
+
+        private static ValidationException Refuse(AdminRefusal refusal)
+        {
+            Activity.Current?.SetTag("app.user.admin_refusal", "last_admin");
+            return new ValidationException(refusal.Field, refusal.Message);
         }
     }
 }

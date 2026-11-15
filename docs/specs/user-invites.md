@@ -32,6 +32,7 @@ An invite also has a tenant, a token hash, an expiry, and, after a claim, the ID
 | UM-1 | The users page lists the users of the tenant of the caller, with a pager. | `GetUserList` and its tenant filter | |
 | UM-2 | The users page changes the role of a user. The page shows the control only to a caller who can change the role. | `UpdateUserRole` handler check | |
 | UM-3 | The users page removes a user after the caller confirms. The page shows the control only to a caller who can remove the user. | `DeleteUser` handler check | |
+| UM-4 | A tenant keeps at least one admin. A role change or a delete that leaves the tenant with no admin fails with 422, also when two admins demote or remove each other at the same time. A tenant delete removes each user. | `TenantAdmins.Decide` in `UpdateUserRole` and `DeleteUser` | The exclusive tenant lock from the load of the admins to the save |
 | INV-1 | Only a caller with `manage_users` and each default permission of the role can create an invite. A caller cannot invite with a role that has more permissions than the caller has. | `AddInvite` handler check | |
 | INV-2 | The server stores only a hash of the token. The create response gives the link one time only. A list or a get of an invite never gives the token. | `Invite.Create` | |
 | INV-3 | The link puts the token in the URL fragment (`/join#token=...`), so the token is not in a server log, a BFF log, or a `Referer` header. The SPA moves a token in the fragment of any path to the tab, and goes to the join page. In a tab, the token is for the first `sub` that reads it. The tab forgets the token when the join page sees another `sub`, and after a 404 or a 410 of the preview or the claim. A token that waits in a tab gives no form on another page. Before a claim, the SPA reads the session again, and it sends no claim when the `sub` is not the `sub` that the form was filled for. A claim that the SPA reads as an earlier win of the same user is a success, so the tab forgets the token as after each success. | SPA `invite-link.ts` and `join` route | |
@@ -65,6 +66,7 @@ None. The invite features use `manage_users`, which exists.
 
 | Rule | Status | Message |
 |---|---|---|
+| UM-4 | 422 | This user is the only admin of the tenant. Make another user an admin first. |
 | INV-2 | 404 | This invite link is not valid. Ask a tenant admin for a new invite. |
 | INV-4 | 410 | This invite expired. Ask a tenant admin for a new invite. |
 | INV-5 | 410 | This invite was used or revoked. Ask a tenant admin for a new invite. |
@@ -87,7 +89,8 @@ The SPA writes one more message. A tab with no token asks the Server nothing and
 | The default of "require email match" is off. The link is the secret, and it has one use and a 7-day expiry. Providers handle `email_verified` differently, and the Duende Demo users have fixed emails. Change the default to on if a forwarded link is a risk. | The template owner | INV-9 |
 | The expiry is 7 days, and it is not a setting. | The template owner | INV-4 |
 | A pending invite stays valid after its creator loses `manage_users` or is deleted. The invite does not record its creator. The alternative is to record the creator, and to revoke the pending invites of a demoted or deleted creator in a domain event handler. | The template owner | INV-1, INV-10 |
-| The Server lets an admin remove their own user, or change the role of the last admin. Thus a tenant can lose its last admin. A guard for the last admin is a Server rule outside this spec. | The template owner | None |
+| UM-4 counts the users with the Admin role. The only admin can still remove `manage_user_access` or `manage_users` from their own user, and then no one in the tenant can manage users. The alternative is to count the users who hold these permissions, and to check the rule in `RemoveUserPermission` under the same lock. | The template owner | UM-4 |
+| `InitiateUserAndTenant` takes the role of its first user from the request. The SPA sends Admin, but a direct call with User starts a tenant with no admin. The alternative is to make the first user an admin always. | The template owner | UM-4 |
 
 The email match of INV-9 reads `email` and `email_verified` from the access token. This table gives the result on each local provider of `FullstackTemplate.AppHost/AuthProviders/`. "Measured" means that a run on an isolated stack read an access token of the provider and sent a claim through the BFF. The other rows come from the seed and from documents or source of the vendor, so a run can give another result.
 

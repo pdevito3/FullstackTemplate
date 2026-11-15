@@ -77,7 +77,7 @@ public class UserDeletedTests : TestBase
 
         // Assert
         (await act.ShouldThrowAsync<InvalidOperationException>()).Message
-            .ShouldBe("Remove a user with Remove(user.Delete()), so that the save queues UserDeleted.");
+            .ShouldBe("Remove a user with Remove(user.Delete(kept)), where kept is the proof of TenantAdmins.Decide, so that the save queues UserDeleted.");
         (await DeletedAsync(user.Id)).ShouldBeFalse();
     }
 

@@ -82,8 +82,10 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
         return this;
     }
 
-    public User UpdateRole(UserRole newRole)
+    public User UpdateRole(AdminKept kept)
     {
+        if (kept.UserId != Id || kept.Change is not AdminChange.NewRole { Role: var newRole })
+            throw new ArgumentException("Give the proof of a role change of this user.", nameof(kept));
         if (newRole == Role)
             return this;
 
@@ -140,14 +142,21 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     /// Call it in the feature that removes the user. A handler of <see cref="UserDeleted"/> in another domain can then
     /// clear or mark a link to the user, in the same save. See <c>docs/backend/domain-events.md</c>.
     /// </summary>
-    public User Delete()
+    public User Delete(AdminKept kept)
+    {
+        if (kept.UserId != Id || kept.Change is not AdminChange.Removal)
+            throw new ArgumentException("Give the proof of the removal of this user.", nameof(kept));
+        return QueueDelete();
+    }
+
+    BaseEntity IDeletedWithEvent.Delete() => QueueDelete();
+
+    private User QueueDelete()
     {
         QueueDomainEvent(new UserDeleted(Id));
         DeleteQueued = true;
         return this;
     }
-
-    BaseEntity IDeletedWithEvent.Delete() => Delete();
 
     bool IDeletedWithEvent.DeleteQueued => DeleteQueued;
 

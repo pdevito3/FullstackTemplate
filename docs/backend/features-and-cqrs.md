@@ -63,7 +63,7 @@ public static class UpdateUser
 
 `GetById` throws a `NotFoundException` when no row has the ID. The API then returns 404. An ID that `EntityId.IsValid` refuses for the entity, such as an ID with U+0000, gets the same exception with no query. `user.Update` throws a `StaleVersionException` when the DTO has an old version, and `SaveChangesAsync` throws it when another request saved the row after the load. Both give 409. Do not catch it in the handler. A command that sends no version runs again instead, and a rule over other rows takes a lock. See [concurrency.md](concurrency.md) for the three cases.
 
-A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. When a record of another domain links to the entity and must change with the delete, the command calls `Remove(entity.Delete())`, which queues the delete event. See rule 11 of [domain-events.md](domain-events.md#rules). A command that has no result implements `IRequest`, not `IRequest<T>`.
+A create command calls `Entity.Create`, then `AddAsync`, then `SaveChangesAsync`. A delete command calls `Remove`. The context changes the delete to a soft delete. When a record of another domain links to the entity and must change with the delete, the command calls `Remove(entity.Delete())`, which queues the delete event. `User.Delete` takes the proof of `TenantAdmins.Decide` (UM-4). See rule 11 of [domain-events.md](domain-events.md#rules). A command that has no result implements `IRequest`, not `IRequest<T>`.
 
 ## The order of the checks
 
@@ -228,6 +228,8 @@ Each use of the shape has four tests. `tests/FullstackTemplate.UnitTests/Docs/De
 <!-- example:start -->
 The workshop example uses the shape for a rule that reads two aggregates, the workshop and the time zone of its venue. It has one caller, the command that schedules a workshop. The rules and the proof type are in [WorkshopScheduling.cs](../../FullstackTemplate.Server/Examples/Workshops/WorkshopScheduling.cs), and the handler switches on the decision in [ScheduleWorkshop.cs](../../FullstackTemplate.Server/Examples/Workshops/Features/ScheduleWorkshop/ScheduleWorkshop.cs).
 <!-- example:end -->
+
+`TenantAdmins` uses the shape for UM-4, a rule that reads the other users of the tenant. It has two callers, `UpdateUserRole` and `DeleteUser`. `User.UpdateRole` and `User.Delete` take its `AdminKept` proof: [TenantAdmins.cs](../../FullstackTemplate.Server/Domain/Users/TenantAdmins.cs).
 
 ## List query
 

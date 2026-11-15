@@ -257,11 +257,9 @@ public class UserListQueryTests : TestBase
     {
         var tenant = Tenant.Create(new FakeTenantForCreation().Generate());
         await InsertAsync(tenant);
-        var target = User.Create(FakeUserInTenant(tenant.Id, "a").Generate());
-        target.UpdateRole(UserRole.Admin());
+        var target = User.Create(FakeUserInTenant(tenant.Id, "a").Generate() with { Role = UserRole.Admin().Value });
         target.AddPermission(Permission.ManageTenant());
-        var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate());
-        caller.UpdateRole(UserRole.User());
+        var caller = User.Create(FakeUserInTenant(tenant.Id, "b").Generate() with { Role = UserRole.User().Value });
         caller.AddPermission(Permission.ReadUsers());
         await InsertAsync(target, caller);
         FactoryClient.SignInAsAppUser(caller.Identifier);

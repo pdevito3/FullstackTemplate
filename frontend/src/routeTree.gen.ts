@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StartTenantRouteImport } from './routes/start-tenant'
+import { Route as SignOutFailedRouteImport } from './routes/sign-out-failed'
+import { Route as SignInFailedRouteImport } from './routes/sign-in-failed'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -27,6 +29,16 @@ import { Route as examplesWorkshopsIdEditRouteImport } from './routes/(examples)
 const StartTenantRoute = StartTenantRouteImport.update({
   id: '/start-tenant',
   path: '/start-tenant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignOutFailedRoute = SignOutFailedRouteImport.update({
+  id: '/sign-out-failed',
+  path: '/sign-out-failed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInFailedRoute = SignInFailedRouteImport.update({
+  id: '/sign-in-failed',
+  path: '/sign-in-failed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinRoute = JoinRouteImport.update({
@@ -100,6 +112,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/join': typeof JoinRoute
+  '/sign-in-failed': typeof SignInFailedRoute
+  '/sign-out-failed': typeof SignOutFailedRoute
   '/start-tenant': typeof StartTenantRoute
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
@@ -116,6 +130,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/join': typeof JoinRoute
+  '/sign-in-failed': typeof SignInFailedRoute
+  '/sign-out-failed': typeof SignOutFailedRoute
   '/start-tenant': typeof StartTenantRoute
   '/components': typeof examplesComponentsRoute
   '/filter-demo': typeof examplesFilterDemoRoute
@@ -133,6 +149,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/join': typeof JoinRoute
+  '/sign-in-failed': typeof SignInFailedRoute
+  '/sign-out-failed': typeof SignOutFailedRoute
   '/start-tenant': typeof StartTenantRoute
   '/(examples)/components': typeof examplesComponentsRoute
   '/(examples)/filter-demo': typeof examplesFilterDemoRoute
@@ -151,6 +169,8 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/join'
+    | '/sign-in-failed'
+    | '/sign-out-failed'
     | '/start-tenant'
     | '/components'
     | '/filter-demo'
@@ -167,6 +187,8 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/join'
+    | '/sign-in-failed'
+    | '/sign-out-failed'
     | '/start-tenant'
     | '/components'
     | '/filter-demo'
@@ -183,6 +205,8 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/join'
+    | '/sign-in-failed'
+    | '/sign-out-failed'
     | '/start-tenant'
     | '/(examples)/components'
     | '/(examples)/filter-demo'
@@ -200,6 +224,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   JoinRoute: typeof JoinRoute
+  SignInFailedRoute: typeof SignInFailedRoute
+  SignOutFailedRoute: typeof SignOutFailedRoute
   StartTenantRoute: typeof StartTenantRoute
   examplesComponentsRoute: typeof examplesComponentsRoute
   examplesFilterDemoRoute: typeof examplesFilterDemoRoute
@@ -220,6 +246,20 @@ declare module '@tanstack/react-router' {
       path: '/start-tenant'
       fullPath: '/start-tenant'
       preLoaderRoute: typeof StartTenantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-out-failed': {
+      id: '/sign-out-failed'
+      path: '/sign-out-failed'
+      fullPath: '/sign-out-failed'
+      preLoaderRoute: typeof SignOutFailedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in-failed': {
+      id: '/sign-in-failed'
+      path: '/sign-in-failed'
+      fullPath: '/sign-in-failed'
+      preLoaderRoute: typeof SignInFailedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join': {
@@ -320,6 +360,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   JoinRoute: JoinRoute,
+  SignInFailedRoute: SignInFailedRoute,
+  SignOutFailedRoute: SignOutFailedRoute,
   StartTenantRoute: StartTenantRoute,
   examplesComponentsRoute: examplesComponentsRoute,
   examplesFilterDemoRoute: examplesFilterDemoRoute,

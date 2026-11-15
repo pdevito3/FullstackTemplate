@@ -28,6 +28,7 @@ try
 
     builder.AddServiceDefaults(); // OpenTelemetry, Serilog, health checks, resilience, service discovery
     builder.Services.AddProblemDetails();
+    builder.Services.AddExceptionHandler<AuthFailureExceptionHandler>();
 
     // Before the authentication, so that the bffdb migrations run before the Data Protection key ring loads
     builder.AddBffSessions();

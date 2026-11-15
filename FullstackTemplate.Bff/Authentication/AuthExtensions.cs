@@ -166,7 +166,7 @@ public static class AuthExtensions
                     UserInfoDPoP.BindAfterCodeExchange(context);
                     return IdTokenChecks.ValidateAsync(context);
                 };
-                options.Events.OnRemoteFailure = CallbackRejection.WriteProblemAsync;
+                options.Events.OnRemoteFailure = CallbackRejection.RefuseAsync;
 
                 options.Events.OnRedirectToIdentityProviderForSignOut = context =>
                 {
@@ -182,11 +182,22 @@ public static class AuthExtensions
                     LoginTraceLink.LinkCurrentActivity(context.Properties);
                     return NewLogin.EndExistingSessionAsync(context);
                 };
+
+                // With no state that the BFF can read, for example from Cognito, the OIDC handler does not redirect from
+                // the signed-out callback, and sends an empty page.
+                options.Events.OnSignedOutCallbackRedirect = context =>
+                {
+                    if (!string.IsNullOrEmpty(context.Properties?.RedirectUri))
+                        return Task.CompletedTask;
+
+                    context.Response.Redirect(context.Options.SignedOutRedirectUri);
+                    context.HandleResponse();
+                    return Task.CompletedTask;
+                };
             });
 
         // Cognito has a logout endpoint, but its discovery document has no end_session_endpoint.
-        // Its logout endpoint reads client_id and logout_uri, and it sends no state back.
-        // Without state, the handler does not redirect from the callback, so the callback redirects to SignedOutRedirectUri.
+        // Its logout endpoint reads client_id and logout_uri.
         services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
             .Configure<IConfiguration>((options, settings) =>
             {
@@ -201,17 +212,6 @@ public static class AuthExtensions
                     context.ProtocolMessage.ClientId = context.Options.ClientId;
                     context.ProtocolMessage.SetParameter("logout_uri", context.ProtocolMessage.PostLogoutRedirectUri);
                     return onRedirectToIdentityProviderForSignOut(context);
-                };
-
-                var onSignedOutCallbackRedirect = options.Events.OnSignedOutCallbackRedirect;
-                options.Events.OnSignedOutCallbackRedirect = context =>
-                {
-                    if (!string.IsNullOrEmpty(context.Properties?.RedirectUri))
-                        return onSignedOutCallbackRedirect(context);
-
-                    context.Response.Redirect(context.Options.SignedOutRedirectUri);
-                    context.HandleResponse();
-                    return Task.CompletedTask;
                 };
             });
 

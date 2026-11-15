@@ -23,7 +23,7 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 2. The frontend goes to `/bff/login`, with the path, the query, and the hash of the page as `returnUrl`. If they have more than 2048 characters, the `returnUrl` is the path alone, or `/` if the path is also too long. If the path starts with `//` or `/\`, the `returnUrl` is `/`. The frontend replaces the page in the history, so Back from the provider does not open a page that goes to the login again. A `returnUrl` must be a local URL, for example `/about`. The BFF rejects an absolute URL and a URL that starts with `//`. The BFF percent-encodes each non-ASCII character as UTF-8, so `/café` becomes `/caf%C3%A9`. The return URL travels in the `state` of the authorize URL. Thus, if the encoded `returnUrl` has more than 2048 characters, the BFF uses the default return URL (`PathBase`, or `/`), and the provider does not refuse the long URL with a 414.
 3. The BFF sends the browser to the provider with the authorization code flow, PKCE (`S256`), and `response_mode=query`. If the provider has PAR, the BFF first pushes the request, and the authorize URL has only `client_id` and `request_uri`.
 4. The provider sends the browser back to `/signin-oidc`. The BFF accepts only a GET there.
-5. The BFF checks the callback. The `iss` parameter must equal the issuer of the provider (RFC 9207). The ID token `aud` must hold only the client id. A failed check gives a 400, and the BFF creates no BFF session.
+5. The BFF checks the callback. The `iss` parameter must equal the issuer of the provider (RFC 9207). The ID token `aud` must hold only the client id. A failed check creates no BFF session. See [A refused login or logout](#a-refused-login-or-logout) for the answer.
 6. The BFF redeems the code at the token endpoint and reads the user info.
 7. The BFF writes a BFF session row in `bffdb`, and sets the `__Host-bff` cookie. The cookie holds only the key of the row.
 8. The React app calls `/bff/user` with the `X-CSRF: 1` header to get the claims. The claims include `bff:logout_url`.
@@ -96,6 +96,14 @@ If no user is signed in, the BFF sends the browser to `returnUrl` at once. It do
 The BFF session can end before the provider session, for example at its absolute limit. The browser then still has the `__Host-bff` cookie, but the BFF has no ID token for it. If `Auth:EndSessionWithoutIdTokenHint` is `true`, a logout with this cookie goes to the `end_session_endpoint` with `client_id`, `post_logout_redirect_uri`, and `state`. The provider ends its session and sends the browser to `/signout-callback-oidc`. The BFF then sends the browser to `returnUrl`. Keycloak first asks the user to confirm the logout. A logout with no cookie still goes to `returnUrl` at once. Thus an anonymous visit or a link from another site does not show the logout page of the provider.
 
 This logout is possible only from a page that still shows the user as signed in. After a reload, `/bff/user` gives 204, and the SPA goes to the login. The live provider session then signs in the same user again with no prompt. If the setting is `false`, or if the user does not log out, the provider session stays. The next login then signs in the same user again with no prompt. On a shared computer, the next person can thus sign in as the previous user. Only Keycloak sets this setting in the local stack. ZeroFactor refuses a logout with no `id_token_hint`. The other providers are not tested.
+
+## A refused login or logout
+
+A browser shows the answer to a navigation as it is, so a problem body there is raw JSON with no way on. Thus, when the BFF refuses or fails a navigation to `/bff/login` or `/signin-oidc`, it sends the browser to `/sign-in-failed` of the SPA. That page has a button that goes to the login again. When the BFF refuses or fails a navigation to `/bff/logout` or `/signout-callback-oidc`, it sends the browser to `/sign-out-failed`, which has a button that goes to the logout again. The URL of each page holds no detail of the failure. The BFF logs the detail.
+
+The BFF knows a navigation only by the `Sec-Fetch-Mode: navigate` header (Fetch Metadata). A request with another mode, such as a fetch, or with no Fetch Metadata, gets the 400 problem.
+
+If the return from the provider logout has a `state` that the BFF cannot read, the BFF sends the browser to `/`. The BFF session already ended.
 
 ## Back-channel logout
 

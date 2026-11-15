@@ -2,6 +2,8 @@ using FullstackTemplate.Bff.Management;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
+using Serilog;
+using ILogger = Serilog.ILogger;
 
 namespace FullstackTemplate.Bff.Login;
 
@@ -11,6 +13,8 @@ namespace FullstackTemplate.Bff.Login;
 /// </summary>
 public static class LoginEndpoint
 {
+    private static readonly ILogger Logger = Log.ForContext(typeof(LoginEndpoint));
+
     public const string Path = "/bff/login";
 
     public static async Task HandleAsync(HttpContext context, IOptionsMonitor<OpenIdConnectOptions> oidcOptions, SpaOrigin spaOrigin)
@@ -26,13 +30,14 @@ public static class LoginEndpoint
 
         if (prompt is not null && !configuration.PromptValuesSupported.Contains(prompt))
         {
-            await ManagementProblem.WriteAsync(context, "Invalid prompt value", "prompt", $"prompt '{prompt}' is not supported");
+            Logger.Here().Warning("Refused a login with a prompt that the identity provider does not support: {Prompt}", LogValue.Clean(prompt));
+            await ManagementProblem.RefuseAsync(context, AuthFailurePage.SignIn, "Invalid prompt value", "prompt", $"prompt '{prompt}' is not supported");
             return;
         }
 
         if (ReturnUrl.Read(context.Request) is not { } returnUrl)
         {
-            await ReturnUrl.WriteInvalidAsync(context);
+            await ReturnUrl.RefuseInvalidAsync(context, AuthFailurePage.SignIn);
             return;
         }
 

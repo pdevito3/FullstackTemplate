@@ -87,7 +87,7 @@ The browser sees exactly these endpoints, headers, claims, and status codes. Eac
 | `/bff/logout` | GET | no | Ends the BFF session and starts RP-initiated logout. See [Logout](#logout). |
 | `/bff/user` | GET | yes | Returns the claims of the BFF session. See [`/bff/user`](#bffuser). |
 | `/bff/backchannel` | POST | no | The back-channel logout receiver. Only the identity provider calls it. |
-| `/signin-oidc` | GET | no | The OIDC callback (Microsoft handler). Change: a callback that is not a GET gets a 400. |
+| `/signin-oidc` | GET | no | The OIDC callback (Microsoft handler). Change: a callback that is not a GET gets a 400, or a navigation goes to `/sign-in-failed`. |
 | `/signout-callback-oidc` | GET | no | The return from the `end_session_endpoint` (Microsoft handler). |
 | `/local-api/hello` | GET | yes | The sample local API. |
 | `/api/{**catch-all}` | any | yes | The proxy to `<server>/api/...`. `/api` itself also matches. Route matching is case-insensitive. |
@@ -109,6 +109,10 @@ These paths go away on purpose ([Duende BFF features to drop](https://github.com
 - Query `sid`. If the BFF session has a `sid` claim, the query must have the same value. If not, the response is 400 `application/problem+json` with the title "Invalid Session ID". An anonymous user, or a BFF session with no `sid` claim, needs no `sid`.
 - Query `returnUrl` (optional). It must pass the local URL rule, or the response is 400 problem. The default is `PathBase`, or `/`. If the encoded value has more than 2048 characters, the BFF uses the default.
 - The response is a 302 to the `end_session_endpoint`, or to the local `returnUrl` if no user is signed in or the identity provider has no `end_session_endpoint`. With `Auth:EndSessionWithoutIdTokenHint`, a request with the cookie of an ended BFF session also goes to the `end_session_endpoint` (section 3.4).
+
+### A refused or failed navigation
+
+Change: Duende BFF answered a navigation with the problem. A browser shows it as raw JSON with no way on. Now each 400 problem above, a refused callback, and an exception in one of these paths answers a navigation (`Sec-Fetch-Mode: navigate`) with a 302 to a page of the SPA. `/bff/login` and `/signin-oidc` go to `/sign-in-failed`. `/bff/logout` and `/signout-callback-oidc` go to `/sign-out-failed`. The URL holds no detail of the failure. A request that is not a navigation, or that has no Fetch Metadata, keeps the problem. A return to `/signout-callback-oidc` with a `state` that the BFF cannot read goes to `/`.
 
 ### `/bff/user`
 
@@ -236,9 +240,9 @@ Keep the two trace events of `LoginTraceLink` (`OnRedirectToIdentityProvider` an
 
 **The `prompt` parameter.** `/bff/login` stores `prompt` in the authentication properties. `OnRedirectToIdentityProvider` copies it to the authorize request (parity).
 
-**The method guard.** A middleware before `UseAuthentication` returns a 400 for a request to `CallbackPath` that is not a GET. This makes `response_mode=query` strict. The guard cannot be in `OnMessageReceived`, because the handler fails a POST with no form before that event, and a failure there gives a 500.
+**The method guard.** A middleware before `UseAuthentication` returns a 400 for a request to `CallbackPath` that is not a GET, or a 302 to `/sign-in-failed` for a navigation. This makes `response_mode=query` strict. The guard cannot be in `OnMessageReceived`, because the handler fails a POST with no form before that event, and a failure there gives a 500.
 
-**The callback checks in `OnMessageReceived`.** These run before the correlation check and before the handler reads `error` or `code`. `OnRemoteFailure` maps a failure of these checks to a 400 problem response.
+**The callback checks in `OnMessageReceived`.** These run before the correlation check and before the handler reads `error` or `code`. `OnRemoteFailure` maps a failure of these checks to a 400 problem response, or a navigation to `/sign-in-failed`.
 
 1. **RFC 9207 `iss` check** (section 2.4), with `Auth:Features:IssuerParameter`:
    - If `iss` is present, it must equal the discovery `issuer` with ordinal compare. If not, fail.
@@ -527,7 +531,7 @@ Each behavior of the current BFF, from [the inventory](https://github.com/pdevit
 | 41 | Two `UseForwardedHeaders` calls, `X-Forwarded-Host` trusted | Changed | One call, no `X-Forwarded-Host`, a fixed public origin. [#16](https://github.com/pdevito3/FullstackTemplate/issues/16) | 3.8 |
 | 42 | `Duende.Bff` meter (always zero) | Changed | Our own counters. [#22](https://github.com/pdevito3/FullstackTemplate/issues/22) | 3.9 |
 | 43 | `/local-api/hello` with `AsBffApiEndpoint` | Kept | Parity | 2, 3.5 |
-| 44 | Management error responses as `HttpValidationProblemDetails` with status 400 | Kept | Wire contract | 2 |
+| 44 | Management error responses as `HttpValidationProblemDetails` with status 400 | Changed | A navigation goes to `/sign-in-failed` or `/sign-out-failed`, so the browser shows no raw JSON | 2 |
 | 45 | Data Protection keys only in the process | Changed | Keys in `bffdb`. A deploy does not log out every user. | 3.1 |
 
 ## 5. The compliance matrix

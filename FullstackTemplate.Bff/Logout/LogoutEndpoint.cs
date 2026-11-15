@@ -5,6 +5,8 @@ using FullstackTemplate.Bff.Sessions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Serilog;
+using ILogger = Serilog.ILogger;
 
 namespace FullstackTemplate.Bff.Logout;
 
@@ -19,6 +21,8 @@ namespace FullstackTemplate.Bff.Logout;
 /// </summary>
 public static class LogoutEndpoint
 {
+    private static readonly ILogger Logger = Log.ForContext(typeof(LogoutEndpoint));
+
     public const string Path = "/bff/logout";
 
     public const string EndSessionWithoutIdTokenHintKey = "Auth:EndSessionWithoutIdTokenHint";
@@ -42,14 +46,15 @@ public static class LogoutEndpoint
             if (!string.IsNullOrWhiteSpace(sessionId)
                 && !string.Equals(sessionId, context.Request.Query["sid"].FirstOrDefault(), StringComparison.Ordinal))
             {
-                await ManagementProblem.WriteAsync(context, "Invalid Session ID", "sid", $"SessionId '{sessionId}' was invalid");
+                Logger.Here().Warning("Refused a logout whose sid is not the sid of the BFF session");
+                await ManagementProblem.RefuseAsync(context, AuthFailurePage.SignOut, "Invalid Session ID", "sid", $"SessionId '{sessionId}' was invalid");
                 return;
             }
         }
 
         if (ReturnUrl.Read(context.Request) is not { } returnUrl)
         {
-            await ReturnUrl.WriteInvalidAsync(context);
+            await ReturnUrl.RefuseInvalidAsync(context, AuthFailurePage.SignOut);
             return;
         }
 

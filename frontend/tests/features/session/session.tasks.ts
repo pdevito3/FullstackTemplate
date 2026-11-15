@@ -46,6 +46,20 @@ export function sessionPage(page: Page) {
       await page.waitForLoadState()
     },
 
+    async openFailurePage(path: string, heading: Locator) {
+      await page.goto(path)
+      await expect(heading).toBeVisible()
+    },
+
+    /** The page is gone when the BFF opens, so the wait is for the request of the BFF. */
+    async pressAndLeaveFor(button: Locator, path: string) {
+      const left = answered(path)
+      await expect(button).toBeEnabled()
+      await button.click()
+      await left
+      await expect.poll(() => new URL(page.url()).pathname).toBe(path)
+    },
+
     async open(path: string) {
       await page.goto(path)
       await expect(at.navigation).toBeVisible()

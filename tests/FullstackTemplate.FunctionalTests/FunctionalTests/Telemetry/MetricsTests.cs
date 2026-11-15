@@ -23,7 +23,13 @@ public class MetricsTests : TestBase
         // Assert
         var exported = factory.ExportedMetrics.Snapshot();
 
-        exported.ShouldContain(m => m.Name == "app.request.duration" && m.MeterName == "FullstackTemplate.Server");
+        var duration = exported.Last(m => m.Name == "app.request.duration" && m.MeterName == "FullstackTemplate.Server");
         exported.ShouldContain(m => m.MeterName == "Microsoft.EntityFrameworkCore");
+
+        // The SDK default buckets are for milliseconds: 0, 5, 10, 25, and up. In seconds, they put each request in one bucket.
+        var bounds = new List<double>();
+        foreach (var bucket in duration.MetricPoints[0].GetHistogramBuckets())
+            bounds.Add(bucket.ExplicitBound);
+        bounds.ShouldBe([0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, double.PositiveInfinity]);
     }
 }

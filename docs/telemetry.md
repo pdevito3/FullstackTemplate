@@ -80,7 +80,7 @@ Use a stable dotted span name with no ids or data in it. `AddEvent` does nothing
 
 The custom metrics are on the `FullstackTemplate.Server` meter:
 
-- `app.request.duration` - a histogram of the duration of each feature slice request, in seconds. `RequestTracingBehavior` records it. The tags are `app.request.name` (for example `GetUser.Query`) and, when the request throws, `error.type`.
+- `app.request.duration` - a histogram of the duration of each feature slice request, in seconds. `RequestTracingBehavior` records it. Its buckets are the buckets of `http.server.request.duration`, from 5 ms to 10 s. A new histogram in seconds needs buckets too, because the SDK default buckets are for milliseconds. The tags are `app.request.name` (for example `GetUser.Query`) and, when the request throws, `error.type`.
 - `app.errors` - a counter of server errors. `RecordError` increments it with the `exception.type` tag. A client error (4xx) does not increment it.
 
 The host also collects these framework meters:

@@ -33,11 +33,20 @@ public static class Telemetry
     /// <summary>
     /// Duration of each MediatR request. <see cref="RequestTracingBehavior{TRequest,TResponse}"/> records
     /// it, tagged with <c>app.request.name</c>, and with <c>error.type</c> when the request throws.
+    /// <para>
+    /// The buckets are the seconds of <c>http.server.request.duration</c>. The SDK default buckets are for
+    /// milliseconds, so each request under 5 seconds would fall in one bucket, from 0 to 5 seconds.
+    /// </para>
     /// </summary>
     public static readonly Histogram<double> RequestDuration = Meter.CreateHistogram<double>(
         "app.request.duration",
         unit: "s",
-        description: "Duration of a feature slice request");
+        description: "Duration of a feature slice request",
+        tags: null,
+        advice: new InstrumentAdvice<double>
+        {
+            HistogramBucketBoundaries = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10],
+        });
 
     /// <summary>
     /// Record an error on the current activity.

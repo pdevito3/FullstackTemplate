@@ -1,3 +1,4 @@
+using FullstackTemplate.Bff.Management;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -7,7 +8,8 @@ namespace FullstackTemplate.Bff.Login;
 
 /// <summary>
 /// A 400 for a request to the OIDC callback path that is not a GET. The BFF asks for <c>response_mode=query</c>,
-/// so a response in a form POST is not the one that it asked for (OAuth 2.1 section 4.1.2).
+/// so a response in a form POST is not the one that it asked for (OAuth 2.1 section 4.1.2). A browser navigation goes
+/// to the <see cref="AuthFailurePage.SignIn"/> page instead.
 /// <para>
 /// This must be a middleware before <c>UseAuthentication</c>. The handler fails a POST with no form before
 /// <c>OnMessageReceived</c> runs, and a failure there gives a 500.
@@ -26,7 +28,10 @@ public static class CallbackMethodGuard
             if (context.Request.Path.Equals(callbackPath, StringComparison.OrdinalIgnoreCase) && !HttpMethods.IsGet(context.Request.Method))
             {
                 Logger.Here().Information("Rejected a {Method} request to the OIDC callback {Path}", context.Request.Method, callbackPath.Value);
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                if (AuthFailurePage.IsNavigation(context.Request))
+                    AuthFailurePage.SignIn.Redirect(context);
+                else
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 return;
             }
 

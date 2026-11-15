@@ -107,3 +107,46 @@ test.describe('a failed check of the session', () => {
     expect(api.all('get', bffPaths.user)).toHaveLength(checksBefore + 1)
   })
 })
+
+test.describe('a login that the BFF refused', () => {
+  test.use({ actor: as.anonymous() })
+
+  test('shows the sign-in failure with no layout, stays there, and signs in again with the home page as the return URL', async ({ page, api }) => {
+    api.mock(bffApi.loginOpens())
+    const session = sessionPage(page)
+
+    await session.openFailurePage('/sign-in-failed', session.at.signInFailedHeading)
+
+    await expect(session.at.navigation).toHaveCount(0)
+    expect(api.all('get', bffPaths.login)).toHaveLength(0)
+    await session.pressAndLeaveFor(session.at.signInAgain, bffPaths.login)
+    expect(api.last('get', bffPaths.login)?.query.get('returnUrl')).toBe('/')
+  })
+})
+
+test.describe('a logout that the BFF refused', () => {
+  test('shows the sign-out failure with no layout, and signs out again with the sid of the session', async ({ page, api }) => {
+    api.mock(bffApi.logoutOpens())
+    const session = sessionPage(page)
+
+    await session.openFailurePage('/sign-out-failed', session.at.signOutFailedHeading)
+
+    await expect(session.at.navigation).toHaveCount(0)
+    await session.pressAndLeaveFor(session.at.signOutAgain, bffPaths.logout)
+    expect(api.last('get', bffPaths.logout)?.query.get('sid')).toBe('test-session')
+  })
+
+  test.describe('with no session', () => {
+    test.use({ actor: as.anonymous() })
+
+    test('signs out again with no sid', async ({ page, api }) => {
+      api.mock(bffApi.logoutOpens())
+      const session = sessionPage(page)
+
+      await session.openFailurePage('/sign-out-failed', session.at.signOutFailedHeading)
+
+      await session.pressAndLeaveFor(session.at.signOutAgain, bffPaths.logout)
+      expect(api.last('get', bffPaths.logout)?.query.has('sid')).toBe(false)
+    })
+  })
+})

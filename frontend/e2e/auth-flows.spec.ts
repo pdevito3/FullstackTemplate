@@ -498,10 +498,6 @@ async function bffSessionId(page: Page): Promise<string> {
 /**
  * Ends one Keycloak session through the admin REST API: the user session and its offline session, because the BFF asks
  * for offline_access. Keycloak then sends a back-channel logout token to the clients of the session.
- *
- * The test ends only the session of its own login. When the BFF gets the logout token, it revokes the refresh token of
- * the session. Keycloak then also drops the other sessions of the user for the client, with no logout token, so a
- * second BFF session of the user would stay signed in until its next refresh.
  */
 async function endKeycloakSession(sessionId: string) {
   const keycloakUrl = requiredEnv('IDP_URL').replace(/\/$/, '')

@@ -4,8 +4,9 @@ import { join, sep } from 'node:path'
 import ts from 'typescript'
 import { expect, it } from 'vitest'
 
-// A page with a way in that this test cannot read. /join: the link of an invite.
-const PAGES_WITH_ANOTHER_WAY_IN = ['/join']
+// A page with a way in that this test cannot read. /join: the link of an invite. /sign-in-failed and /sign-out-failed:
+// the BFF sends a refused or failed login or logout there.
+const PAGES_WITH_ANOTHER_WAY_IN = ['/join', '/sign-in-failed', '/sign-out-failed']
 
 // The text of a string expression. `$` stands for each part that only the run knows, as it does in a route path.
 function textOf(node: ts.Expression): string {

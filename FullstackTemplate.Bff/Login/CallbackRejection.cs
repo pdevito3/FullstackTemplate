@@ -7,7 +7,8 @@ namespace FullstackTemplate.Bff.Login;
 
 /// <summary>
 /// A callback to <c>/signin-oidc</c> that failed one of the BFF checks: the <c>iss</c> check or the strict
-/// audience check. The BFF does not trust the response, and answers 400.
+/// audience check. The BFF does not trust the response, and answers 400, or sends a navigation to the
+/// <see cref="AuthFailurePage.SignIn"/> page.
 /// </summary>
 /// <param name="field">The parameter or claim that failed, for the problem response.</param>
 /// <param name="reason">Why the check failed. It holds no token or code.</param>
@@ -27,21 +28,21 @@ public static class CallbackRejection
     /// Each other failure (an invalid <c>state</c>, a missing correlation cookie, or an <c>error</c> from the
     /// identity provider) becomes a 400 problem response for the <c>callback</c> field, not the handler default 500.
     /// </summary>
-    public static async Task WriteProblemAsync(RemoteFailureContext context)
+    public static async Task RefuseAsync(RemoteFailureContext context)
     {
         context.HandleResponse();
 
         if (context.Failure is CallbackRejectedException rejection)
         {
             Logger.Here().Warning("Rejected an OIDC callback: {Reason}", rejection.Message);
-            await ManagementProblem.WriteAsync(context.HttpContext, CallbackRejectedException.Title, rejection.Field, rejection.Message);
+            await ManagementProblem.RefuseAsync(context.HttpContext, AuthFailurePage.SignIn, CallbackRejectedException.Title, rejection.Field, rejection.Message);
             return;
         }
 
         // The messages of the OIDC handler name the failed step. They hold no token, code, or state value.
         Logger.Here().Warning("An OIDC callback failed: {FailureType}: {Reason}",
             context.Failure?.GetType().Name, context.Failure?.Message);
-        await ManagementProblem.WriteAsync(context.HttpContext, CallbackRejectedException.Title, CallbackField,
+        await ManagementProblem.RefuseAsync(context.HttpContext, AuthFailurePage.SignIn, CallbackRejectedException.Title, CallbackField,
             "The login did not complete. Start a new login.");
     }
 

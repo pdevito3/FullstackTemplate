@@ -3,15 +3,21 @@ using System.Text.Json;
 namespace FullstackTemplate.Bff.Management;
 
 /// <summary>
-/// The error response of the management endpoints: a 400 <c>application/problem+json</c> body with a title and
-/// one field error.
+/// The refusal of the management endpoints: a 400 <c>application/problem+json</c> body with a title and one field
+/// error. A browser navigation goes to the <see cref="AuthFailurePage"/> instead.
 /// </summary>
 public static class ManagementProblem
 {
     public const string ContentType = "application/problem+json";
 
-    public static Task WriteAsync(HttpContext context, string title, string field, string error)
+    public static Task RefuseAsync(HttpContext context, AuthFailurePage page, string title, string field, string error)
     {
+        if (AuthFailurePage.IsNavigation(context.Request))
+        {
+            page.Redirect(context);
+            return Task.CompletedTask;
+        }
+
         var problem = new HttpValidationProblemDetails(new Dictionary<string, string[]> { [field] = [error] })
         {
             Status = StatusCodes.Status400BadRequest,

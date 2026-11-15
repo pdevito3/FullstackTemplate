@@ -44,10 +44,13 @@ public static class ReturnUrl
     }
 
     /// <summary>
-    /// The 400 problem for a request whose <c>returnUrl</c> is not local.
+    /// Refuses a request whose <c>returnUrl</c> is not local, as <see cref="ManagementProblem.RefuseAsync"/> does.
     /// </summary>
-    public static Task WriteInvalidAsync(HttpContext context) =>
-        ManagementProblem.WriteAsync(context, "Invalid return url", QueryKey, $"ReturnUrl '{context.Request.Query[QueryKey].FirstOrDefault()}' was invalid");
+    public static Task RefuseInvalidAsync(HttpContext context, AuthFailurePage page)
+    {
+        Logger.Here().Warning("Refused a returnUrl that is not local on {Path}", LogValue.Clean(context.Request.Path.Value));
+        return ManagementProblem.RefuseAsync(context, page, "Invalid return url", QueryKey, $"ReturnUrl '{context.Request.Query[QueryKey].FirstOrDefault()}' was invalid");
+    }
 
     private static LocalUrl Default(HttpRequest request) =>
         LocalUrl.TryParse(request.PathBase.ToUriComponent(), out var pathBase) ? pathBase : LocalUrl.Root;

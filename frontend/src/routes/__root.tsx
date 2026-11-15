@@ -30,6 +30,8 @@ declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
     /** The name of the page in the breadcrumb of the layout header. Each page route sets it. */
     breadcrumb?: string
+    /** The root skips the session check and the layout for the page. */
+    withoutSession?: boolean
   }
 }
 
@@ -38,6 +40,11 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const withoutSession = useRouterState({ select: (state) => state.matches.some((match) => match.staticData.withoutSession) })
+  return withoutSession ? <Outlet /> : <SessionGate />
+}
+
+function SessionGate() {
   const claims = useQuery(authClaimsQuery)
 
   // A failed refetch keeps the data of the last answer, and that answer still decides.

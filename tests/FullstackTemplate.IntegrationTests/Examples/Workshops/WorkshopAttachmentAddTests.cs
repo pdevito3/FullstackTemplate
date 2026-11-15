@@ -1,0 +1,100 @@
+namespace FullstackTemplate.IntegrationTests.Examples.Workshops;
+
+using Amazon.Runtime;
+using Amazon.S3;
+using FullstackTemplate.Server.Domain.Attachments;
+using FullstackTemplate.Server.Domain.ObjectDeletes;
+using FullstackTemplate.Server.Domain.Users;
+using FullstackTemplate.Server.Examples.Workshops.Features;
+using FullstackTemplate.SharedTestHelpers.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
+using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
+using Microsoft.Extensions.DependencyInjection;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Shouldly;
+using static FullstackTemplate.IntegrationTests.ObjectDeletes.ObjectDeleteTestServer;
+
+public class WorkshopAttachmentAddTests : TestBase
+{
+    [Test]
+    public async Task a_put_whose_reply_is_lost_after_storage_kept_the_bytes_leaves_no_object()
+    {
+        // Arrange
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant).AddVenue(out _).AddWorkshop(out var workshop)
+            .BuildAsync();
+        await using var server = TestFixture.BuildServiceProvider(services =>
+        {
+            services.RemoveAll<IAmazonS3>();
+            services.AddSingleton<IAmazonS3>(new AmazonS3Client(new BasicAWSCredentials("test", "test"), new AmazonS3Config
+            {
+                ServiceURL = TestFixture.Storage.ServiceUrl,
+                ForcePathStyle = true,
+                AuthenticationRegion = "us-east-1",
+                MaxErrorRetry = 0,
+                HttpClientFactory = new LostPutReplyClientFactory(),
+            }));
+        });
+        var underTest = new TestingServiceScope(server);
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        await using var file = new ReceivedFile(
+            new MemoryStream(SampleFiles.OfLength(SampleFiles.Pdf, 100)), "notes.pdf", "application/pdf");
+
+        // Act
+        var act = () => underTest.SendAsync(new AddWorkshopAttachment.Command(workshop.Id, file));
+
+        // Assert
+        await act.ShouldThrowAsync<Exception>();
+        (await KeysUnderAsync($"tenants/{tenant.Id}/workshops/{workshop.Id}/"))
+            .ShouldBeEmpty("The add failed, so the object that storage kept was deleted.");
+    }
+
+    [Test]
+    public async Task a_canceled_add_on_a_hung_storage_ends_after_the_attempt_timeout_of_its_cleanup()
+    {
+        // Arrange
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out var tenant)
+            .AddUser(out var admin, u => u.Role = UserRole.Admin().Value)
+            .Under(tenant).AddVenue(out _).AddWorkshop(out var workshop)
+            .BuildAsync();
+        await using var hung = WithStorageHung(new ObjectDeleteOptions { AttemptTimeout = TimeSpan.FromSeconds(1) });
+        var underTest = new TestingServiceScope(hung.Server);
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        await using var file = new ReceivedFile(
+            new MemoryStream(SampleFiles.OfLength(SampleFiles.Pdf, 100)), "notes.pdf", "application/pdf");
+        using var request = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+
+        // Act
+        var act = () => underTest.GetService<ISender>()
+            .Send(new AddWorkshopAttachment.Command(workshop.Id, file), request.Token)
+            .WaitAsync(TimeSpan.FromSeconds(30));
+
+        // Assert
+        await act.ShouldThrowAsync<OperationCanceledException>(
+            "The put stopped on the cancel, and the cleanup delete stopped after its attempt timeout.");
+    }
+
+    private sealed class LostPutReplyClientFactory : HttpClientFactory
+    {
+        public override HttpClient CreateHttpClient(IClientConfig clientConfig)
+            => new(new LostPutReplyHandler { InnerHandler = new HttpClientHandler() });
+    }
+
+    private sealed class LostPutReplyHandler : DelegatingHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var response = await base.SendAsync(request, cancellationToken);
+            if (request.Method != HttpMethod.Put)
+                return response;
+
+            response.Dispose();
+            throw new HttpRequestException("The reply of the put was lost.");
+        }
+    }
+}

@@ -28,11 +28,11 @@ Tenant == "tenant"
 Reqs == Atts \cup {Tenant}
 NoReq == "-"
 
-\* The add of one attachment, in AttachmentStorage.AddAsync and the saveRow of AddWorkshopAttachment
+\* The add of one attachment, in AttachmentStorage.AddAsync and the saveRow of the add handler of an attachment
 AddStates == {"idle",        \* not started
-              "put",         \* the workshop loaded (tenant live), PutAsync not yet done
+              "put",         \* the owner loaded (tenant live), PutAsync not yet done
               "lock",        \* waits for RootLock.Tenant.RunSharedAsync
-              "check",       \* holds the shared lock, the workshop check is next
+              "check",       \* holds the shared lock, the owner check is next
               "commit",      \* SaveChangesAsync of the row is next
               "cleanCheck",  \* DeleteObjectWithNoRowAsync: the IgnoreQueryFilters AnyAsync is next
               "cleanDelete", \* DeleteObjectWithNoRowAsync: storage.DeleteAsync is next
@@ -110,9 +110,9 @@ NewRequest == [st |-> "due", att |-> 0]
 Thrown == IF Cleanup THEN "cleanCheck" ELSE "done"
 
 -----------------------------------------------------------------------------
-(* The add. AddWorkshopAttachment.Handle and AttachmentStorage.AddAsync.  *)
+(* The add. The Handle of the add handler and AttachmentStorage.AddAsync. *)
 
-\* Handle: the workshop loads through the soft delete filter, so the tenant is live here
+\* Handle: the owner of the attachment loads through the soft delete filter, so the tenant is live here
 StartAdd(a) ==
     /\ apc[a] = "idle" /\ tenant = "live"
     /\ apc' = [apc EXCEPT ![a] = "put"]
@@ -134,8 +134,8 @@ TakeShared(a) ==
     /\ apc' = [apc EXCEPT ![a] = "check"]
     /\ UNCHANGED <<tenant, row, obj, td, req, runVars, sweepVars, crashes>>
 
-\* saveRow: the workshop GetById under the soft delete filter. A deleted tenant gives 404, which throws.
-CheckWorkshop(a) ==
+\* saveRow: the GetById of the owner under the soft delete filter. A deleted tenant gives 404, which throws.
+CheckOwner(a) ==
     /\ apc[a] = "check"
     /\ IF tenant = "live"
          THEN /\ apc' = [apc EXCEPT ![a] = "commit"]
@@ -169,7 +169,7 @@ ResolveCommit(a) ==
     /\ UNCHANGED <<tenant, obj, apc, td, req, runVars, sweepVars, crashes>>
 
 \* The cancel of the caller, or the time limit of AddAsync, stops the save while it waits for the lock or loads the
-\* workshop. The lock is freed. A cancel of the put or the commit is one of the throws of Put and CommitRow.
+\* owner. The lock is freed. A cancel of the put or the commit is one of the throws of Put and CommitRow.
 StopAdd(a) ==
     /\ apc[a] \in {"lock", "check"}
     /\ apc' = [apc EXCEPT ![a] = Thrown]
@@ -209,8 +209,8 @@ CrashAdder(a) ==
     /\ UNCHANGED <<tenant, td, req, runVars, sweepVars>>
 
 -----------------------------------------------------------------------------
-(* The deletes. DeleteWorkshopAttachment, AttachmentStorage.DeleteAsync,   *)
-(* DeleteTenant, and AppDbContext.PrepareWrite with ObjectDeletes.ForDeleted. *)
+(* The deletes. The delete handler of an attachment, AttachmentStorage.DeleteAsync, *)
+(* DeleteTenant, and AppDbContext.PrepareWrite with ObjectDeletes.ForDeleted.       *)
 
 \* One save: the soft delete of the row and its DeleteObject job commit together.
 DeleteAttachment(a) ==
@@ -386,11 +386,11 @@ Settled ==
 \* An end state: nothing is in flight. It changes nothing, so TLC does not call it a deadlock.
 Done == Settled /\ UNCHANGED vars
 
-AddStep(a) == Put(a) \/ TakeShared(a) \/ CheckWorkshop(a) \/ CommitRow(a) \/ CleanupCheck(a) \/ CleanupDelete(a)
+AddStep(a) == Put(a) \/ TakeShared(a) \/ CheckOwner(a) \/ CommitRow(a) \/ CleanupCheck(a) \/ CleanupDelete(a)
 RunStep(r) == Work(r) \/ DeletePage(r) \/ Complete(r) \/ Fail(r)
 
 Next ==
-    \/ \E a \in Atts : StartAdd(a) \/ Put(a) \/ TakeShared(a) \/ CheckWorkshop(a) \/ CommitRow(a)
+    \/ \E a \in Atts : StartAdd(a) \/ Put(a) \/ TakeShared(a) \/ CheckOwner(a) \/ CommitRow(a)
                        \/ ResolveCommit(a) \/ StopAdd(a) \/ CleanupCheck(a) \/ CleanupDelete(a) \/ CrashAdder(a)
                        \/ DeleteAttachment(a)
     \/ TakeExclusive \/ CommitTenantDelete \/ CrashTenantDelete

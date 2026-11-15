@@ -29,7 +29,7 @@ const labels = {
   StartAdd: "a user uploads a file",
   Put: "the put returns",
   TakeShared: "the save takes the tenant lock",
-  CheckWorkshop: "the save checks the workshop",
+  CheckOwner: "the save checks the owner of the attachment",
   CommitRow: "the save commits",
   ResolveCommit: "the commit ends",
   StopAdd: "the user cancels the upload",

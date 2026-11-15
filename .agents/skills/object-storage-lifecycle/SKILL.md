@@ -57,8 +57,8 @@ The coverage record. The sync commit is `c5abb78b`: at that commit the model wit
 |---|---|
 | `StartAdd`, `Put`, `StopAdd` | `FullstackTemplate.Server/Domain/Attachments/AttachmentStorage.cs`: `AddAsync` |
 | `CleanupCheck`, `CleanupDelete` | No code now. `AttachmentStorage.DeleteObjectWithNoRowAsync` before `c5abb78b` |
-| `TakeShared`, `CheckWorkshop`, `CommitRow` | `Examples/Workshops/Features/AddWorkshopAttachment/AddWorkshopAttachment.cs`: `Handle` and its `saveRow`. `Databases/RootLock.cs`: `RunSharedAsync`, `RunAsync` |
-| `DeleteAttachment` | `AttachmentStorage.DeleteAsync`, `Examples/Workshops/Features/DeleteWorkshopAttachment/DeleteWorkshopAttachment.cs` |
+| `TakeShared`, `CheckOwner`, `CommitRow` | The add handler of each attachment entity: `Handle` and its `saveRow`. `Databases/RootLock.cs`: `RunSharedAsync`, `RunAsync` |
+| `DeleteAttachment` | `AttachmentStorage.DeleteAsync`, and the delete handler of each attachment entity |
 | `TakeExclusive`, `CommitTenantDelete` | `Domain/Tenants/Features/DeleteTenant/DeleteTenant.cs`: `Handle`. `RootLock.RunExclusiveAsync` |
 | `NewRequest`, `Covers` | `Databases/AppDbContext.cs`: `PrepareWrite`. `Domain/ObjectDeletes/ObjectDeletes.cs`: `ForDeleted` |
 | `Claim`, `LeaseExpires`, `Fenced`, `CrashRunner` | The BackWave worker group of the `object-deletes` queue: its claim, lease, heartbeat, and outcome fence. `Domain/ObjectDeletes/ObjectDeleteOptions.cs`: `WorkerGroup` |
@@ -68,13 +68,21 @@ The coverage record. The sync commit is `c5abb78b`: at that commit the model wit
 | `SweepCheck` | `SweepObjectsHandler.DecideAsync`. `Domain/ObjectDeletes/NamedStorageKeys.cs`: `AmongAsync`, over each column of `Databases/EntityConfigurations/StoredFileMapping.cs`: `StorageKeyColumns`. `Resources/Jobs/SystemJobHandler.cs`: the caller `System`, so no tenant filter applies |
 | `SweepDelete`, `SweepFail` | `ObjectStorage.DeleteAsync`, `ObjectDeletes.InAttemptTimeAsync`, and the default `RetryPolicy` of the group of the queue `object-sweep`. `Domain/ObjectDeletes/ObjectSweepSchedule.cs`: `UpsertAsync`, whose daily schedule starts the sweep again (the strong fairness of `SweepDelete`) and whose `noOverlap` runs one sweep at a time |
 
-Paths in the table are under `FullstackTemplate.Server/`. A new attachment entity with its own add or delete handler is covered when its handler has the same shape as the workshop handlers. If it does not, model it.
+Paths in the table are under `FullstackTemplate.Server/`. The add and delete handlers of an attachment entity are covered when they have the shape of the handlers in [Add attachments to an entity](../../../docs/backend/attachments.md#on-the-server): the add loads the owner of the attachment, calls `AttachmentStorage.AddAsync`, and its `saveRow` takes `RootLock.Tenant.RunSharedAsync`, loads the owner again, and saves the row. The delete soft-deletes the row and calls `AttachmentStorage.DeleteAsync`. If a handler has another shape, model it.
 
-To see what changed in the covered code since the sync commit:
+<!-- example:start -->
+In the template, the handlers of the workshop example are `Examples/Workshops/Features/AddWorkshopAttachment/AddWorkshopAttachment.cs` and `Examples/Workshops/Features/DeleteWorkshopAttachment/DeleteWorkshopAttachment.cs`.
+<!-- example:end -->
+
+To see what changed in the covered code since the sync commit, add the folder of the add and delete handlers of each attachment entity of the app to this command:
 
 ```sh
-git log --oneline c5abb78b..HEAD -- FullstackTemplate.Server/Domain/Attachments FullstackTemplate.Server/Domain/ObjectDeletes FullstackTemplate.Server/Databases/RootLock.cs FullstackTemplate.Server/Databases/AppDbContext.cs FullstackTemplate.Server/Databases/MigrationHostedService.cs FullstackTemplate.Server/Databases/EntityConfigurations/StoredFileMapping.cs FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant FullstackTemplate.Server/Resources/Storage FullstackTemplate.Server/Resources/Jobs FullstackTemplate.Server/Examples/Workshops/Features Directory.Packages.props
+git log --oneline c5abb78b..HEAD -- FullstackTemplate.Server/Domain/Attachments FullstackTemplate.Server/Domain/ObjectDeletes FullstackTemplate.Server/Databases/RootLock.cs FullstackTemplate.Server/Databases/AppDbContext.cs FullstackTemplate.Server/Databases/MigrationHostedService.cs FullstackTemplate.Server/Databases/EntityConfigurations/StoredFileMapping.cs FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant FullstackTemplate.Server/Resources/Storage FullstackTemplate.Server/Resources/Jobs Directory.Packages.props
 ```
+
+<!-- example:start -->
+In the template, add `FullstackTemplate.Server/Examples/Workshops/Features`, the folder of the workshop handlers.
+<!-- example:end -->
 
 When an intended change moves a step, change the action that names that code in `model/ObjectStorage.tla`, run `check.sh`, and change the expected results in `check.sh` only for a finding that the change fixes or adds. Move the sync commit forward only after you confirm, function by function, that the model describes the code at the new commit.
 
@@ -107,12 +115,16 @@ When a config leaves its baseline, get the path from `/statechart`, then replay 
 
 Each break below was made in the real code and in the model, and then both were reverted, and `check.sh` was back at its baseline.
 
-- At `80d9f8f4`, `DeleteObjectWithNoRowAsync` with no `if (saved)` return, so the cleanup deletes the object of a row that committed. `ObjectStorage.cfg` breaks `NoLiveRowWithoutObject`: the put returns, the save takes the tenant lock, the save checks the workshop, the save commits and throws, the cleanup checks for the row, and the cleanup deletes the object of a file that is in the list.
-- `AddWorkshopAttachment` with no `RootLock.Tenant.RunSharedAsync` around the save. `ObjectStorage.cfg` breaks `NoLiveRowInDeletedTenant`: the save checks the workshop, a tenant delete takes the lock and commits, and then the save commits a live row in the deleted tenant, whose object the prefix delete then takes.
-- A sweep with no row check. `Chart.cfg` and `ObjectStorage.cfg` break `NoLiveRowWithoutObject`: the put returns, the save commits, the grace passes, the sweep lists the object, and it deletes the object of a file that is in the list. In the code, an `ObjectSweep.VerdictOf` that never gives `Named` fails `WorkshopAttachmentSweepTests`.
+- At `80d9f8f4`, `DeleteObjectWithNoRowAsync` with no `if (saved)` return, so the cleanup deletes the object of a row that committed. `ObjectStorage.cfg` breaks `NoLiveRowWithoutObject`: the put returns, the save takes the tenant lock, the save checks the owner of the attachment, the save commits and throws, the cleanup checks for the row, and the cleanup deletes the object of a file that is in the list.
+- An add handler with no `RootLock.Tenant.RunSharedAsync` around the save. `ObjectStorage.cfg` breaks `NoLiveRowInDeletedTenant`: the save checks the owner of the attachment, a tenant delete takes the lock and commits, and then the save commits a live row in the deleted tenant, whose object the prefix delete then takes.
+- A sweep with no row check. `Chart.cfg` and `ObjectStorage.cfg` break `NoLiveRowWithoutObject`: the put returns, the save commits, the grace passes, the sweep lists the object, and it deletes the object of a file that is in the list.
 - A sweep that reads `now` after the row check, in the model only. `Chart.cfg` breaks `NoLiveRowWithoutObject`: the sweep lists the object while the save still runs, reads no row, the save commits, the grace passes, and the sweep deletes the object.
 - A sweep that can fail forever, with no strong fairness on `SweepDelete`, in the model only. `Liveness.cfg` and `DeletedTenantOrphan.cfg` break `OrphansGo`.
 - A claim that adds no attempt, in the model only. `Liveness.cfg` breaks `RequestsSettle`: a worker claims the `DeleteTenantObjects` job, its storage call fails, and the job is due again with the same count, so it never goes dead.
+
+<!-- example:start -->
+In the code, the break of the sweep with no row check is an `ObjectSweep.VerdictOf` that never gives `Named`, and it fails `WorkshopAttachmentSweepTests`.
+<!-- example:end -->
 
 A run that ends in `error`, with a TLC log that stops with no TLC error and no `TLC exit code` line, means that the JVM was stopped from outside, for example by memory pressure. Run the config again.
 

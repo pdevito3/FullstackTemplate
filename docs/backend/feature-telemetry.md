@@ -36,9 +36,9 @@ After:
 PUT api/v{version}/users/{id}/role
 └─ UpdateUserRole.Command            430ms   app.caller.kind=user  app.caller.tenant_id=ten_01J...
                                               app.user_id=usr_01J...  app.user.role=Admin
-   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=34
+   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=39
    └─ SQL: <the save>                  8ms
-Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@71  CallerTenantId=ten_01J...
+Log: Changed the role of user usr_01J... to Admin   CallSite=UpdateUserRole.cs:Handle@79  CallerTenantId=ten_01J...
 ```
 
 ## The support questions

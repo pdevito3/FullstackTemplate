@@ -139,11 +139,11 @@ For example, the exemplar of a 430 ms `UpdateUserRole.Command` gives this trace:
 ```
 PUT api/v{version}/users/{id}/role
 └─ UpdateUserRole.Command            430ms   app.caller.tenant_id=ten_01J...  app.user_id=usr_01J...
-   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=32
+   ├─ SQL: users.update_role.load    412ms   code.file.path=.../UpdateUserRole.cs  code.line.number=39
    └─ SQL: <the save>                  8ms
 ```
 
-The request was slow because of the `users.update_role.load` query at `UpdateUserRole.cs` line 32, for user `usr_01J...`.
+The request was slow because of the `users.update_role.load` query at `UpdateUserRole.cs` line 39, for user `usr_01J...`.
 
 ### Read slow requests as an agent
 

@@ -3,7 +3,6 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 using System.Diagnostics;
 using Databases;
 using Dtos;
-using Exceptions;
 using Mappings;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -42,13 +41,7 @@ public static class UpdateUserRole
                     .GetById(request.Id, ct);
                 user.GuardAllows(UserAction.UpdateRole(), caller);
 
-                var admins = await dbContext.LoadAdminCaseAsync(user, new AdminChange.NewRole(newRole), ct);
-                var kept = TenantAdmins.Decide(admins) switch
-                {
-                    AdminDecision.Kept k => k.Proof,
-                    AdminDecision.Refused { Refusal: AdminRefusal.LastAdmin lastAdmin } => throw Refuse(lastAdmin),
-                    _ => throw new UnreachableException(),
-                };
+                var kept = await dbContext.KeepManagerAsync(user, new ManagerChange.NewRole(newRole), ct);
 
                 var existingPermissions = user.UserPermissions.ToList();
                 var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
@@ -88,12 +81,6 @@ public static class UpdateUserRole
             }
 
             return user.ToUserDto(caller);
-        }
-
-        private static ValidationException Refuse(AdminRefusal refusal)
-        {
-            Activity.Current?.SetTag("app.user.admin_refusal", "last_admin");
-            return new ValidationException(refusal.Field, refusal.Message);
         }
     }
 }

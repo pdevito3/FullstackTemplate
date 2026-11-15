@@ -4,10 +4,15 @@ using FullstackTemplate.Server.Domain.Users;
 
 public static class UserRoleChanges
 {
-    public static User ChangeRoleIgnoringLastAdmin(this User user, UserRole role)
+    public static User ChangeRoleIgnoringLastManager(this User user, UserRole role)
+        => user.UpdateRole(KeptIgnoringLastManager(user, new ManagerChange.NewRole(role)));
+
+    public static User RemovePermissionIgnoringLastManager(this User user, Permission permission)
+        => user.RemovePermission(KeptIgnoringLastManager(user, new ManagerChange.PermissionRemoval(permission)));
+
+    private static ManagerKept KeptIgnoringLastManager(User user, ManagerChange change)
     {
-        var adminIds = user.Role == UserRole.Admin() ? [user.Id, "usr_another_admin"] : new List<string>();
-        var decision = TenantAdmins.Decide(new AdminCase(user, new AdminChange.NewRole(role), adminIds));
-        return user.UpdateRole(((AdminDecision.Kept)decision).Proof);
+        var managerIds = user.CanManageTenant ? [user.Id, "usr_another_manager"] : new List<string>();
+        return ((ManagerDecision.Kept)TenantManagers.Decide(new ManagerCase(user, change, managerIds))).Proof;
     }
 }

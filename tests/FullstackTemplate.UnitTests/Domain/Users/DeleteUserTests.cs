@@ -12,7 +12,7 @@ public class DeleteUserTests
     {
         // Arrange
         var user = User.Create(new FakeUserForCreation().Generate() with { Role = UserRole.User().Value });
-        var kept = ((AdminDecision.Kept)TenantAdmins.Decide(new AdminCase(user, new AdminChange.Removal(), []))).Proof;
+        var kept = ((ManagerDecision.Kept)TenantManagers.Decide(new ManagerCase(user, new ManagerChange.Removal(), []))).Proof;
 
         // Act
         user.Delete(kept);
@@ -26,8 +26,8 @@ public class DeleteUserTests
     {
         // Arrange
         var user = User.Create(new FakeUserForCreation().Generate() with { Role = UserRole.User().Value });
-        var roleChange = ((AdminDecision.Kept)TenantAdmins.Decide(
-            new AdminCase(user, new AdminChange.NewRole(UserRole.User()), []))).Proof;
+        var roleChange = ((ManagerDecision.Kept)TenantManagers.Decide(
+            new ManagerCase(user, new ManagerChange.NewRole(UserRole.User()), []))).Proof;
 
         // Act
         var act = () => user.Delete(roleChange);

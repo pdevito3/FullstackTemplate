@@ -51,7 +51,7 @@ public class DomainEventSaveTests : TestBase
         await using var services = TestFixture.BuildServiceProvider(s => s.AddTestHandler<TenantUpdated>(async (_, db, ct) =>
         {
             var user = await db.Users.SingleAsync(u => u.Id == userId, ct);
-            user.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
+            user.ChangeRoleIgnoringLastManager(UserRole.Admin());
             if (failures-- > 0)
                 throw new InvalidOperationException("The handler failed.");
         }));
@@ -122,7 +122,7 @@ public class DomainEventSaveTests : TestBase
             .AddTestHandler<TenantUpdated>(async (e, db, ct) =>
             {
                 runs.Add($"{nameof(TenantUpdated)}:{e.Id}");
-                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).ChangeRoleIgnoringLastAdmin(UserRole.User());
+                (await db.Users.SingleAsync(u => u.Id == adminId, ct)).ChangeRoleIgnoringLastManager(UserRole.User());
             }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();
@@ -133,9 +133,9 @@ public class DomainEventSaveTests : TestBase
         var secondUser = await db.Users.SingleAsync(u => u.Id == scenario.SecondUser.Id);
 
         // Act
-        secondUser.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
+        secondUser.ChangeRoleIgnoringLastManager(UserRole.Admin());
         tenant.Update(new TenantForUpdate { Name = $"renamed-{Guid.NewGuid()}", Version = tenant.Version });
-        firstUser.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
+        firstUser.ChangeRoleIgnoringLastManager(UserRole.Admin());
         await db.SaveChangesAsync();
 
         // Assert

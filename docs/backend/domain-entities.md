@@ -66,9 +66,9 @@ public class User : BaseEntity, ITenantable, IDeletedWithEvent
     }
 
     // ...
-    public User UpdateRole(AdminKept kept)
+    public User UpdateRole(ManagerKept kept)
     {
-        if (kept.UserId != Id || kept.Change is not AdminChange.NewRole { Role: var newRole })
+        if (kept.UserId != Id || kept.Change is not ManagerChange.NewRole { Role: var newRole })
             throw new ArgumentException("Give the proof of a role change of this user.", nameof(kept));
         if (newRole == Role)
             return this;

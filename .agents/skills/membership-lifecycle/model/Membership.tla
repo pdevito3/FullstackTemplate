@@ -17,16 +17,18 @@ CONSTANTS
     Invs,          \* invites of tenant T1, all Pending at the start
     Revokes,       \* invites that an admin sends one RevokeInvite.Command for
     Initiators,    \* subs that send one InitiateUserAndTenant.Command each
+    InitiateRole(_), \* the role that the start of a tenant names for its first user: "Admin", or "User" in a direct call
     DeleteTenantReq, \* TRUE: an admin sends one DeleteTenant.Command for T1
-    Admins,        \* the subs of the admins of T1 at the start, as a sequence
-    Changes,       \* member changes: one UpdateUserRole.Command to User, or one DeleteUser.Command, each
+    Admins,        \* the subs of the admins of T1 at the start, as a sequence. Each holds every permission
+    Changes,       \* member changes: one UpdateUserRole.Command to User, RemoveUserPermission.Command, or DeleteUser.Command each
     ChangeSub(_),  \* the sub of the user that the change names
-    ChangeKind(_), \* "demote" (UpdateUserRole to User) or "delete" (DeleteUser)
+    ChangeKind(_), \* "demote" (UpdateUserRole to User), "revoke" (RemoveUserPermission), or "delete" (DeleteUser)
     MaxRuns,       \* RaceRetryBehavior.MaxRuns (20 in the code)
     InviteVersionCheck, \* TRUE in the code. FALSE mirrors a scratch break: no xmin check on an invite update
     ClaimTakesLock, \* TRUE in the code. FALSE mirrors a scratch break: the claim skips RootLock.Tenant.RunSharedAsync
-    LastAdminRule, \* TRUE in the code. FALSE mirrors the code before UM-4: no check of the last admin
-    AdminTakesLock \* TRUE in the code. FALSE mirrors a scratch break: the change checks UM-4 with no tenant lock
+    LastManagerRule, \* TRUE in the code. FALSE mirrors the code before UM-4: no check of the last manager
+    ManagerTakesLock, \* TRUE in the code. FALSE mirrors a scratch break: the change checks UM-4 with no tenant lock
+    FirstUserRule  \* TRUE in the code. FALSE mirrors the code before: the first user of a tenant can have any role
 
 T1 == "t1"
 \* A new tenant of InitiateUserAndTenant is named after the sub that starts it.
@@ -38,7 +40,7 @@ VARIABLES
     tenantLive,   \* [Tenants -> BOOLEAN]. Tenant rows (soft delete)
     inv,          \* [Invs -> [status, deleted, ver, by]]. Invite rows, ver is xmin
     expired,      \* [Invs -> BOOLEAN]. The clock passed ExpiresAt
-    users,        \* Seq of [sub, tenant, from, live, ver, admin]. User rows (soft delete), admin is the role
+    users,        \* Seq of [sub, tenant, from, live, ver, manager]. User rows (soft delete). A manager holds every permission
     moves,        \* ghost: [Invs -> Nat], the status changes of each invite
     cpc, cruns, csnap, cres, \* claim requests: step, runs, loaded version, result
     rpc, rruns, rsnap, rres, \* revoke requests
@@ -64,8 +66,8 @@ HasLiveUser(s) == \E k \in UserIds : users[k].live /\ users[k].sub = s
 LiveT1Users == {k \in UserIds : users[k].live /\ users[k].tenant = T1}
 Claimable(i) == inv[i].status = "Pending" /\ ~expired[i]   \* Invite.GuardClaimable
 LiveUsersOf(s) == {k \in UserIds : users[k].live /\ users[k].sub = s}
-\* "users.load_admins" (AdminCaseLoader): the live admins of the tenant, less the user.
-OtherAdmins(t, k) == {m \in UserIds : m # k /\ users[m].live /\ users[m].tenant = t /\ users[m].admin}
+\* "users.load_managers" (ManagerCaseLoader): the live managers of the tenant, less the user.
+OtherManagers(t, k) == {m \in UserIds : m # k /\ users[m].live /\ users[m].tenant = t /\ users[m].manager}
 Release(r) == [t \in Tenants |-> IF excl[t] = r THEN NoLock ELSE excl[t]]
 
 Init ==
@@ -73,7 +75,7 @@ Init ==
     /\ inv = [i \in Invs |-> [status |-> "Pending", deleted |-> FALSE, ver |-> 0, by |-> 0]]
     /\ expired = [i \in Invs |-> FALSE]
     /\ users = [k \in 1..Len(Admins) |->
-                  [sub |-> Admins[k], tenant |-> T1, from |-> NoInvite, live |-> TRUE, ver |-> 0, admin |-> TRUE]]
+                  [sub |-> Admins[k], tenant |-> T1, from |-> NoInvite, live |-> TRUE, ver |-> 0, manager |-> TRUE]]
     /\ moves = [i \in Invs |-> 0]
     /\ cpc = [c \in Claims |-> "idle"] /\ cruns = [c \in Claims |-> 1]
     /\ csnap = [c \in Claims |-> 0] /\ cres = [c \in Claims |-> "none"]
@@ -130,7 +132,7 @@ ClaimSave(c) ==
     IN
     /\ cpc[c] = "loaded"
     /\ \/ /\ ~stale /\ ~dup
-          /\ users' = Append(users, [sub |-> SubOf(c), tenant |-> T1, from |-> i, live |-> TRUE, ver |-> 0, admin |-> FALSE])
+          /\ users' = Append(users, [sub |-> SubOf(c), tenant |-> T1, from |-> i, live |-> TRUE, ver |-> 0, manager |-> FALSE])
           /\ inv' = [inv EXCEPT ![i].status = "Claimed", ![i].by = Len(users) + 1, ![i].ver = @ + 1]
           /\ moves' = [moves EXCEPT ![i] = IF inv[i].status # "Claimed" THEN @ + 1 ELSE @]
           /\ ClaimEnd(c, "ok")
@@ -244,14 +246,15 @@ DeleteFails(d) ==
                    rpc, rruns, rsnap, rres, ipc, ires, changeVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-\* UpdateUserRole (Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs) to the User role, and
-\* DeleteUser (Domain/Users/Features/DeleteUser/DeleteUser.cs). Both run again when raced, and both check UM-4
-\* with TenantAdmins.Decide (Domain/Users/TenantAdmins.cs). A soft delete frees the identifier, so the sub can
-\* join again.
+\* UpdateUserRole (Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs) to the User role,
+\* RemoveUserPermission (Domain/Users/Features/RemoveUserPermission/RemoveUserPermission.cs), and
+\* DeleteUser (Domain/Users/Features/DeleteUser/DeleteUser.cs). Each runs again when raced, and each checks UM-4
+\* with TenantManagers.Decide (Domain/Users/TenantManagers.cs). A soft delete frees the identifier, so the sub can
+\* join again. A permission removal also writes the user row, so it has the xmin check too.
 
 ChangeEnd(r, res) == mpc' = [mpc EXCEPT ![r] = "done"] /\ mres' = [mres EXCEPT ![r] = res] /\ excl' = Release(r)
 
-\* "users.update_role.find_tenant" or "users.delete.find_tenant", with no lock. The request names the ID of the user
+\* The ".find_tenant" lookup of the command, with no lock. The request names the ID of the user
 \* that the admin saw, here the live user of the sub.
 ChangeFind(r) ==
     /\ mpc[r] = "idle"
@@ -261,25 +264,27 @@ ChangeFind(r) ==
     /\ UNCHANGED <<tenantLive, inv, expired, users, shared, mruns, msnap, cpc, cruns, csnap, cres,
                    rpc, rruns, rsnap, rres, dpc, druns, dsnap, dres, ipc, ires, ghostVars>>
 
-\* RootLock.Tenant.RunExclusiveAsync on the tenant of the user, the load of the user, the load of the admins of
-\* the tenant, and TenantAdmins.Decide in memory. A demote of a user who is not an admin changes nothing.
+\* RootLock.Tenant.RunExclusiveAsync on the tenant of the user, the load of the user, the load of the managers of
+\* the tenant, and TenantManagers.Decide in memory. A demote or a revoke of a user who is not a manager does not
+\* change who can manage, so the model skips its write.
 ChangeLoad(r) ==
     LET k == mk[r]
         t == users[k].tenant
     IN
     /\ mpc[r] = "found"
-    /\ AdminTakesLock => (excl[t] = NoLock /\ (t = T1 => shared = {}))
+    /\ ManagerTakesLock => (excl[t] = NoLock /\ (t = T1 => shared = {}))
     /\ IF ~users[k].live THEN ChangeEnd(r, "404") /\ UNCHANGED msnap
-       ELSE IF LastAdminRule /\ users[k].admin /\ OtherAdmins(t, k) = {}
+       ELSE IF LastManagerRule /\ users[k].manager /\ OtherManagers(t, k) = {}
             THEN ChangeEnd(r, "422") /\ UNCHANGED msnap
-       ELSE IF ChangeKind(r) = "demote" /\ ~users[k].admin THEN ChangeEnd(r, "ok") /\ UNCHANGED msnap
+       ELSE IF ChangeKind(r) \in {"demote", "revoke"} /\ ~users[k].manager THEN ChangeEnd(r, "ok") /\ UNCHANGED msnap
        ELSE /\ mpc' = [mpc EXCEPT ![r] = "loaded"] /\ msnap' = [msnap EXCEPT ![r] = users[k].ver]
-            /\ excl' = IF AdminTakesLock THEN [excl EXCEPT ![t] = r] ELSE excl
+            /\ excl' = IF ManagerTakesLock THEN [excl EXCEPT ![t] = r] ELSE excl
             /\ UNCHANGED mres
     /\ UNCHANGED <<tenantLive, inv, expired, users, shared, mruns, mk, cpc, cruns, csnap, cres,
                    rpc, rruns, rsnap, rres, dpc, druns, dsnap, dres, ipc, ires, ghostVars>>
 
-\* The one save updates the user row with the xmin check: the new role and permissions, or the soft delete.
+\* The one save updates the user row with the xmin check: the new role and permissions, the permission removal, or
+\* the soft delete.
 \* On StaleVersionException, RaceRetryBehavior runs the handler again from the lookup.
 ChangeSave(r) ==
     LET k == mk[r] IN
@@ -290,8 +295,8 @@ ChangeSave(r) ==
                     /\ excl' = Release(r) /\ UNCHANGED mres
                ELSE ChangeEnd(r, "409-concurrent") /\ UNCHANGED mruns
             /\ UNCHANGED users
-       ELSE /\ users' = IF ChangeKind(r) = "demote"
-                        THEN [users EXCEPT ![k].admin = FALSE, ![k].ver = @ + 1]
+       ELSE /\ users' = IF ChangeKind(r) \in {"demote", "revoke"}
+                        THEN [users EXCEPT ![k].manager = FALSE, ![k].ver = @ + 1]
                         ELSE [users EXCEPT ![k].live = FALSE, ![k].ver = @ + 1]
             /\ ChangeEnd(r, "ok")
             /\ UNCHANGED mruns
@@ -307,10 +312,13 @@ ChangeFails(r) ==
 -----------------------------------------------------------------------------
 \* InitiateUserAndTenant (Domain/Users/Features/InitiateUserAndTenant/InitiateUserAndTenant.cs)
 
+\* User.CreateFirstOfTenant refuses a first user who cannot manage the tenant. Then
 \* "users.initiate.identifier_in_use", with no lock.
 InitiateCheck(s) ==
     /\ ipc[s] = "idle"
-    /\ IF HasLiveUser(s)
+    /\ IF FirstUserRule /\ InitiateRole(s) # "Admin"
+       THEN ipc' = [ipc EXCEPT ![s] = "done"] /\ ires' = [ires EXCEPT ![s] = "422"]
+       ELSE IF HasLiveUser(s)
        THEN ipc' = [ipc EXCEPT ![s] = "done"] /\ ires' = [ires EXCEPT ![s] = "409"]
        ELSE ipc' = [ipc EXCEPT ![s] = "checked"] /\ UNCHANGED ires
     /\ UNCHANGED <<tenantLive, inv, expired, users, shared, excl, cpc, cruns, csnap, cres,
@@ -323,7 +331,8 @@ InitiateSave(s) ==
     /\ IF HasLiveUser(s)
        THEN ires' = [ires EXCEPT ![s] = "409"] /\ UNCHANGED <<tenantLive, users>>
        ELSE /\ tenantLive' = [tenantLive EXCEPT ![s] = TRUE]
-            /\ users' = Append(users, [sub |-> s, tenant |-> s, from |-> NoInvite, live |-> TRUE, ver |-> 0, admin |-> TRUE])
+            /\ users' = Append(users, [sub |-> s, tenant |-> s, from |-> NoInvite, live |-> TRUE, ver |-> 0,
+                                       manager |-> InitiateRole(s) = "Admin"])
             /\ ires' = [ires EXCEPT ![s] = "ok"]
     /\ UNCHANGED <<inv, expired, shared, excl, cpc, cruns, csnap, cres,
                    rpc, rruns, rsnap, rres, dpc, druns, dsnap, dres, changeVars, ghostVars>>
@@ -398,9 +407,9 @@ ClaimedMeansOneUser ==
 \* Its answer is 410, or 404 when a tenant delete also took the invite, or 409 when the sub got a user meanwhile.
 RevokeBeatsClaim == \A c \in Claims : revokedUnder[c] => cres[c] \in {"none", "410", "404", "409", "failed"}
 
-\* Each live tenant has a live admin, so someone can still manage it (UM-4).
-TenantKeepsAnAdmin ==
-    \A t \in Tenants : tenantLive[t] => \E k \in UserIds : users[k].live /\ users[k].tenant = t /\ users[k].admin
+\* Each live tenant has a live user who holds every permission, so someone can still manage it (UM-4).
+TenantKeepsAManager ==
+    \A t \in Tenants : tenantLive[t] => \E k \in UserIds : users[k].live /\ users[k].tenant = t /\ users[k].manager
 
 \* Each run-again loop stops at MaxRuns.
 RunsBounded ==

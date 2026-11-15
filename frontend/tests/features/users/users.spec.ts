@@ -151,34 +151,34 @@ test.describe('the users of a tenant', () => {
     await expect(users.at.detailHeading('Grace Hopper')).toBeFocused()
   })
 
-  test('the only admin keeps the role, and the toast says to make another user an admin first', { tag: ['@UM-2', '@UM-4'] }, async ({ page, api }) => {
-    const lastAdmin = 'This user is the only admin of the tenant. Make another user an admin first.'
+  test('the only manager keeps the role, and the toast says to make another user an admin first', { tag: ['@UM-2', '@UM-4'] }, async ({ page, api }) => {
+    const lastManager = 'This user is the only user who can manage the tenant. Make another user an admin first.'
     const ana = aUser().named('Ana Admin').inRole('Admin').seenByAdmin()
     const { id } = ana.build()
-    api.mock(usersApi.oneIs(ana), usersApi.roleChangeFails(id, aProblem().invalid({ role: [lastAdmin] }).saying(lastAdmin)))
+    api.mock(usersApi.oneIs(ana), usersApi.roleChangeFails(id, aProblem().invalid({ role: [lastManager] }).saying(lastManager)))
     const users = usersPage(page)
     await users.openDetail(id)
 
     await users.pickRole('Ana Admin', 'User')
     await users.confirmRoleRefused(id)
 
-    await expect(users.at.toast(lastAdmin)).toBeVisible()
+    await expect(users.at.toast(lastManager)).toBeVisible()
     await expect(users.at.detail('Admin')).toBeVisible()
     await expect(users.at.detailHeading('Ana Admin')).toBeFocused()
   })
 
-  test('the only admin stays on the page after a delete, and the toast says to make another user an admin first', { tag: ['@UM-3', '@UM-4'] }, async ({ page, api }) => {
-    const lastAdmin = 'This user is the only admin of the tenant. Make another user an admin first.'
+  test('the only manager stays on the page after a delete, and the toast says to make another user an admin first', { tag: ['@UM-3', '@UM-4'] }, async ({ page, api }) => {
+    const lastManager = 'This user is the only user who can manage the tenant. Make another user an admin first.'
     const ana = aUser().named('Ana Admin').inRole('Admin').seenByAdmin()
     const { id } = ana.build()
-    api.mock(usersApi.oneIs(ana), usersApi.deleteFails(id, aProblem().invalid({ role: [lastAdmin] }).saying(lastAdmin)))
+    api.mock(usersApi.oneIs(ana), usersApi.deleteFails(id, aProblem().invalid({ role: [lastManager] }).saying(lastManager)))
     const users = usersPage(page)
     await users.openDetail(id)
 
     await users.askToDelete('Ana Admin')
     await users.confirmDeleteRefused(id)
 
-    await expect(users.at.toast(lastAdmin)).toBeVisible()
+    await expect(users.at.toast(lastManager)).toBeVisible()
     await expect(page).toHaveURL(`/users/${id}`)
     await expect(users.at.detailHeading('Ana Admin')).toBeFocused()
   })

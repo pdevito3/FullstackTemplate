@@ -67,6 +67,12 @@ _Avoid_: Admin client, super client
 An OAuth client that is not the first-party client, not an all-tenants client, and not an agent for the token. It sees no data and holds no permission.
 _Avoid_: Unregistered agent, guest
 
+### Membership
+
+**Tenant manager**:
+A live user of a tenant who holds every permission. Nobody can grant a permission that they do not hold, so only a tenant manager can give any permission or role back. Each tenant keeps at least one (UM-4). The Admin role gives every permission, but a user is a tenant manager by the permissions they hold, not by their role.
+_Avoid_: Admin, owner
+
 ### Decisions
 
 **Decision shape**:

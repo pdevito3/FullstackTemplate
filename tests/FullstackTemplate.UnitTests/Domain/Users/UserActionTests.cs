@@ -181,7 +181,7 @@ public class UserActionTests
         // Arrange
         var user = UserWithRole("Admin");
         var callerBeforeTheChange = OwnRecord(user);
-        user.ChangeRoleIgnoringLastAdmin(UserRole.User());
+        user.ChangeRoleIgnoringLastManager(UserRole.User());
 
         // Act
         var allowedActions = user.AllowedActions(callerBeforeTheChange);

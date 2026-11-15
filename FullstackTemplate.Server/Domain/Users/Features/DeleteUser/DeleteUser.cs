@@ -2,7 +2,6 @@ namespace FullstackTemplate.Server.Domain.Users.Features;
 
 using System.Diagnostics;
 using Databases;
-using Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Resources;
@@ -36,13 +35,7 @@ public static class DeleteUser
                     .GetById(request.Id, ct);
                 user.GuardAllows(UserAction.Delete(), caller);
 
-                var admins = await dbContext.LoadAdminCaseAsync(user, new AdminChange.Removal(), ct);
-                var kept = TenantAdmins.Decide(admins) switch
-                {
-                    AdminDecision.Kept k => k.Proof,
-                    AdminDecision.Refused { Refusal: AdminRefusal.LastAdmin lastAdmin } => throw Refuse(lastAdmin),
-                    _ => throw new UnreachableException(),
-                };
+                var kept = await dbContext.KeepManagerAsync(user, new ManagerChange.Removal(), ct);
 
                 // Remove permissions first (due to PropertyAccessMode.Field)
                 foreach (var permission in user.UserPermissions.ToList())
@@ -56,12 +49,6 @@ public static class DeleteUser
             }, cancellationToken);
 
             _logger.Here().Information("Deleted user {UserId}", user.Id);
-        }
-
-        private static ValidationException Refuse(AdminRefusal refusal)
-        {
-            Activity.Current?.SetTag("app.user.admin_refusal", "last_admin");
-            return new ValidationException(refusal.Field, refusal.Message);
         }
     }
 }

@@ -14,6 +14,7 @@ using FullstackTemplate.Server.Resources.Entrypoints.Http;
 using FullstackTemplate.Server.Resources.Entrypoints.Mcp;
 using FullstackTemplate.SharedTestHelpers.EntityGraphs;
 using FullstackTemplate.SharedTestHelpers.Fakes.Attachments;
+using FullstackTemplate.SharedTestHelpers.Fakes.User;
 // example:start
 using FullstackTemplate.Server.Examples.Workshops;
 using FullstackTemplate.SharedTestHelpers.Examples.EntityGraphs;
@@ -384,7 +385,7 @@ public class EndpointAccessSweepTests : TestBase
             .AddAgent(out var agent);
         var (member, admin, otherUser) = (users[0], users[1], users[2]);
         foreach (var permission in member.UserPermissions.ToList())
-            member.RemovePermission(permission);
+            member.RemovePermissionIgnoringLastManager(permission.Permission);
         admin.AddPermissions(Permission.GetAll());
         // example:start
         var offered = (ScheduleDecision.Offered)WorkshopScheduling.Decide(new ScheduleCase(workshop, venue, DateTimeOffset.UtcNow, workshop.Version));

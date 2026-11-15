@@ -45,7 +45,7 @@ public class UpdateUserRoleTests
         // Arrange
         var user = User.Create(new FakeUserForCreation().Generate() with { Role = UserRole.User().Value });
         var other = User.Create(new FakeUserForCreation().Generate() with { Role = UserRole.User().Value });
-        var removal = ((AdminDecision.Kept)TenantAdmins.Decide(new AdminCase(user, new AdminChange.Removal(), []))).Proof;
+        var removal = ((ManagerDecision.Kept)TenantManagers.Decide(new ManagerCase(user, new ManagerChange.Removal(), []))).Proof;
 
         // Act
         var ofOther = () => user.UpdateRole(Kept(other, UserRole.Admin()));
@@ -57,7 +57,7 @@ public class UpdateUserRoleTests
         user.Role.ShouldBe(UserRole.User());
     }
 
-    private static AdminKept Kept(User user, UserRole role)
-        => ((AdminDecision.Kept)TenantAdmins.Decide(new AdminCase(user, new AdminChange.NewRole(role),
+    private static ManagerKept Kept(User user, UserRole role)
+        => ((ManagerDecision.Kept)TenantManagers.Decide(new ManagerCase(user, new ManagerChange.NewRole(role),
             user.Role == UserRole.Admin() ? [user.Id, "usr_other"] : []))).Proof;
 }

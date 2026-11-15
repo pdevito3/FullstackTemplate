@@ -627,7 +627,7 @@ public class AppDbContext(
                 case EntityState.Deleted:
                     if (entry.Entity is IDeletedWithEvent { DeleteQueued: false })
                         throw new InvalidOperationException(entry.Entity is User
-                            ? "Remove a user with Remove(user.Delete(kept)), where kept is the proof of TenantAdmins.Decide, so that the save queues UserDeleted."
+                            ? "Remove a user with Remove(user.Delete(kept)), where kept is the proof of TenantManagers.Decide, so that the save queues UserDeleted."
                             : $"Remove a {entry.Metadata.ClrType.Name} with Remove(entity.Delete()), so that the save queues its delete event.");
 
                     entry.State = EntityState.Modified;

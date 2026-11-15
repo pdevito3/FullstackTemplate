@@ -53,7 +53,7 @@ public class UserManagementAccessTests : TestBase
     {
         // Arrange
         var (admin, other) = await AddTwoUsersAsync("Admin", "User",
-            first => first.RemovePermission(Permission.ManageUsers()));
+            first => first.RemovePermissionIgnoringLastManager(Permission.ManageUsers()));
         SignInAs(admin);
 
         // Act

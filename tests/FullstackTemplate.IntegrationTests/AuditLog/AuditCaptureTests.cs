@@ -167,7 +167,7 @@ public class AuditCaptureTests : TestBase
         var removed = loaded.UserPermissions.First();
 
         // Act
-        loaded.RemovePermission(removed.Permission);
+        loaded.RemovePermissionIgnoringLastManager(removed.Permission);
         await db.SaveChangesAsync();
 
         // Assert

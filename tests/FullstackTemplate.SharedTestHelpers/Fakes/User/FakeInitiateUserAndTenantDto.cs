@@ -1,6 +1,7 @@
 namespace FullstackTemplate.SharedTestHelpers.Fakes.User;
 
 using AutoBogus;
+using FullstackTemplate.Server.Domain.Users;
 using FullstackTemplate.Server.Domain.Users.Dtos;
 using Tenant;
 
@@ -14,6 +15,6 @@ public sealed class FakeInitiateUserAndTenantDto : AutoFaker<InitiateUserAndTena
         RuleFor(x => x.Identifier, UserRules.Identifier);
         RuleFor(x => x.Email, UserRules.Email);
         RuleFor(x => x.Username, UserRules.Username);
-        RuleFor(x => x.Role, UserRules.Role);
+        RuleFor(x => x.Role, _ => UserRole.Admin().Value);
     }
 }

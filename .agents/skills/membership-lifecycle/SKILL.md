@@ -1,6 +1,6 @@
 ---
 name: membership-lifecycle
-description: Model-checks tenant membership with TLA+ and TLC - the invite lifecycle (Pending, Claimed, Revoked, and the computed expiry), user provisioning, the role change and delete of a user under the last-admin rule, and tenant delete - over every order of the concurrent requests. Use when you change ClaimInvite, RevokeInvite, Invite, InviteStatus, InitiateUserAndTenant, UpdateUserRole, DeleteUser, TenantAdmins, AdminCaseLoader, DeleteTenant, TenantOwnedRows, RootLock, RaceRetryBehavior, the xmin version convention, or the users.identifier index, or when you ask whether a race in these flows can make a second user, a user in a deleted tenant, a tenant with no admin, or an invite with two outcomes.
+description: Model-checks tenant membership with TLA+ and TLC - the invite lifecycle (Pending, Claimed, Revoked, and the computed expiry), user provisioning, the role change, permission removal, and delete of a user under the last-manager rule, and tenant delete - over every order of the concurrent requests. Use when you change ClaimInvite, RevokeInvite, Invite, InviteStatus, InitiateUserAndTenant, UpdateUserRole, RemoveUserPermission, DeleteUser, TenantManagers, ManagerCaseLoader, DeleteTenant, TenantOwnedRows, RootLock, RaceRetryBehavior, the xmin version convention, or the users.identifier index, or when you ask whether a race in these flows can make a second user, a user in a deleted tenant, a tenant with no user who can manage it, or an invite with two outcomes.
 ---
 
 # Membership lifecycle
@@ -16,7 +16,7 @@ A TLA+ model of the requests that add a user to a tenant or take one out. TLC ch
 | `OneOutcomePerInvite` | An invite leaves Pending at most one time. | An admin revokes an invite and the colleague is in the tenant anyway, or the reverse. |
 | `ClaimedMeansOneUser` | A Claimed invite gave exactly one user, the one in `ClaimedByUserId`. An invite that is not Claimed gave no user. | One link adds two people. |
 | `RevokeBeatsClaim` | A claim that a revoke beat after the token lookup or the load adds no user. It gets 410, or 404 when a tenant delete also took the invite, or 409 when the sub got a user meanwhile. | A revoked link still adds a user. |
-| `TenantKeepsAnAdmin` | Each live tenant has a live admin. | No one can manage the users of the tenant, change a role, or make an invite, and only support can get the tenant back. |
+| `TenantKeepsAManager` | Each live tenant has a live user who holds every permission. | No one can manage the users of the tenant, change a role, or make an invite, and only support can get the tenant back. |
 | `RunsBounded` | Each run-again loop stops at `MaxRuns`. | A request loops without end. |
 | `EveryRequestEnds` (liveness) | Each request gets an answer: a success, a 4xx, a 409 after `MaxRuns`, or a failure. No request waits on a lock or loops forever. | A request hangs. |
 | `PendingHasWayOut` (liveness) | A Pending invite always gets out: a claim, a revoke, the expiry, or the tenant delete. | An invite stays claimable forever. |
@@ -32,10 +32,10 @@ Each action in `model/Membership.tla` names its code. One action is one transact
 | `ClaimSave` | The one `SaveChangesAsync`: user insert, invite update with the xmin check, the `ix_users_identifier` index. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ClaimFindTenant` |
 | `RevokeLoad`, `RevokeSave` | `RevokeInvite.Handler`: the `invites.revoke.load` query and `Invite.Revoke`, then the save with the xmin check. No lock |
 | `DeleteLoad`, `DeleteSave` | `DeleteTenant.Handler`: the exclusive lock, `TenantOwnedRows.LoadAsync`, then one save that soft-deletes the loaded rows and the tenant. A soft delete is an update with the xmin check (`AppDbContext`, `EntityState.Deleted` to `Modified`) |
-| `ChangeFind` | `UpdateUserRole.Handler` to the User role, or `DeleteUser.Handler`: the `users.update_role.find_tenant` or `users.delete.find_tenant` lookup of the tenant of the user, with no lock |
-| `ChangeLoad` | `RootLock.Tenant.RunExclusiveAsync` on that tenant, the `.load` query of the user, `AdminCaseLoader.LoadAdminCaseAsync` (`users.load_admins`), and `TenantAdmins.Decide` in memory: 404, 422 for the only admin, or a no-op for a demote of a user who is not an admin |
-| `ChangeSave` | The one `SaveChangesAsync` of the user row with the xmin check: the new role, or the soft delete that frees the identifier. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ChangeFind` |
-| `InitiateCheck`, `InitiateSave` | `InitiateUserAndTenant.Handler`: the `users.initiate.identifier_in_use` check, then the save of the tenant and the user, with the index as the backstop |
+| `ChangeFind` | `UpdateUserRole.Handler` to the User role, `RemoveUserPermission.Handler`, or `DeleteUser.Handler`: the `users.update_role.find_tenant`, `users.remove_permission.find_tenant`, or `users.delete.find_tenant` lookup of the tenant of the user, with no lock |
+| `ChangeLoad` | `RootLock.Tenant.RunExclusiveAsync` on that tenant, the `.load` query of the user, `ManagerCaseLoader.KeepManagerAsync` (`users.load_managers`, then `TenantManagers.Decide` in memory): 404, 422 for the only manager, or no change to who can manage for a demote or a permission removal of a user who is not a manager. The model skips that write |
+| `ChangeSave` | The one `SaveChangesAsync` of the user row with the xmin check: the new role, the permission removal (a child change also updates the user row), or the soft delete that frees the identifier. On `StaleVersionException`, `RaceRetryBehavior` runs the handler again from `ChangeFind` |
+| `InitiateCheck`, `InitiateSave` | `InitiateUserAndTenant.Handler`: `User.CreateFirstOfTenant`, which gives 422 for a first user who cannot manage the tenant, the `users.initiate.identifier_in_use` check, then the save of the tenant and the user, with the index as the backstop |
 | `ClockPassesExpiry` | Time passes `ExpiresAt`. `Invite.IsExpiredAt` computes the expiry, so no process must run for it |
 | `*Fails` | A crash, a cancel, a timeout, or a restart. The transaction rolls back and the session lock ends with its connection |
 
@@ -43,10 +43,10 @@ Each action in `model/Membership.tla` names its code. One action is one transact
 
 - `MC.cfg` (safety, about 25 million states, 4 minutes): tenant t1 starts with the admins a1 and a2. Subs s1 and s2 both claim invite i1, s1 also claims i2, an admin revokes i1, s2 starts its own tenant, and an admin deletes tenant t1. Admin a1 demotes itself (m1) while another admin removes a2 (u1), and an admin removes s1 (u2). `MaxRuns = 3`.
 - `Live.cfg` (liveness, about 6.7 million states, 18 minutes): the same with the demote of a1 and the removal of a2 only, and `MaxRuns = 2`.
+- `Managers.cfg` (safety and liveness, 5852 states, seconds): no invites. Admin a1 demotes itself (m1) while another admin removes a permission from a2 (r1) and removes a2 (u1), an admin deletes tenant t1, s2 starts its own tenant, and s3 sends a direct call that starts a tenant with the User role. `MaxRuns = 3`. With the invites of `MC.cfg` too, the run passes 115 million states and does not end in an hour, so the paths of UM-4 have their own config.
 - `Chart.cfg` (384 states): one admin, one claim, one revoke, one tenant delete, on one invite, and no role change or user delete. `/statechart` draws it.
 - The code has `MaxRuns = 20`. The model uses 2 or 3, because a run again only repeats steps that the model already covers.
-- Left out: the email match (INV-9, a 403 with no write), `AddInvite` (invites exist at the start), tenant names, a promotion to Admin and the other user edits (they cannot take an admin away), the client that sends a request again after a failure, the fairness of the Postgres lock queue, and the execution strategy's own run again after a transient failure (the model shows it as a failure and a new run would be a new request).
-- Assumed: `InitiateUserAndTenant` makes its first user an admin, as the SPA asks. The code takes the role from the request, so a direct call with the User role starts a tenant with no admin, and `TenantKeepsAnAdmin` does not cover it. The spec lists this as an open decision of UM-4. The rule also counts the Admin role, not the `manage_users` and `manage_user_access` permissions.
+- Left out: the email match (INV-9, a 403 with no write), `AddInvite` (invites exist at the start), tenant names, a promotion to Admin, an added permission, and the other user edits (they cannot take a manager away; an added permission that lands after the load of the user makes `KeepManagerAsync` run the command again, which `LastManagerTests` tests), a release that adds a permission (`GrantPermissionToManagers` gives it to each manager, which `GrantPermissionMigrationTests` tests), which permission a removal names (the model treats each removal as one that a manager needs), the client that sends a request again after a failure, the fairness of the Postgres lock queue, and the execution strategy's own run again after a transient failure (the model shows it as a failure and a new run would be a new request).
 - Liveness assumes weak fairness: a request that can take its next step takes it in the end, and the clock keeps moving.
 
 ## Run
@@ -57,7 +57,7 @@ From the repo root:
 .agents/skills/membership-lifecycle/check.sh
 ```
 
-It installs the pinned TLC and Java from `model/mise.toml` (tla2tools 1.7.4, temurin-25), runs the three configs, and prints `PASS` or `FAIL` per config with the TLC log path. About 25 minutes, most of it the liveness check of `Live.cfg`. To run one config: `check.sh MC.cfg`.
+It installs the pinned TLC and Java from `model/mise.toml` (tla2tools 1.7.4, temurin-25), runs the four configs, and prints `PASS` or `FAIL` per config with the TLC log path. About 20 minutes, most of it the liveness check of `Live.cfg`. To run one config: `check.sh MC.cfg`.
 
 Read each result with the `/statechart` skill: run it on `model/MC.tla` with `--config model/<CONFIG>` and `--view model/view.mjs`, and an `--out` folder outside the repo. On a failure it gives the shortest path for each rule that breaks, in the words of `view.mjs`. On `Chart.cfg` it also draws the chart of the invite's states. `MC.cfg` is too large for a chart, and `/statechart` checks it with one worker, so it is slower than `check.sh`.
 
@@ -72,7 +72,7 @@ When a rule breaks:
 
 ## When the code changes
 
-Compare the covered files below with the sync commit: `git diff <sync commit> -- <files>`. For each change, update the action in the table and in `Membership.tla`, run `check.sh`, and move the sync commit forward only after you confirm that the model describes the code at the new commit. To prove that a rule can still fail, switch `InviteVersionCheck`, `ClaimTakesLock`, `LastAdminRule`, or `AdminTakesLock` to `FALSE` in a config, see the failure, and switch it back.
+Compare the covered files below with the sync commit: `git diff <sync commit> -- <files>`. For each change, update the action in the table and in `Membership.tla`, run `check.sh`, and move the sync commit forward only after you confirm that the model describes the code at the new commit. To prove that a rule can still fail, switch `InviteVersionCheck`, `ClaimTakesLock`, `LastManagerRule`, `ManagerTakesLock`, or `FirstUserRule` to `FALSE` in a config, see the failure, and switch it back.
 
 ## Coverage record
 
@@ -84,10 +84,11 @@ Sync commit: `c0f2d686` with the UM-4 change of the branch `fix/membership-exits
 - `FullstackTemplate.Server/Domain/Invites/InviteStatus.cs` - the `Next` of each status
 - `FullstackTemplate.Server/Domain/Users/Features/InitiateUserAndTenant/InitiateUserAndTenant.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Users/Features/UpdateUserRole/UpdateUserRole.cs` - `Handler.Handle`
+- `FullstackTemplate.Server/Domain/Users/Features/RemoveUserPermission/RemoveUserPermission.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Domain/Users/Features/DeleteUser/DeleteUser.cs` - `Handler.Handle`
-- `FullstackTemplate.Server/Domain/Users/TenantAdmins.cs` - `Decide`, `KeepsAnAdmin`
-- `FullstackTemplate.Server/Domain/Users/AdminCaseLoader.cs` - `LoadAdminCaseAsync`
-- `FullstackTemplate.Server/Domain/Users/User.cs` - `UpdateRole`, `Delete`
+- `FullstackTemplate.Server/Domain/Users/TenantManagers.cs` - `CanManage`, `Decide`, `KeepsAManager`, `ManagerChange.PermissionsAfter`
+- `FullstackTemplate.Server/Domain/Users/ManagerCaseLoader.cs` - `KeepManagerAsync`, `LoadManagerCaseAsync`
+- `FullstackTemplate.Server/Domain/Users/User.cs` - `CreateFirstOfTenant`, `UpdateRole`, `RemovePermission`, `Delete`
 - `FullstackTemplate.Server/Domain/Tenants/Features/DeleteTenant/DeleteTenant.cs` - `Handler.Handle`
 - `FullstackTemplate.Server/Databases/TenantOwnedRows.cs` - `LoadAsync`
 - `FullstackTemplate.Server/Databases/RootLock.cs` - `RunSharedAsync`, `RunExclusiveAsync`, `FreeAsync`
@@ -99,8 +100,10 @@ Sync commit: `c0f2d686` with the UM-4 change of the branch `fix/membership-exits
 ## Findings (at the sync commit)
 
 - All rules hold at the bounds above. No reachable bug.
-- Before UM-4 (`LastAdminRule = FALSE` and `AdminTakesLock = FALSE`, the code at `c0f2d686`), `TenantKeepsAnAdmin` breaks with no race. `LastAdminRule = FALSE` alone gives the same path. Shortest path: admin a1 demotes itself and commits, then an admin removes a2 and commits. The tenant is live with no admin.
-- With the rule but no lock (`AdminTakesLock = FALSE`), `TenantKeepsAnAdmin` still breaks. Shortest path: the demote of a1 loads the admins (a1 and a2), the removal of a2 loads the same admins, each passes `TenantAdmins.Decide`, and each commits. The two saves write different user rows, so no xmin check catches the race. `LastAdminTests.two_admins_who_demote_each_other_at_once_leave_one_admin` and `two_admins_who_remove_each_other_at_once_leave_one_admin` pause the first request after `users.load_admins`, so it has read both admins, and prove that the rival waits on the lock. Without the lock, the rival does not wait and the tests fail.
+- Without the first-user rule (`FirstUserRule = FALSE` in `Managers.cfg`), `TenantKeepsAManager` breaks in two steps: s3 starts a tenant with the User role, and the save commits. The new tenant has no user who can manage it.
+- With `Changes` set to the demote of a1 and the permission removal from a2 only (m1 and r1): with `LastManagerRule = FALSE`, a1 demotes itself and commits, then the removal from a2 commits. With `ManagerTakesLock = FALSE`, both load the managers (a1 and a2), both pass `TenantManagers.Decide`, and both commit. `LastManagerTests.two_managers_who_remove_a_permission_from_each_other_at_once_leave_one_manager` proves that the rival waits on the lock.
+- Before UM-4 (`LastManagerRule = FALSE` and `ManagerTakesLock = FALSE`, the code at `c0f2d686`), `TenantKeepsAManager` breaks with no race. `LastManagerRule = FALSE` alone gives the same path. Shortest path: admin a1 demotes itself and commits, then an admin removes a2 and commits. The tenant is live with no admin.
+- With the rule but no lock (`ManagerTakesLock = FALSE`), `TenantKeepsAManager` still breaks. Shortest path: the demote of a1 loads the admins (a1 and a2), the removal of a2 loads the same admins, each passes `TenantManagers.Decide`, and each commits. The two saves write different user rows, so no xmin check catches the race. `LastManagerTests.two_admins_who_demote_each_other_at_once_leave_one_admin` and `two_admins_who_remove_each_other_at_once_leave_one_admin` pause the first request after `users.load_managers`, so it has read both admins, and prove that the rival waits on the lock. Without the lock, the rival does not wait and the tests fail.
 - The shared tenant lock of the claim is a second guard. With `ClaimTakesLock = FALSE`, every rule still holds, because the tenant delete soft-deletes each invite with an xmin-checked update, and the claim updates the same invite with an xmin check. So whichever save comes second fails its version check and runs again. The lock still makes the delete wait, which `a_tenant_delete_during_a_claim_waits_and_then_deletes_the_new_user` tests. Only the model shows this, not a test of the code.
 - A claim can commit just after `ExpiresAt`: the check of the expiry happens when the claim loads the invite, and the save comes later in the same request. The chart shows this as the arrow from Expired to Claimed. The window is the length of one request.
 - Proof that the check can fail: with the xmin check off for `Invite` in the code (`builder.Property(e => e.Version).IsConcurrencyToken(false)` in `InviteConfiguration`), the race tests `a_claim_that_a_rival_claim_beat_after_the_load_fails_with_gone` and `a_claim_that_a_revoke_beat_after_the_load_fails_with_gone` fail. With `InviteVersionCheck = FALSE`, `OneOutcomePerInvite`, `ClaimedMeansOneUser`, and `RevokeBeatsClaim` break. Shortest path: the claim looks up the token, the claim loads the invite, the revoke loads the invite, the revoke commits, the claim commits and adds the user.

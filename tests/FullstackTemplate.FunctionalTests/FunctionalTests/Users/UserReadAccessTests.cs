@@ -314,7 +314,7 @@ public class UserReadAccessTests : TestBase
     {
         // Arrange
         var (admin, _) = await AddTwoUsersAsync("Admin", "User",
-            first => first.RemovePermission(Permission.ReadUsers()));
+            first => first.RemovePermissionIgnoringLastManager(Permission.ReadUsers()));
         SignInAs(admin);
 
         // Act

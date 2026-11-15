@@ -191,7 +191,7 @@ public class WriteGuardTests : TestBase
             reads.Add((await db.Users.AsNoTracking().Include(u => u.UserPermissions).SingleAsync(u => u.Id == userId, ct)).Id);
             await db.Entry(user!).Collection(u => u.UserPermissions).LoadAsync(ct);
             reads.Add(db.Entry(user!).Collection(u => u.UserPermissions).IsLoaded);
-            user!.ChangeRoleIgnoringLastAdmin(UserRole.Admin());
+            user!.ChangeRoleIgnoringLastManager(UserRole.Admin());
         }));
         var scope = new TestingServiceScope(services);
         var scenario = await scope.StartTenantScenarioAsync();

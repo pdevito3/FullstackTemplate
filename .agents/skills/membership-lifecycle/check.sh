@@ -1,6 +1,6 @@
 #!/bin/sh
 # Model-checks the membership lifecycle with TLC: MC.cfg (safety, widest bounds), Live.cfg (liveness), Chart.cfg
-# (the small model that /statechart draws). Exits 1 when a rule breaks. TLC writes its files to a temp folder.
+# (the small model that /statechart draws), Managers.cfg (the paths of UM-4 with no invites). Exits 1 when a rule breaks. TLC writes its files to a temp folder.
 # Usage: .agents/skills/membership-lifecycle/check.sh [CONFIG ...]
 set -eu
 model=$(cd "$(dirname "$0")/model" && pwd)
@@ -10,7 +10,7 @@ jar="$(mise where http:tla2tools)/tla2tools.jar"
 [ -f "$jar" ] || jar=$(find "$(mise where http:tla2tools)" -name 'tla2tools*.jar' | head -1)
 out=$(mktemp -d "${TMPDIR:-/tmp}/membership-lifecycle.XXXXXX")
 status=0
-for cfg in "${@:-MC.cfg Live.cfg Chart.cfg}"; do
+for cfg in "${@:-MC.cfg Live.cfg Managers.cfg Chart.cfg}"; do
   for c in $cfg; do
     log="$out/${c%.cfg}.out"
     mise exec -- java -XX:+UseParallelGC -cp "$jar" tlc2.TLC -workers auto -metadir "$out/${c%.cfg}" \

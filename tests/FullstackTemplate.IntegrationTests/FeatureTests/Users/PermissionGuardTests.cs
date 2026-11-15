@@ -436,7 +436,7 @@ public class PermissionGuardTests : TestBase
             .AddUsers(out var users, u => u.Role = role, u => u.Role = "User");
         var caller = users[0];
         foreach (var permission in Permission.GetAll())
-            caller.RemovePermission(permission);
+            caller.RemovePermissionIgnoringLastManager(permission);
         caller.AddPermissions(permissions);
         await graph.BuildAsync();
 

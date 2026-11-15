@@ -176,7 +176,7 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
 
 ### In the SPA
 
-1. **The hooks.** Write the list query with `refreshBeforeUrlsExpire`. The upload and the delete invalidate the list. The delete invalidates it also after a refusal, because another user can have deleted the file.
+1. **The hooks.** Write the list query with `refreshBeforeUrlsExpire`. The upload and the delete invalidate the list. The delete invalidates it also after a refusal, because another user can have deleted the file. The upload takes an `Upload` from `components/attachments/types.ts` and gives its `signal` to the client, so that the Cancel button of the section can stop it.
 
    ```ts
    export const repairPhotosQueryOptions = (repairId: string) =>
@@ -185,9 +185,11 @@ The steps use a `Repair` that keeps photos. The code is in [AttachmentExampleTes
        queryFn: ({ signal }) => getRepairPhotos({ path: { id: repairId }, signal }),
        ...refreshBeforeUrlsExpire,
      })
+
+   mutationFn: ({ file, signal }: Upload) => addRepairPhoto({ path: { id: repairId }, body: { file }, signal }),
    ```
 
-2. **The section.** Give `AttachmentsSection` the three hooks. It shows the hint, such as "PNG, JPEG, or WebP. Up to 5 MB.", and it lets the file chooser offer only the types of the rules. It shows the toasts and moves the focus after a delete.
+2. **The section.** Give `AttachmentsSection` the three hooks. It shows the hint, such as "PNG, JPEG, or WebP. Up to 5 MB.", and it lets the file chooser offer only the types of the rules. It shows the toasts and moves the focus after a delete. While an upload is on the way, it shows a Cancel upload button. A cancel stops the request and shows no message.
 
    ```tsx
    <AttachmentsSection
@@ -281,6 +283,7 @@ A requeue is safe, because a delete of an object that is gone succeeds.
 - The objects of a dead job stay until a person requeues the job. No alert or health check shows a dead job.
 - An add whose save fails deletes its object at once, and does not use a job. If that delete fails, the object stays until the tenant delete.
 - A URL stops before `urlsExpireAt` when the credentials that signed it expire. See [Presigned URLs](#presigned-urls).
+- A cancel or a time limit stops the wait of the SPA, not the work of the Server. If all the bytes arrived, the Server can still store the file, and a second try then adds a second file. The list shows it at its next load.
 
 <!-- example:start -->
 ## The example

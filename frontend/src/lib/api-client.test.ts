@@ -5,7 +5,7 @@ import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
 import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
 import { Notification } from '@/components/notification'
-import { apiClient, onUnauthorized } from '@/lib/api-client'
+import { apiClient, onUnauthorized, requestTimeoutMs, uploadTimeoutMs } from '@/lib/api-client'
 import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 
@@ -215,5 +215,37 @@ describe('apiClient with a 401 or with no answer', () => {
     const noAnswer = 'The app could not reach the server. Check your connection, then try again.'
     expect((error as Error).message).toBe(noAnswer)
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(noAnswer)
+  })
+  const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
+
+  it('says that the server did not answer in time for a 504 of the BFF', async () => {
+    adapter.mockImplementation((config) => respond(config, 504, ''))
+
+    const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
+
+    expect((error as Error).message).toBe(timedOut)
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
+  })
+
+  it('says the same for a request that the app stops at its time limit', async () => {
+    adapter.mockImplementation((config) =>
+      Promise.reject(new AxiosError(`timeout of ${config.timeout}ms exceeded`, AxiosError.ETIMEDOUT, config)),
+    )
+
+    const error = await addTenant({ body: { name: 'Acme' } }).catch((e: unknown) => e)
+
+    expect((error as Error).message).toBe(timedOut)
+    expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
+  })
+
+  it('gives an upload a longer time limit than another request', async () => {
+    adapter.mockImplementation((config) => respond(config, 200, {}))
+    const form = new FormData()
+    form.append('file', new Blob(['%PDF-1.7']), 'notes.pdf')
+
+    await apiClient.post('/api/v1/tenants', { name: 'Acme' })
+    await apiClient.post('/api/v1/workshops/w1/attachments', form)
+
+    expect(adapter.mock.calls.map(([config]) => config.timeout)).toEqual([requestTimeoutMs, uploadTimeoutMs])
   })
 })

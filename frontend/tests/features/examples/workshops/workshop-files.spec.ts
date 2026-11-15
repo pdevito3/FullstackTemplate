@@ -77,7 +77,7 @@ test.describe('the files of a workshop', () => {
 
     await workshops.cancelUpload(id)
 
-    await expect(workshops.at.uploadFile).toBeEnabled()
+    await expect(workshops.at.uploadFile).toBeFocused()
     await expect(workshops.at.cancelUpload).toHaveCount(0)
     await expect(workshops.at.noFiles).toBeVisible()
     expect(await workshops.at.toasts.count()).toBe(0)

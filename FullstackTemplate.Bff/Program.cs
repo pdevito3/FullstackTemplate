@@ -33,6 +33,10 @@ try
     builder.AddBffSessions();
     builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddHttpForwarder();
+    builder.Services.AddOptions<ProxyOptions>()
+        .BindConfiguration(ProxyOptions.SectionName)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
     // After AddHttpForwarder, which registers the default factory. The wrapper adds the DPoP nonce retry.
     builder.Services.AddSingleton<IForwarderHttpClientFactory, DPoPProxy.NonceRetryClientFactory>();
     // Bff:PublicOrigin, the forwarded headers, and the host filter

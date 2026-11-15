@@ -370,7 +370,7 @@ YARP `MapForwarder("/api/{**catch-all}", "<server>/api", ...)`. The server URL c
 - Remove the `Set-Cookie` values of the API response. Change: a `Set-Cookie: __Host-bff=...` from the API could replace the session cookie. The API sets no cookies today.
 - A `Set-Cookie` that the BFF itself wrote in this request (a renewed BFF session) stays. YARP appends the API headers to the headers that the BFF already wrote, so a plain `ResponseHeaderRemove("Set-Cookie")` removes both. The transform must filter only the values from the proxied response.
 
-**The forwarder.** Keep the hop-by-hop rules, the 100 s activity timeout, and the 502 or 504 error mapping. The forwarder has no retries, because a retry in a proxy can send a POST two times.
+**The forwarder.** Keep the hop-by-hop rules and the 502 or 504 error mapping. Change: the activity timeout is `Bff:Proxy:ActivityTimeout` (30 s), and `Bff:Proxy:UploadActivityTimeout` (5 min) for a multipart form, in place of the 100 s default. The forwarder has no retries, because a retry in a proxy can send a POST two times.
 
 ### 3.7 Token management and the refresh lock
 
@@ -508,7 +508,7 @@ Each behavior of the current BFF, from [the inventory](https://github.com/pdevit
 | 22 | Proxy `/api/{**catch-all}`, `Cookie` removed, `/api` stripped | Kept | Parity | 3.6 |
 | 23 | Proxy copies a browser `Authorization` header | Changed | Removed, with `DPoP`. [#21](https://github.com/pdevito3/FullstackTemplate/issues/21) | 3.6 |
 | 24 | Proxy copies `Set-Cookie` from the API | Changed | Removed. [#21](https://github.com/pdevito3/FullstackTemplate/issues/21) | 3.6 |
-| 25 | Proxy `X-Forwarded-*`, hop-by-hop, 100 s timeout, 502 and 504 | Kept | Parity | 3.6 |
+| 25 | Proxy `X-Forwarded-*`, hop-by-hop, 100 s timeout, 502 and 504 | Changed | The timeout is 30 s, and 5 min for an upload | 3.6 |
 | 26 | Token attach with `UserOrNone` | Kept | Anonymous still forwards with no token | 3.7 |
 | 27 | A failed refresh keeps the session | Changed | `invalid_grant` ends the BFF session. [#20](https://github.com/pdevito3/FullstackTemplate/issues/20) | 3.7 |
 | 28 | Refreshed cookie kept in the proxied response | Kept | Parity | 3.6 |

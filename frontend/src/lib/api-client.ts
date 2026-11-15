@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig, type AxiosError } from 'axios'
+import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 
 import type { client as KubbClient } from '@/api/generated/.kubb/client'
 import { Notification } from '@/components/notification'
@@ -8,6 +8,7 @@ import {
   isProblemDetails,
   noAnswerMessage,
   serverFaultMessage,
+  timedOutMessage,
 } from './problem-details'
 
 declare module 'axios' {
@@ -43,6 +44,25 @@ export const apiClient = axios.create({
   headers: {
     'X-CSRF': '1', // BFF CSRF protection header
   },
+  // A request that reaches its time limit fails with ETIMEDOUT, not with the ECONNABORTED of an abort
+  transitional: { clarifyTimeoutError: true },
+})
+
+/**
+ * The time limit of a request, so that a dropped network or a hung BFF does not leave a page pending with no end. It is
+ * a few seconds over `Bff:Proxy:ActivityTimeout` (30 s), so that the 504 of the BFF comes first.
+ */
+export const requestTimeoutMs = 35_000
+
+/**
+ * The time limit of an upload, a request with a `FormData` body. It also counts the time to send the file, which takes
+ * minutes on a slow link, and then the BFF waits up to `Bff:Proxy:UploadActivityTimeout` (5 minutes) for the Server.
+ */
+export const uploadTimeoutMs = 10 * 60_000
+
+apiClient.interceptors.request.use((config) => {
+  config.timeout ||= config.data instanceof FormData ? uploadTimeoutMs : requestTimeoutMs
+  return config
 })
 
 /**
@@ -57,14 +77,20 @@ function handleErrorResponse(error: AxiosError): ProblemDetailsError | Error {
     return new ProblemDetailsError(responseData)
   }
   if (!error.response) {
-    return new Error(noAnswerMessage)
+    return new Error(error.code === AxiosError.ETIMEDOUT ? timedOutMessage : noAnswerMessage)
   }
-  // The Server answers 401 with no body to a call that needs a user.
-  return new Error(error.response.status === 401 ? signInRejectedMessage : serverFaultMessage)
+  return new Error(messageOfEmptyAnswer[error.response.status] ?? serverFaultMessage)
 }
 
 const signInRejectedMessage =
   'The Server did not accept your sign-in for this request. Try again in a moment. If it fails again, log out and log in again.'
+
+const messageOfEmptyAnswer: Partial<Record<number, string>> = {
+  // The Server answers 401 with no body to a call that needs a user.
+  401: signInRejectedMessage,
+  // The BFF answers 504 with no body when the Server does not answer within its time limit.
+  504: timedOutMessage,
+}
 
 let isSessionEnded = () => Promise.resolve(false)
 

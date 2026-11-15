@@ -81,8 +81,14 @@ public class UniqueCheckRaceTests : TestBase
         // Arrange
         var pause = PauseAtQuery.After("users.add.identifier_in_use");
         await using var services = pause.BuildServices();
+        await new TestingServiceScope().StartGraph(out _)
+            .AddTenant(out _)
+            .AddUser(out var admin, u => u.Role = "Admin")
+            .BuildAsync();
         var underTest = new TestingServiceScope(services);
         var rival = new TestingServiceScope();
+        underTest.SetUserWithDefaults(identifier: admin.Identifier);
+        rival.SetUserWithDefaults(identifier: admin.Identifier);
         var dto = new FakeUserForCreationDto().Generate();
 
         // Act

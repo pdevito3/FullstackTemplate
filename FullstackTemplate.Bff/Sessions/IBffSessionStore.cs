@@ -8,9 +8,12 @@ namespace FullstackTemplate.Bff.Sessions;
 public interface IBffSessionStore
 {
     /// <summary>
-    /// Adds a new row and returns it with its version.
+    /// Adds the row of a new login and returns it with its version. It throws <see cref="LoginRefusedException"/>,
+    /// and adds no row, when an accepted logout token ends the login
+    /// (<see cref="BackChannel.LogoutTokenReplayCache.EndsLoginAsync"/>), or when the login reached its
+    /// <see cref="LoginTimes.Deadline"/>. The check and the add are atomic with each back-channel logout.
     /// </summary>
-    Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken);
+    Task<BffSession> CreateAsync(BffSession session, LoginTimes login, CancellationToken cancellationToken);
 
     /// <summary>
     /// The row of <paramref name="key"/>, or null if there is none or if it has ended.

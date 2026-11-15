@@ -1,3 +1,4 @@
+using FullstackTemplate.Bff.BackChannel;
 using Microsoft.EntityFrameworkCore;
 
 namespace FullstackTemplate.Bff.Sessions;
@@ -6,21 +7,31 @@ namespace FullstackTemplate.Bff.Sessions;
 /// The BFF session store on Postgres. The conditional writes use <c>xmin</c>: a write with an old version
 /// changes no row, and EF Core then reports a concurrency failure.
 /// </summary>
-public sealed class EfBffSessionStore(BffDbContext dbContext, TimeProvider timeProvider) : IBffSessionStore
+public sealed class EfBffSessionStore(BffDbContext dbContext, LogoutTokenReplayCache replayCache, TimeProvider timeProvider)
+    : IBffSessionStore
 {
-    public async Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken)
-    {
-        var entry = dbContext.Sessions.Add(session);
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return entry.Entity;
-        }
-        finally
-        {
-            entry.State = EntityState.Detached;
-        }
-    }
+    public Task<BffSession> CreateAsync(BffSession session, LoginTimes login, CancellationToken cancellationToken) =>
+        dbContext.Database.CreateExecutionStrategy().ExecuteInTransactionAsync(
+            async ct =>
+            {
+                await IdpSessionLock.TakeForLoginAsync(dbContext, session.SubjectId, session.SessionId, ct);
+                if (await replayCache.EndsLoginAsync(session.SubjectId, session.SessionId, login.EndedByLogoutsFrom, ct))
+                    throw new LoginRefusedException("a back-channel logout of its IdP session came first");
+                login.ThrowIfPastDeadline(timeProvider.GetUtcNow());
+
+                var entry = dbContext.Sessions.Add(session);
+                try
+                {
+                    await dbContext.SaveChangesAsync(ct);
+                    return entry.Entity;
+                }
+                finally
+                {
+                    entry.State = EntityState.Detached;
+                }
+            },
+            ct => dbContext.Sessions.AsNoTracking().TagWith("bff_sessions.created").AnyAsync(s => s.Key == session.Key, ct),
+            cancellationToken);
 
     public Task<BffSession?> GetAsync(string key, CancellationToken cancellationToken)
     {

@@ -148,6 +148,7 @@ public static class AuthExtensions
                 {
                     // Connect the login and callback traces across the identity provider redirect.
                     LoginTraceLink.Capture(context.Properties);
+                    LoginTimes.CaptureDeadline(context);
                     LoginPrompt.CopyToAuthorizeRequest(context);
                     return Task.CompletedTask;
                 };

@@ -28,6 +28,7 @@ using Microsoft.IdentityModel.Tokens;
 /// <c>test_refresh</c> (<c>fail</c> makes each refresh return <c>invalid_grant</c>, and <c>unavailable</c> a 503),
 /// <c>test_revoke</c> (<c>fail</c> makes each revocation of a refresh token of the user return 500, and <c>drop</c>
 /// closes the connection),
+/// <c>test_authenticated_ago</c> (the seconds since the <c>auth_time</c>, as for an SSO login),
 /// <c>test_iss</c> (the <c>iss</c> of the callback, or <c>omit</c> for none), <c>test_aud</c> (one more audience in
 /// the ID token), <c>test_azp</c> (the <c>azp</c> of the ID token), <c>test_nonce=wrong</c> (an ID token
 /// <c>nonce</c> that is not the one of the authorize request), <c>test_at_hash=wrong</c> (an <c>at_hash</c> that
@@ -68,6 +69,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private readonly ConcurrentDictionary<string, Grant> _refreshTokens = new();
     private readonly ConcurrentDictionary<string, bool> _usedRefreshTokens = new();
     private readonly ConcurrentDictionary<string, RequestGate> _refreshGates = new();
+    private readonly ConcurrentDictionary<string, RequestGate> _codeExchangeGates = new();
     private readonly ConcurrentQueue<IssuedTokens> _issued = new();
     private readonly ConcurrentDictionary<string, string> _revokeModes = new();
     private readonly ConcurrentDictionary<string, Dictionary<string, string>> _pushedRequests = new();
@@ -237,6 +239,12 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     public RequestGate HoldRefreshes(string subject) => _refreshGates.GetOrAdd(subject, _ => new RequestGate());
 
     /// <summary>
+    /// Holds the response of each code exchange of <paramref name="subject"/> until the test releases the gate. The
+    /// provider issues the tokens first. The gate tells the test when a code exchange arrives.
+    /// </summary>
+    public RequestGate HoldCodeExchanges(string subject) => _codeExchangeGates.GetOrAdd(subject, _ => new RequestGate());
+
+    /// <summary>
     /// Holds each request to the revocation endpoint until the test releases the gate. It holds the revocations of
     /// all users, so a test that uses it starts its own provider.
     /// </summary>
@@ -356,7 +364,8 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                 UnsignedIdToken: Parameter("test_id_token") == "unsigned",
                 OmitExpiresIn: Parameter("test_expires_in") == "omit",
                 RefreshIdToken: Parameter("test_refresh_id_token"),
-                AuthTime: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                AuthTime: DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    - (long.TryParse(Parameter("test_authenticated_ago"), out var authenticatedAgo) ? authenticatedAgo : 0),
                 RedirectUri: redirectUri,
                 CodeChallenge: Parameter("code_challenge_method") == "S256" ? Parameter("code_challenge") : null,
                 DPoPJkt: _options.DPoP ? Parameter("dpop_jkt") : null);
@@ -402,7 +411,14 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
                         || CodeChallenge(form["code_verifier"].ToString()) != grant.CodeChallenge)
                         return Results.Json(new { error = "invalid_grant" }, statusCode: StatusCodes.Status400BadRequest);
 
-                    return IssueTokens(grant, refresh: false);
+                    var issued = IssueTokens(grant, refresh: false);
+                    if (_codeExchangeGates.TryGetValue(grant.Subject, out var exchangeGate))
+                    {
+                        exchangeGate.Arrived.TrySetResult();
+                        await exchangeGate.Released.Task;
+                    }
+
+                    return issued;
 
                 case "refresh_token" when _refreshTokens.TryGetValue(form["refresh_token"].ToString(), out var grant):
                     RefreshRequests.Add(form["refresh_token"].ToString());
@@ -695,7 +711,7 @@ public sealed class FakeIdentityProvider : IAsyncDisposable
     private sealed record IssuedTokens(string Subject, string AccessToken, string RefreshToken, string? IdToken);
 
     /// <summary>
-    /// See <see cref="HoldRefreshes"/>.
+    /// See <see cref="HoldRefreshes"/> and <see cref="HoldCodeExchanges"/>.
     /// </summary>
     public sealed class RequestGate
     {

@@ -34,7 +34,7 @@ The design is in [docs/specs/home-rolled-bff.md](specs/home-rolled-bff.md). The 
 4. The provider sends the browser back to `/signin-oidc`. The BFF accepts only a GET there.
 5. The BFF checks the callback. The `iss` parameter must equal the issuer of the provider (RFC 9207). The ID token `aud` must hold only the client id. A failed check creates no BFF session. See [A refused login or logout](#a-refused-login-or-logout) for the answer.
 6. The BFF redeems the code at the token endpoint and reads the user info.
-7. The BFF writes a BFF session row in `bffdb`, and sets the `__Host-bff` cookie. The cookie holds only the key of the row.
+7. The BFF writes a BFF session row in `bffdb`, and sets the `__Host-bff` cookie. The cookie holds only the key of the row. The BFF writes no row, and gives a 400, if a back-channel logout of the provider session came first, or if more than `RemoteAuthenticationTimeout` (15 minutes) passed since step 3. The user then starts a new login.
 8. The React app calls `/bff/user` with the `X-CSRF: 1` header to get the claims. The claims include `bff:logout_url`.
 9. API calls go through the BFF at `/api/v1/*` with the `X-CSRF: 1` header. The BFF adds the access token of the BFF session.
 
@@ -120,7 +120,7 @@ When a user session ends at the provider, the provider sends a logout token to `
 
 1. The BFF validates the token: the signature, `iss`, `aud`, `iat`, `exp`, the `typ` if present, the `events` claim, no `nonce`, and a `sub` or a `sid`.
 2. The BFF rejects a `jti` that it has already seen.
-3. The BFF deletes the BFF sessions with the `sid` of the token. If the token has only a `sub`, the BFF deletes all the BFF sessions of that `sub`.
+3. The BFF deletes the BFF sessions with the `sid` of the token. If the token has only a `sub`, the BFF deletes all the BFF sessions of that `sub`. The BFF keeps the token, so a login of that provider session that completes later also fails.
 4. The BFF returns 200. A token that fails a check gets a 400.
 
 The BFF does not revoke the refresh tokens of the deleted BFF sessions, because the provider already ended its session. With Keycloak, a revoke of one refresh token also ends the other sessions of the user for the client, and Keycloak sends no logout token for them.

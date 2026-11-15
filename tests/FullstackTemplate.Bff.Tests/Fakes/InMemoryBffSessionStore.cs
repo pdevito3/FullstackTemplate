@@ -13,10 +13,11 @@ public sealed class InMemoryBffSessionStore(TimeProvider timeProvider) : IBffSes
     private readonly Lock _writeLock = new();
     private uint _lastVersion;
 
-    public Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken)
+    public Task<BffSession> CreateAsync(BffSession session, LoginTimes login, CancellationToken cancellationToken)
     {
         lock (_writeLock)
         {
+            login.ThrowIfPastDeadline(timeProvider.GetUtcNow());
             var created = session with { Version = NextVersion() };
             if (!_rows.TryAdd(created.Key, created))
                 throw new InvalidOperationException("A BFF session with this key exists.");

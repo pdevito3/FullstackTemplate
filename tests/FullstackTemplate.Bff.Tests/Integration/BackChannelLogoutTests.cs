@@ -3,11 +3,14 @@ namespace FullstackTemplate.Bff.Tests.Integration;
 using System.Net;
 using System.Security.Cryptography;
 using FullstackTemplate.Bff.BackChannel;
+using FullstackTemplate.Bff.Login;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
 using FullstackTemplate.SharedTestHelpers.Utilities;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Shouldly;
@@ -15,6 +18,8 @@ using Shouldly;
 public class BackChannelLogoutTests
 {
     private const string LogoutEvent = "http://schemas.openid.net/event/backchannel-logout";
+
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
     [Test]
     public async Task a_valid_logout_token_gets_200_with_no_store()
@@ -147,6 +152,8 @@ public class BackChannelLogoutTests
         yield return () => new("no jti", () => Token(c => c.Remove("jti")));
         yield return () => new("an empty jti", () => Token(c => c["jti"] = ""));
         yield return () => new("a jti that is too long", () => Token(c => c["jti"] = new string('j', 256)));
+        yield return () => new("a sid that is too long", () => Token(c => c["sid"] = new string('s', 256)));
+        yield return () => new("a sub that is too long", () => Token(c => c["sub"] = new string('s', 256)));
     }
 
     [Test]
@@ -233,6 +240,219 @@ public class BackChannelLogoutTests
     }
 
     [Test]
+    public async Task a_logout_of_the_sid_that_comes_before_the_login_writes_its_row_ends_that_login()
+    {
+        // Arrange
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        var exchange = app.IdentityProvider.HoldCodeExchanges(subject);
+        using var browser = app.CreateBrowser();
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={sessionId}");
+        await exchange.Arrived.Task.WaitAsync(Timeout);
+        var logout = await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; }));
+
+        // Act
+        exchange.Released.SetResult();
+        var callback = await signIn.WaitAsync(Timeout);
+
+        // Assert
+        logout.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await app.WithStoreAsync(store => store.FindBySessionIdAsync(sessionId, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_login_that_a_logout_ended_before_its_row_sends_the_navigation_to_the_sign_in_failed_page()
+    {
+        // Arrange
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        var exchange = app.IdentityProvider.HoldCodeExchanges(subject);
+        using var browser = app.CreateBrowser();
+        browser.DefaultRequestHeaders.Add("Sec-Fetch-Mode", "navigate");
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={sessionId}");
+        await exchange.Arrived.Task.WaitAsync(Timeout);
+        await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; }));
+
+        // Act
+        exchange.Released.SetResult();
+        var callback = await signIn.WaitAsync(Timeout);
+
+        // Assert
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        callback.Headers.Location!.OriginalString.ShouldBe($"{BffApp.SpaDevServer}/sign-in-failed");
+        BffApp.SessionCookieValue(callback).ShouldBeNull();
+        (await app.WithStoreAsync(store => store.FindBySessionIdAsync(sessionId, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_logout_of_the_sub_that_comes_before_the_login_writes_its_row_ends_that_login()
+    {
+        // Arrange
+        var app = BffApp.Instance;
+        var subject = NewSubject();
+        var exchange = app.IdentityProvider.HoldCodeExchanges(subject);
+        using var browser = app.CreateBrowser();
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
+        await exchange.Arrived.Task.WaitAsync(Timeout);
+        var logout = await PostAsync(Token(c => { c["sub"] = subject; c.Remove("sid"); }));
+
+        // Act
+        exchange.Released.SetResult();
+        var callback = await signIn.WaitAsync(Timeout);
+
+        // Assert
+        logout.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_logout_of_the_sub_issued_before_the_login_ends_no_later_login()
+    {
+        // Arrange
+        var subject = NewSubject();
+        (await PostAsync(Token(c => { c["sub"] = subject; c.Remove("sid"); c["iat"] = IssuedBeforeTheLogin(); }))).StatusCode
+            .ShouldBe(HttpStatusCode.OK);
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        // Act
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+
+        // Assert
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task an_sso_login_of_a_sid_that_the_identity_provider_kept_after_its_logout_is_not_refused()
+    {
+        // Arrange
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        (await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; c["iat"] = IssuedBeforeTheLogin(); })))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        // Act
+        var callback = await BffApp.SignInAsync(browser,
+            providerQuery: $"test_sub={subject}&test_sid={sessionId}&test_authenticated_ago=600");
+
+        // Assert
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_logout_of_another_sid_of_the_sub_ends_no_later_login()
+    {
+        // Arrange
+        var subject = NewSubject();
+        (await PostAsync(Token(c => { c["sub"] = subject; c["sid"] = NewSessionId(); }))).StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var browser = BffApp.Instance.CreateBrowser();
+
+        // Act
+        var callback = await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={NewSessionId()}");
+
+        // Assert
+        callback.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task a_logout_that_comes_while_a_login_checks_the_logout_records_waits_for_that_login_and_ends_it()
+    {
+        // Arrange
+        var check = PauseAtQuery.After("bff_used_logout_tokens.ends_login");
+        await using var loginHost = BffApp.StartAnotherInstance(services: services => services.ConfigureDbContext<BffDbContext>(
+            options => options.AddInterceptors(check)));
+        var subject = NewSubject();
+        var sessionId = NewSessionId();
+        using var browser = loginHost.CreateBrowser();
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}&test_sid={sessionId}");
+        await check.ReachedAsync();
+
+        // Act
+        var logout = PostAsync(Token(c => { c["sub"] = subject; c["sid"] = sessionId; }));
+        await check.WaitUntilBlockedAsync(logout);
+        check.Release();
+
+        // Assert
+        (await signIn.WaitAsync(Timeout)).StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        (await logout.WaitAsync(Timeout)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await browser.GetApiAsync("/bff/user")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await loginHost.WithStoreAsync(store => store.FindBySessionIdAsync(sessionId, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_login_that_writes_its_row_at_its_deadline_fails()
+    {
+        // Arrange
+        var clock = new TestClock(DateTimeOffset.UtcNow);
+        await using var app = BffApp.StartAnotherInstance(services: services => services.AddSingleton<TimeProvider>(clock));
+        var subject = NewSubject();
+        var exchange = app.IdentityProvider.HoldCodeExchanges(subject);
+        using var browser = app.CreateBrowser();
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+        await exchange.Arrived.Task.WaitAsync(Timeout);
+
+        // Act
+        clock.Advance(OidcOptions(app).RemoteAuthenticationTimeout);
+        exchange.Released.SetResult();
+        var callback = await signIn.WaitAsync(Timeout);
+
+        // Assert
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_login_that_reaches_its_deadline_while_it_reads_the_logout_records_fails()
+    {
+        // Arrange
+        var clock = new TestClock(DateTimeOffset.UtcNow);
+        var check = PauseAtQuery.After("bff_used_logout_tokens.ends_login");
+        await using var app = BffApp.StartAnotherInstance(services: services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.ConfigureDbContext<BffDbContext>(options => options.AddInterceptors(check));
+        });
+        var subject = NewSubject();
+        using var browser = app.CreateBrowser();
+        var signIn = BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
+        await check.ReachedAsync();
+
+        // Act
+        clock.Advance(OidcOptions(app).RemoteAuthenticationTimeout);
+        check.Release();
+        var callback = await signIn.WaitAsync(Timeout);
+
+        // Assert
+        await LoginEndpointTests.ShouldBeProblemAsync(callback, CallbackRejectedException.Title, CallbackRejection.CallbackField);
+        (await app.WithStoreAsync(store => store.FindBySubjectAsync(subject, CancellationToken.None))).ShouldBeEmpty();
+    }
+
+    [Test]
+    public async Task a_used_logout_token_is_kept_until_the_deadline_of_each_login_that_began_before_it()
+    {
+        // Arrange
+        var jti = Guid.NewGuid().ToString();
+        var received = DateTimeOffset.UtcNow;
+
+        // Act
+        (await PostAsync(Token(c => c["jti"] = jti))).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Assert
+        (await UsedLogoutTokenAsync(jti))!.Expires.ShouldBeGreaterThanOrEqualTo(
+            received + OidcOptions(BffApp.Instance).RemoteAuthenticationTimeout + TokenValidationParameters.DefaultClockSkew);
+    }
+
+    [Test]
     public async Task a_back_channel_logout_sends_no_revocation_request_to_the_identity_provider()
     {
         // Arrange
@@ -262,7 +482,7 @@ public class BackChannelLogoutTests
         var app = BffApp.Instance;
         var subject = NewSubject();
         var jti = Guid.NewGuid().ToString();
-        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; });
+        var logoutToken = Token(c => { c["sub"] = subject; c.Remove("sid"); c["jti"] = jti; c["iat"] = IssuedBeforeTheLogin(); });
         (await PostAsync(logoutToken)).StatusCode.ShouldBe(HttpStatusCode.OK);
         using var browser = app.CreateBrowser();
         await BffApp.SignInAsync(browser, providerQuery: $"test_sub={subject}");
@@ -296,8 +516,8 @@ public class BackChannelLogoutTests
     public async Task two_inserts_of_the_same_jti_at_the_same_time_let_exactly_one_win()
     {
         // Arrange
-        var jti = Guid.NewGuid().ToString();
-        var expires = DateTimeOffset.UtcNow.AddMinutes(5);
+        var token = new UsedLogoutToken(Guid.NewGuid().ToString(), NewSessionId(), null, DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddMinutes(5));
         await using var first = NewDbContext();
         await using var second = NewDbContext();
         await second.Database.OpenConnectionAsync();
@@ -305,8 +525,8 @@ public class BackChannelLogoutTests
         await using var transaction = await first.Database.BeginTransactionAsync();
 
         // Act & Assert
-        (await new LogoutTokenReplayCache(first).TryAddAsync(jti, expires, CancellationToken.None)).ShouldBeTrue();
-        var secondAdd = new LogoutTokenReplayCache(second).TryAddAsync(jti, expires, CancellationToken.None);
+        (await new LogoutTokenReplayCache(first).TryAddAsync(token, CancellationToken.None)).ShouldBeTrue();
+        var secondAdd = new LogoutTokenReplayCache(second).TryAddAsync(token, CancellationToken.None);
 
         // The second insert is in the database and waits for the uncommitted row of the first insert
         await WaitUntilAsync(() => IsWaitingOnALockAsync(secondProcessId));
@@ -315,7 +535,7 @@ public class BackChannelLogoutTests
 
         (await secondAdd).ShouldBeFalse();
         await using var check = NewDbContext();
-        (await check.UsedLogoutTokens.CountAsync(t => t.Jti == jti)).ShouldBe(1);
+        (await check.UsedLogoutTokens.CountAsync(t => t.Jti == token.Jti)).ShouldBe(1);
     }
 
     [Test]
@@ -523,6 +743,11 @@ public class BackChannelLogoutTests
     }
 
     private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private static long IssuedBeforeTheLogin() => Now() - 60;
+
+    private static OpenIdConnectOptions OidcOptions(BffApp app) =>
+        app.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>().Get(OpenIdConnectDefaults.AuthenticationScheme);
 
     private static string NewSubject() => $"user-backchannel-{Guid.NewGuid():N}";
 

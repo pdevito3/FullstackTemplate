@@ -65,7 +65,7 @@ public sealed class BffMetricsTests : IDisposable
                      BffSessionStoreContractTests.NewSession(past, TimeSpan.FromHours(1), TimeSpan.FromDays(30)),
                      BffSessionStoreContractTests.NewSession(past, TimeSpan.FromDays(14), TimeSpan.FromDays(1)),
                  })
-            await app.WithStoreAsync(store => store.CreateAsync(session, CancellationToken.None));
+            await app.WithStoreAsync(store => store.CreateAsync(session, BffSessionStoreContractTests.NewLogin(TimeProvider.System), CancellationToken.None));
 
         // Act
         var deleted = await app.Services.GetRequiredService<BffSessionCleanupService>().CleanupAsync(CancellationToken.None);

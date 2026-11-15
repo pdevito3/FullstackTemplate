@@ -17,7 +17,7 @@ namespace FullstackTemplate.Bff.Sessions.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -34,11 +34,31 @@ namespace FullstackTemplate.Bff.Sessions.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires");
 
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("subject");
+
                     b.HasKey("Jti")
                         .HasName("pk_used_logout_tokens");
 
                     b.HasIndex("Expires")
                         .HasDatabaseName("ix_used_logout_tokens_expires");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_used_logout_tokens_session_id");
+
+                    b.HasIndex("Subject")
+                        .HasDatabaseName("ix_used_logout_tokens_subject");
 
                     b.ToTable("used_logout_tokens", (string)null);
                 });

@@ -10,6 +10,11 @@ public sealed class BffSessionConfiguration : IEntityTypeConfiguration<BffSessio
     /// </summary>
     public const int KeyLength = 43;
 
+    /// <summary>
+    /// The longest <c>sub</c> and <c>sid</c> that a row keeps.
+    /// </summary>
+    public const int IdentifierMaxLength = 255;
+
     public void Configure(EntityTypeBuilder<BffSession> builder)
     {
         builder.HasKey(e => e.Key);
@@ -19,10 +24,10 @@ public sealed class BffSessionConfiguration : IEntityTypeConfiguration<BffSessio
 
         builder.Property(e => e.SubjectId)
             .IsRequired()
-            .HasMaxLength(255);
+            .HasMaxLength(IdentifierMaxLength);
 
         builder.Property(e => e.SessionId)
-            .HasMaxLength(255);
+            .HasMaxLength(IdentifierMaxLength);
 
         builder.Property(e => e.Ticket)
             .IsRequired();

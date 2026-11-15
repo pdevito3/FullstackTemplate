@@ -54,6 +54,7 @@ public sealed class BffTicketStore(
 
         var subjectId = ticket.Principal.FindFirst("sub")?.Value
             ?? throw new InvalidOperationException("A BFF session needs a sub claim.");
+        var login = LoginTimes.Of(ticket);
         var absoluteExpires = now + settings.AbsoluteLifetime;
         var session = new BffSession(
             Key: SessionKey.Create(),
@@ -66,7 +67,7 @@ public sealed class BffTicketStore(
             Ticket: Protect(ticket),
             Version: 0);
 
-        var created = await store.CreateAsync(session, cancellationToken);
+        var created = await store.CreateAsync(session, login, cancellationToken);
         Telemetry.SessionsStarted.Add(1);
         request.Remember(created, SessionTokens.From(ticket.Properties));
         Logger.Here().Information("Created the BFF session {SessionKey}", Fingerprint.Of(created.Key));

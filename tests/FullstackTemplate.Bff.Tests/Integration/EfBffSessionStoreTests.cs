@@ -1,6 +1,7 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
 using System.Data.Common;
+using FullstackTemplate.Bff.BackChannel;
 using FullstackTemplate.Bff.Sessions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -22,7 +23,7 @@ public class EfBffSessionStoreTests
         BffSessionExtensions.ConfigureBffDb(options, BffApp.Database.ConnectionString);
         options.AddInterceptors(capture);
         await using var dbContext = new BffDbContext(options.Options);
-        var store = new EfBffSessionStore(dbContext, TimeProvider.System);
+        var store = new EfBffSessionStore(dbContext, new LogoutTokenReplayCache(dbContext), TimeProvider.System);
 
         // Act
         // A time in the past, so that the deletes change no row of another test

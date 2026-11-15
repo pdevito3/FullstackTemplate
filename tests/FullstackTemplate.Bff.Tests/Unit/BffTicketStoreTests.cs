@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Shouldly;
 
 /// <summary>
@@ -276,7 +277,7 @@ public class BffTicketStoreTests
         // Assert
         var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
         read.Properties.GetTokenValue("refresh_token").ShouldBe("rt-2");
-        read.Properties.GetTokenValue("id_token").ShouldBe("id-1");
+        read.Properties.GetTokenValue("id_token").ShouldBe(IdToken);
     }
 
     [Test]
@@ -293,6 +294,8 @@ public class BffTicketStoreTests
         var read = (await ticketStore.RetrieveAsync(key, NewRequest(), CancellationToken.None))!;
         read.Properties.GetTokenValue("refresh_token").ShouldBe("rt-1");
     }
+
+    private static readonly string IdToken = new JsonWebTokenHandler().CreateToken("""{"iat":1767268800}""");
 
     private BffTicketStore TicketStore(TimeSpan? sliding = null, TimeSpan? absolute = null) => new(
         new EphemeralDataProtectionProvider(),
@@ -313,11 +316,12 @@ public class BffTicketStoreTests
             IssuedUtc = _clock.Now,
             ExpiresUtc = _clock.Now.AddDays(14),
         };
+        LoginTimes.SetDeadline(properties, _clock.Now.AddMinutes(15));
         properties.StoreTokens(
         [
             new AuthenticationToken { Name = "access_token", Value = "at-1" },
             new AuthenticationToken { Name = "refresh_token", Value = refreshToken },
-            new AuthenticationToken { Name = "id_token", Value = "id-1" },
+            new AuthenticationToken { Name = "id_token", Value = IdToken },
         ]);
         return new AuthenticationTicket(principal, properties, "Cookies");
     }
@@ -332,8 +336,8 @@ public class BffTicketStoreTests
 
         public int Writes { get; private set; }
 
-        public Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken) =>
-            inner.CreateAsync(session, cancellationToken);
+        public Task<BffSession> CreateAsync(BffSession session, LoginTimes login, CancellationToken cancellationToken) =>
+            inner.CreateAsync(session, login, cancellationToken);
 
         public Task<BffSession?> GetAsync(string key, CancellationToken cancellationToken) => inner.GetAsync(key, cancellationToken);
 

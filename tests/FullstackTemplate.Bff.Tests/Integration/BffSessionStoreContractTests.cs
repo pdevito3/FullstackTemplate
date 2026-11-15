@@ -1,5 +1,6 @@
 namespace FullstackTemplate.Bff.Tests.Integration;
 
+using FullstackTemplate.Bff.BackChannel;
 using FullstackTemplate.Bff.Sessions;
 using FullstackTemplate.Bff.Tests.Fakes;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,7 @@ public class BffSessionStoreContractTests
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var session = NewSession(clock, sessionId: "sid-read");
 
-        var created = await store.Store.CreateAsync(session, CancellationToken.None);
+        var created = await store.Store.CreateAsync(session, NewLogin(clock), CancellationToken.None);
 
         // Act
         var read = await store.Store.GetAsync(session.Key, CancellationToken.None);
@@ -47,6 +48,24 @@ public class BffSessionStoreContractTests
     }
 
     [Test]
+    [Arguments(Memory)]
+    [Arguments(Postgres)]
+    public async Task a_create_at_the_deadline_of_the_login_adds_no_row(string adapter)
+    {
+        // Arrange
+        var clock = NowClock();
+        await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
+        var session = NewSession(clock);
+
+        // Act
+        await Should.ThrowAsync<LoginRefusedException>(() =>
+            store.Store.CreateAsync(session, new LoginTimes(clock.Now, Deadline: clock.Now), CancellationToken.None));
+
+        // Assert
+        (await store.Store.GetAsync(session.Key, CancellationToken.None)).ShouldBeNull();
+    }
+
+    [Test]
     [Arguments(Memory, 1, 5)]
     [Arguments(Memory, 5, 1)]
     [Arguments(Postgres, 1, 5)]
@@ -57,7 +76,7 @@ public class BffSessionStoreContractTests
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var session = NewSession(clock, TimeSpan.FromHours(slidingHours), TimeSpan.FromHours(absoluteHours));
-        await store.Store.CreateAsync(session, CancellationToken.None);
+        await store.Store.CreateAsync(session, NewLogin(clock), CancellationToken.None);
         clock.Advance(TimeSpan.FromHours(Math.Min(slidingHours, absoluteHours)) - TimeSpan.FromSeconds(1));
 
         // Act & Assert
@@ -76,7 +95,7 @@ public class BffSessionStoreContractTests
         // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
-        var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var created = await store.Store.CreateAsync(NewSession(clock), NewLogin(clock), CancellationToken.None);
 
         var renewed = clock.Now.AddMinutes(1);
 
@@ -103,7 +122,7 @@ public class BffSessionStoreContractTests
         // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
-        var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var created = await store.Store.CreateAsync(NewSession(clock), NewLogin(clock), CancellationToken.None);
         var first = (BffSessionWrite.Written)await store.Store.RenewAsync(
             created.Key, [1], clock.Now, clock.Now.AddHours(1), created.Version, CancellationToken.None);
 
@@ -127,7 +146,7 @@ public class BffSessionStoreContractTests
         // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
-        var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var created = await store.Store.CreateAsync(NewSession(clock), NewLogin(clock), CancellationToken.None);
 
         // Act
         var write = await store.Store.RenewExpiryAsync(created.Key, clock.Now, clock.Now.AddHours(5), created.Version, CancellationToken.None);
@@ -147,7 +166,7 @@ public class BffSessionStoreContractTests
         // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
-        var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var created = await store.Store.CreateAsync(NewSession(clock), NewLogin(clock), CancellationToken.None);
         (await store.Store.DeleteAsync(created.Key, CancellationToken.None))!.Key.ShouldBe(created.Key);
 
         // Act
@@ -169,7 +188,7 @@ public class BffSessionStoreContractTests
         // Arrange
         var clock = NowClock();
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
-        var created = await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var created = await store.Store.CreateAsync(NewSession(clock), NewLogin(clock), CancellationToken.None);
         var written = (BffSessionWrite.Written)await store.Store.RenewAsync(created.Key, [9], clock.Now, clock.Now.AddHours(1),
             created.Version, CancellationToken.None);
 
@@ -195,9 +214,9 @@ public class BffSessionStoreContractTests
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var subject = $"sub-{Guid.NewGuid():N}";
         var sessionId = $"sid-{Guid.NewGuid():N}";
-        var first = await store.Store.CreateAsync(NewSession(clock, subjectId: subject, sessionId: sessionId), CancellationToken.None);
-        var second = await store.Store.CreateAsync(NewSession(clock, subjectId: subject), CancellationToken.None);
-        await store.Store.CreateAsync(NewSession(clock), CancellationToken.None);
+        var first = await store.Store.CreateAsync(NewSession(clock, subjectId: subject, sessionId: sessionId), NewLogin(clock), CancellationToken.None);
+        var second = await store.Store.CreateAsync(NewSession(clock, subjectId: subject), NewLogin(clock), CancellationToken.None);
+        await store.Store.CreateAsync(NewSession(clock), NewLogin(clock), CancellationToken.None);
 
         // Act & Assert
         (await store.Store.FindBySubjectAsync(subject, CancellationToken.None)).Select(s => s.Key)
@@ -218,9 +237,9 @@ public class BffSessionStoreContractTests
         await using var store = await StoreUnderTest.OpenAsync(adapter, clock);
         var ended = new List<string>();
         for (var i = 0; i < 5; i++)
-            ended.Add((await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromMinutes(1), TimeSpan.FromDays(1)), CancellationToken.None)).Key);
-        ended.Add((await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromDays(1), TimeSpan.FromMinutes(1)), CancellationToken.None)).Key);
-        var live = await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromDays(1), TimeSpan.FromDays(1)), CancellationToken.None);
+            ended.Add((await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromMinutes(1), TimeSpan.FromDays(1)), NewLogin(clock), CancellationToken.None)).Key);
+        ended.Add((await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromDays(1), TimeSpan.FromMinutes(1)), NewLogin(clock), CancellationToken.None)).Key);
+        var live = await store.Store.CreateAsync(NewSession(clock, TimeSpan.FromDays(1), TimeSpan.FromDays(1)), NewLogin(clock), CancellationToken.None);
 
         var now = clock.Now.AddMinutes(2);
 
@@ -247,6 +266,12 @@ public class BffSessionStoreContractTests
         var now = DateTimeOffset.UtcNow;
         return new TestClock(new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero));
     }
+
+    /// <summary>
+    /// The times of a login that just authenticated, with the deadline of <paramref name="clock"/>, the clock of
+    /// the store.
+    /// </summary>
+    public static LoginTimes NewLogin(TimeProvider clock) => new(clock.GetUtcNow(), clock.GetUtcNow().AddMinutes(15));
 
     public static BffSession NewSession(TimeProvider clock, TimeSpan? sliding = null, TimeSpan? absolute = null,
         string? subjectId = null, string? sessionId = null)
@@ -287,7 +312,8 @@ public class BffSessionStoreContractTests
             var options = new DbContextOptionsBuilder<BffDbContext>();
             BffSessionExtensions.ConfigureBffDb(options, BffApp.Database.ConnectionString);
             var dbContext = new BffDbContext(options.Options);
-            return Task.FromResult(new StoreUnderTest(new EfBffSessionStore(dbContext, clock), dbContext));
+            return Task.FromResult(new StoreUnderTest(
+                new EfBffSessionStore(dbContext, new LogoutTokenReplayCache(dbContext), clock), dbContext));
         }
 
         public ValueTask DisposeAsync() => _dbContext?.DisposeAsync() ?? ValueTask.CompletedTask;

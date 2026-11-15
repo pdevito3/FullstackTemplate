@@ -390,7 +390,7 @@ public class BffSessionTests
         var absoluteEnded = BffSessionStoreContractTests.NewSession(past, TimeSpan.FromDays(14), TimeSpan.FromDays(1));
         var live = BffSessionStoreContractTests.NewSession(TimeProvider.System);
         foreach (var session in new[] { slidingEnded, absoluteEnded, live })
-            await app.WithStoreAsync(store => store.CreateAsync(session, CancellationToken.None));
+            await app.WithStoreAsync(store => store.CreateAsync(session, BffSessionStoreContractTests.NewLogin(TimeProvider.System), CancellationToken.None));
 
         // Act
         var deleted = await app.Services.GetRequiredService<BffSessionCleanupService>().CleanupAsync(CancellationToken.None);
@@ -413,9 +413,9 @@ public class BffSessionTests
         await using (var scope = app.Services.CreateAsyncScope())
         {
             var replayCache = scope.ServiceProvider.GetRequiredService<LogoutTokenReplayCache>();
-            (await replayCache.TryAddAsync(expiredJti, DateTimeOffset.UtcNow.AddMinutes(-1), CancellationToken.None)).ShouldBeTrue();
-            (await replayCache.TryAddAsync(liveJti, DateTimeOffset.UtcNow.AddMinutes(10), CancellationToken.None)).ShouldBeTrue();
-            (await replayCache.TryAddAsync(liveJti, DateTimeOffset.UtcNow.AddMinutes(10), CancellationToken.None)).ShouldBeFalse();
+            (await replayCache.TryAddAsync(UsedToken(expiredJti, DateTimeOffset.UtcNow.AddMinutes(-1)), CancellationToken.None)).ShouldBeTrue();
+            (await replayCache.TryAddAsync(UsedToken(liveJti, DateTimeOffset.UtcNow.AddMinutes(10)), CancellationToken.None)).ShouldBeTrue();
+            (await replayCache.TryAddAsync(UsedToken(liveJti, DateTimeOffset.UtcNow.AddMinutes(10)), CancellationToken.None)).ShouldBeFalse();
         }
 
         // Act
@@ -429,6 +429,9 @@ public class BffSessionTests
             (await replayCache.IsUsedAsync(liveJti, CancellationToken.None)).ShouldBeTrue();
         }
     }
+
+    private static UsedLogoutToken UsedToken(string jti, DateTimeOffset expires) =>
+        new(jti, $"sid-{Guid.NewGuid():N}", null, DateTimeOffset.UtcNow, expires);
 
     /// <summary>
     /// See <see cref="HeldDeleteStore"/>.
@@ -445,8 +448,8 @@ public class BffSessionTests
     /// </summary>
     private sealed class HeldDeleteStore(IBffSessionStore inner, DeleteGate gate) : IBffSessionStore
     {
-        public Task<BffSession> CreateAsync(BffSession session, CancellationToken cancellationToken) =>
-            inner.CreateAsync(session, cancellationToken);
+        public Task<BffSession> CreateAsync(BffSession session, LoginTimes login, CancellationToken cancellationToken) =>
+            inner.CreateAsync(session, login, cancellationToken);
 
         public Task<BffSession?> GetAsync(string key, CancellationToken cancellationToken) => inner.GetAsync(key, cancellationToken);
 

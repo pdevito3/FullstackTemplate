@@ -295,6 +295,24 @@ export function workshopsPage(page: Page) {
       await settled
     },
 
+    /** Starts an upload whose answer the test holds, and waits until the request is on the way. */
+    async startUpload(id: string, file: { name: string; mimeType: string; buffer: Buffer }) {
+      const chooser = page.waitForEvent('filechooser')
+      const sent = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === workshopPaths.attachments(id))
+      await at.uploadFile.click()
+      await (await chooser).setFiles(file)
+      await sent
+      await expect(at.uploading).toBeVisible()
+    },
+
+    async cancelUpload(id: string) {
+      const stopped = page.waitForEvent('requestfailed', {
+        predicate: (r) => r.method() === 'POST' && new URL(r.url()).pathname === workshopPaths.attachments(id),
+      })
+      await at.cancelUpload.click()
+      await stopped
+    },
+
     // The chooser only shows the files that it accepts. The test reads the list and picks no file.
     async typesTheChooserAccepts() {
       const chooser = page.waitForEvent('filechooser')

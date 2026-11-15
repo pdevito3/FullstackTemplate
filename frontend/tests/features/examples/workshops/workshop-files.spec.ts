@@ -68,6 +68,21 @@ test.describe('the files of a workshop', () => {
     expect(upload?.body).toContain('Bring an apron.')
   })
 
+  test('cancels an upload that is on the way, and goes back to the upload button with no error', async ({ page, api }) => {
+    api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue), workshopsApi.attachmentsReturn(workshop))
+    const workshops = workshopsPage(page)
+    await workshops.openDetailWithFiles(id, venueId)
+    api.hold(workshopsApi.attachmentUploads(workshop, aWorkshopAttachment().named('notes.pdf', 'application/pdf')))
+    await workshops.startUpload(id, { name: 'notes.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 Bring an apron.') })
+
+    await workshops.cancelUpload(id)
+
+    await expect(workshops.at.uploadFile).toBeEnabled()
+    await expect(workshops.at.cancelUpload).toHaveCount(0)
+    await expect(workshops.at.noFiles).toBeVisible()
+    expect(await workshops.at.toasts.count()).toBe(0)
+  })
+
   test('shows the types and the size that the Server allows, and the chooser offers only those types', async ({ page, api }) => {
     api.mock(workshopsApi.oneIs(workshop), workshopsApi.venueIs(venue), workshopsApi.attachmentsReturn(workshop, [], anUploadRules()))
     const workshops = workshopsPage(page)

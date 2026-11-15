@@ -20,6 +20,7 @@ const linkNeeded = 'This page needs an invite link. Open the invite link again.'
 const expired = 'This invite expired. Ask a tenant admin for a new invite.'
 const usedOrRevoked = 'This invite was used or revoked. Ask a tenant admin for a new invite.'
 const alreadyMember = 'Your account already belongs to a tenant.'
+const timedOut = 'The server did not answer in time. Reload the page to see the latest data, then try again.'
 
 /** `inviteExpiry` of the builder in each zone of the suite. */
 const expiryIn: Record<string, string> = {
@@ -431,6 +432,19 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
     await expect(join.at.username).toHaveValue('augusta')
     await expect(join.at.toasts).toHaveCount(0)
     expect(api.all('post', membershipPaths.userOf(actorSubject))).toEqual([])
+  })
+
+  test('stops a claim that gets no answer, and says that the server did not answer in time', async ({ page, api }) => {
+    test.slow()
+    api.mock(invitesApi.previewIs(aPreview()))
+    api.hold(invitesApi.claims(aUser()))
+    const join = joinPage(page)
+    await join.openLink(token)
+
+    await join.claimAndWaitForTheTimeLimit()
+
+    await expect(join.at.formAlert).toHaveText(timedOut)
+    await expect(join.at.submit).toBeEnabled()
   })
 
   test('shows a field refusal of the Server on its field', { tag: '@INV-8' }, async ({ page, api }) => {

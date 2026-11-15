@@ -295,6 +295,16 @@ export function joinPage(page: Page) {
       await settled
     },
 
+    /** The claim gets no answer, so the app stops the wait at its time limit of about 35 s. */
+    async claimAndWaitForTheTimeLimit() {
+      const stopped = page.waitForEvent('requestfailed', {
+        predicate: (r) => r.method() === 'POST' && new URL(r.url()).pathname === invitesPaths.claim,
+        timeout: 45_000,
+      })
+      await at.submit.click()
+      await stopped
+    },
+
     /** Claims, and waits for the check of a double submit: the user record, then its tenant. */
     async claimAndCheckMembership(tenantId?: string) {
       const claimed = answered('POST', invitesPaths.claim)

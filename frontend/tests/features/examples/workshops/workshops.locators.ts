@@ -20,6 +20,8 @@ export const workshops = (page: Page) => {
     fileRow: (fileName: string) => fileList.getByRole('listitem', { name: fileName, exact: true }),
     noFiles: files.getByText('This workshop has no files.', { exact: true }),
     uploadFile: files.getByRole('button', { name: 'Upload file' }),
+    uploading: files.getByRole('button', { name: 'Uploading' }),
+    cancelUpload: files.getByRole('button', { name: 'Cancel upload' }),
     uploadHint: (hint: string) => files.getByText(hint, { exact: true }),
     viewImage: (fileName: string) => files.getByRole('button', { name: `View ${fileName}`, exact: true }),
     thumbnail: (fileName: string) => files.getByRole('button', { name: `View ${fileName}`, exact: true }).getByRole('img'),

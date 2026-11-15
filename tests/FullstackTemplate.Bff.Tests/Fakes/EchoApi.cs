@@ -17,7 +17,8 @@ using Microsoft.Extensions.Logging;
 /// <c>Authorization: DPoP</c> get <c>401 use_dpop_nonce</c> until its proof has that nonce (RFC 9449 section 9). With
 /// <see cref="RejectNonceParameter"/> as well, the API never accepts the proof.
 /// <para>
-/// Three paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away,
+/// Four paths fail on purpose: <c>/api/test/hang</c> answers only when the caller goes away,
+/// <see cref="SlowPath"/> answers 200 after <see cref="SlowDelay"/>,
 /// <c>/api/test/drop/{id}</c> counts the request and then drops the connection with no response, and
 /// <c>/api/test/too-large</c> answers 413 with the text <see cref="TooLargeText"/>.
 /// </para>
@@ -28,6 +29,8 @@ public sealed class EchoApi : IAsyncDisposable
     public const string RequireNonceParameter = "test_require_nonce";
     public const string RejectNonceParameter = "test_reject_nonce";
     public const string TooLargeText = "The API refused the body.";
+    public const string SlowPath = "/api/test/slow";
+    public static readonly TimeSpan SlowDelay = TimeSpan.FromSeconds(3);
 
     private readonly WebApplication _app;
     private readonly ConcurrentDictionary<string, int> _drops = new();
@@ -66,6 +69,11 @@ public sealed class EchoApi : IAsyncDisposable
             }
 
             return Results.Empty;
+        });
+        app.Map(SlowPath, async (HttpContext context) =>
+        {
+            await Task.Delay(SlowDelay, context.RequestAborted);
+            return Results.Ok();
         });
         app.Map("/api/test/drop/{id}", (HttpContext context, string id) =>
         {

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Shouldly;
 
 public class ApiProxyTests
@@ -236,16 +237,28 @@ public class ApiProxyTests
     }
 
     [Test]
-    public async Task a_server_that_does_not_answer_gives_504_after_the_default_limit()
+    public async Task a_server_that_does_not_answer_gives_504_at_the_limit()
     {
         // Arrange
-        using var browser = BffApp.Instance.CreateBrowser();
+        await using var app = BffApp.StartAnotherInstance(new Dictionary<string, string?> { ["Bff:Proxy:ActivityTimeout"] = "00:00:01" });
+        using var browser = app.CreateBrowser();
 
         // Act
-        var response = await browser.GetApiAsync("/api/test/hang").WaitAsync(TimeSpan.FromSeconds(35));
+        var response = await browser.GetApiAsync("/api/test/hang").WaitAsync(TimeSpan.FromSeconds(15));
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.GatewayTimeout);
+    }
+
+    [Test]
+    public void the_limits_are_30_seconds_and_5_minutes_for_an_upload_by_default()
+    {
+        // Act
+        var options = BffApp.Instance.Services.GetRequiredService<IOptions<ProxyOptions>>().Value;
+
+        // Assert
+        options.ActivityTimeout.ShouldBe(TimeSpan.FromSeconds(30));
+        options.UploadActivityTimeout.ShouldBe(TimeSpan.FromMinutes(5));
     }
 
     [Test]

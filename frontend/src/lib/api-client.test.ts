@@ -5,7 +5,7 @@ import { addTenant } from '@/api/generated/tenants/clients/add-tenant'
 import { getTenant } from '@/api/generated/tenants/clients/get-tenant'
 import { getTenantList } from '@/api/generated/tenants/clients/get-tenant-list'
 import { Notification } from '@/components/notification'
-import { apiClient, onUnauthorized, requestTimeoutMs, uploadTimeoutMs } from '@/lib/api-client'
+import { apiClient, onUnauthorized } from '@/lib/api-client'
 import { parsePagination } from '@/lib/pagination'
 import { ProblemDetailsError } from '@/lib/problem-details'
 
@@ -238,7 +238,7 @@ describe('apiClient with a 401 or with no answer', () => {
     expect(Notification.error).toHaveBeenCalledExactlyOnceWith(timedOut)
   })
 
-  it('gives an upload a longer time limit than another request', async () => {
+  it('gives a request a time limit of 35 s, and an upload 10 min', async () => {
     adapter.mockImplementation((config) => respond(config, 200, {}))
     const form = new FormData()
     form.append('file', new Blob(['%PDF-1.7']), 'notes.pdf')
@@ -246,6 +246,6 @@ describe('apiClient with a 401 or with no answer', () => {
     await apiClient.post('/api/v1/tenants', { name: 'Acme' })
     await apiClient.post('/api/v1/workshops/w1/attachments', form)
 
-    expect(adapter.mock.calls.map(([config]) => config.timeout)).toEqual([requestTimeoutMs, uploadTimeoutMs])
+    expect(adapter.mock.calls.map(([config]) => config.timeout)).toEqual([35_000, 600_000])
   })
 })

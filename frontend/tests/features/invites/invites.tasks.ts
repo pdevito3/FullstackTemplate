@@ -298,7 +298,6 @@ export function joinPage(page: Page) {
     async claimAndWaitForTheTimeLimit() {
       const stopped = page.waitForEvent('requestfailed', {
         predicate: (r) => r.method() === 'POST' && new URL(r.url()).pathname === invitesPaths.claim,
-        timeout: 45_000,
       })
       await at.submit.click()
       await stopped

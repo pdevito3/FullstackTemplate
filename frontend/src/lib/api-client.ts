@@ -50,8 +50,8 @@ export const apiClient = axios.create({
 
 // Over Bff:Proxy:ActivityTimeout (30 s) and Bff:Proxy:UploadActivityTimeout (5 min), so that the 504 of the BFF comes
 // first. The upload limit also counts the time to send the file.
-export const requestTimeoutMs = 35_000
-export const uploadTimeoutMs = 10 * 60_000
+const requestTimeoutMs = 35_000
+const uploadTimeoutMs = 10 * 60_000
 
 apiClient.interceptors.request.use((config) => {
   config.timeout ||= config.data instanceof FormData ? uploadTimeoutMs : requestTimeoutMs

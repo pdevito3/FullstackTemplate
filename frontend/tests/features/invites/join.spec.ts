@@ -8,7 +8,7 @@ import { aPreview } from '@tests/support/builders/invite-builder'
 import { aProblem } from '@tests/support/builders/problem-details-builder'
 import { aTenant } from '@tests/support/builders/tenant-builder'
 import { aUser } from '@tests/support/builders/user-builder'
-import { browserZone } from '@tests/support/clock'
+import { browserZone, shortenRequestTimeLimit } from '@tests/support/clock'
 import { expect, test } from '@tests/support/fixtures'
 import { homePage } from '../home/home.tasks'
 import { joinPage } from './invites.tasks'
@@ -435,7 +435,7 @@ test.describe('a signed-in user with no tenant opens an invite link', () => {
   })
 
   test('stops a claim that gets no answer, and says that the server did not answer in time', async ({ page, api }) => {
-    test.slow()
+    await shortenRequestTimeLimit(page, invitesPaths.claim, 1_000)
     api.mock(invitesApi.previewIs(aPreview()))
     api.hold(invitesApi.claims(aUser()))
     const join = joinPage(page)

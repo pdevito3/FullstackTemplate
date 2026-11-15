@@ -244,7 +244,7 @@ describe('apiClient with a 401 or with no answer', () => {
     form.append('file', new Blob(['%PDF-1.7']), 'notes.pdf')
 
     await apiClient.post('/api/v1/tenants', { name: 'Acme' })
-    await apiClient.post('/api/v1/workshops/w1/attachments', form)
+    await apiClient.post('/api/v1/uploads', form)
 
     expect(adapter.mock.calls.map(([config]) => config.timeout)).toEqual([35_000, 600_000])
   })

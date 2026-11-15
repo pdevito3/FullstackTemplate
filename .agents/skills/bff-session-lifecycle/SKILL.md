@@ -68,7 +68,7 @@ When you change the code on purpose, change the model in the same commit. Then r
 
 ## Coverage
 
-Sync commit: `567e2e02`. The model describes these files at this commit:
+Sync commit: `a1637f8a` (#525). The model describes these files at this commit:
 
 - `FullstackTemplate.Bff/Sessions/NewLogin.cs`: `EndExistingSessionAsync`, `RevokeRefreshTokenAsync`
 - `FullstackTemplate.Bff/Authentication/AuthExtensions.cs`: `OnRedirectToIdentityProvider` (the deadline of the login)
@@ -86,7 +86,7 @@ Sync commit: `567e2e02`. The model describes these files at this commit:
 - `FullstackTemplate.Bff/BackChannel/UsedLogoutToken.cs`: `Of`
 - `FullstackTemplate.Bff/Sessions/BffSessionExtensions.cs`: `AddBffSessions` (the retry of `25P03`)
 
-To see if the model needs another look, run `git log --oneline 567e2e02..HEAD -- <the files above>`. Move the sync commit forward only after you confirm that the model describes the code at the new commit. The `/maintain-formal-verification-skill` skill does this work.
+To see if the model needs another look, run `git log --oneline a1637f8a..HEAD -- <the files above>`. Move the sync commit forward only after you confirm that the model describes the code at the new commit. The `/maintain-formal-verification-skill` skill does this work.
 
 The model leaves out: the token values, the cookie chunks, the CSRF and `sid` checks of `/bff/logout`, the validation of the logout token, the `iat` match (each logout of S ends each login of S), an IdP that keeps S after it sends its logout token, an IdP that redeems a code of S after S ended (`LoginExchangeFails` assumes that it does not), a login with no deadline in its `state` (a deploy), DPoP, the clock (expiry is one event per row, and the deadline of a login is one event), a login with a new `sid` (so the revoke branch of `NewLogin` is not checked), a second delivery of the logout token while the first runs, and a second crash. A pass covers only these bounds.
 
@@ -97,12 +97,12 @@ The model leaves out: the token values, the cookie chunks, the CSRF and `sid` ch
 - With no lock (`BackChannelNoLock.cfg`), the login reads the records before the logout commits, and the logout finds no row before the login commits.
 - With no deadline (`BackChannelNoDeadline.cfg`), the cleanup deletes the record, and a login that began before the logout writes its row later.
 
-**G2 is fixed.** A resend after a failure was refused as a replay, because `TryAddAsync` committed the jti before the deletes. Since `24aa1542`, the jti insert and the deletes commit in one transaction, so a crash or a failed delete rolls back the jti too, and the resend ends the sessions. `ReplayRefusedOnlyWhenEnded` holds.
+**G2 is fixed.** A resend after a failure was refused as a replay, because `TryAddAsync` committed the jti before the deletes. Since `205cc0fc` (#521), the jti insert and the deletes commit in one transaction, so a crash or a failed delete rolls back the jti too, and the resend ends the sessions. `ReplayRefusedOnlyWhenEnded` holds.
 
 ## Proof that the check can fail
 
 At the sync commit, a scratch change in `BffTicketStore.RenewTokensAsync` made the `Missing` case call `CreateAsync` and create the row again, as the code did before the conditional writes. It built. The same change in `ReqWritesTokens` made `check.sh` print `FAIL` for `Refresh.cfg`. `/statechart` gave this path for `LogoutEndsSession`: a request takes the refresh lock, reads the row again, and the IdP rotates the token. Then `/bff/logout` deletes the row, the token write finds no row and creates it, the lock transaction commits, and logout completes with a readable row. Both changes were then reverted, and `check.sh` printed only `ok` lines.
 
-At `b43c7779`, a scratch change in `BcInsertsJti` committed the jti at its insert, as the code did before `24aa1542`. TLC then broke `ReplayRefusedOnlyWhenEnded` with the constants of `BackChannel.cfg`, in a path of 10 states: the login creates the row, the jti commits, the instance crashes before the deletes, and the resend gets 400 with the row still readable. The change was then reverted.
+At `205cc0fc` (#521), a scratch change in `BcInsertsJti` committed the jti at its insert, as the code did before #521. TLC then broke `ReplayRefusedOnlyWhenEnded` with the constants of `BackChannel.cfg`, in a path of 10 states: the login creates the row, the jti commits, the instance crashes before the deletes, and the resend gets 400 with the row still readable. The change was then reverted.
 
 The G1 fix has its own proof: `BackChannelNoLock.cfg` and `BackChannelNoDeadline.cfg` each remove one part of the fix, and `check.sh` requires that `BackChannelLogoutEndsSessions` breaks in each.

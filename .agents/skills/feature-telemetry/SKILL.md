@@ -17,7 +17,7 @@ A backend change is not done until the on-call person can answer questions about
    - Each state change has one `Information` log through `Here()`, with the ids as named properties.
    - Each degraded path has a `Warning` log.
    - Each caught server error calls `Telemetry.RecordError` and writes an `Error` log with the exception.
-4. If a person needs a rate or a trend, add a counter in `Domain/[EntityName]s/[EntityName]Metrics.cs` on `Telemetry.Meter`.
+4. If a person needs a rate or a trend, add a counter in `Domain/[EntityName]s/[EntityName]Metrics.cs` on `Telemetry.Meter`. Call `Add` or `Record` while the span that explains the measurement is current, so that each exemplar of the metric leads to that span (section "Exemplars" of `docs/telemetry.md`). The Aspire dashboard shows exemplars of a histogram only, so do not expect them on a counter there.
 5. If the work has no request and is not a BackWave job, wrap it in `Telemetry.TraceRoot`. A job already has the `process {queue}` span and its caller tags (see rule 9 of the doc).
 6. Search the code for each new tag name and metric name. If a name with the same meaning exists, use it.
 7. If an alert, a dashboard, or a runbook uses a signal, write a functional test for it. Use the `writing-tests` skill and the section "Test the telemetry" of the doc.

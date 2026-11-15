@@ -20,6 +20,7 @@ The stack must be running. The `aspire-cli` skill tells how to start it. Run eac
 | All signals of one request | `dotnet aspire otel logs --trace-id <id>` and `dotnet aspire otel spans --trace-id <id>` |
 | A text or attribute search | `dotnet aspire otel logs --search "<text>"` |
 | All requests of one tenant, user, or agent | `dotnet aspire otel spans server --search <id>`. The `app.caller.*` tags of each feature slice span have the id. |
+| The slowest requests of one feature | `dotnet aspire otel spans server --search "GetUser.Query" --limit 1000 --format Json \| jq 'sort_by(-.durationMs) \| .[:5][] \| {traceId, durationMs, attributes}'`. See [From a slow feature to the cause](#from-a-slow-feature-to-the-cause). |
 | Fields for a script | Add `--format Json` |
 | Console output (stdout) of a resource | `dotnet aspire logs server` |
 
@@ -37,6 +38,18 @@ For a dashboard with no AppHost, such as the standalone `aspire-dashboard` conta
 4. If the item has no call site, get its trace id. Then read the other spans and logs of the trace to find an item that has one.
 
 These spans have a call site: the spans from `Telemetry.Trace` and `Telemetry.TraceRoot`, the events from `Telemetry.AddEvent`, and the Npgsql spans of queries tagged with `TagWithOperationCallSite`. A feature slice span has no call site. Its name (for example `GetUser.Query`) is the feature class.
+
+### From a slow feature to the cause
+
+`app.request.duration` tells that a feature is slow. Its exemplars connect a measurement to the feature slice span of one slow request. The section "Exemplars" of `docs/telemetry.md` gives the dashboard steps and what each part of the trace tells.
+
+The CLI has no metrics command, so it does not give exemplars. Use the spans instead. Without `--limit`, the CLI returns only the 200 most recent spans.
+
+1. Sort the feature slice spans by duration: `dotnet aspire otel spans server --search "GetUser.Query" --limit 1000 --format Json | jq 'sort_by(-.durationMs) | .[:5][] | {traceId, durationMs, attributes}'`.
+2. Read the trace of the slowest: `dotnet aspire otel spans --trace-id <traceId>`.
+3. Find the child that takes the time, such as a `SQL: area.operation` span. Open its `code.file.path` at `code.line.number`.
+4. Read the id tags and the `app.caller.*` tags of the feature slice span to tell which entity and which caller had the slow request.
+5. If no child covers the time, the time is in C# code with no span. Tell the user, and add a `Telemetry.Trace` span around that work only if they ask for a change.
 
 ## Write telemetry
 
